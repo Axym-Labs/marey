@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="320" height="200" viewBox="0 0 320 200">
+  <defs>
+    <circle id="qm" r="9"/>
+    <circle id="qm-2" r="7"/>
+    <rect id="qm-3" x="-9" y="-9" width="18" height="18"/>
+    <rect id="qm-4" x="-7" y="-7" width="14" height="14"/>
+    <path id="qm-5" d="M0 -9L9 0L0 9L-9 0Z"/>
+    <path id="qm-6" d="M0 -7L7 0L0 7L-7 0Z"/>
+    <path id="qm-7" d="M0 -9L7.794 4.5L-7.794 4.5Z"/>
+    <path id="qm-8" d="M0 -7L6.062 3.5L-6.062 3.5Z"/>
+    <path id="qm-9" d="M0 9L-7.794 -4.5L7.794 -4.5Z"/>
+    <path id="qm-10" d="M0 7L-6.062 -3.5L6.062 -3.5Z"/>
+    <path id="qm-11" d="M4.243 -8.485L8.485 -4.243L4.243 0L8.485 4.243L4.243 8.485L0 4.243L-4.243 8.485L-8.485 4.243L-4.243 0L-8.485 -4.243L-4.243 -8.485L0 -4.243Z"/>
+    <path id="qm-12" d="M3.3 -6.6L6.6 -3.3L3.3 0L6.6 3.3L3.3 6.6L0 3.3L-3.3 6.6L-6.6 3.3L-3.3 0L-6.6 -3.3L-3.3 -6.6L0 -3.3Z"/>
+    <path id="qm-13" d="M-3 -9L3 -9L3 -3L9 -3L9 3L3 3L3 9L-3 9L-3 3L-9 3L-9 -3L-3 -3Z"/>
+    <path id="qm-14" d="M-2.333 -7L2.333 -7L2.333 -2.333L7 -2.333L7 2.333L2.333 2.333L2.333 7L-2.333 7L-2.333 2.333L-7 2.333L-7 -2.333L-2.333 -2.333Z"/>
+  </defs>
+  <g fill="#2961db" fill-opacity="0.75" stroke="#1c1f26" stroke-width="1">
+    <use xlink:href="#qm" x="28.8" y="64"/>
+  </g>
+  <g fill="#e65c2e">
+    <use xlink:href="#qm-2" x="28.8" y="136"/>
+  </g>
+  <g fill="#2961db" fill-opacity="0.75" stroke="#1c1f26" stroke-width="1">
+    <use xlink:href="#qm-3" x="72" y="64"/>
+  </g>
+  <g fill="#e65c2e">
+    <use xlink:href="#qm-4" x="72" y="136"/>
+  </g>
+  <g fill="#2961db" fill-opacity="0.75" stroke="#1c1f26" stroke-width="1">
+    <use xlink:href="#qm-5" x="115.2" y="64"/>
+  </g>
+  <g fill="#e65c2e">
+    <use xlink:href="#qm-6" x="115.2" y="136"/>
+  </g>
+  <g fill="#2961db" fill-opacity="0.75" stroke="#1c1f26" stroke-width="1">
+    <use xlink:href="#qm-7" x="158.4" y="64"/>
+  </g>
+  <g fill="#e65c2e">
+    <use xlink:href="#qm-8" x="158.4" y="136"/>
+  </g>
+  <g fill="#2961db" fill-opacity="0.75" stroke="#1c1f26" stroke-width="1">
+    <use xlink:href="#qm-9" x="201.6" y="64"/>
+  </g>
+  <g fill="#e65c2e">
+    <use xlink:href="#qm-10" x="201.6" y="136"/>
+  </g>
+  <g fill="#2961db" fill-opacity="0.75" stroke="#1c1f26" stroke-width="1">
+    <use xlink:href="#qm-11" x="244.8" y="64"/>
+  </g>
+  <g fill="#e65c2e">
+    <use xlink:href="#qm-12" x="244.8" y="136"/>
+  </g>
+  <g fill="#2961db" fill-opacity="0.75" stroke="#1c1f26" stroke-width="1">
+    <use xlink:href="#qm-13" x="288" y="64"/>
+  </g>
+  <g fill="#e65c2e">
+    <use xlink:href="#qm-14" x="288" y="136"/>
+  </g>
+</svg>

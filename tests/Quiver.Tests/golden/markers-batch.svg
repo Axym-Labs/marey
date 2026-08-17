@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="320" height="200" viewBox="0 0 320 200">
+  <defs>
+    <circle id="qm" r="3"/>
+  </defs>
+  <g fill="#2961db">
+    <use xlink:href="#qm" x="16" y="100"/>
+    <use xlink:href="#qm" x="28.48" y="66.44"/>
+    <use xlink:href="#qm" x="40.96" y="41.097"/>
+    <use xlink:href="#qm" x="53.44" y="30.175"/>
+    <use xlink:href="#qm" x="65.92" y="36.349"/>
+    <use xlink:href="#qm" x="78.4" y="58.107"/>
+    <use xlink:href="#qm" x="90.88" y="90.122"/>
+    <use xlink:href="#qm" x="103.36" y="124.555"/>
+    <use xlink:href="#qm" x="115.84" y="152.976"/>
+    <use xlink:href="#qm" x="128.32" y="168.427"/>
+    <use xlink:href="#qm" x="140.8" y="167.125"/>
+    <use xlink:href="#qm" x="153.28" y="149.388"/>
+    <use xlink:href="#qm" x="165.76" y="119.559"/>
+    <use xlink:href="#qm" x="178.24" y="84.942"/>
+    <use xlink:href="#qm" x="190.72" y="54.011"/>
+    <use xlink:href="#qm" x="203.2" y="34.34"/>
+    <use xlink:href="#qm" x="215.68" y="30.745"/>
+    <use xlink:href="#qm" x="228.16" y="44.106"/>
+    <use xlink:href="#qm" x="240.64" y="71.152"/>
+    <use xlink:href="#qm" x="253.12" y="105.261"/>
+    <use xlink:href="#qm" x="265.6" y="138.081"/>
+    <use xlink:href="#qm" x="278.08" y="161.579"/>
+    <use xlink:href="#qm" x="290.56" y="169.999"/>
+    <use xlink:href="#qm" x="303.04" y="161.282"/>
+  </g>
+</svg>

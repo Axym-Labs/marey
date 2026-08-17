@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- §13: "Quiver.Tests — FsCheck laws + golden SVG snapshots."
+
+         net10.0 rather than netstandard2.1: this is an executable test host, not a shipped
+         library. The projects under test target netstandard2.1 and are referenced from here,
+         which is the direction that works.
+
+         TreatWarningsAsErrors is inherited from Directory.Build.props and stays on. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Quiver.Tests</AssemblyName>
+    <RootNamespace>Quiver.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+
+    <!-- Nothing here is a public API, so XML docs would be noise; the doc comments in this
+         project are for the reader of the test, not for a consumer of a package. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Order matters in F#. Generators first: every property suite draws from them. -->
+    <Compile Include="Generators.fs" />
+    <Compile Include="DimProperties.fs" />
+    <Compile Include="WitnessProperties.fs" />
+    <Compile Include="ScaleProperties.fs" />
+    <Compile Include="TickProperties.fs" />
+    <Compile Include="InterpProperties.fs" />
+    <Compile Include="AffineProperties.fs" />
+    <Compile Include="GeometryProperties.fs" />
+    <Compile Include="ColorProperties.fs" />
+    <Compile Include="SceneProperties.fs" />
+    <Compile Include="RegressionTests.fs" />
+    <Compile Include="Golden.fs" />
+    <Compile Include="GoldenTests.fs" />
+    <Compile Include="PlotTests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Quiver.Core\Quiver.Core.fsproj" />
+    <ProjectReference Include="..\..\src\Quiver.Units\Quiver.Units.fsproj" />
+    <ProjectReference Include="..\..\src\Quiver.Backend.Svg\Quiver.Backend.Svg.fsproj" />
+    <ProjectReference Include="..\..\src\Quiver.Plot\Quiver.Plot.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FsCheck.Xunit" Version="3.3.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The golden masters travel with the test binary so the comparison never depends on the
+         working directory the runner happened to pick. The *source* tree copy is still the one
+         a reviewer reads in the PR diff; QUIVER_UPDATE_GOLDEN writes back to it, not here. -->
+    <None Include="golden\**\*.svg" Exclude="golden\**\*.actual.svg" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="README.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

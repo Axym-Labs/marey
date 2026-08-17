@@ -1,0 +1,40 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.user
+*.suo
+
+# Test output — golden *baselines* under tests/**/golden/ ARE tracked and reviewed in PRs
+# (§13: "text-diffable, reviewable in a PR"). Only the failure artefacts are ignored.
+*.actual.svg
+TestResults/
+*.trx
+*.coverage
+coverage*.xml
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+
+# Editors
+.vs/
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# The spike is a record of what compiles, not a build target — keep its output out.
+spike/bin/
+spike/obj/
+spike/scene.svg
+
+.fake

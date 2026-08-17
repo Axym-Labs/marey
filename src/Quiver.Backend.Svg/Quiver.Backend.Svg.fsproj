@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- §6: "Build this first and treat it as the spec." Reference implementation and golden
+         -image test oracle. Zero dependencies, so it works under Fable and in notebooks. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Quiver.Backend.Svg</AssemblyName>
+    <RootNamespace>Quiver</RootNamespace>
+    <Description>The reference backend. Pure F#, zero dependencies, doubles as the golden-image test oracle.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="SvgWriter.fs" />
+    <Compile Include="SvgBackend.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Quiver.Core\Quiver.Core.fsproj" />
+  </ItemGroup>
+
+</Project>

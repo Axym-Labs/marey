@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="320" height="200" viewBox="0 0 320 200">
+  <defs>
+    <linearGradient id="qg" gradientUnits="userSpaceOnUse" gradientTransform="matrix(320 0 0 -200 0 200)" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fcd933"/>
+      <stop offset="0.5" stop-color="#e65c2e"/>
+      <stop offset="1" stop-color="#4c0d59" stop-opacity="0.85"/>
+    </linearGradient>
+    <radialGradient id="qg-2" gradientUnits="userSpaceOnUse" gradientTransform="matrix(320 0 0 -200 0 200)" cx="0.75" cy="0.75" r="0.22">
+      <stop offset="0" stop-color="#fcd933"/>
+      <stop offset="0.5" stop-color="#e65c2e"/>
+      <stop offset="1" stop-color="#4c0d59" stop-opacity="0.85"/>
+    </radialGradient>
+  </defs>
+  <path d="M12.8 90L150.4 90L150.4 10L12.8 10Z" fill="url(#qg)"/>
+  <path d="M169.6 90L307.2 90L307.2 10L169.6 10Z" fill="url(#qg-2)" stroke="#1c1f26" stroke-width="1"/>
+  <path d="M12.8 190L150.4 190L150.4 110L12.8 110Z" fill="url(#qg)"/>
+  <text x="240" y="150" font-family="Helvetica" font-size="18.667" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="url(#qg)">gradient text</text>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="400" height="200" viewBox="0 0 400 200">
+  <text x="40" y="100" font-family="Helvetica" font-size="14.667" text-anchor="start" fill="#1c1f26">0 deg</text>
+  <text x="104" y="100" transform="rotate(-30 104 100)" font-family="Helvetica" font-size="14.667" text-anchor="start" fill="#1c1f26">30 deg</text>
+  <text x="168" y="100" transform="rotate(-60 168 100)" font-family="Helvetica" font-size="14.667" text-anchor="start" fill="#1c1f26">60 deg</text>
+  <text x="232" y="100" transform="rotate(-90 232 100)" font-family="Helvetica" font-size="14.667" text-anchor="start" fill="#1c1f26">90 deg</text>
+  <text x="296" y="100" transform="rotate(-120 296 100)" font-family="Helvetica" font-size="14.667" text-anchor="start" fill="#1c1f26">120 deg</text>
+  <text x="360" y="100" transform="rotate(-150 360 100)" font-family="Helvetica" font-size="14.667" text-anchor="start" fill="#1c1f26">150 deg</text>
+  <text x="200" y="170" transform="rotate(-7.276 200 170)" font-family="Helvetica" font-size="14.667" text-anchor="middle" fill="#1a1a1f">rotated frame, upright run</text>
+</svg>
