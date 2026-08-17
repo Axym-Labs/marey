@@ -223,6 +223,7 @@ module Degradation =
         let semantic =
             Annotated({ Role = RoleSeries; Label = "s"; Data = [||] }, Text
                 { Text = "x"
+                  Tex = None
                   At = Vec2.zero<nd>
                   Font =
                     { Family = "Helvetica"

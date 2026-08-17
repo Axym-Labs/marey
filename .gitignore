@@ -10,6 +10,17 @@ artifacts/
 # Test output — golden *baselines* under tests/**/golden/ ARE tracked and reviewed in PRs
 # (§13: "text-diffable, reviewable in a PR"). Only the failure artefacts are ignored.
 *.actual.svg
+*.actual.tex
+*.actual.txt
+
+# TeX byproducts from the golden-compile gate (the .tex baselines themselves are tracked).
+*.aux
+*.log
+*.pdf
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.out
 TestResults/
 *.trx
 *.coverage

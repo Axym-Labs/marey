@@ -243,9 +243,20 @@ module Prefix =
     ///   `Dim` path would happily produce `kJ` for data that is in `keV` — off by 10¹⁹. Such a
     ///   unit is prefixed against its own *declared* symbol instead (see
     ///   `UnitDisplay.unitText`), gated by `nonMetric`.
-    let selectForUnit<[<Measure>] 'u> (u: U<'u>) (range: float * float) : Prefix =
-        if u.IsAffine then none
-        elif u.ToSI <> 1.0 then
-            if nonMetric.Contains u.Symbol then none else select range
+    /// The same policy, stated over the *erased* witness metadata rather than a `U<'u>`.
+    ///
+    /// This exists because §15's reloaded figure has no measure left — "reloading gives you
+    /// `IScaleErased`, not `Scale<'u>`" — but it does carry `Symbol`, `Dim`, `ToSI` and
+    /// `OffsetSI` (D16 put them there for precisely this reason). Having the erased path call
+    /// this rather than re-deriving the branches is what stops the two from drifting: an earlier
+    /// version of `Axis.ofErasedWith` re-implemented the decision, got it wrong, and labelled a
+    /// reloaded electronvolt axis `kJ`.
+    let selectForErased (symbol: string) (dim: Dim) (toSI: float) (offsetSI: float) (range: float * float) : Prefix =
+        if offsetSI <> 0.0 then none
+        elif toSI <> 1.0 then
+            if nonMetric.Contains symbol then none else select range
         else
-            selectFor u.Dim range
+            selectFor dim range
+
+    let selectForUnit<[<Measure>] 'u> (u: U<'u>) (range: float * float) : Prefix =
+        selectForErased u.Symbol u.Dim u.ToSI u.OffsetSI range

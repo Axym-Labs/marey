@@ -165,6 +165,9 @@ module Legend =
                        let label =
                            Text
                                { Text = e.Name
+                                 // Caller-supplied series name; a TeX backend escapes it. See
+                                 // the note in Figure.fs on why only axis titles carry a `Tex`.
+                                 Tex = None
                                  At = pt textX cy
                                  Font = theme.LegendFont
                                  Paint = Solid theme.Foreground

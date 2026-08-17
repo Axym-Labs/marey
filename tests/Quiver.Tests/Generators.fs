@@ -549,9 +549,31 @@ module Gens =
               "µm"
               "line\nbreak" ]
 
+    /// Optional TeX source for a run. Mostly `None`, because most runs have none.
+    ///
+    /// `Some ""` is in the distribution deliberately: it is `Scene.prune`'s edge case. A run with
+    /// no plain text and an *empty* TeX form must be pruned, while a run with no plain text and a
+    /// *non-empty* TeX form must survive — testing `Text` alone would delete the second kind, and
+    /// it would only disappear on a typesetting backend, which is the worst possible shape for
+    /// the bug.
+    let private texSource: Gen<string option> =
+        let real =
+            Gen.elements
+                [ "\\qty{}{\\metre}"
+                  "$x$ [\\unit{\\metre\\per\\second\\squared}]"
+                  "\\mathrm{\\Omega}"
+                  "50\\% yield\\_2" ]
+            |> Gen.map Some
+
+        Gen.frequency
+            [ 4, Gen.constant None
+              1, Gen.constant (Some "")
+              2, real ]
+
     let private textRun: Gen<TextRun> =
         gen {
             let! s = text
+            let! tex = texSource
             let! at = vec2Nd
             let! font = fontSpec
             let! p = paint
@@ -561,6 +583,7 @@ module Gens =
 
             return
                 { Text = s
+                  Tex = tex
                   At = at
                   Font = font
                   Paint = p

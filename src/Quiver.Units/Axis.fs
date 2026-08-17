@@ -8,11 +8,35 @@ namespace Quiver
 /// it should be the first thing in the README."
 type AxisSpec =
     { /// The finished title: `t [s]`, `x [nm]`, or bare `x` when the quantity is dimensionless.
+      ///
+      /// **Always plain text**, never markup. When the requested `UnitStyle` is `Latex` or
+      /// `Siunitx` this holds the `Unicode` rendering and the requested one goes to `TitleTex`.
+      /// See the note on `TitleTex` for why.
       Title: string
       /// The quantity name alone, as supplied by the caller.
       Label: string
-      /// The unit alone, in the requested style, prefix included. Empty when dimensionless.
+      /// The unit alone, prefix included, in plain text. Empty when dimensionless.
       UnitText: string
+      /// The finished title as TeX source, when the requested style was a TeX one.
+      ///
+      /// **Why the two TeX styles behave differently from the two plain ones.** `Unicode` and
+      /// `Ascii` are *text*: `m·s⁻²` and `m.s^-2` are strings a viewer can display, so they
+      /// belong in `Title` and there is nothing to put here. `Latex` and `Siunitx` are *markup*:
+      /// `\qty{}{\metre\per\second\squared}` is meaningless to an SVG renderer, which would draw
+      /// the backslashes literally. So for those two styles the plain `Unicode` rendering goes to
+      /// `Title` — every backend can draw it — and the markup comes here, where a typesetting
+      /// backend will find it via `TextRun.Tex`.
+      ///
+      /// The caller's `Label` is TeX-escaped when composing this, since it is arbitrary text
+      /// sitting next to already-escaped unit markup. It is deliberately *not* wrapped in `$…$`:
+      /// a single-symbol name like `t` would read better as math italic, but a multi-word name
+      /// like `Time since launch` would lose its spaces in math mode, and guessing which is
+      /// which from the string is not a judgement this layer can make correctly.
+      TitleTex: string option
+      /// The unit alone as TeX source, on the same rule as `TitleTex`. `None` for the plain
+      /// styles. Exposed separately from `TitleTex` because a colorbar or a legend may need the
+      /// unit without the quantity name.
+      UnitTextTex: string option
       /// The prefix the data range selected. `Prefix.none` when no rescaling happened.
       Prefix: Prefix
       /// Tick values, positions and labels. **`Value` is the rescaled number that `Label`
@@ -33,16 +57,17 @@ type AxisSpec =
 ///    `"0.000000001"`. §2.2 asks for `1, 2, 3, 4, 5`. Prefix selection has to happen before
 ///    formatting, so the axis compiler has to own the formatting, so it needs the raw
 ///    `TickHint`.
-/// 2. **It has thrown away the metadata the prefix policy runs on.** `IScaleErased` exposes
-///    `Symbol` and `Dim` but not `ToSI` or `OffsetSI` — so it cannot tell electronvolts from
-///    joules (same `Dim`, factor 1.6e-19 apart) and cannot tell °C from K (same `Dim`, affine).
-///    An erased eV axis would be labelled `kJ`, confidently and wrongly.
+/// 2. **It has already formatted the tick labels for the wrong scale.** Prefix selection has to
+///    happen before formatting, and `IScaleErased` hands over finished label strings, so the
+///    erased path has to recompute them from `TickLabel.Value` regardless.
 ///
-/// Point 2 is a **gap in `Quiver.Core`**, not a preference: `IScaleErased` should carry the
-/// witness's `ToSI`/`OffsetSI` alongside `Symbol` and `Dim`, and §15's reloaded-figure story
-/// ("reloading gives you `IScaleErased`, not `Scale<'u>`") means a reloaded non-SI axis
-/// currently cannot be relabelled correctly. `ofErased` below is provided anyway, with that
-/// limitation stated, because it is right for SI-coherent axes — which is most of them.
+/// A second objection used to live here and no longer applies: `IScaleErased` once exposed
+/// `Symbol` and `Dim` but not `ToSI`/`OffsetSI`, so it could not tell electronvolts from joules
+/// (same `Dim`, 1.6e-19 apart) or °C from K (same `Dim`, affine), and an erased eV axis was
+/// labelled `kJ`. D16 added both fields to `IScaleErased` — §15's reloaded-figure story means
+/// the information would otherwise be *destroyed* at save time rather than merely hidden — and
+/// `ofErasedWith` now routes its prefix and symbol decisions through the same
+/// `Prefix.selectForErased`/`UnitDisplay.unitTextErased` the measured path uses.
 ///
 /// `ofPacked` is the third door and the correct one whenever the packed value still exists:
 /// §2.3's rank-2 encoding hands the measure back, so the full `Scale<'u>` path applies.
@@ -67,6 +92,25 @@ module Axis =
         if System.String.IsNullOrEmpty unitText then label
         elif System.String.IsNullOrEmpty label then "[" + unitText + "]"
         else label + " [" + unitText + "]"
+
+    /// The plain-text style to pair with a requested style.
+    ///
+    /// `Latex` and `Siunitx` are markup, so their plain counterpart is `Unicode` — the richest
+    /// rendering every backend can actually draw. `Unicode` and `Ascii` are already text and are
+    /// their own counterpart. See `AxisSpec.TitleTex`.
+    let private plainCounterpart (style: UnitStyle) =
+        match style with
+        | Latex
+        | Siunitx -> Unicode
+        | plain -> plain
+
+    /// True when the style produces TeX markup rather than displayable text.
+    let private isTexStyle (style: UnitStyle) =
+        match style with
+        | Latex
+        | Siunitx -> true
+        | Unicode
+        | Ascii -> false
 
     /// Decimals that make the labels injective (§4) *after* prefix rescaling.
     ///
@@ -108,11 +152,20 @@ module Axis =
                   Position = scale.Forward raw.[i]
                   Label = Ticks.format decimals rescaled.[i] })
 
-        let unitText = UnitDisplay.unitText style registry prefix scale.Unit
+        let unitText =
+            UnitDisplay.unitText (plainCounterpart style) registry prefix scale.Unit
+
+        let unitTextTex =
+            if isTexStyle style then
+                Some(UnitDisplay.unitText style registry prefix scale.Unit)
+            else
+                None
 
         { Title = title label unitText
           Label = label
           UnitText = unitText
+          TitleTex = unitTextTex |> Option.map (title (Tex.escape label))
+          UnitTextTex = unitTextTex
           Prefix = prefix
           Ticks = ticks }
 
@@ -135,10 +188,22 @@ module Axis =
     let ofPacked (style: UnitStyle) (label: string) (packed: PackedScale) =
         ofPackedWith style UnitRegistry.si DefaultTickCount label packed
 
-    /// The reloaded-figure path (§15). **Correct for SI-coherent axes only** — see the module
-    /// note: `IScaleErased` drops `ToSI` and `OffsetSI`, so an erased electronvolt axis is
-    /// indistinguishable from a joule axis and will be labelled as one. Use `ofScaleWith` or
-    /// `ofPackedWith` whenever the measure still exists.
+    /// The reloaded-figure path (§15).
+    ///
+    /// **This used to be correct for SI-coherent axes only**, because it selected a prefix from
+    /// the `Dim` alone and rendered from the `Dim` alone. That made a reloaded electronvolt axis
+    /// read `E [kJ]` — same `Dim` as joules, off by 1.6×10⁻¹⁹ — and a reloaded Celsius axis read
+    /// `T [K]`, since °C and K also share a `Dim` and differ only by an offset.
+    ///
+    /// D16 put `ToSI` and `OffsetSI` on `IScaleErased` precisely so this path could be fixed:
+    /// "without `ToSI`/`OffsetSI` the information is *destroyed* at save time, not merely hidden,
+    /// and a reloaded non-SI axis can never be relabelled correctly." Both decisions now go
+    /// through `Prefix.selectForErased` and `UnitDisplay.unitTextErased`, which are the same
+    /// functions the measured path uses, so the two cannot drift apart again.
+    ///
+    /// `ofScaleWith` and `ofPackedWith` remain preferable whenever the measure still exists, for
+    /// the other reason given in the module note: they own tick formatting, so they can rescale
+    /// before formatting rather than after.
     ///
     /// Labels are recomputed from `TickLabel.Value` rather than reused, because the erased
     /// labels were formatted before any prefix was chosen.
@@ -149,7 +214,9 @@ module Axis =
         (label: string)
         (scale: IScaleErased)
         : AxisSpec =
-        let prefix = Prefix.selectFor scale.Dim scale.Domain
+        let prefix =
+            Prefix.selectForErased scale.Symbol scale.Dim scale.ToSI scale.OffsetSI scale.Domain
+
         let factor = Prefix.factor prefix
         let raw = scale.Ticks tickCount
         let rescaled = raw |> Array.map (fun t -> t.Value / factor)
@@ -165,11 +232,19 @@ module Axis =
                   Position = raw.[i].Position
                   Label = Ticks.format decimals rescaled.[i] })
 
-        let unitText = UnitDisplay.renderPrefixed style registry prefix scale.Dim
+        let unitTextIn s =
+            UnitDisplay.unitTextErased s registry prefix scale.Symbol scale.Dim scale.ToSI scale.OffsetSI
+
+        let unitText = unitTextIn (plainCounterpart style)
+
+        let unitTextTex =
+            if isTexStyle style then Some(unitTextIn style) else None
 
         { Title = title label unitText
           Label = label
           UnitText = unitText
+          TitleTex = unitTextTex |> Option.map (title (Tex.escape label))
+          UnitTextTex = unitTextTex
           Prefix = prefix
           Ticks = ticks }
 

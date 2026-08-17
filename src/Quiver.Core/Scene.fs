@@ -108,7 +108,36 @@ type TextBaseline =
 
 [<NoComparison>]
 type TextRun =
-    { Text: string
+    { /// The plain-Unicode form of this run. **Always set**, even when `Tex` is present.
+      ///
+      /// This is the single source of truth for measurement — `ITextMeasurer` measures this and
+      /// nothing else — and it is what every backend that is not a typesetter draws. A run whose
+      /// meaning lives only in `Tex` is a run that cannot be laid out and cannot be rendered to
+      /// SVG, PNG or a canvas, so this field is not optional and must not be left empty as a
+      /// shortcut.
+      Text: string
+      /// Optional TeX source for this run, for backends that can typeset it.
+      ///
+      /// The problem this solves: `Chart.withUnitStyle Siunitx` produces axis titles like
+      /// `\qty{}{\metre\per\second\squared}`, and a TeX backend must escape ordinary text
+      /// (`%`, `_`, `&`, `#`, `$` and backslashes all break a document) while passing that
+      /// through verbatim. One figure legitimately contains both, so the distinction has to be
+      /// per-run and cannot be a per-render switch.
+      ///
+      /// No `Capabilities` flag guards this, deliberately: `Text` is always present, so a
+      /// backend that cannot typeset TeX has a lossless-enough fallback by construction and
+      /// there is nothing to degrade. That is what keeps `Capabilities` at nine fields.
+      ///
+      /// §10's three routes to mathematical typesetting all read this one field — shelling out
+      /// to LaTeX, MathJax/KaTeX on the web backend at M3, and native OpenType MATH layout at
+      /// M6 — which is why it is worth a field now rather than a migration later.
+      ///
+      /// **Known imprecision:** layout is measured against `Text` while a TeX backend typesets
+      /// `Tex`, and the two have different widths. Axis titles and tick labels are
+      /// anchor-placed so a small error shifts nothing into a collision, and the tick-label
+      /// collision ladder only ever coarsens, so an under-measured label cannot produce an
+      /// overlapping plan. Bounded, not eliminated.
+      Tex: string option
       At: Vec2<nd>
       Font: FontSpec
       Paint: Paint
@@ -348,5 +377,13 @@ module Scene =
             | c -> Annotated(s, c)
         | Path(segs, _, _, _) when segs.Length = 0 -> empty
         | Markers b when b.Points.Length = 0 -> empty
-        | Text t when System.String.IsNullOrEmpty t.Text -> empty
+        // Both forms must be empty before a run is dropped. Testing `Text` alone would delete
+        // every TeX-only run — a run whose `Text` fallback was left blank still draws on a
+        // typesetting backend, and pruning it here would make it vanish from that backend only,
+        // which is the worst possible shape for the bug.
+        | Text t when
+            System.String.IsNullOrEmpty t.Text
+            && t.Tex |> Option.forall System.String.IsNullOrEmpty
+            ->
+            empty
         | leaf -> leaf

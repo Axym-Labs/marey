@@ -92,6 +92,7 @@ module Scenes =
                text "central" 0.05 0.58 AnchorStart BaselineMiddle 0.0
                Text
                    { Text = "bold 700"
+                     Tex = None
                      At = pt 0.05 0.44
                      Font = font 13.0 700 false
                      Paint = Solid ink
@@ -100,6 +101,7 @@ module Scenes =
                      Rotation = 0.0<rad> }
                Text
                    { Text = "italic"
+                     Tex = None
                      At = pt 0.5 0.44
                      Font = font 13.0 400 true
                      Paint = Solid warm
@@ -172,6 +174,7 @@ module Scenes =
                // Gradient-painted text: an acknowledged corner in the backend.
                Text
                    { Text = "gradient text"
+                     Tex = None
                      At = pt 0.75 0.25
                      Font = font 14.0 700 false
                      Paint = linear
@@ -349,6 +352,7 @@ module Scenes =
                    yield
                        Text
                            { Text = sprintf "%g deg" deg
+                             Tex = None
                              At = pt (0.1 + float i * 0.16) 0.5
                              Font = font 11.0 400 false
                              Paint = Solid ink

@@ -428,6 +428,11 @@ module Figure =
 
                     Text
                         { Text = p.Title
+                          // Titles, subtitles and legend names are caller-supplied prose, not
+                          // unit markup, so they have no TeX form of their own — a TeX backend
+                          // escapes the plain text instead. Only the axis compiler produces a
+                          // `Tex` form, because only it has a unit rendering to produce one from.
+                          Tex = None
                           At = Layout.ndPoint extent { X = (plotPx.X0 + plotPx.X1) / 2.0; Y = box.Y0 }
                           Font = theme.PanelTitleFont
                           Paint = Solid theme.Foreground
@@ -517,6 +522,7 @@ module Figure =
                            yield
                                Text
                                    { Text = fig.Title
+                                     Tex = None
                                      At = Layout.ndPoint extent { X = cx; Y = y }
                                      Font = theme.TitleFont
                                      Paint = Solid theme.Foreground
@@ -530,6 +536,7 @@ module Figure =
                            yield
                                Text
                                    { Text = fig.Subtitle
+                                     Tex = None
                                      At = Layout.ndPoint extent { X = cx; Y = y }
                                      Font = theme.SubtitleFont
                                      Paint = Solid theme.MutedForeground

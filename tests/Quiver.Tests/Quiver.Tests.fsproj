@@ -56,6 +56,7 @@
          working directory the runner happened to pick. The *source* tree copy is still the one
          a reviewer reads in the PR diff; QUIVER_UPDATE_GOLDEN writes back to it, not here. -->
     <None Include="golden\**\*.svg" Exclude="golden\**\*.actual.svg" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="golden\**\*.tex" Exclude="golden\**\*.actual.tex" CopyToOutputDirectory="PreserveNewest" />
     <None Include="README.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

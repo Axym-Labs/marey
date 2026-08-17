@@ -379,7 +379,7 @@ module ``12_5 rank-2 recovery of two measures`` =
 // D16 / Axis — a finding of this suite's own, recorded in the same style.
 // ======================================================================================
 
-module ``D16 the erased witness carries ToSI while Axis ofErased ignores it`` =
+module ``D16 the erased witness carries ToSI and Axis ofErased honours it`` =
 
     /// D16 changed `IScaleErased` to carry the *whole* erased witness — `ToSI` and `OffsetSI`
     /// alongside `Symbol` and `Dim` — precisely because "an electronvolt axis and a joule axis
@@ -390,27 +390,195 @@ module ``D16 the erased witness carries ToSI while Axis ofErased ignores it`` =
         Assert.True(abs (e.ToSI - 1.602176634e-19) < 1e-32)
         Assert.Equal(0.0, e.OffsetSI, 12)
 
-    /// **DEFECT (Quiver.Units).** `Axis.ofErasedWith` still selects its prefix with
-    /// `Prefix.selectFor scale.Dim` and renders with `UnitDisplay.renderPrefixed`, neither of
-    /// which consults `ToSI` or `OffsetSI`. So the information D16 preserved is available and
-    /// unused, and a reloaded electronvolt axis (§15) is labelled `kJ` — wrong by 10^19 — while
-    /// a reloaded Celsius axis is labelled `K`.
+    /// **Fixed at M1.** This test previously pinned the defect rather than the fix: because
+    /// `Axis.ofErasedWith` selected its prefix with `Prefix.selectFor scale.Dim` and rendered
+    /// with `UnitDisplay.renderPrefixed`, neither of which consults `ToSI` or `OffsetSI`, the
+    /// metadata D16 went to the trouble of preserving was available and unused — and a reloaded
+    /// electronvolt axis (§15) came out as `E [kJ]`, wrong by 10^19.
     ///
-    /// The module comment on `Axis.fs` still describes this as a gap in `Quiver.Core`
-    /// ("`IScaleErased` exposes `Symbol` and `Dim` but not `ToSI` or `OffsetSI`"), which was true
-    /// before D16 and is not true now. Both the comment and the implementation are stale.
+    /// Both decisions now route through `Prefix.selectForErased` and
+    /// `UnitDisplay.unitTextErased`, which are the same functions the measured path uses, so the
+    /// erased and measured labels agree by construction rather than by coincidence.
     ///
-    /// Asserted as current behaviour, not fixed: `Quiver.Units` is frozen for this task.
+    /// **The load-bearing assertion is that the two paths agree**, which is what makes §15's
+    /// "reloading gives you `IScaleErased`, not `Scale<'u>`" a survivable statement about units.
     [<Fact>]
-    let ``DEFECT a reloaded electronvolt axis is labelled in joules`` () =
+    let ``a reloaded electronvolt axis is still labelled in electronvolts`` () =
         let s = Scale.linear NonSi.electronvolt (1.0<eV>, 5000.0<eV>)
+        let measured = (Axis.auto Unicode "E" s).Title
+        let reloaded = (Axis.ofErased Unicode "E" (Erase.scale s)).Title
 
-        Assert.Equal("E [keV]", (Axis.auto Unicode "E" s).Title)
-        Assert.Equal("E [kJ]", (Axis.ofErased Unicode "E" (Erase.scale s)).Title)
+        Assert.Equal("E [keV]", measured)
+        Assert.Equal("E [keV]", reloaded)
+        Assert.Equal(measured, reloaded)
 
     [<Fact>]
-    let ``DEFECT a reloaded Celsius axis is labelled in kelvin`` () =
+    let ``a reloaded Celsius axis is still labelled in degrees Celsius`` () =
         let s = Scale.linear NonSi.degreeCelsius (0.0<degC>, 100.0<degC>)
+        let measured = (Axis.auto Unicode "T" s).Title
+        let reloaded = (Axis.ofErased Unicode "T" (Erase.scale s)).Title
 
-        Assert.Equal("T [°C]", (Axis.auto Unicode "T" s).Title)
-        Assert.Equal("T [K]", (Axis.ofErased Unicode "T" (Erase.scale s)).Title)
+        Assert.Equal("T [°C]", measured)
+        Assert.Equal("T [°C]", reloaded)
+        Assert.Equal(measured, reloaded)
+
+    /// The affine refusal survives erasure too: a prefix must not be glued onto an affine unit,
+    /// because the prefix does not distribute over the offset (a "milli-degree-Celsius" would
+    /// have to rescale 273.15 as well as the mantissa).
+    [<Fact>]
+    let ``an erased affine axis refuses a prefix`` () =
+        let s = Scale.linear NonSi.degreeCelsius (0.0<degC>, 100.0<degC>)
+        let spec = Axis.ofErased Unicode "T" (Erase.scale s)
+
+        Assert.Equal(0, spec.Prefix.Exponent)
+
+    /// An SI-coherent axis was always correct on the erased path, and must stay correct: the fix
+    /// is a new branch, so the branch it did not take needs pinning as well.
+    [<Fact>]
+    let ``a reloaded SI-coherent axis is unaffected by the fix`` () =
+        let s = Scale.linear U.metre (0.0<m>, 5e-9<m>)
+        let measured = (Axis.auto Unicode "x" s).Title
+        let reloaded = (Axis.ofErased Unicode "x" (Erase.scale s)).Title
+
+        Assert.Equal("x [nm]", measured)
+        Assert.Equal(measured, reloaded)
+
+// ======================================================================================
+// D32 — TeX markup travels in its own field, never in the plain one
+//
+// `AxisSpec.Title` is always displayable text and `AxisSpec.TitleTex` carries the markup, so an
+// SVG renderer never draws a literal backslash and a TeX backend never has to guess whether a
+// string is source or content. Before this split, `Axis.auto Siunitx` put `\qty{}{\metre}`
+// straight into `Title`, which every non-TeX backend then drew verbatim.
+//
+// Nothing tested this path before M1: the siunitx assertions above all call `UnitDisplay`
+// directly, so the whole route from a `UnitStyle` to a `TextRun` was unpinned.
+// ======================================================================================
+
+module ``D32 TeX markup is separated from displayable text`` =
+
+    let private accel = Scale.linear U.metrePerSecondSquared (0.0<m/s^2>, 20.0<m/s^2>)
+
+    /// The load-bearing property, and the one that needs no knowledge of the exact strings:
+    /// **asking for a TeX style must not change the plain title at all.** It only adds.
+    [<Fact>]
+    let ``a TeX style leaves the plain title identical to the Unicode one`` () =
+        let plain = Axis.auto Unicode "a" accel
+
+        for style in [ Latex; Siunitx ] do
+            let tex = Axis.auto style "a" accel
+            Assert.Equal(plain.Title, tex.Title)
+            Assert.Equal(plain.UnitText, tex.UnitText)
+
+    [<Fact>]
+    let ``a TeX style fills TitleTex and a plain style does not`` () =
+        Assert.True((Axis.auto Siunitx "a" accel).TitleTex.IsSome)
+        Assert.True((Axis.auto Latex "a" accel).TitleTex.IsSome)
+        Assert.True((Axis.auto Unicode "a" accel).TitleTex.IsNone)
+        Assert.True((Axis.auto Ascii "a" accel).TitleTex.IsNone)
+
+    /// The plain title must be drawable as-is. A backslash in it means markup leaked.
+    [<Fact>]
+    let ``the plain title never contains markup`` () =
+        for style in [ Unicode; Ascii; Latex; Siunitx ] do
+            let spec = Axis.auto style "a" accel
+            Assert.DoesNotContain("\\", spec.Title)
+
+    [<Fact>]
+    let ``the siunitx title carries the unit macros`` () =
+        let spec = Axis.auto Siunitx "a" accel
+        Assert.Equal("a [\\qty{}{\\metre\\per\\second\\squared}]", spec.TitleTex.Value)
+        Assert.Equal("\\qty{}{\\metre\\per\\second\\squared}", spec.UnitTextTex.Value)
+
+    /// The caller's quantity name sits next to already-escaped unit markup, so it has to be
+    /// escaped itself or the document breaks on the first percent sign.
+    [<Fact>]
+    let ``the quantity name is TeX-escaped in the TeX title`` () =
+        let spec = Axis.auto Siunitx "50% yield_2" accel
+
+        Assert.Equal("50\\% yield\\_2 [\\qty{}{\\metre\\per\\second\\squared}]", spec.TitleTex.Value)
+        // ...and left alone in the plain one.
+        Assert.Contains("50% yield_2", spec.Title)
+
+    /// The erased path must make the same split, or a reloaded figure loses its TeX titles.
+    [<Fact>]
+    let ``the erased path splits markup the same way`` () =
+        let erased = Erase.scale accel
+        let plain = Axis.ofErased Unicode "a" erased
+        let tex = Axis.ofErased Siunitx "a" erased
+
+        Assert.Equal(plain.Title, tex.Title)
+        Assert.True(tex.TitleTex.IsSome)
+        Assert.Contains("\\qty", tex.TitleTex.Value)
+        Assert.True(plain.TitleTex.IsNone)
+
+module ``D32 Tex escaping`` =
+
+    [<Theory>]
+    [<InlineData("plain", "plain")>]
+    [<InlineData("50%", "50\\%")>]
+    [<InlineData("a_b", "a\\_b")>]
+    [<InlineData("a&b", "a\\&b")>]
+    [<InlineData("#1", "\\#1")>]
+    [<InlineData("$x$", "\\$x\\$")>]
+    [<InlineData("{a}", "\\{a\\}")>]
+    let ``escape covers the reserved characters`` (input: string) (expected: string) =
+        Assert.Equal(expected, Tex.escape input)
+
+    /// `~` and `^` are active/superscript rather than merely reserved, so a backslash is an
+    /// accent that would swallow the next character instead of printing the glyph.
+    [<Fact>]
+    let ``tilde and caret become macros, not backslash escapes`` () =
+        Assert.Equal("\\textasciitilde{}", Tex.escape "~")
+        Assert.Equal("\\textasciicircum{}", Tex.escape "^")
+
+    /// Escaping character by character rather than by successive replacement: replacing `\`
+    /// first and `{` afterwards would re-escape the braces the first replacement introduced.
+    [<Fact>]
+    let ``a backslash does not get its own braces re-escaped`` () =
+        Assert.Equal("\\textbackslash{}", Tex.escape "\\")
+
+    [<Fact>]
+    let ``escape leaves unicode alone`` () =
+        Assert.Equal("kg·m·s⁻² Ω µm", Tex.escape "kg·m·s⁻² Ω µm")
+
+    [<Fact>]
+    let ``isLiteralSafe agrees with escape`` () =
+        for s in [ "plain"; "50%"; "a_b"; "kg·m"; "\\qty"; "~"; "^"; "" ] do
+            Assert.Equal(Tex.isLiteralSafe s, Tex.escape s = s)
+
+// ======================================================================================
+// D32 — pruning must not delete a run that only a typesetting backend can draw
+// ======================================================================================
+
+module ``D32 pruning respects the TeX form`` =
+
+    let private run text tex : Node =
+        Text
+            { Text = text
+              Tex = tex
+              At = Vec2.zero<nd>
+              Font =
+                { Family = "Helvetica"
+                  Size = 10.0<pt>
+                  Weight = 400
+                  Italic = false }
+              Paint = Solid Color.black
+              Anchor = AnchorStart
+              Baseline = BaselineAlphabetic
+              Rotation = 0.0<rad> }
+
+    [<Fact>]
+    let ``a TeX-only run survives pruning`` () =
+        let n = run "" (Some "\\qty{}{\\metre}")
+        Assert.Equal(n, Scene.prune n)
+
+    [<Fact>]
+    let ``a run empty in both forms is pruned`` () =
+        Assert.Equal(Scene.empty, Scene.prune (run "" None))
+        Assert.Equal(Scene.empty, Scene.prune (run "" (Some "")))
+
+    [<Fact>]
+    let ``a plain-only run survives pruning`` () =
+        let n = run "x" None
+        Assert.Equal(n, Scene.prune n)

@@ -394,6 +394,12 @@ module Axes =
                            yield
                                Text
                                    { Text = k.Label
+                                     // Tick labels are digits, a decimal point and a minus
+                                     // sign, all of which typeset identically in TeX and in
+                                     // plain text. The one exception is the prefix-unattachable
+                                     // fallback, where a label becomes `10⁻¹⁸·m²` and does need
+                                     // a TeX form; that arrives with `AxisSpec.Ticks`.
+                                     Tex = None
                                      At = anchorPoint k.Position + d
                                      Font = t.TickFont
                                      Paint = textPaint
@@ -422,6 +428,10 @@ module Axes =
 
                 Text
                     { Text = a.Spec.Title
+                      // The axis title is where the units story reaches a TeX backend: when the
+                      // axis was compiled in the Latex or Siunitx style, `AxisSpec` carries the
+                      // TeX spelling of the same title alongside the Unicode one.
+                      Tex = a.Spec.TitleTex
                       At = at
                       Font = t.AxisTitleFont
                       Paint = textPaint

@@ -284,13 +284,29 @@ module UnitDisplay =
     /// * otherwise — SI-coherent, so the `Dim` **is** the unit, and §12.6's rule applies with
     ///   full force. Anything built by `U.mul`/`U.div` out of coherent parts lands here, which
     ///   is precisely the case where the composed `Symbol` is junk.
-    let unitText<[<Measure>] 'u> (style: UnitStyle) (registry: UnitRegistry) (p: Prefix) (u: U<'u>) =
-        if u.IsAffine || u.ToSI <> 1.0 then
-            renderSymbol style p u.Symbol
-        elif Dim.isDimensionless u.Dim then
-            if angleSymbols.Contains u.Symbol then
-                renderSymbol style Prefix.none u.Symbol
+    /// The same rendering decision, stated over the *erased* witness metadata rather than a
+    /// `U<'u>`. See `Prefix.selectForErased` for why this pair exists: §15's reloaded figure has
+    /// only `IScaleErased`, and the `ToSI <> 1.0` test is what makes an electronvolt axis read
+    /// `keV` rather than `kJ` (D16). Sharing one implementation is what keeps the erased path
+    /// and the measured path from disagreeing.
+    let unitTextErased
+        (style: UnitStyle)
+        (registry: UnitRegistry)
+        (p: Prefix)
+        (symbol: string)
+        (dim: Dim)
+        (toSI: float)
+        (offsetSI: float)
+        =
+        if offsetSI <> 0.0 || toSI <> 1.0 then
+            renderSymbol style p symbol
+        elif Dim.isDimensionless dim then
+            if angleSymbols.Contains symbol then
+                renderSymbol style Prefix.none symbol
             else
                 ""
         else
-            renderPrefixed style registry p u.Dim
+            renderPrefixed style registry p dim
+
+    let unitText<[<Measure>] 'u> (style: UnitStyle) (registry: UnitRegistry) (p: Prefix) (u: U<'u>) =
+        unitTextErased style registry p u.Symbol u.Dim u.ToSI u.OffsetSI

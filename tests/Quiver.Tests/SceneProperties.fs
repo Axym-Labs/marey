@@ -72,6 +72,15 @@ let rec deepCopy (n: Node) : Node =
             deepCopy c
         )
 
+/// Whether a text run draws anything at all.
+///
+/// Either form counts. Testing `Text` alone would declare a TeX-only run invisible, and since
+/// `Scene.prune` would then delete it, the run would vanish from typesetting backends *only* —
+/// the worst possible shape for the bug, and the reason `Scene.prune` tests both fields.
+let private runDraws (t: TextRun) =
+    not (System.String.IsNullOrEmpty t.Text)
+    || t.Tex |> Option.exists (System.String.IsNullOrEmpty >> not)
+
 /// The primitives a scene actually *draws*, as opposed to the nodes it contains. `prune` is
 /// allowed to remove anything that draws nothing and nothing else, so this is the quantity its
 /// correctness is stated against.
@@ -80,7 +89,7 @@ let private drawnCount (n: Node) =
         (fun acc node ->
             match node with
             | Path(segs, _, _, _) -> if segs.Length > 0 then acc + 1 else acc
-            | Text t -> if System.String.IsNullOrEmpty t.Text then acc else acc + 1
+            | Text t -> if runDraws t then acc + 1 else acc
             | Markers b -> acc + b.Points.Length
             | Raster _ -> acc + 1
             | _ -> acc)
@@ -235,7 +244,7 @@ module Pruning =
                    | Group ns -> ns.Length > 0
                    | Path(segs, _, _, _) -> segs.Length > 0
                    | Markers b -> b.Points.Length > 0
-                   | Text t -> not (System.String.IsNullOrEmpty t.Text)
+                   | Text t -> runDraws t
                    | _ -> true)
             true
             pruned

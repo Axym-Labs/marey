@@ -3,7 +3,12 @@
 /// The two words in bold are the whole design of this file. A golden test that fails with
 /// "Assert.Equal() Failure: Strings differ" and 4 kB of SVG on each side is not reviewable, so
 /// this one reports the *first differing line* with surrounding context, and writes the actual
-/// document next to the expected one as `*.actual.svg` so the reviewer can open both.
+/// document next to the expected one as `*.actual.<ext>` so the reviewer can open both.
+///
+/// `check` is deliberately **format-agnostic**: it compares normalised text and derives its
+/// failure-artefact name from the baseline's extension, so the TikZ backend's `.tex` output is
+/// reviewed on exactly the same terms as the SVG backend's. Only the `render` helpers below are
+/// SVG-specific, because they choose a backend.
 ///
 /// Baselines live in `tests/Quiver.Tests/golden/` in the **source** tree, not in the build
 /// output, because that is the copy a pull request diffs. The directory is found by walking up
@@ -65,6 +70,17 @@ let goldenDir =
          dir)
 
 let private path (name: string) = Path.Combine(goldenDir.Force(), name)
+
+/// Where a failing run writes what it actually produced.
+///
+/// The suffix mirrors the baseline's own extension — `paths.svg` fails to `paths.svg.actual.svg`
+/// and `paths.tex` to `paths.tex.actual.tex` — so `.gitignore` can exclude the artefacts by
+/// pattern per format and a reviewer can open the failure in the right editor. `check` itself is
+/// format-agnostic: it compares text, and the TikZ backend's output is text on exactly the same
+/// terms as the SVG backend's.
+let private actualPath (file: string) =
+    let ext = Path.GetExtension file
+    file + ".actual" + (if ext = "" then ".txt" else ext)
 
 /// Line endings are normalised on both sides.
 ///
@@ -148,45 +164,43 @@ let private describeDifference (expected: string) (actual: string) =
 /// Compare a rendered document against its baseline.
 ///
 /// * baseline missing → fail with instructions, unless an update was requested;
-/// * baseline differs → write `<name>.actual.svg` beside it and fail with the diff;
+/// * baseline differs → write `<name>.actual.<ext>` beside it and fail with the diff;
 /// * update requested → write the baseline and pass.
 let check (name: string) (actual: string) : unit =
     let file = path name
+    let candidate = actualPath file
     let actual = normalise actual
 
     if updateRequested then
         File.WriteAllText(file, actual, utf8NoBom)
     elif not (File.Exists file) then
         // Write the candidate anyway: a reviewer looking at a new test wants to see what it
-        // produced, and `*.actual.svg` is git-ignored so it cannot be committed by accident.
-        File.WriteAllText(file + ".actual.svg", actual, utf8NoBom)
+        // produced, and the artefacts are git-ignored so they cannot be committed by accident.
+        File.WriteAllText(candidate, actual, utf8NoBom)
 
         failwithf
-            "Quiver golden: no baseline for '%s'.\n  expected at: %s\n  candidate written to: %s.actual.svg\n\nRe-run with %s=1 to accept it."
+            "Quiver golden: no baseline for '%s'.\n  expected at: %s\n  candidate written to: %s\n\nRe-run with %s=1 to accept it."
             name
             file
-            file
+            candidate
             UpdateVariable
     else
         let expected = normalise (File.ReadAllText(file, Encoding.UTF8))
 
         if expected <> actual then
-            let actualPath = file + ".actual.svg"
-            File.WriteAllText(actualPath, actual, utf8NoBom)
+            File.WriteAllText(candidate, actual, utf8NoBom)
 
             failwithf
                 "Quiver golden mismatch: %s\n  expected: %s\n  actual:   %s\n\n%s\nRe-run with %s=1 to accept the new output."
                 name
                 file
-                actualPath
+                candidate
                 (describeDifference expected actual)
                 UpdateVariable
         else
-            // A stale `.actual.svg` from a previous failing run would confuse the next reviewer.
-            let stale = file + ".actual.svg"
-
-            if File.Exists stale then
-                File.Delete stale
+            // A stale artefact from a previous failing run would confuse the next reviewer.
+            if File.Exists candidate then
+                File.Delete candidate
 
 /// The standard surface for golden documents.
 ///
@@ -218,6 +232,7 @@ let font size weight italic : FontSpec =
 let text (s: string) (x: float) (y: float) (anchor: TextAnchor) (baseline: TextBaseline) (rotation: float) =
     Text
         { Text = s
+          Tex = None
           At = { X = x * 1.0<nd>; Y = y * 1.0<nd> }
           Font = font 11.0 400 false
           Paint = Solid(Color.rgb 0.1 0.1 0.12)
