@@ -16,8 +16,9 @@ before. D36 was not planned — it was found by the compile gate and is recorded
 | 0 — Foundations and truth-in-docs | **done**, 288 → 310 tests |
 | 1 — `TikzWriter.fs` primitives | **done**, 310 → 348 tests |
 | 2 — `TikzBackend.fs` traversal | **done**, 348 → 402 tests |
-| 3 — `Theme.tikz` and siunitx wiring | next |
-| 4–6 | not started |
+| 3 — `Theme.tikz` and siunitx wiring | **done**, 402 → 413 tests |
+| 4 — Verification (goldens, ink gate) | next |
+| 5–6 | not started |
 
 A real figure now goes end to end: `Chart.line U.second U.metre ts xs |> Chart.withUnitStyle
 Siunitx |> Chart.render TikzBackend.render` produces a `tikzpicture` that compiles under
@@ -305,8 +306,47 @@ the *size* layout assumed is the size TeX uses. The family inherits, which is th
 size is pinned, which is the correctness. `TikzOptions.FontMode = PinSize | Inherit` exposes the
 fully-inheriting behaviour for anyone who wants it and accepts the consequence.
 
-`Theme.tikz` also sets `UnitStyle` to `Siunitx` at the axis-config level, which is what makes
-D32's `Tex` field populate without configuration — the M1 headline in one theme selection.
+**Built, with the family half corrected.** The Phase 2 implementation emitted `\rmfamily` /
+`\sffamily` when a theme named a family, which is the opposite of the feature: a figure dropped
+into a sans-serif paper would have come out in the theme's serif rather than the document's sans,
+and §6's one promise would have been the thing it got wrong. **The TikZ backend now emits no
+family at all.** Series and shape are still emitted — `\bfseries` and `\itshape` are orthogonal to
+family, so a bold title stays bold in any document.
+
+`FontSpec.Family` is therefore not dead for this backend, it is *only* a layout input: it is what
+`ApproxTextMeasurer` reads to choose its width factor, so it decides how much room a label gets
+reserved. `Theme.tikz` names a serif stack because a 0.92 factor approximates Computer Modern
+better than a Helvetica assumption does.
+
+**And that knob has to be reachable, which the compiled figures proved.** The same picture in a
+`\usepackage{helvet}` document sets ~8% wider than the serif metrics assumed, and the y-axis title
+visibly tightens against its tick labels — not a collision, but not right either. Hence
+`Theme.withFontFamily`, a sibling of `scaleType`, and the two family stacks are now public:
+`Theme.tikz |> Theme.withFontFamily Theme.Sans` for a sans document. Verified by rendering both
+and comparing.
+
+### D37. The unit style belongs to the theme, and the axis config overrides it
+
+D35 said "`Theme.tikz` also sets `UnitStyle` to `Siunitx` at the axis-config level", which is not a
+thing a theme can do: `Theme` had no unit style, and `AxisConfig.Style` was a plain `UnitStyle`
+defaulting to `Unicode`.
+
+**Built:** `Theme.UnitStyle`, and `AxisConfig.Style` becomes `UnitStyle option`.
+
+**Why the option is forced.** With a plain `UnitStyle` on the axis config there is no way to
+distinguish "the user explicitly asked for `Unicode`" from "nobody said", so a theme could never
+supply a different default without overriding an explicit choice. `None` means "take the theme's",
+and `Chart.withUnitStyle` sets `Some`.
+
+**Why the theme is the right home.** Unit spelling is a presentation choice, exactly like a font
+or a rule width — the same figure wants `m·s⁻²` on screen and
+`\qty{}{\metre\per\second\squared}` in a paper, and nothing about the data or the scale changes
+between them. It is also what reduces the headline to one selection, which is the measure of
+whether M1 landed: `Chart.withTheme Theme.tikz` and nothing else.
+
+Resolution happens in `Figure.compilePanel`, at compile time rather than at construction, so
+re-theming a finished figure re-spells its axis titles. Anything else would make `Chart.withTheme`
+a half-measure.
 
 ### D36. TeX cannot represent an arbitrary coordinate, and D9 guarantees we will hand it one
 
@@ -543,7 +583,11 @@ Recorded so they read as decisions rather than oversights.
   approximate in a way SVG's is not, and the approximation is bounded by the width difference
   between a Unicode unit string and its siunitx rendering.
 - **`Theme.tikz` pins font size** (D35), so a figure does not fully inherit document typography.
-  `FontMode = Inherit` opts out and accepts collisions.
+  `FontMode = InheritFont` opts out and accepts collisions.
+- **Layout assumes the theme's family metrics, and TeX uses the document's face** (D35). Measured
+  on a real figure: a serif-metric theme in a Helvetica document reserves ~8% too little width and
+  the y-axis title tightens against its tick labels. `Theme.withFontFamily` is the fix and the
+  user has to apply it; nothing can detect the host document's font from inside the picture.
 - **No gradients, no rasters** in TikZ output at M1 (D31). Both degrade visibly.
 - **`Prefix.select` has no additive-offset annotation.** A domain of 1000.000–1000.005 m yields
   five identical tick labels. Already documented in `Prefix.fs` as a real gap; unchanged by M1,

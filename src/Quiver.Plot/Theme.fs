@@ -76,6 +76,17 @@ type Theme =
       Diverging: Ramp
 
       // ---- Switches -----------------------------------------------------------------
+      /// How unit symbols are spelled on axis titles.
+      ///
+      /// A theme is the right home for this because it is a *presentation* choice, exactly like a
+      /// font or a rule width: the same figure wants `m·s⁻²` on screen and
+      /// `\qty{}{\metre\per\second\squared}` in a LaTeX document, and nothing about the data or
+      /// the scale changes between them. It is what lets `Theme.tikz` deliver M1's headline with
+      /// no configuration beyond selecting the theme.
+      ///
+      /// `AxisConfig.Style` overrides it per axis when set.
+      UnitStyle: UnitStyle
+
       ShowGridX: bool
       ShowGridY: bool
       /// A full box around the panel, versus only the left and bottom spines.
@@ -119,11 +130,13 @@ module Theme =
     /// A serif stack. `ApproxTextMeasurer` reads "serif" and "times" out of the family string to
     /// pick its 0.92 width factor, so naming the fallback matters to layout, not only to the
     /// renderer that finally opens the file.
+    ///
+    /// Public so `withFontFamily` has something to be passed.
     [<Literal>]
-    let private Serif = "Times New Roman, Nimbus Roman, Liberation Serif, serif"
+    let Serif = "Times New Roman, Nimbus Roman, Liberation Serif, serif"
 
     [<Literal>]
-    let private Sans = "Helvetica, Arial, Nimbus Sans, Liberation Sans, sans-serif"
+    let Sans = "Helvetica, Arial, Nimbus Sans, Liberation Sans, sans-serif"
 
     let private defaultShapes =
         [| MarkCircle; MarkSquare; MarkTriangleUp; MarkDiamond; MarkPlus; MarkTriangleDown; MarkCross |]
@@ -171,6 +184,8 @@ module Theme =
           Categorical = Palette.series
           Sequential = Palette.cividis
           Diverging = Palette.diverging
+
+          UnitStyle = Unicode
 
           ShowGridX = false
           ShowGridY = false
@@ -272,7 +287,43 @@ module Theme =
             Sequential = Palette.viridis
             Diverging = Palette.diverging }
 
-    let all = [| publication; notebook; presentation; dark |]
+    /// §9's `tikz` theme — "inherits document fonts" — and the one that makes M1's headline a
+    /// single selection: `Chart.withTheme Theme.tikz` and the axis titles come out as siunitx
+    /// macros with nothing else configured.
+    ///
+    /// ### The two halves of D35, and why it is not simply "inherit everything"
+    ///
+    /// **The size is pinned; the family is inherited.** Taken literally, "inherit the document's
+    /// fonts" means emit no font information at all, and then the figure is typeset in a face whose
+    /// metrics have nothing to do with the `ApproxTextMeasurer` widths that the measure–arrange
+    /// pass and D23's collision ladder were computed against. Labels would collide in the PDF
+    /// while layout believed they fitted. So the TikZ backend emits `\fontsize{s}{1.2s}` — the size
+    /// layout assumed — and no family, letting the document supply that.
+    /// `TikzOptions.FontMode = InheritFont` opts out of even the size, and accepts the
+    /// consequence.
+    ///
+    /// **The family string here is therefore a *measurement* input, not an instruction.** The TikZ
+    /// backend never emits a family, so `Serif` does not put Times in the document — it tells
+    /// `ApproxTextMeasurer` to apply its 0.92 width factor, which is the closer approximation to
+    /// Computer Modern than a Helvetica-width assumption would be. Rendering this theme to SVG does
+    /// use the family, and a serif SVG is the right sibling of a serif LaTeX figure.
+    ///
+    /// The type is a little smaller than `publication`'s throughout, because a figure in a 10 pt
+    /// document reads better at roughly `\small`/`\footnotesize` than at body size.
+    let tikz: Theme =
+        { publication with
+            Name = "tikz"
+
+            TitleFont = font Serif 10.0<pt> 700 false
+            SubtitleFont = font Serif 9.0<pt> 400 true
+            PanelTitleFont = font Serif 9.0<pt> 400 false
+            AxisTitleFont = font Serif 9.0<pt> 400 false
+            TickFont = font Serif 8.0<pt> 400 false
+            LegendFont = font Serif 8.0<pt> 400 false
+
+            UnitStyle = Siunitx }
+
+    let all = [| publication; notebook; presentation; dark; tikz |]
 
     let tryByName (name: string) =
         all
@@ -301,6 +352,29 @@ module Theme =
             AxisTitleFont = s t.AxisTitleFont
             TickFont = s t.TickFont
             LegendFont = s t.LegendFont }
+
+    /// Set every font's family at once.
+    ///
+    /// A sibling of `scaleType`, and the reason it exists is layout rather than looks. The family
+    /// string is what `ApproxTextMeasurer` reads to choose its width factor, so it decides how
+    /// much room layout reserves for a label — and for the TikZ backend, which emits no family and
+    /// lets the document supply the face, that is the *only* thing the family does.
+    ///
+    /// So a `Theme.tikz` figure going into a sans-serif document wants
+    /// `Theme.tikz |> Theme.withFontFamily Theme.Sans`: TeX will set the labels in the
+    /// document's sans face, which is ~8% wider than the serif metrics the theme otherwise
+    /// assumes, and reserving the right amount of room is what keeps a y-axis title clear of its
+    /// tick labels. Measured: the difference is visible on a real figure, though not a collision.
+    let withFontFamily (family: string) (t: Theme) =
+        let f (spec: FontSpec) = { spec with Family = family }
+
+        { t with
+            TitleFont = f t.TitleFont
+            SubtitleFont = f t.SubtitleFont
+            PanelTitleFont = f t.PanelTitleFont
+            AxisTitleFont = f t.AxisTitleFont
+            TickFont = f t.TickFont
+            LegendFont = f t.LegendFont }
 
     // ---- Validation ---------------------------------------------------------------------
 

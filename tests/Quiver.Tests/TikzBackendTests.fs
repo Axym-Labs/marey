@@ -509,19 +509,34 @@ module ``text`` =
         let out = render (Text(textRun "" 0.5 0.5 AnchorStart BaselineAlphabetic 0.0 None))
         Assert.DoesNotContain("\\node", out)
 
-    /// D35's half of the font story: the size layout assumed is the size TeX uses, while the
-    /// family is left to the document.
+    /// D35's split: the size layout assumed is the size TeX uses, and the family comes from the
+    /// document.
     [<Fact>]
-    let ``PinSize emits a font size and an empty family inherits`` () =
-        let inheritFamily =
+    let ``PinSize emits the size layout measured against`` () =
+        let run =
             { textRun "x" 0.5 0.5 AnchorStart BaselineAlphabetic 0.0 None with
                 Font = { Family = ""; Size = 9.6<pt>; Weight = 400; Italic = false } }
 
-        let out = render (Text inheritFamily)
+        Assert.Contains("\\fontsize{9.6}{11.52}\\selectfont", render (Text run))
 
-        Assert.Contains("\\fontsize{9.6}{11.52}\\selectfont", out)
-        Assert.DoesNotContain("rmfamily", out)
-        Assert.DoesNotContain("sffamily", out)
+    /// **No family is ever emitted, whatever the theme names.** This is the whole point of the
+    /// backend, so it is asserted against a family that *would* map to a TeX command: emitting
+    /// `\rmfamily` because a theme happens to name a serif stack would override the host document,
+    /// and a figure dropped into a sans-serif paper would come out in the wrong face.
+    ///
+    /// The family is still load-bearing — `ApproxTextMeasurer` reads it to decide how much room a
+    /// label needs — it just never reaches TeX.
+    [<Fact>]
+    let ``no font family reaches the document, whatever the theme names`` () =
+        for family in [ ""; "serif"; "Times New Roman, serif"; "Helvetica, sans-serif"; "Consolas, mono" ] do
+            let run =
+                { textRun "x" 0.5 0.5 AnchorStart BaselineAlphabetic 0.0 None with
+                    Font = { Family = family; Size = 9.0<pt>; Weight = 400; Italic = false } }
+
+            let out = render (Text run)
+
+            for cmd in [ "rmfamily"; "sffamily"; "ttfamily"; "fontfamily" ] do
+                Assert.DoesNotContain(cmd, out)
 
     [<Fact>]
     let ``InheritFont emits no font information at all`` () =
@@ -646,6 +661,144 @@ module ``determinism`` =
     let ``Draw before Begin is refused`` () =
         let sink = TikzBackend() :> IBackend
         Assert.Throws<System.InvalidOperationException>(fun () -> sink.Draw Scene.empty) |> ignore
+
+// ======================================================================================
+// D35 — Theme.tikz, and the headline in one selection
+//
+// §14 announces M1 on "unit-safe plots that drop into a LaTeX document". The measure of whether
+// that landed is how much a user has to configure, and the answer has to be "the theme".
+// ======================================================================================
+
+module ``D35 Theme tikz`` =
+
+    let private ts = Array.init 12 (fun i -> float i * 0.5<s>)
+    let private xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
+
+    let private plain = Chart.line U.second U.metre ts xs
+
+    /// **The headline.** No `withUnitStyle`, no axis configuration: selecting the theme is enough
+    /// to get siunitx unit macros, derived from the two unit witnesses.
+    [<Fact>]
+    let ``selecting the theme is the only configuration siunitx needs`` () =
+        let tex =
+            plain |> Chart.withTheme Theme.tikz |> Chart.render TikzBackend.render (Chart.size 360.0 220.0)
+
+        Assert.Contains("\\qty{}{\\second}", tex)
+        Assert.Contains("\\qty{}{\\metre}", tex)
+
+    /// The same figure under a screen theme must *not* carry markup — it would be drawn as literal
+    /// backslashes by an SVG renderer.
+    [<Fact>]
+    let ``a screen theme leaves the units as plain text`` () =
+        let svg =
+            plain
+            |> Chart.withTheme Theme.publication
+            |> Chart.render SvgBackend.render (Chart.size 360.0 220.0)
+
+        Assert.DoesNotContain("qty", svg)
+        Assert.Contains(">t [s]<", svg)
+        Assert.Contains(">x [m]<", svg)
+
+    /// Resolution happens at compile time, not at construction, so re-theming a finished figure
+    /// re-spells its axis titles. Anything else would make `Chart.withTheme` a half-measure.
+    [<Fact>]
+    let ``re-theming a finished figure changes its unit spelling`` () =
+        let size = Chart.size 360.0 220.0
+        let asTikz = plain |> Chart.withTheme Theme.tikz |> Chart.render TikzBackend.render size
+
+        let backToScreen =
+            plain
+            |> Chart.withTheme Theme.tikz
+            |> Chart.withTheme Theme.publication
+            |> Chart.render TikzBackend.render size
+
+        Assert.Contains("qty", asTikz)
+        Assert.DoesNotContain("qty", backToScreen)
+
+    /// A per-axis `Style` is an override, so it must beat the theme in both directions.
+    [<Fact>]
+    let ``an explicit axis style overrides the theme`` () =
+        let size = Chart.size 360.0 220.0
+
+        // Screen theme, explicitly asking for siunitx.
+        let forced =
+            plain
+            |> Chart.withTheme Theme.publication
+            |> Chart.withUnitStyle Siunitx
+            |> Chart.render TikzBackend.render size
+
+        // tikz theme, explicitly asking for plain text.
+        let suppressed =
+            plain
+            |> Chart.withTheme Theme.tikz
+            |> Chart.withUnitStyle Unicode
+            |> Chart.render TikzBackend.render size
+
+        Assert.Contains("qty", forced)
+        Assert.DoesNotContain("qty", suppressed)
+
+    /// The default must stay `Unicode` for every screen theme, or an SVG user gets markup.
+    [<Fact>]
+    let ``only the tikz theme defaults to a TeX unit style`` () =
+        for t in Theme.all do
+            if t.Name = "tikz" then
+                Assert.Equal(Siunitx, t.UnitStyle)
+            else
+                Assert.Equal(Unicode, t.UnitStyle)
+
+    [<Fact>]
+    let ``the theme is registered and findable by name`` () =
+        Assert.True(Theme.tryByName "tikz" |> Option.isSome)
+        Assert.Equal("tikz", Theme.tikz.Name)
+
+    /// D26: a theme is a record of resolved values with no function fields, so an identically
+    /// constructed one compares equal. Adding a field must not break that.
+    [<Fact>]
+    let ``the theme is still a comparable value`` () =
+        Assert.Equal(Theme.tikz, { Theme.tikz with Name = "tikz" })
+
+    /// It has to pass the same contrast and palette checks as every other theme.
+    [<Fact>]
+    let ``the theme validates`` () =
+        let report = Theme.validate Theme.tikz
+        Assert.True(report.Ok, sprintf "Theme.tikz failed validation: %A" report)
+
+    /// The family is a measurement input for this backend, so it has to be reachable — a
+    /// `Theme.tikz` figure in a sans document reserves ~8% too little room for its labels
+    /// otherwise. Verified on a real compiled figure, which is what prompted the combinator.
+    [<Fact>]
+    let ``the font family is adjustable and changes only measurement`` () =
+        let sans = Theme.tikz |> Theme.withFontFamily Theme.Sans
+
+        Assert.Equal(Theme.Sans, sans.TickFont.Family)
+        Assert.Equal(Theme.Sans, sans.AxisTitleFont.Family)
+        // Still a TeX theme; only the metrics assumption moved.
+        Assert.Equal(Siunitx, sans.UnitStyle)
+
+        let widerLabels =
+            let m = TextMeasure.approx
+            let serif = m.Measure Theme.tikz.TickFont "123.4"
+            let helvetica = m.Measure sans.TickFont "123.4"
+            float helvetica.Advance > float serif.Advance
+
+        Assert.True(widerLabels, "a sans family must measure wider than a serif one, or the knob does nothing")
+
+        // ...and it still never reaches the document.
+        let tex =
+            plain |> Chart.withTheme sans |> Chart.render TikzBackend.render (Chart.size 360.0 220.0)
+
+        Assert.DoesNotContain("sffamily", tex)
+
+    [<Fact>]
+    let ``the engine accepts a Theme tikz figure`` () =
+        let tex =
+            plain
+            |> Chart.withTitle "Free fall"
+            |> Chart.withTheme Theme.tikz
+            |> Chart.render TikzBackend.render (Chart.size 360.0 220.0)
+
+        if not (TexToolchain.accepts "theme-tikz" (TikzBackend.standalone tex)) then
+            System.Console.WriteLine("SKIPPED: " + TexToolchain.report ())
 
 // ======================================================================================
 // THE GATE: a real engine reads a real figure

@@ -255,8 +255,8 @@ module Chart =
         mapLast
             (fun p ->
                 { p with
-                    XAxis = { p.XAxis with Style = s }
-                    YAxis = { p.YAxis with Style = s } })
+                    XAxis = { p.XAxis with Style = Some s }
+                    YAxis = { p.YAxis with Style = Some s } })
             fig
 
     let private mapLayers (f: PackedSeries -> PackedSeries) (fig: Figure) =

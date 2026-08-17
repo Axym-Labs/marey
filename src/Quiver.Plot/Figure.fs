@@ -19,9 +19,13 @@ type AxisConfig =
     { /// The quantity name. `None` takes the conventional symbol for the dimension —
       /// `Axes.defaultLabel` — which is how `t [s]` appears without anyone typing `t`.
       Label: string option
-      /// Unicode for screen and SVG; `Siunitx` for a TikZ figure that inherits the document's
-      /// unit formatting.
-      Style: UnitStyle
+      /// Per-axis override of the theme's unit spelling. `None` defers to `Theme.UnitStyle`,
+      /// which is `Unicode` for screen and SVG themes and `Siunitx` for `Theme.tikz`.
+      ///
+      /// An override rather than a value, so that selecting a theme is enough: with a plain
+      /// `UnitStyle` here there would be no way to tell an explicit `Unicode` from an unset
+      /// field, and a theme could never supply a different default.
+      Style: UnitStyle option
       TickCount: int
       /// `None` defers to the theme.
       Grid: bool option
@@ -163,7 +167,11 @@ module Figure =
 
     let axisConfig: AxisConfig =
         { Label = None
-          Style = Unicode
+          // `None` means "take the theme's", which is what makes `Theme.tikz` sufficient on its
+          // own. An `AxisConfig` cannot default to `Unicode` and still let a theme change it: an
+          // explicit `Unicode` and an unset field would be indistinguishable, so a theme could
+          // never tell whether it was allowed to supply a different one.
+          Style = None
           TickCount = Axis.DefaultTickCount
           Grid = None
           Visible = true
@@ -267,11 +275,16 @@ module Figure =
         else
             let (xPacked, yPacked) = packedScales p.Layers.[0].Data
 
+            // The one place the theme's unit spelling and a per-axis override meet. Resolved here
+            // rather than at construction time so that changing the theme on a finished figure
+            // changes its axis titles — which is what `Chart.withTheme Theme.tikz` has to do.
+            let unitStyle (cfg: AxisConfig) = defaultArg cfg.Style theme.UnitStyle
+
             let xSpec =
-                Axes.specOf p.XAxis.Style p.XAxis.TickCount p.XAxis.Label AxisBottom xPacked
+                Axes.specOf (unitStyle p.XAxis) p.XAxis.TickCount p.XAxis.Label AxisBottom xPacked
 
             let ySpec =
-                Axes.specOf p.YAxis.Style p.YAxis.TickCount p.YAxis.Label AxisLeft yPacked
+                Axes.specOf (unitStyle p.YAxis) p.YAxis.TickCount p.YAxis.Label AxisLeft yPacked
 
             let titleH =
                 if isEmpty p.Title then

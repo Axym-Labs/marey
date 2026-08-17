@@ -384,44 +384,37 @@ type TikzBackend(?options: TikzOptions) =
 
     /// The `font=` value.
     ///
-    /// Family, series and shape first, then the size, because `\sffamily` and friends issue their
-    /// own font selection and would otherwise discard the size that preceded them.
+    /// **No font family is ever emitted, and that is the feature.** §6 sells this backend on
+    /// figures that "inherit the document's fonts", and D35 states the split: the *size* is pinned
+    /// and the *family* is inherited. Emitting `\rmfamily` because a `Theme` happens to name a
+    /// serif stack would override the host document — a figure dropped into a sans-serif paper
+    /// would come out in the wrong face, and the one thing this backend exists to do would be the
+    /// thing it got wrong.
     ///
-    /// `FontSpec.Size` is passed to `\fontsize` **unconverted**, and that is deliberate rather
-    /// than an oversight about D28: TeX's `pt` is 1/72.27 inch against Core's 1/72, but a font
-    /// size is a typographic request handed to the typesetter, not a length being drawn. The
-    /// consequence is that TeX sets the text 0.37% smaller than layout measured it — which is the
-    /// safe direction, since a label narrower than measured cannot collide with its neighbour.
+    /// So `FontSpec.Family` reaches TeX not at all. It is still load-bearing here: it is what
+    /// `ApproxTextMeasurer` reads to pick its width factor, so it decides how much room layout
+    /// reserves for a label. In `Theme.tikz` it names a serif stack for exactly that reason — a
+    /// 0.92 factor is the closer approximation to Computer Modern — while TeX supplies the face.
     ///
-    /// An empty `FontSpec.Family` means "inherit the document's", which is what `Theme.tikz`
-    /// sets and what makes §6's promise literally true.
+    /// Series and shape *are* emitted: `\bfseries` and `\itshape` are orthogonal to family, so a
+    /// bold title stays bold in any document, which is what a theme asking for bold means.
+    ///
+    /// `FontSpec.Size` goes to `\fontsize` **unconverted**, deliberately rather than as an
+    /// oversight about D28: TeX's `pt` is 1/72.27 inch against Core's 1/72, but a font size is a
+    /// typographic request handed to the typesetter, not a length being drawn. The consequence is
+    /// that TeX sets the text 0.37% smaller than layout measured it — the safe direction, since a
+    /// label narrower than measured cannot collide with its neighbour.
     let fontOption (f: FontSpec) =
         match opts.FontMode with
         | InheritFont -> None
         | PinSize ->
-            let family =
-                if String.IsNullOrEmpty f.Family then
-                    ""
-                else
-                    let lower = f.Family.ToLowerInvariant()
-
-                    if lower.Contains "mono" || lower.Contains "courier" || lower.Contains "consol" then
-                        "\\ttfamily"
-                    elif lower.Contains "sans" then
-                        "\\sffamily"
-                    elif lower.Contains "serif" || lower.Contains "times" || lower.Contains "georgia" then
-                        "\\rmfamily"
-                    else
-                        ""
-
             let series = if f.Weight >= 600 then "\\bfseries" else ""
             let shape = if f.Italic then "\\itshape" else ""
             let size = float f.Size
 
             Some(
                 String.Concat
-                    [| family
-                       series
+                    [| series
                        shape
                        "\\fontsize{"
                        Tikz.num size
