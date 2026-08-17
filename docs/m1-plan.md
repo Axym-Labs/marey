@@ -7,9 +7,10 @@ Roadmap reference: `docs/design.md` §14, milestone **M1**. Decision-log referen
 > `.NET Interactive` formatter, TikZ backend. **This is the release that has no competitor.**
 > Unit-safe plots that drop into a LaTeX document. Announce here."*
 
-Status: **Phase 0 and Phase 1 complete** (see §3). Decisions numbered D28+ are *proposed* entries
-for `docs/decisions.md`; they move into that file as they are implemented and verified, not
-before. D36 was not planned — it was found by the compile gate and is recorded below.
+Status: **Phases 0–4 complete** (see §3). Decisions numbered D28+ are *proposed* entries for
+`docs/decisions.md`; they move into that file as they are implemented and verified, not before.
+D36 and D38 were not planned — the compile gate found one and reading a golden baseline found the
+other, and both are recorded below.
 
 | Phase | State |
 |---|---|
@@ -17,7 +18,7 @@ before. D36 was not planned — it was found by the compile gate and is recorded
 | 1 — `TikzWriter.fs` primitives | **done**, 310 → 348 tests |
 | 2 — `TikzBackend.fs` traversal | **done**, 348 → 402 tests |
 | 3 — `Theme.tikz` and siunitx wiring | **done**, 402 → 413 tests |
-| 4 — Verification | ink gate **done**, 413 → 423 tests; goldens next |
+| 4 — Verification | **done**, 413 → 453 tests, 16 new baselines |
 | 5–6 | not started |
 
 A real figure now goes end to end: `Chart.line U.second U.metre ts xs |> Chart.withUnitStyle
@@ -379,6 +380,35 @@ comparing their coordinates — possible at all.
 This is a §12-class finding: it compiles in every other backend, it is invisible to inspection,
 and it fails at the user's `pdflatex` rather than in our test run.
 
+### D38. Three characters TeX accepts and then typesets as something else
+
+**Not planned. Found in Phase 4 by reading the `text.tex` baseline.**
+
+D36's sibling, and the harder of the two to catch. `<`, `>` and `|` are perfectly legal in TeX text
+mode. They produce no error, no warning, and no diagnostic of any kind — they are simply not the
+glyphs that were requested, because in the **OT1** encoding LaTeX still uses by default those slots
+hold `¡`, `¿` and `—`. An axis label reading `a < b` typesets as `a ¡ b` in a document that
+compiled perfectly cleanly.
+
+**The compile gate cannot see this, by construction.** There is nothing wrong with the TeX. Nor can
+the ink gate: the ink is there, in the wrong shape. It is visible only to a person looking at a
+rendered page, or to a golden baseline being read before it is accepted — which is how it was found.
+
+**Built:** `<` → `\textless{}`, `>` → `\textgreater{}`, `|` → `\textbar{}` in
+`Tex.tryEscapeChar`, so `Tex.isLiteralSafe` reports them as unsafe too. In Core rather than in the
+backend, because the function's job is "what must this character become to typeset correctly", and
+`¡` is not correct. Confirmed by compiling both forms and comparing the rasters.
+
+**Deliberately not escaped:** `"`, `` ` ``, and the `--`/`---` ligatures. They render as `”`, `‘`
+and dashes — conventional TeX typography and the better glyph in each case. `\textquotedbl` was
+tried and raises `Command \textquotedbl unavailable in encoding OT1`, which is the useful reminder
+here: a plausible-looking `\text...` macro is not necessarily a real one in the encoding the
+document happens to use, so the replacement macros are put through a real engine rather than
+asserted from memory.
+
+An `\usepackage[T1]{fontenc}` in the host document also fixes the three, and a figure cannot
+require anything of the document it is dropped into. Escaping is the only fix available to us.
+
 ---
 
 ## 3. Phase plan
@@ -465,7 +495,27 @@ TikzBackend.render "fall.tex" size` produces a `.tex` containing a literal
 The gates in §4. This is the phase that makes the backend trustworthy rather than plausible, and
 it is not optional in a project whose selling point is demonstrable correctness (§13).
 
-**Exit:** all gates green; 13 `.tex` baselines committed and reviewed as text.
+**Done.** 453 tests. Fifteen `.tex` baselines and one new `.svg`, all read before being committed —
+which is the only reason this phase found anything.
+
+What it found:
+
+- **D38, a silent mis-typesetting bug.** `<`, `>` and `|` are legal in TeX text mode and raise no
+  error of any kind; in the OT1 encoding LaTeX still defaults to, those slots hold `¡`, `¿` and `—`.
+  An axis label reading `a < b` typeset as `a ¡ b` in a document that compiled perfectly cleanly.
+  Invisible to the compile gate by construction — there is nothing wrong with the TeX. Found by
+  reading `text.tex`, confirmed by compiling both forms and comparing the rasters, fixed in
+  `Tex.tryEscapeChar`. `"`, `` ` `` and the `--` ligatures were checked in the same probe and
+  deliberately left alone: conventional TeX typography, and `	extquotedbl` is a hard error in OT1.
+- **Gate 5 was overstated** and is corrected in place below.
+- **`Scenes.all` now carries each scene's surface**, because a golden pair is only worth having if
+  both halves describe the same picture at the same size. The determinism suite improved as a
+  side effect: it used to render every scene at the default surface, including the two whose
+  baselines use a different one.
+- **A stale-artefact leak in `Golden.check`**: accepting a baseline left the `.actual` candidate
+  from the failing run beside it, so a reviewer could end up diffing two identical files.
+
+**Exit:** met.
 
 ### Phase 5 — `Quiver.Interactive`
 
@@ -543,13 +593,34 @@ Written in the register the project already uses: each gate is a claim that can 
    which here additionally proves that D31's internal degradation and `renderTo`'s external
    degradation agree.
 5. **Degradation is real.** A gradient-filled figure through TikZ produces a solid Oklab-midpoint
-   fill; a `Raster` produces a visible skip comment and no broken markup. D10's first real
-   exercise.
-6. **A figure-level golden, for both backends.** There is currently **no** golden baseline for a
-   `Figure` — all 13 are hand-built `Node`s, and `Chart` output is checked only by substring
-   assertions. That gap is worth closing while adding a second backend, because a figure is what
-   users actually produce and it is the only artefact that exercises layout, axes, legend and
-   theme together.
+   fill; a `Raster` produces no markup at all. D10's first real exercise.
+
+   **Corrected after review.** This gate originally read "a `Raster` produces a visible skip
+   comment", which the `raster.tex` baseline showed to be false: the emitter does contain a branch
+   writing `% quiver: raster 2x2 skipped ...`, but `Degrade.forCaps` replaces an unsupported
+   `Raster` with `Scene.empty` before the backend sees it, so through `TikzBackend.render` an image
+   vanishes without a trace. That is Core's contract working as designed — a backend advertising
+   `Rasters = false` never gets handed one — and the emitter's branch is defensive rather than dead,
+   since `IBackend.Draw` is public and can be driven un-degraded. Both facts are now pinned by a
+   test, and routing around `Degrade` to preserve the comment was rejected: it would make Core's
+   contract conditional on the backend, in exchange for a `%` comment invisible to anyone reading
+   the compiled PDF.
+
+   `gradients.tex` is worth reading for the other half: the linear and the radial ramp are the same
+   stop list, so both degrade to the *same* solid and two visually different pictures become
+   identical. D10's accepted cost, now on the record rather than in a doc comment.
+6. **A figure-level golden, for both backends.** There was **no** golden baseline for a `Figure` in
+   either backend — all 13 were hand-built `Node`s, and `Chart` output was checked only by
+   substring assertions. Closed: `Golden.figure` is one two-series figure with a title, subtitle,
+   legend and grids, rendered to `figure.svg`, `figure.tex`, and `figure-siunitx.tex`.
+
+   The third of those is the milestone's headline as a committed artefact rather than a substring
+   assertion: `\qty{}{\second}` and `\qty{}{\metre}` in a file, derived from the unit witnesses
+   with nothing configured but `Chart.withTheme Theme.tikz`.
+
+   Gate 6 is also wired to gate 7 — both figure baselines are compiled and rasterised, and both
+   must contain ink and must not rasterise *identically*, since `\qty{}{...}` typesetting to an
+   empty box is a perfectly plausible way for the headline feature to fail silently.
 
 7. **Somebody has to look at the picture.** This is the gap Phase 2 exposed and it deserves to be
    a numbered gate rather than a habit.

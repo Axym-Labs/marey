@@ -18,7 +18,8 @@ builds warning-free, and is verified at runtime.
 | `Quiver.Units` | Complete — SI + 22 derived + 18 non-SI witnesses, `Dim`-keyed canonicalisation, prefix selection, Unicode/ASCII/LaTeX/siunitx rendering, self-labelling axes. |
 | `Quiver.Backend.Svg` | Complete — all nine IR nodes, batched markers, gradients, clipping, a11y semantics, deterministic byte-identical output. |
 | `Quiver.Plot` | Complete — Okabe–Ito / viridis / cividis / magma / Oklab-diverging palettes with a CVD + contrast validator, four resolved-value themes, a measure–arrange constraint grid, the axis and legend compilers, line/point/area/bar/errorbar geoms, and `Chart`. Zero dependencies, no backend reference. |
-| `Quiver.Tests` | **310 tests**, all green: FsCheck property suites for the `Dim` group laws, all seven scale kinds, tick properties, `Interp`, `Affine`, colour and the Scene IR; regression tests pinning every §12 landmine and every numbered decision; 13 golden-image snapshots. |
+| `Quiver.Backend.Tikz` | Complete — all nine IR nodes into `tikzpicture` source, `bp` coordinates, batched marker macros, capability degradation, siunitx axis titles, and figures that inherit the host document's font. |
+| `Quiver.Tests` | **453 tests**, all green: FsCheck property suites for the `Dim` group laws, all seven scale kinds, tick properties, `Interp`, `Affine`, colour and the Scene IR; regression tests pinning every §12 landmine and every numbered decision; 29 golden baselines in SVG *and* `tikzpicture` source; a real `pdflatex` compile gate; and an ink gate that rasterises the compiled figure and checks there is something in it. |
 
 M0 is complete: `Quiver.Core` + SVG backend + linear/log scales + line/scatter/axes/legend
 + theme record.

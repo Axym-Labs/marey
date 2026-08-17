@@ -1,0 +1,21 @@
+\begin{tikzpicture}[every node/.style={inner sep=0bp,outer sep=0bp}]
+  \definecolor{qcA}{rgb}{0.16,0.38,0.86}
+  \def\quivermarkB#1#2{\path[fill,draw,shift={(#1,#2)}] (-3bp,-3bp) rectangle (3bp,3bp);}
+  \definecolor{qcC}{rgb}{0.9,0.36,0.18}
+  \definecolor{qcD}{rgb}{0.11,0.12,0.15}
+  \definecolor{qcE}{rgb}{0.1,0.1,0.12}
+  \useasboundingbox (0bp,0bp) rectangle (240bp,150bp);
+  % quiver-key: all-nine
+  % quiver-role: series -- everything
+  % quiver-data: cases = 9
+  \begin{scope}
+    \clip (4.8bp,10.5bp) -- (235.2bp,10.5bp) -- (235.2bp,142.5bp) -- (4.8bp,142.5bp) -- cycle;
+    \path[draw=qcA,line width=1.5bp] (12bp,37.5bp) .. controls (72bp,127.5bp) and (144bp,15bp) .. (216bp,97.5bp);
+    \begin{scope}[fill=qcC,draw=qcD,line width=0.563bp]
+      \quivermarkB{48bp}{67.5bp}
+      \quivermarkB{120bp}{82.5bp}
+      \quivermarkB{192bp}{97.5bp}
+    \end{scope}
+    \node[anchor=base west,text=qcE,font=\fontsize{11}{13.2}\selectfont] at (14.4bp,19.5bp) {all nine};
+  \end{scope}
+\end{tikzpicture}

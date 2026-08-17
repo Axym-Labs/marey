@@ -11,13 +11,18 @@
 dotnet test
 ```
 
-**310 tests: 155 FsCheck properties and 155 examples, ~74 700 generated cases per run.**
+**453 tests: 155 FsCheck properties and 298 examples, ~74 700 generated cases per run.**
+
+Around six seconds of that is `pdflatex`. The TikZ backend has no in-process oracle — the only
+authority on whether a `.tex` file is valid is a TeX engine, and the only authority on whether a
+figure has anything *in* it is a rasteriser — so the suite runs both. Both degrade to a printed
+`SKIPPED:` line when the toolchain is absent; read the output rather than the green tick.
 
 Targets `net10.0`; the projects under test target `netstandard2.1`. Warnings are errors here
 too, inherited from `Directory.Build.props`.
 
-Scope is all four shipped packages: `Quiver.Core`, `Quiver.Units`, `Quiver.Backend.Svg` and
-`Quiver.Plot`.
+Scope is all five shipped packages: `Quiver.Core`, `Quiver.Units`, `Quiver.Backend.Svg`,
+`Quiver.Backend.Tikz` and `Quiver.Plot`.
 
 ## Layout
 
@@ -33,16 +38,32 @@ Scope is all four shipped packages: `Quiver.Core`, `Quiver.Units`, `Quiver.Backe
 | `GeometryProperties.fs` | `Rect` algebra, `mapRectBounds` under rotation, panel-subdivision invariants, text bounds. |
 | `ColorProperties.fs` | Oklab/Oklch round trips, `Color.mix`, `contrastRatio`, capability degradation. |
 | `SceneProperties.fs` | **D1** structural equality, `count`/`primitiveCount`, `prune`, and the nine-case guard. |
-| `RegressionTests.fs` | §12.3, §12.4, §12.5, §12.6, §12.1/D2, D16, D17 and D32, locked in. |
+| `RegressionTests.fs` | §12.3, §12.4, §12.5, §12.6, §12.1/D2, D16, D17, D32 and D38, locked in. |
+| `TexToolchain.fs` | Drives a real `pdflatex`. **The most valuable gate in the TikZ work** — and the one that was briefly vacuous, which is why a deliberately-broken document is part of the suite. |
+| `Raster.fs` | Compiles a document and counts pixels, via `pdftoppm -gray`. Measurement only, no assertions; renders a bitmap as ASCII for failure messages. |
+| `TikzWriterTests.fs` | The emitter primitives: `bp` dimensions, colour definitions, escaping, superscript runs, macro naming. |
+| `TikzBackendTests.fs` | The traversal: the missing y flip, pre-transformed geometry, the honest capability set, batched marker macros, and cross-backend coordinate agreement. |
+| `TikzInkTests.fs` | **Somebody looks at the picture.** Compiles figures and asserts ink is where it belongs, mostly by differentials. The only gate that can see orientation. |
 | `Golden.fs` | Golden-file infrastructure: location, diff reporting, regeneration. Format-agnostic — `check` compares text and derives its failure artefact from the baseline's extension. |
 | `GoldenTests.fs` | The snapshot scenes, the determinism suite, and the backend contract. |
+| `TikzGoldenTests.fs` | The same scenes through the TikZ backend, plus the figure baselines both backends share. |
 | `PlotTests.fs` | `Quiver.Plot`: self-labelling axes, layout invariants across four themes and four sizes, the 50 000-point batching claim, purity of the `with*` combinators, and palette validation. |
 
 ## Golden images
 
 Baselines live in `golden/` **in the source tree**, because that is the copy a pull request
-diffs. They are plain SVG, one element per line, so a review reads as a list of changed
-coordinates rather than as a wall of text.
+diffs. They are plain SVG and plain `tikzpicture` source, one element per line, so a review reads
+as a list of changed coordinates rather than as a wall of text.
+
+Every scene has both: `paths.svg` and `paths.tex` are the same picture at the same surface in two
+languages, from one table in `GoldenTests.Scenes`. Reading them against each other is a check in
+itself — `rotated-text.svg` carries `rotate(-30 104 100)` where `rotated-text.tex` carries
+`rotate=30` at `(78bp,75bp)`, because the SVG backend flips y and negates the angle while the TikZ
+backend does neither, and `104 x 0.75 = 78`. Two independent derivations of one picture, visible
+side by side.
+
+`figure.svg` / `figure.tex` are the only baselines built from a `Figure` rather than a hand-made
+`Node`, and the only ones that exercise layout, axes, ticks, legend and theme together.
 
 To regenerate after an intentional rendering change:
 

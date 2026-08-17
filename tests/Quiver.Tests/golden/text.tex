@@ -1,0 +1,16 @@
+\begin{tikzpicture}[every node/.style={inner sep=0bp,outer sep=0bp}]
+  \definecolor{qcA}{rgb}{0.1,0.1,0.12}
+  \definecolor{qcB}{rgb}{0.11,0.12,0.15}
+  \definecolor{qcC}{rgb}{0.9,0.36,0.18}
+  \useasboundingbox (0bp,0bp) rectangle (240bp,150bp);
+  \node[anchor=base west,text=qcA,font=\fontsize{11}{13.2}\selectfont] at (12bp,135bp) {start};
+  \node[anchor=base,text=qcA,font=\fontsize{11}{13.2}\selectfont] at (120bp,135bp) {middle};
+  \node[anchor=base east,text=qcA,font=\fontsize{11}{13.2}\selectfont] at (228bp,135bp) {end};
+  \node[anchor=north west,text=qcA,font=\fontsize{11}{13.2}\selectfont] at (12bp,108bp) {hanging};
+  \node[anchor=west,text=qcA,font=\fontsize{11}{13.2}\selectfont] at (12bp,87bp) {central};
+  \node[anchor=base west,text=qcB,font=\bfseries\fontsize{13}{15.6}\selectfont] at (12bp,66bp) {bold 700};
+  \node[anchor=base west,text=qcC,font=\itshape\fontsize{13}{15.6}\selectfont] at (120bp,66bp) {italic};
+  \node[anchor=base west,text=qcA,font=\fontsize{11}{13.2}\selectfont] at (12bp,42bp) {a \& b \textless{} c \textgreater{} "d" 'e'};
+  \node[anchor=base west,text=qcA,font=\fontsize{11}{13.2}\selectfont] at (12bp,24bp) {kg\textperiodcentered{}m\textperiodcentered{}s\textsuperscript{-2} \textperiodcentered{} \textmu{}m \textperiodcentered{} \textohm{} \textperiodcentered{} \AA{}};
+  \node[anchor=base west,text=qcA,font=\fontsize{11}{13.2}\selectfont] at (12bp,7.5bp) {  padded  };
+\end{tikzpicture}

@@ -531,21 +531,35 @@ module Scenes =
                    )
                ) |]
 
-    /// Name → scene, used by both the golden tests and the determinism suite.
-    let all =
-        [ "paths.svg", paths
-          "text.svg", textRuns
-          "markers-shapes.svg", markerShapes
-          "markers-batch.svg", markerBatch
-          "gradients.svg", gradients
-          "dashes.svg", dashes
-          "clipping.svg", clipping
-          "keyed-annotated.svg", keyedAndAnnotated
-          "raster.svg", raster
-          "groups-transforms.svg", groupsAndTransforms
-          "rotated-text.svg", rotatedText
-          "axis-composition.svg", axisComposition
-          "all-nine-nodes.svg", allNineCases ]
+    /// A deliberately anisotropic 2:1 surface — where D13's rejected rotation implementation
+    /// would have differed.
+    let anisotropic: Extent<px> = { Width = 400.0<px>; Height = 200.0<px> }
+
+    /// Room for a realistic axis composition to be legible.
+    let wide: Extent<px> = { Width = 480.0<px>; Height = 320.0<px> }
+
+    /// Base name, scene, and the surface it is rendered at.
+    ///
+    /// The surface belongs in this table rather than in each test because there are now **two**
+    /// backends rendering these scenes, and a golden pair is only worth having if both halves
+    /// describe the same picture. Naming the extents once is what makes `paths.svg` and
+    /// `paths.tex` comparable line by line.
+    ///
+    /// The name carries no extension, for the same reason.
+    let all: (string * Node * Extent<px>) list =
+        [ "paths", paths, Golden.surface
+          "text", textRuns, Golden.surface
+          "markers-shapes", markerShapes, Golden.surface
+          "markers-batch", markerBatch, Golden.surface
+          "gradients", gradients, Golden.surface
+          "dashes", dashes, Golden.surface
+          "clipping", clipping, Golden.surface
+          "keyed-annotated", keyedAndAnnotated, Golden.surface
+          "raster", raster, Golden.surface
+          "groups-transforms", groupsAndTransforms, Golden.surface
+          "rotated-text", rotatedText, anisotropic
+          "axis-composition", axisComposition, wide
+          "all-nine-nodes", allNineCases, Golden.surface ]
 
 // ======================================================================================
 // THE SNAPSHOTS
@@ -589,16 +603,46 @@ module Snapshots =
     /// implementation would have differed.
     [<Fact>]
     let ``rotated text on an anisotropic surface`` () =
-        renderAt { Width = 400.0<px>; Height = 200.0<px> } "rotated-text.svg" Scenes.rotatedText
+        renderAt Scenes.anisotropic "rotated-text.svg" Scenes.rotatedText
 
     [<Fact>]
     let ``a realistic axis composition`` () =
-        renderAt { Width = 480.0<px>; Height = 320.0<px> } "axis-composition.svg" Scenes.axisComposition
+        renderAt Scenes.wide "axis-composition.svg" Scenes.axisComposition
 
     [<Fact>]
     let ``all nine Node cases`` () =
         assertAllNineCases Scenes.allNineCases
         render "all-nine-nodes.svg" Scenes.allNineCases
+
+// ======================================================================================
+// THE FIGURE — gate 6
+//
+// The gap this closes: every scene above is a hand-built `Node`, and until now `Chart` output was
+// checked only by substring assertions. A figure is what users produce and the only artefact that
+// exercises layout, axes, ticks, legend and theme at once, and it had no reviewable baseline in
+// either backend. The TikZ half is in `TikzGoldenTests`, from the same `Golden.figure`.
+// ======================================================================================
+
+module Figures =
+
+    [<Fact>]
+    let ``a complete figure`` () =
+        check "figure.svg" (Chart.render SvgBackend.render figureSurface figure)
+
+    /// A figure is a scene like any other, so it has to be one: if `Figure.toScene` ever emitted
+    /// something outside the nine cases this would not compile, and if it stopped exercising them
+    /// the golden above would be measuring less than it claims.
+    [<Fact>]
+    let ``the figure is built from the IR and nothing else`` () =
+        let used = casesUsed (Chart.toScene figureSurface figure)
+
+        // Not all nine: a figure has no `Raster`, and no `Clip` is needed for a series that fits.
+        // Asserting the *set* rather than a count keeps this honest as layout changes.
+        Assert.Contains("Path", used)
+        Assert.Contains("Text", used)
+        Assert.Contains("Markers", used)
+        Assert.Contains("Keyed", used)
+        Assert.Contains("Annotated", used)
 
 // ======================================================================================
 // DETERMINISM
@@ -610,27 +654,27 @@ module Determinism =
 
     [<Fact>]
     let ``two renders of the same scene are byte-identical`` () =
-        for name, scene in Scenes.all do
-            let a = SvgBackend.render surface scene
-            let b = SvgBackend.render surface scene
+        for name, scene, extent in Scenes.all do
+            let a = SvgBackend.render extent scene
+            let b = SvgBackend.render extent scene
             Assert.True((a = b), name)
 
     /// SvgWriter.fs's opening requirement, and the bug class the backend was explicitly built to
     /// survive: under `de-DE` a naive `ToString()` writes `0,5`, which SVG cannot parse.
     [<Fact>]
     let ``rendering under a comma-decimal culture is byte-identical`` () =
-        for name, scene in Scenes.all do
-            let baseline = SvgBackend.render surface scene
-            let german = Culture.run Culture.CommaDecimal (fun () -> SvgBackend.render surface scene)
+        for name, scene, extent in Scenes.all do
+            let baseline = SvgBackend.render extent scene
+            let german = Culture.run Culture.CommaDecimal (fun () -> SvgBackend.render extent scene)
             Assert.True((baseline = german), sprintf "%s differed under %s" name Culture.CommaDecimal)
 
     /// Turkish, because its dotless-i changes what `ToLowerInvariant`-free code does — and
     /// `ApproxTextMeasurer` lowercases a font family name on the layout path.
     [<Fact>]
     let ``rendering under a dotless-i culture is byte-identical`` () =
-        for name, scene in Scenes.all do
-            let baseline = SvgBackend.render surface scene
-            let turkish = Culture.run Culture.DotlessI (fun () -> SvgBackend.render surface scene)
+        for name, scene, extent in Scenes.all do
+            let baseline = SvgBackend.render extent scene
+            let turkish = Culture.run Culture.DotlessI (fun () -> SvgBackend.render extent scene)
             Assert.True((baseline = turkish), sprintf "%s differed under %s" name Culture.DotlessI)
 
     /// One backend instance, reused. "`Begin` resets all state, so the same backend can render a
@@ -655,8 +699,8 @@ module Determinism =
     /// path data", which is why every number goes through a custom .NET numeric format.
     [<Fact>]
     let ``no rendered document contains scientific notation`` () =
-        for name, scene in Scenes.all do
-            let doc = SvgBackend.render surface scene
+        for name, scene, extent in Scenes.all do
+            let doc = SvgBackend.render extent scene
             // Guard against digit-E-digit and digit-e-digit, which is what "R"/"%g" would emit.
             let bad =
                 System.Text.RegularExpressions.Regex.IsMatch(doc, @"\d[eE][-+]?\d")
@@ -821,8 +865,8 @@ module Contract =
     /// is a golden file that records a bug.
     [<Fact>]
     let ``every golden document is well-formed XML`` () =
-        for name, scene in Scenes.all do
-            let doc = SvgBackend.render surface scene
+        for name, scene, extent in Scenes.all do
+            let doc = SvgBackend.render extent scene
 
             let parsed =
                 try

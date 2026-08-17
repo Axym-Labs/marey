@@ -38,6 +38,20 @@ module Tex =
     /// `\~` and `\^` are accents that would silently swallow the following character instead of
     /// printing a tilde or a caret.
     ///
+    /// **And three that TeX does not treat specially at all, which is the problem.** `<`, `>` and
+    /// `|` are perfectly legal in text mode and produce no error whatsoever — they simply are not
+    /// the glyphs you asked for. In the OT1 encoding LaTeX still uses by default, those slots hold
+    /// `¡`, `¿` and `—`, so an axis label reading `a < b` typesets as `a ¡ b` in a document that
+    /// compiled without a single warning. This was found by rendering the golden `text.tex` and
+    /// looking at it, which is the only way it *could* have been found: it is invisible to the
+    /// compile gate by construction, because there is nothing wrong with the TeX.
+    ///
+    /// `"` is deliberately left alone. It renders as a curly `”`, which is what a TeX author
+    /// expects and is typographically the better glyph — and `\textquotedbl`, the only macro that
+    /// would give a straight one, raises `Command \textquotedbl unavailable in encoding OT1`. The
+    /// same goes for `` ` `` and for the `--`/`---` ligatures: conventional TeX behaviour, not a
+    /// defect.
+    ///
     /// This is the single table, exposed per character rather than only per string, so that a
     /// backend interleaving its own substitutions — a Unicode-to-macro map, superscript runs —
     /// can reuse it instead of keeping a second copy that drifts. Returning `None` for the
@@ -54,6 +68,10 @@ module Tex =
         | '_' -> Some "\\_"
         | '~' -> Some "\\textasciitilde{}"
         | '^' -> Some "\\textasciicircum{}"
+        // Legal, silent, and wrong. See above.
+        | '<' -> Some "\\textless{}"
+        | '>' -> Some "\\textgreater{}"
+        | '|' -> Some "\\textbar{}"
         | _ -> None
 
     /// Escape a string so TeX typesets it literally.

@@ -39,6 +39,7 @@
     <Compile Include="TikzInkTests.fs" />
     <Compile Include="Golden.fs" />
     <Compile Include="GoldenTests.fs" />
+    <Compile Include="TikzGoldenTests.fs" />
     <Compile Include="PlotTests.fs" />
   </ItemGroup>
 

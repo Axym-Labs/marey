@@ -548,6 +548,47 @@ module ``D32 Tex escaping`` =
             Assert.Equal(Tex.isLiteralSafe s, Tex.escape s = s)
 
 // ======================================================================================
+// D38 — the three characters TeX accepts and then typesets as something else
+//
+// Found by rendering the golden `text.tex` and *looking* at it, which is the only way it could
+// have been found. `<`, `>` and `|` are legal in TeX text mode and raise no error, warning or
+// diagnostic of any kind — they are simply not the glyphs that were asked for, because in the OT1
+// encoding LaTeX still defaults to, those slots hold `¡`, `¿` and `—`. An axis label reading
+// `a < b` typeset as `a ¡ b` in a document that compiled perfectly cleanly.
+//
+// The compile gate cannot see this, by construction: there is nothing wrong with the TeX. Verified
+// by compiling both forms and comparing the rasters.
+// ======================================================================================
+
+module ``D38 characters that compile but mis-typeset`` =
+
+    [<Theory>]
+    [<InlineData('<', "\\textless{}")>]
+    [<InlineData('>', "\\textgreater{}")>]
+    [<InlineData('|', "\\textbar{}")>]
+    let ``the silent three are escaped to macros`` (c: char) (expected: string) =
+        Assert.Equal(Some expected, Tex.tryEscapeChar c)
+        Assert.Equal(expected, Tex.escape (string c))
+        // ...and they are therefore *not* safe to pass through verbatim, which is the half of
+        // this that a caller consults.
+        Assert.False(Tex.isLiteralSafe (string c))
+
+    /// `"`, `` ` `` and the `--`/`---` ligatures are **not** in the table, and that is a decision
+    /// rather than an omission. They render as `”`, `‘` and dashes: conventional TeX typography,
+    /// and the better glyph in every case. `\textquotedbl` is also unavailable in OT1 — it raises
+    /// a hard error — so escaping the quote would trade a cosmetic difference for a broken
+    /// document.
+    [<Fact>]
+    let ``conventional TeX typography is left alone`` () =
+        for s in [ "\""; "`"; "--"; "---"; "'" ] do
+            Assert.True(Tex.isLiteralSafe s, s)
+
+// The replacement macros are put through a real engine by `TikzWriterTests.escaped text
+// compiles`, which is where the toolchain is available — `\textquotedbl` is a standing reminder
+// that not every `\text...` command exists in every encoding, so asserting the macro names
+// without compiling them would be asserting a guess.
+
+// ======================================================================================
 // D32 — pruning must not delete a run that only a typesetting backend can draw
 // ======================================================================================
 

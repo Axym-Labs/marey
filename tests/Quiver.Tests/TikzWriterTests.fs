@@ -295,6 +295,10 @@ module ``escaped text compiles`` =
         [ "plain text"
           "50% yield_2 & more #1 $x$ {braced}"
           "backslash \\ tilde ~ caret ^"
+          // D38's three: legal TeX that typesets as `¡ ¿ —` unescaped. Here to prove the
+          // *replacements* compile, which is the half that assertion-only tests cannot check —
+          // `\textquotedbl` looks just as plausible as these three and is a hard error in OT1.
+          "a < b > c | d"
           "kg·m²·s⁻²"
           "E [keV] Ω µm Å °C"
           "\u2126 \u212B \u03BC" // the alternative codepoints

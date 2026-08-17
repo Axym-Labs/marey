@@ -173,6 +173,12 @@ let check (name: string) (actual: string) : unit =
 
     if updateRequested then
         File.WriteAllText(file, actual, utf8NoBom)
+
+        // An accepted baseline makes the candidate from the run that failed a stale copy of the
+        // file next to it. Leaving it behind is how a reviewer ends up diffing two identical
+        // files and wondering which one matters.
+        if File.Exists candidate then
+            File.Delete candidate
     elif not (File.Exists file) then
         // Write the candidate anyway: a reviewer looking at a new test wants to see what it
         // produced, and the artefacts are git-ignored so they cannot be committed by accident.
@@ -217,6 +223,13 @@ let render (name: string) (node: Node) = check name (SvgBackend.render surface n
 /// Render at a given surface, for the cases where the aspect ratio is the point.
 let renderAt (extent: Extent<px>) (name: string) (node: Node) = check name (SvgBackend.render extent node)
 
+/// The TikZ counterpart. The baseline is the **picture**, not a whole document: a `tikzpicture` is
+/// what a user `\input`s, and a constant `\documentclass`/preamble prologue repeated across every
+/// baseline is thirteen copies of boilerplate for a reviewer to scroll past. `TexToolchain` adds
+/// the wrapper when a baseline has to be handed to an engine.
+let renderTikzAt (extent: Extent<px>) (name: string) (node: Node) =
+    check name (TikzBackend.render extent node)
+
 // ======================================================================================
 // SHARED SCENE VOCABULARY
 //
@@ -244,6 +257,41 @@ let pt (x: float) (y: float) : Vec2<nd> = { X = x * 1.0<nd>; Y = y * 1.0<nd> }
 
 let stops (cs: (float * Color) list) =
     cs |> List.map (fun (o, c) -> { Offset = o; Color = c }) |> Array.ofList
+
+// ======================================================================================
+// THE SHARED FIGURE
+//
+// Gate 6 in `docs/m1-plan.md`: until now there was **no** golden baseline for a `Figure` in
+// either backend. All thirteen scenes are hand-built `Node`s, and `Chart` output was checked only
+// by substring assertions — so the one artefact users actually produce, and the only one that
+// exercises layout, axes, ticks, legend and theme together, had no reviewable record at all.
+//
+// One figure, rendered by both backends, so a layout change shows up as a diff in two files that
+// can be read against each other.
+// ======================================================================================
+
+/// A two-series figure with everything a real one has: a title, a subtitle, a legend, grids on
+/// both axes, unit-derived axis titles, a line and a scatter.
+///
+/// `UnitStyle` is left at the theme default (`Unicode`) deliberately. The siunitx spelling is a
+/// TeX-only artefact and would put raw macros into the SVG baseline; it gets its own TikZ-only
+/// golden instead, so this pair stays a comparison of *the same picture* through two backends.
+let figure: Figure =
+    let ts = Array.init 24 (fun i -> float i * 0.4<s>)
+    let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
+
+    Chart.line U.second U.metre ts xs
+    |> Chart.withName "model"
+    |> Chart.addScatter U.second U.metre ts.[..5] (ts.[..5] |> Array.map (fun t -> 0.5 * 9.6<m / s^2> * t * t))
+    |> Chart.withName "measured"
+    |> Chart.withTitle "Free fall"
+    |> Chart.withSubtitle "displacement against elapsed time"
+    |> Chart.withLegend LegendTopLeft
+    |> Chart.withGrid true true
+
+/// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
+/// fit, and a cramped one tests the collision ladder rather than the layout.
+let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
 
 /// Assert that a scene really does exercise the `Node` cases it claims to. §5 makes the case
 /// count the thing to defend, so a golden test that says it covers all nine should be able to
