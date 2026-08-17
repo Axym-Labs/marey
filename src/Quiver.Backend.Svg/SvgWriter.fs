@@ -2,7 +2,6 @@ namespace Quiver
 
 open System
 open System.Collections.Generic
-open System.Globalization
 open System.Text
 
 // ======================================================================================
@@ -25,6 +24,13 @@ open System.Text
 //   * negative zero is normalised to zero (.NET Core 3.0+ formats -0.0 as "-0", and whether a
 //     coordinate lands on -0.0 or 0.0 depends on the sign of a multiply that is otherwise
 //     invisible);
+//
+// Those five rules now live in `Quiver.Core`'s `Num` module, because the TikZ backend needs
+// every one of them and F2's rule is to promote shared formatting on the appearance of a second
+// consumer rather than to copy it. `numAt` below is a forwarder, kept because the golden suite
+// asserts on the SVG spellings directly and because `CoordDecimals`/`RatioDecimals`/
+// `MatrixDecimals` are SVG's own policy, not Core's.
+//
 //   * line endings are always "\n", never Environment.NewLine;
 //   * nothing is ever emitted from an unordered iteration. Dictionaries in this file are only
 //     ever *looked up*; the emission order always comes from a ResizeArray filled in traversal
@@ -38,13 +44,6 @@ open System.Text
 /// documents.
 [<RequireQualifiedAccess>]
 module Svg =
-
-    let private invariant = CultureInfo.InvariantCulture
-
-    /// Custom numeric formats, indexed by decimal places. A custom format never falls back to
-    /// scientific notation, which is the whole reason for not using "G" or sprintf "%g".
-    let private patterns =
-        [| "0"; "0.#"; "0.##"; "0.###"; "0.####"; "0.#####"; "0.######" |]
 
     /// Decimal places for device-space coordinates. A thousandth of a pixel is far below what
     /// any renderer resolves, and it is coarse enough that a re-associated float multiply
@@ -64,20 +63,11 @@ module Svg =
     /// Format a number at a given number of decimal places. Non-finite values become zero:
     /// a singular transform must not be able to write "NaN" into a document that then fails
     /// to parse.
-    let numAt (decimals: int) (v: float) : string =
-        if Double.IsNaN v || Double.IsInfinity v then
-            "0"
-        else
-            let d =
-                if decimals < 0 then 0
-                elif decimals >= patterns.Length then patterns.Length - 1
-                else decimals
-
-            let r = Math.Round(v, d, MidpointRounding.AwayFromZero)
-            // -0.0 = 0.0 is true for floats, so this assignment replaces negative zero with
-            // positive zero and stops "-0" appearing in the output.
-            let r = if r = 0.0 then 0.0 else r
-            r.ToString(patterns.[d], invariant)
+    ///
+    /// A forwarder onto `Num.at` since the TikZ backend needed the same rules (F2's
+    /// promote-on-second-consumer rule). Kept as a member of this module because the golden
+    /// suite asserts on the SVG spelling directly.
+    let numAt (decimals: int) (v: float) : string = Num.at decimals v
 
     /// Format a device-space coordinate.
     let num (v: float) : string = numAt CoordDecimals v
