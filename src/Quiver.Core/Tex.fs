@@ -31,12 +31,32 @@ open System.Text
 [<RequireQualifiedAccess>]
 module Tex =
 
-    /// Escape a string so TeX typesets it literally.
+    /// The replacement for one TeX-special character, or `None` when the character needs none.
     ///
     /// The ten characters TeX treats specially, and the two that need a macro rather than a
     /// backslash: `~` and `^` are *active*/superscript rather than merely reserved, so
     /// `\~` and `\^` are accents that would silently swallow the following character instead of
     /// printing a tilde or a caret.
+    ///
+    /// This is the single table, exposed per character rather than only per string, so that a
+    /// backend interleaving its own substitutions — a Unicode-to-macro map, superscript runs —
+    /// can reuse it instead of keeping a second copy that drifts. Returning `None` for the
+    /// common case keeps the string path allocation-free.
+    let tryEscapeChar (c: char) : string option =
+        match c with
+        | '\\' -> Some "\\textbackslash{}"
+        | '{' -> Some "\\{"
+        | '}' -> Some "\\}"
+        | '$' -> Some "\\$"
+        | '&' -> Some "\\&"
+        | '#' -> Some "\\#"
+        | '%' -> Some "\\%"
+        | '_' -> Some "\\_"
+        | '~' -> Some "\\textasciitilde{}"
+        | '^' -> Some "\\textasciicircum{}"
+        | _ -> None
+
+    /// Escape a string so TeX typesets it literally.
     ///
     /// Escaping is done character by character rather than by successive string replacement,
     /// because replacing `\` with `\textbackslash{}` first and `{` with `\{` afterwards would
@@ -48,38 +68,13 @@ module Tex =
             let sb = StringBuilder(s.Length + 8)
 
             for c in s do
-                match c with
-                | '\\' -> sb.Append "\\textbackslash{}" |> ignore
-                | '{' -> sb.Append "\\{" |> ignore
-                | '}' -> sb.Append "\\}" |> ignore
-                | '$' -> sb.Append "\\$" |> ignore
-                | '&' -> sb.Append "\\&" |> ignore
-                | '#' -> sb.Append "\\#" |> ignore
-                | '%' -> sb.Append "\\%" |> ignore
-                | '_' -> sb.Append "\\_" |> ignore
-                | '~' -> sb.Append "\\textasciitilde{}" |> ignore
-                | '^' -> sb.Append "\\textasciicircum{}" |> ignore
-                | c -> sb.Append c |> ignore
+                match tryEscapeChar c with
+                | Some replacement -> sb.Append replacement |> ignore
+                | None -> sb.Append c |> ignore
 
             sb.ToString()
 
-    /// True when `escape` would change the string — i.e. it contains no TeX special character
-    /// and can be passed through verbatim.
+    /// True when `escape` would leave the string unchanged — i.e. it contains no TeX special
+    /// character and can be passed through verbatim.
     let isLiteralSafe (s: string) : bool =
-        if isNull s then
-            true
-        else
-            s
-            |> Seq.forall (fun c ->
-                match c with
-                | '\\'
-                | '{'
-                | '}'
-                | '$'
-                | '&'
-                | '#'
-                | '%'
-                | '_'
-                | '~'
-                | '^' -> false
-                | _ -> true)
+        isNull s || s |> Seq.forall (fun c -> (tryEscapeChar c).IsNone)

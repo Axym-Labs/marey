@@ -7,9 +7,16 @@ Roadmap reference: `docs/design.md` §14, milestone **M1**. Decision-log referen
 > `.NET Interactive` formatter, TikZ backend. **This is the release that has no competitor.**
 > Unit-safe plots that drop into a LaTeX document. Announce here."*
 
-Status of this document: **plan, not yet executed.** Nothing below has been built. Decisions
-numbered D28+ are *proposed* entries for `docs/decisions.md`; they move into that file as they
-are implemented and verified, not before.
+Status: **Phase 0 and Phase 1 complete** (see §3). Decisions numbered D28+ are *proposed* entries
+for `docs/decisions.md`; they move into that file as they are implemented and verified, not
+before. D36 was not planned — it was found by the compile gate and is recorded below.
+
+| Phase | State |
+|---|---|
+| 0 — Foundations and truth-in-docs | **done**, 288 → 310 tests |
+| 1 — `TikzWriter.fs` primitives | **done**, 310 → 348 tests |
+| 2 — `TikzBackend.fs` traversal | next |
+| 3–6 | not started |
 
 ---
 
@@ -279,6 +286,37 @@ fully-inheriting behaviour for anyone who wants it and accepts the consequence.
 `Theme.tikz` also sets `UnitStyle` to `Siunitx` at the axis-config level, which is what makes
 D32's `Tex` field populate without configuration — the M1 headline in one theme selection.
 
+### D36. TeX cannot represent an arbitrary coordinate, and D9 guarantees we will hand it one
+
+**Not planned. Found by the compile gate in Phase 1, on the first run.**
+
+A TeX dimension is a 32-bit fixed-point count of scaled points at 65536 sp per TeX point, so the
+largest representable length is 2^30 − 1 sp = 16383.99998 pt = **16322.06 `bp`**. Past it the
+engine raises `Dimension too large`; past ~2^31 the number scanner raises `Number too big` before
+it even converts. Both are hard errors — the document does not compile.
+
+**This is reachable in ordinary use, and D9 is the reason.** `Scale.Forward` deliberately does not
+clamp: "clamping would pile out-of-range data onto the panel edge, which is a lie about the data."
+So a single out-of-domain datum projects far outside `[0,1]` and is removed by the panel's `Clip`
+node. The SVG backend writes the coordinate without complaint and the clip hides it. **TeX refuses
+the file.** A TikZ backend that does not clamp therefore cannot render any figure containing one
+out-of-domain point — which is most real data.
+
+**Built:** `Tikz.dim` clamps to ±16000 bp, ~28 A4 widths and comfortably below the limit, so it
+cannot affect a real figure. The loss is acknowledged: a segment running to a far-off point keeps
+its near end and has its far end pulled to the boundary, which changes the segment's direction
+when only one component is out of range. Everything affected is outside the panel and clipped in
+the normal case, and the alternative is not a more faithful document but no document at all.
+Geometrically correct clipping belongs to the compiler layer, not to a number formatter.
+
+**Non-finite values are tested before clamping**, and map to `0` rather than to the boundary,
+because `infinity > MaxDim` is true and clamping first would send an infinity to `16000bp` while
+SVG writes `0`. The two backends agreeing on degenerate input is what makes gate 2 in §4 —
+comparing their coordinates — possible at all.
+
+This is a §12-class finding: it compiles in every other backend, it is invisible to inspection,
+and it fails at the user's `pdflatex` rather than in our test run.
+
 ---
 
 ## 3. Phase plan
@@ -409,12 +447,26 @@ as SVG. Do it at M1; it is how people will first meet the library."*
 
 Written in the register the project already uses: each gate is a claim that can fail.
 
-1. **Every golden `.tex` compiles.** `pdflatex -interaction=nonstopmode -halt-on-error` over
-   each baseline, asserting zero errors. This is the TikZ analogue of the SVG suite's
-   `XDocument.Parse` round-trip, and it is the single most valuable test in the milestone — a
-   TikZ backend that emits plausible-looking broken TeX is worse than no backend. Skips cleanly
-   with a reported reason when `pdflatex` is absent; reports the siunitx version on failure, so
-   §1's stale-kernel state is diagnosable from a CI log.
+1. **Every golden `.tex` compiles.** `pdflatex -interaction=nonstopmode` over each baseline,
+   asserting zero errors. This is the TikZ analogue of the SVG suite's `XDocument.Parse`
+   round-trip, and it is the single most valuable test in the milestone — a TikZ backend that
+   emits plausible-looking broken TeX is worse than no backend. Reports what engine it found so a
+   local run says plainly whether the gate ran; CI installs TeX so enforcement is real there.
+
+   **Built in Phase 1 as `TexToolchain`, and it has already earned its keep twice.** It found
+   D36 on its first run. It also caught *itself* being vacuous: the first version passed
+   `-file-line-error`, which rewrites errors from `! Undefined control sequence.` to
+   `./doc.tex:5: ...`, so the `"! "` filter matched nothing and **every document was declared
+   clean**. Two consequences are now permanent:
+
+   - a deliberately-broken document is part of the suite, asserting the gate *can* fail. A gate
+     that cannot fail is theatre, and this one was theatre for about ten minutes.
+   - failure is detected from two independent signals — an error line in the log *and* a non-zero
+     exit code — so one pattern going stale after a flag change or an engine update cannot
+     silently disable it again.
+
+   `-halt-on-error` is deliberately not passed: every error the engine finds should reach one
+   report, so a failure is actionable in a single pass.
 2. **Cross-backend geometry agreement.** For a fixed scene, every emitted TikZ `bp` coordinate
    equals the SVG backend's `px` coordinate times `72/96`, with y measured from the opposite
    edge, to three decimals. D29 and D30 make this relationship exact, so this is a genuine
@@ -453,6 +505,10 @@ Recorded so they read as decisions rather than oversights.
 - **`Prefix.select` has no additive-offset annotation.** A domain of 1000.000–1000.005 m yields
   five identical tick labels. Already documented in `Prefix.fs` as a real gap; unchanged by M1,
   and worth naming because it is the one place D19's injectivity argument does not reach.
+- **Out-of-range coordinates are clamped, not clipped** (D36). Correct for anything the panel clip
+  removes anyway, which is the case that occurs; wrong in principle for a segment that both leaves
+  TeX's representable range *and* crosses the visible panel. Proper segment clipping is a compiler
+  -layer job and is not in M1.
 
 ---
 

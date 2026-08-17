@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Quiver.Backend.Svg/Quiver.Backend.Svg.fsproj" />
+    <Project Path="src/Quiver.Backend.Tikz/Quiver.Backend.Tikz.fsproj" />
     <Project Path="src/Quiver.Core/Quiver.Core.fsproj" />
     <Project Path="src/Quiver.Plot/Quiver.Plot.fsproj" />
     <Project Path="src/Quiver.Units/Quiver.Units.fsproj" />

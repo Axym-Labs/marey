@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- §6: "Emits `\begin{tikzpicture}`. Figures that inherit the document's fonts and
+         `siunitx` units. For a physics/maths audience this is a killer feature almost nobody
+         offers, and it is *cheap* — it's a text emitter."
+
+         Zero dependencies, exactly like the SVG backend: this is a string producer, and a
+         backend that needs a package to write text would be admitting it is something else. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Quiver.Backend.Tikz</AssemblyName>
+    <RootNamespace>Quiver</RootNamespace>
+    <Description>TikZ/PGF backend. Emits a tikzpicture that inherits the host document's fonts and typesets siunitx units. Pure F#, zero dependencies.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="TikzWriter.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Quiver.Core\Quiver.Core.fsproj" />
+  </ItemGroup>
+
+</Project>

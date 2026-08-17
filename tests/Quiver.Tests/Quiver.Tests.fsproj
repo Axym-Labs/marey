@@ -32,6 +32,8 @@
     <Compile Include="ColorProperties.fs" />
     <Compile Include="SceneProperties.fs" />
     <Compile Include="RegressionTests.fs" />
+    <Compile Include="TexToolchain.fs" />
+    <Compile Include="TikzWriterTests.fs" />
     <Compile Include="Golden.fs" />
     <Compile Include="GoldenTests.fs" />
     <Compile Include="PlotTests.fs" />
@@ -41,6 +43,7 @@
     <ProjectReference Include="..\..\src\Quiver.Core\Quiver.Core.fsproj" />
     <ProjectReference Include="..\..\src\Quiver.Units\Quiver.Units.fsproj" />
     <ProjectReference Include="..\..\src\Quiver.Backend.Svg\Quiver.Backend.Svg.fsproj" />
+    <ProjectReference Include="..\..\src\Quiver.Backend.Tikz\Quiver.Backend.Tikz.fsproj" />
     <ProjectReference Include="..\..\src\Quiver.Plot\Quiver.Plot.fsproj" />
   </ItemGroup>
 

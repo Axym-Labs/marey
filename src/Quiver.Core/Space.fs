@@ -61,6 +61,14 @@ module Space =
     /// you cannot accidentally pass a scale factor where a resolution was wanted.
     let inline pxOfPt (dpi: float<px / mm>) (x: float<pt>) : float<px> = mmOfPt x * dpi
 
+    /// Device pixels to points — the inverse of `pxOfPt`.
+    ///
+    /// A backend whose output is measured in physical units rather than device ones needs this
+    /// direction: a TeX picture is laid out in `bp` (1/72 inch, which is exactly this `pt`), so
+    /// an `Extent<px>` has to become an extent in points before any geometry is emitted. At the
+    /// 96 px/inch screen convention the factor is 72/96 = 0.75.
+    let inline ptOfPx (dpi: float<px / mm>) (x: float<px>) : float<pt> = ptOfMm (x / dpi)
+
     /// The screen convention: 96 px per inch.
     let screenDpi: float<px / mm> = 96.0 / MmPerInch * 1.0<px / mm>
 
