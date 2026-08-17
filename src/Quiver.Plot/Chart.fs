@@ -348,10 +348,21 @@ module Chart =
     let render (renderer: Extent<px> -> Node -> string) (extent: Extent<px>) (fig: Figure) : string =
         renderer extent (toScene extent fig)
 
-    /// One line to a file: `fig |> Chart.toSvg SvgBackend.render "plot.svg" (Chart.size 800.0 500.0)`.
+    /// One line to a file: `fig |> Chart.toFile SvgBackend.render "plot.svg" (Chart.size 800.0 500.0)`.
     ///
     /// UTF-8 without a byte-order mark, matching `SvgBackend.renderToFile`, because these files
     /// are golden masters (§13) and a BOM appearing would read as a whole-file diff.
-    let toSvg (renderer: Extent<px> -> Node -> string) (path: string) (extent: Extent<px>) (fig: Figure) : unit =
+    ///
+    /// Backend-neutral by name as well as by shape: any `Extent<px> -> Node -> string` renderer
+    /// fits, so this is equally the way to write a `.tex` file.
+    let toFile (renderer: Extent<px> -> Node -> string) (path: string) (extent: Extent<px>) (fig: Figure) : unit =
         let text = render renderer extent fig
         System.IO.File.WriteAllText(path, text, System.Text.UTF8Encoding(false))
+
+    /// `toFile` under its original name.
+    ///
+    /// Kept because it appears in the README and in every M0-era example, and because renaming a
+    /// public entry point is not worth a breaking change. It was always renderer-shaped rather
+    /// than SVG-specific — the name was the only thing that said otherwise.
+    let toSvg (renderer: Extent<px> -> Node -> string) (path: string) (extent: Extent<px>) (fig: Figure) : unit =
+        toFile renderer path extent fig
