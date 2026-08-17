@@ -15,8 +15,15 @@ before. D36 was not planned — it was found by the compile gate and is recorded
 |---|---|
 | 0 — Foundations and truth-in-docs | **done**, 288 → 310 tests |
 | 1 — `TikzWriter.fs` primitives | **done**, 310 → 348 tests |
-| 2 — `TikzBackend.fs` traversal | next |
-| 3–6 | not started |
+| 2 — `TikzBackend.fs` traversal | **done**, 348 → 402 tests |
+| 3 — `Theme.tikz` and siunitx wiring | next |
+| 4–6 | not started |
+
+A real figure now goes end to end: `Chart.line U.second U.metre ts xs |> Chart.withUnitStyle
+Siunitx |> Chart.render TikzBackend.render` produces a `tikzpicture` that compiles under
+`pdflatex` with zero errors, to a PDF page of **exactly** the requested extent (400×250 px →
+300×187.5 pt), with the axis titles typeset by `siunitx` from the unit witnesses and the body font
+inherited from the document.
 
 ---
 
@@ -253,6 +260,21 @@ per point.
 Deliberately **not** pgfplots' `\pgfuseplotmark`: Quiver *is* the plotting layer, and depending
 on pgfplots would import a second, disagreeing opinion about axes and scaling.
 
+**Amended in Phase 2 — the SVG analogy stops short of the paint.** In TikZ, `fill=<colour>` on a
+*scope* sets the fill colour but does **not** make paths inside it filled. A bare `\path` inside
+`\begin{scope}[fill=orange]` compiles perfectly and draws nothing whatsoever.
+
+The first implementation mirrored SVG's `<g>` + `<use>` split exactly — paint on the group,
+geometry in the definition — and produced a figure with **no scatter markers and no legend
+swatch**. So the split is: the macro carries the paint *actions* (a bare `fill` and/or `draw`,
+values omitted), and the enclosing scope carries the *values* (colour, opacity, line width). Both
+halves are load-bearing — an action with no colour paints in black, a colour with no action paints
+nothing — and which actions are needed becomes part of the macro's identity alongside shape and
+size, so a fill-only and a stroke-only batch of the same shape are different macros.
+
+**Every test passed while this was broken, and so did the compile gate.** The document was
+perfectly valid TeX; it just had no ink in it. That is the subject of the note added to §4.
+
 ### D34. Deterministic number formatting is promoted to `Quiver.Core` **[forced]**
 
 `SvgWriter.fs` establishes the rules that make byte-identical output possible: invariant
@@ -488,6 +510,27 @@ Written in the register the project already uses: each gate is a claim that can 
    assertions. That gap is worth closing while adding a second backend, because a figure is what
    users actually produce and it is the only artefact that exercises layout, axes, legend and
    theme together.
+
+7. **Somebody has to look at the picture.** This is the gap Phase 2 exposed and it deserves to be
+   a numbered gate rather than a habit.
+
+   The D33 paint bug — markers and legend swatch entirely absent — was invisible to *every*
+   automated check available. Structure tests confirmed one macro, one scope and N calls, all
+   true. The compile gate confirmed valid TeX, also true. Determinism, culture-invariance and
+   cross-backend coordinate agreement all passed, because the coordinates were right; only the
+   ink was missing. **A text emitter can be verified into a state where it emits a valid, correct,
+   entirely blank document.**
+
+   Two mitigations, one cheap and one to schedule:
+
+   - *Cheap, done:* an invariant test asserting that a batch which asks for paint produces a macro
+     containing a paint action, over every shape × paint combination. It encodes the specific
+     finding rather than the general class.
+   - *To schedule in Phase 4:* rasterise the compiled PDF (`pdftoppm`, already present alongside
+     the TeX install) and assert non-background ink coverage within the panel. That is the only
+     check in this list that would have caught the bug on its own, and it generalises — it is also
+     the natural oracle for "the TikZ figure and the SVG figure look the same", which nothing
+     currently tests.
 
 ---
 

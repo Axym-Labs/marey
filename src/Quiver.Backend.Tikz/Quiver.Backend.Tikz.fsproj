@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <Compile Include="TikzWriter.fs" />
+    <Compile Include="TikzBackend.fs" />
   </ItemGroup>
 
   <ItemGroup>
