@@ -9,7 +9,8 @@ math/physics visualization where the compiler checks your units.
 
 ## Status
 
-**M0 in progress.** The core is real, builds warning-free, and is verified at runtime.
+**M0 complete. M1 in progress** — see [`docs/m1-plan.md`](docs/m1-plan.md). The core is real,
+builds warning-free, and is verified at runtime.
 
 | Package | State |
 |---|---|
@@ -17,7 +18,7 @@ math/physics visualization where the compiler checks your units.
 | `Quiver.Units` | Complete — SI + 22 derived + 18 non-SI witnesses, `Dim`-keyed canonicalisation, prefix selection, Unicode/ASCII/LaTeX/siunitx rendering, self-labelling axes. |
 | `Quiver.Backend.Svg` | Complete — all nine IR nodes, batched markers, gradients, clipping, a11y semantics, deterministic byte-identical output. |
 | `Quiver.Plot` | Complete — Okabe–Ito / viridis / cividis / magma / Oklab-diverging palettes with a CVD + contrast validator, four resolved-value themes, a measure–arrange constraint grid, the axis and legend compilers, line/point/area/bar/errorbar geoms, and `Chart`. Zero dependencies, no backend reference. |
-| `Quiver.Tests` | Complete for M0 — **288 tests**, all green: FsCheck property suites for the `Dim` group laws, all seven scale kinds, tick properties, `Interp`, `Affine`, colour and the Scene IR; regression tests pinning every §12 landmine; 13 golden-image snapshots. |
+| `Quiver.Tests` | **310 tests**, all green: FsCheck property suites for the `Dim` group laws, all seven scale kinds, tick properties, `Interp`, `Affine`, colour and the Scene IR; regression tests pinning every §12 landmine and every numbered decision; 13 golden-image snapshots. |
 
 M0 is complete: `Quiver.Core` + SVG backend + linear/log scales + line/scatter/axes/legend
 + theme record.
@@ -46,9 +47,8 @@ Documents:
 - **`docs/decisions.md`** — the implementation decision log. Where the design document
   contradicts itself or under-specifies, what was decided, and why. Read this before
   changing anything structural.
-- **`spike/`** — an executable spike proving the load-bearing type-level claims. Not a
-  library; a record of what compiles and what doesn't. Superseded by `src/` but kept as
-  the original evidence.
+- **`docs/m1-plan.md`** — the M1 implementation plan: what M0 actually left, the decisions
+  taken up front, the phase order, and the verification gates.
 
 ```
 dotnet build          # whole solution, warning-free
@@ -72,30 +72,28 @@ Animation is `Anim<'a> = { Duration: float<s>; At: float<s> -> 'a }` — a pure 
 time rather than a mutating timeline. That buys seeking, deterministic frames, and
 embarrassingly parallel rendering, none of which Manim can structurally offer.
 
-## Running the spike
+## What the test suite verifies
 
-```
-cd spike
-dotnet run
-```
+Requires the .NET 10 SDK; built and tested against **F# 10 / .NET SDK 10.0.301** with zero
+compiler warnings (`TreatWarningsAsErrors` is on, specifically so FS0064 — §12.1's measure
+over-constraint — is a build failure rather than a warning nobody reads).
 
-Requires the .NET 10 SDK. Verified against **F# 10 / .NET SDK 10.0.110**, and it builds
-with zero compiler warnings (`TreatWarningsAsErrors` is on).
-
-It will print a walkthrough of each verified claim and write `scene.svg` — a real figure
-emitted from the `Scene` IR through a ~50-line zero-dependency reference backend.
-
-What it demonstrates:
+`dotnet test` is not a smoke screen; it is where the design's load-bearing claims are
+checked. §13: *"This is the part where an F# plotting library can be demonstrably more
+correct than its competitors, and it should be a stated selling point, not an afterthought."*
 
 | | |
 |---|---|
 | §2 | Compile-time measure algebra with a runtime witness; `J` and `N` canonicalised from the SI dimension vector, next to the naive string composition that gets it wrong |
-| §4 | Linear and log₁₀ scales, with the `inverse (forward x) = x` law checked |
-| §8 | `d/dx` of a spring potential `½kx²` returning **newtons, with the unit inferred rather than annotated** |
-| §2.3 | An `(m, m/s)` series and an `(s, J)` series in one list, both measures recovered inside a rank-2 consumer |
-| §7 | One generic `tween` over `float<m>`, `Vec2<px>` and `Color`; a storyboard seeked directly to t = 2.0 s; frames rendered in parallel |
-| §8.2 | A velocity-Verlet oscillator via checkpointed replay — x(π) = −1.0000 m, energy drift 7.4 × 10⁻⁸ over 10 s |
-| §5 | The `Scene` IR through the SVG reference backend |
+| §2.2 | Data over 1e-9…5e-9 m yields the axis title `x [nm]` and tick labels `1, 2, 3, 4, 5` |
+| §2.3 | An `(m, m/s)` series and an `(s, kg·m²/s²)` series in one list, both measures recovered inside a rank-2 consumer |
+| §4 | `inverse (forward x) = x`, monotonicity and endpoint mapping for all seven scale kinds; the three tick properties over 2000 random domains |
+| §5 | All nine IR cases through the SVG backend, with structural equality and scene diffing asserted both ways |
+| §5.1 | A 50 000-point scatter is **one** `Markers` node — 49 nodes for the whole figure against 50 024 primitives |
+| §8.1 | `d/dx` of a spring potential `½kx²` returning **newtons, with the unit inferred rather than annotated** |
+| §9 | `float<s>` against `float<m>` puts the literal strings `t [s]` and `x [m]` in the document with nothing configured |
+| §12 | Every landmine in §12 pinned, several as *compile-time* assertions — a binding whose type annotation is the claim |
+| §13 | 13 golden SVG snapshots, byte-identical and reviewable as text; layout invariants across four themes and four surface sizes |
 
 ## Four things that failed first
 

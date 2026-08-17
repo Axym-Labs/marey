@@ -11,13 +11,13 @@
 dotnet test
 ```
 
-**272 tests: 154 FsCheck properties and 118 examples, ~74 700 generated cases per run.**
+**310 tests: 155 FsCheck properties and 155 examples, ~74 700 generated cases per run.**
 
 Targets `net10.0`; the projects under test target `netstandard2.1`. Warnings are errors here
 too, inherited from `Directory.Build.props`.
 
-Scope is `Quiver.Core`, `Quiver.Units` and `Quiver.Backend.Svg`. `Quiver.Plot` is not referenced
-— see `PlotTests.fs`.
+Scope is all four shipped packages: `Quiver.Core`, `Quiver.Units`, `Quiver.Backend.Svg` and
+`Quiver.Plot`.
 
 ## Layout
 
@@ -33,10 +33,10 @@ Scope is `Quiver.Core`, `Quiver.Units` and `Quiver.Backend.Svg`. `Quiver.Plot` i
 | `GeometryProperties.fs` | `Rect` algebra, `mapRectBounds` under rotation, panel-subdivision invariants, text bounds. |
 | `ColorProperties.fs` | Oklab/Oklch round trips, `Color.mix`, `contrastRatio`, capability degradation. |
 | `SceneProperties.fs` | **D1** structural equality, `count`/`primitiveCount`, `prune`, and the nine-case guard. |
-| `RegressionTests.fs` | §12.3, §12.4, §12.5, §12.6, §12.1/D2 and D17, locked in. |
-| `Golden.fs` | Golden-file infrastructure: location, diff reporting, regeneration. |
+| `RegressionTests.fs` | §12.3, §12.4, §12.5, §12.6, §12.1/D2, D16, D17 and D32, locked in. |
+| `Golden.fs` | Golden-file infrastructure: location, diff reporting, regeneration. Format-agnostic — `check` compares text and derives its failure artefact from the baseline's extension. |
 | `GoldenTests.fs` | The snapshot scenes, the determinism suite, and the backend contract. |
-| `PlotTests.fs` | Empty on purpose — the named place for `Quiver.Plot` tests. |
+| `PlotTests.fs` | `Quiver.Plot`: self-labelling axes, layout invariants across four themes and four sizes, the 50 000-point batching claim, purity of the `with*` combinators, and palette validation. |
 
 ## Golden images
 
@@ -59,8 +59,8 @@ regenerated baseline that nobody looked at is worse than no baseline, because it
 regression into the repository.
 
 On a mismatch the suite writes the rendered document next to the baseline as
-`<name>.actual.svg` and fails with the first differing line plus three lines of context on each
-side:
+`<name>.actual.<ext>` — the extension mirrors the baseline's own, so a `.tex` failure opens in a
+TeX editor — and fails with the first differing line plus three lines of context on each side:
 
 ```
 Quiver golden mismatch: axis-composition.svg
@@ -79,8 +79,8 @@ First difference at line 14, column 23.
 (37 lines expected, 37 lines actual)
 ```
 
-`*.actual.svg` is git-ignored, so a failed run can never accidentally be committed as a
-baseline.
+`*.actual.svg` and `*.actual.tex` are git-ignored, so a failed run can never accidentally be
+committed as a baseline.
 
 ## Determinism
 
@@ -138,7 +138,12 @@ that fixing it is a deliberate, test-breaking act rather than a silent one. They
 | `TickProperties.MeasuredExceptions` (count) | §4's `[n/2, 2n]` tick-count bound is false at `n = 1` and `n = 3`. `Ticks.linear 3 (0.49, 921.3)` returns one tick; `Ticks.linear 1 (0.5, 8.0)` returns none. |
 | `TickProperties.MeasuredExceptions` (containment) | `Ticks.linear` can emit a tick **below the domain**. `first = ceil(lo/step - 1e-9) * step` compares an absolute epsilon against `lo/step`, so once `lo/step <= 1e-9` the `ceil` drops a grid line. `Ticks.linear 10 (1.0, 1e10)` puts a tick at 0. |
 | `TickProperties.InjectivityLimits` | §4's label injectivity fails once fixed-point formatting runs out of decimals — `Ticks.format` clamps at 15 places. A log axis spanning 36 decades yields 21 ticks all reading `0.000000000000000`; so does a dimensionless axis below 1e-15. `Ticks.formatScientific` exists and is never called. |
-| `RegressionTests.D16 ...` | `Axis.ofErasedWith` ignores the `ToSI`/`OffsetSI` that D16 added to `IScaleErased`, so a reloaded electronvolt axis is labelled `kJ` (wrong by 10¹⁹) and a reloaded Celsius axis `K`. The module comment on `Axis.fs` still describes this as a gap in `Quiver.Core`; it was closed by D16. |
+**Fixed at M1, and no longer in the table:** `Axis.ofErasedWith` used to ignore the
+`ToSI`/`OffsetSI` that D16 added to `IScaleErased`, labelling a reloaded electronvolt axis `kJ`
+(wrong by 10¹⁹) and a reloaded Celsius axis `K`. Both decisions now route through
+`Prefix.selectForErased` and `UnitDisplay.unitTextErased` — the same functions the measured path
+uses — and `RegressionTests.D16 ...` now asserts that the erased and measured labels *agree*,
+which is the property that makes §15's reloaded figure survivable.
 
 None of them is a weakened property. The properties they sit beside are stated in full, with the
 precondition under which they hold made explicit, and every precondition is a documented

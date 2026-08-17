@@ -845,6 +845,15 @@ differentiated. Build the boring differentiated thing first, then have the fun.
 
 ## 17. Companion file
 
+> **Status note (M1).** This section describes the design-time spike, which was never checked
+> into this repository — there is no `quiver-verified-core.fs` and no `spike/` directory in the
+> tree, and there never has been. The section is kept as written because it is the record of what
+> was verified before any of `src/` existed. Every claim in the list below is now asserted by
+> `tests/Quiver.Tests` against the real packages instead; §7 and §8.2 (animation, simulation)
+> are the exceptions, since `Quiver.Anim` and `Quiver.Sim` are M3 and M5 work and do not yet
+> exist. The SDK version below is the one the spike was written against; the tree currently
+> builds on 10.0.301.
+
 `quiver-verified-core.fs` is the executable version of §2–§8. Drop it into a
 `dotnet new console -lang F#` project and `dotnet run`. It compiles **warning-free** on
 F# 10 / .NET SDK 10.0.110 and, on execution:
