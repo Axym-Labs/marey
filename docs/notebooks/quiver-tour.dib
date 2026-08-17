@@ -1,0 +1,230 @@
+#!markdown
+
+# Quiver — a tour in a notebook
+
+A plotting library where **the units are part of the type**. `t [s]` and `x [m]` on the axes below
+were not typed by anyone; they were derived from the unit witnesses the data was tagged with, and
+the compiler would have rejected the figure if the two series disagreed about what a metre is.
+
+Everything in this notebook runs against the packages as published. Nothing is configured.
+
+> **A note on the format.** This is a `.dib`, not an `.ipynb`: plain text, one cell per `#!`
+> directive, no embedded output, and therefore reviewable in a pull request the same way the
+> golden masters are. VS Code and `dotnet repl` open it directly. GitHub will not render it — the
+> trade that buys a diff you can read.
+
+#!fsharp
+
+#r "nuget: Quiver.Core"
+#r "nuget: Quiver.Units"
+#r "nuget: Quiver.Backend.Svg"
+#r "nuget: Quiver.Plot"
+#r "nuget: Quiver.Interactive"
+
+open Quiver
+
+#!markdown
+
+That is the whole setup. `Quiver.Interactive` ships an `extension.dib` the kernel runs on load, so
+the formatters are already registered — `Quiver.Formatters.register ()` is available for a kernel
+that does not run package extensions, and is not needed here.
+
+## The headline
+
+Free fall. The `x` array is `float<m>` because `0.5 * 9.81<m/s^2> * t * t` is, and the axis label
+follows from that and from nothing else.
+
+#!fsharp
+
+let t = Array.init 24 (fun i -> float i * 0.4<s>)
+let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
+
+Chart.line U.second U.metre t x
+|> Chart.withName "model"
+|> Chart.withTitle "Free fall"
+|> Chart.withSubtitle "displacement against elapsed time"
+|> Chart.withLegend LegendTopLeft
+|> Chart.withGrid true true
+
+#!markdown
+
+No `.Show()`, no `display`, no save-then-open. The cell's value *is* a `Figure`, and a `Figure`
+knows how to be an SVG.
+
+Add a measured series to the same panel and the legend, the domain union and the colour cycle all
+follow:
+
+#!fsharp
+
+let measured = t.[..5] |> Array.map (fun t -> 0.5 * 9.6<m/s^2> * t * t)
+
+Chart.line U.second U.metre t x
+|> Chart.withName "model"
+|> Chart.addScatter U.second U.metre t.[..5] measured
+|> Chart.withName "measured"
+|> Chart.withTitle "Free fall"
+|> Chart.withLegend LegendTopLeft
+|> Chart.withGrid true true
+
+#!markdown
+
+## What the type system is actually doing
+
+Try to put displacement and temperature on the same axis. Both are `float`s at runtime; only one of
+them is a length.
+
+The formatter does not throw — a display formatter that throws replaces a good message with a
+kernel error — so the reason is rendered where the figure would have been:
+
+#!fsharp
+
+let temperature = t |> Array.map (fun t -> 293.0<K> + 0.5<K/s> * t)
+
+Chart.line U.second U.metre t x
+|> Chart.withName "displacement"
+|> Chart.addLine U.second U.kelvin t temperature
+|> Chart.withName "temperature"
+
+#!markdown
+
+Note *which* error that is. It is not "cannot convert K to m" — the arrays are separately
+well-typed. It is the one dimensional mistake a compiler cannot catch, caught at figure-compile
+time with both layers named.
+
+## The same figure, as TeX
+
+`Theme.tikz` swaps the emitter's target and the unit spelling together: axis labels become
+`siunitx` commands, so the units are typeset by the same package that typesets the rest of the
+paper, in the document's own fonts.
+
+#!fsharp
+
+#r "nuget: Quiver.Backend.Tikz"
+
+let figure =
+    Chart.line U.second U.metre t x
+    |> Chart.withName "model"
+    |> Chart.withTitle "Free fall"
+    |> Chart.withTheme Theme.tikz
+
+Chart.render TikzBackend.render (Chart.size 320.0 200.0) figure
+|> fun tex -> tex.Split('\n') |> Array.filter (fun l -> l.Contains "qty") |> String.concat "\n"
+
+#!markdown
+
+`\qty{}{\second}` and `\qty{}{\metre}`, from the unit witnesses, with nothing configured but the
+theme. Paste the full output into a LaTeX document between `\begin{document}` and `\end{document}`
+and it compiles.
+
+## The colour system
+
+§9 of the design asks for "a validator that checks contrast and CVD-safety, because a physics
+library that renders fields in jet is embarrassing". Colours, ramps and palettes all display, so
+the validator's answer is readable rather than a record to squint at.
+
+#!fsharp
+
+Palette.okabeIto
+
+#!fsharp
+
+Palette.validate Color.white Palette.okabeIto
+
+#!markdown
+
+Four vision models, the worst one in bold, and the two entries that were closest under it.
+
+**It says `FAILS`, and that is the honest answer.** Okabe–Ito stays distinguishable under all three
+dichromacies — every separation clears the floor — but two of its eight colours are very light, and
+against a *white* background its yellow lands at 1.32:1, far below WCAG's 3:1 for graphical objects.
+Quiver does not "fix" the palette, because a corrected Okabe–Ito is not Okabe–Ito. It reorders:
+`Palette.series` demotes the yellow to index 6 and the black to index 7, so you would need seven
+series before you met one, and the dark theme swaps the black for white outright.
+
+That reordering is what makes a *theme* pass where the raw set does not:
+
+#!fsharp
+
+Palette.validate Theme.dark.PanelBackground Palette.seriesDark
+
+#!markdown
+
+`Ok`, weakest contrast 3.15:1 — the same eight hues with the black swapped out, on the background
+they are actually drawn on. The validator's job is to tell you which of those two situations you
+are in rather than to reassure you, and the test suite pins both.
+
+The sequential ramps are perceptually ordered in Oklab, and the bars below are resampled *through*
+Oklab rather than handed to the browser as stops — a CSS gradient interpolates in sRGB, which is
+precisely the artefact these ramps exist to avoid.
+
+#!fsharp
+
+Palette.viridis
+
+#!fsharp
+
+Palette.diverging
+
+#!markdown
+
+Blue to yellow is where the difference is visible without measuring: the perceptual path goes
+through a green, the sRGB one through a dead grey.
+
+#!fsharp
+
+Ramp.ofColors "blue-yellow" [| Palette.blue; Palette.yellow |]
+
+#!markdown
+
+## Below the front door
+
+The three types the rest of the library is built out of also display, which is how you inspect a
+figure that is not doing what you expected.
+
+A physical dimension, in Core's fallback spelling and in the SI unit `Quiver.Units` derives from it:
+
+#!fsharp
+
+Dim.sub Dim.length (Dim.pow 2 Dim.time)
+
+#!markdown
+
+A unit witness — the runtime value that carries a measure's meaning. Degrees Celsius is the
+interesting one: affine, so its conversion to SI is not a factor alone.
+
+#!fsharp
+
+NonSi.degreeCelsius
+
+#!markdown
+
+An erased scale: the axis exactly as a backend sees it, after the measure is gone and a `Dim` has
+taken its place.
+
+#!fsharp
+
+Erase.scale (Scale.log10 U.metre (1.0<m>, 1000.0<m>))
+
+#!markdown
+
+And the IR itself. Nine cases, and a census so you can tell how much of it there is:
+
+#!fsharp
+
+Chart.toScene (Chart.size 480.0 300.0) figure
+
+#!markdown
+
+## Sizing
+
+Figures compile at 720×450 in a notebook — narrower than `Chart.defaultSize`, because a cell is
+narrower than 800 pixels. Change it for one cell, or for the session:
+
+#!fsharp
+
+Html.figureAt (Chart.size 1000.0 380.0) figure
+
+#!fsharp
+
+Formatters.registerWith (Chart.size 560.0 350.0)
+figure

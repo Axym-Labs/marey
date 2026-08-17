@@ -19,7 +19,8 @@ builds warning-free, and is verified at runtime.
 | `Quiver.Backend.Svg` | Complete — all nine IR nodes, batched markers, gradients, clipping, a11y semantics, deterministic byte-identical output. |
 | `Quiver.Plot` | Complete — Okabe–Ito / viridis / cividis / magma / Oklab-diverging palettes with a CVD + contrast validator, four resolved-value themes, a measure–arrange constraint grid, the axis and legend compilers, line/point/area/bar/errorbar geoms, and `Chart`. Zero dependencies, no backend reference. |
 | `Quiver.Backend.Tikz` | Complete — all nine IR nodes into `tikzpicture` source, `bp` coordinates, batched marker macros, capability degradation, siunitx axis titles, and figures that inherit the host document's font. |
-| `Quiver.Tests` | **453 tests**, all green: FsCheck property suites for the `Dim` group laws, all seven scale kinds, tick properties, `Interp`, `Affine`, colour and the Scene IR; regression tests pinning every §12 landmine and every numbered decision; 29 golden baselines in SVG *and* `tikzpicture` source; a real `pdflatex` compile gate; and an ink gate that rasterises the compiled figure and checks there is something in it. |
+| `Quiver.Interactive` | Complete — `#r "nuget: Quiver.Interactive"` and a `Figure` displays inline as SVG in a .NET Interactive notebook. Nine types render: figures, scenes with a node census, colours as swatches that do not lie about alpha, ramps resampled through Oklab, palettes, the CVD/contrast report, dimensions, unit witnesses and erased scales. Compiles against .NET Interactive and deliberately does not ship it. |
+| `Quiver.Tests` | **478 tests**, all green: FsCheck property suites for the `Dim` group laws, all seven scale kinds, tick properties, `Interp`, `Affine`, colour and the Scene IR; regression tests pinning every §12 landmine and every numbered decision; 29 golden baselines in SVG *and* `tikzpicture` source; a real `pdflatex` compile gate; an ink gate that rasterises the compiled figure and checks there is something in it; and an XML well-formedness pass over every notebook fragment. |
 
 M0 is complete: `Quiver.Core` + SVG backend + linear/log scales + line/scatter/axes/legend
 + theme record.
@@ -39,6 +40,25 @@ That prints an x axis reading `t [s]` and a y axis reading `x [m]` with nothing
 configured — the scale, the domain, the prefix, the tick values, the tick labels and both
 titles are all derived from the two unit witnesses. The same call on data spanning
 1e-9…5e-9 m prints `x [nm]` with ticks `1, 2, 3, 4, 5`.
+
+Swap the theme and the same figure becomes TeX whose axis titles are typeset by `siunitx`, in the
+host document's own fonts:
+
+```fsharp
+Chart.line U.second U.metre ts positions
+|> Chart.withTheme Theme.tikz
+|> Chart.toFile TikzBackend.render "fall.tex" (Chart.size 320.0 200.0)
+```
+
+```tex
+\node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (133.59bp,15.825bp) {t [\qty{}{\second}]};
+\node[anchor=base,text=qcB,rotate=90,font=\fontsize{9}{10.8}\selectfont] at (15.825bp,69.075bp) {x [\qty{}{\metre}]};
+```
+
+Or drop the same value into a notebook cell and look at it. `#r "nuget: Quiver.Interactive"` is
+the whole setup — no `.Show()`, no save-then-open, no display call: the cell's value *is* a
+`Figure`, and a `Figure` knows how to be an SVG.
+[`docs/notebooks/quiver-tour.dib`](docs/notebooks/quiver-tour.dib) is the tour.
 
 Documents:
 

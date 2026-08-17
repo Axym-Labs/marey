@@ -42,12 +42,23 @@ let updateRequested =
         let v = v.Trim()
         v <> "" && v <> "0" && not (String.Equals(v, "false", StringComparison.OrdinalIgnoreCase))
 
-/// The `golden` directory in the source tree.
+/// The `Quiver.Tests` project directory in the source tree.
 ///
 /// Walking up for the project file rather than using `__SOURCE_DIRECTORY__` keeps the path out
 /// of the compiled assembly: a baked-in absolute path is a machine-specific path, and it is
 /// wrong the moment the assembly is built on one machine and run on another.
-let goldenDir =
+///
+/// A named value rather than the body of `goldenDir` because `InteractiveTests` is the second
+/// consumer — it checks two files that ship in the source tree and are not golden masters — and
+/// F2's rule is to promote on the second consumer rather than to copy.
+///
+/// Falls back to the directory the binary sits in, where the baselines are copied by the build.
+/// That keeps a *checking* run working when the test assembly has been moved away from its source
+/// tree. It does not make an *update* run in that situation safe — `QUIVER_UPDATE_GOLDEN=1` would
+/// write into the build output, where nobody reviews it and the next build overwrites it. The
+/// earlier version of this comment claimed the case was "refused below"; nothing refuses it, and
+/// the honest statement is that an update run belongs in a checkout.
+let projectDir =
     lazy
         (let rec findUp (dir: DirectoryInfo) =
             if isNull (box dir) then
@@ -57,15 +68,18 @@ let goldenDir =
             else
                 findUp dir.Parent
 
-         let root =
-             match findUp (DirectoryInfo AppContext.BaseDirectory) with
-             | Some d -> d
-             // Fallback: the copy that travels with the binary. Check-only; an update run
-             // without the source tree present would write somewhere nobody reviews, so that
-             // case is refused below rather than silently accepted.
-             | None -> AppContext.BaseDirectory
+         match findUp (DirectoryInfo AppContext.BaseDirectory) with
+         | Some d -> d
+         | None -> AppContext.BaseDirectory)
 
-         let dir = Path.Combine(root, "golden")
+/// The repository root — `projectDir` is `tests/Quiver.Tests`, so it is two levels up.
+let repoRoot =
+    lazy (Path.GetFullPath(Path.Combine(projectDir.Force(), "..", "..")))
+
+/// The `golden` directory in the source tree.
+let goldenDir =
+    lazy
+        (let dir = Path.Combine(projectDir.Force(), "golden")
          Directory.CreateDirectory dir |> ignore
          dir)
 

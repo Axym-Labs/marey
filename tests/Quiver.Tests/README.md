@@ -11,7 +11,7 @@
 dotnet test
 ```
 
-**453 tests: 155 FsCheck properties and 298 examples, ~74 700 generated cases per run.**
+**478 tests: 155 FsCheck properties and 323 examples, ~74 700 generated cases per run.**
 
 Around six seconds of that is `pdflatex`. The TikZ backend has no in-process oracle — the only
 authority on whether a `.tex` file is valid is a TeX engine, and the only authority on whether a
@@ -21,8 +21,15 @@ figure has anything *in* it is a rasteriser — so the suite runs both. Both deg
 Targets `net10.0`; the projects under test target `netstandard2.1`. Warnings are errors here
 too, inherited from `Directory.Build.props`.
 
-Scope is all five shipped packages: `Quiver.Core`, `Quiver.Units`, `Quiver.Backend.Svg`,
-`Quiver.Backend.Tikz` and `Quiver.Plot`.
+Scope is all six shipped packages: `Quiver.Core`, `Quiver.Units`, `Quiver.Backend.Svg`,
+`Quiver.Backend.Tikz`, `Quiver.Plot` and `Quiver.Interactive`.
+
+The one package reference that is not a test tool is `Microsoft.DotNet.Interactive.Formatting`.
+`Quiver.Interactive` compiles against it and deliberately does not ship it, so the reference does
+not flow to consumers — and a test host is a consumer. It is declared here so the registration
+half can be exercised for real: `Formatter.ToDisplayString` is the only thing that can prove a
+formatter was registered under the mime type we think it was. The `dotnet-interactive` *tool* is
+not needed and is not installed.
 
 ## Layout
 
@@ -48,6 +55,7 @@ Scope is all five shipped packages: `Quiver.Core`, `Quiver.Units`, `Quiver.Backe
 | `GoldenTests.fs` | The snapshot scenes, the determinism suite, and the backend contract. |
 | `TikzGoldenTests.fs` | The same scenes through the TikZ backend, plus the figure baselines both backends share. |
 | `PlotTests.fs` | `Quiver.Plot`: self-labelling axes, layout invariants across four themes and four sizes, the 50 000-point batching claim, purity of the `with*` combinators, and palette validation. |
+| `InteractiveTests.fs` | The notebook integration: every HTML fragment parsed as XML, escaping, culture invariance, the no-`<style>`/no-pinned-colour rules, and — through the real Formatting package — that all nine registrations resolve. |
 
 ## Golden images
 

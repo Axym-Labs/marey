@@ -7,7 +7,7 @@ Roadmap reference: `docs/design.md` §14, milestone **M1**. Decision-log referen
 > `.NET Interactive` formatter, TikZ backend. **This is the release that has no competitor.**
 > Unit-safe plots that drop into a LaTeX document. Announce here."*
 
-Status: **Phases 0–4 complete** (see §3). Decisions numbered D28+ are *proposed* entries for
+Status: **Phases 0–5 complete** (see §3). Decisions numbered D28+ are *proposed* entries for
 `docs/decisions.md`; they move into that file as they are implemented and verified, not before.
 D36 and D38 were not planned — the compile gate found one and reading a golden baseline found the
 other, and both are recorded below.
@@ -19,7 +19,8 @@ other, and both are recorded below.
 | 2 — `TikzBackend.fs` traversal | **done**, 348 → 402 tests |
 | 3 — `Theme.tikz` and siunitx wiring | **done**, 402 → 413 tests |
 | 4 — Verification | **done**, 413 → 453 tests, 16 new baselines |
-| 5–6 | not started |
+| 5 — `Quiver.Interactive` | **done**, 453 → 478 tests, sixth package |
+| 6 — Announce-readiness | not started; **the LICENSE choice needs the maintainer** |
 
 A real figure now goes end to end: `Chart.line U.second U.metre ts xs |> Chart.withUnitStyle
 Siunitx |> Chart.render TikzBackend.render` produces a `tikzpicture` that compiles under
@@ -409,6 +410,41 @@ asserted from memory.
 An `\usepackage[T1]{fontenc}` in the host document also fixes the three, and a figure cannot
 require anything of the document it is dropped into. Escaping is the only fix available to us.
 
+### D39. The notebook package compiles against .NET Interactive and does not ship it
+
+**Design says** nothing; §6 asks only for "a ~200-line package registering a .NET Interactive
+formatter". The plan for Phase 5 said `net10.0` with an ordinary `PackageReference`.
+
+**Built:** `netstandard2.1`, and `PackageReference … PrivateAssets="all"` — compiled against,
+absent from the produced nuspec, not copied into `lib`. The kernel's own copy satisfies it at
+runtime.
+
+**Why**, in the order the reasons were discovered rather than the order they matter:
+
+1. **`dotnet pack` would fail.** .NET Interactive has never shipped a stable version — only
+   `1.0.0-beta.*`. A stable package with a prerelease dependency earns NU5104, and this repo builds
+   with `TreatWarningsAsErrors`. Suppressing it would be treating the symptom, and Phase 6 would
+   have hit the wall instead.
+2. **The TFM is not ours to choose.** This assembly is loaded into someone else's process. A
+   `net10.0` build cannot be loaded by a kernel on net8.0 or net9.0. netstandard2.1 loads on every
+   kernel from .NET Core 3.0 forward — and the Formatting package itself is netstandard2.0, so
+   the plan's stated reason for `net10.0` was not true either.
+3. **Two copies of a static registry is the classic notebook failure.** If the package ships its own
+   Formatting assembly and the kernel has already loaded a different build, `Formatter.Register`
+   writes into one registry and the kernel reads from the other. Nothing displays and nothing
+   errors. Safe to avoid this way because every build of that package carries `AssemblyVersion
+   1.0.0.0` — checked against the assembly, not assumed.
+
+**The cost, stated rather than hidden:** `Formatters.register()` raises `FileNotFoundException` in a
+process with no kernel. `Html.*` does not, because nothing in it touches a Formatting type and the
+CLR loads an assembly on first *use* of a member that needs it. Both halves of that were verified by
+running the tour notebook's cells under `dotnet fsi`, where sixteen of seventeen succeeded and the
+one that failed was the `registerWith` call — the documented behaviour, reproduced exactly.
+
+**What this shape buys beyond packaging:** `Html.fs` has no notebook dependency at all, so the
+interesting half is testable, usable from an ordinary program, and reviewable without knowing
+anything about kernels. The kernel-aware half is nine lines.
+
 ---
 
 ## 3. Phase plan
@@ -522,21 +558,67 @@ What it found:
 §6: *"a ~200-line package registering a .NET Interactive formatter so `figure` displays inline
 as SVG. Do it at M1; it is how people will first meet the library."*
 
-- New project targeting `net10.0` — **not** `netstandard2.1`. It is a notebook host integration,
-  never a Fable target, and `Microsoft.DotNet.Interactive.Formatting` requires a modern TFM.
-  It sits at the top of the DAG and may reference Core, Units, Svg and Plot, which does not
-  violate D21 (that rule constrains `Quiver.Plot`, not a leaf integration package).
-- `Formatters.register()` registering `text/html` formatters for `Figure` (compiled at a default
-  size and inlined as SVG), `Node`, and — cheaply and delightfully — `Color` as a swatch,
-  `Ramp`/`Palette` as a swatch strip, `Dim`, `U<'u>`, and `IScaleErased`.
-- Auto-registration via an `interactive-extensions/dotnet/extension.dib` in the package, so
-  `#r "nuget: Quiver.Interactive"` is sufficient; `register()` stays public for the explicit
-  path.
-- **Testable without the `dotnet-interactive` tool** (which is not installed here): the
-  formatter bodies are plain functions returning strings, so they are asserted directly. A
-  demonstration notebook under `docs/notebooks/` covers the integration by hand.
+**Done.** 478 tests. `src/Quiver.Interactive/` is `Html.fs` (pure `something -> string`, no
+reference to .NET Interactive) plus `Formatters.fs` (nine registrations), an `extension.dib` inside
+the package, and `docs/notebooks/quiver-tour.dib`. Nine types display: `Figure`, `Node`, `Color`,
+`Ramp`, `Color[]`, `PaletteReport`, `Dim`, `U<'u>` and `IScaleErased`.
 
-**Exit:** formatter unit tests green; a notebook that renders a figure inline.
+Four things in the plan above were wrong, and are corrected in place rather than quietly:
+
+- **The TFM.** `net10.0` was chosen on the grounds that `Microsoft.DotNet.Interactive.Formatting`
+  "requires a modern TFM". It ships `lib/netstandard2.0` and nothing else. Worse, the reasoning had
+  the dependency backwards: this assembly is loaded *into someone else's process*, and a `net10.0`
+  assembly cannot be loaded by a `dotnet-interactive` running on net8.0 or net9.0 — which is
+  whatever the reader installed last year. It targets **netstandard2.1**, like everything else.
+- **The dependency is compiled against and not shipped** (`PrivateAssets="all"`). .NET Interactive
+  has never published a stable version, so declaring the dependency earns NU5104 — and with
+  `TreatWarningsAsErrors` that makes `dotnet pack` *fail*, which Phase 6 would have discovered the
+  hard way. Not shipping it also avoids the classic notebook failure where `Formatter.Register`
+  writes into a different assembly's static registry than the kernel reads from. Safe because every
+  build of that package carries `AssemblyVersion 1.0.0.0`, checked against the assembly.
+  The stated cost: `Formatters.register()` throws `FileNotFoundException` with no kernel present.
+  `Html.*` does not — verified by running all seventeen notebook cells under `dotnet fsi`, where
+  every one succeeded and only the final `registerWith` call raised.
+- **The test scope.** The plan concluded from `dotnet-interactive` being uninstalled that only the
+  string functions could be tested. The *tool* and the *library* are separable: the test project
+  references the Formatting package directly, so `Formatter.ToDisplayString` proves each of the nine
+  registrations really is reachable under `text/html`. That is where the bugs would have been.
+- **`Palette` is not a type.** There is only the module, so the registration is for `Color[]` —
+  which means `theme.Categorical` displays as a strip too, at no extra cost.
+
+What it found:
+
+- **`SetPreferredMimeTypesFor` does nothing, and the test that "verified" it was theatre.** The
+  comment justifying the call claimed a registration without a stated preference "silently falls
+  back to a reflection dump". Measured: `Formatter.GetPreferredMimeTypesFor` answers `["text/html"]`
+  for *every* type — `int` included — before any registration, and keeps answering that after
+  `DefaultMimeType` is set to `text/plain`. The first test asserted the preference *was* `text/html`
+  and therefore **passed with the call deleted** — the same failure mode gate 1 caught in itself in
+  Phase 1, found the same way: by breaking the thing and seeing nothing fail. The call stays as a
+  statement of intent; the comment now says what was measured, and the test was rewritten to check
+  the composition a notebook cell actually performs.
+- **A negative hue angle.** `Color.toOklch` builds its hue from `atan2`, so it lands in
+  (−180°, 180°] and the swatch for `Palette.blue` read `oklch(0.532 0.131 -115.95°)`. Correct and
+  useless: nobody publishes hues that way, and the library's own vocabulary is 0–360 —
+  `Palette.divergingBetween` is called with 250° and 27°. Normalised in `Html`, not in
+  `Color.toOklch`, because it is a presentation choice and Core's consumer of that angle is
+  `ofOklch`, which is periodic and does not care. **Found by rendering the fragments and looking at
+  them**, exactly as D38 was.
+- **A stale claim in `Golden.fs`.** Extracting `projectDir` for reuse surfaced a comment asserting
+  that an update run without a source tree present is "refused below". Nothing refuses it. Corrected.
+
+Two rules the fragments follow, both learned from how this goes wrong elsewhere: **no `<style>`
+element** (it is not scoped to the output cell, so it restyles the reader's whole notebook and
+stacks up once per execution) and **no pinned `color` or `background`** outside the swatches, since
+a notebook is light or dark and offers no way to ask which. Both are asserted, over every fragment.
+
+**Exit:** met, with one honest gap. Formatter tests are green — 25 of them, including a
+`XDocument.Parse` well-formedness pass over every fragment, the same oracle the SVG golden suite
+uses. The notebook cannot be *run* here: no kernel. Instead all seventeen of its F# cells were
+extracted and evaluated against the built assemblies, and the fragments were rendered in headless
+Edge against both a light and a dark background and inspected. What remains unverified is the last
+mile — that a live kernel calls the formatter — which is one line of `extension.dib` and is the
+reason that line is pinned by reflection rather than trusted.
 
 ### Phase 6 — Announce-readiness
 
