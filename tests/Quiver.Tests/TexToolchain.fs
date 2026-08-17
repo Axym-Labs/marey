@@ -28,33 +28,40 @@ open System.Text
 [<Literal>]
 let Engine = "pdflatex"
 
+/// Full path to an executable found on `PATH`, or `None`.
+///
+/// Hand-rolled rather than shelled out to `where`/`which`, because those are themselves external
+/// tools whose absence would be reported as the absence of the thing being looked for.
+/// `Raster.fs` is the second consumer, which is why this is a named function rather than the body
+/// of `enginePath`.
+let onPath (name: string) : string option =
+    let exe =
+        if Environment.OSVersion.Platform = PlatformID.Win32NT then
+            name + ".exe"
+        else
+            name
+
+    let dirs =
+        (Environment.GetEnvironmentVariable "PATH" |> Option.ofObj |> Option.defaultValue "")
+            .Split(Path.PathSeparator)
+
+    dirs
+    |> Array.tryPick (fun d ->
+        if String.IsNullOrWhiteSpace d then
+            None
+        else
+            let candidate =
+                try
+                    Some(Path.Combine(d.Trim(), exe))
+                with _ ->
+                    None
+
+            match candidate with
+            | Some p when File.Exists p -> Some p
+            | _ -> None)
+
 /// Full path to the engine, or `None` when it is not installed.
-let enginePath: Lazy<string option> =
-    lazy
-        (let exe =
-            if Environment.OSVersion.Platform = PlatformID.Win32NT then
-                Engine + ".exe"
-            else
-                Engine
-
-         let dirs =
-             (Environment.GetEnvironmentVariable "PATH" |> Option.ofObj |> Option.defaultValue "")
-                 .Split(Path.PathSeparator)
-
-         dirs
-         |> Array.tryPick (fun d ->
-             if String.IsNullOrWhiteSpace d then
-                 None
-             else
-                 let candidate =
-                     try
-                         Some(Path.Combine(d.Trim(), exe))
-                     with _ ->
-                         None
-
-                 match candidate with
-                 | Some p when File.Exists p -> Some p
-                 | _ -> None))
+let enginePath: Lazy<string option> = lazy onPath Engine
 
 let available = lazy (enginePath.Force() |> Option.isSome)
 
@@ -66,6 +73,19 @@ type CompileResult =
     | Compiled
     /// The engine reported errors. Carries the error lines from the log.
     | Failed of string
+
+/// The result of compiling a document *and then looking at the PDF it produced*.
+///
+/// Separate from `CompileResult` because the interesting failure mode is different: the engine
+/// can succeed while the inspection fails (no PDF written, no rasteriser installed, a raster that
+/// cannot be parsed), and a caller wants to tell those apart from broken TeX.
+type PdfResult<'a> =
+    /// The engine — or something the inspection needed — is not installed.
+    | PdfUnavailable of string
+    /// The document compiled and the inspection succeeded.
+    | PdfProduced of 'a
+    /// The engine rejected the document, or the inspection of its output failed.
+    | PdfFailed of string
 
 /// The preamble a Quiver TikZ picture needs.
 ///
@@ -105,13 +125,23 @@ let private errorLines (log: string) =
     |> Array.map (fun l -> l.TrimEnd '\r')
     |> Array.filter (fun l -> l.StartsWith("! ", StringComparison.Ordinal))
 
-/// Compile a complete LaTeX document and report whether the engine accepted it.
+/// Compile a complete LaTeX document, then hand the resulting PDF to `inspect`.
 ///
 /// Runs in a fresh temporary directory so concurrent tests cannot collide over `.aux` files, and
 /// deletes it afterwards. UTF-8 without a BOM, because that is what the backend writes.
-let compile (name: string) (document: string) : CompileResult =
+///
+/// `inspect` receives the **path** of the PDF, not its bytes, and runs before the directory is
+/// removed — so a caller that wants to hand the file to an external tool (the ink gate hands it
+/// to `pdftoppm`) does not have to write it out a second time. It returns a `Result` so a failure
+/// inside the inspection is reported as a failure of the whole pipeline rather than thrown through
+/// the `finally` that cleans up.
+///
+/// This is the only implementation of the engine plumbing; `compile` is a projection of it. One
+/// implementation rather than two means the ink gate and the compile gate can never disagree
+/// about which flags the engine was given or how its failure was detected.
+let compileWith (name: string) (document: string) (inspect: string -> Result<'a, string>) : PdfResult<'a> =
     match enginePath.Force() with
-    | None -> Unavailable
+    | None -> PdfUnavailable(Engine + " not found on PATH")
     | Some exe ->
         let dir =
             Path.Combine(Path.GetTempPath(), "quiver-tex-" + Guid.NewGuid().ToString("N").Substring(0, 12))
@@ -151,7 +181,7 @@ let compile (name: string) (document: string) : CompileResult =
                 with _ ->
                     ()
 
-                Failed "the engine did not terminate within 120 s"
+                PdfFailed "the engine did not terminate within 120 s"
             else
                 // The log file is more complete than stdout when the engine is chatty.
                 let logFile = Path.Combine(dir, stem + ".log")
@@ -169,14 +199,32 @@ let compile (name: string) (document: string) : CompileResult =
                 // the first time. The log gives a useful message; the exit code cannot be missed
                 // by a pattern that stops matching after a flag change or an engine update.
                 match errorLines log, p.ExitCode with
-                | [||], 0 -> Compiled
-                | [||], code -> Failed(sprintf "%s exited with code %d but reported no '!' error line" Engine code)
-                | errs, _ -> Failed(String.Join("\n", errs))
+                | [||], 0 ->
+                    let pdf = Path.Combine(dir, stem + ".pdf")
+
+                    if not (File.Exists pdf) then
+                        PdfFailed(sprintf "%s reported no errors but wrote no PDF" Engine)
+                    else
+                        match inspect pdf with
+                        | Ok value -> PdfProduced value
+                        | Error why -> PdfFailed why
+                | [||], code -> PdfFailed(sprintf "%s exited with code %d but reported no '!' error line" Engine code)
+                | errs, _ -> PdfFailed(String.Join("\n", errs))
         finally
             try
                 Directory.Delete(dir, true)
             with _ ->
                 ()
+
+/// Compile a complete LaTeX document and report whether the engine accepted it.
+///
+/// A projection of `compileWith` that discards the PDF. Written this way round so there is exactly
+/// one place that knows how to run the engine.
+let compile (name: string) (document: string) : CompileResult =
+    match compileWith name document (fun _ -> Ok()) with
+    | PdfUnavailable _ -> Unavailable
+    | PdfProduced() -> Compiled
+    | PdfFailed why -> Failed why
 
 /// Assert that TeX accepts a document, reporting the engine's own errors on failure.
 ///

@@ -17,7 +17,7 @@ before. D36 was not planned — it was found by the compile gate and is recorded
 | 1 — `TikzWriter.fs` primitives | **done**, 310 → 348 tests |
 | 2 — `TikzBackend.fs` traversal | **done**, 348 → 402 tests |
 | 3 — `Theme.tikz` and siunitx wiring | **done**, 402 → 413 tests |
-| 4 — Verification (goldens, ink gate) | next |
+| 4 — Verification | ink gate **done**, 413 → 423 tests; goldens next |
 | 5–6 | not started |
 
 A real figure now goes end to end: `Chart.line U.second U.metre ts xs |> Chart.withUnitStyle
@@ -566,11 +566,45 @@ Written in the register the project already uses: each gate is a claim that can 
    - *Cheap, done:* an invariant test asserting that a batch which asks for paint produces a macro
      containing a paint action, over every shape × paint combination. It encodes the specific
      finding rather than the general class.
-   - *To schedule in Phase 4:* rasterise the compiled PDF (`pdftoppm`, already present alongside
-     the TeX install) and assert non-background ink coverage within the panel. That is the only
-     check in this list that would have caught the bug on its own, and it generalises — it is also
-     the natural oracle for "the TikZ figure and the SVG figure look the same", which nothing
-     currently tests.
+   - *Built in Phase 4 as `Raster.fs` + `TikzInkTests.fs`:* compile the document, rasterise the PDF
+     with `pdftoppm -gray`, count pixels. Ten tests, ~6 s.
+
+   **What the ink gate is, precisely.** Not a golden-image suite: no bitmap is committed, because a
+   bitmap is not reviewable in a pull request (§13) and would churn on every Poppler or font-metric
+   update. It answers only *"is there ink, and is it where it belongs"*, and it answers it with
+   **differentials** wherever possible — "deleting the markers from this figure empties its panel"
+   needs no magic constant and cannot be satisfied by accident. Where an absolute threshold is
+   unavoidable it is zero.
+
+   Three things fell out that were not anticipated:
+
+   - **96 dpi is a free coordinate correspondence.** `TikzBackend` maps `px` to points at 96 px/inch
+     and `standalone` crops to the declared bounding box, so the page is exactly `extent × 72/96`
+     pt — and rasterising *that* at 96 dpi returns exactly the requested extent in pixels. A
+     400×250 figure produces a 400×250 bitmap whose grid **is** the SVG backend's coordinate space,
+     y downward. Regions can be written in layout's own numbers, and an SVG rasteriser would be
+     directly comparable with no resampling.
+   - **Orientation is reachable here and nowhere else.** Gate 2 states that a TikZ y equals the SVG
+     y measured from the opposite edge — which is satisfied just as well by two backends that are
+     *both* upside down. A raster is not: `x = ½gt²` increases, so on a correct page the curve
+     leaves the panel's lower-left corner and never enters its upper-left one. Measured: 2.157 % and
+     **0.000 %**.
+   - **A failure has to print the picture.** "Expected ink, found none" cannot distinguish a blank
+     page from a figure drawn off the edge, so `Raster.describe` renders the bitmap as ASCII into the
+     assertion message — the same instinct as `Golden.describeDifference`. It earned that on its
+     first run: two tests failed, and the map showed a legend box sitting inside the panel region
+     the test attributed to series geometry. Naming a layer turns the legend on, and it is drawn
+     *inside* the panel. The backend was correct; the fixture no longer matched its own claim.
+
+   **Verified against the real bug**, which is the only evidence that matters for a gate: the paint
+   actions were removed from `markerMacro` and three tests failed, including the figure-level one,
+   whose message printed a chart with axes and labels and an empty panel. Restored, all 423 pass.
+
+   Not delivered: the raster-level *"the TikZ figure and the SVG figure look the same"* oracle. No
+   SVG rasteriser is installed (`rsvg-convert`, ImageMagick and Inkscape are all absent; `pdftoppm`
+   and `pdftocairo` come with MiKTeX). Gate 2 covers the geometry exactly and numerically, which is
+   the sharper instrument for everything except orientation — and orientation is now covered
+   directly. Worth revisiting only if a rasteriser becomes a reasonable CI dependency.
 
 ---
 

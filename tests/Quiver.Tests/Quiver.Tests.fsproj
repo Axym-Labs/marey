@@ -33,8 +33,10 @@
     <Compile Include="SceneProperties.fs" />
     <Compile Include="RegressionTests.fs" />
     <Compile Include="TexToolchain.fs" />
+    <Compile Include="Raster.fs" />
     <Compile Include="TikzWriterTests.fs" />
     <Compile Include="TikzBackendTests.fs" />
+    <Compile Include="TikzInkTests.fs" />
     <Compile Include="Golden.fs" />
     <Compile Include="GoldenTests.fs" />
     <Compile Include="PlotTests.fs" />
