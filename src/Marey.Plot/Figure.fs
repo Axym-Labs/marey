@@ -193,7 +193,7 @@ module Figure =
           Rows = (if panels.Length = 0 then 1 else 1 + (panels |> Array.map (fun p -> p.Row) |> Array.max))
           Cols = (if panels.Length = 0 then 1 else 1 + (panels |> Array.map (fun p -> p.Col) |> Array.max))
           Panels = panels
-          Theme = Theme.publication }
+          Theme = Theme.initial }
 
     // ---- Shared domains across the layers of one panel -------------------------------------
 

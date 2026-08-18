@@ -11,7 +11,7 @@
 dotnet test
 ```
 
-**481 tests: 155 FsCheck properties and 326 examples, ~74 700 generated cases per run.**
+**483 tests: 155 FsCheck properties and 328 examples, ~74 700 generated cases per run.**
 
 Around six seconds of that is `pdflatex`. The TikZ backend has no in-process oracle — the only
 authority on whether a `.tex` file is valid is a TeX engine, and the only authority on whether a

@@ -549,6 +549,14 @@ module LoadContexts =
     /// notebook, so it fails here instead.
     [<Fact>]
     let ``the two bridge functions have the signatures the extension looks for`` () =
+        // The extension searches assemblies that are *already loaded*, so this test reproduces
+        // that rather than calling `Assembly.Load`. But the CLR loads lazily and nothing below
+        // references `Marey.Html` in a way the JIT can see, so for a while this assertion passed
+        // only because some earlier test in the run happened to touch the module first. It began
+        // failing the moment an unrelated change shifted the run order. Force the load here, with
+        // a call that is worth asserting on its own.
+        Assert.True(Html.canRenderForHost (box Golden.figure), "Html.canRenderForHost rejected a Figure")
+
         let htmlType =
             AppDomain.CurrentDomain.GetAssemblies()
             |> Array.tryFind (fun a -> a.GetName().Name = "Marey.Html")

@@ -76,7 +76,7 @@ module Chart =
     /// A figure built from an already-scaled typed series. The full-control door: pick the
     /// scales yourself and everything downstream still works.
     let ofSeries (g: Geom) (s: Series<'ux, 'uy>) : Figure =
-        figureOf [| layerOf s.Name Theme.publication 0 g (Erase.packSeries s) |]
+        figureOf [| layerOf s.Name Theme.initial 0 g (Erase.packSeries s) |]
 
     let line (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         ofSeries GeomLine (series "" ux uy x y)
@@ -118,8 +118,8 @@ module Chart =
         let packed = Erase.packSeries s
 
         figureOf
-            [| layerOf "" Theme.publication 0 bars packed
-               { layerOf "" Theme.publication 0 GeomPoint packed with
+            [| layerOf "" Theme.initial 0 bars packed
+               { layerOf "" Theme.initial 0 GeomPoint packed with
                    ShowInLegend = false } |]
 
     // ---- Adding layers -----------------------------------------------------------------------

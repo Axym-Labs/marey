@@ -390,3 +390,49 @@ module Palettes =
         let mid = Ramp.at Palette.diverging 0.5
         let lch = Color.toOklch mid
         Assert.True(lch.C < 0.03, sprintf "diverging midpoint has chroma %.4f, expected near zero" lch.C)
+
+/// The two things the `modern` default rests on, both of which fail silently.
+module Themes =
+
+    /// §9 asks for a validator. A validator only earns its place if the themes the library
+    /// itself ships are run through it — a shipped theme that fails its own contrast floor is
+    /// the exact failure this test exists to make impossible.
+    ///
+    /// It has already done work: `Theme.modern` was first drafted with a pale `#C8CDD4` spine,
+    /// which is the conventional way to make chart furniture recede. That measures about 1.5:1
+    /// on white and fails here. The theme now recedes by getting thinner rather than paler.
+    [<Fact>]
+    let ``every shipped theme passes its own validator`` () =
+        for theme in Theme.all do
+            let r = Theme.validate theme
+
+            Assert.True(
+                r.Ok,
+                sprintf
+                    "Theme.%s fails validation: text %.2f:1 (needs 7), axis %.2f:1 (needs %.1f)"
+                    r.Theme
+                    r.TextContrast
+                    r.AxisContrast
+                    Palette.ContrastFloor
+            )
+
+    /// `Chart.withTheme` recolours a layer **only if that layer's style still equals the outgoing
+    /// theme's default for its index** — which is what lets it retheme a figure without discarding
+    /// a colour set by hand. The test is meaningful only while the theme a `Figure` is born with
+    /// and the theme `Chart`'s constructors style their layers against are the same value.
+    ///
+    /// Those lived in two files and agreed by coincidence until `Theme.initial` was introduced.
+    /// Had they drifted, nothing would have crashed: `withTheme` would simply have stopped
+    /// working, silently, leaving every figure in the default palette.
+    [<Fact>]
+    let ``a fresh figure's layer styles match its own theme, so withTheme can recolour it`` () =
+        let fig = Chart.line U.second U.metre fallT fallX
+        Assert.Equal(Theme.initial.Name, fig.Theme.Name)
+
+        let layer = fig.Panels.[0].Layers.[0]
+        Assert.Equal(Geom.styleFor fig.Theme 0, layer.Style)
+
+        // The consequence, end to end: a retheme must actually reach the paint.
+        let dark = fig |> Chart.withTheme Theme.dark
+        Assert.Equal(Geom.styleFor Theme.dark 0, dark.Panels.[0].Layers.[0].Style)
+        Assert.NotEqual(layer.Style, dark.Panels.[0].Layers.[0].Style)

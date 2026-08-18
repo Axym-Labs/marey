@@ -1,64 +1,64 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="480" height="300" viewBox="0 0 480 300">
   <defs>
-    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M52.248 255.067L466.931 255.067L466.931 76.833L52.248 76.833Z"/></clipPath>
-    <rect id="qm" x="-2.25" y="-2.25" width="4.5" height="4.5"/>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M60.349 248.567L462.664 248.567L462.664 91.917L60.349 91.917Z"/></clipPath>
+    <rect id="qm" x="-2.5" y="-2.5" width="5" height="5"/>
   </defs>
   <g id="figure">
     <path d="M0 300L480 300L480 0L0 0Z" fill="#ffffff"/>
     <g role="note" data-marey-role="annotation" aria-label="Free fall">
-      <text x="240" y="10" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="14.667" font-weight="700" text-anchor="middle" dominant-baseline="hanging" fill="#101010">Free fall</text>
-      <text x="240" y="28.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12.667" font-style="italic" text-anchor="middle" dominant-baseline="hanging" fill="#555555">displacement against elapsed time</text>
+      <text x="240" y="14" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="17.333" font-weight="600" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">Free fall</text>
+      <text x="240" y="37.033" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" text-anchor="middle" dominant-baseline="hanging" fill="#606a78">displacement against elapsed time</text>
     </g>
     <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="2" data-x-tick-rule="all" data-y-tick-rule="all">
       <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="10">
-        <path d="M71.097 255.067L71.097 76.833M153.05 255.067L153.05 76.833M235.004 255.067L235.004 76.833M316.957 255.067L316.957 76.833M398.91 255.067L398.91 76.833M52.248 246.965L466.931 246.965M52.248 207.937L466.931 207.937M52.248 168.908L466.931 168.908M52.248 129.88L466.931 129.88M52.248 90.851L466.931 90.851" fill="none" stroke="#d8d8d8" stroke-width="0.5"/>
+        <path d="M78.636 248.567L78.636 91.917M158.145 248.567L158.145 91.917M237.654 248.567L237.654 91.917M317.163 248.567L317.163 91.917M396.672 248.567L396.672 91.917M60.349 241.446L462.664 241.446M60.349 207.144L462.664 207.144M60.349 172.842L462.664 172.842M60.349 138.539L462.664 138.539M60.349 104.237L462.664 104.237" fill="none" stroke="#e7e9ed" stroke-width="1"/>
       </g>
       <g clip-path="url(#qc)">
         <g role="graphics-object" data-marey-role="series" aria-label="model" data-series="model" data-points="24">
-          <path d="M71.097 246.965L87.488 246.659L103.879 245.74L120.269 244.208L136.66 242.064L153.05 239.308L169.441 235.939L185.832 231.957L202.222 227.362L218.613 222.155L235.004 216.336L251.394 209.903L267.785 202.859L284.175 195.201L300.566 186.931L316.957 178.049L333.347 168.554L349.738 158.446L366.129 147.725L382.519 136.392L398.91 124.447L415.3 111.889L431.691 98.718L448.082 84.935" fill="none" stroke="#0072b2" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M78.636 241.446L94.538 241.177L110.44 240.369L126.342 239.023L142.243 237.139L158.145 234.716L174.047 231.755L189.949 228.255L205.85 224.217L221.752 219.641L237.654 214.526L253.556 208.872L269.458 202.681L285.359 195.951L301.261 188.682L317.163 180.875L333.065 172.53L348.966 163.646L364.868 154.224L380.77 144.263L396.672 133.764L412.573 122.727L428.475 111.151L444.377 99.037" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </g>
         <g role="graphics-object" data-marey-role="series" aria-label="measured" data-series="measured" data-points="6">
           <g fill="#d55e00">
-            <use xlink:href="#qm" x="71.097" y="246.965"/>
-            <use xlink:href="#qm" x="87.488" y="246.665"/>
-            <use xlink:href="#qm" x="103.879" y="245.766"/>
-            <use xlink:href="#qm" x="120.269" y="244.268"/>
-            <use xlink:href="#qm" x="136.66" y="242.169"/>
-            <use xlink:href="#qm" x="153.05" y="239.472"/>
+            <use xlink:href="#qm" x="78.636" y="241.446"/>
+            <use xlink:href="#qm" x="94.538" y="241.183"/>
+            <use xlink:href="#qm" x="110.44" y="240.392"/>
+            <use xlink:href="#qm" x="126.342" y="239.075"/>
+            <use xlink:href="#qm" x="142.243" y="237.231"/>
+            <use xlink:href="#qm" x="158.145" y="234.86"/>
           </g>
         </g>
       </g>
       <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="bottom" data-unit="s" data-prefix="" data-ticks="5" data-tick-rule="all">
-        <path d="M52.248 255.067L466.931 255.067" fill="none" stroke="#101010" stroke-width="0.8"/>
-        <path d="M71.097 255.067L71.097 258.567M153.05 255.067L153.05 258.567M235.004 255.067L235.004 258.567M316.957 255.067L316.957 258.567M398.91 255.067L398.91 258.567" fill="none" stroke="#101010" stroke-width="0.8"/>
-        <text x="71.097" y="261.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#101010">0</text>
-        <text x="153.05" y="261.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#101010">2</text>
-        <text x="235.004" y="261.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#101010">4</text>
-        <text x="316.957" y="261.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#101010">6</text>
-        <text x="398.91" y="261.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#101010">8</text>
-        <text x="259.589" y="277.667" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="13.333" text-anchor="middle" dominant-baseline="hanging" fill="#101010">t [s]</text>
+        <path d="M60.349 248.567L462.664 248.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+        <path d="M78.636 248.567L78.636 251.567M158.145 248.567L158.145 251.567M237.654 248.567L237.654 251.567M317.163 248.567L317.163 251.567M396.672 248.567L396.672 251.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+        <text x="78.636" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+        <text x="158.145" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
+        <text x="237.654" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
+        <text x="317.163" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">6</text>
+        <text x="396.672" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">8</text>
+        <text x="261.507" y="273.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">t [s]</text>
       </g>
       <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="left" data-unit="m" data-prefix="" data-ticks="5" data-tick-rule="all">
-        <path d="M52.248 255.067L52.248 76.833" fill="none" stroke="#101010" stroke-width="0.8"/>
-        <path d="M52.248 246.965L48.748 246.965M52.248 207.937L48.748 207.937M52.248 168.908L48.748 168.908M52.248 129.88L48.748 129.88M52.248 90.851L48.748 90.851" fill="none" stroke="#101010" stroke-width="0.8"/>
-        <text x="45.748" y="246.965" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#101010">0</text>
-        <text x="45.748" y="207.937" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#101010">100</text>
-        <text x="45.748" y="168.908" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#101010">200</text>
-        <text x="45.748" y="129.88" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#101010">300</text>
-        <text x="45.748" y="90.851" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#101010">400</text>
-        <text x="22.333" y="165.95" transform="rotate(-90 22.333 165.95)" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="13.333" text-anchor="middle" fill="#101010">x [m]</text>
+        <path d="M60.349 248.567L60.349 91.917" fill="none" stroke="#39414d" stroke-width="0.9"/>
+        <path d="M60.349 241.446L57.349 241.446M60.349 207.144L57.349 207.144M60.349 172.842L57.349 172.842M60.349 138.539L57.349 138.539M60.349 104.237L57.349 104.237" fill="none" stroke="#39414d" stroke-width="0.9"/>
+        <text x="53.349" y="241.446" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0</text>
+        <text x="53.349" y="207.144" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">100</text>
+        <text x="53.349" y="172.842" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">200</text>
+        <text x="53.349" y="138.539" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">300</text>
+        <text x="53.349" y="104.237" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">400</text>
+        <text x="26.333" y="170.242" transform="rotate(-90 26.333 170.242)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">x [m]</text>
       </g>
       <g role="group" data-marey-role="legend" aria-label="legend" data-entries="2">
-        <path d="M58.248 121.033L145.332 121.033L145.332 82.833L58.248 82.833Z" fill="#ffffff" fill-opacity="0.85" stroke="#b0b0b0" stroke-width="0.6"/>
+        <path d="M67.349 142.35L163.665 142.35L163.665 98.917L67.349 98.917Z" fill="#ffffff" fill-opacity="0.9"/>
         <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="model" data-series="model" data-color="#0072b2">
-          <path d="M64.248 94.383L84.248 94.383" fill="none" stroke="#0072b2" stroke-width="1.4" stroke-linecap="round"/>
-          <text x="90.248" y="94.383" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#101010">model</text>
+          <path d="M74.349 111.775L92.349 111.775" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round"/>
+          <text x="100.349" y="111.775" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">model</text>
         </g>
         <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="measured" data-series="measured" data-color="#d55e00">
           <g fill="#d55e00">
-            <use xlink:href="#qm" x="74.248" y="109.483"/>
+            <use xlink:href="#qm" x="83.349" y="129.492"/>
           </g>
-          <text x="90.248" y="109.483" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#101010">measured</text>
+          <text x="100.349" y="129.492" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">measured</text>
         </g>
       </g>
     </g>

@@ -135,8 +135,17 @@ module Theme =
     [<Literal>]
     let Serif = "Times New Roman, Nimbus Roman, Liberation Serif, serif"
 
+    /// A UI-grotesque stack, in the order a 2026 renderer should try.
+    ///
+    /// `ApproxTextMeasurer.familyFactor` returns 1.0 for this string exactly as it did for the
+    /// Helvetica-first stack it replaces — its serif branch is guarded by `not (contains "sans")`
+    /// and "sans-serif" trips that guard, and no Times/Georgia/Garamond name appears here. So
+    /// **layout is unchanged by this string**; only the family the renderer is asked for changes.
+    /// That is deliberate: a font stack that moved the measurements would have moved every
+    /// baseline in the golden suite for a cosmetic reason.
     [<Literal>]
-    let Sans = "Helvetica, Arial, Nimbus Sans, Liberation Sans, sans-serif"
+    let Sans =
+        "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
 
     let private defaultShapes =
         [| MarkCircle; MarkSquare; MarkTriangleUp; MarkDiamond; MarkPlus; MarkTriangleDown; MarkCross |]
@@ -195,40 +204,109 @@ module Theme =
           TickCount = Axis.DefaultTickCount
           MarkerShapes = defaultShapes }
 
-    /// §9 — the notebook theme. Sans type, a light panel, gridlines on: this one is read on a
-    /// screen, at speed, next to the code that made it.
-    let notebook: Theme =
+    /// **The default.** A figure you have not themed is this one.
+    ///
+    /// `publication` was the default until the notebook renderer shipped and it became clear
+    /// where a figure is actually first seen: on a screen, in a cell, next to the code that made
+    /// it. Times New Roman at 9 pt is right in a two-column paper and wrong there, and a default
+    /// should be right where the default is met. `publication` is one `Chart.withTheme` away and
+    /// unchanged.
+    ///
+    /// ### What makes it modern is weight and space, not paleness
+    ///
+    /// The contemporary look — de-emphasised furniture, data foremost — is usually reached by
+    /// fading the axis toward the background. **That is not available here, and the reason is
+    /// this library's own validator.** A spine is a graphical object that carries information, so
+    /// WCAG's 3:1 minimum applies to it, and `Theme.validate` enforces exactly that floor on
+    /// `AxisContrast`. A fashionable `#C8CDD4` spine measures about 1.5:1 on white — the theme
+    /// would fail the test the library ships to catch precisely this mistake in other people's
+    /// themes.
+    ///
+    /// So the furniture recedes by getting *thinner and quieter*, never lighter: a 0.9 px spine
+    /// at 9.6:1, ticks shortened to 3 px, the panel box and the legend frame gone, horizontal
+    /// gridlines only, and roughly 40% more padding than `publication`. Gridlines are the one
+    /// exception and legitimately so — D-level: `GridContrast` is *reported* by `validate` and
+    /// deliberately not floored, because a gridline that competes with the data is chartjunk.
+    ///
+    /// The palette does not follow fashion either. Okabe–Ito reordered (`Palette.series`) stays,
+    /// because it is measured under three dichromacies; the Tableau-style palettes this would
+    /// otherwise borrow from are not.
+    let modern: Theme =
         { publication with
-            Name = "notebook"
+            Name = "modern"
 
-            TitleFont = font Sans 12.0<pt> 700 false
+            TitleFont = font Sans 13.0<pt> 600 false
             SubtitleFont = font Sans 10.0<pt> 400 false
-            PanelTitleFont = font Sans 10.5<pt> 400 false
-            AxisTitleFont = font Sans 10.0<pt> 400 false
+            PanelTitleFont = font Sans 10.0<pt> 500 false
+            AxisTitleFont = font Sans 10.0<pt> 500 false
             TickFont = font Sans 9.0<pt> 400 false
-            LegendFont = font Sans 9.0<pt> 400 false
+            LegendFont = font Sans 9.5<pt> 400 false
 
             Background = Color.white
-            PanelBackground = Color.ofHex "#FAFAFA"
-            Foreground = Color.ofHex "#1A1A1A"
-            MutedForeground = Color.ofHex "#606060"
-            AxisColor = Color.ofHex "#3C3C3C"
-            GridColor = Color.ofHex "#DCDCDC"
+            // Flat: no tinted panel, so the data sits on the page rather than in a box.
+            PanelBackground = Color.white
+            Foreground = Color.ofHex "#14181F"
+            MutedForeground = Color.ofHex "#606A78"
+            AxisColor = Color.ofHex "#39414D"
+            GridColor = Color.ofHex "#E7E9ED"
+            LegendBackground = Color.rgba 1.0 1.0 1.0 0.9
+            LegendBorder = Color.ofHex "#E1E4E9"
 
-            AxisWidth = 1.0<px>
-            GridWidth = 0.75<px>
-            SeriesWidth = 1.8<px>
-            TickLength = 4.0<px>
-            MarkerSize = 5.5<px>
+            AxisWidth = 0.9<px>
+            GridWidth = 1.0<px>
+            SeriesWidth = 2.0<px>
+            TickLength = 3.0<px>
+            TickWidth = 0.9<px>
+            MarkerSize = 5.0<px>
+
+            FigurePadding = 14.0<px>
+            PanelGap = 30.0<px>
+            LabelGap = 4.0<px>
+            TitleGap = 7.0<px>
+            LegendPadding = 7.0<px>
+            LegendItemGap = 6.0<px>
+            LegendSwatchWidth = 18.0<px>
+
+            Sequential = Palette.viridis
+
+            ShowGridX = false
+            ShowGridY = true
+            PanelFrame = false
+            ShowLegendFrame = false
+            FillOpacity = 0.18 }
+
+    /// The theme a `Figure` is born with, named so that the two places that must agree about it
+    /// cannot drift apart.
+    ///
+    /// `Chart.withTheme` re-styles a layer **only if its style still equals the outgoing theme's
+    /// default for that index** — which is what lets it recolour a figure without discarding a
+    /// colour the user set by hand. That test is only meaningful while `Figure.create`'s theme and
+    /// the theme `Chart.layerOf` styles against are the same value. They were the same by
+    /// coincidence (both spelled `Theme.publication` in two different files); now they are the
+    /// same by construction.
+    let initial: Theme = modern
+
+    /// §9 — the notebook theme, and now a variation on `modern` rather than a sibling of it.
+    ///
+    /// What survives as its own is the tinted panel and the vertical gridlines. Both exist for one
+    /// reason: a figure in a notebook is not on a page, it is in a stack of cells, and it has to
+    /// read as a *distinct object* rather than as more page. `modern`'s flat white panel is right
+    /// on a page and disappears into the cell background; a hair of tint gives it an edge without
+    /// drawing one. The legend keeps its frame for the same reason.
+    let notebook: Theme =
+        { modern with
+            Name = "notebook"
+
+            PanelBackground = Color.ofHex "#F7F8FA"
+            LegendBackground = Color.rgba 1.0 1.0 1.0 0.92
 
             ShowGridX = true
-            ShowGridY = true
-            PanelFrame = false }
+            ShowLegendFrame = true }
 
     /// §9 — "large type." Everything that carries meaning at four metres is bigger; everything
     /// that does not is gone.
     let presentation: Theme =
-        { notebook with
+        { modern with
             Name = "presentation"
 
             TitleFont = font Sans 20.0<pt> 700 false
@@ -271,7 +349,7 @@ module Theme =
     /// which on this background is invisible rather than merely poor. `Theme.validate` measures
     /// that rather than trusting it.
     let dark: Theme =
-        { notebook with
+        { modern with
             Name = "dark"
 
             Background = Color.ofHex "#16181C"
@@ -323,7 +401,7 @@ module Theme =
 
             UnitStyle = Siunitx }
 
-    let all = [| publication; notebook; presentation; dark; tikz |]
+    let all = [| modern; publication; notebook; presentation; dark; tikz |]
 
     let tryByName (name: string) =
         all
