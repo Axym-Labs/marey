@@ -21,7 +21,7 @@ other, and both are recorded below.
 | 4 — Verification | **done**, 413 → 453 tests, 16 new baselines |
 | 5 — `Marey.Html` | **done**, 453 → 478 tests |
 | 5b — `Marey.Verso`, after the host was retired | **done**, 478 → 481 tests, seventh package |
-| 6 — Announce-readiness | LICENSE (MIT), NuGet metadata and `docs/guide.md` done. CI and the `decisions.md` migration remain. |
+| 6 — Announce-readiness | **done**, 481 → 485 tests. Everything below shipped; the one step left is not code. |
 
 A real figure now goes end to end: `Chart.line U.second U.metre ts xs |> Chart.withUnitStyle
 Siunitx |> Chart.render TikzBackend.render` produces a `tikzpicture` that compiles under
@@ -362,16 +362,39 @@ kept correctly answering "no" — with no error anywhere. Written up in
 
 §14 says announce at M1, and a milestone nobody can install is not announced.
 
-- **LICENSE** — absent from the repo today, and it is the one item that blocks everything
-  downstream of "announce". Needs a deliberate choice (MIT and Apache-2.0 are the two live
-  options for a .NET library; Apache-2.0 carries a patent grant, MIT is shorter and is what most
-  of the F# ecosystem uses).
-- Per-package NuGet metadata, `PackageReadmeFile`, `dotnet pack` verified for all six packages.
-- GitHub Actions: build, test, and the pdflatex golden gate with a TeX install.
-- `docs/decisions.md` gains D28–D35 as *implemented and verified*, not as proposals.
-- Root `README.md` gains the TikZ story, a compiled figure, and the notebook.
+- **LICENSE** — **MIT**, chosen deliberately over Apache-2.0: shorter, and what most of the F#
+  ecosystem uses, so it composes with the packages a consumer already has. The trade accepted in
+  exchange is that MIT carries no explicit patent grant.
+- **Per-package NuGet metadata**, tags, and a packed `NUGET.md` — a separate file from the root
+  README because nuget.org does not resolve relative links. Packed from `Directory.Build.targets`
+  rather than `.props`, because `.props` is imported *before* each project file and a condition on
+  `IsPackable` there would read an empty value and pack a readme into the test project.
+- **GitHub Actions**, in two files. `ci.yml` builds, tests and packs on every push and PR, with a
+  full TeX install so the `pdflatex` gate and the raster ink gate are real rather than skipped —
+  and it *asserts* both tools are on `PATH` first, because the test helpers degrade to
+  "unavailable" by design and a broken apt step would otherwise turn two gates off silently.
+  `publish.yml` pushes to nuget.org on a published release via **trusted publishing**: GitHub
+  mints an OIDC token, nuget.org exchanges it for a key valid one hour, and no long-lived secret
+  is stored. The split is forced rather than tidy — nuget.org's policy is keyed on the workflow
+  *filename*, so the file that can publish must be exactly one reviewable file that does nothing
+  else.
+- **`docs/decisions.md` gains D28–D40** as implemented-and-verified entries, moved out of §2 of
+  this plan rather than copied, so the two documents cannot drift. The migration also corrected an
+  overstated M0 claim about siunitx titles reaching the IR.
+- **`docs/guide.md`** — not in the original plan. Everything the library does, with a runnable
+  example for each part, and a test that executes every one of them.
+- Root `README.md` gained the TikZ story, a compiled figure, and the notebook.
 
-**Exit:** `dotnet pack` produces six well-formed packages; CI green on a clean checkout.
+**Exit:** `dotnet pack` produces **seven** well-formed packages, each verified to carry an MIT
+expression and a packed readme; 485 tests green; CI defined and its gates asserted non-vacuous.
+
+**The one remaining step is not code.** A trusted-publishing policy has to be registered on
+nuget.org — owner, repository, and the workflow filename `publish.yml` — and a `NUGET_USER`
+secret added to the repository. A policy created against a **private** repository is only
+*temporarily* active for 7 days: nuget.org pins it to GitHub's numeric repo and owner IDs to
+prevent resurrection attacks, and it only receives those IDs from a successful publish. So the
+first release has to happen inside that window, or the policy goes inactive and the window has to
+be restarted.
 
 ---
 

@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# The workflow only reads the repository. Publishing lives in publish.yml, which is a
+# separate file because nuget.org's trusted-publishing policy is keyed on the workflow
+# *filename* -- so anything that can push to NuGet must be exactly one reviewable file.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Two of this suite's gates shell out, and both are written to report "not installed"
+      # rather than to fail -- which is right on a contributor's laptop and wrong here.
+      #
+      #   pdflatex   compiles all 16 golden .tex baselines. Without it, the single most
+      #              valuable test in the milestone does not run.
+      #   pdftoppm   rasterises the compiled PDF for the ink gate, which exists because D33
+      #              once produced a perfectly valid document containing no visible markers
+      #              while every other test passed.
+      #
+      # siunitx lives in texlive-science, tikz in texlive-pictures, textcomp in
+      # texlive-latex-recommended. All three are \usepackage'd by the emitted documents.
+      - name: Install the TeX and raster toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            texlive-latex-base \
+            texlive-latex-recommended \
+            texlive-pictures \
+            texlive-science \
+            poppler-utils
+
+      # A gate that cannot run must not pass quietly. The test helpers deliberately degrade to
+      # "unavailable" when a tool is missing, so CI asserts presence itself -- otherwise a
+      # broken apt step would turn the TeX and ink gates off and the build would stay green.
+      - name: Assert the gates can actually run
+        run: |
+          set -e
+          for tool in pdflatex pdftoppm; do
+            command -v "$tool" >/dev/null || { echo "::error::$tool missing; the gate that needs it would silently skip"; exit 1; }
+            echo "$tool -> $(command -v "$tool")"
+          done
+
+      - name: Restore
+        run: dotnet restore Marey.slnx
+
+      # TreatWarningsAsErrors is on in Directory.Build.props, so this is also the FS0064 gate:
+      # a measure over-constraint (design.md 12.1) fails the build rather than printing a
+      # warning nobody reads.
+      - name: Build
+        run: dotnet build Marey.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test Marey.slnx --configuration Release --no-build --logger "console;verbosity=normal"
+
+      # Packaging is part of what CI protects. It has broken on its own before -- a package
+      # reference with only prereleases raised NU5104, which TreatWarningsAsErrors turned into
+      # a pack failure that a build-and-test workflow would never have seen.
+      - name: Pack
+        run: dotnet pack Marey.slnx --configuration Release --no-build -o artifacts -p:Version=0.0.0-ci
+
+      - name: Check every package carries its metadata
+        run: |
+          set -e
+          count=$(ls artifacts/*.nupkg | wc -l)
+          [ "$count" -eq 7 ] || { echo "::error::expected 7 packages, packed $count"; exit 1; }
+          for pkg in artifacts/*.nupkg; do
+            unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
+            grep -q '<readme>NUGET.md</readme>' /tmp/nuspec.xml || { echo "::error::$pkg has no readme"; exit 1; }
+            grep -q '<license type="expression">MIT</license>' /tmp/nuspec.xml || { echo "::error::$pkg has no license"; exit 1; }
+            unzip -l "$pkg" | grep -q 'NUGET.md' || { echo "::error::$pkg declares a readme it does not contain"; exit 1; }
+          done
+          echo "7 packages, each with an MIT expression and a packed NUGET.md"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: artifacts/*.nupkg
+          retention-days: 7

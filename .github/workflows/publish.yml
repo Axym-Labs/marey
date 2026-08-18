@@ -1,0 +1,152 @@
+name: Publish
+
+# Publishes the seven packages to nuget.org using **trusted publishing**: GitHub mints a
+# short-lived OIDC token, nuget.org validates it against a policy you registered and hands back
+# an API key valid for one hour. No long-lived secret is stored in this repository.
+#
+# ## The nuget.org side, which must exist before this can work
+#
+# nuget.org -> your username -> Trusted Publishing -> add a policy:
+#
+#   Repository Owner   Jonathan-Schaefer-git
+#   Repository         marey
+#   Workflow File      publish.yml          <- filename only, no .github/workflows/ prefix
+#   Environment        (leave empty; see the note at the bottom of this file)
+#
+# The policy is keyed on this file's *name*. Renaming this file breaks publishing, and any
+# other workflow file -- however privileged -- cannot use the policy. That is the reason
+# building and testing live in ci.yml and this file does nothing else.
+#
+# ## One repository secret
+#
+#   NUGET_USER   your nuget.org username, i.e. the profile name, NOT your email address.
+#
+# ## A gotcha specific to private repositories
+#
+# A policy created against a private repo starts **temporarily active for 7 days**. nuget.org
+# needs GitHub's numeric repository and owner IDs to pin the policy against resurrection
+# attacks -- delete a repo, recreate it under the same name, publish as if nothing happened --
+# and it only receives those IDs from a successful publish. So publish once inside the window
+# or the policy goes inactive. The window can be restarted from the UI at any time.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish, without a leading v (e.g. 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write # required: this is what lets the job request an OIDC token at all
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # A release tag is v1.2.3; NuGet wants 1.2.3. Prereleases pass through untouched, so
+      # v1.0.0-rc.1 publishes as 1.0.0-rc.1.
+      - name: Resolve the version
+        id: version
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" = "release" ]; then
+            version="$GITHUB_REF_NAME"
+          else
+            version="${{ inputs.version }}"
+          fi
+          # Accept a leading v from either path. A release tag has one by convention and the
+          # dispatch input should not, but failing a publish over a typed character is a
+          # foot-gun with no upside.
+          version="${version#v}"
+          case "$version" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::'$version' is not a version. Use MAJOR.MINOR.PATCH, e.g. tag a release v1.0.0."; exit 1 ;;
+          esac
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+          echo "publishing $version"
+
+      - name: Install the TeX and raster toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            texlive-latex-base \
+            texlive-latex-recommended \
+            texlive-pictures \
+            texlive-science \
+            poppler-utils
+
+      # Nothing is published that has not been tested here, in this job. Relying on ci.yml
+      # having been green on the same commit is a different claim -- it is green on a commit,
+      # not on the artifact about to be uploaded, and the artifact is built with a different
+      # version property.
+      #
+      # ContinuousIntegrationBuild belongs here rather than on the pack step: it normalises
+      # embedded source paths at *compile* time, so passing it to `pack --no-build` -- which
+      # compiles nothing -- would have been a no-op that looked like it was doing something.
+      - name: Build
+        run: |
+          dotnet build Marey.slnx --configuration Release \
+            -p:Version=${{ steps.version.outputs.value }} \
+            -p:ContinuousIntegrationBuild=true
+
+      - name: Test
+        run: dotnet test Marey.slnx --configuration Release --no-build
+
+      - name: Pack
+        run: |
+          dotnet pack Marey.slnx --configuration Release --no-build -o artifacts \
+            -p:Version=${{ steps.version.outputs.value }}
+
+      - name: Check the packages before anything leaves the machine
+        run: |
+          set -e
+          count=$(ls artifacts/*.nupkg | wc -l)
+          [ "$count" -eq 7 ] || { echo "::error::expected 7 packages, packed $count"; exit 1; }
+          for pkg in artifacts/*.nupkg; do
+            unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
+            grep -q "<version>${{ steps.version.outputs.value }}</version>" /tmp/nuspec.xml \
+              || { echo "::error::$pkg is not version ${{ steps.version.outputs.value }}"; exit 1; }
+            grep -q '<license type="expression">MIT</license>' /tmp/nuspec.xml \
+              || { echo "::error::$pkg has no license"; exit 1; }
+            unzip -l "$pkg" | grep -q 'NUGET.md' \
+              || { echo "::error::$pkg has no packed readme"; exit 1; }
+          done
+          ls -1 artifacts/*.nupkg
+
+      # Deliberately the last thing before the push. The key nuget.org returns is valid for one
+      # hour and each OIDC token buys exactly one key, so requesting it before a ten-minute
+      # build-and-test would be spending the clock on work that can fail anyway.
+      - name: Exchange the OIDC token for a short-lived NuGet key
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      # --skip-duplicate so re-running a partially-failed publish finishes the job instead of
+      # erroring on the packages that already landed. Versions are immutable on nuget.org, so
+      # this can never overwrite anything.
+      - name: Push
+        run: |
+          dotnet nuget push "artifacts/*.nupkg" \
+            --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
+# ## Adding a manual approval gate, if you want one
+#
+# Create a GitHub Environment (Settings -> Environments) with a required reviewer, add
+# `environment: release` to the job above, and set **Environment: release** on the nuget.org
+# policy as well. Both sides must agree: the OIDC token carries the environment claim, and
+# nuget.org validates it only when the policy names one. Left off by default so a first publish
+# does not fail on configuration that exists in one place and not the other.
