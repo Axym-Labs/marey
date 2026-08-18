@@ -70,19 +70,48 @@ Core, Units, the SVG backend and Plot arriving transitively. Until the packages 
 
 ```
 cd C:\path\to\quiver
-dotnet pack -o local-feed
+dotnet pack -o local-feed -p:Version=1.0.$(date +%m%d%H%M)
 ```
 
-That produces all seven packages at `1.0.0`. Add one line above the `#r` in the first F# cell:
+**Stamp the version. Do not pack repeatedly as `1.0.0`.** NuGet's global packages folder is keyed
+on id *and version*: once `quiver.interactive/1.0.0` has been extracted to `~/.nuget/packages`, a
+`#r "nuget: Quiver.Interactive"` finds it there and **never looks at your feed again**, no matter
+how many times you re-pack. The notebook then loads a build from whenever you first packed, and the
+symptom is that a code change appears to have no effect — no error, nothing in the cell output to
+suggest a stale assembly is involved. That happened here: a `Figure` kept rendering as a field
+table because the cached `Quiver.Interactive` predated the host bridge the Verso extension reflects
+into, so `CanFormat` correctly answered "no".
+
+A monotonic stamp sidesteps it permanently, since an unversioned `#r` resolves to the highest
+version available. If the cache is already poisoned:
+
+```
+rm -rf ~/.nuget/packages/quiver.*
+```
+
+That produces all seven packages. Add one line above the `#r` in the first F# cell:
 
 ```fsharp
 #i "nuget:C:\path\to\quiver\local-feed"
 ```
 
-`#i` adds a package source for the session and must precede the `#r` lines that use it. The same
-feed is where Verso can install `Quiver.Verso` from — see Verso's *Local Feed Testing* notes in
-`docs/extensions/packaging-and-publishing.md` upstream, or load the built DLL directly with
-`#!extension ./src/Quiver.Verso/bin/Debug/net10.0/Quiver.Verso.dll` while developing.
+`#i` adds a package source **for the F# session only**. It does nothing for Verso's Extensions
+panel, which searches the feeds in your NuGet *configuration* — so installing `Quiver.Verso` from a
+local folder needs that folder registered:
+
+```
+dotnet nuget add source C:\path\to\quiver\local-feed --name QuiverLocal
+```
+
+While developing, the shortest path skips the package manager entirely — load the built assembly
+straight into the session:
+
+```
+#!extension C:\path\to\quiver\src\Quiver.Verso\bin\Debug\net10.0\Quiver.Verso.dll
+```
+
+That is also the right bisection when the bare value will not display: if `#!extension` fixes it,
+the problem is installation or a stale package, not the formatter.
 
 Add `local-feed/` to `.gitignore` if you put it in the repo.
 
@@ -110,9 +139,13 @@ There is no Verso installation on the machine this was built on.
 
 ## If something does not display
 
-1. **A field table of the object's members.** The extension is not installed, not approved, or not
-   enabled. Everything is otherwise fine — pipe through `Chart.render SvgBackend.render (Chart.size w h)`
-   to confirm, since that path needs no extension.
+1. **A field table of the object's members.** Three causes, in the order worth checking: a **stale
+   `Quiver.Interactive` in the NuGet cache** — likeliest, because it survives rebuilding,
+   re-packing and reinstalling; the extension not installed, approved or enabled; or the local feed
+   not being a registered NuGet source, so the Extensions panel never found the package at all.
+   Bisect with `#!extension` on the built DLL. Everything else is fine regardless —
+   `Chart.render SvgBackend.render (Chart.size w h)` still draws, since that path needs no
+   extension.
 2. **`Quiver.Core` loads but `Chart` and the measures are undefined.** You referenced
    `Quiver.Core` alone. `open Quiver` succeeds because the namespace exists, but `s`, `m` live in
    `Quiver.Units` and `Chart` in `Quiver.Plot`. Reference `Quiver.Interactive` and let the graph
