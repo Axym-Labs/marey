@@ -72,6 +72,9 @@ call: the cell's value *is* a `Figure`, and a `Figure` knows how to be an SVG.
 
 Documents:
 
+- **`docs/guide.md`** — the guide: everything the library does today, with a runnable
+  example for each part. Every example in it is extracted and executed by the test suite,
+  so it cannot drift from the library without a test going red.
 - **`docs/design.md`** — the full design document: architecture, layer-by-layer type
   design, backend strategy, animation and simulation models, roadmap, and a list of the
   F# type-system constraints that shape all of it.

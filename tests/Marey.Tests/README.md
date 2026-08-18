@@ -11,7 +11,7 @@
 dotnet test
 ```
 
-**483 tests: 155 FsCheck properties and 328 examples, ~74 700 generated cases per run.**
+**485 tests: 155 FsCheck properties and 330 examples, ~74 700 generated cases per run.**
 
 Around six seconds of that is `pdflatex`. The TikZ backend has no in-process oracle — the only
 authority on whether a `.tex` file is valid is a TeX engine, and the only authority on whether a
@@ -53,6 +53,7 @@ with the .NET Interactive support it was there to test.
 | `Golden.fs` | Golden-file infrastructure: location, diff reporting, regeneration. Format-agnostic — `check` compares text and derives its failure artefact from the baseline's extension. |
 | `GoldenTests.fs` | The snapshot scenes, the determinism suite, and the backend contract. |
 | `TikzGoldenTests.fs` | The same scenes through the TikZ backend, plus the figure baselines both backends share. |
+| `GuideTests.fs` | Extracts every `fsharp` block from `docs/guide.md`, concatenates them into one script and runs it under `dotnet fsi`. The guide is prose that has to keep compiling. |
 | `PlotTests.fs` | `Marey.Plot`: self-labelling axes, layout invariants across four themes and four sizes, the 50 000-point batching claim, purity of the `with*` combinators, and palette validation. |
 | `NotebookTests.fs` | The notebook integration, in three parts: `Html` fragments parsed as XML with the golden suite's own oracle, plus escaping, culture invariance and the two theme rules; `MareyFormatter` driven through Verso's `StubFormatterContext`; and the extension loaded into a genuinely separate collectible `AssemblyLoadContext`, which is the assumption the whole package rests on. |
 
