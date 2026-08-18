@@ -34,12 +34,15 @@ jobs:
       #              while every other test passed.
       #
       # siunitx lives in texlive-science, tikz in texlive-pictures, textcomp in
-      # texlive-latex-recommended. All three are \usepackage'd by the emitted documents.
+      # texlive-latex-recommended, and the standalone class -- which every emitted document
+      # begins with -- in texlive-latex-extra. All four are named by the goldens, and a
+      # missing one is a test failure minutes into the run rather than an apt failure here.
       - name: Install the TeX and raster toolchain
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
             texlive-latex-base \
+            texlive-latex-extra \
             texlive-latex-recommended \
             texlive-pictures \
             texlive-science \
@@ -48,6 +51,11 @@ jobs:
       # A gate that cannot run must not pass quietly. The test helpers deliberately degrade to
       # "unavailable" when a tool is missing, so CI asserts presence itself -- otherwise a
       # broken apt step would turn the TeX and ink gates off and the build would stay green.
+      #
+      # Presence of the binaries is not enough: --no-install-recommends can leave pdflatex
+      # installed but a class or package it needs absent, which surfaces as a golden-test
+      # failure minutes later instead of here. So compile the same prologue the backend emits
+      # and rasterise it -- the whole toolchain, in about five seconds.
       - name: Assert the gates can actually run
         run: |
           set -e
@@ -55,6 +63,27 @@ jobs:
             command -v "$tool" >/dev/null || { echo "::error::$tool missing; the gate that needs it would silently skip"; exit 1; }
             echo "$tool -> $(command -v "$tool")"
           done
+          cd "$(mktemp -d)"
+          cat > smoke.tex <<'TEX'
+          \documentclass[border=2bp]{standalone}
+          \usepackage{tikz}
+          \usepackage{textcomp}
+          \usepackage{siunitx}
+          \begin{document}
+          \begin{tikzpicture}
+            \draw (0,0) rectangle (1,1);
+            \node at (0.5,0.5) {\qty{}{\metre\per\second\squared}};
+          \end{tikzpicture}
+          \end{document}
+          TEX
+          pdflatex -interaction=nonstopmode -halt-on-error smoke.tex > smoke.log 2>&1 || {
+            echo "::error::the TeX toolchain is incomplete; the emitted prologue does not compile"
+            grep -E '^(!|l\.[0-9])' smoke.log | head -20
+            exit 1
+          }
+          pdftoppm -png -r 50 smoke.pdf smoke
+          test -s smoke-1.png || { echo "::error::pdftoppm produced no raster"; exit 1; }
+          echo "standalone, tikz, textcomp, siunitx and pdftoppm all work"
 
       - name: Restore
         run: dotnet restore Marey.slnx
