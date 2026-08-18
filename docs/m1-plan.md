@@ -1,9 +1,9 @@
-# Quiver M1 — *Units end to end*: implementation plan
+# Marey M1 — *Units end to end*: implementation plan
 
 Roadmap reference: `docs/design.md` §14, milestone **M1**. Decision-log reference:
 `docs/decisions.md` D1–D27, F1–F2.
 
-> §14 on M1: *"`Quiver.Units`, witness canonicalisation, prefix selection, auto axis titles,
+> §14 on M1: *"`Marey.Units`, witness canonicalisation, prefix selection, auto axis titles,
 > `.NET Interactive` formatter, TikZ backend. **This is the release that has no competitor.**
 > Unit-safe plots that drop into a LaTeX document. Announce here."*
 
@@ -19,8 +19,8 @@ other, and both are recorded below.
 | 2 — `TikzBackend.fs` traversal | **done**, 348 → 402 tests |
 | 3 — `Theme.tikz` and siunitx wiring | **done**, 402 → 413 tests |
 | 4 — Verification | **done**, 413 → 453 tests, 16 new baselines |
-| 5 — `Quiver.Interactive` | **done**, 453 → 478 tests |
-| 5b — `Quiver.Verso`, after the host was retired | **done**, 478 → 481 tests, seventh package |
+| 5 — `Marey.Html` | **done**, 453 → 478 tests |
+| 5b — `Marey.Verso`, after the host was retired | **done**, 478 → 481 tests, seventh package |
 | 6 — Announce-readiness | LICENSE done (MIT). Packaging, CI and `decisions.md` not started. |
 
 A real figure now goes end to end: `Chart.line U.second U.metre ts xs |> Chart.withUnitStyle
@@ -40,10 +40,10 @@ Measured, not recalled:
 | Build | `dotnet build` clean, warning-free, `TreatWarningsAsErrors=true` |
 | Tests | `dotnet test` — **288 passed, 0 failed**, 238 ms |
 | SDK | .NET **10.0.301** (`docs/design.md` §17 still says 10.0.110) |
-| Packages | `Quiver.Core`, `Quiver.Units`, `Quiver.Backend.Svg`, `Quiver.Plot`, `Quiver.Tests` |
-| Goldens | 13 tracked SVG baselines under `tests/Quiver.Tests/golden/` |
+| Packages | `Marey.Core`, `Marey.Units`, `Marey.Backend.Svg`, `Marey.Plot`, `Marey.Tests` |
+| Goldens | 13 tracked SVG baselines under `tests/Marey.Tests/golden/` |
 
-**The important discovery: M0 already built most of what §14 assigns to M1.** `Quiver.Units`
+**The important discovery: M0 already built most of what §14 assigns to M1.** `Marey.Units`
 ships all four `UnitStyle` renderers (`Unicode`, `Ascii`, `Latex`, `Siunitx`) with no stubbed
 branch, `Dim`-keyed canonicalisation over 17 SI entries, the full 24-prefix ladder with the
 kilogram shift and affine/non-coherent refusals, and `Axis.ofScaleWith` → self-labelling axis
@@ -56,8 +56,8 @@ against the actual delta rather than against the roadmap line.
 
 | # | Item | Size |
 |---|---|---|
-| 1 | `Quiver.Backend.Tikz` — the headline deliverable | large |
-| 2 | `Quiver.Interactive` — .NET Interactive formatters | small |
+| 1 | `Marey.Backend.Tikz` — the headline deliverable | large |
+| 2 | `Marey.Html` — .NET Interactive formatters | small |
 | 3 | `Theme.tikz` — the document-font-inheriting theme §9 asks for | small |
 | 4 | `TextRun.Tex` — the route by which TeX source reaches a TeX backend | medium, touches the IR |
 | 5 | `Axis.ofErasedWith` ignores `ToSI`/`OffsetSI` — a live defect | small |
@@ -82,13 +82,13 @@ and `\node[anchor=base west,rotate=30,font=\fontsize{9.6}{11.52}\selectfont]` co
 `\textsuperscript{-2}`, `\textohm`, `\textmu`, `\textdegree` all work — so a self-contained
 non-siunitx rendering of `kg·m²·s⁻²` is available as a fallback and for the `Unicode` style.
 
-**siunitx: initially broken, now working, and the existing Quiver output is valid.** The first
+**siunitx: initially broken, now working, and the existing Marey output is valid.** The first
 probe failed on `\l__siunitx_print_unit_mode_str` — `siunitx.sty` v3.5.5 (2026-05-15) against a
 LaTeX format dated 2025-06-01. After a MiKTeX package update all of the following compile with
 zero errors and render identically:
 
 ```
-A  x [\qty{}{\metre\per\second\squared}]   ->  x [m s-2]     <- what Quiver emits today
+A  x [\qty{}{\metre\per\second\squared}]   ->  x [m s-2]     <- what Marey emits today
 B  x [\unit{\metre\per\second\squared}]    ->  x [m s-2]
 E  T [\qty{}{\degreeCelsius}]              ->  T [°C]
 ```
@@ -162,7 +162,7 @@ makes the cross-backend agreement test in §4 possible.
 ```
 Gradients       = false     RotatedText = true
 RadialGradients = false     TextShaping = false     (delegated to TeX, per Capabilities.vector)
-Rasters         = false     Semantics   = true      (as `% quiver-role:` comments)
+Rasters         = false     Semantics   = true      (as `% marey-role:` comments)
 Clipping        = true      Dashes      = true      MaxBatch = None
 ```
 
@@ -177,7 +177,7 @@ which retires D10's status as a facility nobody reads.
 `\includegraphics`, which breaks the one-string-output contract and adds a `graphicx`
 requirement. Heatmaps are M2/M4 work; `renderWithAssets` is the M2 door.
 
-`Semantics = true` is cheap here and worth having: a `% quiver-role: axis` comment line costs
+`Semantics = true` is cheap here and worth having: a `% marey-role: axis` comment line costs
 nothing, keeps golden diffs readable, and — decisively — `Degrade.forCaps` **strips every
 `Annotated` node** when `Semantics = false`, which would silently discard structure the golden
 diff is there to review.
@@ -261,7 +261,7 @@ what §5.1 calls "the single biggest performance decision in the IR", decided wr
 backend cannot escape one line per point, but it can and must escape one *style declaration*
 per point.
 
-Deliberately **not** pgfplots' `\pgfuseplotmark`: Quiver *is* the plotting layer, and depending
+Deliberately **not** pgfplots' `\pgfuseplotmark`: Marey *is* the plotting layer, and depending
 on pgfplots would import a second, disagreeing opinion about axes and scaling.
 
 **Amended in Phase 2 — the SVG analogy stops short of the paint.** In TikZ, `fill=<colour>` on a
@@ -279,7 +279,7 @@ size, so a fill-only and a stroke-only batch of the same shape are different mac
 **Every test passed while this was broken, and so did the compile gate.** The document was
 perfectly valid TeX; it just had no ink in it. That is the subject of the note added to §4.
 
-### D34. Deterministic number formatting is promoted to `Quiver.Core` **[forced]**
+### D34. Deterministic number formatting is promoted to `Marey.Core` **[forced]**
 
 `SvgWriter.fs` establishes the rules that make byte-identical output possible: invariant
 culture, a *custom* numeric pattern so scientific notation can never appear, negative zero
@@ -291,7 +291,7 @@ Reimplementing them in the TikZ package is exactly the F2 hazard — "duplicatio
 duplication is dangerous, because a change to one copy would silently disagree with the other" —
 and F2 says to promote on the appearance of a second consumer. This is the second consumer.
 
-**Built:** a small `Num` module in `Quiver.Core` (zero dependencies, so this is free), with
+**Built:** a small `Num` module in `Marey.Core` (zero dependencies, so this is free), with
 `Svg.num`/`Svg.numAt` retained as thin forwarders so the 13 existing goldens and the formatting
 tests that assert on them are untouched.
 
@@ -436,31 +436,31 @@ put the host's lifetime into its own.** Neither the SVG backend nor the TikZ bac
 browser or a TeX distribution; the notebook renderer should not have been the exception, and the
 version of it that was not is the version that is still here.
 
-The package is still called `Quiver.Interactive`, which now names a retired Microsoft product.
-Left alone deliberately, pending the naming pass that also has to settle the `Quiver` package id
+The package is still called `Marey.Html`, which now names a retired Microsoft product.
+Left alone deliberately, pending the naming pass that also has to settle the `Marey` package id
 being taken on nuget.org by an unrelated, actively-published C# database.
 
-### D40. The Verso extension does not reference Quiver
+### D40. The Verso extension does not reference Marey
 
 **Design says** nothing — Verso postdates every document in this repository.
 
-**Built:** `src/Quiver.Verso/`, an `IDataFormatter` at priority 30, targeting `net8.0;net10.0`,
-depending on `Verso.Abstractions` **and nothing else**. It reaches `Quiver.Html` by reflection.
+**Built:** `src/Marey.Verso/`, an `IDataFormatter` at priority 30, targeting `net8.0;net10.0`,
+depending on `Verso.Abstractions` **and nothing else**. It reaches `Marey.Html` by reflection.
 
-**Why not simply reference `Quiver.Plot` and match on `typeof<Figure>`** — the obvious design, and
+**Why not simply reference `Marey.Plot` and match on `typeof<Figure>`** — the obvious design, and
 it cannot work. Verso loads an extension into its own collectible `AssemblyLoadContext`, sharing
-only `Verso.Abstractions` from the default context; Quiver arrives by a different route entirely,
+only `Verso.Abstractions` from the default context; Marey arrives by a different route entirely,
 the notebook's `#r`, into the kernel's context. A referenced `Figure` and the user's `Figure` would
 be two unequal `System.Type`s: the `SupportedTypes` pre-filter would never match, and a cast would
 throw if it did. Reflecting on the value's own type needs no shared identity, so the dependency
-becomes a lookup — and the package then keeps working across Quiver versions, since the only thing
+becomes a lookup — and the package then keeps working across Marey versions, since the only thing
 it can break against is two function signatures.
 
 Those two signatures are the cost, and they are a contract the compiler cannot see. They are
 written down in `Bridge.fs`, pinned by a test that resolves them with the exact reflection the
 extension uses, and probed defensively: every failure path answers "cannot render", because the
 correct behaviour when the bridge is unavailable is for the F# kernel's own output to proceed
-untouched. A notebook that referenced `Quiver.Plot` alone is not an error state.
+untouched. A notebook that referenced `Marey.Plot` alone is not an error state.
 
 **Why an extension at all, rather than a `ToHtml()` member.** Verso's built-in `HtmlFormatter` is
 duck-typed on a public parameterless `ToHtml() : string` and needs no extension, no install and no
@@ -472,7 +472,7 @@ consent prompt. It was the first design considered and it fails twice over:
   order — which is not a contract. A `Figure` would render as a picture or as a field table
   depending on enumeration order. Priority 30 is the whole reason this package exists.
 - **`Figure` could not carry the member.** `ToHtml()` on `Figure` puts HTML rendering inside
-  `Quiver.Plot`, which would need the SVG backend, which D21 forbids. `Color[]` settles it beyond
+  `Marey.Plot`, which would need the SVG backend, which D21 forbids. `Color[]` settles it beyond
   argument: an array cannot be given a member.
 
 **One thing the new host does better, and it is not a small one.** `IFormatterContext` carries
@@ -481,8 +481,8 @@ consent prompt. It was the first design considered and it fails twice over:
 into a band and keeps the aspect. A guess became a measurement, which is the trade the whole
 milestone has been making everywhere else.
 
-**Worth sending upstream, and deliberately not sent as a Quiver formatter** — Verso should not
-depend on us. Two things underneath generalise and carry no Quiver in them: that `ToHtml()` takes
+**Worth sending upstream, and deliberately not sent as a Marey formatter** — Verso should not
+depend on us. Two things underneath generalise and carry no Marey in them: that `ToHtml()` takes
 no arguments, so nothing rendered through the built-in formatter can size itself to the cell even
 though the context already knows the size; and that the 20/20 tie above is a latent ambiguity in
 the shipped set. Both are reportable on their own terms, which is the test of whether a
@@ -498,24 +498,24 @@ Six phases. Each has an exit criterion that is a command, not a feeling.
 
 Small, unblocks everything, and clears three stale documents before they mislead further work.
 
-1. `Quiver.Core`: add the `Num` module (D34); repoint `Svg.num`/`Svg.numAt` at it.
-2. `Quiver.Core`: add `Tex: string option` to `TextRun` (D32); fix `Scene.prune`'s empty test;
-   fix every construction site in `Quiver.Plot` and the tests.
-3. `Quiver.Units`: `AxisSpec.TitleTex`/`UnitTextTex`; populate in `Axis.ofScaleWith`.
-4. `Quiver.Units`: fix `Axis.ofErasedWith` to consult `ToSI`/`OffsetSI` — route through
+1. `Marey.Core`: add the `Num` module (D34); repoint `Svg.num`/`Svg.numAt` at it.
+2. `Marey.Core`: add `Tex: string option` to `TextRun` (D32); fix `Scene.prune`'s empty test;
+   fix every construction site in `Marey.Plot` and the tests.
+3. `Marey.Units`: `AxisSpec.TitleTex`/`UnitTextTex`; populate in `Axis.ofScaleWith`.
+4. `Marey.Units`: fix `Axis.ofErasedWith` to consult `ToSI`/`OffsetSI` — route through
    `UnitDisplay.renderSymbol` when `ToSI <> 1.0 || OffsetSI <> 0.0`, mirroring what
    `UnitDisplay.unitText` already does. **Re-pin** `RegressionTests.fs`'s eV and °C cases to the
-   correct labels (`E [keV]`, `T [°C]`) and delete the stale "gap in `Quiver.Core`" comment at
+   correct labels (`E [keV]`, `T [°C]`) and delete the stale "gap in `Marey.Core`" comment at
    `Axis.fs:36-45`.
-5. `Quiver.Plot`: add `Chart.toFile` as the backend-neutral name for what `Chart.toSvg` does;
+5. `Marey.Plot`: add `Chart.toFile` as the backend-neutral name for what `Chart.toSvg` does;
    keep `toSvg` as an alias so nothing breaks.
 6. Golden harness: `Golden.check` is already backend-agnostic, but the failure artefact is
    hard-coded to `.actual.svg`, `Golden.render` calls `SvgBackend` directly, and the fsproj copy
    glob is `*.svg`. Parameterise the extension; add `*.tex` to the glob and `*.actual.tex` to
    `.gitignore`.
 7. Docs: root `README.md` says "M0 in progress" (line 12) and documents a `spike/` directory
-   **that does not exist** in the working tree, in two places. `tests/Quiver.Tests/README.md`
-   says `Quiver.Plot` is not referenced and `PlotTests.fs` is "empty on purpose"; both are false
+   **that does not exist** in the working tree, in two places. `tests/Marey.Tests/README.md`
+   says `Marey.Plot` is not referenced and `PlotTests.fs` is "empty on purpose"; both are false
    — it is 392 lines of real tests — and the test count reads 272 against an actual 288.
    `docs/design.md` §17 cites SDK 10.0.110 against an installed 10.0.301.
 
@@ -551,7 +551,7 @@ All nine IR nodes, `IBackend` implemented, caps per D31.
   baseline mapped to TikZ's `anchor=` grid, rotation per D29.
 - `Markers` → D33.
 - `Group` emits nothing; `Transform` composes into the CTM (D30); `Clip` → `\begin{scope}\clip`;
-  `Keyed` → a `% quiver-key:` comment; `Annotated` → `% quiver-role:` comments (D31);
+  `Keyed` → a `% marey-key:` comment; `Annotated` → `% marey-role:` comments (D31);
   `Raster` → a visible skip comment, in the spirit of the SVG backend's raster diagnostics.
 - Entry points mirroring `SvgBackend`: `member Result`, `TikzBackend.render`,
   `renderToFile`, plus `renderStandalone` (a complete `\documentclass{standalone}` document)
@@ -596,14 +596,14 @@ What it found:
 
 **Exit:** met.
 
-### Phase 5 — `Quiver.Interactive`
+### Phase 5 — `Marey.Html`
 
 §6: *"a ~200-line package registering a .NET Interactive formatter so `figure` displays inline
 as SVG. Do it at M1; it is how people will first meet the library."*
 
-**Done.** 478 tests. `src/Quiver.Interactive/` is `Html.fs` (pure `something -> string`, no
+**Done.** 478 tests. `src/Marey.Html/` is `Html.fs` (pure `something -> string`, no
 reference to .NET Interactive) plus `Formatters.fs` (nine registrations), an `extension.dib` inside
-the package, and `docs/notebooks/quiver-tour.dib`. Nine types display: `Figure`, `Node`, `Color`,
+the package, and `docs/notebooks/marey-tour.dib`. Nine types display: `Figure`, `Node`, `Color`,
 `Ramp`, `Color[]`, `PaletteReport`, `Dim`, `U<'u>` and `IScaleErased`.
 
 Four things in the plan above were wrong, and are corrected in place rather than quietly:
@@ -684,8 +684,8 @@ separate package the reader installs and approves, loaded into an isolated colle
   tests are gone. A dependency on a retired engine is not free: it is a prerelease reference in
   every `dotnet pack` and a page of documentation pointing readers at something they cannot install.
 - **`Html.fs` did not change**, which is the whole point of D39 and is now the evidence for it.
-- **`src/Quiver.Verso/`** is the new seventh package. D40 has the design; the short version is
-  priority 30, `Verso.Abstractions` as its only dependency, and no reference to Quiver at all.
+- **`src/Marey.Verso/`** is the new seventh package. D40 has the design; the short version is
+  priority 30, `Verso.Abstractions` as its only dependency, and no reference to Marey at all.
 
 What it found, beyond the obvious:
 
@@ -762,7 +762,7 @@ Written in the register the project already uses: each gate is a claim that can 
 
    **Corrected after review.** This gate originally read "a `Raster` produces a visible skip
    comment", which the `raster.tex` baseline showed to be false: the emitter does contain a branch
-   writing `% quiver: raster 2x2 skipped ...`, but `Degrade.forCaps` replaces an unsupported
+   writing `% marey: raster 2x2 skipped ...`, but `Degrade.forCaps` replaces an unsupported
    `Raster` with `Scene.empty` before the backend sees it, so through `TikzBackend.render` an image
    vanishes without a trace. That is Core's contract working as designed — a backend advertising
    `Rasters = false` never gets handed one — and the emitter's branch is defensive rather than dead,
@@ -885,7 +885,7 @@ Recorded so they read as decisions rather than oversights.
 One commit per phase boundary at minimum, because each is independently reviewable:
 
 ```
-1  core: promote deterministic number formatting to Quiver.Core        (D34)
+1  core: promote deterministic number formatting to Marey.Core        (D34)
 2  core: add TextRun.Tex; fix Scene.prune's empty-run test             (D32)
 3  units: honour ToSI/OffsetSI in Axis.ofErasedWith; re-pin regressions
 4  units: AxisSpec.TitleTex/UnitTextTex

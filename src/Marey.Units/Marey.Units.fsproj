@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Marey.Units</AssemblyName>
+    <RootNamespace>Marey</RootNamespace>
+    <Description>SI, derived and common non-SI unit witnesses; Dim-driven symbol canonicalisation, prefix selection, and Unicode/ASCII/LaTeX/siunitx rendering.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Si.fs" />
+    <Compile Include="Derived.fs" />
+    <Compile Include="NonSi.fs" />
+    <Compile Include="Registry.fs" />
+    <Compile Include="Prefix.fs" />
+    <Compile Include="UnitDisplay.fs" />
+    <Compile Include="Axis.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
+  </ItemGroup>
+
+</Project>

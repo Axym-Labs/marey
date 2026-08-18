@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- §6: "a ~200-line package registering a .NET Interactive formatter so `figure` displays
+         inline as SVG. Do it at M1; it is how people will first meet the library."
+
+         **The host §6 named is dead.** Polyglot Notebooks was deprecated on 2026-02-11 and
+         retired 2026-03-27; .NET Interactive, the engine under it, followed on 2026-04-24. The
+         maintained successor is Verso, whose display pipeline is a different mechanism entirely
+         (see `src/Marey.Verso/`). The registration half of this package — `Formatters.fs`, the
+         packaged `extension.dib`, and the `Microsoft.DotNet.Interactive.Formatting` reference —
+         was deleted rather than carried, because a dependency on a retired engine is not free:
+         it is a prerelease reference in every `dotnet pack`, and a paragraph of documentation
+         pointing readers at something they cannot install.
+
+         What survives is the half that was never about the host. `Html.fs` is
+         `something -> string` and knows nothing about kernels, which is exactly why it outlived
+         the kernel it was written for. Verso reaches it through one bridge function.
+
+         netstandard2.1: this assembly is loaded into somebody else's process, and the notebook
+         host is whatever the reader installed. netstandard2.1 loads on every runtime from .NET
+         Core 3.0 forward, and matches the rest of the repo.
+
+         It sits at the top of the DAG and references Core, Units, Svg and Plot. That does not
+         violate D21, which constrains `Marey.Plot`, not a leaf integration package.
+
+         The *name* is now wrong — it names a retired Microsoft product — and is left alone
+         deliberately, pending the naming pass that also has to settle the `Marey` package id
+         being taken on nuget.org. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Marey.Html</AssemblyName>
+    <RootNamespace>Marey</RootNamespace>
+    <Description>HTML renderings of Marey values for notebooks: figures and scenes as inline SVG, colours as swatches, ramps resampled through Oklab, palettes, dimensions, unit witnesses and erased scales. Host-neutral and dependency-free.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Html.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
+    <ProjectReference Include="..\Marey.Units\Marey.Units.fsproj" />
+    <ProjectReference Include="..\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />
+    <ProjectReference Include="..\Marey.Plot\Marey.Plot.fsproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- The Verso display hook. Polyglot Notebooks was retired 2026-03-27 and .NET Interactive
+         2026-04-24; Verso is the maintained successor, and its extension model is a different
+         mechanism rather than a renamed one. There is no `#r`-time hook: an extension is a NuGet
+         package the reader installs from Verso's Extensions panel, unpacked into a managed store,
+         loaded into an isolated collectible `AssemblyLoadContext`, scanned for `[VersoExtension]`,
+         and approved per version.
+
+         **Two target frameworks, matching `Verso.Abstractions`.** Verso installs an extension
+         under `<store>/<package-id>/<version>/<target-framework>/` and each host picks the newest
+         lib group its runtime can load. A single `net8.0` would work on both; shipping `net10.0`
+         as well means a .NET 10 host is not running our code through a downlevel reference set.
+         Not netstandard2.1 like the rest of the repo: `Verso.Abstractions` ships net8.0/net10.0
+         only, and this assembly never leaves a notebook host.
+
+         **It does not reference Marey.** That is not an oversight and not laziness — see
+         `Formatter.fs`. The short version: this assembly and the Marey assemblies the notebook
+         `#r`s live in different load contexts, so a `Figure` here and a `Figure` there would be
+         two unequal `System.Type`s. The bridge is reflective by necessity, and the payoff is that
+         this package has exactly one dependency and keeps working across Marey versions. -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <AssemblyName>Marey.Verso</AssemblyName>
+    <RootNamespace>Marey.Verso</RootNamespace>
+    <Description>Verso notebook extension for Marey. Figures, scenes, colours, ramps, palettes, dimensions, unit witnesses and erased scales display inline instead of as a field table.</Description>
+    <PackageTags>verso extension notebook fsharp plotting units visualization</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Bridge.fs" />
+    <Compile Include="Formatter.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The only dependency, and it has none of its own. Verso shares these types from the
+         default load context so interface identity survives the isolation boundary, which is the
+         one thing that must be true for `[VersoExtension]` discovery to work at all. -->
+    <PackageReference Include="Verso.Abstractions" Version="1.2.1" />
+  </ItemGroup>
+
+</Project>

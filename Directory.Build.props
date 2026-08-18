@@ -14,9 +14,9 @@
     <!-- Unused-variable and implicit-obsolete warnings are off by default in F#. -->
     <OtherFlags>$(OtherFlags) --warnon:1182 --warnon:3390</OtherFlags>
 
-    <Authors>Quiver contributors</Authors>
-    <Product>Quiver</Product>
-    <RepositoryUrl>https://github.com/Jonathan-Schaefer-git/quiver</RepositoryUrl>
+    <Authors>Marey contributors</Authors>
+    <Product>Marey</Product>
+    <RepositoryUrl>https://github.com/Jonathan-Schaefer-git/marey</RepositoryUrl>
 
     <!-- MIT, decided deliberately: shorter than Apache-2.0, and what most of the F# ecosystem
          uses, so it composes with the packages a consumer already has. The trade accepted in

@@ -1,4 +1,4 @@
-# Quiver — implementation decision log
+# Marey — implementation decision log
 
 Deviations from `docs/design.md`, and the implicit consequences the design document implies
 but does not spell out. Each entry says what the design says, what was actually built, and
@@ -192,7 +192,7 @@ Recorded so they read as decisions rather than oversights.
   gridlines, rounded corners and circular markers all flatten one layer up.
 - **No `Node3D`.** Per §5.4, the door is left open via a future `Project3D of Camera * Node3`
   that collapses to 2-D. `Vec3`/`Mat` live in Core; nothing 3-D is in `Node`.
-- **`rad` and `deg` are in Core, not Quiver.Units.** Angle is dimensionless in SI (m/m), so it
+- **`rad` and `deg` are in Core, not Marey.Units.** Angle is dimensionless in SI (m/m), so it
   is a *tag*, not a dimension. Giving it a measure anyway kills the degrees/radians bug at
   compile time; keeping it out of `Dim` stops anyone claiming radians have a dimension.
 - **Graphics measures (`px`, `nd`, `pt`, `mm`) have no `Dim`.** A `float<px>` is a device
@@ -285,7 +285,7 @@ Discovered by the build failing with `FS1133: No constructors are available for 
 on an ordinary `min a b`.
 
 The namespace is opened more recently than `FSharp.Core`, so in application position the
-*type* wins. The consequence is not local: **every file that opens `Quiver` would lose the
+*type* wins. The consequence is not local: **every file that opens `Marey` would lose the
 `min` function.** The measure is named `minute` instead.
 
 This is the same class of bug as §12.4 (`Lerp` colliding with `System.Double.Lerp`), one level
@@ -356,10 +356,10 @@ never be applied. Non-SI units are opaque and cross over only through `U.convert
 
 ---
 
-## D21. `Quiver.Plot` takes no backend reference, so `Chart.toSvg` takes a renderer
+## D21. `Marey.Plot` takes no backend reference, so `Chart.toSvg` takes a renderer
 
 §0's diagram puts the DSLs above the IR and the backends below it. A grammar package that
-references `Quiver.Backend.Svg` inverts that, and it drags an SVG writer into a GPU-only
+references `Marey.Backend.Svg` inverts that, and it drags an SVG writer into a GPU-only
 application.
 
 **Built:** `Chart.toSvg : (Extent<px> -> Node -> string) -> path -> extent -> Figure -> unit`.
@@ -414,7 +414,7 @@ minimum gap. On collision a fixed ladder is walked and the first rung that fits 
 
 Thinning beats rotation at stride 2 and rotation beats thinning past that: dropping more than
 half the labels loses more than tilting them costs. Ticks are never moved and never
-relabelled — `Quiver.Units` already made the labels injective (§4), and a thinned axis is
+relabelled — `Marey.Units` already made the labels injective (§4), and a thinned axis is
 still a correct axis.
 
 The winning rung is recorded in `TickPlan.Rule` and emitted as `data-tick-rule` on the axis
@@ -528,7 +528,7 @@ cost Fable compatibility.
 
 ---
 
-## F2. Finding: `Quiver.Core` keeps the sRGB transfer function private
+## F2. Finding: `Marey.Core` keeps the sRGB transfer function private
 
 `Color.toLinear`/`ofLinear` are `private` in `Color.fs`. The Brettel/Viénot CVD transforms are
 defined on **linear** light — applying them to gamma-encoded values, as a good many published
@@ -543,7 +543,7 @@ If a second consumer ever appears, promote them.
 
 ## Verification status
 
-`Quiver.Core` builds warning-free on `netstandard2.1` with zero package references, and 112
+`Marey.Core` builds warning-free on `netstandard2.1` with zero package references, and 112
 runtime checks pass, covering: `Dim` group laws; witness algebra across five instantiations;
 `Affine` dimensional composition and inversion; `inverse (forward x) = x`, monotonicity and
 endpoint mapping for all seven scale kinds; §4's three tick properties over 2000 random
@@ -552,7 +552,7 @@ over five types including the unitless case; scene structural equality both ways
 degradation; text metrics; polar/cartesian coords; and §8.1's "gradient of a potential is a
 force, with the unit inferred rather than annotated".
 
-`Quiver.Plot` builds warning-free on `netstandard2.1` with zero package references and no
+`Marey.Plot` builds warning-free on `netstandard2.1` with zero package references and no
 backend reference, and 66 runtime checks pass against real rendered output — every scene is
 rendered to SVG, parsed back with `XDocument.Parse`, and looked at. Covering:
 

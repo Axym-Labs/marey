@@ -1,11 +1,18 @@
-# Quiver
+# Marey
 
 A dimensionally-typed visualization system for F# — plotting, animation, and
 math/physics visualization where the compiler checks your units.
 
-> Working name. A *quiver plot* is the canonical vector-field visualization; a *quiver*
-> in category theory is a directed multigraph, the free generator of a category.
-> The library is about both.
+> Named for **Étienne-Jules Marey** (1830–1904), who invented the graphical method in
+> experimental science: record a physical quantity as a curve against time, and read the
+> physics off the curve. He built the instruments that inscribe a measurement directly as a
+> trace, and then invented chronophotography — motion captured as a deterministic time series
+> of frames. Measurement, plotting and animation were one subject to him, which is the bet
+> this library is making.
+>
+> It was called *Quiver* until that name turned out to be taken twice over in its own field:
+> by [q.uiver.app](https://q.uiver.app/), a commutative-diagram editor that also exports TikZ
+> to the same audience, and on NuGet by an unrelated C# graph database.
 
 ## Status
 
@@ -14,20 +21,20 @@ builds warning-free, and is verified at runtime.
 
 | Package | State |
 |---|---|
-| `Quiver.Core` | Complete — `Dim`, `U<'u>`, `Vec2/3`, `Affine<'a,'b>`, `Scale`, `Coord`, the nine-case `Scene` IR, `Interp`, text metrics. **Zero dependencies**, `netstandard2.1`. |
-| `Quiver.Units` | Complete — SI + 22 derived + 18 non-SI witnesses, `Dim`-keyed canonicalisation, prefix selection, Unicode/ASCII/LaTeX/siunitx rendering, self-labelling axes. |
-| `Quiver.Backend.Svg` | Complete — all nine IR nodes, batched markers, gradients, clipping, a11y semantics, deterministic byte-identical output. |
-| `Quiver.Plot` | Complete — Okabe–Ito / viridis / cividis / magma / Oklab-diverging palettes with a CVD + contrast validator, four resolved-value themes, a measure–arrange constraint grid, the axis and legend compilers, line/point/area/bar/errorbar geoms, and `Chart`. Zero dependencies, no backend reference. |
-| `Quiver.Backend.Tikz` | Complete — all nine IR nodes into `tikzpicture` source, `bp` coordinates, batched marker macros, capability degradation, siunitx axis titles, and figures that inherit the host document's font. |
-| `Quiver.Interactive` | Complete — HTML renderings of nine Quiver types for a notebook cell: figures and scenes as inline SVG, colours as swatches that do not lie about alpha, ramps resampled through Oklab, palettes, the CVD/contrast report, dimensions, unit witnesses and erased scales. Host-neutral: pure `something -> string`, zero dependencies. |
-| `Quiver.Verso` | Complete — the [Verso](https://github.com/DataficationSDK/Verso) notebook extension. An `IDataFormatter` at priority 30, above the built-ins that would otherwise render a `Figure` as a field table. Depends on `Verso.Abstractions` alone and on no Quiver assembly: it reaches the renderer by reflection, because a Verso extension and the notebook's `#r` live in different `AssemblyLoadContext`s. |
-| `Quiver.Tests` | **481 tests**, all green: FsCheck property suites for the `Dim` group laws, all seven scale kinds, tick properties, `Interp`, `Affine`, colour and the Scene IR; regression tests pinning every §12 landmine and every numbered decision; 29 golden baselines in SVG *and* `tikzpicture` source; a real `pdflatex` compile gate; an ink gate that rasterises the compiled figure and checks there is something in it; an XML well-formedness pass over every notebook fragment; and the Verso formatter driven across a genuinely isolated collectible `AssemblyLoadContext`. |
+| `Marey.Core` | Complete — `Dim`, `U<'u>`, `Vec2/3`, `Affine<'a,'b>`, `Scale`, `Coord`, the nine-case `Scene` IR, `Interp`, text metrics. **Zero dependencies**, `netstandard2.1`. |
+| `Marey.Units` | Complete — SI + 22 derived + 18 non-SI witnesses, `Dim`-keyed canonicalisation, prefix selection, Unicode/ASCII/LaTeX/siunitx rendering, self-labelling axes. |
+| `Marey.Backend.Svg` | Complete — all nine IR nodes, batched markers, gradients, clipping, a11y semantics, deterministic byte-identical output. |
+| `Marey.Plot` | Complete — Okabe–Ito / viridis / cividis / magma / Oklab-diverging palettes with a CVD + contrast validator, four resolved-value themes, a measure–arrange constraint grid, the axis and legend compilers, line/point/area/bar/errorbar geoms, and `Chart`. Zero dependencies, no backend reference. |
+| `Marey.Backend.Tikz` | Complete — all nine IR nodes into `tikzpicture` source, `bp` coordinates, batched marker macros, capability degradation, siunitx axis titles, and figures that inherit the host document's font. |
+| `Marey.Html` | Complete — HTML renderings of nine Marey types for a notebook cell: figures and scenes as inline SVG, colours as swatches that do not lie about alpha, ramps resampled through Oklab, palettes, the CVD/contrast report, dimensions, unit witnesses and erased scales. Host-neutral: pure `something -> string`, zero dependencies. |
+| `Marey.Verso` | Complete — the [Verso](https://github.com/DataficationSDK/Verso) notebook extension. An `IDataFormatter` at priority 30, above the built-ins that would otherwise render a `Figure` as a field table. Depends on `Verso.Abstractions` alone and on no Marey assembly: it reaches the renderer by reflection, because a Verso extension and the notebook's `#r` live in different `AssemblyLoadContext`s. |
+| `Marey.Tests` | **481 tests**, all green: FsCheck property suites for the `Dim` group laws, all seven scale kinds, tick properties, `Interp`, `Affine`, colour and the Scene IR; regression tests pinning every §12 landmine and every numbered decision; 29 golden baselines in SVG *and* `tikzpicture` source; a real `pdflatex` compile gate; an ink gate that rasterises the compiled figure and checks there is something in it; an XML well-formedness pass over every notebook fragment; and the Verso formatter driven across a genuinely isolated collectible `AssemblyLoadContext`. |
 
-M0 is complete: `Quiver.Core` + SVG backend + linear/log scales + line/scatter/axes/legend
+M0 is complete: `Marey.Core` + SVG backend + linear/log scales + line/scatter/axes/legend
 + theme record.
 
 ```fsharp
-open Quiver
+open Marey
 
 Chart.line U.second U.metre ts positions
 |> Chart.withName "model"
@@ -60,7 +67,7 @@ Or drop the same value into a notebook cell and look at it. In
 [Verso](https://github.com/DataficationSDK/Verso) — the maintained successor to Polyglot Notebooks,
 which Microsoft retired in March 2026 — there is no `.Show()`, no save-then-open and no display
 call: the cell's value *is* a `Figure`, and a `Figure` knows how to be an SVG.
-[`docs/notebooks/quiver-tour.dib`](docs/notebooks/quiver-tour.dib) is the tour and
+[`docs/notebooks/marey-tour.dib`](docs/notebooks/marey-tour.dib) is the tour and
 [`docs/notebooks/README.md`](docs/notebooks/README.md) is the setup.
 
 Documents:

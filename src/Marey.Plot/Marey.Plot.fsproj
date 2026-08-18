@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- §13 calls this Marey.Grammar. It is Marey.Plot at M0 because the M0 scope is the
+         matplotlib-shaped front door plus the axis/legend/layout compiler, not the full
+         grammar-of-graphics CE (§9), which is M2. Renaming later is cheap; shipping a
+         half-grammar under the grammar name is not. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Marey.Plot</AssemblyName>
+    <RootNamespace>Marey</RootNamespace>
+    <Description>Themes, palettes, constraint layout, and the axis/legend compiler that turns figures into Scene IR.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Palette.fs" />
+    <Compile Include="Theme.fs" />
+    <Compile Include="Layout.fs" />
+    <Compile Include="Axes.fs" />
+    <Compile Include="Legend.fs" />
+    <Compile Include="Geom.fs" />
+    <Compile Include="Figure.fs" />
+    <Compile Include="Chart.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
+    <ProjectReference Include="..\Marey.Units\Marey.Units.fsproj" />
+  </ItemGroup>
+
+</Project>

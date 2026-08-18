@@ -1,10 +1,12 @@
-# Quiver — a dimensionally-typed visualization system for F#
+# Marey — a dimensionally-typed visualization system for F#
 
 **Design document, v0.1 — August 2026**
 
-> *Working name.* A **quiver plot** is the canonical vector-field visualization; a **quiver**
-> in category theory is a directed multigraph, the free generator of a category. The library
-> is about both. Rename freely.
+> *Named for* **Étienne-Jules Marey** (1830–1904) — the graphical method in experimental
+> science, the instruments that inscribe a measurement as a trace, and chronophotography.
+> Measurement, plotting and animation as one subject. Formerly *Quiver*, renamed once
+> [q.uiver.app](https://q.uiver.app/) — a commutative-diagram editor exporting TikZ to the
+> same readers — proved to have the name first.
 
 ---
 
@@ -356,14 +358,14 @@ that lacks gradients) rather than silently producing wrong output.
 
 | Backend | Package | Depends on | Why it's on the list |
 |---|---|---|---|
-| **SVG** | `Quiver.Backend.Svg` | *nothing* | Reference implementation and golden-image test oracle. Pure F#, works under Fable, works in notebooks. **Build this first and treat it as the spec.** |
-| **TikZ/PGF** | `Quiver.Backend.Tikz` | nothing | Emits `\begin{tikzpicture}`. Figures that inherit the document's fonts and `siunitx` units. For a physics/maths audience this is a killer feature almost nobody offers, and it is *cheap* — it's a text emitter. |
-| **Skia** | `Quiver.Backend.Skia` | SkiaSharp | PNG/JPEG/PDF, real text shaping via HarfBuzzSharp, GPU-accelerated canvas, and a desktop window. The workhorse. |
-| **Web** | `Quiver.Backend.Web` | Fable | Canvas2D first, WebGL2 for batched nodes. Same source, so no second implementation of the compiler. |
-| **GPU** | `Quiver.Backend.Gpu` | Silk.NET | Vulkan/OpenGL. Needed for fields, particles, ≥10⁵ marks, and real-time simulation. *Use Silk.NET, not ComputeSharp* — ComputeSharp is DX12/Windows-only, which kills cross-platform. |
-| **Video** | `Quiver.Tools.Video` | Skia or GPU + ffmpeg | Frame renderer + muxer. Trivially parallel because of §7. |
+| **SVG** | `Marey.Backend.Svg` | *nothing* | Reference implementation and golden-image test oracle. Pure F#, works under Fable, works in notebooks. **Build this first and treat it as the spec.** |
+| **TikZ/PGF** | `Marey.Backend.Tikz` | nothing | Emits `\begin{tikzpicture}`. Figures that inherit the document's fonts and `siunitx` units. For a physics/maths audience this is a killer feature almost nobody offers, and it is *cheap* — it's a text emitter. |
+| **Skia** | `Marey.Backend.Skia` | SkiaSharp | PNG/JPEG/PDF, real text shaping via HarfBuzzSharp, GPU-accelerated canvas, and a desktop window. The workhorse. |
+| **Web** | `Marey.Backend.Web` | Fable | Canvas2D first, WebGL2 for batched nodes. Same source, so no second implementation of the compiler. |
+| **GPU** | `Marey.Backend.Gpu` | Silk.NET | Vulkan/OpenGL. Needed for fields, particles, ≥10⁵ marks, and real-time simulation. *Use Silk.NET, not ComputeSharp* — ComputeSharp is DX12/Windows-only, which kills cross-platform. |
+| **Video** | `Marey.Tools.Video` | Skia or GPU + ffmpeg | Frame renderer + muxer. Trivially parallel because of §7. |
 
-**Notebook integration** (`Quiver.Interactive`) is a ~200-line package registering a
+**Notebook integration** (`Marey.Html`) is a ~200-line package registering a
 .NET Interactive formatter so `figure` displays inline as SVG. Do it at M1; it is how people
 will first meet the library.
 
@@ -613,7 +615,7 @@ a maths visualization library. There is no good .NET answer. Three options:
 
 **Recommendation:** architect `ITextShaper` as a capability from day one; ship (1) as an
 opt-in package and (2) automatically on the web backend at M3; start (3) as a separate
-repo (`Quiver.Math.Typesetting`) that can succeed or fail without taking the library with it.
+repo (`Marey.Math.Typesetting`) that can succeed or fail without taking the library with it.
 
 ---
 
@@ -672,7 +674,7 @@ type TraceNode =
   across the sample set — a Sankey of your grammar.
 
 This needs almost nothing from the plotting core except `Scene`, a rectangle geom, a tree
-layout, and colour scales. It is a separate package (`Quiver.Trace.FParsec`) and could
+layout, and colour scales. It is a separate package (`Marey.Trace.FParsec`) and could
 plausibly be built in a couple of weekends *once the core exists*. It would also be, by a
 wide margin, the most shareable demo the project has.
 
@@ -754,25 +756,25 @@ strings, always canonicalise from `Dim`.**
 ## 13. Repository and package layout
 
 ```
-Quiver.Core            // Dim, U<'u>, Vec2/3, Affine, Scale, Coord, Scene IR, Interp
+Marey.Core            // Dim, U<'u>, Vec2/3, Affine, Scale, Coord, Scene IR, Interp
                        //   → zero dependencies, Fable-compatible, netstandard2.1
-Quiver.Units           // SI + derived + common non-SI witnesses, canonicalisation, prefixes
-Quiver.Grammar         // encodings, geoms, stats, facets, layout, themes → Scene
-Quiver.Anim            // Anim, easing, storyboard CE, path morphing
-Quiver.Fields          // fields, streamlines, contour, LIC, integrators
-Quiver.Sim             // Stam fluids, LBM, SPH, PDE grids
-Quiver.Backend.Svg     // reference backend, zero deps
-Quiver.Backend.Tikz
-Quiver.Backend.Skia
-Quiver.Backend.Web     // Fable
-Quiver.Backend.Gpu     // Silk.NET
-Quiver.Interactive     // .NET Interactive formatters
-Quiver.Tools.Video     // ffmpeg muxing
-Quiver.Trace.FParsec   // deferred pillar
-Quiver.Tests           // FsCheck laws + golden SVG snapshots
+Marey.Units           // SI + derived + common non-SI witnesses, canonicalisation, prefixes
+Marey.Grammar         // encodings, geoms, stats, facets, layout, themes → Scene
+Marey.Anim            // Anim, easing, storyboard CE, path morphing
+Marey.Fields          // fields, streamlines, contour, LIC, integrators
+Marey.Sim             // Stam fluids, LBM, SPH, PDE grids
+Marey.Backend.Svg     // reference backend, zero deps
+Marey.Backend.Tikz
+Marey.Backend.Skia
+Marey.Backend.Web     // Fable
+Marey.Backend.Gpu     // Silk.NET
+Marey.Html     // .NET Interactive formatters
+Marey.Tools.Video     // ffmpeg muxing
+Marey.Trace.FParsec   // deferred pillar
+Marey.Tests           // FsCheck laws + golden SVG snapshots
 ```
 
-`Quiver.Core` having **zero dependencies** is non-negotiable: it is what lets the same IR
+`Marey.Core` having **zero dependencies** is non-negotiable: it is what lets the same IR
 run in a notebook, in a browser via Fable, and in an ahead-of-time-compiled native binary.
 
 **Testing.** Golden-image snapshots against the SVG backend (text-diffable, reviewable in a
@@ -790,21 +792,21 @@ multi-year project at solo pace; the sequencing matters more than the scope.
 
 | # | Milestone | Contents | Why stop here is OK |
 |---|---|---|---|
-| **M0** | *Skateboard* | `Quiver.Core` + SVG backend + linear/log scales + line/scatter/axes/legend + theme record | Already produces publication-quality static plots. Usable by you, today. |
-| **M1** | *Units end to end* | `Quiver.Units`, witness canonicalisation, prefix selection, auto axis titles, `.NET Interactive` formatter, TikZ backend | **This is the release that has no competitor.** Unit-safe plots that drop into a LaTeX document. Announce here. |
+| **M0** | *Skateboard* | `Marey.Core` + SVG backend + linear/log scales + line/scatter/axes/legend + theme record | Already produces publication-quality static plots. Usable by you, today. |
+| **M1** | *Units end to end* | `Marey.Units`, witness canonicalisation, prefix selection, auto axis titles, `.NET Interactive` formatter, TikZ backend | **This is the release that has no competitor.** Unit-safe plots that drop into a LaTeX document. Announce here. |
 | **M2** | *Grammar* | encoding CE, geoms, stats, facets, constraint layout, Skia backend (PNG/PDF), colour system | Now it's a general-purpose plotting library, not a physics toy. |
 | **M3** | *Motion* | `Anim`, easing, storyboard CE, path morphing, video export, MathJax text on web | Manim-class output with seeking and parallel rendering. The demo reel. |
 | **M4** | *Fields & interaction* | fields, streamlines, contour, LIC, `Signal`, scene diffing, Fable backend, GPU backend | Real-time interactive exploration in a browser and on the desktop. |
 | **M5** | *Simulation* | integrators, Stam fluids, LBM, SPH, PDE grids, invariant monitoring; unit type provider | The fluid-sim pillar. |
 | **M6** | *Typesetting* | native OpenType MATH layout | Removes the last external dependency. Can slip indefinitely without hurting M0–M5. |
-| **M7** | *Traces* | `Quiver.Trace.FParsec`, icicle-over-input, branch heatmaps | Standalone, high-visibility, low-risk. Can jump the queue any time after M2. |
+| **M7** | *Traces* | `Marey.Trace.FParsec`, icicle-over-input, branch heatmaps | Standalone, high-visibility, low-risk. Can jump the queue any time after M2. |
 
 ---
 
 ## 15. Risks, honestly
 
 - **Scope.** This document describes roughly five libraries. The mitigation is §14's
-  sequencing and the `Quiver.Core` zero-dependency rule — nothing after M1 is load-bearing
+  sequencing and the `Marey.Core` zero-dependency rule — nothing after M1 is load-bearing
   for M0–M1 being useful.
 - **Text and layout eat 40% of the effort.** Everyone underestimates this. Axis label
   collision avoidance, tick label formatting, legend layout, and font metrics are where
@@ -846,15 +848,15 @@ differentiated. Build the boring differentiated thing first, then have the fun.
 ## 17. Companion file
 
 > **Status note (M1).** This section describes the design-time spike, which was never checked
-> into this repository — there is no `quiver-verified-core.fs` and no `spike/` directory in the
+> into this repository — there is no `marey-verified-core.fs` and no `spike/` directory in the
 > tree, and there never has been. The section is kept as written because it is the record of what
 > was verified before any of `src/` existed. Every claim in the list below is now asserted by
-> `tests/Quiver.Tests` against the real packages instead; §7 and §8.2 (animation, simulation)
-> are the exceptions, since `Quiver.Anim` and `Quiver.Sim` are M3 and M5 work and do not yet
+> `tests/Marey.Tests` against the real packages instead; §7 and §8.2 (animation, simulation)
+> are the exceptions, since `Marey.Anim` and `Marey.Sim` are M3 and M5 work and do not yet
 > exist. The SDK version below is the one the spike was written against; the tree currently
 > builds on 10.0.301.
 
-`quiver-verified-core.fs` is the executable version of §2–§8. Drop it into a
+`marey-verified-core.fs` is the executable version of §2–§8. Drop it into a
 `dotnet new console -lang F#` project and `dotnet run`. It compiles **warning-free** on
 F# 10 / .NET SDK 10.0.110 and, on execution:
 
@@ -870,7 +872,7 @@ F# 10 / .NET SDK 10.0.110 and, on execution:
 - drives a velocity-Verlet harmonic oscillator through `Sim.trajectory`, hits
   x(π) = −1.0000 m, and shows the energy invariant drifting by 7.4 × 10⁻⁸ over 10 s;
 - emits an actual SVG figure from the `Scene` IR through a ~50-line zero-dependency
-  reference backend (`quiver-scene-demo.svg`).
+  reference backend (`marey-scene-demo.svg`).
 
 It is deliberately not a library — it is proof that the load-bearing type-level claims in
 this document are true, and a record of the four ways they failed first (§12).

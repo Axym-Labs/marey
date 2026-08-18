@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- §13: "Marey.Core having zero dependencies is non-negotiable: it is what lets the
+         same IR run in a notebook, in a browser via Fable, and in an AOT-compiled native
+         binary." netstandard2.1 is the Fable-compatible floor.
+
+         NOTHING may be added to <ItemGroup><PackageReference> in this file. Ever.
+         FSharp.Core is the language runtime, not a dependency. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Marey.Core</AssemblyName>
+    <RootNamespace>Marey</RootNamespace>
+    <Description>Dimensionally-typed visualization core: SI dimension vectors, unit witnesses, unit-indexed geometry, scales, and the closed Scene IR. Zero dependencies.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Compile order is the layer order. Do not reorder without reading docs/design.md §2-§5. -->
+    <Compile Include="Num.fs" />
+    <Compile Include="Tex.fs" />
+    <Compile Include="Space.fs" />
+    <Compile Include="Dim.fs" />
+    <Compile Include="Witness.fs" />
+    <Compile Include="Color.fs" />
+    <Compile Include="Vec.fs" />
+    <Compile Include="Affine.fs" />
+    <Compile Include="Interp.fs" />
+    <Compile Include="Ticks.fs" />
+    <Compile Include="Scale.fs" />
+    <Compile Include="Erased.fs" />
+    <Compile Include="Scene.fs" />
+    <Compile Include="Coord.fs" />
+    <Compile Include="Backend.fs" />
+  </ItemGroup>
+
+</Project>
