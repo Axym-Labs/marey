@@ -76,16 +76,49 @@ jobs:
           echo "value=$version" >> "$GITHUB_OUTPUT"
           echo "publishing $version"
 
+      # The .debs, not the installed tree: apt's unpack-and-configure is only ~40s, while the
+      # download was ~280s of a 366s step -- 150 MB out of azure.archive.ubuntu.com's universe
+      # pocket at roughly 0.5 MB/s. Restoring the archives from the Actions cache removes that
+      # download entirely; measured locally at 16s to fetch cold and 35s to install with the
+      # network refused outright.
+      #
+      # Keyed on the package list, so adding a package fetches once and caches from then on.
+      - name: Cache the TeX .debs
+        uses: actions/cache@v4
+        with:
+          path: ~/apt-archives
+          key: apt-tex-${{ runner.os }}-${{ hashFiles('.github/tex-packages.txt') }}
+
+      # Two of this suite's gates shell out, and both are written to report "not installed"
+      # rather than to fail -- which is right on a contributor's laptop and wrong here.
+      #
+      #   pdflatex   compiles all 16 golden .tex baselines. Without it, the single most
+      #              valuable test in the milestone does not run.
+      #   pdftoppm   rasterises the compiled PDF for the ink gate, which exists because D33
+      #              once produced a perfectly valid document containing no visible markers
+      #              while every other test passed.
+      #
+      # The package list and the reason for each entry live in .github/tex-packages.txt.
       - name: Install the TeX and raster toolchain
         run: |
+          set -e
+          pkgs=$(grep -vE '^[[:space:]]*(#|$)' .github/tex-packages.txt | tr '\n' ' ')
+          mkdir -p "$HOME/apt-archives/partial"
+          # apt drops privileges to _apt to fetch. If it cannot write the archive dir as that
+          # user it downloads as root instead and says so; hand the dir over rather than let
+          # the sandbox quietly turn itself off.
+          sudo chown -R _apt:root "$HOME/apt-archives"
           sudo apt-get update
+          # Download first, so a cache hit makes this a no-op and the install below never
+          # touches the network. Split in two rather than one command because the download is
+          # the part worth seeing separately in the log when this gets slow again.
+          sudo apt-get install --no-install-recommends -y -d \
+            -o Dir::Cache::archives="$HOME/apt-archives" $pkgs
           sudo apt-get install --no-install-recommends -y \
-            texlive-latex-base \
-            texlive-latex-extra \
-            texlive-latex-recommended \
-            texlive-pictures \
-            texlive-science \
-            poppler-utils
+            -o Dir::Cache::archives="$HOME/apt-archives" $pkgs
+          # actions/cache runs as the runner user and cannot read root-owned archives.
+          sudo chown -R "$(id -u):$(id -g)" "$HOME/apt-archives"
+          echo "cache holds $(ls "$HOME/apt-archives"/*.deb 2>/dev/null | wc -l) .debs"
 
       # Nothing is published that has not been tested here, in this job. Relying on ci.yml
       # having been green on the same commit is a different claim -- it is green on a commit,

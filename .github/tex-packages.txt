@@ -1,0 +1,23 @@
+# The TeX and raster toolchain, installed identically by ci.yml and publish.yml.
+#
+# One file rather than two inline lists, because they drifted once already: publish.yml was
+# still missing texlive-latex-extra after ci.yml gained it, which would have failed a release
+# at the Test step, minutes in, with the OIDC exchange never reached.
+#
+# What each one is for:
+#   texlive-latex-base         the LaTeX core
+#   texlive-latex-extra        standalone.cls, which every emitted document begins with
+#   texlive-latex-recommended  textcomp
+#   texlive-pictures           tikz/pgf
+#   texlive-science            siunitx (and, as a hard Depends, texlive-lang-greek -- 79 MB,
+#                              over half this list's download, unavoidable while we use siunitx)
+#   poppler-utils              pdftoppm, for the ink gate
+#
+# Changing this file changes the apt cache key in both workflows, so a package added here is
+# fetched fresh once and then cached.
+texlive-latex-base
+texlive-latex-extra
+texlive-latex-recommended
+texlive-pictures
+texlive-science
+poppler-utils
