@@ -7,19 +7,20 @@ file is the setup, and it says plainly which parts have been verified and which 
 ## What a kernel needs
 
 .NET Interactive runs as a separate process — a **kernel** — that your notebook front end talks to.
-Three things have to be present. On the machine this was written on, the first two already were:
+Five things have to line up:
 
 | | |
 |---|---|
-| .NET SDK | 10.0.301 ✓ |
-| `Microsoft.NETCore.App` runtime | 10.0.9 ✓ |
-| **`Microsoft.AspNetCore.App` runtime** | 10.0.9 ✓ — the kernel needs this one, not just the base runtime. `dotnet --list-runtimes` will tell you. |
-| The kernel itself | **not installed.** `dotnet tool install -g Microsoft.dotnet-interactive` |
-| A front end | **not installed.** See below. |
+| .NET SDK | 10.0.301 |
+| `Microsoft.NETCore.App` runtime | 10.0.9 |
+| **`Microsoft.AspNetCore.App` runtime** | 10.0.9 — the kernel needs this one, not just the base runtime. `dotnet --list-runtimes` will tell you. |
+| The kernel | `Microsoft.dotnet-interactive` 1.0.712001, acquired by the extension into its own global storage as a *local* tool |
+| A front end | Polyglot Notebooks, or one of the alternatives below |
 
-The kernel tool's current build (`1.0.712001`) targets `net10.0` and declares both frameworks
-above, so on a box with only the base runtime it installs and then fails to start. That is worth
-knowing because the failure looks like a broken extension rather than a missing runtime.
+The kernel tool's current build targets `net10.0` and declares **both** frameworks above, so on a
+box with only the base runtime it installs and then fails to start. Worth knowing because that
+failure reads as a broken extension rather than a missing runtime — and it is not the only failure
+that does; see the acquisition bug further down, which is the one you are most likely to hit.
 
 ## A front end
 
@@ -81,6 +82,57 @@ Verified on this machine:
 **Not** verified: that a live kernel loads the package and runs `extension.dib`. There is no kernel
 here. That is the gap this file exists to help close, and it is why the one line inside
 `extension.dib` is pinned by a reflection test rather than trusted.
+
+## If the kernel never starts at all
+
+On **.NET SDK 10**, the Polyglot Notebooks extension works exactly once and then breaks, with this
+in its output log:
+
+```
+create-tool-manifest: Finished with code 73.
+  Overwrite   ./dotnet-tools.json
+Error acquiring dotnet-interactive tool: Error: Unable to create local tool manifest.
+Extension activation failed: Cannot read properties of undefined (reading 'workingDirectory')
+```
+
+It is not a corrupted install and reinstalling the extension does not fix it. It is a version skew
+between the extension and the SDK, and the whole of it is these four lines of
+`out/src/vscode-common/acquisition.js`:
+
+```js
+const toolManifestFile = path.join(globalStoragePath, '.config', 'dotnet-tools.json');
+if (!fs.existsSync(toolManifestFile)) {
+    await createToolManifest(args.dotnetPath, globalStoragePath);   // throws on non-zero exit
+}
+```
+
+The extension looks for the manifest at `.config/dotnet-tools.json`. **SDK 10's
+`dotnet new tool-manifest` writes it to `./dotnet-tools.json` instead** — verified by running the
+template into an empty directory on 10.0.301. So the check never succeeds, and the command runs on
+every activation:
+
+- **first run** — the folder is empty, the template writes the root-level file, exit 0, the tool
+  installs, everything works. This is the day it worked.
+- **every run after** — the root-level file now exists, the template refuses to overwrite it
+  without `--force` and exits **73**, `createToolManifest` throws, the acquire promise rejects, and
+  `launchOptions` comes back `undefined`. Hence the second error: nothing has a `workingDirectory`.
+
+The fix is to put the manifest where the extension looks, which also makes the failing call
+unreachable forever, since `fs.existsSync` then short-circuits it:
+
+```bash
+cd "$APPDATA/Code/User/globalStorage/ms-dotnettools.dotnet-interactive-vscode"
+mkdir -p .config
+mv dotnet-tools.json .config/dotnet-tools.json
+dotnet tool restore
+```
+
+Then **reload the VS Code window**. `dotnet tool run dotnet-interactive -- --version` in that
+folder is the exact probe the extension uses next; if it prints a version, activation will get past
+the point it was failing at.
+
+A stray empty `dotnet-tools.json` reappearing at the folder root is harmless — when both exist,
+`.config/dotnet-tools.json` wins, confirmed with `dotnet tool list`.
 
 ## If something does not display
 

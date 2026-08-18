@@ -49,3 +49,5 @@ spike/obj/
 spike/scene.svg
 
 .fake
+# Local package feed for running the notebooks before publication (docs/notebooks/README.md).
+local-feed/
