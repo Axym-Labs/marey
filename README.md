@@ -16,8 +16,11 @@ math/physics visualization where the compiler checks your units.
 
 ## Status
 
-**M0 complete. M1 in progress** — see [`docs/m1-plan.md`](docs/m1-plan.md). The core is real,
-builds warning-free, and is verified at runtime.
+**M0 complete. M1 all but announced** — see [`docs/m1-plan.md`](docs/m1-plan.md). Every phase
+is done: seven packages, both backends, the notebook extension confirmed working in a live Verso
+host, and [the guide](docs/guide.md). What is left before a release is CI and migrating the M1
+decisions into the decision log. The core is real, builds warning-free, and is verified at
+runtime.
 
 | Package | State |
 |---|---|

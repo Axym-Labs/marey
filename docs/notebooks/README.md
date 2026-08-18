@@ -134,8 +134,16 @@ Verified in the test suite (`tests/Marey.Tests/NotebookTests.fs`):
 - Every HTML fragment parsed as XML; escaping; culture invariance; the no-`<style>` and
   no-pinned-colour rules; figures sized from the host's `MaxWidth`/`MaxHeight`.
 
-**Not** verified: that a real Verso host discovers, approves and loads the package end to end.
-There is no Verso installation on the machine this was built on.
+**Verified by hand, in a real Verso host, on 2026-08-18** — the one claim the suite cannot reach,
+because it needs a notebook. A bare `Figure` displays as a figure, sized to the cell, with no
+`Chart.render` and no explicit SVG backend. Everything the tests assert about the formatter turned
+out to be true of the host as well.
+
+Getting there cost a day to a cause that had nothing to do with the extension: a stale
+`Marey.Html` in the NuGet cache, as described under *Running the tour* above. The formatter was
+correct the whole time and was correctly answering "I cannot render this", because the assembly it
+reflects into predated the bridge. That is why the version stamp is the first instruction in this
+file rather than a footnote.
 
 ## If something does not display
 

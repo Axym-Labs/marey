@@ -21,7 +21,7 @@ other, and both are recorded below.
 | 4 — Verification | **done**, 413 → 453 tests, 16 new baselines |
 | 5 — `Marey.Html` | **done**, 453 → 478 tests |
 | 5b — `Marey.Verso`, after the host was retired | **done**, 478 → 481 tests, seventh package |
-| 6 — Announce-readiness | LICENSE done (MIT). Packaging, CI and `decisions.md` not started. |
+| 6 — Announce-readiness | LICENSE (MIT), NuGet metadata and `docs/guide.md` done. CI and the `decisions.md` migration remain. |
 
 A real figure now goes end to end: `Chart.line U.second U.metre ts xs |> Chart.withUnitStyle
 Siunitx |> Chart.render TikzBackend.render` produces a `tikzpicture` that compiles under
@@ -700,8 +700,16 @@ What it found, beyond the obvious:
   formatter claimed it" — is reproduced in the suite with a real isolated collectible context
   rather than trusted.
 
-**Exit:** 481 tests. Unverified: that a live Verso host discovers, approves and loads the package
-end to end. There is no Verso installation on this machine.
+**Exit:** 481 tests, and — on 2026-08-18, in a real Verso host — the end-to-end claim the suite
+cannot reach: a bare `Figure` displays as a figure, sized to the cell, with no `Chart.render` and
+no explicit SVG backend. The load-context assumption the whole package rests on held in the host
+exactly as the isolated-`AssemblyLoadContext` test said it would.
+
+The delay before that confirmation was entirely a stale `Marey.Html` in the NuGet global packages
+folder, which is keyed on id *and version*: a re-pack as `1.0.0` never replaces an extracted
+`1.0.0`, so the notebook kept loading an assembly from before the bridge existed and `CanFormat`
+kept correctly answering "no" — with no error anywhere. Written up in
+`docs/notebooks/README.md`.
 
 ### Phase 6 — Announce-readiness
 
