@@ -41,7 +41,7 @@
     <Compile Include="GoldenTests.fs" />
     <Compile Include="TikzGoldenTests.fs" />
     <Compile Include="PlotTests.fs" />
-    <Compile Include="InteractiveTests.fs" />
+    <Compile Include="NotebookTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -51,18 +51,17 @@
     <ProjectReference Include="..\..\src\Quiver.Backend.Tikz\Quiver.Backend.Tikz.fsproj" />
     <ProjectReference Include="..\..\src\Quiver.Plot\Quiver.Plot.fsproj" />
     <ProjectReference Include="..\..\src\Quiver.Interactive\Quiver.Interactive.fsproj" />
+    <ProjectReference Include="..\..\src\Quiver.Verso\Quiver.Verso.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- `Quiver.Interactive` compiles against this and deliberately does not ship it, so the
-         reference does not flow to consumers — and a test host *is* a consumer. Declared here so
-         the registration half can be exercised for real: `Formatter.ToDisplayString` is the only
-         thing that can prove a formatter was registered under the mime type we think it was.
+    <!-- The stub contexts Verso ships for extension authors. `StubFormatterContext` is what lets
+         `QuiverFormatter` be exercised as a real `IDataFormatter` — `CanFormat` probed with a
+         mime type, `FormatAsync` handed a width and a height — without a notebook host.
 
-         The `dotnet-interactive` *tool* is still not installed and is not needed. The M1 plan
-         concluded from its absence that only the plain string functions could be tested; the
-         tool and the library are separable, and the library alone is enough. -->
-    <PackageReference Include="Microsoft.DotNet.Interactive.Formatting" Version="1.0.0-beta.26120.1" />
+         Replaces `Microsoft.DotNet.Interactive.Formatting`, which went with the .NET Interactive
+         support it was there to test. -->
+    <PackageReference Include="Verso.Testing" Version="1.2.1" />
     <PackageReference Include="FsCheck.Xunit" Version="3.3.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
     <PackageReference Include="xunit" Version="2.9.3" />

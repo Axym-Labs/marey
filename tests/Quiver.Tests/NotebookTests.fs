@@ -1,28 +1,25 @@
-/// `Quiver.Interactive` — `docs/m1-plan.md` Phase 5.
+/// `Quiver.Interactive` + `Quiver.Verso` — the notebook integration.
 ///
-/// The plan expected this suite to be limited to "the formatter bodies are plain functions
-/// returning strings, so they are asserted directly", because `dotnet-interactive` is not
-/// installed here. The tool and the library are separable: `Microsoft.DotNet.Interactive.Formatting`
-/// is an ordinary NuGet package, so the *registration* half is testable for real, and the
-/// wiring — which type, which mime type, which renderer — is where the bugs actually are.
+/// Two halves with a reflective seam between them, so the suite is in three parts:
 ///
-/// Three things are checked that a "does it return a string" test cannot:
+/// * **`Fragments`** — `Html` alone. Pure `something -> string`, no host, no global state. Every
+///   fragment parsed as XML with the oracle the SVG golden suite uses, plus escaping, culture
+///   invariance, and the two theme rules.
+/// * **`VersoFormatter`** — `QuiverFormatter` driven as a real `IDataFormatter` through Verso's
+///   own `StubFormatterContext`. This is where the priority that settles the tie with
+///   `verso.fsharp.formatter` is pinned, and where the sizing that replaced a guess is checked.
+/// * **`LoadContexts`** — the part that would otherwise be a hope. The extension is loaded into a
+///   genuinely separate collectible `AssemblyLoadContext`, exactly as Verso does it, and asked to
+///   render a value built in this one.
 ///
-/// * **Every fragment parses as XML.** The same oracle the SVG golden suite uses. It catches an
-///   unescaped `&` from a figure title, an unclosed `div`, and a stray HTML named entity.
-/// * **`Formatter` really picks our renderer**, for all nine registered types, including the two
-///   that had to be reasoned about rather than looked up: a measure-generic class and an
-///   interface with one anonymous implementation.
-/// * **The auto-registration hook names a function that exists.** `extension.dib` is a script
-///   inside a package; nothing but this test connects the name in it to the assembly, and a
-///   rename of `register` would break every user's `#r` with no build error anywhere.
-module Quiver.Tests.InteractiveTests
+/// The .NET Interactive registration tests that used to live here went with the host: Polyglot
+/// Notebooks was retired 2026-03-27 and .NET Interactive 2026-04-24.
+module Quiver.Tests.NotebookTests
 
 open System
 open System.IO
 open System.Xml.Linq
 open Xunit
-open Microsoft.DotNet.Interactive.Formatting
 open Quiver
 
 // ======================================================================================
@@ -335,204 +332,264 @@ module Fragments =
         Assert.Contains("log base 10", Html.scale log)
 
 // ======================================================================================
-// THE REGISTRATION
+// THE VERSO FORMATTER
 //
-// `Formatter` is process-global mutable state, so **every test in this module must live in this
-// module**: xUnit runs the tests of one class sequentially and different classes in parallel, and
-// two tests registering different figure sizes at the same time would flake. Each test also
-// registers what it needs rather than relying on another test having run, because the order
-// within a class is not defined either.
+// `QuiverFormatter` exercised as Verso exercises it: an `IDataFormatter` probed with `CanFormat`
+// and then invoked with `FormatAsync`, through Verso's own `StubFormatterContext`.
+//
+// In this assembly everything shares one load context, so the reflective bridge resolves the easy
+// way. `LoadContexts` below removes that comfort.
 // ======================================================================================
 
-module Registration =
+module VersoFormatter =
 
-    let private html = HtmlFormatter.MimeType
+    open Verso.Abstractions
+    open Verso.Testing.Stubs
+    open Quiver.Verso
 
-    /// What the kernel does with a value: ask `Formatter` for its HTML.
-    let private display (x: obj) = Formatter.ToDisplayString(x, html)
+    let private formatter = QuiverFormatter() :> IDataFormatter
 
-    [<Fact>]
-    let ``every registered type displays through its own renderer`` () =
-        Formatters.register ()
+    let private context (mime: string) (w: float) (h: float) =
+        StubFormatterContext(MimeType = mime, MaxWidth = w, MaxHeight = h) :> IFormatterContext
 
-        let expectations: (string * obj * string) list =
-            [ "Figure", box Golden.figure, Html.figure Golden.figure
-              "Node", box Fixtures.scene, Html.node Fixtures.scene
-              "Color", box Palette.vermillion, Html.color Palette.vermillion
-              "Ramp", box Palette.viridis, Html.ramp Palette.viridis
-              "Color[]", box Palette.okabeIto, Html.palette Palette.okabeIto
-              "PaletteReport", box Fixtures.report, Html.paletteReport Fixtures.report
-              "Dim", box Fixtures.acceleration, Html.dim Fixtures.acceleration
-              "U<'u>", box U.metrePerSecondSquared, Html.witness U.metrePerSecondSquared
-              "IScaleErased", box Fixtures.erasedScale, Html.scale Fixtures.erasedScale ]
+    let private html () = context "text/html" 800.0 600.0
 
-        for name, value, expected in expectations do
-            let actual = display value
+    let private format (value: obj) =
+        formatter.FormatAsync(value, html ()).GetAwaiter().GetResult()
 
-            if actual <> expected then
-                failwithf
-                    "%s does not display through Html: `Formatter.ToDisplayString` returned\n\n%s\n\nand Html returned\n\n%s"
-                    name
-                    actual
-                    expected
-
-    /// The claim `Formatters.fs` reasons about rather than looks up: measures are erased in a
-    /// *class's* type argument as thoroughly as in `float<'u>`, so `U<m>` and `U<s>` are one
-    /// runtime type and one registration covers every unit there will ever be.
+    /// **The number this whole package exists for.**
     ///
-    /// Asserted directly, because "measures are erased" is the kind of half-truth that holds for
-    /// `float<'u>` and could plausibly have failed here — in which case the registration would
-    /// cover `U<1>` and nothing else, and every real unit would display as a reflection dump.
+    /// `verso.fsharp.formatter` claims every F# record, union and tuple at priority 20, and
+    /// `verso.formatter.html` sits at 20 too. `FormatterResolver` orders by
+    /// `OrderByDescending(Priority)` — a stable sort — so two formatters at 20 are resolved by
+    /// registration order, which is not a contract. A `Figure` would render as a picture or as a
+    /// field table depending on enumeration order. 30 is what makes the outcome a fact.
     [<Fact>]
-    let ``one registration covers every unit witness`` () =
+    let ``the formatter outranks the built-ins it competes with`` () =
+        Assert.True(
+            formatter.Priority > 20,
+            sprintf
+                "priority %d does not beat verso.fsharp.formatter and verso.formatter.html, both at 20"
+                formatter.Priority
+        )
+
+        // Not a fallback: Verso lets a kernel ask for specialised formatters only, keeping its own
+        // native output when none claims the value. Claiming to be generic would suppress that for
+        // every non-Quiver value in the notebook.
+        Assert.False formatter.IsFallback
+
+    /// The discovery contract, which no compiler checks. Without `[VersoExtension]` the class is
+    /// invisible to the host; without a public parameterless constructor it cannot be activated.
+    [<Fact>]
+    let ``the formatter is discoverable the way the host discovers it`` () =
+        let t = typeof<QuiverFormatter>
+
+        Assert.NotEmpty(t.GetCustomAttributes(typeof<VersoExtensionAttribute>, false))
+        Assert.True(not (isNull (t.GetConstructor Type.EmptyTypes)), "no public parameterless constructor")
+        Assert.True(typeof<IDataFormatter>.IsAssignableFrom t)
+
+    [<Fact>]
+    let ``it claims every type Html can render and nothing else`` () =
+        let ctx = html ()
+
+        let claimed: (string * obj) list =
+            [ "Figure", box Golden.figure
+              "Node", box Fixtures.scene
+              "Color", box Palette.vermillion
+              "Ramp", box Palette.viridis
+              "Color[]", box Palette.okabeIto
+              "PaletteReport", box Fixtures.report
+              "Dim", box Fixtures.acceleration
+              "U<'u>", box U.metrePerSecondSquared
+              "IScaleErased", box Fixtures.erasedScale ]
+
+        for name, value in claimed do
+            Assert.True(formatter.CanFormat(value, ctx), sprintf "%s was not claimed" name)
+
+        // Values that are not ours — including one from a Quiver assembly that `Html` has no
+        // rendering for. Claiming those would take over output the kernel formats better.
+        for name, value in [ "int", box 42; "string", box "hello"; "Extent", box Golden.figureSurface ] do
+            Assert.False(formatter.CanFormat(value, ctx), sprintf "%s should not have been claimed" name)
+
+    /// `CanFormat` must return false for a mime type the formatter cannot emit — the resolver
+    /// treats a formatter that returns a different type from the one it claimed as broken, and
+    /// skips it for the rest of the resolution.
+    [<Fact>]
+    let ``it claims only the mime type it emits`` () =
+        Assert.True(formatter.CanFormat(box Golden.figure, context "text/html" 800.0 600.0))
+        Assert.False(formatter.CanFormat(box Golden.figure, context "text/plain" 800.0 600.0))
+        Assert.False(formatter.CanFormat(box Golden.figure, context "image/png" 800.0 600.0))
+
+        Assert.Equal("text/html", (format (box Golden.figure)).MimeType)
+
+    [<Fact>]
+    let ``a formatted figure is the same html the renderer produces`` () =
+        let output = format (box Golden.figure)
+
+        Assert.Equal(Html.renderForHost (800.0, 600.0, box Golden.figure), output.Content)
+        Assert.Contains("<svg", output.Content)
+        Assert.False output.IsError
+
+    /// The half of the old design that was guesswork. .NET Interactive gave no way to ask how wide
+    /// a cell was, so `defaultSize` picked 720x450 and hoped; `IFormatterContext` carries
+    /// `MaxWidth`/`MaxHeight`, so it is a measurement now.
+    [<Fact>]
+    let ``a figure is compiled to the size the host offers`` () =
+        let at w h =
+            formatter
+                .FormatAsync(box Golden.figure, context "text/html" w h)
+                .GetAwaiter()
+                .GetResult()
+                .Content
+
+        Assert.Contains("width=\"640\" height=\"400\"", at 640.0 600.0)
+        Assert.Contains("width=\"900\" height=\"562.5\"", at 900.0 600.0)
+
+        // Clamped at both ends: below ~320 a figure is a smudge with axis labels, above ~1100 the
+        // line weights chosen for a screen figure start to look thin.
+        Assert.Contains("width=\"320\"", at 120.0 600.0)
+        Assert.Contains("width=\"1100\"", at 4000.0 4000.0)
+
+        // A short cell drives the height instead, and the aspect is kept either way.
+        Assert.Contains("width=\"480\" height=\"300\"", at 900.0 300.0)
+
+        // No usable width at all falls back rather than producing a zero-size picture.
+        Assert.Contains("width=\"720\" height=\"450\"", at 0.0 0.0)
+
+    /// Rule 3 through the whole stack. `Figure.unify`'s message is the most useful thing the
+    /// library says about a dimensional mistake, and a throwing formatter would replace it with a
+    /// resolver-level skip — taking the kernel's own fallback output down with it.
+    [<Fact>]
+    let ``a figure that cannot compile formats instead of throwing`` () =
+        let output = format (box Fixtures.dimensionallyBroken)
+
+        Assert.Contains("Two physical dimensions cannot share an axis", output.Content)
+        Assert.DoesNotContain("<svg", output.Content)
+
+// ======================================================================================
+// ACROSS A LOAD CONTEXT
+//
+// Every other test here runs with `Quiver.Verso` and `Quiver.Interactive` in one load context,
+// where the bridge's reflection is a formality. In a notebook they are never in one context: Verso
+// loads an extension into its own collectible `AssemblyLoadContext` and shares only
+// `Verso.Abstractions`, while Quiver arrives through the notebook's `#r`, in the kernel's context.
+//
+// That is the single assumption this package is built on, and it is the one that would fail
+// silently — a `CanFormat` that quietly answers `false` looks exactly like "no formatter claimed
+// it", which is a field table and no error anywhere. So it is reproduced here rather than trusted.
+// ======================================================================================
+
+module LoadContexts =
+
+    open System.Reflection
+    open System.Runtime.Loader
+
+    /// An isolated context mirroring Verso's: the extension's own assembly loads into it, while
+    /// everything else — `Verso.Abstractions` above all, so interface identity survives — defers
+    /// to the default context.
+    type private ExtensionContext(assemblyPath: string) as this =
+        inherit AssemblyLoadContext(name = "quiver-test-extension", isCollectible = true)
+
+        let resolver = AssemblyDependencyResolver assemblyPath
+
+        override _.Load(name: AssemblyName) =
+            if name.Name = "Quiver.Verso" then
+                match resolver.ResolveAssemblyToPath name with
+                | null -> null
+                | path -> this.LoadFromAssemblyPath path
+            else
+                // Everything else — `Verso.Abstractions`, `FSharp.Core`, and every Quiver assembly
+                // — comes from the default context. Sharing the abstractions is exactly what Verso
+                // does, and it is what makes `IDataFormatter` here the same type as there.
+                null
+
+    let private extensionPath =
+        System.IO.Path.Combine(AppContext.BaseDirectory, "Quiver.Verso.dll")
+
+    [<Fact>]
+    let ``the extension renders a value built in another load context`` () =
+        Assert.True(System.IO.File.Exists extensionPath, sprintf "not found: %s" extensionPath)
+
+        let context = ExtensionContext extensionPath
+
+        try
+            let assembly = context.LoadFromAssemblyPath extensionPath
+
+            // Proof the isolation is real: same file, different context, different type identity.
+            let isolated = assembly.GetType "Quiver.Verso.QuiverFormatter"
+            Assert.True(not (isNull isolated), "QuiverFormatter not found in the isolated context")
+            Assert.NotSame(typeof<Quiver.Verso.QuiverFormatter>, isolated)
+
+            Assert.NotSame(
+                AssemblyLoadContext.GetLoadContext typeof<Quiver.Verso.QuiverFormatter>.Assembly,
+                AssemblyLoadContext.GetLoadContext assembly
+            )
+
+            // `Verso.Abstractions` is shared, so the interface *is* the same type and this cast
+            // succeeds. It is the line that would throw if the sharing were wrong.
+            let formatter = Activator.CreateInstance isolated :?> Verso.Abstractions.IDataFormatter
+
+            let ctx =
+                Verso.Testing.Stubs.StubFormatterContext(MimeType = "text/html", MaxWidth = 640.0, MaxHeight = 600.0)
+                :> Verso.Abstractions.IFormatterContext
+
+            // A figure from *this* context, formatted by a formatter from *that* one.
+            Assert.True(formatter.CanFormat(box Golden.figure, ctx), "the isolated formatter did not claim a Figure")
+
+            let output = formatter.FormatAsync(box Golden.figure, ctx).GetAwaiter().GetResult()
+
+            Assert.Equal("text/html", output.MimeType)
+            Assert.Contains("<svg", output.Content)
+            Assert.Equal(Html.renderForHost (640.0, 600.0, box Golden.figure), output.Content)
+        finally
+            context.Unload()
+
+    /// The bridge's contract with `Quiver.Html`, resolved by the exact reflection the extension
+    /// uses. Renaming or re-shaping either function is a build-clean change that breaks every
+    /// notebook, so it fails here instead.
+    [<Fact>]
+    let ``the two bridge functions have the signatures the extension looks for`` () =
+        let htmlType =
+            AppDomain.CurrentDomain.GetAssemblies()
+            |> Array.tryFind (fun a -> a.GetName().Name = "Quiver.Interactive")
+            |> Option.map (fun a -> a.GetType "Quiver.Html")
+
+        Assert.True(htmlType.IsSome && not (isNull htmlType.Value), "Quiver.Html not found")
+
+        let canRender =
+            htmlType.Value.GetMethod(
+                "canRenderForHost",
+                BindingFlags.Public ||| BindingFlags.Static,
+                null,
+                [| typeof<obj> |],
+                null
+            )
+
+        let render =
+            htmlType.Value.GetMethod(
+                "renderForHost",
+                BindingFlags.Public ||| BindingFlags.Static,
+                null,
+                [| typeof<float>; typeof<float>; typeof<obj> |],
+                null
+            )
+
+        Assert.True(not (isNull canRender), "Quiver.Html.canRenderForHost(obj) is gone")
+        Assert.True(not (isNull render), "Quiver.Html.renderForHost(float, float, obj) is gone")
+        Assert.Equal(typeof<bool>, canRender.ReturnType)
+        Assert.Equal(typeof<string>, render.ReturnType)
+
+        // And the sentinel the bridge folds into "not mine".
+        Assert.Equal("", render.Invoke(null, [| box 800.0; box 600.0; box 42 |]) :?> string)
+
+    /// The claim `Html.fs` suppresses FS1240 for. If a future F# stopped erasing measures in a
+    /// class's type argument, `:? U<1>` would quietly stop matching real unit witnesses and every
+    /// one of them would fall back to a field table.
+    [<Fact>]
+    let ``measures are erased, so one type test covers every unit witness`` () =
         Assert.Equal(typeof<U<1>>, U.second.GetType())
         Assert.Equal(U.metre.GetType(), U.second.GetType())
 
-        Formatters.register ()
-
-        Assert.Equal(Html.witness U.second, display U.second)
-        Assert.Equal(Html.witness U.kelvin, display U.kelvin)
-        Assert.Equal(Html.witness U.metrePerSecondSquared, display U.metrePerSecondSquared)
-
-    /// `Node` is a nine-case union, so every case is a *subclass* of the type that was registered.
-    /// Registration matches by assignability — checked here for all nine rather than assumed from
-    /// one, since a union whose cases were represented differently would break silently.
-    [<Fact>]
-    let ``every node case displays through the Node registration`` () =
-        Formatters.register ()
-
-        let byCase =
-            Scene.fold
-                (fun (acc: Map<string, Node>) n ->
-                    let name =
-                        match n with
-                        | Path _ -> "Path"
-                        | Text _ -> "Text"
-                        | Markers _ -> "Markers"
-                        | Raster _ -> "Raster"
-                        | Group _ -> "Group"
-                        | Transform _ -> "Transform"
-                        | Clip _ -> "Clip"
-                        | Keyed _ -> "Keyed"
-                        | Annotated _ -> "Annotated"
-
-                    if acc.ContainsKey name then acc else acc.Add(name, n))
-                Map.empty
-                GoldenTests.Scenes.allNineCases
-
-        Assert.Equal(9, byCase.Count)
-
-        for KeyValue(name, n) in byCase do
-            if display n <> Html.node n then
-                failwithf "the %s case does not display through the Node formatter" name
-
-    /// The composition a notebook cell actually performs: ask a type for its preferred mime
-    /// types, then format with each of them. Testing the composition rather than either half is
-    /// what makes this about the display behaviour instead of about our registration call.
-    ///
-    /// It replaced a test that asserted `GetPreferredMimeTypesFor typeof&lt;Figure&gt;` contains
-    /// `text/html`. That one passed with `Formatters`' `SetPreferredMimeTypesFor` deleted, because
-    /// the host answers `text/html` for every type there is, registered or not — so it proved
-    /// nothing about our code. See the header of `Formatters.fs`.
-    ///
-    /// This version is also the canary on that upstream default. If a future Formatting release
-    /// stops preferring HTML, every Quiver value silently reverts to a reflection dump in every
-    /// notebook, and nothing else in the suite would notice.
-    [<Fact>]
-    let ``a cell returning a figure formats through Html`` () =
-        Formatters.register ()
-
-        let mimeTypes = Formatter.GetPreferredMimeTypesFor typeof<Figure> |> Seq.toList
-
-        Assert.Contains(html, mimeTypes)
-
-        let rendered = mimeTypes |> List.map (fun m -> Formatter.ToDisplayString(Golden.figure, m))
-
-        Assert.Contains(Html.figure Golden.figure, rendered)
-
-    [<Fact>]
-    let ``registerWith changes the size figures are compiled at`` () =
-        try
-            let small: Extent<px> = { Width = 260.0<px>; Height = 160.0<px> }
-            Formatters.registerWith small
-
-            Assert.Contains("width=\"260\" height=\"160\"", display Golden.figure)
-            Assert.Equal(Html.figureAt small Golden.figure, display Golden.figure)
-        finally
-            // Process-global state: leaving a 260px default behind would make whichever test ran
-            // next depend on this one.
-            Formatters.register ()
-
-        Assert.Contains("width=\"720\" height=\"450\"", display Golden.figure)
-
-// ======================================================================================
-// THE PACKAGED HOOK
-// ======================================================================================
-
-module Packaging =
-
-    let private read (relative: string) =
-        let file = Path.Combine(Golden.repoRoot.Force(), relative)
-
-        if not (File.Exists file) then
-            failwithf "Quiver.Tests: expected '%s' to exist, looked at %s" relative file
-
-        File.ReadAllText file
-
-    /// The one thing connecting the script inside the package to the assembly beside it.
-    ///
-    /// `extension.dib` is compiled by the kernel, not by us, so renaming `Formatters.register`
-    /// would leave the build green and break auto-registration for every user of the package.
-    /// This test asserts the name in the file resolves against the real assembly.
-    [<Fact>]
-    let ``the extension hook calls a function that exists`` () =
-        let dib = read "src/Quiver.Interactive/interactive-extensions/dotnet/extension.dib"
-
-        Assert.Contains("#!fsharp", dib)
-        Assert.Contains("Quiver.Formatters.register ()", dib)
-
-        // Touch the assembly first: .NET loads on first use, and every other reference to
-        // `Quiver.Interactive` in this file is inside a different test, which may not have run.
-        Html.defaultSize |> ignore
-
-        let assembly =
-            AppDomain.CurrentDomain.GetAssemblies()
-            |> Array.tryFind (fun a -> a.GetName().Name = "Quiver.Interactive")
-
-        Assert.True(assembly.IsSome, "Quiver.Interactive is not loaded")
-
-        let t = assembly.Value.GetType "Quiver.Formatters"
-        Assert.True(not (isNull t), "Quiver.Interactive holds no type named Quiver.Formatters")
-
-        let register = t.GetMethod "register"
-
-        Assert.True(
-            not (isNull register),
-            "Quiver.Formatters has no `register` member — extension.dib calls one, so this rename broke every user's `#r`"
-        )
-
-        Assert.Empty(register.GetParameters())
-
-    /// The demonstration notebook cannot be *run* here — there is no kernel — so the check is
-    /// that it is present and that every cell names a kernel the notebook host knows. A typo'd
-    /// directive is the failure mode that makes a notebook refuse to open, and it is invisible
-    /// in a diff.
-    [<Fact>]
-    let ``the demonstration notebook has only valid cell directives`` () =
-        let dib = read "docs/notebooks/quiver-tour.dib"
-
-        let directives =
-            dib.Split('\n')
-            |> Array.map (fun l -> l.TrimEnd('\r').Trim())
-            |> Array.filter (fun l -> l.StartsWith "#!")
-            |> Array.toList
-
-        Assert.NotEmpty directives
-
-        let known = set [ "#!fsharp"; "#!markdown" ]
-
-        for d in directives do
-            Assert.True(known.Contains d, sprintf "'%s' is not a cell directive this notebook should use" d)
-
-        Assert.Contains("#r \"nuget: Quiver.Interactive", dib)
-        Assert.Contains("#!markdown", directives)
+        Assert.True(Html.canRenderForHost(box U.second))
+        Assert.True(Html.canRenderForHost(box U.kelvin))
+        Assert.Equal(Html.witness U.kelvin, Html.renderForHost (800.0, 600.0, box U.kelvin))

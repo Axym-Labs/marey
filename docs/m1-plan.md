@@ -7,7 +7,7 @@ Roadmap reference: `docs/design.md` §14, milestone **M1**. Decision-log referen
 > `.NET Interactive` formatter, TikZ backend. **This is the release that has no competitor.**
 > Unit-safe plots that drop into a LaTeX document. Announce here."*
 
-Status: **Phases 0–5 complete** (see §3). Decisions numbered D28+ are *proposed* entries for
+Status: **Phases 0–5b complete** (see §3). Decisions numbered D28+ are *proposed* entries for
 `docs/decisions.md`; they move into that file as they are implemented and verified, not before.
 D36 and D38 were not planned — the compile gate found one and reading a golden baseline found the
 other, and both are recorded below.
@@ -19,8 +19,9 @@ other, and both are recorded below.
 | 2 — `TikzBackend.fs` traversal | **done**, 348 → 402 tests |
 | 3 — `Theme.tikz` and siunitx wiring | **done**, 402 → 413 tests |
 | 4 — Verification | **done**, 413 → 453 tests, 16 new baselines |
-| 5 — `Quiver.Interactive` | **done**, 453 → 478 tests, sixth package |
-| 6 — Announce-readiness | not started; **the LICENSE choice needs the maintainer** |
+| 5 — `Quiver.Interactive` | **done**, 453 → 478 tests |
+| 5b — `Quiver.Verso`, after the host was retired | **done**, 478 → 481 tests, seventh package |
+| 6 — Announce-readiness | LICENSE done (MIT). Packaging, CI and `decisions.md` not started. |
 
 A real figure now goes end to end: `Chart.line U.second U.metre ts xs |> Chart.withUnitStyle
 Siunitx |> Chart.render TikzBackend.render` produces a `tikzpicture` that compiles under
@@ -410,40 +411,82 @@ asserted from memory.
 An `\usepackage[T1]{fontenc}` in the host document also fixes the three, and a figure cannot
 require anything of the document it is dropped into. Escaping is the only fix available to us.
 
-### D39. The notebook package compiles against .NET Interactive and does not ship it
+### D39. The notebook renderer knows nothing about the notebook **[superseded in part]**
 
-**Design says** nothing; §6 asks only for "a ~200-line package registering a .NET Interactive
-formatter". The plan for Phase 5 said `net10.0` with an ordinary `PackageReference`.
+**Written when the host was .NET Interactive. Rewritten after that host was retired, because the
+decision survived and the reasoning for it turned out to be worth more than it looked.**
 
-**Built:** `netstandard2.1`, and `PackageReference … PrivateAssets="all"` — compiled against,
-absent from the produced nuspec, not copied into `lib`. The kernel's own copy satisfies it at
-runtime.
+The original entry justified `PackageReference … PrivateAssets="all"` — compile against
+`Microsoft.DotNet.Interactive.Formatting`, do not ship it — on three grounds: `dotnet pack` would
+otherwise fail on NU5104 with `TreatWarningsAsErrors`; a net10.0 TFM could not be loaded by an
+older kernel; and two copies of a static registry is the classic notebook failure. All three were
+correct. None of them matters any more: Polyglot Notebooks was retired 2026-03-27 and .NET
+Interactive 2026-04-24, and `Formatters.fs`, the packaged `extension.dib` and that package
+reference were deleted rather than carried.
 
-**Why**, in the order the reasons were discovered rather than the order they matter:
+**What survived, and is the actual decision:** the split between `Html.fs` and the registration.
+`Html.fs` is `something -> string`, total, with no reference to any notebook host. That was argued
+for on *testability* grounds — the interesting half should be assertable without installing a
+kernel. It paid off as *portability*: when the host died, what had to be rewritten was nine lines
+in a separate file, and the four hundred lines that draw things were re-pointed at Verso by adding
+a bridge at the bottom and deleting nothing.
 
-1. **`dotnet pack` would fail.** .NET Interactive has never shipped a stable version — only
-   `1.0.0-beta.*`. A stable package with a prerelease dependency earns NU5104, and this repo builds
-   with `TreatWarningsAsErrors`. Suppressing it would be treating the symptom, and Phase 6 would
-   have hit the wall instead.
-2. **The TFM is not ours to choose.** This assembly is loaded into someone else's process. A
-   `net10.0` build cannot be loaded by a kernel on net8.0 or net9.0. netstandard2.1 loads on every
-   kernel from .NET Core 3.0 forward — and the Formatting package itself is netstandard2.0, so
-   the plan's stated reason for `net10.0` was not true either.
-3. **Two copies of a static registry is the classic notebook failure.** If the package ships its own
-   Formatting assembly and the kernel has already loaded a different build, `Formatter.Register`
-   writes into one registry and the kernel reads from the other. Nothing displays and nothing
-   errors. Safe to avoid this way because every build of that package carries `AssemblyVersion
-   1.0.0.0` — checked against the assembly, not assumed.
+The generalisation worth keeping: **a rendering layer that names its host in a type signature has
+put the host's lifetime into its own.** Neither the SVG backend nor the TikZ backend references a
+browser or a TeX distribution; the notebook renderer should not have been the exception, and the
+version of it that was not is the version that is still here.
 
-**The cost, stated rather than hidden:** `Formatters.register()` raises `FileNotFoundException` in a
-process with no kernel. `Html.*` does not, because nothing in it touches a Formatting type and the
-CLR loads an assembly on first *use* of a member that needs it. Both halves of that were verified by
-running the tour notebook's cells under `dotnet fsi`, where sixteen of seventeen succeeded and the
-one that failed was the `registerWith` call — the documented behaviour, reproduced exactly.
+The package is still called `Quiver.Interactive`, which now names a retired Microsoft product.
+Left alone deliberately, pending the naming pass that also has to settle the `Quiver` package id
+being taken on nuget.org by an unrelated, actively-published C# database.
 
-**What this shape buys beyond packaging:** `Html.fs` has no notebook dependency at all, so the
-interesting half is testable, usable from an ordinary program, and reviewable without knowing
-anything about kernels. The kernel-aware half is nine lines.
+### D40. The Verso extension does not reference Quiver
+
+**Design says** nothing — Verso postdates every document in this repository.
+
+**Built:** `src/Quiver.Verso/`, an `IDataFormatter` at priority 30, targeting `net8.0;net10.0`,
+depending on `Verso.Abstractions` **and nothing else**. It reaches `Quiver.Html` by reflection.
+
+**Why not simply reference `Quiver.Plot` and match on `typeof<Figure>`** — the obvious design, and
+it cannot work. Verso loads an extension into its own collectible `AssemblyLoadContext`, sharing
+only `Verso.Abstractions` from the default context; Quiver arrives by a different route entirely,
+the notebook's `#r`, into the kernel's context. A referenced `Figure` and the user's `Figure` would
+be two unequal `System.Type`s: the `SupportedTypes` pre-filter would never match, and a cast would
+throw if it did. Reflecting on the value's own type needs no shared identity, so the dependency
+becomes a lookup — and the package then keeps working across Quiver versions, since the only thing
+it can break against is two function signatures.
+
+Those two signatures are the cost, and they are a contract the compiler cannot see. They are
+written down in `Bridge.fs`, pinned by a test that resolves them with the exact reflection the
+extension uses, and probed defensively: every failure path answers "cannot render", because the
+correct behaviour when the bridge is unavailable is for the F# kernel's own output to proceed
+untouched. A notebook that referenced `Quiver.Plot` alone is not an error state.
+
+**Why an extension at all, rather than a `ToHtml()` member.** Verso's built-in `HtmlFormatter` is
+duck-typed on a public parameterless `ToHtml() : string` and needs no extension, no install and no
+consent prompt. It was the first design considered and it fails twice over:
+
+- **It would tie.** `Verso.FSharp`'s `FSharpDataFormatter` claims *every* F# record, union and tuple
+  at priority 20, and the built-in `HtmlFormatter` is also 20. `FormatterResolver` orders by
+  `OrderByDescending(Priority)`, a stable sort, so an equal-priority pair resolves by registration
+  order — which is not a contract. A `Figure` would render as a picture or as a field table
+  depending on enumeration order. Priority 30 is the whole reason this package exists.
+- **`Figure` could not carry the member.** `ToHtml()` on `Figure` puts HTML rendering inside
+  `Quiver.Plot`, which would need the SVG backend, which D21 forbids. `Color[]` settles it beyond
+  argument: an array cannot be given a member.
+
+**One thing the new host does better, and it is not a small one.** `IFormatterContext` carries
+`MaxWidth` and `MaxHeight`. The .NET Interactive design had no way to ask how wide a cell was, so
+`Html.defaultSize` picked 720×450 and hoped; `extentForHost` now clamps the host's own measurement
+into a band and keeps the aspect. A guess became a measurement, which is the trade the whole
+milestone has been making everywhere else.
+
+**Worth sending upstream, and deliberately not sent as a Quiver formatter** — Verso should not
+depend on us. Two things underneath generalise and carry no Quiver in them: that `ToHtml()` takes
+no arguments, so nothing rendered through the built-in formatter can size itself to the cell even
+though the context already knows the size; and that the 20/20 tie above is a latent ambiguity in
+the shipped set. Both are reportable on their own terms, which is the test of whether a
+contribution belongs upstream.
 
 ---
 
@@ -616,9 +659,49 @@ a notebook is light or dark and offers no way to ask which. Both are asserted, o
 `XDocument.Parse` well-formedness pass over every fragment, the same oracle the SVG golden suite
 uses. The notebook cannot be *run* here: no kernel. Instead all seventeen of its F# cells were
 extracted and evaluated against the built assemblies, and the fragments were rendered in headless
-Edge against both a light and a dark background and inspected. What remains unverified is the last
-mile — that a live kernel calls the formatter — which is one line of `extension.dib` and is the
-reason that line is pinned by reflection rather than trusted.
+Edge against both a light and a dark background and inspected.
+
+### Phase 5b — the host was retired between writing this and shipping it
+
+**Polyglot Notebooks was deprecated 2026-02-11 and retired 2026-03-27; .NET Interactive followed
+2026-04-24.** §6's sentence — "a ~200-line package registering a .NET Interactive formatter" —
+names a product that no longer exists. The maintained successor is
+[Verso](https://github.com/DataficationSDK/Verso): MIT, open source, imports `.dib` and `.ipynb`,
+and every built-in feature down to the C# kernel is an extension on public interfaces.
+
+**The symptom, reported from a real notebook:** a `Figure` renders as an expandable table of its
+fields. Diagnosed from Verso's source rather than guessed. Verso resolves output through
+`IDataFormatter`s ordered by priority; `Verso.FSharp`'s own formatter sits at **20** and claims
+*every* F# record, union and tuple. Nothing of ours ran, and nothing could have:
+`extension.dib` is a .NET Interactive mechanism with no Verso equivalent — an extension there is a
+separate package the reader installs and approves, loaded into an isolated collectible
+`AssemblyLoadContext`.
+
+**Decided and done:**
+
+- **The .NET Interactive support was deleted, not carried.** `Formatters.fs`, the packaged
+  `extension.dib`, the `Microsoft.DotNet.Interactive.Formatting` reference and the registration
+  tests are gone. A dependency on a retired engine is not free: it is a prerelease reference in
+  every `dotnet pack` and a page of documentation pointing readers at something they cannot install.
+- **`Html.fs` did not change**, which is the whole point of D39 and is now the evidence for it.
+- **`src/Quiver.Verso/`** is the new seventh package. D40 has the design; the short version is
+  priority 30, `Verso.Abstractions` as its only dependency, and no reference to Quiver at all.
+
+What it found, beyond the obvious:
+
+- **The cheap route is a coin flip.** Verso's built-in `HtmlFormatter` claims anything with a
+  `ToHtml()` method and needs no extension — and it is *also* priority 20, against a stable sort.
+  Adding `ToHtml()` to `Figure` would have produced a picture or a table depending on which
+  extension the host enumerated first, and no test we could write would have caught it reliably.
+- **`MaxWidth`/`MaxHeight` replace a guess.** `Html.defaultSize`'s 720×450 was the one number in
+  Phase 5 with no argument behind it. Verso hands the formatter the cell's actual size.
+- **`Verso.Testing` makes the extension unit-testable**, and the load-context assumption — the one
+  that would fail *silently*, since a quiet `false` from `CanFormat` is indistinguishable from "no
+  formatter claimed it" — is reproduced in the suite with a real isolated collectible context
+  rather than trusted.
+
+**Exit:** 481 tests. Unverified: that a live Verso host discovers, approves and loads the package
+end to end. There is no Verso installation on this machine.
 
 ### Phase 6 — Announce-readiness
 

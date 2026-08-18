@@ -11,7 +11,7 @@
 dotnet test
 ```
 
-**478 tests: 155 FsCheck properties and 323 examples, ~74 700 generated cases per run.**
+**481 tests: 155 FsCheck properties and 326 examples, ~74 700 generated cases per run.**
 
 Around six seconds of that is `pdflatex`. The TikZ backend has no in-process oracle — the only
 authority on whether a `.tex` file is valid is a TeX engine, and the only authority on whether a
@@ -21,15 +21,14 @@ figure has anything *in* it is a rasteriser — so the suite runs both. Both deg
 Targets `net10.0`; the projects under test target `netstandard2.1`. Warnings are errors here
 too, inherited from `Directory.Build.props`.
 
-Scope is all six shipped packages: `Quiver.Core`, `Quiver.Units`, `Quiver.Backend.Svg`,
-`Quiver.Backend.Tikz`, `Quiver.Plot` and `Quiver.Interactive`.
+Scope is all seven shipped packages: `Quiver.Core`, `Quiver.Units`, `Quiver.Backend.Svg`,
+`Quiver.Backend.Tikz`, `Quiver.Plot`, `Quiver.Interactive` and `Quiver.Verso`.
 
-The one package reference that is not a test tool is `Microsoft.DotNet.Interactive.Formatting`.
-`Quiver.Interactive` compiles against it and deliberately does not ship it, so the reference does
-not flow to consumers — and a test host is a consumer. It is declared here so the registration
-half can be exercised for real: `Formatter.ToDisplayString` is the only thing that can prove a
-formatter was registered under the mime type we think it was. The `dotnet-interactive` *tool* is
-not needed and is not installed.
+The one package reference that is not a test tool is `Verso.Testing`. It supplies the stub contexts
+Verso ships for extension authors, which is what lets `QuiverFormatter` be exercised as a real
+`IDataFormatter` — `CanFormat` probed with a mime type, `FormatAsync` handed a width and a height —
+without a notebook host installed. It replaced `Microsoft.DotNet.Interactive.Formatting`, which went
+with the .NET Interactive support it was there to test.
 
 ## Layout
 
@@ -55,7 +54,7 @@ not needed and is not installed.
 | `GoldenTests.fs` | The snapshot scenes, the determinism suite, and the backend contract. |
 | `TikzGoldenTests.fs` | The same scenes through the TikZ backend, plus the figure baselines both backends share. |
 | `PlotTests.fs` | `Quiver.Plot`: self-labelling axes, layout invariants across four themes and four sizes, the 50 000-point batching claim, purity of the `with*` combinators, and palette validation. |
-| `InteractiveTests.fs` | The notebook integration: every HTML fragment parsed as XML, escaping, culture invariance, the no-`<style>`/no-pinned-colour rules, and — through the real Formatting package — that all nine registrations resolve. |
+| `NotebookTests.fs` | The notebook integration, in three parts: `Html` fragments parsed as XML with the golden suite's own oracle, plus escaping, culture invariance and the two theme rules; `QuiverFormatter` driven through Verso's `StubFormatterContext`; and the extension loaded into a genuinely separate collectible `AssemblyLoadContext`, which is the assumption the whole package rests on. |
 
 ## Golden images
 

@@ -6,6 +6,7 @@
     <Project Path="src/Quiver.Interactive/Quiver.Interactive.fsproj" />
     <Project Path="src/Quiver.Plot/Quiver.Plot.fsproj" />
     <Project Path="src/Quiver.Units/Quiver.Units.fsproj" />
+    <Project Path="src/Quiver.Verso/Quiver.Verso.fsproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Quiver.Tests/Quiver.Tests.fsproj" />

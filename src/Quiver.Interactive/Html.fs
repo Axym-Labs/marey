@@ -1,5 +1,17 @@
 namespace Quiver
 
+// FS1240 — "this type test or downcast will ignore the unit-of-measure" — fires twice in the host
+// bridge at the bottom of this file, and both times it is reporting the property the bridge is
+// built on rather than a mistake. `U<'u>` erases to one runtime type, so `:? U<1>` matches a
+// `U<m>` and a `U<s>` alike, and that is exactly why a single case covers every unit witness
+// there will ever be. Suppressed here rather than worked around because every alternative
+// spelling (a `GetType()` comparison, an `unbox`) warns identically and reads worse.
+//
+// The erasure is not taken on faith: `InteractiveTests` asserts `typeof<U<1>> = U.second.GetType()`
+// directly, so if a future F# ever stopped erasing measures in a class's type argument, a test
+// fails rather than a silently-narrowed match shipping.
+#nowarn "1240"
+
 open System.Text
 
 // ======================================================================================
@@ -8,11 +20,20 @@ open System.Text
 // §6: "a ~200-line package registering a .NET Interactive formatter so `figure` displays inline
 // as SVG. Do it at M1; it is how people will first meet the library."
 //
-// This file is the *what to show* half and holds no reference to .NET Interactive at all. Every
-// function here is `something -> string`, total, deterministic, and callable from an ordinary
-// program. `Formatters.fs` is the *how to hook it up* half, and it is the only file that knows
-// a kernel exists. The split is not tidiness: it is what makes the interesting half testable
-// without installing a notebook host.
+// **The host named in that sentence no longer exists.** Polyglot Notebooks was deprecated on
+// 2026-02-11 and retired on 2026-03-27; .NET Interactive followed on 2026-04-24. This file
+// outlived both without a line changing, and the reason is the only architectural claim worth
+// making about it: **it holds no reference to any notebook host.** Every function is
+// `something -> string`, total, deterministic, and callable from an ordinary program.
+//
+// That was originally a testability argument — the interesting half should be assertable without
+// installing a kernel. It turned out to be a portability argument. When the host died, the part
+// that had to be rewritten was nine lines of registration in a separate file; this one was
+// re-pointed at Verso by adding a bridge at the bottom and deleting nothing.
+//
+// The bridge is the *only* host-facing surface here, and it is deliberately two functions rather
+// than an interface: `Quiver.Verso` invokes them **by reflection, across an
+// AssemblyLoadContext**, so a shared type would not have shared identity. See `renderForHost`.
 //
 // ---------------------------------------------------------------------------------------
 // FOUR RULES, EACH ONE LEARNED FROM A WAY THIS GOES WRONG.
@@ -491,3 +512,90 @@ module Html =
               "scale", text kind
               "domain", text (sprintf "%s .. %s" (num lo) (num hi))
               "ticks", text tickText ]
+
+
+    // ======================================================================================
+    // THE HOST BRIDGE
+    //
+    // Two functions, called by reflection from `Quiver.Verso`. **Their names and signatures are
+    // load-bearing in a way the compiler cannot see**, which is why they are pinned by a test
+    // that resolves them exactly as the extension does.
+    //
+    // Reflection rather than an interface, and not for want of taste. A Verso extension loads
+    // into its own collectible `AssemblyLoadContext`; only `Verso.Abstractions` is shared from
+    // the default context. Quiver arrives in the *kernel's* context through the notebook's
+    // `#r`. So a `Figure` the user made and a `Figure` the extension referenced would be two
+    // unequal `System.Type`s, an interface implemented here would not be the interface the
+    // extension knows, and a cast between them throws. Reflecting on the value's own type
+    // sidesteps all of it: `MethodInfo.Invoke` needs no shared identity.
+    //
+    // The consequence, stated so it is not discovered later: `Quiver.Verso` has **no compile-time
+    // dependency on Quiver at all**. It is a bridge, not an integration, and it keeps working
+    // across Quiver versions as long as these two signatures hold.
+    // ======================================================================================
+
+    /// Every type this module can display. The match a host uses to decide whether to claim a
+    /// value, kept separate from `renderForHost` so the decision costs a type test rather than a
+    /// full render — a formatter's `CanFormat` is probed for every value a cell produces.
+    let canRenderForHost (value: obj) : bool =
+        match value with
+        | :? Figure
+        | :? Node
+        | :? Color
+        | :? Ramp
+        | :? (Color[])
+        | :? PaletteReport
+        | :? Dim
+        // Erased measures make this one type test cover every unit witness there will ever be.
+        | :? U<1>
+        | :? IScaleErased -> true
+        | _ -> false
+
+    /// The size to compile a figure at, given what the host says is available.
+    ///
+    /// This is the half of the .NET Interactive design that was guesswork: there was no way to
+    /// ask how wide the cell was, so `defaultSize` picked 720x450 and hoped. Verso's
+    /// `IFormatterContext` carries `MaxWidth`/`MaxHeight`, so the guess is replaced by a
+    /// measurement.
+    ///
+    /// Clamped at both ends. Below ~320px a figure is not a figure, it is a smudge with axis
+    /// labels; above ~1100 the line weights and font sizes chosen for a screen figure start to
+    /// look thin. Inside that band the cell decides.
+    let extentForHost (maxWidth: float, maxHeight: float) : Extent<px> =
+        if maxWidth <= 0.0 then
+            defaultSize
+        else
+            let w = max 320.0 (min 1100.0 maxWidth)
+            let h = w * 5.0 / 8.0
+
+            if maxHeight > 0.0 && h > maxHeight then
+                let h = max 200.0 maxHeight
+                { Width = h * 8.0 / 5.0 * 1.0<px>
+                  Height = h * 1.0<px> }
+            else
+                { Width = w * 1.0<px>; Height = h * 1.0<px> }
+
+    /// Render any value `canRenderForHost` accepts. Returns `""` for anything else.
+    ///
+    /// An empty string rather than an option or a null: an `FSharpOption` crossing an
+    /// `AssemblyLoadContext` boundary is a different type on each side, and null-handling through
+    /// `MethodInfo.Invoke` is the kind of subtlety that fails once, in production, in somebody
+    /// else's notebook. No renderer here can legitimately produce `""`, so the sentinel is
+    /// unambiguous.
+    ///
+    /// Tupled deliberately: it compiles to a plain three-argument static method, which is what
+    /// `Type.GetMethod` on the other side can find by signature.
+    let renderForHost (maxWidth: float, maxHeight: float, value: obj) : string =
+        let extent = extentForHost (maxWidth, maxHeight)
+
+        match value with
+        | :? Figure as f -> figureAt extent f
+        | :? Node as n -> nodeAt extent n
+        | :? Color as c -> color c
+        | :? Ramp as r -> ramp r
+        | :? (Color[]) as cs -> palette cs
+        | :? PaletteReport as r -> paletteReport r
+        | :? Dim as d -> dim d
+        | :? U<1> as u -> witness u
+        | :? IScaleErased as sc -> scale sc
+        | _ -> ""

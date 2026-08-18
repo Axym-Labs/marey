@@ -15,19 +15,19 @@ Everything in this notebook runs against the packages as published. Nothing is c
 
 #!fsharp
 
-#r "nuget: Quiver.Core"
-#r "nuget: Quiver.Units"
-#r "nuget: Quiver.Backend.Svg"
-#r "nuget: Quiver.Plot"
 #r "nuget: Quiver.Interactive"
 
 open Quiver
 
 #!markdown
 
-That is the whole setup. `Quiver.Interactive` ships an `extension.dib` the kernel runs on load, so
-the formatters are already registered — `Quiver.Formatters.register ()` is available for a kernel
-that does not run package extensions, and is not needed here.
+One reference: Core, Units, the SVG backend and Plot all arrive transitively.
+
+For the figures below to appear as pictures rather than as field tables, install the **Quiver**
+extension from Verso's Extensions panel once. That is a separate step from the `#r` on purpose —
+an extension is executable code that runs inside your notebook host, so Verso asks you to approve
+it, per version. Without it everything still *works*; you just see the objects instead of the
+pictures. `docs/notebooks/README.md` has the details.
 
 ## The headline
 
@@ -217,14 +217,20 @@ Chart.toScene (Chart.size 480.0 300.0) figure
 
 ## Sizing
 
-Figures compile at 720×450 in a notebook — narrower than `Chart.defaultSize`, because a cell is
-narrower than 800 pixels. Change it for one cell, or for the session:
+Figures are compiled to fit the cell. Verso hands the formatter the available width and height, so
+nothing here guesses — resize the window, re-run a cell, and the figure follows, clamped to a sane
+band at both ends.
+
+For a size you choose instead, render to SVG and let Verso's built-in SVG formatter draw it. That
+path needs **no extension at all**: `SvgFormatter` claims any string beginning with `<svg`, which
+is what the SVG backend produces.
 
 #!fsharp
 
-Html.figureAt (Chart.size 1000.0 380.0) figure
+Chart.render SvgBackend.render (Chart.size 1000.0 380.0) figure
 
-#!fsharp
+#!markdown
 
-Formatters.registerWith (Chart.size 560.0 350.0)
-figure
+Worth knowing as a fallback in general: if you are reading this on a machine where the Quiver
+extension is not installed, every figure above still renders if you pipe it through
+`Chart.render SvgBackend.render (Chart.size w h)`.
