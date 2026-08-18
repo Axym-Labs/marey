@@ -1,0 +1,11 @@
+<Project>
+
+  <!-- Imported *after* each project file, unlike Directory.Build.props which is imported before
+       it. That ordering is the whole reason this file exists: `IsPackable` is set inside
+       Marey.Tests.fsproj, so a condition on it in the .props would be evaluated before the
+       property had a value and would pack a readme into the test project. -->
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)NUGET.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+</Project>

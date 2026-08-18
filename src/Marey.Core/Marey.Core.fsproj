@@ -11,6 +11,7 @@
     <AssemblyName>Marey.Core</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
     <Description>Dimensionally-typed visualization core: SI dimension vectors, unit witnesses, unit-indexed geometry, scales, and the closed Scene IR. Zero dependencies.</Description>
+    <PackageTags>fsharp visualization plotting units-of-measure dimensional-analysis scene-graph charting scientific</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

@@ -17,6 +17,15 @@
     <Authors>Marey contributors</Authors>
     <Product>Marey</Product>
     <RepositoryUrl>https://github.com/Jonathan-Schaefer-git/marey</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/Jonathan-Schaefer-git/marey</PackageProjectUrl>
+
+    <!-- The gallery page for a package with no readme is a blank slab with a dependency list,
+         which is most of what a first-time visitor ever sees. `NUGET.md` rather than the root
+         README because nuget.org does not resolve relative links: every link in it is absolute,
+         which is a constraint the repository README should not have to carry. Packed into each
+         package by Directory.Build.targets, which runs late enough to see IsPackable. -->
+    <PackageReadmeFile>NUGET.md</PackageReadmeFile>
 
     <!-- MIT, decided deliberately: shorter than Apache-2.0, and what most of the F# ecosystem
          uses, so it composes with the packages a consumer already has. The trade accepted in

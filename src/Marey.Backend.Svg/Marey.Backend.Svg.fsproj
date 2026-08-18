@@ -7,6 +7,7 @@
     <AssemblyName>Marey.Backend.Svg</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
     <Description>The reference backend. Pure F#, zero dependencies, doubles as the golden-image test oracle.</Description>
+    <PackageTags>fsharp svg plotting charts rendering vector-graphics visualization deterministic</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

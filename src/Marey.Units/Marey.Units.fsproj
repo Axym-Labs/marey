@@ -5,6 +5,7 @@
     <AssemblyName>Marey.Units</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
     <Description>SI, derived and common non-SI unit witnesses; Dim-driven symbol canonicalisation, prefix selection, and Unicode/ASCII/LaTeX/siunitx rendering.</Description>
+    <PackageTags>fsharp units-of-measure si-units dimensional-analysis physics siunitx unit-conversion scientific</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

@@ -9,6 +9,7 @@
     <AssemblyName>Marey.Plot</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
     <Description>Themes, palettes, constraint layout, and the axis/legend compiler that turns figures into Scene IR.</Description>
+    <PackageTags>fsharp plotting charts visualization themes color-blind palettes layout scientific units-of-measure</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
