@@ -87,6 +87,66 @@ module SelfLabellingAxes =
         Assert.DoesNotContain("µkg", svg)
 
 // ======================================================================================
+// The dimensionless shim
+// ======================================================================================
+
+/// `Chart.Plain` is `Chart` at `U.one U.one`, for maths that genuinely has no dimension.
+///
+/// Two things worth pinning. That it really is the same call, so it can never drift into a
+/// second implementation of the front door; and that a dimensionless axis stays honest — a
+/// bare `x`, never `x [1]`, and never rescaled into a prefix, which is what would make
+/// `U.one` a hole in the thesis rather than an answer within it.
+module DimensionlessShim =
+
+    let private xs = Array.init 40 (fun i -> float i / 4.0)
+    let private ys = xs |> Array.map sin
+    let private errs = ys |> Array.map (fun y -> abs y * 0.1)
+
+    [<Fact>]
+    let ``every Plain entry point renders identically to the same call at U.one U.one`` () =
+        let cases =
+            [ "line", Chart.Plain.line xs ys, Chart.line U.one U.one xs ys
+              "scatter", Chart.Plain.scatter xs ys, Chart.scatter U.one U.one xs ys
+              "area", Chart.Plain.area xs ys, Chart.area U.one U.one xs ys
+              "bar", Chart.Plain.bar xs ys, Chart.bar U.one U.one xs ys
+              "errorbar", Chart.Plain.errorbar xs ys errs, Chart.errorbar U.one U.one xs ys errs
+              "addLine",
+              (Chart.Plain.line xs ys |> Chart.Plain.addLine xs (Array.rev ys)),
+              (Chart.line U.one U.one xs ys |> Chart.addLine U.one U.one xs (Array.rev ys))
+              "addScatter",
+              (Chart.Plain.line xs ys |> Chart.Plain.addScatter xs (Array.rev ys)),
+              (Chart.line U.one U.one xs ys |> Chart.addScatter U.one U.one xs (Array.rev ys))
+              "addArea",
+              (Chart.Plain.line xs ys |> Chart.Plain.addArea xs (Array.rev ys)),
+              (Chart.line U.one U.one xs ys |> Chart.addArea U.one U.one xs (Array.rev ys))
+              "addErrorbar",
+              (Chart.Plain.line xs ys |> Chart.Plain.addErrorbar xs ys errs),
+              (Chart.line U.one U.one xs ys |> Chart.addErrorbar U.one U.one xs ys errs) ]
+
+        for name, plain, explicit in cases do
+            Assert.True(renderFig surface plain = renderFig surface explicit, name)
+
+    [<Fact>]
+    let ``a dimensionless axis reads a bare x and y, never '[1]'`` () =
+        let svg = renderFig surface (Chart.Plain.line xs ys)
+
+        Assert.Contains(">x<", svg)
+        Assert.Contains(">y<", svg)
+        Assert.DoesNotContain("[1]", svg)
+        Assert.DoesNotContain("[]", svg)
+
+    /// `Prefix` refuses to rescale a dimensionless quantity. A ratio spanning 1e-9 is a small
+    /// ratio, not a nano-ratio, and the axis must not invent a prefix to say so.
+    [<Fact>]
+    let ``tiny dimensionless data is never given an SI prefix`` () =
+        let tiny = ys |> Array.map (fun y -> y * 1e-9)
+        let svg = renderFig surface (Chart.Plain.line xs tiny)
+
+        Assert.Contains(">y<", svg)
+        Assert.DoesNotContain("[n]", svg)
+        Assert.DoesNotContain("[p]", svg)
+
+// ======================================================================================
 // §13 — layout invariants
 // ======================================================================================
 

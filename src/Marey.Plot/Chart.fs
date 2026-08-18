@@ -177,6 +177,54 @@ module Chart =
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i (Geom.errorY s err) (Erase.packSeries s) |])
 
+    // ---- Dimensionless ------------------------------------------------------------------------
+
+    /// Pure maths, where the quantity genuinely has no dimension: `sin x`, a ratio, a
+    /// probability, a count.
+    ///
+    /// ```fsharp
+    /// Chart.Plain.line xs (xs |> Array.map sin)
+    /// |> Chart.withTitle "sin x"
+    /// ```
+    ///
+    /// Every binding here is the same-named constructor at `U.one U.one` and nothing else. It
+    /// costs nothing because `float<1> = float`: the arrays a caller already has *are* the
+    /// arrays these take, with no `LanguagePrimitives.FloatWithMeasure` and no witness to invent
+    /// for a quantity that has none. The `Figure` that comes out is an ordinary one, so every
+    /// combinator, axis and output function below applies unchanged.
+    ///
+    /// `U.one` is not a hole in §1.3's thesis; it is the thesis answering "dimensionless"
+    /// correctly. Its `Dim` is `Dim.zero` and its symbol is empty, so `Axis` drops the bracket
+    /// and prints a bare `x` rather than `x [1]`, and `Prefix` refuses to rescale it, so no
+    /// probability is ever labelled in kilo-anything. The witness still arrives exactly once —
+    /// it just says "none".
+    ///
+    /// Deliberately **not** the default spelling of `Chart.line`, and not an overload of it:
+    /// `Chart` is a module, so F# has no overloading here anyway, and data that does have a
+    /// dimension should have to say so. A shim that let it stay silent would cost the library
+    /// the one thing it is for.
+    [<RequireQualifiedAccess>]
+    module Plain =
+
+        let line (x: float[]) (y: float[]) : Figure = line U.one U.one x y
+
+        let scatter (x: float[]) (y: float[]) : Figure = scatter U.one U.one x y
+
+        let area (x: float[]) (y: float[]) : Figure = area U.one U.one x y
+
+        let bar (x: float[]) (y: float[]) : Figure = bar U.one U.one x y
+
+        let errorbar (x: float[]) (y: float[]) (err: float[]) : Figure = errorbar U.one U.one x y err
+
+        let addLine (x: float[]) (y: float[]) (fig: Figure) : Figure = addLine U.one U.one x y fig
+
+        let addScatter (x: float[]) (y: float[]) (fig: Figure) : Figure = addScatter U.one U.one x y fig
+
+        let addArea (x: float[]) (y: float[]) (fig: Figure) : Figure = addArea U.one U.one x y fig
+
+        let addErrorbar (x: float[]) (y: float[]) (err: float[]) (fig: Figure) : Figure =
+            addErrorbar U.one U.one x y err fig
+
     // ---- Combinators. All pure; every one returns a new figure. -------------------------------
 
     let withTitle (t: string) (fig: Figure) = { fig with Title = t }
