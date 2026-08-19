@@ -4,8 +4,27 @@
        it. That ordering is the whole reason this file exists: `IsPackable` is set inside
        Marey.Tests.fsproj, so a condition on it in the .props would be evaluated before the
        property had a value and would pack a readme into the test project. -->
+
+  <!-- Each package gets its own readme, because the gallery page is most of what a first-time
+       visitor sees and seven packages sharing one page tells none of their stories. A project
+       that has not written one falls back to the repository-wide `NUGET.md` rather than
+       shipping blank. `PackageReadmeFile` names the file *inside* the package, so it has to
+       move in step with whichever file is packed. -->
+  <PropertyGroup Condition="'$(IsPackable)' != 'false' AND Exists('$(MSBuildProjectDirectory)\PackageReadme.md')">
+    <PackageReadmeFile>PackageReadme.md</PackageReadmeFile>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
-    <None Include="$(MSBuildThisFileDirectory)NUGET.md" Pack="true" PackagePath="\" Visible="false" />
+    <None Condition="Exists('$(MSBuildProjectDirectory)\PackageReadme.md')"
+          Include="$(MSBuildProjectDirectory)\PackageReadme.md"
+          Pack="true"
+          PackagePath="\"
+          Visible="false" />
+    <None Condition="!Exists('$(MSBuildProjectDirectory)\PackageReadme.md')"
+          Include="$(MSBuildThisFileDirectory)NUGET.md"
+          Pack="true"
+          PackagePath="\"
+          Visible="false" />
   </ItemGroup>
 
 </Project>

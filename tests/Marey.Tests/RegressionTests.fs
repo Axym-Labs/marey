@@ -623,3 +623,110 @@ module ``D32 pruning respects the TeX form`` =
     let ``a plain-only run survives pruning`` () =
         let n = run "x" None
         Assert.Equal(n, Scene.prune n)
+
+// ---------------------------------------------------------------------------------------------
+// D41 — a caller-supplied factorisation is displayed, and §12.6 stays fixed.
+// ---------------------------------------------------------------------------------------------
+
+/// D41 gave `U<'u>` a `Factors` list and taught `UnitDisplay` to render from it when the registry
+/// has no name for the whole dimension. The tests below are the boundary, because the feature sits
+/// one inch from two rules that must not move:
+///
+/// * **§12.6** — `mul force metre` once produced the string `kg·m/s/s·m`. That bug is why display
+///   goes through `Dim`. `Factors` is structure rather than a string and merges exponents per
+///   symbol, so the same call cannot reproduce it; `the 12.6 composition still canonicalises`
+///   runs the original expression and demands the canonical answer.
+/// * **D18** — no factorisation may be *inferred* from a bare `Dim`, because the same vector is
+///   `J/K` and `N·m/K`. Nothing here infers: the caller wrote `div volt metre`. The registry
+///   still wins on a hit, which is what `a registered name still beats the factorisation` pins.
+module ``D41 a supplied factorisation is displayed`` =
+
+    let private text style p u =
+        UnitDisplay.unitText style UnitRegistry.si p u
+
+    let private mega = Prefix.ofExponent 6 |> Option.get
+
+    let private voltPerMetre = U.div Derived.volt U.metre
+
+    [<Fact>]
+    let ``a composed unit renders from its factors, not from base units`` () =
+        // The motivating case: before D41 this read `kg·m·s⁻³·A⁻¹`, on an axis whose reader
+        // wanted `V·m⁻¹`.
+        Assert.Equal("V·m⁻¹", text Unicode Prefix.none voltPerMetre)
+
+    [<Fact>]
+    let ``a prefix attaches to the leading factor`` () =
+        Assert.Equal("MV·m⁻¹", text Unicode mega voltPerMetre)
+
+    [<Fact>]
+    let ``siunitx gets real unit macros, not text fallbacks`` () =
+        // `\text{V}` would typeset and would be wrong: the siunitx path exists so that a
+        // physicist's own macros are used.
+        Assert.Equal("\\qty{}{\\volt\\per\\metre}", text Siunitx Prefix.none voltPerMetre)
+        Assert.Equal("\\qty{}{\\mega\\volt\\per\\metre}", text Siunitx mega voltPerMetre)
+
+    [<Fact>]
+    let ``the prefixed and unprefixed forms name the same unit`` () =
+        // The bug found while building this: the `Exponent = 0` path short-circuited to a
+        // `Dim`-only renderer, so an unprefixed axis read `kg·m·s⁻³·A⁻¹` while a prefixed one
+        // read `MV·m⁻¹` — the same quantity, spelled two different ways depending on its range.
+        Assert.EndsWith("V·m⁻¹", text Unicode Prefix.none voltPerMetre)
+        Assert.EndsWith("V·m⁻¹", text Unicode mega voltPerMetre)
+
+    [<Fact>]
+    let ``a registered name still beats the factorisation`` () =
+        // D18's rule, and the reason the registry is consulted first: `N·m` is a joule.
+        Assert.Equal("J", text Unicode Prefix.none (U.mul Derived.newton U.metre))
+
+    [<Fact>]
+    let ``the 12.6 composition still canonicalises`` () =
+        // §12.6 verbatim: `mul force metre`, which produced `kg·m/s/s·m` as a string.
+        let force = U.mul U.kilogram (U.div U.metre (U.square U.second))
+        Assert.Equal("J", text Unicode Prefix.none (U.mul force U.metre))
+
+    [<Fact>]
+    let ``like factors combine rather than repeat`` () =
+        // The property the string concatenation lacked. `m·m` is not an answer.
+        Assert.Equal("m²", text Unicode Prefix.none (U.mul U.metre U.metre))
+
+    [<Fact>]
+    let ``factors that cancel disappear`` () =
+        let ratio = U.div U.metre U.metre
+        Assert.Equal<(string * int) list>([], ratio.Factors)
+        // Dimensionless, so there is no unit to print at all.
+        Assert.Equal("", text Unicode Prefix.none ratio)
+
+    [<Fact>]
+    let ``the kilogram refuses a prefix it cannot carry`` () =
+        // `Mkg` is not a unit. The honest `10ⁿ·` multiplier is the documented fallback, and the
+        // gram shift above it only applies to a bare mass.
+        Assert.Equal("10⁶·kg·s⁻¹", text Unicode mega (U.div U.kilogram U.second))
+
+    [<Fact>]
+    let ``a declared unit is unaffected`` () =
+        // `U.metrePerSecond` is declared, not composed, so it carries no factors and renders
+        // exactly as it did before D41. This is what kept all 29 golden baselines still.
+        Assert.Equal<(string * int) list>([], U.metrePerSecond.Factors)
+        Assert.Equal("m·s⁻¹", text Unicode Prefix.none U.metrePerSecond)
+
+    [<Fact>]
+    let ``the erased path agrees with the measured one`` () =
+        // §15: a reloaded figure has only `IScaleErased`. If `Factors` did not cross that
+        // boundary, a saved field axis would relabel itself `kg·m·s⁻³·A⁻¹` on load.
+        let s = Scale.linear voltPerMetre (0.0<_>, 1.0<_>)
+        let erased = Erase.scale s
+
+        Assert.Equal<(string * int) list>(voltPerMetre.Factors, erased.Factors)
+
+        Assert.Equal(
+            text Unicode mega voltPerMetre,
+            UnitDisplay.unitTextErasedWith
+                Unicode
+                UnitRegistry.si
+                mega
+                erased.Symbol
+                erased.Factors
+                erased.Dim
+                erased.ToSI
+                erased.OffsetSI
+        )

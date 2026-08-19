@@ -1,4 +1,4 @@
-/// The TikZ golden suite — `docs/m1-plan.md` §4 gates 1, 5 and 6.
+/// The TikZ golden suite — the M1 plan §4 gates 1, 5 and 6.
 ///
 /// Every scene the SVG suite renders is rendered again here, from the **same** `Scenes.all` table
 /// at the **same** surface, so `golden/paths.svg` and `golden/paths.tex` describe one picture in

@@ -1,0 +1,46 @@
+# Marey.Core
+
+The foundation of [Marey](https://github.com/Jonathan-Schaefer-git/marey), a dimensionally-typed
+visualization system for F#. **Zero dependencies**, `netstandard2.1`.
+
+You want this package on its own if you need the types and not the plotting: dimension vectors,
+unit witnesses, unit-indexed geometry, scales, and the scene graph that backends consume.
+
+```fsharp
+open Marey
+
+// A unit witness ties a compile-time [<Measure>] to runtime metadata, which is what makes an
+// axis able to label itself. F# erases measures; this is how the information survives.
+let metre = U.metre                  // U<m>
+printfn "%A" (U.dim metre)           // the SI dimension vector
+
+// Scales are unit-indexed, so a scale over metres cannot be handed seconds.
+let scale = Scale.linear U.metre (0.0<m>, 10.0<m>)
+printfn "%A" (scale.Forward 5.0<m>)  // normalized panel space
+```
+
+## What is in it
+
+- **`Dim`** — the seven-element SI dimension vector, with group laws checked by property tests.
+- **`U<'u>`** — the unit witness: a symbol, a dimension, a factor to SI, and an offset for affine
+  units like degrees Celsius. `U.mul`/`div`/`recip`/`square`/`cube` compose them, carrying the
+  factorisation structurally so a composed unit can still name itself.
+- **`Vec2`/`Vec3`, `Affine`, `Coord`** — unit-indexed geometry and coordinate transforms.
+- **`Scale`** — seven scale kinds, each with `Forward`/`Inverse` verified as mutual inverses.
+- **`Scene`** — a small closed IR of nine cases. Every backend consumes this and nothing else.
+- **`Interp`**, tick generation, and text metrics.
+
+## Zero dependencies is a rule, not an accident
+
+Nothing may be added to this package's references. It is what lets the same IR run in a notebook,
+in a browser through Fable, and in an AOT-compiled binary. `FSharp.Core` is the language runtime,
+not a dependency.
+
+## You probably want more than this
+
+`Marey.Core` has no units table, no chart API and no renderer. For the usual case install
+[`Marey.Plot`](https://www.nuget.org/packages/Marey.Plot) and a backend, or
+[`Marey.Html`](https://www.nuget.org/packages/Marey.Html), which pulls in everything.
+
+- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)

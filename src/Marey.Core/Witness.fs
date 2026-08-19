@@ -10,14 +10,37 @@ namespace Marey
 /// `Symbol` is the unit as *written by whoever declared it* — it is a presentation hint, and
 /// composing it is wrong (§2.2, §12.6). `Dim` is the truth.
 [<Sealed>]
-type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float) =
+type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, factors: (string * int) list) =
+
+    /// A unit as *declared*: it records no composition, and `Factors` is empty. This is the
+    /// constructor every witness in `Marey.Units` uses; only `U.mul` and friends pass factors.
+    new(symbol, dim, toSI, offsetSI) = U<'u>(symbol, dim, toSI, offsetSI, [])
 
     /// Multiplicative unit: `siValue = raw * ToSI`.
-    new(symbol, dim, toSI) = U<'u>(symbol, dim, toSI, 0.0)
+    new(symbol, dim, toSI) = U<'u>(symbol, dim, toSI, 0.0, [])
 
     /// The symbol this unit was *declared* with. Never build one by concatenation — see
     /// `Marey.Units.UnitDisplay` and §12.6.
     member _.Symbol = symbol
+
+    /// The composition this unit was *built* from, as `(symbol, exponent)` pairs — empty for a
+    /// declared unit, non-empty only for one produced by `U.mul`, `div`, `recip`, `square` or
+    /// `cube`.
+    ///
+    /// **This is not §12.6's forbidden string composition, and the difference is the whole
+    /// point.** §12.6's bug was `mul force metre` concatenating its way to `kg·m/s/s·m`: a
+    /// string, appended to, with no way to cancel or combine like factors. This is structure.
+    /// `U.mul` merges exponents per symbol, so the same call yields `[kg, 1; m, 2; s, -2]` —
+    /// which is what the quantity *is*, in the terms the caller wrote it in, and cannot
+    /// accumulate the duplicated `/s/s` that made the string wrong.
+    ///
+    /// It exists because `Dim` alone cannot express a factorisation the caller supplied.
+    /// `U.div volt metre` has the dimension of `kg·m·s⁻³·A⁻¹` and no registered name, so
+    /// display falls back to base units and an electric-field axis reads `10⁶·kg·m·s⁻³·A⁻¹`
+    /// rather than `MV·m⁻¹`. D18 declines to *infer* a factorisation from a bare `Dim` because
+    /// inference is ambiguous — the same `Dim` is `J/K` and `N·m/K`. Nothing is inferred here:
+    /// the caller wrote `div volt metre` and this records which of those readings they meant.
+    member _.Factors = factors
 
     /// SI dimension exponents. The source of truth for identity and for display.
     member _.Dim = dim
@@ -52,32 +75,95 @@ type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float) =
 [<RequireQualifiedAccess>]
 module U =
 
+    /// The factorisation a witness contributes to a composition: what it was built from, or
+    /// itself if it was declared rather than built. An empty symbol contributes nothing, which
+    /// is what keeps `one` from appearing as a factor.
+    let private factorsOf (symbol: string) (factors: (string * int) list) =
+        if not (List.isEmpty factors) then factors
+        elif System.String.IsNullOrEmpty symbol then []
+        else [ symbol, 1 ]
+
+    /// Merge two factorisations, summing exponents per symbol and dropping anything that
+    /// cancels to zero. **This is the step §12.6's string concatenation could not perform**, and
+    /// the reason `mul force metre` yields `[kg,1; m,2; s,-2]` here where the string yielded
+    /// `kg·m/s/s·m`.
+    ///
+    /// Order is first-appearance, left operand first, so `div volt metre` reads `V·m⁻¹` rather
+    /// than `m⁻¹·V`: a caller who wrote a numerator first expects to read it first, and nothing
+    /// downstream re-sorts.
+    let private mergeFactors (a: (string * int) list) (b: (string * int) list) =
+        let merged =
+            b
+            |> List.fold
+                (fun acc (sym, e) ->
+                    if List.exists (fst >> (=) sym) acc then
+                        acc |> List.map (fun (s, x) -> if s = sym then s, x + e else s, x)
+                    else
+                        acc @ [ sym, e ])
+                a
+
+        merged |> List.filter (fun (_, e) -> e <> 0)
+
+    let private scaleFactors (n: int) (factors: (string * int) list) =
+        factors |> List.map (fun (s, e) -> s, e * n)
+
     /// Product of two units. Verified generic across five distinct instantiations
     /// (`m/s`, `m/s^2`, `kg*m/s^2`, `kg*m/s`, `kg*m^2/s^2`) — §12.1.
     ///
     /// The composed `Symbol` is deliberately naive and deliberately not trusted: it is a
-    /// debugging aid only. Display goes through `Dim`.
+    /// debugging aid only. Display goes through `Dim`, or through `Factors` when `Dim` has no
+    /// registered name — see `U.Factors`.
     let mul<[<Measure>] 'a, [<Measure>] 'b> (a: U<'a>) (b: U<'b>) : U<'a * 'b> =
-        U<'a * 'b>(a.Symbol + "·" + b.Symbol, Dim.add a.Dim b.Dim, a.ToSI * b.ToSI, 0.0)
+        U<'a * 'b>(
+            a.Symbol + "·" + b.Symbol,
+            Dim.add a.Dim b.Dim,
+            a.ToSI * b.ToSI,
+            0.0,
+            mergeFactors (factorsOf a.Symbol a.Factors) (factorsOf b.Symbol b.Factors)
+        )
 
     /// Quotient of two units. Offset is dropped: the quotient of an affine unit is not
     /// affine, and there is no sensible offset to carry. `isAffine` lets a caller check
     /// first if it cares.
     let div<[<Measure>] 'a, [<Measure>] 'b> (a: U<'a>) (b: U<'b>) : U<'a / 'b> =
-        U<'a / 'b>(a.Symbol + "/" + b.Symbol, Dim.sub a.Dim b.Dim, a.ToSI / b.ToSI, 0.0)
+        U<'a / 'b>(
+            a.Symbol + "/" + b.Symbol,
+            Dim.sub a.Dim b.Dim,
+            a.ToSI / b.ToSI,
+            0.0,
+            mergeFactors (factorsOf a.Symbol a.Factors) (scaleFactors -1 (factorsOf b.Symbol b.Factors))
+        )
 
     /// Reciprocal. `recip second : U<1/s>` — frequency, and the type of a frame rate.
     let recip<[<Measure>] 'a> (a: U<'a>) : U<1 / 'a> =
-        U<1 / 'a>("1/" + a.Symbol, Dim.neg a.Dim, 1.0 / a.ToSI, 0.0)
+        U<1 / 'a>(
+            "1/" + a.Symbol,
+            Dim.neg a.Dim,
+            1.0 / a.ToSI,
+            0.0,
+            scaleFactors -1 (factorsOf a.Symbol a.Factors)
+        )
 
     /// Integer powers, spelled out. There is no way to write `U<'a^n>` for a runtime `n`, so
     /// the exponents anyone actually uses get their own function. Everything past cube goes
     /// through `mul`.
     let square<[<Measure>] 'a> (a: U<'a>) : U<'a^2> =
-        U<'a^2>(a.Symbol + "²", Dim.pow 2 a.Dim, a.ToSI * a.ToSI, 0.0)
+        U<'a^2>(
+            a.Symbol + "²",
+            Dim.pow 2 a.Dim,
+            a.ToSI * a.ToSI,
+            0.0,
+            scaleFactors 2 (factorsOf a.Symbol a.Factors)
+        )
 
     let cube<[<Measure>] 'a> (a: U<'a>) : U<'a^3> =
-        U<'a^3>(a.Symbol + "³", Dim.pow 3 a.Dim, a.ToSI * a.ToSI * a.ToSI, 0.0)
+        U<'a^3>(
+            a.Symbol + "³",
+            Dim.pow 3 a.Dim,
+            a.ToSI * a.ToSI * a.ToSI,
+            0.0,
+            scaleFactors 3 (factorsOf a.Symbol a.Factors)
+        )
 
     /// The dimensionless unit. `float = float<1>`, which is why this is also what a ratio,
     /// a count and a probability all get.

@@ -233,7 +233,15 @@ module Axis =
                   Label = Ticks.format decimals rescaled.[i] })
 
         let unitTextIn s =
-            UnitDisplay.unitTextErased s registry prefix scale.Symbol scale.Dim scale.ToSI scale.OffsetSI
+            UnitDisplay.unitTextErasedWith
+                s
+                registry
+                prefix
+                scale.Symbol
+                scale.Factors
+                scale.Dim
+                scale.ToSI
+                scale.OffsetSI
 
         let unitText = unitTextIn (plainCounterpart style)
 

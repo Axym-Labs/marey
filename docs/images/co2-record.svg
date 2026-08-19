@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="820" height="480" viewBox="0 0 820 480">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M60.349 428.567L792.656 428.567L792.656 91.917L60.349 91.917Z"/></clipPath>
+    <circle id="qm" r="2.5"/>
+  </defs>
+  <g id="figure">
+    <path d="M0 480L820 480L820 0L0 0Z" fill="#ffffff"/>
+    <g role="note" data-marey-role="annotation" aria-label="Atmospheric CO₂ at Mauna Loa">
+      <text x="410" y="14" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="17.333" font-weight="600" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">Atmospheric CO₂ at Mauna Loa</text>
+      <text x="410" y="37.033" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" text-anchor="middle" dominant-baseline="hanging" fill="#606a78">NOAA Global Monitoring Laboratory, annual means</text>
+    </g>
+    <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="2" data-x-tick-rule="all" data-y-tick-rule="all">
+      <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="6">
+        <path d="M60.349 401.912L792.656 401.912M60.349 347.07L792.656 347.07M60.349 292.228L792.656 292.228M60.349 237.386L792.656 237.386M60.349 182.544L792.656 182.544M60.349 127.702L792.656 127.702" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+      </g>
+      <g clip-path="url(#qc)">
+        <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="67">
+          <path d="M93.636 413.264L93.636 412.606M91.136 413.264L96.136 413.264M91.136 412.606L96.136 412.606M103.723 410.714L103.723 410.056M101.223 410.714L106.223 410.714M101.223 410.056L106.223 410.056M113.81 408.713L113.81 408.054M111.31 408.713L116.31 408.713M111.31 408.054L116.31 408.054M123.897 406.491L123.897 405.833M121.397 406.491L126.397 406.491M121.397 405.833L126.397 405.833M133.983 405.011L133.983 404.353M131.483 405.011L136.483 405.011M131.483 404.353L136.483 404.353M144.07 403.283L144.07 402.625M141.57 403.283L146.57 403.283M141.57 402.625L146.57 402.625M154.157 402.131L154.157 401.473M151.657 402.131L156.657 402.131M151.657 401.473L156.657 401.473M164.244 398.484L164.244 397.826M161.744 398.484L166.744 398.484M161.744 397.826L166.744 397.826M174.331 396.263L174.331 395.605M171.831 396.263L176.831 396.263M171.831 395.605L176.831 395.605M184.418 393.878L184.418 393.22M181.918 393.878L186.918 393.878M181.918 393.22L186.918 393.22M194.505 389.573L194.505 388.915M192.005 389.573L197.005 389.573M192.005 388.915L197.005 388.915M204.592 386.666L204.592 386.008M202.092 386.666L207.092 386.666M202.092 386.008L207.092 386.008M214.678 384.911L214.678 384.253M212.178 384.911L217.178 384.911M212.178 384.253L217.178 384.253M224.765 381.785L224.765 381.127M222.265 381.785L227.265 381.785M222.265 381.127L227.265 381.127M234.852 375.698L234.852 375.04M232.352 375.698L237.352 375.698M232.352 375.04L237.352 375.04M244.939 374.299L244.939 373.641M242.439 374.299L247.439 374.299M242.439 373.641L247.439 373.641M255.026 371.722L255.026 371.064M252.526 371.722L257.526 371.722M252.526 371.064L257.526 371.064M265.113 369.254L265.113 368.596M262.613 369.254L267.613 369.254M262.613 368.596L267.613 368.596M275.2 364.291L275.2 363.632M272.7 364.291L277.7 364.291M272.7 363.632L277.7 363.632M285.287 359.985L285.287 359.327M282.787 359.985L287.787 359.985M282.787 359.327L287.787 359.327M295.373 356.064L295.373 355.406M292.873 356.064L297.873 356.064M292.873 355.406L297.873 355.406M305.46 350.799L305.46 350.141M302.96 350.799L307.96 350.799M302.96 350.141L307.96 350.141M315.547 347.07L315.547 346.412M313.047 347.07L318.047 347.07M313.047 346.412L318.047 346.412M325.634 343.341L325.634 342.683M323.134 343.341L328.134 343.341M323.134 342.683L328.134 342.683M335.721 338.762L335.721 338.104M333.221 338.762L338.221 338.762M333.221 338.104L338.221 338.104M345.808 334.045L345.808 333.387M343.308 334.045L348.308 334.045M343.308 333.387L348.308 333.387M355.895 329.987L355.895 329.329M353.395 329.987L358.395 329.987M353.395 329.329L358.395 329.329M365.981 326.532L365.981 325.874M363.481 326.532L368.481 326.532M363.481 325.874L368.481 325.874M376.068 321.87L376.068 321.212M373.568 321.87L378.568 321.87M373.568 321.212L378.568 321.212M386.155 315.344L386.155 314.686M383.655 315.344L388.655 315.344M383.655 314.686L388.655 314.686M396.242 311.204L396.242 310.545M393.742 311.204L398.742 311.204M393.742 310.545L398.742 310.545M406.329 307.776L406.329 307.118M403.829 307.776L408.829 307.776M403.829 307.118L408.829 307.118M416.416 304.348L416.416 303.69M413.916 304.348L418.916 304.348M413.916 303.69L418.916 303.69M426.503 302.045L426.503 301.387M424.003 302.045L429.003 302.045M424.003 301.387L429.003 301.387M436.59 300.208L436.59 299.55M434.09 300.208L439.09 300.208M434.09 299.55L439.09 299.55M446.676 295.409L446.676 294.751M444.176 295.409L449.176 295.409M444.176 294.751L449.176 294.751M456.763 289.897L456.763 289.239M454.263 289.897L459.263 289.897M454.263 289.239L459.263 289.239M466.85 285.044L466.85 284.386M464.35 285.044L469.35 285.044M464.35 284.386L469.35 284.386M476.937 281.918L476.937 281.26M474.437 281.918L479.437 281.918M474.437 281.26L479.437 281.26M487.024 273.801L487.024 273.143M484.524 273.801L489.524 273.801M484.524 273.143L489.524 273.143M497.111 269.14L497.111 268.482M494.611 269.14L499.611 269.14M494.611 268.482L499.611 268.482M507.198 265.932L507.198 265.273M504.698 265.932L509.698 265.932M504.698 265.273L509.698 265.273M517.284 261.517L517.284 260.859M514.784 261.517L519.784 261.517M514.784 260.859L519.784 260.859M527.371 255.676L527.371 255.018M524.871 255.676L529.871 255.676M524.871 255.018L529.871 255.018M537.458 248.739L537.458 248.08M534.958 248.739L539.958 248.739M534.958 248.08L539.958 248.08M547.545 244.022L547.545 243.364M545.045 244.022L550.045 244.022M545.045 243.364L550.045 243.364M557.632 237.77L557.632 237.112M555.132 237.77L560.132 237.77M555.132 237.112L560.132 237.112M567.719 231.984L567.719 231.326M565.219 231.984L570.219 231.984M565.219 231.326L570.219 231.326M577.806 226.692L577.806 226.034M575.306 226.692L580.306 226.692M575.306 226.034L580.306 226.034M587.893 221.729L587.893 221.071M585.393 221.729L590.393 221.729M585.393 221.071L590.393 221.071M597.979 216.766L597.979 216.108M595.479 216.766L600.479 216.766M595.479 216.108L600.479 216.108M608.066 210.02L608.066 209.362M605.566 210.02L610.566 210.02M605.566 209.362L610.566 209.362M618.153 205.221L618.153 204.563M615.653 205.221L620.653 205.221M615.653 204.563L620.653 204.563M628.24 199.161L628.24 198.503M625.74 199.161L630.74 199.161M625.74 198.503L630.74 198.503M638.327 191.813L638.327 191.155M635.827 191.813L640.827 191.813M635.827 191.155L640.827 191.155M648.414 186.136L648.414 185.478M645.914 186.136L650.914 186.136M645.914 185.478L650.914 185.478M658.501 180.104L658.501 179.446M656.001 180.104L661.001 180.104M656.001 179.446L661.001 179.446M668.588 170.781L668.588 170.123M666.088 170.781L671.088 170.781M666.088 170.123L671.088 170.123M678.674 164.337L678.674 163.679M676.174 164.337L681.174 164.337M676.174 163.679L681.174 163.679M688.761 158.962L688.761 158.304M686.261 158.962L691.261 158.962M686.261 158.304L691.261 158.304M698.848 150.928L698.848 150.27M696.348 150.928L701.348 150.928M696.348 150.27L701.348 150.27M708.935 143.908L708.935 143.25M706.435 143.908L711.435 143.908M706.435 143.25L711.435 143.25M719.022 137.876L719.022 137.217M716.522 137.876L721.522 137.876M716.522 137.217L721.522 137.217M729.109 132.062L729.109 131.404M726.609 132.062L731.609 132.062M726.609 131.404L731.609 131.404M739.196 125.07L739.196 124.412M736.696 125.07L741.696 125.07M736.696 124.412L741.696 124.412M749.282 115.39L749.282 114.732M746.782 115.39L751.782 115.39M746.782 114.732L751.782 114.732M759.369 107.877L759.369 107.219M756.869 107.877L761.869 107.877M756.869 107.219L761.869 107.219" fill="none" stroke="#0072b2" stroke-width="2" stroke-linejoin="round"/>
+        </g>
+        <g role="graphics-object" data-marey-role="series" aria-label="annual mean ±1σ" data-series="annual mean ±1σ" data-points="67">
+          <g fill="#0072b2">
+            <use xlink:href="#qm" x="93.636" y="412.935"/>
+            <use xlink:href="#qm" x="103.723" y="410.385"/>
+            <use xlink:href="#qm" x="113.81" y="408.383"/>
+            <use xlink:href="#qm" x="123.897" y="406.162"/>
+            <use xlink:href="#qm" x="133.983" y="404.682"/>
+            <use xlink:href="#qm" x="144.07" y="402.954"/>
+            <use xlink:href="#qm" x="154.157" y="401.802"/>
+            <use xlink:href="#qm" x="164.244" y="398.155"/>
+            <use xlink:href="#qm" x="174.331" y="395.934"/>
+            <use xlink:href="#qm" x="184.418" y="393.549"/>
+            <use xlink:href="#qm" x="194.505" y="389.244"/>
+            <use xlink:href="#qm" x="204.592" y="386.337"/>
+            <use xlink:href="#qm" x="214.678" y="384.582"/>
+            <use xlink:href="#qm" x="224.765" y="381.456"/>
+            <use xlink:href="#qm" x="234.852" y="375.369"/>
+            <use xlink:href="#qm" x="244.939" y="373.97"/>
+            <use xlink:href="#qm" x="255.026" y="371.393"/>
+            <use xlink:href="#qm" x="265.113" y="368.925"/>
+            <use xlink:href="#qm" x="275.2" y="363.961"/>
+            <use xlink:href="#qm" x="285.287" y="359.656"/>
+            <use xlink:href="#qm" x="295.373" y="355.735"/>
+            <use xlink:href="#qm" x="305.46" y="350.47"/>
+            <use xlink:href="#qm" x="315.547" y="346.741"/>
+            <use xlink:href="#qm" x="325.634" y="343.012"/>
+            <use xlink:href="#qm" x="335.721" y="338.433"/>
+            <use xlink:href="#qm" x="345.808" y="333.716"/>
+            <use xlink:href="#qm" x="355.895" y="329.658"/>
+            <use xlink:href="#qm" x="365.981" y="326.203"/>
+            <use xlink:href="#qm" x="376.068" y="321.541"/>
+            <use xlink:href="#qm" x="386.155" y="315.015"/>
+            <use xlink:href="#qm" x="396.242" y="310.874"/>
+            <use xlink:href="#qm" x="406.329" y="307.447"/>
+            <use xlink:href="#qm" x="416.416" y="304.019"/>
+            <use xlink:href="#qm" x="426.503" y="301.716"/>
+            <use xlink:href="#qm" x="436.59" y="299.879"/>
+            <use xlink:href="#qm" x="446.676" y="295.08"/>
+            <use xlink:href="#qm" x="456.763" y="289.568"/>
+            <use xlink:href="#qm" x="466.85" y="284.715"/>
+            <use xlink:href="#qm" x="476.937" y="281.589"/>
+            <use xlink:href="#qm" x="487.024" y="273.472"/>
+            <use xlink:href="#qm" x="497.111" y="268.811"/>
+            <use xlink:href="#qm" x="507.198" y="265.602"/>
+            <use xlink:href="#qm" x="517.284" y="261.188"/>
+            <use xlink:href="#qm" x="527.371" y="255.347"/>
+            <use xlink:href="#qm" x="537.458" y="248.41"/>
+            <use xlink:href="#qm" x="547.545" y="243.693"/>
+            <use xlink:href="#qm" x="557.632" y="237.441"/>
+            <use xlink:href="#qm" x="567.719" y="231.655"/>
+            <use xlink:href="#qm" x="577.806" y="226.363"/>
+            <use xlink:href="#qm" x="587.893" y="221.4"/>
+            <use xlink:href="#qm" x="597.979" y="216.437"/>
+            <use xlink:href="#qm" x="608.066" y="209.691"/>
+            <use xlink:href="#qm" x="618.153" y="204.892"/>
+            <use xlink:href="#qm" x="628.24" y="198.832"/>
+            <use xlink:href="#qm" x="638.327" y="191.484"/>
+            <use xlink:href="#qm" x="648.414" y="185.807"/>
+            <use xlink:href="#qm" x="658.501" y="179.775"/>
+            <use xlink:href="#qm" x="668.588" y="170.452"/>
+            <use xlink:href="#qm" x="678.674" y="164.008"/>
+            <use xlink:href="#qm" x="688.761" y="158.633"/>
+            <use xlink:href="#qm" x="698.848" y="150.599"/>
+            <use xlink:href="#qm" x="708.935" y="143.579"/>
+            <use xlink:href="#qm" x="719.022" y="137.547"/>
+            <use xlink:href="#qm" x="729.109" y="131.733"/>
+            <use xlink:href="#qm" x="739.196" y="124.741"/>
+            <use xlink:href="#qm" x="749.282" y="115.061"/>
+            <use xlink:href="#qm" x="759.369" y="107.548"/>
+          </g>
+        </g>
+      </g>
+      <g role="graphics-object" data-marey-role="axis" aria-label="year" data-side="bottom" data-unit="" data-prefix="" data-ticks="7" data-tick-rule="all">
+        <path d="M60.349 428.567L792.656 428.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+        <path d="M103.723 428.567L103.723 431.567M204.592 428.567L204.592 431.567M305.46 428.567L305.46 431.567M406.329 428.567L406.329 431.567M507.198 428.567L507.198 431.567M608.066 428.567L608.066 431.567M708.935 428.567L708.935 431.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+        <text x="103.723" y="435.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">1960</text>
+        <text x="204.592" y="435.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">1970</text>
+        <text x="305.46" y="435.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">1980</text>
+        <text x="406.329" y="435.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">1990</text>
+        <text x="507.198" y="435.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2000</text>
+        <text x="608.066" y="435.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2010</text>
+        <text x="708.935" y="435.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2020</text>
+        <text x="426.503" y="453.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">year</text>
+      </g>
+      <g role="graphics-object" data-marey-role="axis" aria-label="CO₂ mole fraction [ppm]" data-side="left" data-unit="" data-prefix="" data-ticks="6" data-tick-rule="all">
+        <path d="M60.349 428.567L60.349 91.917" fill="none" stroke="#39414d" stroke-width="0.9"/>
+        <path d="M60.349 401.912L57.349 401.912M60.349 347.07L57.349 347.07M60.349 292.228L57.349 292.228M60.349 237.386L57.349 237.386M60.349 182.544L57.349 182.544M60.349 127.702L57.349 127.702" fill="none" stroke="#39414d" stroke-width="0.9"/>
+        <text x="53.349" y="401.912" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">320</text>
+        <text x="53.349" y="347.07" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">340</text>
+        <text x="53.349" y="292.228" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">360</text>
+        <text x="53.349" y="237.386" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">380</text>
+        <text x="53.349" y="182.544" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">400</text>
+        <text x="53.349" y="127.702" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">420</text>
+        <text x="26.333" y="260.242" transform="rotate(-90 26.333 260.242)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">CO₂ mole fraction [ppm]</text>
+      </g>
+      <g role="group" data-marey-role="legend" aria-label="legend" data-entries="1">
+        <path d="M67.349 124.633L205.782 124.633L205.782 98.917L67.349 98.917Z" fill="#ffffff" fill-opacity="0.9"/>
+        <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="annual mean ±1σ" data-series="annual mean ±1σ" data-color="#0072b2">
+          <g fill="#0072b2">
+            <use xlink:href="#qm" x="83.349" y="111.775"/>
+          </g>
+          <text x="100.349" y="111.775" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">annual mean ±1σ</text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

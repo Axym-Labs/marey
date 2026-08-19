@@ -1,8 +1,11 @@
 # Marey
 
-A dimensionally-typed visualization system for F# — plotting where the compiler checks your units.
+A plotting library for F# where the compiler checks your units, and the axes label themselves.
 
 ```fsharp
+#r "nuget: Marey.Plot"
+#r "nuget: Marey.Backend.Svg"
+
 open Marey
 
 let t = Array.init 24 (fun i -> float i * 0.4<s>)
@@ -15,44 +18,26 @@ Chart.line U.second U.metre t x
 
 That prints an x axis reading `t [s]` and a y axis reading `x [m]` with **nothing configured**.
 The scale, the domain, the SI prefix, the tick values, the tick labels and both axis titles are
-all derived from the two unit witnesses. The same call on data spanning 1e-9…5e-9 m prints
-`x [nm]` with ticks `1, 2, 3, 4, 5`, and plotting metres against seconds is a compile error.
+derived from the two unit witnesses — and plotting seconds against seconds on these axes is a
+compile error.
 
-Swap one value and the same figure becomes TeX whose axis titles are typeset by `siunitx`, in the
-host document's own fonts:
-
-```fsharp
-figure
-|> Chart.withTheme Theme.tikz
-|> Chart.toFile TikzBackend.render "fall.tex" (Chart.size 320.0 200.0)
-```
+Swap the theme and the same figure becomes `tikzpicture` source, typeset by your LaTeX document's
+own engine and fonts, with axis titles set by `siunitx`.
 
 ## The packages
 
-| Package | What it is |
+| Package | |
 |---|---|
-| `Marey.Core` | Dimensions, unit witnesses, scales, geometry, and the closed nine-case `Scene` IR. Zero dependencies. |
-| `Marey.Units` | SI + 22 derived + 18 non-SI witnesses, `Dim`-keyed canonicalisation, prefix selection, Unicode/ASCII/LaTeX/siunitx rendering. |
-| `Marey.Plot` | `Chart`, five geoms, six themes, CVD-validated palettes, constraint layout. No backend reference. |
-| `Marey.Backend.Svg` | SVG. Pure F#, deterministic, byte-identical output. |
-| `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX, inheriting the document's fonts. |
-| `Marey.Html` | HTML renderings of nine Marey types for a notebook cell. Host-neutral. |
-| `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension, so a `Figure` displays as a figure. |
+| `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the scene IR. Zero dependencies. |
+| `Marey.Units` | SI, derived and non-SI unit witnesses; canonicalisation, prefix selection, and four rendering styles. |
+| `Marey.Plot` | `Chart`, geoms, themes, colour-blind-safe palettes, layout. No backend reference. |
+| `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, deterministic. |
+| `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX. |
+| `Marey.Html` | HTML renderings for a notebook cell. Host-neutral. |
+| `Marey.Verso` | The Verso notebook extension. |
 
-Referencing `Marey.Html` brings Plot, Units and Core transitively, which is the usual starting
-point.
+Pre-1.0, and versioned accordingly. The API is still free to move. MIT licensed.
 
-## Documentation
-
-- [**The guide**](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md) —
-  everything the library does today, with a runnable example for each part. Every example is
-  extracted and executed by the test suite.
-- [Design document](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/design.md)
-- [Decision log](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/decisions.md)
-- [Notebooks](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/notebooks/README.md)
-
-Requires the .NET 10 SDK to build; the libraries target `netstandard2.1`.
-
-MIT licensed. Named for Étienne-Jules Marey, who invented the graphical method in experimental
-science, built the instruments that inscribe a measurement as a trace, and then invented
-chronophotography.
+- [Repository](https://github.com/Jonathan-Schaefer-git/marey)
+- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)

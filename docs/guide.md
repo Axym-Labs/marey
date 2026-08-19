@@ -158,6 +158,24 @@ let canonical = UnitRegistry.tryCanonical UnitRegistry.si (U.dim Derived.newtonB
 printfn "canonical: %A" (canonical |> Option.map (fun u -> u.Unicode, u.Ascii, u.Siunitx))
 ```
 
+Most compositions have no canonical name, because most combinations of dimensions are not named
+units. An electric field is one: `V/m` is not in SI's table, and its dimension spelled out is
+`kg·m·s⁻³·A⁻¹`, which is correct and unreadable. So when the registry has no name for the whole
+dimension, the axis is labelled from the composition you wrote instead:
+
+```fsharp
+let fieldUnit = U.div Derived.volt U.metre
+printfn "field: %s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none fieldUnit)
+printfn "siunitx: %s" (UnitDisplay.unitText Siunitx UnitRegistry.si Prefix.none fieldUnit)
+```
+
+That is `V·m⁻¹` and `\qty{}{\volt\per\metre}` — and a prefix lands on the leading factor, so a
+megavolt-per-metre axis reads `MV·m⁻¹`. Note what is *not* happening: Marey never factorises a
+dimension it was handed bare, because that is ambiguous — the dimension of `J/K` is also the
+dimension of `N·m/K`, and picking one would be a guess presented as a fact. It only reads back a
+factorisation you supplied. A registered name still wins, so `U.mul Derived.newton U.metre` is
+`J`.
+
 Non-SI witnesses cover the units physics actually writes in: `electronvolt`, `angstrom`,
 `parsec`, `lightYear`, `dalton`, `atmosphere`, `bar`, `barn`, `calorie`, `gauss`, `litre`,
 `minute`, `hour`, `day`, `year`, `astronomicalUnit`, `degreeCelsius`, `degreeFahrenheit`.
@@ -576,6 +594,6 @@ For a stateful backend there is `IBackend` and `Chart.renderTo`, which is the pa
 
 ## What is not here yet
 
-M1 is plotting. The roadmap in [`design.md`](design.md) §14 has animation (`Anim<'a>` as a pure
-function of time), fields and simulation, the Skia/Fable/GPU/video backends, and the
-grammar-of-graphics and scene DSLs. None of those exist today, and this guide grows when they do.
+What exists today is plotting: the geoms, scales, themes, units and the two backends this guide
+covers. Animation, fields and simulation, further backends, and a grammar-of-graphics computation
+expression are all intended and none of them exist yet. This guide grows when they do.

@@ -26,6 +26,13 @@ type IScaleErased =
     /// The truth about this axis's physical dimension.
     abstract Dim: Dim
 
+    /// The unit's composition, when it had one — see `U.Factors`. Carried across the boundary
+    /// for the same reason `ToSI` is: a factorisation the caller supplied is information that
+    /// `Dim` cannot reconstruct, so dropping it here would mean a reloaded `V·m⁻¹` axis
+    /// relabelled itself `kg·m·s⁻³·A⁻¹` while the live one did not. §15 requires the two paths
+    /// to agree.
+    abstract Factors: (string * int) list
+
     /// Multiplicative factor to SI base units, and the additive offset for affine units.
     ///
     /// These two are what make this interface the **whole** erased witness rather than half
@@ -108,6 +115,7 @@ module Erase =
         { new IScaleErased with
             member _.Symbol = s.Unit.Symbol
             member _.Dim = s.Unit.Dim
+            member _.Factors = s.Unit.Factors
             member _.ToSI = s.Unit.ToSI
             member _.OffsetSI = s.Unit.OffsetSI
             member _.Kind = s.Kind

@@ -1,6 +1,6 @@
 # Marey.Tests
 
-§13 of `docs/design.md`, made executable:
+§13 of the design document, made executable:
 
 > Golden-image snapshots against the SVG backend (text-diffable, reviewable in a PR) plus
 > FsCheck property suites for scale laws, `Anim` monoid laws, `Interp` endpoint laws, `Dim`

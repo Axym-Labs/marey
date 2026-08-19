@@ -275,7 +275,7 @@ let stops (cs: (float * Color) list) =
 // ======================================================================================
 // THE SHARED FIGURE
 //
-// Gate 6 in `docs/m1-plan.md`: until now there was **no** golden baseline for a `Figure` in
+// Gate 6 in the M1 plan: until now there was **no** golden baseline for a `Figure` in
 // either backend. All thirteen scenes are hand-built `Node`s, and `Chart` output was checked only
 // by substring assertions — so the one artefact users actually produce, and the only one that
 // exercises layout, axes, ticks, legend and theme together, had no reviewable record at all.

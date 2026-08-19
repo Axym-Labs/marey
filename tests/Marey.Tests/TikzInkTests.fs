@@ -1,4 +1,4 @@
-/// The ink gate: `docs/m1-plan.md` §4 gate 7.
+/// The ink gate: the M1 plan §4 gate 7.
 ///
 /// Every other test in this project reads the *text* the backend produced. These compile it and
 /// count pixels, because Phase 2 proved that a text emitter can be verified into emitting a

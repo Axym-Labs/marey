@@ -26,7 +26,7 @@
 /// states that TikZ's y is the SVG's y measured from the opposite edge — so a flip applied
 /// wrongly to *both* backends still satisfies it. A raster knows which way up the page is.
 ///
-/// `docs/m1-plan.md` §4 gate 7 is the entry this module implements.
+/// the M1 plan §4 gate 7 is the entry this module implements.
 ///
 /// ### When the rasteriser is absent
 ///

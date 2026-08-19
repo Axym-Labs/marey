@@ -51,3 +51,10 @@ spike/scene.svg
 .fake
 # Local package feed for running the notebooks before publication (docs/notebooks/README.md).
 local-feed/
+
+# The examples write their figures into the current directory, which is the repository root when
+# you run them the obvious way (`dotnet fsi examples/wave-packet.fsx`). Those are artefacts of a
+# run, not sources; the copies the README embeds are generated deliberately and live elsewhere.
+/free-fall.svg
+/wave-packet.svg
+/wave-packet.tex

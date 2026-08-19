@@ -12,36 +12,45 @@ namespace Marey
 /// SI lengths in this library are never new measures; they are a runtime factor on `U<m>`
 /// (see `Prefix` and `U.scaled`). `float<m>` is metres, always, and the prefix is a
 /// presentation decision made at the axis. That is the whole point of §2.2.
+///
+/// **These seven are abbreviations of `FSharp.Data.UnitSystems.SI.UnitNames`, not fresh
+/// primitives.** F# measures are nominal, so declared fresh they would not unify with
+/// FSharp.Core's SI, and every value arriving from a library that speaks it — FSharp.Data's CSV
+/// type provider reads units straight out of column headers — would have to cross the boundary
+/// through `LanguagePrimitives.FloatWithMeasure`, an unchecked assertion that relabels metres as
+/// seconds as happily as anything else. Aliasing removes the cast. The algebra in `Derived` is
+/// unaffected, and so are Core's graphics tags: FSharp.Core declares no prefixed and no non-SI
+/// units, so the `mm` hazard above is untouched. Binary-breaking, and taken at rc1. See D42.
 [<Measure>]
-type m
+type m = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.metre
 
 /// Kilogram. **The one SI base unit whose name already carries a prefix**, which makes it a
 /// genuine special case for `Prefix` — see the mass branch of `Prefix.selectFor` and
 /// `UnitDisplay.renderPrefixed`, where a chosen prefix of 10⁻⁶ on `float<kg>` has to print
 /// `mg`, not `µkg`.
 [<Measure>]
-type kg
+type kg = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.kilogram
 
 /// Second.
 [<Measure>]
-type s
+type s = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.second
 
 /// Ampere.
 [<Measure>]
-type A
+type A = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.ampere
 
 /// Kelvin. The *absolute* temperature measure. °C and °F are separate, affine measures in
 /// `NonSi`, and deliberately do not unify with this one.
 [<Measure>]
-type K
+type K = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.kelvin
 
 /// Mole.
 [<Measure>]
-type mol
+type mol = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.mole
 
 /// Candela.
 [<Measure>]
-type cd
+type cd = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.candela
 
 /// §2.1 — SI base-unit witnesses.
 ///
