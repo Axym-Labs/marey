@@ -1,5 +1,8 @@
 # Marey
 
+[![CI](https://github.com/Jonathan-Schaefer-git/marey/actions/workflows/ci.yml/badge.svg)](https://github.com/Jonathan-Schaefer-git/marey/actions/workflows/ci.yml)
+[![NuGet](https://img.shields.io/nuget/v/Marey.Plot.svg)](https://www.nuget.org/packages/Marey.Plot)
+
 A plotting library for F# where the compiler checks your units, and the axes label themselves.
 
 > Named for **Étienne-Jules Marey** (1830–1904), who invented the graphical method in experimental
@@ -123,9 +126,14 @@ executable checks over every example in [the guide](docs/guide.md) and in [`exam
 - **[Examples](examples/)** — five standalone scripts, also executed by the test suite.
 - **[Why Marey is like this](docs/why.md)** — the case for a unit witness over a string label,
   what the other design decisions buy, what they cost, and when not to use the library.
+- **[Changelog](CHANGELOG.md)** — what changed in each release, and what is still known to be
+  wrong.
+- **[Contributing](CONTRIBUTING.md)** — building, the golden baselines, and the three layering
+  rules a change has to keep.
 
 ## Status
 
-Pre-1.0, and versioned accordingly. The API is still free to move.
+Pre-1.0, and versioned accordingly. The API is still free to move; breaking changes are listed in
+the [changelog](CHANGELOG.md) with the reason and the replacement.
 
 MIT licensed.
