@@ -123,6 +123,11 @@ jobs:
       - name: Pack
         run: dotnet pack Marey.slnx --configuration Release --no-build -o artifacts -p:Version=0.0.0-ci
 
+      # The readme filename is deliberately not pinned. Directory.Build.targets packs a project's
+      # own PackageReadme.md when it has one and falls back to NUGET.md when it does not, so a
+      # hardcoded name goes stale the moment a project gains or loses its readme -- which is
+      # exactly how this check broke once. The invariant worth asserting is the one that failed:
+      # the nuspec must declare a readme, and the package must contain the file it declares.
       - name: Check every package carries its metadata
         run: |
           set -e
@@ -130,11 +135,13 @@ jobs:
           [ "$count" -eq 7 ] || { echo "::error::expected 7 packages, packed $count"; exit 1; }
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
-            grep -q '<readme>NUGET.md</readme>' /tmp/nuspec.xml || { echo "::error::$pkg has no readme"; exit 1; }
+            readme=$(grep -o '<readme>[^<]*</readme>' /tmp/nuspec.xml | sed 's:<readme>::;s:</readme>::')
+            [ -n "$readme" ] || { echo "::error::$pkg declares no readme"; exit 1; }
             grep -q '<license type="expression">MIT</license>' /tmp/nuspec.xml || { echo "::error::$pkg has no license"; exit 1; }
-            unzip -l "$pkg" | grep -q 'NUGET.md' || { echo "::error::$pkg declares a readme it does not contain"; exit 1; }
+            unzip -l "$pkg" | grep -q "$readme" || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
+            echo "  $(basename "$pkg"): $readme"
           done
-          echo "7 packages, each with an MIT expression and a packed NUGET.md"
+          echo "7 packages, each with an MIT expression and the readme it declares"
 
       - uses: actions/upload-artifact@v4
         with:

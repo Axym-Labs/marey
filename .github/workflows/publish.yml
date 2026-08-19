@@ -153,8 +153,11 @@ jobs:
               || { echo "::error::$pkg is not version ${{ steps.version.outputs.value }}"; exit 1; }
             grep -q '<license type="expression">MIT</license>' /tmp/nuspec.xml \
               || { echo "::error::$pkg has no license"; exit 1; }
-            unzip -l "$pkg" | grep -q 'NUGET.md' \
-              || { echo "::error::$pkg has no packed readme"; exit 1; }
+            readme=$(grep -o '<readme>[^<]*</readme>' /tmp/nuspec.xml | sed 's:<readme>::;s:</readme>::')
+            [ -n "$readme" ] \
+              || { echo "::error::$pkg declares no readme"; exit 1; }
+            unzip -l "$pkg" | grep -q "$readme" \
+              || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
           done
           ls -1 artifacts/*.nupkg
 
