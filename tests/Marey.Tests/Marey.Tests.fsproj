@@ -41,6 +41,7 @@
     <Compile Include="GoldenTests.fs" />
     <Compile Include="TikzGoldenTests.fs" />
     <Compile Include="PlotTests.fs" />
+    <Compile Include="ChannelTests.fs" />
     <Compile Include="NotebookTests.fs" />
     <Compile Include="GuideTests.fs" />
     <Compile Include="ExampleTests.fs" />

@@ -78,6 +78,12 @@ module Chart =
     let ofSeries (g: Geom) (s: Series<'ux, 'uy>) : Figure =
         figureOf [| layerOf s.Name Theme.initial 0 g (Erase.packSeries s) |]
 
+    /// A figure from an already-reunified `PackedSeries` — the door the encoding CE comes
+    /// through. The reunifier lives in `Marey.Core` (D44 finding 3) and terminates there; this
+    /// is what lets it, so nothing in `Marey.Plot` has to write a rank-2 consumer of its own.
+    let ofPacked (g: Geom) (p: PackedSeries) : Figure =
+        figureOf [| layerOf (Erase.seriesName p) Theme.initial 0 g p |]
+
     let line (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         ofSeries GeomLine (series "" ux uy x y)
 
