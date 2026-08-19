@@ -31,13 +31,14 @@ out — and plotting metres against metres on these axes is a compile error.
 - **Palettes** — Okabe–Ito, viridis, cividis, magma and an Oklab diverging ramp, with a
   colour-vision-deficiency and contrast validator that every shipped theme is checked against.
 - **A measure–arrange constraint layout**, and the axis and legend compilers.
-- Per-layer styling that survives a theme change when you set it by hand and is recoloured when
-  you did not — which is what makes `withTheme` safe to apply last.
+- Per-layer styling that survives a theme change where it was set explicitly and is recoloured
+  where it was not, which is what makes `withTheme` safe to apply last.
 
 ## No backend reference
 
-`Marey.Plot` does not depend on a renderer. A backend is a function you pass in, which is why the
-same figure goes to SVG or to LaTeX without the figure knowing either exists. Install one:
+`Marey.Plot` does not depend on a renderer. A backend is a function passed in at render time,
+which is why the same figure goes to SVG or to LaTeX without the figure knowing either exists.
+Install one:
 
 - [`Marey.Backend.Svg`](https://www.nuget.org/packages/Marey.Backend.Svg) — pure F#, zero
   dependencies.

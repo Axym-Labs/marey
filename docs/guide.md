@@ -1,13 +1,11 @@
-# Marey — the guide
+# The guide
 
-Everything the library does today, in the order you are likely to need it, with a runnable
-example for each part.
+Every part of the library, with a runnable example for each.
 
 **Every `fsharp` block below is executed by the test suite.** `GuideTests.fs` extracts them in
-order, concatenates them into one script and runs it under `dotnet fsi`; if a block stops
-compiling or starts throwing, that test fails. A guide that has drifted from the library is worse
-than no guide, and this is the cheapest way to make drift impossible. Blocks marked `fsharp-error`
-are the exception — those are shown *because* they do not compile, and the checker skips them.
+order, concatenates them into one script and runs it under `dotnet fsi`; if a block stops compiling
+or starts throwing, that test fails. Blocks marked `fsharp-error` are the exception — they are shown
+*because* they do not compile, and the checker skips them.
 
 The blocks form one continuous session, so bindings introduced early are still in scope later.
 
@@ -27,7 +25,7 @@ The blocks form one continuous session, so bindings introduced early are still i
 10. [Colour](#10-colour)
 11. [Output: SVG, TikZ, files](#11-output-svg-tikz-files)
 12. [Notebooks](#12-notebooks)
-13. [The IR, when you need to look underneath](#13-the-ir-when-you-need-to-look-underneath)
+13. [The scene IR](#13-the-scene-ir)
 14. [Escape hatches](#14-escape-hatches)
 
 ---
@@ -45,13 +43,13 @@ open Marey
 
 | Package | Take it when |
 |---|---|
-| `Marey.Core` | You want the `Scene` IR, colour, scales and geometry, and nothing else. Zero dependencies. |
+| `Marey.Core` | The `Scene` IR, colour, scales and geometry, and nothing else. Zero dependencies. |
 | `Marey.Units` | SI + 22 derived + 18 non-SI unit witnesses, and self-labelling axes. |
 | `Marey.Plot` | `Chart`, geoms, themes, palettes, layout. No backend reference — see §11. |
 | `Marey.Backend.Svg` | Rendering to SVG. |
 | `Marey.Backend.Tikz` | Rendering to `tikzpicture` source for LaTeX. |
 | `Marey.Html` | HTML renderings of nine Marey types, for a notebook cell. Host-neutral. |
-| `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension. Installed *into the host*, not referenced from your code. |
+| `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension. Installed *into the host*, not referenced from user code. |
 
 ---
 
@@ -67,16 +65,15 @@ let fall =
     |> Chart.withSubtitle "displacement against elapsed time"
 ```
 
-Nothing was configured, and the figure already knows:
+Nothing was configured, and the figure already carries:
 
 - that the x axis is **seconds** and the y axis is **metres**, from the two unit witnesses;
-- that `x` is a length at all — `0.5 * 9.81<m/s^2> * t * t` has type `float<m>` and the compiler
-  worked that out, nobody annotated it;
-- what the axis titles read (`t [s]`, `x [m]`), what the tick values are, and which SI prefix to
-  use for the magnitudes actually present.
+- that `x` is a length at all — `0.5 * 9.81<m/s^2> * t * t` has type `float<m>`, derived by the
+  compiler rather than annotated;
+- the axis titles (`t [s]`, `x [m]`), the tick values, and the SI prefix appropriate to the
+  magnitudes actually present.
 
-That last point is worth demonstrating rather than asserting. The same call on nanometre-scale
-data relabels itself:
+The same call on nanometre-scale data relabels itself:
 
 ```fsharp
 let small = t |> Array.map (fun v -> 1.0e-9<m/s> * v)
@@ -92,15 +89,15 @@ printfn "nanometre axis: %b" (nmSvg.Contains "[nm]")
 ## 3. Units, and the one error a compiler cannot catch
 
 A `float<m>` and a `float<s>` are different types, so most dimensional mistakes are build errors.
-This does not compile, and is here to show what the error looks like:
+The following does not compile, and is shown for the error it produces:
 
 ```fsharp-error
 // error FS0001: Type mismatch. Expecting a 'float<m> []' but given a 'float<s> []'
 Chart.line U.second U.metre t t
 ```
 
-The interesting case is the one that *is* well-typed. Two separately-correct series can still be
-wrong to put on one axis, and that is caught when the figure is compiled rather than when it is
+The remaining case is the one that *is* well-typed. Two separately-correct series can still be
+wrong to put on one axis, which is caught when the figure is compiled rather than when it is
 built:
 
 ```fsharp
@@ -122,9 +119,9 @@ let clash =
 printfn "dimension clash reported: %b" clash.IsSome
 ```
 
-Note *which* error that is. Not "cannot convert K to m" — the arrays are each fine. It is the
-mistake a type system cannot see, because it only exists once you decide the two belong on one
-axis.
+That error is not a failed conversion — each array is well typed on its own. It is the one
+dimensional mistake a type system cannot see, because it does not exist until the two series are
+placed on a single axis.
 
 ### The unit witnesses
 
@@ -137,11 +134,11 @@ printfn "joule:       %s" (U.symbol Derived.joule)
 printfn "celsius affine: %b" (U.isAffine NonSi.degreeCelsius)
 ```
 
-`degreeCelsius` is the interesting witness: affine, so its conversion to SI is not a factor alone.
+`degreeCelsius` is affine, so its conversion to SI is not a factor alone.
 
-Composing witnesses gets the *measure* right and the *name* wrong, and the difference is the
-reason the registry exists. `Derived.newtonByComposition` is built with `U.mul`/`U.div` from base
-witnesses rather than stated, and it is in the library precisely to stand next to the named one:
+Composing witnesses gets the *measure* right and the *name* wrong, which is the reason the
+registry exists. `Derived.newtonByComposition` is built with `U.mul`/`U.div` from base witnesses
+rather than stated outright, and stands next to the named one for comparison:
 
 ```fsharp
 printfn "named:    %s" (U.symbol Derived.newton)
@@ -149,9 +146,9 @@ printfn "composed: %s" (U.symbol Derived.newtonByComposition)
 printfn "same dimension: %b" (U.dim Derived.newton = U.dim Derived.newtonByComposition)
 ```
 
-The composed symbol is `kg·m/s²` — correct, and not what anyone labels an axis with. The registry
-is keyed by the `Dim` itself, so the canonical name is recovered from the physics rather than by
-matching strings — and it comes back in all four spellings the renderers need:
+The composed symbol is `kg·m/s²` — correct, and not what an axis is labelled with. The registry is
+keyed by the `Dim` itself, so the canonical name is recovered from the dimension rather than by
+matching strings, in all four spellings the renderers need:
 
 ```fsharp
 let canonical = UnitRegistry.tryCanonical UnitRegistry.si (U.dim Derived.newtonByComposition)
@@ -160,8 +157,8 @@ printfn "canonical: %A" (canonical |> Option.map (fun u -> u.Unicode, u.Ascii, u
 
 Most compositions have no canonical name, because most combinations of dimensions are not named
 units. An electric field is one: `V/m` is not in SI's table, and its dimension spelled out is
-`kg·m·s⁻³·A⁻¹`, which is correct and unreadable. So when the registry has no name for the whole
-dimension, the axis is labelled from the composition you wrote instead:
+`kg·m·s⁻³·A⁻¹`, which is correct and unreadable. Where the registry has no name for the whole
+dimension, the axis is labelled from the composition as written:
 
 ```fsharp
 let fieldUnit = U.div Derived.volt U.metre
@@ -170,11 +167,9 @@ printfn "siunitx: %s" (UnitDisplay.unitText Siunitx UnitRegistry.si Prefix.none 
 ```
 
 That is `V·m⁻¹` and `\qty{}{\volt\per\metre}` — and a prefix lands on the leading factor, so a
-megavolt-per-metre axis reads `MV·m⁻¹`. Note what is *not* happening: Marey never factorises a
-dimension it was handed bare, because that is ambiguous — the dimension of `J/K` is also the
-dimension of `N·m/K`, and picking one would be a guess presented as a fact. It only reads back a
-factorisation you supplied. A registered name still wins, so `U.mul Derived.newton U.metre` is
-`J`.
+megavolt-per-metre axis reads `MV·m⁻¹`. A bare dimension is never factorised: the dimension of
+`J/K` is also the dimension of `N·m/K`, so only a supplied factorisation is read back. A registered
+name still wins, so `U.mul Derived.newton U.metre` is `J`.
 
 Non-SI witnesses cover the units physics actually writes in: `electronvolt`, `angstrom`,
 `parsec`, `lightYear`, `dalton`, `atmosphere`, `bar`, `barn`, `calorie`, `gauss`, `litre`,
@@ -195,8 +190,8 @@ mapping over generated domains.
 | Power | `Scale.power`, `Scale.sqrt` |
 | Reciprocal | `Scale.reciprocal` |
 
-The common case needs none of them directly: pick the kind on the figure and the domain follows
-from the data.
+The common case needs none of them directly: the kind is selected on the figure and the domain
+follows from the data.
 
 ```fsharp
 let decades = [| 1.0<m>; 10.0<m>; 100.0<m>; 1000.0<m>; 10000.0<m> |]
@@ -208,7 +203,7 @@ let logFigure =
     |> Chart.withTitle "Response against distance"
 ```
 
-Build one directly when you want the domain under your control:
+Build one directly to control the domain:
 
 ```fsharp
 let logScale = Scale.log10 U.metre (1.0<m>, 1000.0<m>)
@@ -253,8 +248,8 @@ let barOnly     = Chart.bar      U.second U.metre categories counts
 let errorOnly   = Chart.errorbar U.second U.metre categories counts sigma
 ```
 
-`errorbar` is two layers — the bars and the centre points — and only one of them appears in the
-legend. That is a single call because an error bar without its centre is not a thing anyone wants.
+`errorbar` is two layers in one call — the bars and the centre points — and only one of them
+appears in the legend.
 
 Per-layer style overrides apply to the most recently added layer:
 
@@ -270,8 +265,8 @@ let styled =
     |> Chart.withOpacity 0.8
 ```
 
-A style you set by hand survives a theme change; one you did not is recoloured. That asymmetry is
-deliberate, and is what makes `withTheme` safe to apply last:
+A style set explicitly survives a theme change; one left unset is recoloured. That asymmetry is
+what makes `withTheme` safe to apply last:
 
 ```fsharp
 let rethemed = styled |> Chart.withTheme Theme.dark
@@ -304,7 +299,7 @@ drawing its own.
 
 ## 7. Axes
 
-Titles are derived, and everything is overridable.
+Titles are derived, and every part is overridable.
 
 ```fsharp
 let labelled =
@@ -313,8 +308,8 @@ let labelled =
     |> Chart.withYLabel "drop"
 ```
 
-The unit *spelling* is a presentation choice, so it lives on the theme with a per-axis override.
-That is what makes selecting `Theme.tikz` sufficient on its own to get `siunitx` markup:
+The unit *spelling* is a presentation choice, so it lives on the theme with a per-axis override,
+which is what makes `Theme.tikz` sufficient on its own to produce `siunitx` markup:
 
 ```fsharp
 let ascii = fall |> Chart.withUnitStyle Ascii
@@ -366,7 +361,7 @@ missing one is a build error.
 | `Theme.modern` | **The default.** Screen-first: sans, flat panel, horizontal gridlines, no frames. |
 | `Theme.publication` | A paper. Serif, hairline rules, no gridlines, no chartjunk. |
 | `Theme.notebook` | `modern` with a tinted panel and vertical gridlines, so a figure reads as an object inside a cell. |
-| `Theme.presentation` | Large type, for four metres away. |
+| `Theme.presentation` | Large type, for projection. |
 | `Theme.dark` | Not an inversion — `#E8E8E8` on `#16181C`, and the palette swaps so Okabe–Ito's black is not invisible. |
 | `Theme.tikz` | Serif metrics and `Siunitx` unit spelling. Selecting it is the whole configuration. |
 
@@ -386,9 +381,9 @@ let mine =
 ```
 
 `scaleType` scales every typographic size and leaves everything else alone. `withFontFamily`
-matters for layout as much as for looks: the family string is what the text measurer reads to
-decide how much room a label needs, and for the TikZ backend — which emits no family at all and
-lets the document supply the face — it is the *only* thing the family does.
+affects layout as much as appearance: the family string is what the text measurer reads to decide
+how much room a label needs, and for the TikZ backend — which emits no family and lets the document
+supply the face — that measurement is all the family does.
 
 Every theme can be measured, and the shipped ones are:
 
@@ -399,9 +394,9 @@ for theme in Theme.all do
         r.Theme r.TextContrast r.AxisContrast r.GridContrast r.Ok
 ```
 
-`GridContrast` is reported and deliberately *not* floored — a gridline that competes with the data
-is chartjunk. `TextContrast` and `AxisContrast` are floored at WCAG AAA and 3:1, and a test runs
-every shipped theme through this so the library cannot ship a theme that fails its own validator.
+`GridContrast` is reported and deliberately *not* floored, since a gridline is not meant to compete
+with the data. `TextContrast` and `AxisContrast` are floored at WCAG AAA and 3:1, and every shipped
+theme is run through this check by the test suite.
 
 ---
 
@@ -437,9 +432,8 @@ printfn "custom at 0.5: %s" (Color.toHex (Ramp.at custom 0.5))
 
 ### The validator
 
-§9 asks for a validator "because a physics library that renders fields in jet is embarrassing".
-It simulates three dichromacies, reports the worst, and names the two entries that were closest
-under it.
+`Palette.validate` simulates three dichromacies, reports the worst separation, and names the two
+entries that were closest under it.
 
 ```fsharp
 let onWhite = Palette.validate Color.white Palette.okabeIto
@@ -450,18 +444,18 @@ let onPanel = Palette.validate Theme.dark.PanelBackground Palette.seriesDark
 printfn "seriesDark on dark:  Ok=%b  min contrast %.2f" onPanel.Ok onPanel.MinContrast
 ```
 
-Okabe–Ito **fails** on white, and that is the honest answer rather than a bug. It stays
-distinguishable under all three dichromacies, but two of its eight colours are very light and its
-yellow lands at 1.32:1 against white — far below the 3:1 WCAG asks for graphical objects. The
-library does not "fix" the palette, because a corrected Okabe–Ito is not Okabe–Ito. It reorders,
-and the themes are validated against the background they are actually drawn on.
+Okabe–Ito **fails** on white. It stays distinguishable under all three dichromacies, but two of
+its eight colours are very light and its yellow lands at 1.32:1 against white, far below the 3:1
+WCAG asks for graphical objects. The palette is not modified — a corrected Okabe–Ito is no longer
+Okabe–Ito — it is reordered, and themes are validated against the background they are actually
+drawn on.
 
 ---
 
 ## 11. Output: SVG, TikZ, files
 
-`Marey.Plot` does not reference a backend. A backend is a function you pass in, which is why the
-same figure goes to either without the figure knowing either exists.
+`Marey.Plot` does not reference a backend. A backend is a function passed in at render time, which
+is why the same figure goes to either without the figure knowing either exists.
 
 ```fsharp
 let asSvg = fall |> Chart.render SvgBackend.render (Chart.size 720.0 450.0)
@@ -495,15 +489,14 @@ let doc = TikzBackend.standalone asTikz
 printfn "standalone: %b" (doc.Contains "documentclass")
 ```
 
-Both backends are deterministic — two renders of one figure are byte-identical, which is what
-makes the golden suite meaningful:
+Both backends are deterministic — two renders of one figure are byte-identical:
 
 ```fsharp
 printfn "deterministic: %b" (asSvg = (fall |> Chart.render SvgBackend.render (Chart.size 720.0 450.0)))
 ```
 
-TikZ degrades rather than lying when it meets something it cannot draw: a gradient becomes its
-Oklab midpoint, a raster becomes a comment saying what was skipped and at what size.
+Constructs TikZ cannot draw degrade visibly rather than silently: a gradient becomes its Oklab
+midpoint, and a raster becomes a comment naming what was skipped and at what size.
 
 ---
 
@@ -518,7 +511,7 @@ Without the extension, render to SVG and Verso's built-in `SvgFormatter` — whi
 beginning with `<svg` — draws it. That path needs nothing installed.
 
 `Marey.Html` is the renderer, and it is host-neutral: `something -> string`, with no reference to
-any notebook host. You can call it anywhere.
+any notebook host, so it can be called anywhere.
 
 ```fsharp
 let fragment = Html.figure fall
@@ -531,10 +524,10 @@ See [`notebooks/README.md`](notebooks/README.md) for installation and
 
 ---
 
-## 13. The IR, when you need to look underneath
+## 13. The scene IR
 
-Everything above compiles to one closed nine-case `Scene` IR, and every backend consumes only
-that. Reaching it is how you find out why a figure is not what you expected.
+Everything above compiles to one closed nine-case `Scene` IR, and every backend consumes only that.
+It is the level at which a figure that came out wrong can be inspected.
 
 ```fsharp
 let scene = Chart.toScene (Chart.size 480.0 300.0) fall
@@ -554,14 +547,14 @@ printfn "20 000 points -> %d nodes, %d primitives" (Scene.count bigScene) (Scene
 
 `Keyed` and `Annotated` carry identity and semantics through to the output — SVG gets `id`s and
 ARIA roles, TikZ gets `% marey-key:` and `% marey-role:` comments — so a rendered figure can be
-diffed and read rather than only looked at.
+diffed and read as text.
 
 ---
 
 ## 14. Escape hatches
 
-**Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so you choose the
-scales and everything downstream still works.
+**Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so the scales are
+the caller's and everything downstream still works.
 
 ```fsharp
 let raw = Chart.series "measured" U.second U.metre t x
@@ -569,8 +562,8 @@ let manual = Chart.ofSeries GeomLine raw
 ```
 
 **Erase deliberately.** `Erase` is the single boundary where `float<'u>` becomes a runtime value
-carrying a `Dim`. Below it there are no measures, by design — that is what lets one backend serve
-every unit.
+carrying a `Dim`. Below it there are no measures, which is what lets one backend serve every
+unit.
 
 ```fsharp
 let erased = Erase.scale logScale
@@ -578,7 +571,7 @@ printfn "erased scale carries: %s" (Dim.show erased.Dim)
 ```
 
 **Bring your own backend.** A renderer is `Extent<px> -> Node -> string`, and `Chart.render` takes
-exactly that. Anything with that shape works, with no registration step:
+exactly that. Anything of that shape works, with no registration step:
 
 ```fsharp
 let countingRenderer (_: Extent<px>) (node: Node) : string =
@@ -596,4 +589,4 @@ For a stateful backend there is `IBackend` and `Chart.renderTo`, which is the pa
 
 What exists today is plotting: the geoms, scales, themes, units and the two backends this guide
 covers. Animation, fields and simulation, further backends, and a grammar-of-graphics computation
-expression are all intended and none of them exist yet. This guide grows when they do.
+expression are all intended, and none of them exist yet.

@@ -21,8 +21,8 @@ The scale, the domain, the SI prefix, the tick values, the tick labels and both 
 derived from the two unit witnesses — and plotting seconds against seconds on these axes is a
 compile error.
 
-Swap the theme and the same figure becomes `tikzpicture` source, typeset by your LaTeX document's
-own engine and fonts, with axis titles set by `siunitx`.
+Swapping the theme turns the same figure into `tikzpicture` source, typeset by the LaTeX
+document's own engine and fonts, with axis titles set by `siunitx`.
 
 ## The packages
 

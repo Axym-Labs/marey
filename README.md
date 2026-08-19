@@ -23,8 +23,8 @@ Chart.line U.second U.metre t x
 
 Nothing above configures an axis. The scale, the domain, the SI prefix, the tick values, the tick
 labels and both axis titles are derived from the two unit witnesses. `x` is never annotated as a
-length — `0.5 * 9.81<m/s^2> * t * t` has type `float<m>` and the compiler works that out — and
-plotting seconds against seconds on these axes is a compile error.
+length — `0.5 * 9.81<m/s^2> * t * t` has type `float<m>`, which the compiler derives — and plotting
+seconds against seconds on these axes is a compile error.
 
 ## Install
 
@@ -37,26 +37,26 @@ dotnet add package Marey.Backend.Svg
 
 ## Units, end to end
 
-Give it data spanning 1e-9 to 5e-9 metres and the axis reads `nm` with ticks `1, 2, 3, 4, 5`.
-Give it kilopascals and it says so:
+Data spanning 1e-9 to 5e-9 metres produces an axis reading `nm` with ticks `1, 2, 3, 4, 5`.
+Kilopascals are labelled as kilopascals:
 
 <img src="docs/images/wave-packet.svg" alt="A Gaussian wave packet in millimetres and kilopascals" width="640">
 
 The unit registry is keyed on the seven-element SI dimension vector rather than on strings, so
-anything that composes to a newton prints `N`. Units with no SI name work too, as long as you say
-what they are made of: `U.div Derived.volt U.metre` renders `V·m⁻¹`, and `MV·m⁻¹` when prefixed.
-Nothing is inferred — a dimension handed over bare is never factorised for you, because the same
-vector is `J/K` and `N·m/K`, and a confident guess is worse than a verbose truth.
+anything that composes to a newton prints `N`. Units with no SI name are covered as long as the
+composition is stated: `U.div Derived.volt U.metre` renders `V·m⁻¹`, and `MV·m⁻¹` when prefixed.
+Nothing is inferred — a bare dimension is never factorised, because the same vector is both `J/K`
+and `N·m/K`.
 
-Affine units are handled honestly: degrees Celsius carries an offset, an electronvolt axis reads
-`keV` rather than `kJ`, and a mass rescaled by 10⁻⁶ prints `mg` against the gram rather than
-`µkg`.
+Affine units carry their offset: degrees Celsius converts by shift as well as factor, an
+electronvolt axis reads `keV` rather than `kJ`, and a mass rescaled by 10⁻⁶ prints `mg` against the
+gram rather than `µkg`.
 
 ## Figures that belong in a LaTeX document
 
-Swap the theme and the same figure becomes `tikzpicture` source. It is typeset by the same engine
-as the rest of your document, so it **inherits your fonts**, and the axis titles are set by
-`siunitx` from the unit witnesses:
+Swapping the theme turns the same figure into `tikzpicture` source. It is typeset by the same
+engine as the rest of the document, so **the figure inherits the document's fonts**, and the axis
+titles are set by `siunitx` from the unit witnesses:
 
 ```fsharp
 figure
@@ -71,21 +71,20 @@ figure
 
 ## The usual scientific figure
 
-A model curve, measured points, error bars, and a legend that names only the layers you named:
+A model curve, measured points, error bars, and a legend naming only the layers that were named:
 
 <img src="docs/images/oscillator.svg" alt="A damped oscillator: model against measurement with error bars" width="640">
 
-## On real data, and where the units story stops
+## Real data, and where the units story stops
 
 Units are transformative for physical measurements and irrelevant for a mole fraction in ppm,
-which is dimensionless. Marey renders a dimensionless axis with no unit brackets rather than
-printing `[1]`, refuses to rescale values it has no unit to hang a prefix on, and lets you write
-the label yourself:
+which is dimensionless. A dimensionless axis is rendered with no unit brackets rather than `[1]`,
+values with no unit to carry a prefix are not rescaled, and the label is left to the caller:
 
 <img src="docs/images/co2-record.svg" alt="Atmospheric CO2 at Mauna Loa, annual means with uncertainties" width="640">
 
 The [`examples/`](examples/) directory has five worked figures, two of them on real committed
-datasets. They are executed by the test suite on every run, so they cannot drift from the library.
+datasets.
 
 ## What is in the box
 
@@ -123,7 +122,7 @@ executable checks over every example in [the guide](docs/guide.md) and in [`exam
   each part. Every example in it is extracted and executed by the test suite.
 - **[Examples](examples/)** — five standalone scripts, also executed by the test suite.
 - **[Why Marey is like this](docs/why.md)** — the case for a unit witness over a string label,
-  what the other bets buy, what they cost, and when not to use the library.
+  what the other design decisions buy, what they cost, and when not to use the library.
 
 ## Status
 

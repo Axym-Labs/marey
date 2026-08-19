@@ -3,8 +3,8 @@
 The foundation of [Marey](https://github.com/Jonathan-Schaefer-git/marey), a dimensionally-typed
 visualization system for F#. **Zero dependencies**, `netstandard2.1`.
 
-You want this package on its own if you need the types and not the plotting: dimension vectors,
-unit witnesses, unit-indexed geometry, scales, and the scene graph that backends consume.
+Take this package on its own for the types without the plotting: dimension vectors, unit
+witnesses, unit-indexed geometry, scales, and the scene graph that backends consume.
 
 ```fsharp
 open Marey
@@ -30,13 +30,13 @@ printfn "%A" (scale.Forward 5.0<m>)  // normalized panel space
 - **`Scene`** — a small closed IR of nine cases. Every backend consumes this and nothing else.
 - **`Interp`**, tick generation, and text metrics.
 
-## Zero dependencies is a rule, not an accident
+## Zero dependencies
 
-Nothing may be added to this package's references. It is what lets the same IR run in a notebook,
-in a browser through Fable, and in an AOT-compiled binary. `FSharp.Core` is the language runtime,
-not a dependency.
+Nothing is added to this package's references. That is what lets the same IR run in a notebook, in
+a browser through Fable, and in an AOT-compiled binary. `FSharp.Core` is the language runtime, not
+a dependency.
 
-## You probably want more than this
+## Related packages
 
 `Marey.Core` has no units table, no chart API and no renderer. For the usual case install
 [`Marey.Plot`](https://www.nuget.org/packages/Marey.Plot) and a backend, or

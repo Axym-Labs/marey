@@ -27,6 +27,11 @@
          package by Directory.Build.targets, which runs late enough to see IsPackable. -->
     <PackageReadmeFile>NUGET.md</PackageReadmeFile>
 
+    <!-- 128x128, packed into every package by Directory.Build.targets. `icon` rather than the
+         deprecated `iconUrl`: the image travels inside the .nupkg, so the gallery entry does
+         not depend on a URL outliving the release. -->
+    <PackageIcon>icon.png</PackageIcon>
+
     <!-- MIT, decided deliberately: shorter than Apache-2.0, and what most of the F# ecosystem
          uses, so it composes with the packages a consumer already has. The trade accepted in
          exchange is that MIT carries no explicit patent grant. An SPDX expression rather than

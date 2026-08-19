@@ -18,10 +18,10 @@ figure |> Chart.toSvg SvgBackend.render "out.svg" (Chart.size 800.0 500.0)
 
 ## Deterministic
 
-Two renders of one figure are **byte-identical**. Numbers are formatted culture-invariantly with a
-fixed precision, and nothing depends on hash ordering or on the clock. That is what makes a golden
--image test suite meaningful — the repository pins 29 baselines and diffs them as text in review,
-rather than eyeballing bitmaps.
+Two renders of one figure are **byte-identical**, and so are renders under different locales.
+Numbers are formatted culture-invariantly at a fixed precision, and nothing depends on hash
+ordering or on the clock, which is what allows the output to be pinned as a text golden master and
+reviewed as a diff.
 
 ## Complete
 
@@ -31,10 +31,7 @@ clipping groups, images and transforms. Accessibility semantics are emitted alon
 Because the output is a string starting with `<svg`, it renders in any notebook or viewer that
 knows what to do with one, without an extension installed.
 
-Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else — it is a
-string producer, and a renderer that needed a package to write text would be admitting it is
-something else. It also doubles as the reference implementation and the test oracle the other
-backends are checked against.
+Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else.
 
 - [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
 - [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)

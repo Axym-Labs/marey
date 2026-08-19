@@ -1,7 +1,7 @@
 # Marey.Backend.Tikz
 
 The TikZ backend for [Marey](https://github.com/Jonathan-Schaefer-git/marey), a dimensionally-typed
-visualization system for F#. Emits `tikzpicture` source you paste into a LaTeX document. Pure F#,
+visualization system for F#. Emits `tikzpicture` source for pasting into a LaTeX document. Pure F#,
 **zero dependencies**, `netstandard2.1`.
 
 ```fsharp
@@ -20,24 +20,24 @@ Chart.line U.second U.metre t x
 \node[anchor=base,rotate=90,font=\fontsize{9}{10.8}\selectfont] at (15.825bp,69.075bp) {x [\qty{}{\metre}]};
 ```
 
-## Why this exists
+## Why TikZ rather than an image
 
-A figure exported as an image is a foreign object in a paper: different fonts, different weights,
-units set in whatever the plotting library thought a minus sign was. A `tikzpicture` is typeset by
-the same engine as the rest of the document, so **it inherits your fonts**, and the axis titles are
-typeset by `siunitx` from the unit witnesses — `\qty{}{\metre}`, not the string `"m"`.
+An exported image is a foreign object in a paper: different fonts, different weights, and units set
+in whatever the plotting library took a minus sign to be. A `tikzpicture` is typeset by the same
+engine as the rest of the document, so **the figure inherits the document's fonts**, and the axis
+titles are typeset by `siunitx` from the unit witnesses — `\qty{}{\metre}`, not the string `"m"`.
 
-`TikzBackend.standalone` wraps a fragment in a document that compiles on its own, which is what the
-test suite gates against a real `pdflatex` run.
+`TikzBackend.standalone` wraps a fragment in a document that compiles on its own.
 
 ## What it needs, and what it will not do
 
-Only `\usepackage{tikz}`, plus `siunitx` if you use the siunitx unit style. Coordinates are emitted
+Only `\usepackage{tikz}`, plus `siunitx` when the siunitx unit style is used. Coordinates are emitted
 in `bp` at 96 px/inch, so a 400×250 figure produces a page of exactly 300×187.5 pt.
 
-It degrades visibly rather than lying: a gradient becomes its Oklab midpoint and a raster becomes a
-comment naming what was skipped and at what size. Layout is measured against the theme's font
-metrics, and TeX will use the document's own face — `Theme.withFontFamily` is how you tell it which.
+Unsupported constructs degrade visibly rather than silently: a gradient becomes its Oklab
+midpoint, and a raster becomes a comment naming what was skipped and at what size. Layout is
+measured against the theme's font metrics while TeX sets the text in the document's own face;
+`Theme.withFontFamily` is what reconciles the two.
 
 Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else.
 

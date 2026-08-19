@@ -27,4 +27,13 @@
           Visible="false" />
   </ItemGroup>
 
+  <!-- One icon for all seven packages, unlike the readme: the point of a package icon is that
+       the family is recognisable at a glance in a gallery listing. -->
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)assets\icon.png"
+          Pack="true"
+          PackagePath="\"
+          Visible="false" />
+  </ItemGroup>
+
 </Project>

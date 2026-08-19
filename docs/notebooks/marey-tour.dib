@@ -3,15 +3,14 @@
 # Marey — a tour in a notebook
 
 A plotting library where **the units are part of the type**. `t [s]` and `x [m]` on the axes below
-were not typed by anyone; they were derived from the unit witnesses the data was tagged with, and
-the compiler would have rejected the figure if the two series disagreed about what a metre is.
+were not typed by hand; they are derived from the unit witnesses the data carries, and the figure
+would not have compiled had the two series disagreed about what a metre is.
 
 Everything in this notebook runs against the packages as published. Nothing is configured.
 
-> **A note on the format.** This is a `.dib`, not an `.ipynb`: plain text, one cell per `#!`
-> directive, no embedded output, and therefore reviewable in a pull request the same way the
-> golden masters are. VS Code and `dotnet repl` open it directly. GitHub will not render it — the
-> trade that buys a diff you can read.
+> **On the format.** This is a `.dib`, not an `.ipynb`: plain text, one cell per `#!` directive and
+> no embedded output, so it diffs as text. VS Code and `dotnet repl` open it directly; GitHub does
+> not render it.
 
 #!fsharp
 
@@ -24,10 +23,10 @@ open Marey
 One reference: Core, Units, the SVG backend and Plot all arrive transitively.
 
 For the figures below to appear as pictures rather than as field tables, install the **Marey**
-extension from Verso's Extensions panel once. That is a separate step from the `#r` on purpose —
-an extension is executable code that runs inside your notebook host, so Verso asks you to approve
-it, per version. Without it everything still *works*; you just see the objects instead of the
-pictures. `docs/notebooks/README.md` has the details.
+extension from Verso's Extensions panel once. That is a separate step from the `#r`: an extension
+is executable code that runs inside the notebook host, so Verso asks for approval, per version.
+Without it everything still runs, and the objects are shown instead of the pictures.
+`docs/notebooks/README.md` has the details.
 
 ## The headline
 
@@ -49,7 +48,7 @@ Chart.line U.second U.metre t x
 #!markdown
 
 No `.Show()`, no `display`, no save-then-open. The cell's value *is* a `Figure`, and a `Figure`
-knows how to be an SVG.
+renders as SVG.
 
 Add a measured series to the same panel and the legend, the domain union and the colour cycle all
 follow:
@@ -70,11 +69,9 @@ Chart.line U.second U.metre t x
 
 ## What the type system is actually doing
 
-Try to put displacement and temperature on the same axis. Both are `float`s at runtime; only one of
-them is a length.
-
-The formatter does not throw — a display formatter that throws replaces a good message with a
-kernel error — so the reason is rendered where the figure would have been:
+Displacement and temperature on the same axis: both are `float`s at runtime, and only one of them
+is a length. The formatter does not throw; the reason is rendered where the figure would have
+been:
 
 #!fsharp
 
@@ -87,9 +84,9 @@ Chart.line U.second U.metre t x
 
 #!markdown
 
-Note *which* error that is. It is not "cannot convert K to m" — the arrays are separately
-well-typed. It is the one dimensional mistake a compiler cannot catch, caught at figure-compile
-time with both layers named.
+That error is not a failed conversion — the arrays are separately well typed. It is the one
+dimensional mistake a compiler cannot catch, reported when the figure is compiled, with both layers
+named.
 
 ## The same figure, as TeX
 
@@ -118,9 +115,8 @@ and it compiles.
 
 ## The colour system
 
-§9 of the design asks for "a validator that checks contrast and CVD-safety, because a physics
-library that renders fields in jet is embarrassing". Colours, ramps and palettes all display, so
-the validator's answer is readable rather than a record to squint at.
+Palettes are checked for contrast and colour-vision-deficiency safety. Colours, ramps and palettes
+all display, so the validator's answer is readable rather than a record to be squinted at.
 
 #!fsharp
 
@@ -134,12 +130,12 @@ Palette.validate Color.white Palette.okabeIto
 
 Four vision models, the worst one in bold, and the two entries that were closest under it.
 
-**It says `FAILS`, and that is the honest answer.** Okabe–Ito stays distinguishable under all three
-dichromacies — every separation clears the floor — but two of its eight colours are very light, and
-against a *white* background its yellow lands at 1.32:1, far below WCAG's 3:1 for graphical objects.
-Marey does not "fix" the palette, because a corrected Okabe–Ito is not Okabe–Ito. It reorders:
-`Palette.series` demotes the yellow to index 6 and the black to index 7, so you would need seven
-series before you met one, and the dark theme swaps the black for white outright.
+The report reads `FAILS`. Okabe–Ito stays distinguishable under all three dichromacies — every
+separation clears the floor — but two of its eight colours are very light, and against a *white*
+background its yellow lands at 1.32:1, far below WCAG's 3:1 for graphical objects. The palette is
+not modified, since a corrected Okabe–Ito is no longer Okabe–Ito; it is reordered. `Palette.series`
+demotes the yellow to index 6 and the black to index 7, so seven series are drawn before either is
+reached, and the dark theme swaps the black for white outright.
 
 That reordering is what makes a *theme* pass where the raw set does not:
 
@@ -150,12 +146,11 @@ Palette.validate Theme.dark.PanelBackground Palette.seriesDark
 #!markdown
 
 `Ok`, weakest contrast 3.15:1 — the same eight hues with the black swapped out, on the background
-they are actually drawn on. The validator's job is to tell you which of those two situations you
-are in rather than to reassure you, and the test suite pins both.
+they are actually drawn on. Both results are pinned by the test suite.
 
 The sequential ramps are perceptually ordered in Oklab, and the bars below are resampled *through*
-Oklab rather than handed to the browser as stops — a CSS gradient interpolates in sRGB, which is
-precisely the artefact these ramps exist to avoid.
+Oklab rather than handed to the browser as stops: a CSS gradient interpolates in sRGB, which is the
+artefact these ramps exist to avoid.
 
 #!fsharp
 
@@ -167,8 +162,8 @@ Palette.diverging
 
 #!markdown
 
-Blue to yellow is where the difference is visible without measuring: the perceptual path goes
-through a green, the sRGB one through a dead grey.
+Blue to yellow shows the difference without measurement: the perceptual path goes through a green,
+the sRGB one through a dead grey.
 
 #!fsharp
 
@@ -178,8 +173,8 @@ Ramp.ofColors "blue-yellow" [| Palette.blue; Palette.yellow |]
 
 ## Below the front door
 
-The three types the rest of the library is built out of also display, which is how you inspect a
-figure that is not doing what you expected.
+The three types the rest of the library is built out of also display, which is how a figure that
+came out wrong is inspected.
 
 A physical dimension, in Core's fallback spelling and in the SI unit `Marey.Units` derives from it:
 
@@ -207,7 +202,7 @@ Erase.scale (Scale.log10 U.metre (1.0<m>, 1000.0<m>))
 
 #!markdown
 
-And the IR itself. Nine cases, and a census so you can tell how much of it there is:
+And the IR itself. Nine cases, with a census of how much of it there is:
 
 #!fsharp
 
@@ -218,12 +213,12 @@ Chart.toScene (Chart.size 480.0 300.0) figure
 ## Sizing
 
 Figures are compiled to fit the cell. Verso hands the formatter the available width and height, so
-nothing here guesses — resize the window, re-run a cell, and the figure follows, clamped to a sane
+nothing is guessed — resize the window, re-run a cell, and the figure follows, clamped to a sane
 band at both ends.
 
-For a size you choose instead, render to SVG and let Verso's built-in SVG formatter draw it. That
-path needs **no extension at all**: `SvgFormatter` claims any string beginning with `<svg`, which
-is what the SVG backend produces.
+For an explicit size, render to SVG and let Verso's built-in SVG formatter draw it. That path needs
+**no extension**: `SvgFormatter` claims any string beginning with `<svg`, which is what the SVG
+backend produces.
 
 #!fsharp
 
@@ -231,6 +226,5 @@ Chart.render SvgBackend.render (Chart.size 1000.0 380.0) figure
 
 #!markdown
 
-Worth knowing as a fallback in general: if you are reading this on a machine where the Marey
-extension is not installed, every figure above still renders if you pipe it through
-`Chart.render SvgBackend.render (Chart.size w h)`.
+That is also the general fallback: on a machine where the Marey extension is not installed, every
+figure above still renders when piped through `Chart.render SvgBackend.render (Chart.size w h)`.

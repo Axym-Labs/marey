@@ -1,22 +1,20 @@
 # Marey.Tests
 
-§13 of the design document, made executable:
-
-> Golden-image snapshots against the SVG backend (text-diffable, reviewable in a PR) plus
-> FsCheck property suites for scale laws, `Anim` monoid laws, `Interp` endpoint laws, `Dim`
-> group laws, and layout invariants (no overlapping panels, labels inside bounds). This is the
-> part where an F# plotting library can be *demonstrably* more correct than its competitors.
+Golden-file snapshots of both backends, text-diffable and reviewable in a pull request, plus
+FsCheck property suites for the `Dim` group laws, scale laws, `Interp` endpoint laws and layout
+invariants.
 
 ```
 dotnet test
 ```
 
-**485 tests: 155 FsCheck properties and 330 examples, ~74 700 generated cases per run.**
+**506 tests: 155 FsCheck properties and 351 examples, ~74 700 generated cases per run.**
 
 Around six seconds of that is `pdflatex`. The TikZ backend has no in-process oracle — the only
-authority on whether a `.tex` file is valid is a TeX engine, and the only authority on whether a
-figure has anything *in* it is a rasteriser — so the suite runs both. Both degrade to a printed
-`SKIPPED:` line when the toolchain is absent; read the output rather than the green tick.
+authority on whether a `.tex` file is valid is a TeX engine, and the only authority on whether the
+compiled page contains ink is a rasteriser — so the suite runs both. Both degrade to a printed
+`SKIPPED:` line when the toolchain is absent, so the output should be read rather than the green
+tick alone.
 
 Targets `net10.0`; the projects under test target `netstandard2.1`. Warnings are errors here
 too, inherited from `Directory.Build.props`.
@@ -27,14 +25,13 @@ Scope is all seven shipped packages: `Marey.Core`, `Marey.Units`, `Marey.Backend
 The one package reference that is not a test tool is `Verso.Testing`. It supplies the stub contexts
 Verso ships for extension authors, which is what lets `MareyFormatter` be exercised as a real
 `IDataFormatter` — `CanFormat` probed with a mime type, `FormatAsync` handed a width and a height —
-without a notebook host installed. It replaced `Microsoft.DotNet.Interactive.Formatting`, which went
-with the .NET Interactive support it was there to test.
+without a notebook host installed.
 
 ## Layout
 
 | File | What it holds |
 | --- | --- |
-| `Generators.fs` | **Read this first.** Custom FsCheck generators, the tolerance policy, and the culture-isolation helper. |
+| `Generators.fs` | **Start here.** Custom FsCheck generators, the tolerance policy, and the culture-isolation helper. |
 | `DimProperties.fs` | `Dim` group laws — associativity, identity, inverse, commutativity, `pow` as n-fold `add`. |
 | `WitnessProperties.fs` | §12.1 witness algebra: `U.mul`/`U.div`/`recip`/`square` over `Dim` and `ToSI`, plus compile-time instantiation checks. |
 | `ScaleProperties.fs` | §4 round-trip, endpoint and monotonicity laws over all five `ScaleKind`s. |
@@ -45,30 +42,29 @@ with the .NET Interactive support it was there to test.
 | `ColorProperties.fs` | Oklab/Oklch round trips, `Color.mix`, `contrastRatio`, capability degradation. |
 | `SceneProperties.fs` | **D1** structural equality, `count`/`primitiveCount`, `prune`, and the nine-case guard. |
 | `RegressionTests.fs` | §12.3, §12.4, §12.5, §12.6, §12.1/D2, D16, D17, D32 and D38, locked in. |
-| `TexToolchain.fs` | Drives a real `pdflatex`. **The most valuable gate in the TikZ work** — and the one that was briefly vacuous, which is why a deliberately-broken document is part of the suite. |
+| `TexToolchain.fs` | Drives a real `pdflatex`. A deliberately-broken document is part of the suite, so that the gate is shown to be able to fail. |
 | `Raster.fs` | Compiles a document and counts pixels, via `pdftoppm -gray`. Measurement only, no assertions; renders a bitmap as ASCII for failure messages. |
 | `TikzWriterTests.fs` | The emitter primitives: `bp` dimensions, colour definitions, escaping, superscript runs, macro naming. |
 | `TikzBackendTests.fs` | The traversal: the missing y flip, pre-transformed geometry, the honest capability set, batched marker macros, and cross-backend coordinate agreement. |
-| `TikzInkTests.fs` | **Somebody looks at the picture.** Compiles figures and asserts ink is where it belongs, mostly by differentials. The only gate that can see orientation. |
+| `TikzInkTests.fs` | Compiles figures and asserts that ink is where it belongs, mostly by differentials. The only gate that can detect orientation. |
 | `Golden.fs` | Golden-file infrastructure: location, diff reporting, regeneration. Format-agnostic — `check` compares text and derives its failure artefact from the baseline's extension. |
 | `GoldenTests.fs` | The snapshot scenes, the determinism suite, and the backend contract. |
 | `TikzGoldenTests.fs` | The same scenes through the TikZ backend, plus the figure baselines both backends share. |
-| `GuideTests.fs` | Extracts every `fsharp` block from `docs/guide.md`, concatenates them into one script and runs it under `dotnet fsi`. The guide is prose that has to keep compiling. |
+| `GuideTests.fs` | Extracts every `fsharp` block from `docs/guide.md`, concatenates them into one script and runs it under `dotnet fsi`. |
 | `PlotTests.fs` | `Marey.Plot`: self-labelling axes, layout invariants across four themes and four sizes, the 50 000-point batching claim, purity of the `with*` combinators, and palette validation. |
 | `NotebookTests.fs` | The notebook integration, in three parts: `Html` fragments parsed as XML with the golden suite's own oracle, plus escaping, culture invariance and the two theme rules; `MareyFormatter` driven through Verso's `StubFormatterContext`; and the extension loaded into a genuinely separate collectible `AssemblyLoadContext`, which is the assumption the whole package rests on. |
 
 ## Golden images
 
-Baselines live in `golden/` **in the source tree**, because that is the copy a pull request
-diffs. They are plain SVG and plain `tikzpicture` source, one element per line, so a review reads
-as a list of changed coordinates rather than as a wall of text.
+Baselines live in `golden/` **in the source tree**, because that is the copy a pull request diffs.
+They are plain SVG and plain `tikzpicture` source, one element per line, so a review reads as a
+list of changed coordinates rather than as a wall of text.
 
 Every scene has both: `paths.svg` and `paths.tex` are the same picture at the same surface in two
 languages, from one table in `GoldenTests.Scenes`. Reading them against each other is a check in
 itself — `rotated-text.svg` carries `rotate(-30 104 100)` where `rotated-text.tex` carries
 `rotate=30` at `(78bp,75bp)`, because the SVG backend flips y and negates the angle while the TikZ
-backend does neither, and `104 x 0.75 = 78`. Two independent derivations of one picture, visible
-side by side.
+backend does neither, and `104 x 0.75 = 78`.
 
 `figure.svg` / `figure.tex` are the only baselines built from a `Figure` rather than a hand-made
 `Node`, and the only ones that exercise layout, axes, ticks, legend and theme together.
@@ -83,9 +79,8 @@ MAREY_UPDATE_GOLDEN=1 dotnet test
 $env:MAREY_UPDATE_GOLDEN = "1"; dotnet test; Remove-Item Env:\MAREY_UPDATE_GOLDEN
 ```
 
-Then **read the diff before committing it.** That is the whole point of the format: a
-regenerated baseline that nobody looked at is worse than no baseline, because it launders a
-regression into the repository.
+Then **read the diff before committing it.** An unread regenerated baseline launders a regression
+into the repository, which is what the text format exists to prevent.
 
 On a mismatch the suite writes the rendered document next to the baseline as
 `<name>.actual.<ext>` — the extension mirrors the baseline's own, so a `.tex` failure opens in a
@@ -127,7 +122,7 @@ Three hard rules, all enforced by tests rather than by convention:
 
 No test touches the network, the clock, or an unseeded `Random`.
 
-## Generators, and why they are the interesting part
+## Generators
 
 FsCheck's default `float` generator produces NaN, infinity and subnormals. All three are outside
 the domain of every law here — a scale cannot round-trip NaN, `prune` cannot be idempotent on a
@@ -150,16 +145,16 @@ Generated values print as data instead — `ScaleSpec` is a DU, `Mat` is six flo
 Every tolerance in `Tol` records the worst error actually measured against the frozen build, and
 the headroom it leaves. One is set by a documented finding rather than by measurement:
 
-> **`Tol.colour = 1e-5` — never tighten this.** `decisions.md` F1: the sRGB → Oklab → sRGB round
-> trip has an irreducible floor of ~1e-6 (measured here at 1.65e-6), because Ottosson's matrices
-> are published to ten decimal places and `ofLinear`'s curve has a slope of ~1500 near black.
-> "A colour test demanding better than 1e-5 will flap forever."
+> **`Tol.colour = 1e-5` — do not tighten.** The sRGB → Oklab → sRGB round trip has an irreducible
+> floor of ~1e-6 (measured here at 1.65e-6), because Ottosson's matrices are published to ten
+> decimal places and `ofLinear`'s curve has a slope of ~1500 near black. A colour test demanding
+> better than 1e-5 will flap indefinitely.
 
 ## Tests that assert a defect
 
-A handful of tests are named `DEFECT ...`. Each records behaviour that contradicts the design
-document, asserted **as it currently is**, so that the finding is visible in the suite and so
-that fixing it is a deliberate, test-breaking act rather than a silent one. They are:
+A handful of tests are named `DEFECT ...`. Each records known behaviour that contradicts the
+intended semantics, asserted **as it currently is**, so that the finding stays visible in the suite
+and fixing it is a deliberate, test-breaking act rather than a silent one. They are:
 
 | Test | Finding |
 | --- | --- |
@@ -167,23 +162,15 @@ that fixing it is a deliberate, test-breaking act rather than a silent one. They
 | `TickProperties.MeasuredExceptions` (count) | §4's `[n/2, 2n]` tick-count bound is false at `n = 1` and `n = 3`. `Ticks.linear 3 (0.49, 921.3)` returns one tick; `Ticks.linear 1 (0.5, 8.0)` returns none. |
 | `TickProperties.MeasuredExceptions` (containment) | `Ticks.linear` can emit a tick **below the domain**. `first = ceil(lo/step - 1e-9) * step` compares an absolute epsilon against `lo/step`, so once `lo/step <= 1e-9` the `ceil` drops a grid line. `Ticks.linear 10 (1.0, 1e10)` puts a tick at 0. |
 | `TickProperties.InjectivityLimits` | §4's label injectivity fails once fixed-point formatting runs out of decimals — `Ticks.format` clamps at 15 places. A log axis spanning 36 decades yields 21 ticks all reading `0.000000000000000`; so does a dimensionless axis below 1e-15. `Ticks.formatScientific` exists and is never called. |
-**Fixed at M1, and no longer in the table:** `Axis.ofErasedWith` used to ignore the
-`ToSI`/`OffsetSI` that D16 added to `IScaleErased`, labelling a reloaded electronvolt axis `kJ`
-(wrong by 10¹⁹) and a reloaded Celsius axis `K`. Both decisions now route through
-`Prefix.selectForErased` and `UnitDisplay.unitTextErased` — the same functions the measured path
-uses — and `RegressionTests.D16 ...` now asserts that the erased and measured labels *agree*,
-which is the property that makes §15's reloaded figure survivable.
-
 None of them is a weakened property. The properties they sit beside are stated in full, with the
-precondition under which they hold made explicit, and every precondition is a documented
+precondition under which they hold made explicit, and every precondition is either a documented
 numerical-conditioning bound or a pointer to the defect test that owns the excluded case.
 
-## Why you can trust the fixed seed
+## The seed sweep
 
-A fixed seed can hide a property that is only true for the numbers it happened to draw. Before
-being committed, the whole suite was run under ten different replay seeds and once at ten times
-the case count (~747 000 generated cases). Both sweeps were clean — and the first version of the
-sweep was not: it found that `compose (invert t) t is the identity` held only for some seeds,
-because the composed translation is a three-term cancellation whose error scales with the
-translation being cancelled, not with 1. That property now states its tolerance against the right
-scale. Re-run the sweep after adding properties.
+A fixed seed can hide a property that is only true for the numbers it happened to draw, so the
+suite is also run under ten different replay seeds and once at ten times the case count (~747 000
+generated cases). Both sweeps are clean. **Re-run the sweep after adding properties** — an earlier
+run of it caught `compose (invert t) t is the identity` holding only for some seeds, because the
+composed translation is a three-term cancellation whose error scales with the translation being
+cancelled rather than with 1.
