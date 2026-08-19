@@ -103,8 +103,41 @@ type IQuantityConsumer<'r> =
 type PackedQuantity =
     abstract Accept: IQuantityConsumer<'r> -> 'r
 
+/// D44 finding 2 — **one witness and one array**: a single encoding channel, packed before
+/// anything knows which pair of channels will become a series.
+///
+/// `PackedQuantity` above carries one witness and one *value*; `PackedSeries` carries a witness
+/// *pair* and two arrays. A channel is neither, and the gap is what the encoding CE (§9) walks
+/// into: it accumulates `x`, `y`, `color` … independently, each erased where it is declared,
+/// and only at the end decides which two of them are the positional pair. So this is a fourth
+/// instance of the rank-2 pattern this file already argues for three times, not a new idea.
+type IChannelConsumer<'res> =
+    abstract Apply<[<Measure>] 'u> : U<'u> * float<'u>[] -> 'res
+
+type PackedChannel =
+    abstract Accept: IChannelConsumer<'res> -> 'res
+
+/// Both measures of a channel *pair*, recovered together.
+///
+/// D44 finding 3: reunification is rank-2 twice, nested, and the two measures exist together in
+/// exactly one scope — the body of the inner `Apply` — and cannot be returned from it. Anything
+/// that wants the typed pair (`Erase.series`, `Chart.ofSeries`, a regression whose slope is
+/// `float<'uy/'ux>`) has to be *called* at that innermost point. This interface names that call
+/// site once, so no caller has to write the nesting a second time.
+type IChannelPairConsumer<'res> =
+    abstract Apply<[<Measure>] 'ux, [<Measure>] 'uy> : U<'ux> * float<'ux>[] * U<'uy> * float<'uy>[] -> 'res
+
 [<RequireQualifiedAccess>]
 module Erase =
+
+    /// The linear scale a channel gets when nobody picks one: the data's range with 5%
+    /// breathing room, and a unit interval when there is no data to take a range from. Kept
+    /// identical to `Chart.series`'s default, because a series built through the channels must
+    /// not render differently from the same series built through the front door.
+    let private autoLinear (u: U<'u>) (xs: float<'u>[]) : Scale<'u> =
+        match Scale.paddedDomain 0.05 xs with
+        | Some d -> Scale.linear u d
+        | None -> Scale.linear u (LanguagePrimitives.FloatWithMeasure<'u> 0.0, LanguagePrimitives.FloatWithMeasure<'u> 1.0)
 
     /// **The** erasure. The only sanctioned crossing from measured to unmeasured space.
     ///
@@ -197,3 +230,31 @@ module Erase =
         p.Accept
             { new ISeriesConsumer<IScaleErased * IScaleErased> with
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) = scale s.XScale, scale s.YScale }
+
+    /// Erase one channel — the witness and the values it binds — for later reunification.
+    let packChannel (u: U<'u>) (values: float<'u>[]) : PackedChannel =
+        { new PackedChannel with
+            member _.Accept c = c.Apply<'u>(u, values) }
+
+    /// **The two-channel reunifier.** `IChannelConsumer` nested inside `IChannelConsumer`, the
+    /// only construction in which two independently erased measures are both in scope, and `k`
+    /// is invoked where they are.
+    let reunify (x: PackedChannel) (y: PackedChannel) (k: IChannelPairConsumer<'res>) : 'res =
+        x.Accept
+            { new IChannelConsumer<'res> with
+                member _.Apply<[<Measure>] 'ux>(ux: U<'ux>, xs: float<'ux>[]) =
+                    y.Accept
+                        { new IChannelConsumer<'res> with
+                            member _.Apply<[<Measure>] 'uy>(uy: U<'uy>, ys: float<'uy>[]) = k.Apply<'ux, 'uy>(ux, xs, uy, ys) } }
+
+    /// Reunify two channels into a series over automatic linear scales — the termination the
+    /// CE takes when no scale was configured. A caller that wants log, or a domain of its own,
+    /// calls `reunify` with its own consumer and builds the scales inside it; there is nowhere
+    /// else the measures are available to build them.
+    let channelSeries (name: string) (x: PackedChannel) (y: PackedChannel) : PackedSeries =
+        reunify
+            x
+            y
+            { new IChannelPairConsumer<PackedSeries> with
+                member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(ux: U<'ux>, xs: float<'ux>[], uy: U<'uy>, ys: float<'uy>[]) =
+                    series name (autoLinear ux xs) (autoLinear uy ys) xs ys }
