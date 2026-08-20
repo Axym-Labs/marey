@@ -24,8 +24,16 @@ out — and plotting metres against metres on these axes is a compile error.
 
 ## What is in it
 
-- **`Chart`** — `line`, `scatter`, `area`, `bar` and `errorbar`, each with an `add*` that layers
-  onto the last panel, plus `Chart.Plain` for data that genuinely has no units.
+- **`Chart`** — twelve geoms: `line`, `scatter`, `area`, `bar`, `errorbar`, `step`, `ribbon`,
+  `tile`, `rect`, `segment`, `text`, and box plots and violins by category. Most have an `add*`
+  that layers onto the last panel, and `Chart.Plain` covers data that genuinely has no units.
+- **The `plot` encoding block** — for data that is a table rather than two arrays. Declares x, y,
+  colour, shape and size in one place, with each dimensioned channel checked against its witness.
+- **Channels.** One colour or marker shape per category, with a legend that names the levels; or a
+  colour or size driven by a *quantity*, which brings a colorbar labelled from its unit witness.
+- **Statistics** — histogram, kernel density, ECDF, least-squares fit, and a five-number summary.
+  The measures carry through: a fit of metres against seconds has a slope of type `float<m/s>`.
+- **Facets.** `facetWrap` gives one panel per level of a key, over shared axes.
 - **Themes.** Six, all measured against the colour validator below. `Theme.tikz` inherits the host
   LaTeX document's fonts.
 - **Palettes** — Okabe–Ito, viridis, cividis, magma and an Oklab diverging ramp, with a

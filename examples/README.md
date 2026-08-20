@@ -16,6 +16,7 @@ resolve from nuget.org, so nothing needs to be built first.
 | [`oscillator.fsx`](oscillator.fsx) | The usual scientific figure — a model curve, measured points, error bars and a legend. Synthetic data, seeded so the output is reproducible. |
 | [`co2-record.fsx`](co2-record.fsx) | Real measurements with real uncertainties, and where the units story stops: a mole fraction in ppm is dimensionless, so the label is written by hand. |
 | [`temperature-anomaly.fsx`](temperature-anomaly.fsx) | Real data in kelvin, and why an anomaly is **not** degrees Celsius — a units error no compiler can catch, since both witnesses share a dimension. |
+| [`warming-rate.fsx`](warming-rate.fsx) | The encoding block on a real table: x, y and a colour declared in one place, a fitted trend, and the same record faceted into one panel per era. The fitted slope is a `float<K/yr>` — a warming rate, typed as one. |
 
 ## The data
 

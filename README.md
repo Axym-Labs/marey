@@ -78,6 +78,39 @@ A model curve, measured points, error bars, and a legend naming only the layers 
 
 <img src="docs/images/oscillator.svg" alt="A damped oscillator: model against measurement with error bars" width="640">
 
+## When the data is a table
+
+Two arrays and a chart call is the right shape for two arrays. When the data is a table and the
+figure has more than two things in it, `plot` says what each column means in one place:
+
+```fsharp
+plot trials {
+    x U.second (fun r -> r.Time)
+    y U.metre  (fun r -> r.Displacement)
+    color      (fun r -> r.Sample)
+    layer GeomPoint
+    fit
+}
+```
+
+<img src="docs/images/warming-rate.svg" alt="Global temperature anomaly by era, with a least-squares trend" width="640">
+
+Each dimensioned channel takes its witness beside the accessor, and the accessor is checked against
+it — naming `r.Displacement` under `U.second` does not compile. Categorical channels take no
+witness, because a category carries no dimension: `color` gives one colour per level and a legend
+that names them, while `colorBy U.kelvin` gives a colorbar labelled from the witness.
+
+`fit` is one of the statistics, and its slope is a typed number as well as a line on the page. A
+fit of metres against seconds has a slope of type `float<m/s>`:
+
+```fsharp
+let fitted = Stat.regression U.second U.metre t x
+let speed: float<m/s> = fitted.Slope
+```
+
+`facetWrap` draws one panel per level of a key over shared axes, so a difference between panels is
+a difference in the data.
+
 ## Real data, and where the units story stops
 
 Units are transformative for physical measurements and irrelevant for a mole fraction in ppm,
@@ -86,7 +119,7 @@ values with no unit to carry a prefix are not rescaled, and the label is left to
 
 <img src="docs/images/co2-record.svg" alt="Atmospheric CO2 at Mauna Loa, annual means with uncertainties" width="640">
 
-The [`examples/`](examples/) directory has five worked figures, two of them on real committed
+The [`examples/`](examples/) directory has six worked figures, three of them on real committed
 datasets.
 
 ## What is in the box
@@ -95,7 +128,7 @@ datasets.
 |---|---|
 | `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the nine-case scene IR. Zero dependencies. |
 | `Marey.Units` | SI, 22 derived and 18 non-SI unit witnesses; canonicalisation, prefix selection, and Unicode/ASCII/LaTeX/siunitx rendering. |
-| `Marey.Plot` | `Chart`, twelve geoms, six themes, colour-blind-safe palettes with a validator, constraint layout, and the axis and legend compilers. No backend reference. |
+| `Marey.Plot` | `Chart` and the `plot` encoding block, twelve geoms, colour/shape/size channels, statistics, facets, six themes, colour-blind-safe palettes with a validator, constraint layout, and the axis and legend compilers. No backend reference. |
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, byte-identical across renders. |
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX, with `siunitx` units and inherited fonts. |
 | `Marey.Html` | HTML renderings of nine Marey types for a notebook cell. Host-neutral. |
@@ -111,11 +144,11 @@ Without the extension, render to SVG and the built-in formatter draws it, with n
 
 ```
 dotnet build          # warning-free; warnings are errors
-dotnet test           # 506 tests
+dotnet test           # 738 tests
 ```
 
 The suite is FsCheck property suites for the dimension group laws, all seven scale kinds, ticks,
-interpolation, colour and the scene IR; 29 golden baselines in SVG *and* `tikzpicture` source; a
+interpolation, colour and the scene IR; 35 golden baselines in SVG *and* `tikzpicture` source; a
 real `pdflatex` compile gate; a rasterised ink gate that checks the picture is not blank; and
 executable checks over every example in [the guide](docs/guide.md) and in [`examples/`](examples/).
 
@@ -123,7 +156,7 @@ executable checks over every example in [the guide](docs/guide.md) and in [`exam
 
 - **[The guide](docs/guide.md)** — everything the library does today, with a runnable example for
   each part. Every example in it is extracted and executed by the test suite.
-- **[Examples](examples/)** — five standalone scripts, also executed by the test suite.
+- **[Examples](examples/)** — six standalone scripts, also executed by the test suite.
 - **[Why Marey is like this](docs/why.md)** — the case for a unit witness over a string label,
   what the other design decisions buy, what they cost, and when not to use the library.
 - **[Changelog](CHANGELOG.md)** — what changed in each release, and what is still known to be

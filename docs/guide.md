@@ -23,10 +23,14 @@ The blocks form one continuous session, so bindings introduced early are still i
 8. [Panels](#8-panels)
 9. [Themes](#9-themes)
 10. [Colour](#10-colour)
-11. [Output: SVG, TikZ, files](#11-output-svg-tikz-files)
-12. [Notebooks](#12-notebooks)
-13. [The scene IR](#13-the-scene-ir)
-14. [Escape hatches](#14-escape-hatches)
+11. [Categories, and the channels beyond x and y](#11-categories-and-the-channels-beyond-x-and-y)
+12. [Statistics](#12-statistics)
+13. [The encoding block](#13-the-encoding-block)
+14. [Facets](#14-facets)
+15. [Output: SVG, TikZ, files](#15-output-svg-tikz-files)
+16. [Notebooks](#16-notebooks)
+17. [The scene IR](#17-the-scene-ir)
+18. [Escape hatches](#18-escape-hatches)
 
 ---
 
@@ -45,7 +49,7 @@ open Marey
 |---|---|
 | `Marey.Core` | The `Scene` IR, colour, scales and geometry, and nothing else. Zero dependencies. |
 | `Marey.Units` | SI + 22 derived + 18 non-SI unit witnesses, and self-labelling axes. |
-| `Marey.Plot` | `Chart`, geoms, themes, palettes, layout. No backend reference — see §11. |
+| `Marey.Plot` | `Chart`, the `plot` block, geoms, channels, statistics, facets, themes, palettes, layout. No backend reference — see §15. |
 | `Marey.Backend.Svg` | Rendering to SVG. |
 | `Marey.Backend.Tikz` | Rendering to `tikzpicture` source for LaTeX. |
 | `Marey.Html` | HTML renderings of nine Marey types, for a notebook cell. Host-neutral. |
@@ -518,7 +522,231 @@ drawn on.
 
 ---
 
-## 11. Output: SVG, TikZ, files
+## 11. Categories, and the channels beyond x and y
+
+Not every axis is a quantity. `Chart.Category` takes one key per row and lays the distinct keys
+out as evenly spaced bands, in the order they first appear. The y axis is dimensioned as
+everywhere else.
+
+```fsharp
+let treatment = [| "control"; "treated"; "placebo"; "washout" |]
+let harvest = [| 12.4<m>; 19.1<m>; 7.8<m>; 15.0<m> |]
+
+let byTreatment =
+    Chart.Category.bar U.metre treatment harvest
+    |> Chart.withXLabel "treatment"
+    |> Chart.withYLabel "yield"
+```
+
+Repeated keys are not aggregated — two rows with the same key are two marks in one band.
+`Chart.Category.count` is the version that counts them, and `Chart.Category.scatter`,
+`.boxplot` and `.violin` draw the same axis with a different mark.
+
+A **bar chart's y axis always includes zero**, because a bar encodes magnitude by its length and a
+baseline that is not zero misstates every comparison in the figure. `Chart.withYDomain` overrides
+it where that was deliberate.
+
+Beyond position, a figure has three more channels. Each attaches to the layer most recently added:
+
+```fsharp
+let cohort = t |> Array.mapi (fun i _ -> [| "A"; "B"; "C" |].[i % 3])
+
+let byCohort =
+    Chart.scatter U.second U.metre t x
+    |> Chart.colorByKey cohort
+    |> Chart.shapeByKey cohort
+```
+
+`colorByKey` and `shapeByKey` take a category and give one colour or one marker shape per level,
+with a legend that names the levels. Using both is deliberate: shape is the encoding that survives
+being printed in greyscale or read by a colour-blind reader, so it is worth spending alongside
+colour rather than instead of it.
+
+`colorBy` and `sizeBy` take a **quantity**, which means they take a unit witness:
+
+```fsharp
+let probe = t |> Array.map (fun v -> 280.0<K> + 2.5<K/s> * v)
+
+let byTemperature =
+    Chart.scatter U.second U.metre t x
+    |> Chart.colorBy U.kelvin probe
+    |> Chart.withColorLabel "T"
+```
+
+A continuous colour channel gets a **colorbar** rather than a legend, in a column beside the plot,
+and it labels itself `T [K]` from the witness — the same derivation the axes use, including prefix
+selection. `sizeBy` gets a key in the legend showing three marks across the domain. A row whose
+channel value is missing or infinite is not drawn, and the count of such rows is recorded in the
+rendered document rather than being silently absorbed.
+
+---
+
+## 12. Statistics
+
+Each stat is a plain function over typed arrays in `Stat`, and each has a `Chart` constructor that
+draws its result. Calling the function keeps the numbers; calling the chart draws them.
+
+```fsharp
+let sample = Array.init 300 (fun i -> (float ((i * 37) % 97) * 0.11) * 1.0<m>)
+
+let spread = Chart.histogram U.metre sample
+let smoothed = Chart.density U.metre sample
+let cumulative = Chart.ecdf U.metre sample
+```
+
+`Chart.histogramWith` takes a bin count; `Stat.binIn`, `Stat.binWith` and `Stat.densityWith` take
+a stated domain, bin count or bandwidth, and `Chart.ofHistogram` / `Chart.ofDensity` /
+`Chart.ofEcdf` draw a result you computed yourself.
+
+**The measures follow through the stat**, and this is where they say something a caller might not
+expect. A histogram of metres is a *dimensionless count* against a metre axis. A density of metres
+is in **reciprocal metres** — that is what makes it integrate to one — so its y axis reads `m⁻¹`,
+and putting a density on the same panel as the sample it summarises raises rather than drawing,
+because they are different physical quantities.
+
+A least-squares fit is a layer:
+
+```fsharp
+let trend =
+    Chart.scatter U.second U.metre t x
+    |> Chart.addFit U.second U.metre t x
+```
+
+And the fit's slope is a *typed* number, which is the point of taking the stat separately:
+
+```fsharp
+let fitted = Stat.regression U.second U.metre t x
+
+// A fit of metres against seconds has a slope in metres per second. The annotation is checked
+// by the compiler, not by a convention.
+let speed: float<m/s> = fitted.Slope
+```
+
+`Stat.summary` gives the five-number summary a box plot is drawn from — quartiles, Tukey whiskers
+and the outliers past them — entirely in the sample's own unit. `Stat.quantile`, `Stat.count` and
+`Stat.groupBy` are the small ones. Every stat drops non-finite input and reports how many values
+it dropped.
+
+---
+
+## 13. The encoding block
+
+When the data is a table, `plot` says what each column *means* in one place rather than
+threading arrays through a chain of calls.
+
+```fsharp
+type Trial =
+    { Time: float<s>
+      Displacement: float<m>
+      Mass: float<kg>
+      Sample: string }
+
+let trials =
+    Array.init 60 (fun i ->
+        let time = float i * 0.2<s>
+
+        { Time = time
+          Displacement = 0.5 * 9.81<m/s^2> * time * time
+          Mass = (1.0 + float (i % 5) * 0.4) * 1.0<kg>
+          Sample = [| "alpha"; "beta"; "gamma" |].[i % 3] })
+
+let block =
+    plot trials {
+        x U.second (fun r -> r.Time)
+        y U.metre (fun r -> r.Displacement)
+        color (fun r -> r.Sample)
+        size U.kilogram (fun r -> r.Mass)
+        layerWith GeomPoint (Geom.withOpacity 0.7)
+        fit
+        name "run 1"
+    }
+    |> Chart.withTitle "Displacement by sample"
+```
+
+Each positional or continuous channel takes its witness beside the accessor, and the accessor is
+checked against it — naming `r.Displacement` under `U.second` does not compile. Categorical
+channels take no witness, because a category carries no dimension.
+
+The block returns an ordinary `Figure`, so everything in the sections above composes onto it with
+`|>` and none of it has to be restated as an operation.
+
+The operations, in full:
+
+| | |
+|---|---|
+| `x` `y` | The positional channels. Both take a witness. |
+| `color` `shape` | A category drives colour or marker shape. |
+| `colorBy` `colorByWith` `size` `sizeWith` | A quantity drives colour or size. Both take a witness. |
+| `colorLabel` | The quantity name in front of a colorbar's unit. |
+| `layer` `layerWith` | Draw the encoding with a geom. Repeatable, back to front. |
+| `area` `areaWith` `bars` `barsWith` | The filled geoms, measured from zero. |
+| `fit` `fitWith` | A least-squares line as an extra layer. |
+| `histogram` `histogramWith` `density` `densityWith` `ecdf` | The distribution stats. |
+| `facetWrap` `facetWrapIn` `facetScales` | One panel per level — see §14. |
+| `name` `theme` `coord` | The series name, the theme, the coordinate system. |
+
+Three rules worth knowing before you meet them:
+
+* **A block with no `layer` is a scatter.** Two positional channels say where the points are, and
+  points are how that is drawn.
+* **Every layer of a block is one series**, so they share one colour and one legend entry. Two
+  `layer` operations are two renderings of the same encoding — `layer GeomLine` beside
+  `layer GeomPoint` is a line with markers, not two series.
+* **A distribution stat replaces y.** `histogram`, `density` and `ecdf` take `x` alone and produce
+  y themselves, so such a block refuses a `y` operation rather than ignoring it.
+
+```fsharp
+let distribution =
+    plot trials {
+        x U.metre (fun r -> r.Displacement)
+        density
+        name "displacement"
+    }
+```
+
+Everything else is the last one written: a repeated `x`, a second stat, or a second `facetWrap`
+replaces the first.
+
+---
+
+## 14. Facets
+
+`facetWrap` splits the rows by a key and draws one panel per level, over **shared axes**.
+
+```fsharp
+let faceted =
+    plot trials {
+        x U.second (fun r -> r.Time)
+        y U.metre (fun r -> r.Displacement)
+        facetWrap (fun r -> r.Sample)
+        layer GeomLine
+    }
+```
+
+Sharing is what separates a facet from a page of unrelated charts: every panel reports the same x
+and y domain, so a difference between panels is a difference in the data. `facetScales` narrows
+that to `ShareX` or `ShareY` where one axis makes no cross-panel claim, and `facetWrapIn` states
+the number of columns instead of taking the squarest grid that fits.
+
+Anything that has to be identical across the grid is computed before the split — the level set and
+its colours, a colorbar's scale, and a histogram's bin edges, which come from the undivided sample
+so the panels bin alike:
+
+```fsharp
+let facetedHistogram =
+    plot trials {
+        x U.metre (fun r -> r.Displacement)
+        histogram
+        facetWrap (fun r -> r.Sample)
+    }
+```
+
+`Chart.beside` and `Chart.above` are the other composition, for panels that share nothing — see
+§8.
+
+---
+
+## 15. Output: SVG, TikZ, files
 
 `Marey.Plot` does not reference a backend. A backend is a function passed in at render time, which
 is why the same figure goes to either without the figure knowing either exists.
@@ -566,7 +794,7 @@ midpoint, and a raster becomes a comment naming what was skipped and at what siz
 
 ---
 
-## 12. Notebooks
+## 16. Notebooks
 
 In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
 cell whose value is a `Figure` displays as a figure. No `.Show()`, no save-then-open, no display
@@ -590,7 +818,7 @@ See [`notebooks/README.md`](notebooks/README.md) for installation and
 
 ---
 
-## 13. The scene IR
+## 17. The scene IR
 
 Everything above compiles to one closed nine-case `Scene` IR, and every backend consumes only that.
 It is the level at which a figure that came out wrong can be inspected.
@@ -617,7 +845,7 @@ diffed and read as text.
 
 ---
 
-## 14. Escape hatches
+## 18. Escape hatches
 
 **Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so the scales are
 the caller's and everything downstream still works.
@@ -653,6 +881,8 @@ For a stateful backend there is `IBackend` and `Chart.renderTo`, which is the pa
 
 ## What is not here yet
 
-What exists today is plotting: the geoms, scales, themes, units and the two backends this guide
-covers. Animation, fields and simulation, further backends, and a grammar-of-graphics computation
-expression are all intended, and none of them exist yet.
+What exists today is static plotting: everything this guide covers, from two arrays and a chart
+call up to the encoding block. Animation, fields and simulation, a raster backend with real text
+shaping, further backends, and native mathematical typesetting are all intended, and none of them
+exist yet. Among the geoms, the field ones — contour, quiver, streamline and hexbin — are the
+group still to come.
