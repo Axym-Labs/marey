@@ -20,6 +20,7 @@
     <Compile Include="Legend.fs" />
     <Compile Include="Geom.fs" />
     <Compile Include="Figure.fs" />
+    <Compile Include="Levels.fs" />
     <Compile Include="Chart.fs" />
   </ItemGroup>
 

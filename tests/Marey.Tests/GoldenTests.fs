@@ -629,6 +629,12 @@ module Figures =
     let ``a complete figure`` () =
         check "figure.svg" (Chart.render SvgBackend.render figureSurface figure)
 
+    /// D45 — the categorical axis, as a picture. The claim under review in the diff is that the
+    /// bands are evenly spaced and the bars sit one band wide inside them.
+    [<Fact>]
+    let ``a categorical figure`` () =
+        check "figure-category.svg" (Chart.render SvgBackend.render figureSurface categoryFigure)
+
     /// A figure is a scene like any other, so it has to be one: if `Figure.toScene` ever emitted
     /// something outside the nine cases this would not compile, and if it stopped exercising them
     /// the golden above would be measuring less than it claims.

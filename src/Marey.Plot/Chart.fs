@@ -49,6 +49,22 @@ module Chart =
         | Some d -> d
         | None -> tag<'u> 0.0, tag<'u> 1.0
 
+    /// **A bar is read as a length from zero, so zero is in the domain.**
+    ///
+    /// A bar chart over 7.8 … 19.1 on a 7.2 … 19.7 axis draws the smallest value as a sliver
+    /// and the largest as a full-height bar — a ratio of about 50:1 for data whose real ratio
+    /// is 2.4:1. That is not a styling preference, it is the mark type's encoding: length
+    /// *means* magnitude, and a baseline that is not zero misstates every comparison the chart
+    /// exists to support. `Geom.baselineOf` already says as much for areas, and its clamp is
+    /// the fallback for a domain that could not be widened, not a licence to leave one narrow.
+    ///
+    /// Zero enters **unpadded**, and only on the side it is missing from: all-positive data
+    /// gets `0 … hi+pad`, all-negative gets `lo-pad … 0`, and data straddling zero is
+    /// unaffected because zero is already inside. Padding below zero would lift the baseline
+    /// off the axis, which is the thing being fixed.
+    let private withZero (lo: float<'u>, hi: float<'u>) : float<'u> * float<'u> =
+        min lo (tag<'u> 0.0), max hi (tag<'u> 0.0)
+
     /// A typed series over linear scales with 5% breathing room. The last point at which the
     /// measures are alive on this path.
     let series (name: string) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Series<'ux, 'uy> =
@@ -96,8 +112,15 @@ module Chart =
         let s = series "" ux uy x y
         ofSeries (Geom.area s) s
 
+    /// Bars from zero — see `withZero`. The y domain is the data's, widened to reach the
+    /// baseline the marks are measured from.
     let bar (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         let s = series "" ux uy x y
+
+        let s =
+            { s with
+                YScale = Scale.withDomain (withZero (paddedOr 0.05 y)) s.YScale }
+
         ofSeries (Geom.bar 0.7 s) s
 
     /// Error bars with symmetric uncertainties.
@@ -230,6 +253,79 @@ module Chart =
 
         let addErrorbar (x: float[]) (y: float[]) (err: float[]) (fig: Figure) : Figure =
             addErrorbar U.one U.one x y err fig
+
+    /// §9 / D45 — **the categorical front door**: a chart whose x is a category rather than a
+    /// quantity.
+    ///
+    /// A sibling module rather than a `Chart.bars` beside `Chart.bar`, for two reasons. The
+    /// names would differ by one letter while taking entirely different arguments, which is how
+    /// a caller gets an error message about the wrong thing; and this module grows — a
+    /// categorical scatter and a boxplot are the same axis with a different geom.
+    ///
+    /// The category is *stated as data*, exactly as a unit witness is: `keys` is one value per
+    /// row, and the level set is derived from it in first-appearance order (`Levels.ofSeq`). The
+    /// y axis is dimensioned as everywhere else, so `Chart.Category.bar U.metre keys yields`
+    /// prints named bands under `x [m]` with nothing configured.
+    ///
+    /// Repeated keys are **not** aggregated: two rows with the same key are two bars in one
+    /// band, which is honest about the data. Summing or counting them is a stat's job (M2
+    /// phase 4), and doing it silently here would be the library deciding what the data means.
+    [<RequireQualifiedAccess>]
+    module Category =
+
+        /// The typed categorical series, over the levels the keys themselves define.
+        let series (name: string) (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Levels<'k> * Series<1, 'uy> =
+            if keys.Length <> values.Length then
+                invalidArg
+                    "values"
+                    (sprintf "Marey: series '%s' has %d keys and %d values." name keys.Length values.Length)
+
+            let levels = Levels.ofSeq keys
+
+            let s: Series<1, 'uy> =
+                { Name = name
+                  X = Levels.positions levels keys
+                  Y = values
+                  XScale = Levels.scale levels
+                  YScale = Scale.linear uy (paddedOr 0.05 values) }
+
+            levels, s
+
+        /// The same series with the bar rule on y: zero is in the domain, because a bar is a
+        /// length from it.
+        let private barSeries (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) =
+            let levels, s = series "" uy keys values
+
+            levels,
+            { s with
+                YScale = Scale.withDomain (withZero (paddedOr 0.05 values)) s.YScale }
+
+        /// A categorical axis is titled by its bands, so the conventional symbol is suppressed.
+        ///
+        /// `Axes.defaultLabel` reads the quantity name out of the dimension — `t` for a time
+        /// axis, `x` for a length one — and a category's dimension is `1`, so it falls back to
+        /// the axis's own name and prints a bare `x` underneath bands already labelled
+        /// `control`, `treated`. Two different meanings of `x` in one figure, one of which is
+        /// noise. An explicit empty label wins over the fallback, and `Chart.withXLabel` still
+        /// puts a real name back.
+        let private unlabelledX (fig: Figure) =
+            { fig with
+                Panels =
+                    fig.Panels
+                    |> Array.map (fun p ->
+                        { p with
+                            XAxis = { p.XAxis with Label = Some "" } }) }
+
+        /// A bar per row, in the band its key names, measured from zero.
+        let bar (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
+            let _, s = barSeries uy keys values
+            ofSeries (Geom.bar 0.7 s) s |> unlabelledX
+
+        /// The same axis with points instead of bars — a dot plot, and the shape a categorical
+        /// colour channel will hang off in phase 2.
+        let scatter (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
+            let _, s = series "" uy keys values
+            ofSeries GeomPoint s |> unlabelledX
 
     // ---- Combinators. All pure; every one returns a new figure. -------------------------------
 

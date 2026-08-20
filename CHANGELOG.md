@@ -12,7 +12,33 @@ land in a minor release.
 
 ## [Unreleased]
 
-Nothing yet.
+M2 — *Grammar* — in progress. Nothing here has shipped to nuget.org.
+
+### Added
+
+- `PackedChannel` and `Erase.reunify` in `Marey.Core`: one erased channel is a witness and an
+  array, and two of them reunify into a `Series` with both measures typed inside one scope. The
+  encoding computation expression is built on these.
+- `Chart.ofPacked`, which takes a reunified series straight to a `Figure`.
+- **A categorical scale.** `ScaleKind.Ordinal` and `Scale.ordinal`: `n` named levels in `n`
+  equal bands, over `float<1>`. Named tick labels cross the erasure boundary with the scale, so
+  a reloaded categorical axis still knows what its bands are called.
+- `Levels` in `Marey.Plot`: the distinct values of a categorical key, in first-appearance order,
+  with `Levels.sorted` for the alphabetical case.
+- `Chart.Category.bar` and `Chart.Category.scatter`: a chart whose x is a category. The y axis is
+  dimensioned as everywhere else, so `Chart.Category.bar U.metre keys values` labels its bands
+  and its y unit with nothing configured.
+
+### Changed
+
+- **A bar chart's y domain now includes zero**, in both `Chart.bar` and `Chart.Category.bar`. A
+  bar encodes magnitude by length, so a domain starting at the data's minimum drew a 50:1
+  picture of a 2.4:1 ratio. Zero enters unpadded and only on the side it is missing from, so
+  data straddling zero is unaffected. Charts of tightly clustered non-zero data will look
+  different — and correct; `Chart.withYDomain` restores a narrow axis where that was deliberate.
+- Two layers on one panel whose x or y are *different* categories now raise instead of unifying.
+  A categorical scale is dimensionless, so the existing runtime dimension check could not tell
+  two categories apart, and the second layer was drawn against the first layer's labels.
 
 ## [0.1.1] — 2026-08-20
 

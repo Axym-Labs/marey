@@ -1,0 +1,54 @@
+\begin{tikzpicture}[every node/.style={inner sep=0bp,outer sep=0bp}]
+  \definecolor{qcA}{rgb}{1,1,1}
+  \definecolor{qcB}{rgb}{0.078431,0.094118,0.121569}
+  \definecolor{qcC}{rgb}{0.905882,0.913725,0.929412}
+  \definecolor{qcD}{rgb}{0,0.447059,0.698039}
+  \definecolor{qcE}{rgb}{0.223529,0.254902,0.301961}
+  \useasboundingbox (0bp,0bp) rectangle (360bp,225bp);
+  % marey-key: figure
+  \path[fill=qcA] (0bp,0bp) -- (360bp,0bp) -- (360bp,225bp) -- (0bp,225bp) -- cycle;
+  % marey-role: annotation -- Yield by treatment
+  \node[anchor=north,text=qcB,font=\bfseries\fontsize{13}{15.6}\selectfont] at (180bp,214.5bp) {Yield by treatment};
+  % marey-role: other:panel -- panel
+  % marey-data: row = 0
+  % marey-data: col = 0
+  % marey-data: layers = 1
+  % marey-data: x-tick-rule = all
+  % marey-data: y-tick-rule = all
+  % marey-role: decoration -- gridlines
+  % marey-data: lines = 4
+  \path[draw=qcC,line width=0.75bp] (40.258bp,38.575bp) -- (332.742bp,38.575bp) (40.258bp,72.134bp) -- (332.742bp,72.134bp) (40.258bp,105.693bp) -- (332.742bp,105.693bp) (40.258bp,139.252bp) -- (332.742bp,139.252bp);
+  \begin{scope}
+    \clip (40.258bp,38.575bp) -- (332.742bp,38.575bp) -- (332.742bp,170.563bp) -- (40.258bp,170.563bp) -- cycle;
+    % marey-role: series -- series
+    % marey-data: series =
+    % marey-data: points = 4
+    \path[fill=qcD,fill opacity=0.18,draw=qcD,line width=0.9bp,line cap=round,line join=round] (51.226bp,38.575bp) -- (102.411bp,38.575bp) -- (102.411bp,121.801bp) -- (51.226bp,121.801bp) -- cycle (124.347bp,38.575bp) -- (175.532bp,38.575bp) -- (175.532bp,166.77bp) -- (124.347bp,166.77bp) -- cycle (197.468bp,38.575bp) -- (248.653bp,38.575bp) -- (248.653bp,90.927bp) -- (197.468bp,90.927bp) -- cycle (270.589bp,38.575bp) -- (321.774bp,38.575bp) -- (321.774bp,139.252bp) -- (270.589bp,139.252bp) -- cycle;
+  \end{scope}
+  % marey-role: axis -- treatment
+  % marey-data: side = bottom
+  % marey-data: unit =
+  % marey-data: prefix =
+  % marey-data: ticks = 4
+  % marey-data: tick-rule = all
+  \path[draw=qcE,line width=0.675bp] (40.258bp,38.575bp) -- (332.742bp,38.575bp);
+  \path[draw=qcE,line width=0.675bp] (76.819bp,38.575bp) -- (76.819bp,36.325bp) (149.94bp,38.575bp) -- (149.94bp,36.325bp) (223.06bp,38.575bp) -- (223.06bp,36.325bp) (296.182bp,38.575bp) -- (296.182bp,36.325bp);
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (76.819bp,33.325bp) {control};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (149.94bp,33.325bp) {treated};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (223.06bp,33.325bp) {placebo};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (296.182bp,33.325bp) {washout};
+  \node[anchor=north,text=qcB,font=\fontsize{10}{12}\selectfont] at (186.5bp,19.75bp) {treatment};
+  % marey-role: axis -- yield [m]
+  % marey-data: side = left
+  % marey-data: unit = m
+  % marey-data: prefix =
+  % marey-data: ticks = 4
+  % marey-data: tick-rule = all
+  \path[draw=qcE,line width=0.675bp] (40.258bp,38.575bp) -- (40.258bp,170.563bp);
+  \path[draw=qcE,line width=0.675bp] (40.258bp,38.575bp) -- (38.008bp,38.575bp) (40.258bp,72.134bp) -- (38.008bp,72.134bp) (40.258bp,105.693bp) -- (38.008bp,105.693bp) (40.258bp,139.252bp) -- (38.008bp,139.252bp);
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (35.008bp,38.575bp) {0};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (35.008bp,72.134bp) {5};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (35.008bp,105.693bp) {10};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (35.008bp,139.252bp) {15};
+  \node[anchor=base,text=qcB,rotate=90,font=\fontsize{10}{12}\selectfont] at (19.75bp,104.569bp) {yield [m]};
+\end{tikzpicture}

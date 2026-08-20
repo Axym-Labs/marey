@@ -126,6 +126,13 @@ module Figures =
     let ``a complete figure`` () =
         check "figure.tex" (Chart.render TikzBackend.render figureSurface figure)
 
+    /// The categorical figure through the other backend. Level names are ordinary text in both,
+    /// so the pair is also the check that a category survives TeX escaping — which is the half
+    /// of a categorical axis that has no counterpart on a numeric one.
+    [<Fact>]
+    let ``a categorical figure`` () =
+        check "figure-category.tex" (Chart.render TikzBackend.render figureSurface categoryFigure)
+
     /// The milestone's headline as a committed artefact rather than a substring assertion:
     /// `Theme.tikz` alone turns the unit witnesses into siunitx markup. TeX-only, because
     /// `\qty{}{\metre}` in an SVG would be nonsense.

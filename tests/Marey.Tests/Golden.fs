@@ -303,6 +303,24 @@ let figure: Figure =
     |> Chart.withLegend LegendTopLeft
     |> Chart.withGrid true true
 
+/// D45 — the categorical figure, and the second thing in this file that a user actually
+/// produces.
+///
+/// Four string levels, one bar each, through `Chart.Category.bar`. What the baseline records
+/// that no substring assertion can: that the bands are evenly spaced and centred, that the bars
+/// are one band wide, that the level names land under them in order, and that the x axis carries
+/// no conventional symbol while the y axis still carries its unit. A shift in any of those is a
+/// diff in two files.
+let categoryFigure: Figure =
+    Chart.Category.bar
+        U.metre
+        [| "control"; "treated"; "placebo"; "washout" |]
+        [| 12.4<m>; 19.1<m>; 7.8<m>; 15.0<m> |]
+    |> Chart.withXLabel "treatment"
+    |> Chart.withYLabel "yield"
+    |> Chart.withTitle "Yield by treatment"
+    |> Chart.withGrid false true
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }

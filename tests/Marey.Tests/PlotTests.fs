@@ -228,6 +228,148 @@ module CategoricalAxes =
         Assert.Equal((-0.5, 3.5), x.Domain)
 
 // ======================================================================================
+// D45 — the level set, and the categorical front door
+// ======================================================================================
+
+module LevelSets =
+
+    /// First appearance, not sorted: a categorical axis usually arrives in an order that is
+    /// itself information, and `control, treated, washout` is the case that makes the point.
+    [<Fact>]
+    let ``levels are the distinct keys in first-appearance order`` () =
+        let ls =
+            Levels.ofSeq [| "washout"; "control"; "washout"; "treated"; "control" |]
+
+        Assert.Equal<string[]>([| "washout"; "control"; "treated" |], ls.Values)
+        Assert.Equal<string[]>(ls.Values, ls.Labels)
+
+    /// Determinism gate 6 reaches this file: the level order must come from the sequence, never
+    /// from enumerating a set. Shuffling *repeats* while keeping first appearances fixed must
+    /// not move a band.
+    [<Property(MaxTest = 200, Replay = Marey.Tests.Generators.Seed, QuietOnSuccess = true)>]
+    let ``level order depends only on first appearances`` (xs: int list) =
+        let keys = xs |> List.map (fun x -> abs x % 7) |> Array.ofList
+        let once = Levels.ofSeq keys
+        let twice = Levels.ofSeq (Array.append keys keys)
+
+        once.Values = twice.Values
+
+    /// Sorting is one call away, and it sorts on the **key**, so renaming a level cannot
+    /// reorder the bands.
+    [<Fact>]
+    let ``sorted orders by key`` () =
+        let ls = Levels.ofSeq [| 30; 10; 20 |] |> Levels.sorted
+
+        Assert.Equal<int[]>([| 10; 20; 30 |], ls.Values)
+        Assert.Equal<string[]>([| "10"; "20"; "30" |], ls.Labels)
+
+    /// A union key spells itself by case name, which is what `string` gives and what a reader
+    /// expects on the axis.
+    [<Fact>]
+    let ``a union key is labelled by its case name`` () =
+        let ls = Levels.ofSeq [| Choice1Of2 1; Choice2Of2 "x" |]
+
+        Assert.Equal(2, Levels.count ls)
+
+    /// `positions` is the x array of a categorical series, so a key outside the level set has
+    /// no honest answer: level -1 is off the panel and clamping puts the mark on somebody
+    /// else's band.
+    [<Fact>]
+    let ``a key outside the level set raises rather than landing somewhere`` () =
+        let ls = Levels.ofSeq [| "a"; "b" |]
+
+        let ex =
+            Assert.Throws<System.Exception>(fun () -> Levels.positions ls [| "a"; "c" |] |> ignore)
+
+        Assert.Contains("'c' is not one of the 2 levels", ex.Message)
+        Assert.Contains("a, b", ex.Message)
+
+module CategoricalFrontDoor =
+
+    let private keys = [| "control"; "treated"; "placebo"; "washout" |]
+    let private yields = [| 12.4<m>; 19.1<m>; 7.8<m>; 15.0<m> |]
+
+    /// Phase 1's exit criterion through the API a user actually has: one named band per level,
+    /// with nothing configured but the witness on y.
+    [<Fact>]
+    let ``Chart.Category.bar labels one band per level`` () =
+        let svg = renderFig surface (Chart.Category.bar U.metre keys yields)
+
+        for name in keys do
+            Assert.Contains(">" + name + "<", svg)
+
+    /// The y axis is dimensioned as it is everywhere else. The categorical door does not cost
+    /// the units story on the other axis.
+    [<Fact>]
+    let ``the y axis still labels itself from the witness`` () =
+        let svg = renderFig surface (Chart.Category.bar U.metre keys yields)
+        Assert.Contains(">x [m]<", svg)
+
+    /// `Axes.defaultLabel` would print a bare `x` under bands already named `control`,
+    /// `treated` — two meanings of `x` in one figure. It is suppressed, and a real name still
+    /// goes back.
+    [<Fact>]
+    let ``a categorical axis is titled by its bands, not by a conventional symbol`` () =
+        let plain = renderFig surface (Chart.Category.bar U.metre keys yields)
+        Assert.DoesNotContain(">x<", plain)
+
+        let named =
+            renderFig surface (Chart.Category.bar U.metre keys yields |> Chart.withXLabel "treatment")
+
+        Assert.Contains(">treatment<", named)
+
+    /// **A bar is a length from zero.** Data spanning 7.8 … 19.1 on a 7.2 … 19.7 axis draws a
+    /// 50:1 picture of a 2.4:1 ratio, which is the mark type lying rather than a styling
+    /// preference. Both bar doors widen the domain to reach the baseline.
+    [<Fact>]
+    let ``a bar chart's y domain reaches zero`` () =
+        let categorical =
+            Chart.Category.bar U.metre keys yields |> fun f -> f.Panels.[0].Layers.[0].Data
+
+        let _, y = Erase.seriesScales categorical
+        Assert.Equal(0.0, fst y.Domain, 12)
+
+        let continuous =
+            Chart.bar U.second U.metre [| 1.0<s>; 2.0<s>; 3.0<s> |] [| 12.4<m>; 19.1<m>; 7.8<m> |]
+
+        let _, cy = Erase.seriesScales continuous.Panels.[0].Layers.[0].Data
+        Assert.Equal(0.0, fst cy.Domain, 12)
+
+    /// Zero enters unpadded and only on the side it is missing from: all-negative data keeps
+    /// its baseline at the top of the bars rather than gaining a spurious positive headroom,
+    /// and data straddling zero is untouched.
+    [<Fact>]
+    let ``zero enters only on the side it is missing from`` () =
+        let negative =
+            Chart.Category.bar U.metre [| "a"; "b" |] [| -4.0<m>; -9.0<m> |]
+
+        let _, y = Erase.seriesScales negative.Panels.[0].Layers.[0].Data
+        Assert.Equal(0.0, snd y.Domain, 12)
+        Assert.True(fst y.Domain < -9.0, sprintf "lower end %f should still be padded" (fst y.Domain))
+
+        let straddling =
+            Chart.Category.bar U.metre [| "a"; "b" |] [| -4.0<m>; 9.0<m> |]
+
+        let _, sy = Erase.seriesScales straddling.Panels.[0].Layers.[0].Data
+        Assert.True(fst sy.Domain < -4.0 && snd sy.Domain > 9.0)
+
+    /// Repeated keys are two bars in one band, not a sum. Aggregation is a stat's job, and
+    /// doing it here silently would be the library deciding what the data means.
+    [<Fact>]
+    let ``a repeated key is two marks in one band, not an aggregate`` () =
+        let fig = Chart.Category.bar U.metre [| "a"; "b"; "a" |] [| 1.0<m>; 2.0<m>; 3.0<m> |]
+        let x, _ = Erase.seriesScales (fig.Panels.[0].Layers.[0].Data)
+
+        Assert.Equal(ScaleKind.Ordinal [| "a"; "b" |], x.Kind)
+
+        let xs =
+            Erase.projectXY fig.Panels.[0].Layers.[0].Data |> Array.map (fun p -> float p.X)
+
+        // Two marks share the first band; the third sits in the second.
+        Assert.Equal(xs.[0], xs.[2], 12)
+        Assert.NotEqual(xs.[0], xs.[1])
+
+// ======================================================================================
 // §13 — layout invariants
 // ======================================================================================
 
