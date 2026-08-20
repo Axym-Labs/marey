@@ -307,3 +307,476 @@ module Quantisation =
             Color.toHex (Ramp.at Palette.viridis (Channel.stepMidpoint Channel.ColorSteps 100)),
             Color.toHex styled.Color
         )
+
+// ======================================================================================
+// Phase 3 — the encoding block (§9, D43, D44)
+// ======================================================================================
+
+/// The row type every block below encodes.
+///
+/// A record with fields named nothing like the channels that read them, so that a passing test
+/// cannot be a coincidence of naming: `x U.second (fun r -> r.Elapsed)` binds the measure from
+/// the witness and checks the field against it, and neither half is inferred from the other.
+type private Fall =
+    { Elapsed: float<s>
+      Drop: float<m>
+      Sample: string
+      Mass: float<kg> }
+
+let private fallRows =
+    [ for i in 0..11 ->
+        let t = float i * 0.5<s>
+
+        { Elapsed = t
+          Drop = 0.5 * 9.81<m / s^2> * t * t
+          Sample = [| "control"; "treated"; "washout" |].[i % 3]
+          Mass = (1.0 + float i) * 1.0<kg> } ]
+
+/// What the block is *for*, per D43: composition, not inference. Every claim here is about a
+/// figure the quick front door cannot express in one call — several channels, several layers
+/// over one dataset — or about the block agreeing exactly with the front door where it can.
+module EncodingBlock =
+
+    let private extent = Chart.size 800.0 500.0
+
+    let private render (fig: Figure) =
+        SvgBackend.render extent (Chart.toScene extent fig)
+
+    /// `Markers` nodes in a figure whose legend is off, so the count is the *data's* batches and
+    /// not the legend's swatches — which are `Markers` too, one per entry.
+    let private markerBatches (fig: Figure) =
+        Chart.toScene extent (Chart.withLegend LegendNone fig)
+        |> Scene.fold
+            (fun acc n ->
+                match n with
+                | Markers _ -> acc + 1
+                | _ -> acc)
+            0
+
+    let private occurrences (needle: string) (haystack: string) =
+        let mutable count = 0
+        let mutable i = haystack.IndexOf(needle, System.StringComparison.Ordinal)
+
+        while i >= 0 do
+            count <- count + 1
+            i <- haystack.IndexOf(needle, i + 1, System.StringComparison.Ordinal)
+
+        count
+
+    // ---- The exit criterion ----------------------------------------------------------------
+
+    /// **Phase 3's exit criterion**: §9's corrected example, as close as the library's real
+    /// names allow, compiles and renders — and both axis titles are derived from the witnesses
+    /// across two independent erasures and a reunification, with nothing configured.
+    ///
+    /// This is D44's end-to-end claim restated as a test rather than as a spike that was not
+    /// checked in.
+    [<Fact>]
+    let ``the block titles both axes from its witnesses alone`` () =
+        let fig =
+            plot fallRows {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+                color (fun r -> r.Sample)
+                shape (fun r -> r.Sample)
+                layerWith GeomPoint (Geom.withOpacity 0.6)
+                layer GeomLine
+                coord Coord.cartesian
+                theme Theme.publication
+            }
+
+        let svg = render fig
+
+        Assert.Contains(">t [s]<", svg)
+        Assert.Contains(">x [m]<", svg)
+
+    /// The block and the front door must not diverge in the defaults they pick, or the same data
+    /// would render two ways depending on which door it came through. Byte identity is the
+    /// strongest available statement of that, and it is what `Erase.channelSeries` sharing
+    /// `Chart.series`'s 5% padded linear scales buys — now checked through the CE rather than
+    /// through `Erase` directly.
+    [<Fact>]
+    let ``a two-channel block is byte-identical with Chart.line`` () =
+        let viaBlock =
+            plot fallRows {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+                layer GeomLine
+            }
+
+        let ts = fallRows |> List.map (fun r -> r.Elapsed) |> Array.ofList
+        let xs = fallRows |> List.map (fun r -> r.Drop) |> Array.ofList
+
+        Assert.Equal(render (Chart.line U.second U.metre ts xs), render viaBlock)
+
+    /// A block with no `layer` is a scatter — two positional channels and nothing else say where
+    /// the points are, and points are how that is drawn. Pinned against `Chart.scatter` so the
+    /// default cannot drift into something that additionally asserts adjacency.
+    [<Fact>]
+    let ``a block with no layer is a scatter`` () =
+        let viaBlock =
+            plot fallRows {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+            }
+
+        let ts = fallRows |> List.map (fun r -> r.Elapsed) |> Array.ofList
+        let xs = fallRows |> List.map (fun r -> r.Drop) |> Array.ofList
+
+        Assert.Equal(render (Chart.scatter U.second U.metre ts xs), render viaBlock)
+
+    // ---- Gate 2, restated through the block --------------------------------------------------
+
+    /// §5.1's batching decision, reached through the CE this time: a categorical colour channel
+    /// costs one `Markers` node per *level*, not one per point. D46 is quietly violated the day
+    /// this number becomes 12.
+    [<Fact>]
+    let ``a categorical colour channel through the block is one batch per level`` () =
+        let fig =
+            plot fallRows {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+                color (fun r -> r.Sample)
+            }
+
+        Assert.Equal(3, markerBatches fig)
+
+    /// Colour and shape over the same key is §9's colour-blind-safe scatter, and it stays three
+    /// batches rather than nine: both channels read the same level number.
+    [<Fact>]
+    let ``colour and shape over one key stay one batch per level in a block`` () =
+        let fig =
+            plot fallRows {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+                color (fun r -> r.Sample)
+                shape (fun r -> r.Sample)
+            }
+
+        Assert.Equal(3, markerBatches fig)
+
+    /// D49 through the block: a continuous colour channel gets a colorbar, and the bar labels
+    /// itself from the witness the channel was given — `m [kg]`, quantity name from the
+    /// dimension and unit from the witness, neither configured.
+    [<Fact>]
+    let ``a continuous colour channel labels its colorbar from its witness`` () =
+        let fig =
+            plot fallRows {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+                colorBy U.kilogram (fun r -> r.Mass)
+            }
+
+        Assert.Contains(">m [kg]<", render fig)
+
+    /// And `colorLabel` names the quantity, exactly as `Chart.withColorLabel` does — the unit
+    /// half is still never configured.
+    [<Fact>]
+    let ``colorLabel names the quantity and leaves the unit alone`` () =
+        let fig =
+            plot fallRows {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+                colorBy U.kilogram (fun r -> r.Mass)
+                colorLabel "payload"
+            }
+
+        Assert.Contains(">payload [kg]<", render fig)
+
+    // ---- The legend, which is where per-block channels could double-count --------------------
+
+    /// The block's channels belong to the *block*, so every layer carries them — which is what
+    /// makes a two-layer block the case where three levels could enumerate themselves six times.
+    /// One entry per level, whatever the layer count.
+    [<Fact>]
+    let ``two layers over three levels give three legend entries`` () =
+        let svg =
+            render (
+                plot fallRows {
+                    x U.second (fun r -> r.Elapsed)
+                    y U.metre (fun r -> r.Drop)
+                    color (fun r -> r.Sample)
+                    layer GeomPoint
+                    layer GeomLine
+                }
+            )
+
+        Assert.Equal(1, occurrences ">control<" svg)
+        Assert.Equal(1, occurrences ">treated<" svg)
+        Assert.Equal(1, occurrences ">washout<" svg)
+
+    /// The same for the series name: one entry, however many layers draw the series.
+    [<Fact>]
+    let ``a named two-layer block gives one legend entry`` () =
+        let svg =
+            render (
+                plot fallRows {
+                    x U.second (fun r -> r.Elapsed)
+                    y U.metre (fun r -> r.Drop)
+                    name "free fall"
+                    layer GeomLine
+                    layer GeomPoint
+                }
+            )
+
+        Assert.Equal(1, occurrences ">free fall<" svg)
+
+    /// The quick front door must not have lost its legend to the rule that makes the above work.
+    /// `Chart.scatter` names its layer `""`, so its `ShowInLegend` is `false` until a channel is
+    /// attached — this is the case that would break silently.
+    [<Fact>]
+    let ``attaching a channel to an unnamed layer still gives it a legend`` () =
+        let ts = fallRows |> List.map (fun r -> r.Elapsed) |> Array.ofList
+        let xs = fallRows |> List.map (fun r -> r.Drop) |> Array.ofList
+        let keys = fallRows |> List.map (fun r -> r.Sample) |> Array.ofList
+
+        let svg =
+            SvgBackend.render extent (Chart.toScene extent (Chart.scatter U.second U.metre ts xs |> Chart.colorByKey keys))
+
+        Assert.Equal(1, occurrences ">control<" svg)
+
+    // ---- The block is order-free, and its layers are one series ------------------------------
+
+    /// **`theme` may appear anywhere.** A categorical channel's colours come off the theme's
+    /// palette, and the block accumulates channel *constructors* rather than channels precisely
+    /// so that a `theme` three lines below a `color` still reaches it. The reversed palette is
+    /// what makes this decisive: it changes nothing but the level colours.
+    [<Fact>]
+    let ``theme reaches a channel declared above it`` () =
+        let reversed =
+            Theme.initial
+            |> Theme.withPalette (Array.rev (Array.truncate 3 Theme.initial.Categorical))
+
+        let themeFirst =
+            plot fallRows {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+                theme reversed
+                color (fun r -> r.Sample)
+            }
+
+        let themeLast =
+            plot fallRows {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+                color (fun r -> r.Sample)
+                theme reversed
+            }
+
+        let untouched =
+            plot fallRows {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+                color (fun r -> r.Sample)
+            }
+
+        Assert.Equal(render themeFirst, render themeLast)
+        // Non-vacuity: the palette really did move the level colours.
+        Assert.NotEqual<string>(render untouched, render themeLast)
+
+    /// The layers of one block are alternative renderings of **one** series, so they share one
+    /// base style. `Chart.addLine` advances the palette because each of its calls adds a
+    /// different series; a line and its markers are not two things to tell apart.
+    [<Fact>]
+    let ``every layer of a block shares one base style`` () =
+        let fig =
+            plot fallRows {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+                layer GeomLine
+                layer GeomPoint
+            }
+
+        let colors =
+            fig.Panels.[0].Layers
+            |> Array.map (fun l -> Color.toHex l.Style.Color)
+            |> Array.distinct
+
+        Assert.Equal(2, fig.Panels.[0].Layers.Length)
+        Assert.Equal<string[]>([| Color.toHex (Geom.styleFor Theme.initial 0).Color |], colors)
+
+    /// Gate 6, through the CE: two renders of one block are byte-identical. The builder
+    /// accumulates through a `Dictionary` in `Channel.split` and a `HashSet` in `Levels.ofSeq`,
+    /// and neither enumeration order is allowed to reach the output.
+    [<Fact>]
+    let ``two renders of one block are byte-identical`` () =
+        let build () =
+            plot fallRows {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+                color (fun r -> r.Sample)
+                size U.kilogram (fun r -> r.Mass)
+                layer GeomPoint
+            }
+
+        Assert.Equal(render (build ()), render (build ()))
+
+    /// The one mistake the block cannot make a compile error: the state has the same type
+    /// whether or not a channel was written to it. So the message has to name the channel and
+    /// show the operation that supplies it.
+    [<Fact>]
+    let ``a block with no y channel says which channel is missing`` () =
+        let ex =
+            Assert.Throws<System.Exception>(fun () ->
+                plot fallRows {
+                    x U.second (fun r -> r.Elapsed)
+                    layer GeomPoint
+                }
+                |> ignore)
+
+        Assert.Contains("no y channel", ex.Message)
+
+    /// A `seq` is enumerated exactly once, however many channels read it. A single-shot sequence
+    /// is the case that fails loudly if it is not — and a lazy sequence with a side effect is
+    /// how that is observed without depending on one.
+    [<Fact>]
+    let ``a lazy sequence is enumerated once`` () =
+        let mutable enumerations = 0
+
+        let once =
+            seq {
+                enumerations <- enumerations + 1
+                yield! fallRows
+            }
+
+        let fig =
+            plot once {
+                x U.second (fun r -> r.Elapsed)
+                y U.metre (fun r -> r.Drop)
+                color (fun r -> r.Sample)
+                size U.kilogram (fun r -> r.Mass)
+            }
+
+        render fig |> ignore
+        Assert.Equal(1, enumerations)
+
+/// **Gate 3 — the row type cannot be mismatched.**
+///
+/// D44 finding 4 is the reason the block is flat, and the finding is about something that
+/// *compiles*: a nested `encode { … }` reaches its builder as a generic value, so its `'r` is
+/// inferred from the accessors inside the block and never unified with the data's. A block whose
+/// accessors take an unrelated record then compiles, runs, and fails at the unbox — or does not
+/// fail at all.
+///
+/// A passing test cannot demonstrate that, because the code it would have to contain is code
+/// that must not compile. So these run the snippet under `dotnet fsi` against the build in hand
+/// and assert on the compiler's own diagnostic. D44's closing note asked for exactly this: "the
+/// row-type check in Finding 4 should be a compile-failure test rather than prose."
+///
+/// The positive control is not optional. A snippet that fails to compile because of a bad `#r`
+/// would make both negative cases vacuously green, which is the failure mode `notebooks.md`
+/// records costing a day.
+module BlockTypeChecking =
+
+    open System
+    open System.Diagnostics
+    open System.IO
+    open System.Text
+
+    /// The assemblies a block needs, resolved from the test binary's own directory so the
+    /// snippets are checked against this working tree rather than against nuget.org.
+    let private preamble () =
+        let binDir = Path.GetDirectoryName(Uri(typeof<Marey.Figure>.Assembly.Location).LocalPath)
+        let sb = StringBuilder()
+
+        for name in [ "Marey.Core"; "Marey.Units"; "Marey.Plot" ] do
+            sb.AppendLine(sprintf "#r @\"%s\"" (Path.Combine(binDir, name + ".dll"))) |> ignore
+
+        sb.AppendLine("open Marey").ToString()
+
+    /// The row types every snippet below shares. Two records over the same measures, so the only
+    /// thing that can distinguish them is the row type itself.
+    let private rowTypes =
+        String.concat
+            "\n"
+            [ "type Row = { Time: float<s>; Displacement: float<m> }"
+              "type Other = { Elapsed: float<s> }"
+              "let rows = [ { Time = 0.0<s>; Displacement = 1.0<m> } ]" ]
+
+    /// Compile one snippet and return fsi's exit code and its combined output.
+    let private compileSnippet (name: string) (body: string) =
+        match TexToolchain.onPath "dotnet" with
+        | None -> None
+        | Some dotnet ->
+            let scriptPath = Path.Combine(Path.GetTempPath(), sprintf "marey-block-%s.fsx" name)
+            File.WriteAllText(scriptPath, preamble () + "\n" + rowTypes + "\n" + body + "\n", UTF8Encoding false)
+
+            let psi = ProcessStartInfo(dotnet, sprintf "fsi --nologo \"%s\"" scriptPath)
+            psi.RedirectStandardOutput <- true
+            psi.RedirectStandardError <- true
+            psi.UseShellExecute <- false
+            psi.WorkingDirectory <- Path.GetTempPath()
+
+            use proc = Process.Start psi
+            let stdout = proc.StandardOutput.ReadToEnd()
+            let stderr = proc.StandardError.ReadToEnd()
+            proc.WaitForExit()
+
+            Some(proc.ExitCode, scriptPath, stdout + "\n" + stderr)
+
+    /// The positive control: the same block, correct, must compile and run.
+    [<Fact>]
+    let ``the reference block compiles`` () =
+        match
+            compileSnippet
+                "ok"
+                (String.concat
+                    "\n"
+                    [ "let fig ="
+                      "    plot rows {"
+                      "        x U.second (fun r -> r.Time)"
+                      "        y U.metre (fun r -> r.Displacement)"
+                      "    }"
+                      "printfn \"panels %d\" fig.Panels.Length" ])
+        with
+        | None -> Assert.True(true, "dotnet not found on PATH; the block was not compiled")
+        | Some(exitCode, path, output) ->
+            Assert.True((exitCode = 0), sprintf "the reference block at %s did not compile.\n%s" path output)
+
+    /// D44 finding 4, as a compile failure: an accessor over an unrelated record type.
+    ///
+    /// The asserted message is the one the decision quotes, because the *shape* of the error is
+    /// the guarantee — a caller has to be told that the row is wrong, not handed a mismatch
+    /// somewhere inside a builder they did not write.
+    [<Fact>]
+    let ``an accessor over an unrelated row type does not compile`` () =
+        match
+            compileSnippet
+                "row"
+                (String.concat
+                    "\n"
+                    [ "let fig ="
+                      "    plot rows {"
+                      "        x U.second (fun (o: Other) -> o.Elapsed)"
+                      "        y U.metre (fun r -> r.Displacement)"
+                      "    }"
+                      "printfn \"panels %d\" fig.Panels.Length" ])
+        with
+        | None -> Assert.True(true, "dotnet not found on PATH; the block was not compiled")
+        | Some(exitCode, path, output) ->
+            Assert.True(exitCode <> 0, sprintf "a block over an unrelated row type compiled. Script: %s\n%s" path output)
+            Assert.Contains("error FS0001", output)
+            Assert.Contains("'Other'", output)
+
+    /// D43, as a compile failure: the witness binds the measure and the accessor is checked
+    /// against it, so naming the wrong field is an error **in the measures** rather than a
+    /// mislabelled axis. This is the claim that the block is no weaker than `Chart.line`.
+    [<Fact>]
+    let ``an accessor that disagrees with its witness does not compile`` () =
+        match
+            compileSnippet
+                "measure"
+                (String.concat
+                    "\n"
+                    [ "let fig ="
+                      "    plot rows {"
+                      "        x U.second (fun r -> r.Displacement)"
+                      "        y U.metre (fun r -> r.Displacement)"
+                      "    }"
+                      "printfn \"panels %d\" fig.Panels.Length" ])
+        with
+        | None -> Assert.True(true, "dotnet not found on PATH; the block was not compiled")
+        | Some(exitCode, path, output) ->
+            Assert.True(exitCode <> 0, sprintf "metres under a second witness compiled. Script: %s\n%s" path output)
+            Assert.Contains("error FS0001", output)
+            Assert.Contains("does not match the unit of measure", output)

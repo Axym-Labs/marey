@@ -134,7 +134,12 @@ module Erase =
     /// breathing room, and a unit interval when there is no data to take a range from. Kept
     /// identical to `Chart.series`'s default, because a series built through the channels must
     /// not render differently from the same series built through the front door.
-    let private autoLinear (u: U<'u>) (xs: float<'u>[]) : Scale<'u> =
+    ///
+    /// Public since M2 phase 4, on the rule stated in `Num.fs`: it acquired a second consumer.
+    /// A stat that builds its own series inside `reunify` — a fitted line, which is two points
+    /// and not the caller's data — needs the same default, and a private copy of it in
+    /// `Marey.Plot` is exactly the duplication that goes silently out of step.
+    let autoScale (u: U<'u>) (xs: float<'u>[]) : Scale<'u> =
         match Scale.paddedDomain 0.05 xs with
         | Some d -> Scale.linear u d
         | None -> Scale.linear u (LanguagePrimitives.FloatWithMeasure<'u> 0.0, LanguagePrimitives.FloatWithMeasure<'u> 1.0)
@@ -273,4 +278,4 @@ module Erase =
             y
             { new IChannelPairConsumer<PackedSeries> with
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(ux: U<'ux>, xs: float<'ux>[], uy: U<'uy>, ys: float<'uy>[]) =
-                    series name (autoLinear ux xs) (autoLinear uy ys) xs ys }
+                    series name (autoScale ux xs) (autoScale uy ys) xs ys }

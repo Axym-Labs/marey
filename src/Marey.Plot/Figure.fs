@@ -309,8 +309,20 @@ module Figure =
     /// so they carry the prefix and the unit. `LegendSizedMarker` exists for exactly this.
     ///
     /// A continuous **colour** channel contributes nothing here. It gets a colorbar.
+    ///
+    /// `ShowInLegend` gates **all** of it, not only the layer's own entry. The field says
+    /// whether this layer is in the legend, and a layer that is not cannot be in it by way of
+    /// its channels either. The encoding block (§9) is what makes the distinction matter: its
+    /// channels belong to the block rather than to one geom, so every layer carries them, and
+    /// three levels drawn as points *and* as a line would enumerate themselves twice under two
+    /// different swatches. `Chart.withChannel` sets the flag when it attaches a channel, so
+    /// nothing built through the quick front door notices this.
     let private layerEntries (theme: Theme) (l: Layer) : LegendEntry[] =
-        let categorical = l.Channels |> Array.filter Channel.isCategorical
+        let categorical =
+            if l.ShowInLegend then
+                l.Channels |> Array.filter Channel.isCategorical
+            else
+                [||]
 
         let levelEntries =
             if categorical.Length = 0 then
@@ -330,7 +342,7 @@ module Figure =
                           Mark = Geom.legendMark l.Geom st })
 
         let sizeEntries =
-            l.Channels
+            (if l.ShowInLegend then l.Channels else [||])
             |> Array.collect (fun c ->
                 match c.Map with
                 | SizeByValue(scale, smallest, largest) ->
@@ -373,8 +385,18 @@ module Figure =
 
         Array.concat [ own; levelEntries; sizeEntries ]
 
+    /// Every layer's contribution, with **identical entries collapsed**.
+    ///
+    /// A legend enumerates what the reader has to tell apart, so the same swatch under the same
+    /// name twice is not a second thing — it is the same thing counted twice. The encoding block
+    /// (§9) is what makes this reachable: its channels belong to the block rather than to one
+    /// geom, so a two-layer block over three levels would otherwise print six entries naming
+    /// three levels. `Array.distinct` keeps first-appearance order, which is level order.
+    ///
+    /// Entries that differ in *anything* the reader can see — name, colour, or mark — survive,
+    /// which is why this cannot quietly swallow a real second series.
     let private legendEntries (theme: Theme) (p: Panel) =
-        p.Layers |> Array.collect (layerEntries theme)
+        p.Layers |> Array.collect (layerEntries theme) |> Array.distinct
 
     /// Compile one panel into a device-space region.
     let private compilePanel (m: ITextMeasurer) (theme: Theme) (extent: Extent<px>) (region: Rect<px>) (p: Panel) : Node =

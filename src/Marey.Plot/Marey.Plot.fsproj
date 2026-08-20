@@ -24,6 +24,7 @@
     <Compile Include="Figure.fs" />
     <Compile Include="Levels.fs" />
     <Compile Include="Chart.fs" />
+    <Compile Include="Plot.fs" />
   </ItemGroup>
 
   <ItemGroup>

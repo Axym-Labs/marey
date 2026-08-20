@@ -28,6 +28,7 @@
     <Compile Include="Ticks.fs" />
     <Compile Include="Scale.fs" />
     <Compile Include="Erased.fs" />
+    <Compile Include="Stat.fs" />
     <Compile Include="Scene.fs" />
     <Compile Include="Coord.fs" />
     <Compile Include="Backend.fs" />

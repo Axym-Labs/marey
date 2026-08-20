@@ -207,6 +207,144 @@ module Chart =
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i (Geom.errorY s err) (Erase.packSeries s) |])
 
+    // ---- Stats (§9, D47) ----------------------------------------------------------------------
+
+    /// The y domain of a quantity that cannot be negative and is read from zero: zero exactly,
+    /// to the maximum plus breathing room *above only*.
+    ///
+    /// D50 widens a bar's domain to reach zero; this is the same rule for a quantity that never
+    /// leaves the positive half-line, and it differs from `withZero (paddedOr …)` in the case
+    /// that matters here. An empty histogram bin, or a density that reaches the axis, has the
+    /// value zero — and padding below it draws a strip of negative count under the baseline,
+    /// which is a region the quantity cannot occupy.
+    let private fromZero (ys: float<'u>[]) : float<'u> * float<'u> =
+        let hi =
+            if Array.isEmpty ys then
+                0.0
+            else
+                ys |> Array.fold (fun acc v -> if System.Double.IsNaN(float v) then acc else max acc (float v)) 0.0
+
+        tag<'u> 0.0, tag<'u> (if hi <= 0.0 then 1.0 else hi * 1.05)
+
+    /// §9 / D47 — **the bar series a histogram is drawn as**: bin centres against counts, bars
+    /// touching, y from zero.
+    ///
+    /// **The x measure is the sample's and the y measure is `float<1>`**, and nothing had to be
+    /// told so — which is the first place a stat pays out on the grammar's promise. A histogram
+    /// of metres is a dimensionless count against a metre axis, and the count cannot end up on
+    /// the metre axis by a transposition, because the two do not have the same type.
+    ///
+    /// The x domain is the outer bin edges *exactly*, unpadded, and the bars are full width.
+    /// A histogram partitions an interval; a gap between the bars, or a margin past the last
+    /// edge, both draw a piece of that interval as if no bin covered it.
+    let histogramSeries (name: string) (h: Stat.Histogram<'u>) : Series<'u, 1> * Geom =
+        let counts = h.Frequencies
+
+        let s: Series<'u, 1> =
+            { Name = name
+              X = h.Centers
+              Y = counts
+              XScale = Scale.linear h.Unit (h.Edges.[0], h.Edges.[h.Edges.Length - 1])
+              YScale = Scale.linear U.one (fromZero counts) }
+
+        s, Geom.bar 1.0 s
+
+    /// The line series a kernel density estimate is drawn as.
+    ///
+    /// **`Series<'u, 1/'u>`.** The y axis of a density over metres is in reciprocal metres, and
+    /// this is where the library says it out loud: the axis labels itself `m⁻¹` off the witness
+    /// `Stat.density` built, and `Figure.unify` refuses to put this layer on the same panel as
+    /// the sample it summarises — which is correct, and is a mistake most plotting libraries
+    /// will draw for you.
+    let densitySeries (name: string) (d: Stat.Density<'u>) : Series<'u, 1 / 'u> * Geom =
+        let s: Series<'u, 1 / 'u> =
+            { Name = name
+              X = d.X
+              Y = d.Y
+              XScale = Scale.linear d.Unit (d.X.[0], d.X.[d.X.Length - 1])
+              YScale = Scale.linear d.DensityUnit (fromZero d.Y) }
+
+        s, GeomLine
+
+    /// The staircase an empirical CDF is drawn as, and the y domain it is known to occupy.
+    ///
+    /// Two points per distinct value — the foot and the head of its riser — because `GeomLine`
+    /// through one point per value draws a diagonal where the function has a jump, and an ECDF
+    /// interpolated between observations asserts data between them that was not observed. A
+    /// `step` geom lands with the rest of them in phase 6; until then this is exact rather than
+    /// approximate, and it costs one array.
+    ///
+    /// The y domain is `0 … 1` stated rather than measured: an ECDF's range is known before the
+    /// data is, and taking it from the sample instead would start the axis at `1/n`.
+    let ecdfSeries (name: string) (e: Stat.Ecdf<'u>) : Series<'u, 1> * Geom =
+        let n = e.X.Length
+        let xs = Array.zeroCreate<float<'u>> (2 * n)
+        let ys = Array.zeroCreate<float> (2 * n)
+
+        for i in 0 .. n - 1 do
+            let below = if i = 0 then 0.0 else e.F.[i - 1]
+            xs.[2 * i] <- e.X.[i]
+            ys.[2 * i] <- below
+            xs.[2 * i + 1] <- e.X.[i]
+            ys.[2 * i + 1] <- e.F.[i]
+
+        let s: Series<'u, 1> =
+            { Name = name
+              X = xs
+              Y = ys
+              XScale = Scale.linear e.Unit (paddedOr 0.05 e.X)
+              YScale = Scale.linear U.one (0.0, 1.0) }
+
+        s, GeomLine
+
+    /// A figure from an already-computed histogram — the door for a caller who chose the bins.
+    let ofHistogram (h: Stat.Histogram<'u>) : Figure =
+        let s, g = histogramSeries "" h
+        ofSeries g s
+
+    /// A histogram of a sample, binned by Freedman–Diaconis.
+    let histogram (u: U<'u>) (xs: float<'u>[]) : Figure = ofHistogram (Stat.bin u xs)
+
+    /// A histogram of a sample with a stated bin count.
+    let histogramWith (u: U<'u>) (bins: int) (xs: float<'u>[]) : Figure = ofHistogram (Stat.binWith u bins xs)
+
+    /// A figure from an already-computed density — the door for a caller who chose the bandwidth.
+    let ofDensity (d: Stat.Density<'u>) : Figure =
+        let s, g = densitySeries "" d
+        ofSeries g s
+
+    /// A Gaussian kernel density estimate of a sample, at Silverman's bandwidth.
+    let density (u: U<'u>) (xs: float<'u>[]) : Figure = ofDensity (Stat.density u xs)
+
+    /// A figure from an already-computed ECDF.
+    let ofEcdf (e: Stat.Ecdf<'u>) : Figure =
+        let s, g = ecdfSeries "" e
+        ofSeries g s
+
+    /// The empirical CDF of a sample, drawn as the step function it is.
+    let ecdf (u: U<'u>) (xs: float<'u>[]) : Figure = ofEcdf (Stat.ecdf u xs)
+
+    /// Add a least-squares fit of y against x to the last panel, as a two-point line over the
+    /// range of the data.
+    ///
+    /// **The slope is not returned, and that is D47's split rather than an omission.** The fit
+    /// is a number — `float<'uy/'ux>`, and for a displacement against a time that is a velocity
+    /// the caller can bind, print, and do arithmetic with. Handing it back through a `Figure`
+    /// would mean packing it into an existential to get it out of this function, so a caller
+    /// who wants the number calls `Stat.regression` and keeps it typed; this draws it.
+    ///
+    /// ```fsharp
+    /// let fit = Stat.regression U.second U.metre ts xs
+    /// let v: float<m/s> = fit.Slope
+    /// Chart.scatter U.second U.metre ts xs |> Chart.addFit U.second U.metre ts xs
+    /// ```
+    let addFit (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+        let f = Stat.regression ux uy x y
+        let fx, fy = Stat.fitLine f x
+
+        fig
+        |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomLine (Erase.packSeries (series "" ux uy fx fy)) |])
+
     // ---- Dimensionless ------------------------------------------------------------------------
 
     /// Pure maths, where the quantity genuinely has no dimension: `sin x`, a ratio, a
@@ -255,6 +393,22 @@ module Chart =
         let addErrorbar (x: float[]) (y: float[]) (err: float[]) (fig: Figure) : Figure =
             addErrorbar U.one U.one x y err fig
 
+        // The distribution stats, where the sample genuinely has no dimension — a residual in
+        // units of sigma, a correlation coefficient, a p-value. `density` is the one whose type
+        // changes here rather than merely simplifying: a density over `float<1>` is
+        // `float<1/1>`, which *is* `float`, so the reciprocal measure is still correct and
+        // simply has nothing to say.
+
+        let histogram (x: float[]) : Figure = histogram U.one x
+
+        let histogramWith (bins: int) (x: float[]) : Figure = histogramWith U.one bins x
+
+        let density (x: float[]) : Figure = density U.one x
+
+        let ecdf (x: float[]) : Figure = ecdf U.one x
+
+        let addFit (x: float[]) (y: float[]) (fig: Figure) : Figure = addFit U.one U.one x y fig
+
     /// §9 / D45 — **the categorical front door**: a chart whose x is a category rather than a
     /// quantity.
     ///
@@ -269,8 +423,9 @@ module Chart =
     /// prints named bands under `x [m]` with nothing configured.
     ///
     /// Repeated keys are **not** aggregated: two rows with the same key are two bars in one
-    /// band, which is honest about the data. Summing or counting them is a stat's job (M2
-    /// phase 4), and doing it silently here would be the library deciding what the data means.
+    /// band, which is honest about the data. Counting them is a stat's job, and `Category.count`
+    /// is that stat with its chart — an explicit call, because doing it silently here would be
+    /// the library deciding what the data means.
     [<RequireQualifiedAccess>]
     module Category =
 
@@ -327,6 +482,20 @@ module Chart =
         let scatter (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
             let _, s = series "" uy keys values
             ofSeries GeomPoint s |> unlabelledX
+
+        /// §9 / D47 — **`count`**: one bar per level, as tall as the number of rows that carry
+        /// it.
+        ///
+        /// The categorical counterpart of `Chart.histogram`, and it has the same two measures:
+        /// no x measure at all, because a category has none (D45), and `float<1>` on y, because
+        /// a count is a number of rows.
+        ///
+        /// The level order is `Stat.count`'s, which is `Levels.ofSeq`'s, which is
+        /// first-appearance — so a counted axis and a plotted one put the same category in the
+        /// same band.
+        let count (keys: 'k[]) : Figure =
+            let pairs = Stat.count keys
+            bar U.one (pairs |> Array.map fst) (pairs |> Array.map (snd >> float))
 
     // ---- Combinators. All pure; every one returns a new figure. -------------------------------
 
@@ -415,6 +584,12 @@ module Chart =
     /// The length check is here rather than inside `Channel` because here is where the caller's
     /// array is: a channel with the wrong number of values would otherwise silently leave the
     /// tail of a series unmapped, and unmapped points are not drawn.
+    ///
+    /// Attaching a channel also puts the layer **in** the legend, which is what `ShowInLegend`
+    /// now means: a categorical channel gives an unnamed layer something to enumerate, and
+    /// `Figure.layerEntries` reads the flag before it enumerates anything. Without this line the
+    /// primary case — `Chart.scatter |> Chart.colorByKey`, where the layer's name is empty and
+    /// the flag is therefore `false` — would lose its legend.
     let private withChannel (what: string) (values: int) (ch: Channel) (fig: Figure) : Figure =
         mapLastLayer
             (fun l ->
@@ -426,7 +601,8 @@ module Chart =
                         (sprintf "Marey: the %s channel has %d values but the series has %d points." what values n)
 
                 { l with
-                    Channels = Array.append l.Channels [| ch |] })
+                    Channels = Array.append l.Channels [| ch |]
+                    ShowInLegend = true })
             fig
 
     /// **Colour by a category.** One colour per level, one batch per level, one legend entry
