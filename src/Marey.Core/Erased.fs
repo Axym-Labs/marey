@@ -257,6 +257,22 @@ module Erase =
         { new PackedChannel with
             member _.Accept c = c.Apply<'u>(u, values) }
 
+    /// **A subset of a channel, taken by row index** — the operation a facet is made of (D48).
+    ///
+    /// A facet does not re-read the data: by the time the block runs, every array in it has
+    /// already been erased where it was declared (D44 finding 2) and the accessors are gone. But
+    /// each of those arrays is one `Array.map` over the *same* rows — which is D53's argument for
+    /// a channel belonging to the block — so they are all index-aligned, and splitting the block
+    /// by a key is splitting one `int[]` of row indices and applying it to each.
+    ///
+    /// The measure is reattached inside `Apply`, where it is known, so this is measure-safe for a
+    /// caller who could not name the measure it selects from.
+    let selectChannel (rows: int[]) (c: PackedChannel) : PackedChannel =
+        c.Accept
+            { new IChannelConsumer<PackedChannel> with
+                member _.Apply<[<Measure>] 'u>(u: U<'u>, values: float<'u>[]) =
+                    packChannel u (rows |> Array.map (fun i -> values.[i])) }
+
     /// **The two-channel reunifier.** `IChannelConsumer` nested inside `IChannelConsumer`, the
     /// only construction in which two independently erased measures are both in scope, and `k`
     /// is invoked where they are.

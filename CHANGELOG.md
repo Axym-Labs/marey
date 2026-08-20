@@ -38,6 +38,32 @@ M2 — *Grammar* — in progress. Nothing here has shipped to nuget.org.
 - A **size key** in the legend for a continuous size channel: three marks at the ends and middle
   of the domain, labelled with the unit. `LegendSizedMarker` is the mark kind behind it.
 - `Theme.ColorbarWidth`, and `Erase.seriesLength`.
+- **Seven geoms**, which is the rest of §9's list bar the field geoms M4 owns:
+  - `step` — a staircase, with the riser at the sample (`StepAfter`), at the previous one
+    (`StepBefore`) or halfway between (`StepMid`). `Chart.step`, `Chart.stepWith`.
+  - `ribbon` — a filled band between two y series. `Chart.ribbon`, `Chart.addRibbon`, and
+    `Geom.ribbonAround` for a `y ± err` band whose uncertainty is checked against the y unit.
+  - `rect` and `tile` — axis-aligned rectangles from corners, or from centres and one size in the
+    data's own units. Each corner is projected separately, so a tile is the right size on a log
+    axis. `Chart.tile`, and `Chart.heatmap`, which sizes the cells from the grid's own pitch and
+    attaches the colour channel that makes them mean something.
+  - `segment` — a line from each point to a second point. `Chart.segment`, `Chart.addSegment`.
+  - `text` — a label per point, offset by a device-space vector. `Chart.text`, and
+    `Chart.addLabels`, which labels the series already on the figure using its own data and
+    colour.
+  - `boxplot` — a five-number summary per band, with Tukey whiskers and the outliers drawn.
+    `Chart.Category.boxplot`.
+  - `violin` — a mirrored kernel density per band, normalised across the whole layer so a sparse
+    group draws a narrower violin. `Chart.Category.violin`.
+- `Stat.summary` — the five-number summary with Tukey whiskers and outliers, entirely in the
+  sample's own measure; `Stat.quantile`; and `Stat.groupBy`, which splits values by key in the
+  same first-appearance order `Stat.count` and `Levels.ofSeq` use.
+- `area` and `bars` as **block operations**. Both take their baseline from the block's own y
+  scale, which does not exist until the block runs, so they are resolved inside the rank-2 scope
+  where the measures are back — and the y domain is widened to reach zero before the baseline is
+  taken, which is the bar rule the quick front door has had since `0.1.0`.
+- `GeomStyle.Font`, with `Geom.withFont` and `Geom.withFillOpacity`. A data label is set in the
+  theme's tick face unless the layer says otherwise.
 
 ### Changed
 
@@ -52,6 +78,15 @@ M2 — *Grammar* — in progress. Nothing here has shipped to nuget.org.
 - `Chart.withTheme` now recolours a categorical channel as well as a layer's style, on the same
   rule: replaced when the colours are still exactly what the outgoing theme would have chosen,
   kept when they are not.
+
+### Fixed
+
+- **A colour or size channel over an error-bar layer attached each bar's span to the wrong
+  point.** A geom carrying a per-point array of its own indexes it by row, and a channel batch
+  is a subset of the rows renumbered from zero — so the second batch read the first batch's
+  spans. Every bar was still drawn, in the right place, measuring the wrong datum. `GeomErrorY`
+  and `GeomErrorX` were the two geoms that could reach it; the six new ones that carry per-point
+  arrays are covered by the same fix.
 
 ## [0.1.1] — 2026-08-20
 

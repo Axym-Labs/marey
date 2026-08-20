@@ -114,6 +114,15 @@ module Snapshots =
     [<Fact>]
     let ``all nine Node cases`` () = tikz "all-nine-nodes"
 
+    /// M2 phase 6, gate 5. The pair of this and `geoms-bands.svg` is the reviewable half of
+    /// "cross-backend geometry agreement, extended to every new geom" — `GeomTests` asserts the
+    /// coordinate relationship numerically, and these two files are where it can be *seen*.
+    [<Fact>]
+    let ``the band geoms`` () = tikz "geoms-bands"
+
+    [<Fact>]
+    let ``the distribution geoms`` () = tikz "geoms-distributions"
+
 // ======================================================================================
 // THE FIGURE — gate 6
 // ======================================================================================
@@ -162,6 +171,19 @@ module Figures =
             |> Set.ofSeq
 
         Assert.True(colors.Count > 100, sprintf "only %d distinct colours in the document" colors.Count)
+
+    /// D55 — the box plot through the other backend. The outlier is a `\marey@mark` and the
+    /// whiskers are a stroked path, so the pair also records that a summary geom degrades to
+    /// nothing on a backend with no gradients and no rasters: there is nothing in it to degrade.
+    [<Fact>]
+    let ``a box plot figure`` () =
+        check "figure-boxplot.tex" (Chart.render TikzBackend.render figureSurface boxplotFigure)
+
+    /// The heatmap through the other backend, and the one place a tile's batching is visible as
+    /// file length: one path per quantised colour step (D46), not one per cell.
+    [<Fact>]
+    let ``a heatmap figure`` () =
+        check "figure-heatmap.tex" (Chart.render TikzBackend.render figureSurface heatmapFigure)
 
     /// The milestone's headline as a committed artefact rather than a substring assertion:
     /// `Theme.tikz` alone turns the unit witnesses into siunitx markup. TeX-only, because

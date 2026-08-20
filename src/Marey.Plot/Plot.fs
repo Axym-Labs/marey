@@ -1,16 +1,5 @@
 namespace Marey
 
-/// §9 / D43 / D44 — **the accumulated encoding block**, before it becomes a `Figure`.
-///
-/// Public only because `PlotBuilder`'s members are, and F# requires a type to be at least as
-/// accessible as the signatures it appears in. Nothing constructs one by hand: every field is
-/// written by a custom operation and read once, by `Run`.
-///
-/// The channels are stored as **constructors** rather than as finished `Channel` values. A
-/// categorical channel's colours come off the theme's palette, and `theme` may appear anywhere
-/// in the block — including after the channel it recolours. Deferring construction to `Run` is
-/// what makes the block order-free in the one place a reader would never suspect order
-/// mattered.
 /// §9 / D47 — **the stat a block runs between its data and its geom**, if it runs one.
 ///
 /// D47's finding is that stats do not have one shape, and this type is that finding written
@@ -36,6 +25,58 @@ type StatSpec =
     /// The empirical CDF, as a staircase.
     | StatEcdf
 
+/// §9 / D48 — **the split a block makes before it draws**: one panel per level of a key.
+///
+/// The key is erased exactly as a categorical channel is (D45) — a level set in
+/// first-appearance order, and one level number per row — because by the time `Run` sees the
+/// block the accessors are gone and every array in it has already been mapped over the rows. What
+/// is left is the one thing a facet actually needs: the arrays are index-aligned, so splitting the
+/// block is splitting an `int[]` and applying it to each of them.
+[<NoComparison; NoEquality>]
+type FacetSpec =
+    { /// One panel title per level, in the order the levels first appear.
+      Labels: string[]
+      /// The level number of every row.
+      Group: int[]
+      /// The wrap width. `None` is as square as the panel count allows.
+      Cols: int option }
+
+/// §9 / D56 — **a layer's geom, resolved after the block has reunified its channels.**
+///
+/// `layer GeomLine` names a geom that exists before the block runs, and most do. `GeomArea` and
+/// `GeomBar` do not: their baseline is `Geom.baselineOf s.YScale`, and the y scale does not
+/// exist until `Run` reunifies two channels that were each erased where they were declared (D44
+/// finding 2). D54 recorded that as an accepted imprecision — the two geoms were "not usefully
+/// reachable from a block", because passing a baseline by hand compiles and draws a number the
+/// caller has no way to compute.
+///
+/// The fix is the encoding this codebase already uses four times: a rank-2 consumer, invoked at
+/// the one point where the measures are back. A `layer` wraps its geom in a constant one; `area`
+/// and `bars` supply a real one, and are handed the typed series inside `Run`'s own `Accept`.
+type IGeomFor =
+    abstract For<[<Measure>] 'ux, [<Measure>] 'uy> : Series<'ux, 'uy> -> Geom
+
+    /// True when this geom is read as a **length from a baseline**, so the y domain has to
+    /// reach zero (D50).
+    ///
+    /// It cannot be derived from the geom the factory returns, because by then the baseline has
+    /// already been computed against a domain that may not contain zero — the clamp in
+    /// `Geom.baselineOf` would silently put it on the panel edge and every bar would be measured
+    /// from a line that is not zero. So the question is asked of the *factory*, before the
+    /// scales are final.
+    abstract NeedsZero: bool
+
+/// §9 / D43 / D44 — **the accumulated encoding block**, before it becomes a `Figure`.
+///
+/// Public only because `PlotBuilder`'s members are, and F# requires a type to be at least as
+/// accessible as the signatures it appears in. Nothing constructs one by hand: every field is
+/// written by a custom operation and read once, by `Run`.
+///
+/// The channels are stored as **constructors** rather than as finished `Channel` values. A
+/// categorical channel's colours come off the theme's palette, and `theme` may appear anywhere
+/// in the block — including after the channel it recolours. Deferring construction to `Run` is
+/// what makes the block order-free in the one place a reader would never suspect order
+/// mattered.
 [<NoComparison; NoEquality>]
 type PlotSpec =
     { /// The series name. One legend entry, on the first layer only — see `PlotBuilder.Run`.
@@ -49,9 +90,20 @@ type PlotSpec =
       /// `T [K]`. Empty means "read it from the dimension", exactly as an axis does.
       ColorLabel: string
       /// One entry per `layer`, in declaration order, with its style transform.
-      Layers: (Geom * (GeomStyle -> GeomStyle)) list
+      Layers: (IGeomFor * (GeomStyle -> GeomStyle)) list
       /// The stat, if any. **One per block, not one per layer** — see `StatSpec`.
       Stat: StatSpec
+      /// D48 — the key this block facets by, if it facets.
+      Facet: FacetSpec option
+      /// D48 — which axes the panels share. `None` is `ShareBoth`, which is what a facet means;
+      /// stating anything else is stating that one axis makes no cross-panel claim.
+      FacetShare: FacetScales option
+      /// D48 — stat parameters fixed over the **whole** sample, for a faceted distribution.
+      ///
+      /// Written by `Run` and by nothing else: it is how a facet stops each panel from choosing
+      /// its own bin edges or its own bandwidth, which would make the panels incomparable in
+      /// exactly the way that makes drawing them side by side pointless.
+      Frame: Stat.Frame option
       Theme: Theme
       Coord: Coord }
 
@@ -69,6 +121,9 @@ module private PlotCompile =
           ColorLabel = ""
           Layers = []
           Stat = StatNone
+          Facet = None
+          FacetShare = None
+          Frame = None
           Theme = Theme.initial
           Coord = Coord.cartesian }
 
@@ -85,6 +140,25 @@ module private PlotCompile =
     let leveled (keys: 'k[]) : string[] * float[] =
         let levels = Levels.ofSeq keys
         levels.Labels, Levels.positions levels keys
+
+    /// A geom that was already a value. The overwhelmingly common case, and it ignores the
+    /// series it is handed.
+    let constant (g: Geom) : IGeomFor =
+        { new IGeomFor with
+            member _.For<[<Measure>] 'ux, [<Measure>] 'uy>(_: Series<'ux, 'uy>) = g
+            member _.NeedsZero = false }
+
+    /// An area filled to zero on the block's own y scale.
+    let areaFor: IGeomFor =
+        { new IGeomFor with
+            member _.For<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) = Geom.area s
+            member _.NeedsZero = true }
+
+    /// Bars from zero on the block's own y scale, at the same width fraction `Chart.bar` uses.
+    let barsFor: IGeomFor =
+        { new IGeomFor with
+            member _.For<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) = Geom.bar 0.7 s
+            member _.NeedsZero = true }
 
     let append (spec: PlotSpec) (mk: Theme -> Channel) =
         { spec with
@@ -177,19 +251,30 @@ module private PlotCompile =
             x.Accept
                 { new IChannelConsumer<Figure> with
                     member _.Apply<[<Measure>] 'u>(u: U<'u>, xs: float<'u>[]) =
+                        // `Frame` is the facet's, and where it is present it overrides the
+                        // rule a stat would apply to its own rows — see `Stat.frameOf` (D48).
+                        // The measure is reattached here, which is where it is known again.
+                        let tagged (v: float) = LanguagePrimitives.FloatWithMeasure<'u> v
+
                         match stat with
                         | StatHistogram bins ->
                             Chart.ofHistogram (
-                                match bins with
-                                | Some b -> Stat.binWith u b xs
-                                | None -> Stat.bin u xs
+                                match spec.Frame with
+                                | Some frame ->
+                                    let lo, hi = frame.Domain
+                                    Stat.binIn u (defaultArg bins frame.Bins) (tagged lo, tagged hi) xs
+                                | None ->
+                                    match bins with
+                                    | Some b -> Stat.binWith u b xs
+                                    | None -> Stat.bin u xs
                             )
                         | StatDensity points ->
-                            Chart.ofDensity (
-                                match points with
-                                | Some n -> Stat.densityWith u (Stat.bandwidth xs) n xs
-                                | None -> Stat.density u xs
-                            )
+                            let h =
+                                match spec.Frame with
+                                | Some frame -> tagged frame.Bandwidth
+                                | None -> Stat.bandwidth xs
+
+                            Chart.ofDensity (Stat.densityWith u h (defaultArg points Stat.DefaultDensityPoints) xs)
                         | StatEcdf -> Chart.ofEcdf (Stat.ecdf u xs)
                         // Unreachable: `run` dispatches here on exactly the three cases above.
                         // Spelled out rather than wildcarded so that a seventh stat is a build
@@ -205,6 +290,26 @@ module private PlotCompile =
     let private runPositional (spec: PlotSpec) : Figure =
         let packed =
             Erase.channelSeries spec.Name (required "x" spec.X) (required "y" spec.Y)
+
+        // D50 through the block. A bar is read as a length from zero, so zero is in the domain —
+        // and the widening has to happen *before* the geoms are built, because a baseline is
+        // computed against the scale it will be drawn on. Unpadded, and only on the side it is
+        // missing from, exactly as `Chart.bar` does it: padding below zero lifts the baseline off
+        // the axis, which is the thing being fixed.
+        let packed =
+            if spec.Layers |> List.exists (fun (g, _) -> g.NeedsZero) then
+                let _, y = Erase.seriesScales packed
+                let lo, hi = y.Domain
+                Figure.withDomains None (Some(min lo 0.0, max hi 0.0)) packed
+            else
+                packed
+
+        // The one place both measures of the block are alive again (D44 finding 3). Every layer
+        // whose geom depends on the scales is built here and nowhere else.
+        let geomOf (f: IGeomFor) =
+            packed.Accept
+                { new ISeriesConsumer<Geom> with
+                    member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) = f.For<'ux, 'uy> s }
 
         let theme = spec.Theme
 
@@ -229,7 +334,7 @@ module private PlotCompile =
             if spec.Layers.IsEmpty then
                 [ GeomPoint, id ]
             else
-                spec.Layers
+                spec.Layers |> List.map (fun (f, restyle) -> geomOf f, restyle)
 
         // **Every layer of one block shares one base style**, index 0 — unlike `Chart.addLine`,
         // which advances the palette because each of its calls adds a *different series*. The
@@ -287,11 +392,69 @@ module private PlotCompile =
         { Figure.create [| panel |] with Theme = theme }
 
     /// Which of the two shapes of block this is (D47).
-    let run (spec: PlotSpec) : Figure =
+    let private runOne (spec: PlotSpec) : Figure =
         match spec.Stat with
         | StatNone
         | StatFit _ -> runPositional spec
         | distribution -> runDistribution distribution spec
+
+    /// §9 / D48 — **one block, one panel per level of a key.**
+    ///
+    /// The block runs once per level over a *slice* of itself, and the slices are taken by row
+    /// index: `Erase.selectChannel` for the positional channels, `Channel.select` for the rest.
+    /// Nothing is recomputed from the data, because there is no data left to recompute from — the
+    /// accessors were spent at declaration (D44 finding 2) — and nothing needs to be, because
+    /// every array in the block is one `Array.map` over the same rows.
+    ///
+    /// **What is computed before the split is the part that has to be the same in every panel.** A
+    /// channel's map is already whole-block by construction, so `treated` is one colour across the
+    /// grid and the colorbar covers the whole sample. A distribution stat's bin edges and
+    /// bandwidth are not, so they are taken here, from the undivided x channel, and handed down as
+    /// a `Stat.Frame`.
+    let private runFaceted (facet: FacetSpec) (spec: PlotSpec) : Figure =
+        let n = facet.Labels.Length
+
+        let frame =
+            match spec.Stat with
+            | StatHistogram _
+            | StatDensity _ ->
+                (required "x" spec.X).Accept
+                    { new IChannelConsumer<Stat.Frame> with
+                        member _.Apply<[<Measure>] 'u>(_: U<'u>, xs: float<'u>[]) = Stat.frameOf xs }
+                |> Some
+            | StatNone
+            | StatFit _
+            | StatEcdf -> None
+
+        let sliced (level: int) =
+            let rows =
+                [| for i in 0 .. facet.Group.Length - 1 do
+                       if facet.Group.[i] = level then
+                           yield i |]
+
+            { spec with
+                Facet = None
+                Frame = frame
+                X = spec.X |> Option.map (Erase.selectChannel rows)
+                Y = spec.Y |> Option.map (Erase.selectChannel rows)
+                Channels = spec.Channels |> List.map (fun mk -> mk >> Channel.select rows) }
+
+        let parts = Array.init n (fun i -> facet.Labels.[i], runOne (sliced i))
+
+        Chart.facetWith (defaultArg spec.FacetShare ShareBoth) (defaultArg facet.Cols (Chart.wrapCols n)) parts
+
+    let run (spec: PlotSpec) : Figure =
+        match spec.Facet with
+        | Some facet -> runFaceted facet spec
+        | None ->
+            // `facetScales` on its own is a statement about panels the block does not have. It is
+            // refused rather than ignored, for D47's reason: a caller who wrote it believes it did
+            // something.
+            if spec.FacetShare.IsSome then
+                failwith
+                    "Marey: `facetScales` says which axes the panels of a facet share, and this block has no facet. Add `facetWrap (fun r -> …)`, or remove it."
+
+            runOne spec
 
 /// §9 — **the grammar-of-graphics front door**: one dataset, several channels, several layers.
 ///
@@ -451,15 +614,19 @@ type PlotBuilder<'r>(rows: 'r[]) =
     /// Draw the encoding with a geom. Repeatable: two `layer` operations are two renderings of
     /// the one series, in declaration order, back to front.
     ///
-    /// `GeomArea` and `GeomBar` take a **baseline in panel space**, and the block cannot supply
-    /// a good one: `Geom.area` and `Geom.bar` derive it from the y *scale*, which does not exist
-    /// until `Run` reunifies the channels. Passing one by hand compiles and draws, but it is a
-    /// number the caller has no way to compute — so the honest spelling of a filled block is
-    /// still `Chart.area` / `Chart.bar`, and the block's own version arrives with the geoms.
+    /// A geom whose payload depends on the y *scale* cannot be written here, because the scale
+    /// does not exist until `Run` reunifies the channels — see `IGeomFor`. `GeomArea` and
+    /// `GeomBar` are the two, and `area` and `bars` below are their spelling. Everything else in
+    /// the DU is a value and goes through `layer`:
+    ///
+    /// ```fsharp
+    /// layer (GeomStep StepAfter)      // a staircase
+    /// layer (Geom.text names)         // a label per row
+    /// ```
     [<CustomOperation("layer")>]
     member _.Layer(spec: PlotSpec, g: Geom) : PlotSpec =
         { spec with
-            Layers = spec.Layers @ [ g, id ] }
+            Layers = spec.Layers @ [ PlotCompile.constant g, id ] }
 
     /// A layer with its style adjusted: `layerWith GeomPoint (Geom.withOpacity 0.6)`.
     ///
@@ -469,7 +636,47 @@ type PlotBuilder<'r>(rows: 'r[]) =
     [<CustomOperation("layerWith")>]
     member _.LayerWith(spec: PlotSpec, g: Geom, restyle: GeomStyle -> GeomStyle) : PlotSpec =
         { spec with
-            Layers = spec.Layers @ [ g, restyle ] }
+            Layers = spec.Layers @ [ PlotCompile.constant g, restyle ] }
+
+    /// D56 — **the encoding, filled to zero.** The baseline is the block's own y scale's zero,
+    /// computed inside `Run` where the measures are back, and the y domain is widened to reach
+    /// it (D50) before the baseline is taken.
+    ///
+    /// ```fsharp
+    /// plot readings {
+    ///     x U.second (fun r -> r.Time)
+    ///     y U.watt   (fun r -> r.Power)
+    ///     area
+    ///     layer GeomLine
+    /// }
+    /// ```
+    [<CustomOperation("area")>]
+    member _.Area(spec: PlotSpec) : PlotSpec =
+        { spec with
+            Layers = spec.Layers @ [ PlotCompile.areaFor, id ] }
+
+    /// `area` with its style adjusted, against the block's own base style.
+    [<CustomOperation("areaWith")>]
+    member _.AreaWith(spec: PlotSpec, restyle: GeomStyle -> GeomStyle) : PlotSpec =
+        { spec with
+            Layers = spec.Layers @ [ PlotCompile.areaFor, restyle ] }
+
+    /// D56 — **the encoding, as bars from zero.** Plural, because `bar` reads as one mark and
+    /// this is the whole layer.
+    ///
+    /// The width comes from the data's own rhythm, as everywhere else — and a colour channel
+    /// over it still gets one batch per level rather than one bar per batch's own spacing, which
+    /// is `Geom.compileSubset`'s reason for existing.
+    [<CustomOperation("bars")>]
+    member _.Bars(spec: PlotSpec) : PlotSpec =
+        { spec with
+            Layers = spec.Layers @ [ PlotCompile.barsFor, id ] }
+
+    /// `bars` with its style adjusted, against the block's own base style.
+    [<CustomOperation("barsWith")>]
+    member _.BarsWith(spec: PlotSpec, restyle: GeomStyle -> GeomStyle) : PlotSpec =
+        { spec with
+            Layers = spec.Layers @ [ PlotCompile.barsFor, restyle ] }
 
     // ---- Stats (§9, D47) --------------------------------------------------------------------
     //
@@ -553,6 +760,57 @@ type PlotBuilder<'r>(rows: 'r[]) =
     /// `0 … 1` because that is the range of the function and not of this sample.
     [<CustomOperation("ecdf")>]
     member _.Ecdf(spec: PlotSpec) : PlotSpec = { spec with Stat = StatEcdf }
+
+    // ---- Facets (D48) ----------------------------------------------------------------------
+
+    /// §9 / D48 — **one panel per level of a key**, over shared axes.
+    ///
+    /// ```fsharp
+    /// plot measurements {
+    ///     x U.second (fun r -> r.Time)
+    ///     y U.metre  (fun r -> r.Displacement)
+    ///     color (fun r -> r.Sample)
+    ///     facetWrap (fun r -> r.Station)
+    /// }
+    /// ```
+    ///
+    /// The panels share both axes, which is what makes them a facet rather than a page of charts:
+    /// a mark at the same height in two panels is the same measurement in both. Everything else
+    /// the block carries is computed **before** the split and therefore identical across the grid
+    /// — the level set and its colours, the colorbar's scale, a distribution's bin edges and
+    /// bandwidth — and the key is drawn once rather than in every panel.
+    ///
+    /// Levels come from the keys themselves in first-appearance order, exactly as `color`'s do
+    /// (D45), so the panels are laid out in the order the data introduces them.
+    [<CustomOperation("facetWrap")>]
+    member _.FacetWrap(spec: PlotSpec, key: 'r -> 'k) : PlotSpec =
+        let labels, positions = PlotCompile.leveled (Array.map key rows)
+
+        { spec with
+            Facet =
+                Some
+                    { Labels = labels
+                      Group = positions |> Array.map int
+                      Cols = None } }
+
+    /// `facetWrap` at a stated wrap width, for the case where the grid should be a single row, a
+    /// single column, or a shape the panel count does not suggest.
+    [<CustomOperation("facetWrapIn")>]
+    member _.FacetWrapIn(spec: PlotSpec, cols: int, key: 'r -> 'k) : PlotSpec =
+        let labels, positions = PlotCompile.leveled (Array.map key rows)
+
+        { spec with
+            Facet =
+                Some
+                    { Labels = labels
+                      Group = positions |> Array.map int
+                      Cols = Some cols } }
+
+    /// Which axes the facet's panels share. `ShareBoth` is the default and is what a facet means;
+    /// `ShareX` and `ShareY` state that the other axis makes no cross-panel claim — and an axis
+    /// that makes no claim is not checked for dimensional agreement either.
+    [<CustomOperation("facetScales")>]
+    member _.FacetScales(spec: PlotSpec, mode: FacetScales) : PlotSpec = { spec with FacetShare = Some mode }
 
     // ---- The rest of the block ------------------------------------------------------------
 

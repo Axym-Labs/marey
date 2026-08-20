@@ -109,6 +109,20 @@ module Channel =
             { new IScaleConsumer<IScaleErased> with
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) = Erase.scale s }
 
+    /// §9 / D48 — **one facet's share of a channel**: the same mapping, over a subset of the
+    /// rows.
+    ///
+    /// `Map` is deliberately untouched. It carries the level set and its colours, or the scale
+    /// and its ramp, and all of those were computed over the *whole* block before it was split —
+    /// so `treated` is the same colour in every panel, the colorbar covers the whole sample, and
+    /// a panel that happens to contain none of a level still leaves room for it in the legend.
+    /// Recomputing the map per panel would renumber the levels underneath values that are already
+    /// level *numbers* (D45), which is the one way a facet can quietly draw the right marks
+    /// against the wrong labels.
+    let select (rows: int[]) (c: Channel) : Channel =
+        { c with
+            Values = rows |> Array.map (fun i -> c.Values.[i]) }
+
     /// How many buckets a mapping has. The stride of every channel to its left, and the bound
     /// the exit criterion is written against.
     let bucketCount (map: ChannelMap) =

@@ -62,6 +62,27 @@ type Figure =
       Panels: Panel[]
       Theme: Theme }
 
+/// §9 / D48 — **which axes the panels of a composed figure share.**
+///
+/// Three cases, and the two that are missing are the decision.
+///
+/// **Fully free is not here**, because a grid of panels that shares nothing is not a facet — it
+/// is a page of charts, and `Chart.beside` / `Chart.above` already spell that. A fourth case
+/// would give two ways to say one thing, and the one named `Facet…` would be the misleading one.
+///
+/// **Free per row or per column is not here either**, and that is stronger than "not yet": under
+/// `facetWrap` it is incoherent. A wrapped facet's rows come from the *wrap width*, not from the
+/// data, so an axis shared along a row would change when the grid was reshaped — a scale that
+/// depends on the layout rather than on what is being plotted. It becomes meaningful only under a
+/// `facetGrid` whose rows and columns are each keyed by a variable, which is not built.
+type FacetScales =
+    /// Every panel gets the same x and the same y. What "facet" means, and the default.
+    | ShareBoth
+    /// One x across the panels; each panel keeps its own y.
+    | ShareX
+    /// One y across the panels; each panel keeps its own x.
+    | ShareY
+
 /// **The compiler.** A `Figure` in, a `Node` out, nothing in between that a backend can see.
 ///
 /// This is the layer §5.5 describes: "axes, legends, titles, colorbars, facets, error bars, box
@@ -197,92 +218,93 @@ module Figure =
           Panels = panels
           Theme = Theme.initial }
 
-    // ---- Shared domains across the layers of one panel -------------------------------------
+    // ---- Sharing an axis: the one runtime dimensional check --------------------------------
+
+    /// **The check, once.** Whether a set of things can share one axis, and what domain they
+    /// share if they can.
+    ///
+    /// Inside a single `Chart.line (xs, ys)` call the compiler already rejects metres against
+    /// seconds, because the two arrays have different measures and `Series<'ux,'uy>` names both.
+    /// Across *two* of anything — two layers on a panel, two panels of a facet — the measures
+    /// have been erased into the existential and F# cannot compare them, so the `Dim` values are
+    /// compared at runtime instead and a mismatch raises rather than silently plotting joules on
+    /// a metre axis.
+    ///
+    /// `describe` names the thing at index `i` in the message, because "layer 3" and "panel 3"
+    /// are different mistakes and this is the one dimensional error the compiler cannot catch —
+    /// so it is the one whose message has to work hardest.
+    let private agreeOn (describe: int -> string) (axis: string) (scales: IScaleErased[]) : float * float =
+        let s0 = scales.[0]
+
+        // The categorical counterpart of the dimensional check, and it is needed for exactly the
+        // reason that check is: an ordinal scale is dimensionless (D45), so two scales with
+        // *different* level sets have identical `Dim` and the check cannot see the difference.
+        // Verified before it was written: two four-level layers over unrelated levels unified
+        // silently, and the second layer's points were drawn against the first layer's labels —
+        // the same class of lie as joules on a metre axis, arrived at by a different route.
+        let levelsOf (s: IScaleErased) =
+            match s.Kind with
+            | ScaleKind.Ordinal levels -> Some levels
+            | _ -> None
+
+        for i in 1 .. scales.Length - 1 do
+            let si = scales.[i]
+
+            match levelsOf s0, levelsOf si with
+            | Some la, Some lb when la <> lb ->
+                failwithf
+                    "Marey: %s and %s have %s axes over different sets of levels (%s against %s). Two categories cannot share an axis."
+                    (describe 0)
+                    (describe i)
+                    axis
+                    (String.concat ", " la)
+                    (String.concat ", " lb)
+            | Some _, None
+            | None, Some _ ->
+                failwithf
+                    "Marey: %s has a categorical %s axis and %s has a continuous one. They cannot share an axis."
+                    (describe 0)
+                    axis
+                    (describe i)
+            | _ -> ()
+
+            if si.Dim <> s0.Dim then
+                failwithf
+                    "Marey: %s has %s %s axis in %s but %s has one in %s. Two physical dimensions cannot share an axis."
+                    (describe 0)
+                    (if axis = "x" then "an" else "a")
+                    axis
+                    (Dim.show s0.Dim)
+                    (describe i)
+                    (Dim.show si.Dim)
+
+        let ds = scales |> Array.map (fun s -> s.Domain)
+        (ds |> Array.map fst |> Array.min), (ds |> Array.map snd |> Array.max)
 
     /// Give every layer on a panel the same x and y domains.
     ///
-    /// **This is where the one runtime dimensional check in the library lives.** Inside a single
-    /// `Chart.line (xs, ys)` call the compiler already rejects metres against seconds, because
-    /// the two arrays have different measures and `Series('ux,'uy)` names both. Across *two*
-    /// layers the measures have been erased into the existential and F# cannot compare them, so
-    /// the `Dim` values are compared at runtime instead, and a mismatch raises rather than
-    /// silently plotting joules on a metre axis.
+    /// Applied at **compile** time rather than at construction, and that is deliberate: a panel
+    /// accumulates layers after it is built — `Chart.add` is one call — so there is no moment
+    /// before rendering at which its layer set is known to be complete. `shareScales` below makes
+    /// the opposite choice, for the opposite reason.
     let unify (p: Panel) : Panel =
         if p.Layers.Length < 2 then
             p
         else
             let scales = p.Layers |> Array.map (fun l -> Erase.seriesScales l.Data)
-            let (x0, y0) = scales.[0]
 
             // Layers are usually unnamed until `Chart.withName` is applied, and "layer ''"
-            // identifies nothing. This is the one dimensional error the *compiler* cannot
-            // catch, so it is the one the message has to work hardest for.
+            // identifies nothing.
             let describe i =
                 let name = p.Layers.[i].Name
+
                 if System.String.IsNullOrWhiteSpace name then
                     sprintf "layer %d" i
                 else
                     sprintf "layer %d ('%s')" i name
 
-            // The categorical counterpart of the dimensional check below, and it is needed for
-            // exactly the reason that check is: an ordinal scale is dimensionless (D45), so two
-            // layers with *different* level sets have identical `Dim` and the check cannot see
-            // the difference. Verified before it was written: two four-level layers over
-            // unrelated levels unified silently, and the second layer's points were drawn
-            // against the first layer's labels — the same class of lie as joules on a metre
-            // axis, arrived at by a different route.
-            let levelsOf (s: IScaleErased) =
-                match s.Kind with
-                | ScaleKind.Ordinal levels -> Some levels
-                | _ -> None
-
-            let checkLevels (axis: string) (i: int) (a: IScaleErased) (b: IScaleErased) =
-                match levelsOf a, levelsOf b with
-                | Some la, Some lb when la <> lb ->
-                    failwithf
-                        "Marey: %s and %s have %s axes over different sets of levels (%s against %s). Two categories cannot share an axis."
-                        (describe 0)
-                        (describe i)
-                        axis
-                        (String.concat ", " la)
-                        (String.concat ", " lb)
-                | Some _, None
-                | None, Some _ ->
-                    failwithf
-                        "Marey: %s has a categorical %s axis and %s has a continuous one. They cannot share an axis."
-                        (describe 0)
-                        axis
-                        (describe i)
-                | _ -> ()
-
-            for i in 1 .. scales.Length - 1 do
-                let (xi, yi) = scales.[i]
-
-                checkLevels "x" i x0 xi
-                checkLevels "y" i y0 yi
-
-                if xi.Dim <> x0.Dim then
-                    failwithf
-                        "Marey: %s has an x axis in %s but %s has one in %s. Two physical dimensions cannot share an axis."
-                        (describe 0)
-                        (Dim.show x0.Dim)
-                        (describe i)
-                        (Dim.show xi.Dim)
-
-                if yi.Dim <> y0.Dim then
-                    failwithf
-                        "Marey: %s has a y axis in %s but %s has one in %s. Two physical dimensions cannot share an axis."
-                        (describe 0)
-                        (Dim.show y0.Dim)
-                        (describe i)
-                        (Dim.show yi.Dim)
-
-            let union (get: IScaleErased -> float * float) (pick: IScaleErased * IScaleErased -> IScaleErased) =
-                let ds = scales |> Array.map (pick >> get)
-                (ds |> Array.map fst |> Array.min), (ds |> Array.map snd |> Array.max)
-
-            let dx = union (fun s -> s.Domain) fst
-            let dy = union (fun s -> s.Domain) snd
+            let dx = agreeOn describe "x" (scales |> Array.map fst)
+            let dy = agreeOn describe "y" (scales |> Array.map snd)
 
             { p with
                 Layers =
@@ -290,6 +312,75 @@ module Figure =
                     |> Array.map (fun l ->
                         { l with
                             Data = withDomains (Some dx) (Some dy) l.Data }) }
+
+    /// §9 / D48 — **give every panel of a figure the same axes.** What makes a grid of panels a
+    /// facet rather than a page of unrelated charts.
+    ///
+    /// Applied **eagerly**, by whoever composes the panels, so that the shared domains are on the
+    /// figure and can be read back off it without rendering — and so that a dimensional mismatch
+    /// is reported by the call that asked for the sharing rather than by the render, a long way
+    /// downstream. That is the opposite of `unify`'s choice above and for the opposite reason: a
+    /// facet's panel set is complete at the moment it is made.
+    ///
+    /// **The check follows the sharing.** An axis that is shared is checked; an axis left free
+    /// makes no cross-panel claim and is not checked. That is the whole answer to where the
+    /// runtime `Dim` check lives once panels share scales: it is not a property of the figure, it
+    /// is a property of the axis being shared.
+    let shareScales (mode: FacetScales) (fig: Figure) : Figure =
+        let drawn =
+            fig.Panels
+            |> Array.mapi (fun i p -> i, p)
+            |> Array.filter (fun (_, p) -> p.Layers.Length > 0)
+
+        if drawn.Length < 2 then
+            fig
+        else
+            // One entry per layer, tagged with the panel it came from: a panel with two layers
+            // agrees with the other panels layer by layer, exactly as it agrees with itself.
+            let entries =
+                [| for (pi, p) in drawn do
+                       for li in 0 .. p.Layers.Length - 1 do
+                           yield pi, p, li, Erase.seriesScales p.Layers.[li].Data |]
+
+            let describe i =
+                let (pi, p: Panel, li, _) = entries.[i]
+
+                let panel =
+                    if System.String.IsNullOrWhiteSpace p.Title then
+                        sprintf "panel %d" pi
+                    else
+                        sprintf "panel %d ('%s')" pi p.Title
+
+                if p.Layers.Length > 1 then
+                    sprintf "%s layer %d" panel li
+                else
+                    panel
+
+            let scalesOf pick =
+                entries |> Array.map (fun (_, _, _, pair) -> pick pair)
+
+            let dx =
+                match mode with
+                | ShareBoth
+                | ShareX -> Some(agreeOn describe "x" (scalesOf fst))
+                | ShareY -> None
+
+            let dy =
+                match mode with
+                | ShareBoth
+                | ShareY -> Some(agreeOn describe "y" (scalesOf snd))
+                | ShareX -> None
+
+            { fig with
+                Panels =
+                    fig.Panels
+                    |> Array.map (fun p ->
+                        { p with
+                            Layers =
+                                p.Layers
+                                |> Array.map (fun l ->
+                                    { l with
+                                        Data = withDomains dx dy l.Data }) }) }
 
     // ---- Compilation -----------------------------------------------------------------------
 
@@ -424,10 +515,18 @@ module Figure =
 
             // D49 — a continuous colour channel gets a colorbar, and the bar is a column of the
             // panel's own grid. The first one on the panel wins: two different colour scales on
-            // one panel are two keys the reader has to arbitrate between, and unifying them is
-            // the facet question (D48), not this one.
+            // one panel are two keys the reader has to arbitrate between, and that is a different
+            // question from D48's, which is about one scale across several panels.
+            //
+            // Gated on `ShowInLegend`, which D53 defines as a layer's whole legend entry and D48
+            // widens to a layer's whole *key* contribution — the bar and the entry are the same
+            // claim about the same channel, differing only in whether the values are levels or a
+            // range. A facet builds its channels over the whole block before it splits, so every
+            // panel's bar would be identical; drawing it n times says nothing the first one did
+            // not, and costs a column of every panel.
             let colorbar =
                 p.Layers
+                |> Array.filter (fun l -> l.ShowInLegend)
                 |> Array.tryPick (fun l ->
                     l.Channels
                     |> Array.tryPick (fun c -> Colorbar.specOf theme.UnitStyle theme.TickCount c))

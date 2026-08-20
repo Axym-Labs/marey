@@ -358,6 +358,57 @@ let colorbarFigure: Figure =
     |> Chart.withColorLabel "T"
     |> Chart.withTitle "Fall by temperature"
 
+/// M2 phase 6 / D55 — **the box plot, as a picture**, and the first figure in this file whose
+/// marks are a *summary* rather than the data.
+///
+/// What the baseline records that no assertion reaches: that the whiskers stop at an
+/// observation rather than at the extreme, that the outlier is drawn outside them and is
+/// countable, that the median rule spans the box exactly, and that the three bands are the same
+/// width and evenly spaced. Every one of those is a thing that still renders when it is wrong.
+///
+/// The sample is written out rather than generated, because a golden master over a generated
+/// sample is a record of a generator.
+let boxplotFigure: Figure =
+    let control = [| 12.1; 12.8; 13.4; 13.9; 14.2; 14.6; 15.1; 15.9; 22.5 |]
+    let treated = [| 16.4; 17.0; 17.3; 17.9; 18.4; 18.8; 19.2; 19.9; 20.6 |]
+    let washout = [| 11.8; 12.4; 13.1; 13.6; 14.0; 14.9; 15.4; 16.2; 16.8 |]
+
+    let keys =
+        Array.concat
+            [ Array.create control.Length "control"
+              Array.create treated.Length "treated"
+              Array.create washout.Length "washout" ]
+
+    let values =
+        Array.concat [ control; treated; washout ] |> Array.map (fun v -> v * 1.0<m>)
+
+    Chart.Category.boxplot U.metre keys values
+    |> Chart.withYLabel "yield"
+    |> Chart.withTitle "Yield by treatment"
+    |> Chart.withGrid false true
+
+/// M2 phase 6 — **the tile, and the colorbar over it.**
+///
+/// A heatmap is the geom that is worthless without a colour channel, so this is also the second
+/// figure in the suite carrying a continuous ramp — and the one where the TikZ half matters for
+/// a reason `figure-colorbar` does not cover: the tiles themselves are one `Path` per quantised
+/// colour step (D46), so a batching regression shows up here as a file that is many times longer.
+let heatmapFigure: Figure =
+    let xs = [| 0.0 .. 5.0 |]
+    let ys = [| 0.0 .. 3.0 |]
+
+    let grid =
+        [| for gy in ys do
+               for gx in xs do
+                   yield gx, gy |]
+
+    let temps =
+        grid |> Array.map (fun (gx, gy) -> (280.0 + 4.0 * gx + 7.0 * gy) * 1.0<K>)
+
+    Chart.heatmap U.second U.metre U.kelvin (grid |> Array.map (fst >> (*) 1.0<s>)) (grid |> Array.map (snd >> (*) 1.0<m>)) temps
+    |> Chart.withColorLabel "T"
+    |> Chart.withTitle "Temperature field"
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }

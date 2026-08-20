@@ -385,7 +385,200 @@ module Stat =
           Dropped = dropped }
 
     /// A Gaussian KDE at Silverman's bandwidth, on a 128-point grid.
-    let density (u: U<'u>) (xs: float<'u>[]) : Density<'u> = densityWith u (bandwidth xs) 128 xs
+    /// Grid points a density is evaluated at when nobody states a number. Enough that the curve
+    /// is smooth at print resolution and few enough that it is not a point cloud pretending to be
+    /// a line.
+    [<Literal>]
+    let DefaultDensityPoints = 128
+
+    let density (u: U<'u>) (xs: float<'u>[]) : Density<'u> =
+        densityWith u (bandwidth xs) DefaultDensityPoints xs
+
+    // ======================================================================================
+    // frameOf — the parameters a facet fixes before it splits (D48)
+    // ======================================================================================
+
+    /// §9 / D48 — **what a whole sample asks for, so that its parts can agree.**
+    ///
+    /// Raw numbers rather than measured ones, because the caller is the encoding block, which is
+    /// below the erasure boundary and cannot name the measure: the values are reattached inside
+    /// the per-panel `Apply`, where the unit is known again, exactly as `Figure.withDomains`
+    /// reattaches a shared axis domain.
+    type Frame =
+        { /// The finite range of the whole sample, in its own unit.
+          Domain: float * float
+          /// The bin count the whole sample asks for.
+          Bins: int
+          /// The bandwidth the whole sample asks for.
+          Bandwidth: float }
+
+    /// The frame of a sample.
+    ///
+    /// **A faceted distribution takes its parameters from here rather than from its own rows**,
+    /// and that is the whole point of the type. A histogram whose bin edges differ from panel to
+    /// panel cannot be compared across panels, and comparing across panels is the only reason to
+    /// draw them side by side; a density whose bandwidth is chosen per panel smooths the sparse
+    /// ones harder and invents a difference in shape that is not in the data. Both are the
+    /// quiet kind of wrong — the figure looks fine.
+    ///
+    /// It also removes a failure: `bandwidth` of a one-row panel is zero, and a density over it
+    /// raises. Under a frame, that panel draws the whole sample's kernel over its one point,
+    /// which is what it is.
+    let frameOf (xs: float<'u>[]) : Frame =
+        let kept, _ = finiteOf xs
+
+        let lo, hi =
+            match Scale.domainOf kept with
+            | Some(lo, hi) -> float lo, float hi
+            | None -> 0.0, 1.0
+
+        { Domain = lo, hi
+          Bins = binCountFor xs
+          Bandwidth = float (bandwidth xs) }
+
+
+
+    // ======================================================================================
+    // summary — the five-number summary, and the whiskers a box plot draws
+    // ======================================================================================
+
+    /// A quantile of a sample, type-7 — the definition R, NumPy and every published table of
+    /// quartiles agree on.
+    ///
+    /// Public because it is the one number in this file a caller routinely wants on its own:
+    /// a median, a 95th percentile, the IQR of a residual. Non-finite values are dropped
+    /// first, on the same rule as every other stat here.
+    let quantile (p: float) (xs: float<'u>[]) : float<'u> =
+        let kept, _ = finiteOf xs
+        quantileSorted (max 0.0 (min 1.0 p)) (Array.sort kept)
+
+    /// §9 / D55 — **a five-number summary with Tukey whiskers**, which is what a box plot is
+    /// before it is a picture.
+    ///
+    /// Every field is `float&lt;'u&gt;`, including the outliers: a summary of a sample of
+    /// metres is entirely in metres, so a box plot cannot end up drawn against an axis in some
+    /// other unit — the same guarantee `errorY` gives an uncertainty, one stat up.
+    ///
+    /// **The whiskers are Tukey's**, `1.5 · IQR` past the box and then pulled back to the most
+    /// extreme datum still inside that reach — not the min and max, and not a percentile pair.
+    /// The consequence is that the whisker ends are *observations*, so the figure never draws a
+    /// line reaching a value nothing in the sample attained, and everything past them is
+    /// enumerated in `Outliers` rather than absorbed into the whisker. That is D52's rule
+    /// applied to a summary: a point the box cannot describe is reported, not hidden.
+    type Summary<[<Measure>] 'u> =
+        { Unit: U<'u>
+          Min: float<'u>
+          Q1: float<'u>
+          Median: float<'u>
+          Q3: float<'u>
+          Max: float<'u>
+          /// The smallest datum at or above `Q1 - 1.5·IQR`.
+          LowerWhisker: float<'u>
+          /// The largest datum at or below `Q3 + 1.5·IQR`.
+          UpperWhisker: float<'u>
+          /// Every value outside the whiskers, ascending. Drawn as points.
+          Outliers: float<'u>[]
+          /// Finite values used.
+          N: int
+          Dropped: int }
+
+        member this.Iqr: float<'u> = this.Q3 - this.Q1
+
+        /// The interval the drawn box plot occupies, whiskers and outliers included — what a y
+        /// domain has to contain for nothing to be clipped.
+        member this.Extent: float<'u> * float<'u> =
+            let lo =
+                this.Outliers |> Array.fold min this.LowerWhisker
+
+            let hi =
+                this.Outliers |> Array.fold max this.UpperWhisker
+
+            lo, hi
+
+    /// The summary of a sample. An empty sample gives an all-zero summary rather than raising,
+    /// because a categorical box plot with one empty level should draw the other levels.
+    let summary (u: U<'u>) (xs: float<'u>[]) : Summary<'u> =
+        let kept, dropped = finiteOf xs
+        let n = kept.Length
+
+        if n = 0 then
+            { Unit = u
+              Min = tag<'u> 0.0
+              Q1 = tag<'u> 0.0
+              Median = tag<'u> 0.0
+              Q3 = tag<'u> 0.0
+              Max = tag<'u> 0.0
+              LowerWhisker = tag<'u> 0.0
+              UpperWhisker = tag<'u> 0.0
+              Outliers = [||]
+              N = 0
+              Dropped = dropped }
+        else
+            let sorted = Array.sort kept
+            let q1 = quantileSorted 0.25 sorted
+            let q3 = quantileSorted 0.75 sorted
+            let fence = 1.5 * float (q3 - q1)
+            let lowFence = float q1 - fence
+            let highFence = float q3 + fence
+
+            let inside =
+                sorted |> Array.filter (fun v -> float v >= lowFence && float v <= highFence)
+
+            // A sample whose IQR is zero has a zero fence, so everything off the median is an
+            // outlier and `inside` can still be non-empty (the ties themselves). It cannot be
+            // empty: `q1` and `q3` are order statistics or interpolations between them, so at
+            // least one datum always lies within the closed fences.
+            { Unit = u
+              Min = sorted.[0]
+              Q1 = q1
+              Median = quantileSorted 0.5 sorted
+              Q3 = q3
+              Max = sorted.[n - 1]
+              LowerWhisker = (if inside.Length = 0 then q1 else inside.[0])
+              UpperWhisker = (if inside.Length = 0 then q3 else inside.[inside.Length - 1])
+              Outliers = sorted |> Array.filter (fun v -> float v < lowFence || float v > highFence)
+              N = n
+              Dropped = dropped }
+
+    // ======================================================================================
+    // groupBy — the split every per-level distribution starts with
+    // ======================================================================================
+
+    /// The values belonging to each key, in **first-appearance level order**.
+    ///
+    /// The same order `count` and `Levels.ofSeq` produce, and it has to be: a box plot and a
+    /// counted bar chart of the same keys must put the same category in the same band, and the
+    /// only way to guarantee that is for one rule to define the order everywhere.
+    ///
+    /// The measure survives the grouping, so `summary` and `density` can be mapped straight
+    /// over the result and a box plot of metres stays in metres.
+    let groupBy (keys: 'k[]) (values: float<'u>[]) : ('k * float<'u>[])[] =
+        if keys.Length <> values.Length then
+            invalidArg "values" (sprintf "Marey: %d keys and %d values." keys.Length values.Length)
+
+        let order = ResizeArray<'k>()
+        let buckets = ResizeArray<ResizeArray<float<'u>>>()
+        let index = System.Collections.Generic.Dictionary<'k, int>(HashIdentity.Structural)
+
+        for i in 0 .. keys.Length - 1 do
+            let k = keys.[i]
+
+            let slot =
+                match index.TryGetValue k with
+                | true, j -> j
+                | _ ->
+                    let j = order.Count
+                    order.Add k
+                    buckets.Add(ResizeArray<float<'u>>())
+                    index.[k] <- j
+                    j
+
+            buckets.[slot].Add values.[i]
+
+        // The dictionary is an index, never an enumeration source: gate 6 is determinism, and
+        // enumerating a `Dictionary` is exactly the thing that reaches the output in a
+        // machine-dependent order. `order` is a list appended to in row order.
+        Array.init order.Count (fun i -> order.[i], buckets.[i].ToArray())
 
     // ======================================================================================
     // regression — the typed slope, and M2's headline claim

@@ -152,6 +152,148 @@ module Chart =
                { layerOf "" Theme.initial 0 GeomPoint packed with
                    ShowInLegend = false } |]
 
+    // ---- Phase 6's constructors ---------------------------------------------------------------
+
+    /// A staircase: the same points as `line`, with the claim that nothing happened between
+    /// them.
+    ///
+    /// The default is `StepAfter` — the value holds from each sample until the next — which is
+    /// what a sampled-and-held signal, a counter and a piecewise-constant control input all do.
+    /// `stepWith` states the other two.
+    let step (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+        ofSeries (GeomStep StepAfter) (series "" ux uy x y)
+
+    let stepWith (align: StepAlign) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+        ofSeries (GeomStep align) (series "" ux uy x y)
+
+    /// The series a band is drawn against: x, the midline, and a y domain over **both** bounds.
+    ///
+    /// The midline is the series' y because a `PackedSeries` has to have one and the geom reads
+    /// only x from it — but it is the honest choice rather than a placeholder: it is what the
+    /// axis-sharing union in `Figure.unify` will compare against, and a band whose domain was
+    /// taken from one bound would clip the other.
+    let private ribbonSeries
+        (name: string)
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (x: float<'ux>[])
+        (low: float<'uy>[])
+        (high: float<'uy>[])
+        : Series<'ux, 'uy> * Geom =
+        if low.Length <> x.Length || high.Length <> x.Length then
+            invalidArg
+                "low"
+                (sprintf "Marey: %d x values but %d low and %d high values." x.Length low.Length high.Length)
+
+        let s: Series<'ux, 'uy> =
+            { Name = name
+              X = x
+              Y = Array.init x.Length (fun i -> (low.[i] + high.[i]) * 0.5)
+              XScale = Scale.linear ux (paddedOr 0.05 x)
+              YScale = Scale.linear uy (paddedOr 0.05 (Array.append low high)) }
+
+        s, Geom.ribbon s low high
+
+    /// A filled band between two y series — a confidence interval, an envelope, a min/max
+    /// spread.
+    ///
+    /// The band and nothing else. `Chart.line … |> Chart.addRibbon …` is the fit-with-interval
+    /// figure, and the order matters: the band is added second and drawn over the line, so it
+    /// wants the theme's fill opacity, which it has.
+    let ribbon (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (low: float<'uy>[]) (high: float<'uy>[]) : Figure =
+        let s, g = ribbonSeries "" ux uy x low high
+        ofSeries g s
+
+    /// The exact extent a tessellation occupies: the data's range, out to the outer edge of the
+    /// outermost tile, and **unpadded**.
+    ///
+    /// Same rule as a histogram's x domain, for the same reason. A grid of tiles partitions a
+    /// region; a margin past the last tile draws a piece of that region as if no cell covered
+    /// it, and a reader takes the gap for missing data.
+    let private tileDomain (v: float<'u>[]) (half: float<'u>) : float<'u> * float<'u> =
+        match Scale.domainOf v with
+        | Some(lo, hi) -> lo - half, hi + half
+        | None -> tag<'u> 0.0, tag<'u> 1.0
+
+    /// **The grid pitch of a coordinate array**: the smallest positive gap between two of its
+    /// values.
+    ///
+    /// On a regular grid — which is what a tiled figure is — that gap *is* the cell size, and
+    /// taking the smallest rather than the mean is what keeps a grid with a missing row from
+    /// widening every tile to cover the hole.
+    let private pitch (v: float<'u>[]) : float<'u> =
+        let gaps =
+            v
+            |> Array.filter (fun x -> not (System.Double.IsNaN(float x)) && not (System.Double.IsInfinity(float x)))
+            |> Array.sort
+            |> Array.pairwise
+            |> Array.map (fun (a, b) -> b - a)
+            |> Array.filter (fun g -> float g > 0.0)
+
+        if gaps.Length = 0 then tag<'u> 1.0 else Array.min gaps
+
+    /// Tiles of a stated size, centred on the given points — the heatmap geom.
+    ///
+    /// Both sizes are in the data's own units, so a cell 0.5 s wide and 2 K tall is written as
+    /// `0.5&lt;s&gt;` and `2.0&lt;K&gt;` and cannot be transposed: the compiler will not accept
+    /// a width in kelvin. What makes the tiles *mean* anything is a colour channel —
+    /// `Chart.tile … |> Chart.colorBy U.kelvin temps`, which is what `Chart.heatmap` is.
+    let tile
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (w: float<'ux>)
+        (h: float<'uy>)
+        (x: float<'ux>[])
+        (y: float<'uy>[])
+        : Figure =
+        if x.Length <> y.Length then
+            invalidArg "y" (sprintf "Marey: %d x values and %d y values." x.Length y.Length)
+
+        let s: Series<'ux, 'uy> =
+            { Name = ""
+              X = x
+              Y = y
+              XScale = Scale.linear ux (tileDomain x (w * 0.5))
+              YScale = Scale.linear uy (tileDomain y (h * 0.5)) }
+
+        ofSeries (Geom.tile w h s) s
+
+    /// A line from each `(x0, y0)` to the matching `(x1, y1)` — a displacement, an edge of a
+    /// graph, a before-and-after pair.
+    ///
+    /// Both ends are inside the domain, which is the one thing a caller cannot fix afterwards:
+    /// a segment whose far end is off the panel is clipped to a line pointing at nothing.
+    let segment
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (x0: float<'ux>[])
+        (y0: float<'uy>[])
+        (x1: float<'ux>[])
+        (y1: float<'uy>[])
+        : Figure =
+        if x0.Length <> y0.Length || x1.Length <> x0.Length || y1.Length <> x0.Length then
+            invalidArg "x1" (sprintf "Marey: a segment needs four arrays of one length; got %d, %d, %d, %d." x0.Length y0.Length x1.Length y1.Length)
+
+        let s: Series<'ux, 'uy> =
+            { Name = ""
+              X = x0
+              Y = y0
+              XScale = Scale.linear ux (paddedOr 0.05 (Array.append x0 x1))
+              YScale = Scale.linear uy (paddedOr 0.05 (Array.append y0 y1)) }
+
+        ofSeries (Geom.segment s x1 y1) s
+
+    /// Labels at stated positions — an annotated point, a named landmark, a value printed on
+    /// its own mark.
+    ///
+    /// `Chart.addLabels` is the form that labels a series already on the figure, and is what
+    /// most callers want; this one is for text that is the whole layer.
+    let text (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (labels: string[]) : Figure =
+        if labels.Length <> x.Length then
+            invalidArg "labels" (sprintf "Marey: %d positions and %d labels." x.Length labels.Length)
+
+        ofSeries (Geom.text labels) (series "" ux uy x y)
+
     // ---- Adding layers -----------------------------------------------------------------------
 
     let private lastPanel (fig: Figure) =
@@ -206,6 +348,47 @@ module Chart =
 
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i (Geom.errorY s err) (Erase.packSeries s) |])
+
+    let addStep (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+        fig
+        |> addLayers (fun i -> [| layerOf "" fig.Theme i (GeomStep StepAfter) (Erase.packSeries (series "" ux uy x y)) |])
+
+    /// Add a band between two y series to the last panel — the interval around a fit that was
+    /// already drawn.
+    ///
+    /// It goes in the palette like any other added series, so a band added to a line comes out
+    /// in the *next* colour rather than the line's. That is deliberate and matches
+    /// `addErrorbar`: the two arrays are a second thing that was measured, and a caller who
+    /// means it as a shading of the first says so with `Chart.withStyle`.
+    let addRibbon
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (x: float<'ux>[])
+        (low: float<'uy>[])
+        (high: float<'uy>[])
+        (fig: Figure)
+        : Figure =
+        let s, g = ribbonSeries "" ux uy x low high
+        fig |> addLayers (fun i -> [| layerOf "" fig.Theme i g (Erase.packSeries s) |])
+
+    let addSegment
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (x0: float<'ux>[])
+        (y0: float<'uy>[])
+        (x1: float<'ux>[])
+        (y1: float<'uy>[])
+        (fig: Figure)
+        : Figure =
+        let s: Series<'ux, 'uy> =
+            { Name = ""
+              X = x0
+              Y = y0
+              XScale = Scale.linear ux (paddedOr 0.05 (Array.append x0 x1))
+              YScale = Scale.linear uy (paddedOr 0.05 (Array.append y0 y1)) }
+
+        fig
+        |> addLayers (fun i -> [| layerOf "" fig.Theme i (Geom.segment s x1 y1) (Erase.packSeries s) |])
 
     // ---- Stats (§9, D47) ----------------------------------------------------------------------
 
@@ -270,9 +453,14 @@ module Chart =
     ///
     /// Two points per distinct value — the foot and the head of its riser — because `GeomLine`
     /// through one point per value draws a diagonal where the function has a jump, and an ECDF
-    /// interpolated between observations asserts data between them that was not observed. A
-    /// `step` geom lands with the rest of them in phase 6; until then this is exact rather than
-    /// approximate, and it costs one array.
+    /// interpolated between observations asserts data between them that was not observed.
+    ///
+    /// **`GeomStep` exists now and this still does not use it**, which is worth stating because
+    /// the obvious reading of phase 6 is that it should. `GeomStep StepAfter` draws the riser
+    /// *between* two points, so it has no riser to draw at the first observation — and the jump
+    /// from zero to `1/n` at the smallest datum is the one an ECDF is read for. The doubled
+    /// array draws it. `Chart.step` is the geom's own front door for the data that has no such
+    /// edge.
     ///
     /// The y domain is `0 … 1` stated rather than measured: an ECDF's range is known before the
     /// data is, and taking it from the sample instead would start the axis at `1/n`.
@@ -409,6 +597,29 @@ module Chart =
 
         let addFit (x: float[]) (y: float[]) (fig: Figure) : Figure = addFit U.one U.one x y fig
 
+        // Phase 6's geoms, where the quantity genuinely has no dimension.
+
+        let step (x: float[]) (y: float[]) : Figure = step U.one U.one x y
+
+        let stepWith (align: StepAlign) (x: float[]) (y: float[]) : Figure = stepWith align U.one U.one x y
+
+        let ribbon (x: float[]) (low: float[]) (high: float[]) : Figure = ribbon U.one U.one x low high
+
+        let tile (w: float) (h: float) (x: float[]) (y: float[]) : Figure = tile U.one U.one w h x y
+
+        let segment (x0: float[]) (y0: float[]) (x1: float[]) (y1: float[]) : Figure =
+            segment U.one U.one x0 y0 x1 y1
+
+        let text (x: float[]) (y: float[]) (labels: string[]) : Figure = text U.one U.one x y labels
+
+        let addStep (x: float[]) (y: float[]) (fig: Figure) : Figure = addStep U.one U.one x y fig
+
+        let addRibbon (x: float[]) (low: float[]) (high: float[]) (fig: Figure) : Figure =
+            addRibbon U.one U.one x low high fig
+
+        let addSegment (x0: float[]) (y0: float[]) (x1: float[]) (y1: float[]) (fig: Figure) : Figure =
+            addSegment U.one U.one x0 y0 x1 y1 fig
+
     /// §9 / D45 — **the categorical front door**: a chart whose x is a category rather than a
     /// quantity.
     ///
@@ -497,6 +708,84 @@ module Chart =
             let pairs = Stat.count keys
             bar U.one (pairs |> Array.map fst) (pairs |> Array.map (snd >> float))
 
+        /// One point per **level** rather than per row, which is what a summarising geom needs:
+        /// a box plot has one box per band however many rows went into it.
+        ///
+        /// The x array is the level numbers `0 … n-1` in level order, so `medianSpacing` reads
+        /// a pitch of exactly one band and a width fraction means what it says.
+        let private bandSeries
+            (uy: U<'uy>)
+            (levels: Levels<'k>)
+            (domain: float<'uy> * float<'uy>)
+            (mid: float<'uy>[])
+            : Series<1, 'uy> =
+            { Name = ""
+              X = Array.init levels.Values.Length float
+              Y = mid
+              XScale = Levels.scale levels
+              YScale = Scale.linear uy domain }
+
+        /// §9 / D55 — **a box plot per level**, from the rows that carry it.
+        ///
+        /// The measures again do the work nobody had to ask for: `Stat.summary` of a
+        /// `float&lt;'uy&gt;[]` is entirely in `float&lt;'uy&gt;`, so the box, the whiskers and
+        /// the outliers all project through the same y scale and the axis labels itself off the
+        /// same witness the values were declared with.
+        ///
+        /// The y domain covers the whiskers **and the outliers**, padded. A domain taken from
+        /// the boxes alone is the tidier picture and it is a lie by omission: the points that
+        /// fall outside it are exactly the ones a box plot is read to find, and clipping them
+        /// hides them behind the panel edge rather than dropping them somewhere visible.
+        let boxplot (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
+            let groups = Stat.groupBy keys values
+            let levels = Levels.ofSeq (groups |> Array.map fst)
+            let summaries = groups |> Array.map (fun (_, vs) -> Stat.summary uy vs)
+
+            let reach =
+                summaries
+                |> Array.collect (fun q ->
+                    let lo, hi = q.Extent
+                    [| lo; hi |])
+
+            let s =
+                bandSeries uy levels (paddedOr 0.05 reach) (summaries |> Array.map (fun q -> q.Median))
+
+            ofSeries (Geom.boxplot 0.6 s summaries) s |> unlabelledX
+
+        /// §9 / D55 — **a violin per level**: the same split, drawn as a density instead of a
+        /// summary.
+        ///
+        /// **The bandwidth comes from the undivided sample** (`Stat.frameOf`), not from each
+        /// group, and that is D48's facet argument arriving in a second place. A bandwidth
+        /// chosen per group smooths the sparse ones harder and invents a difference in *shape*
+        /// that is not in the data — the quiet kind of wrong, because the figure looks fine. It
+        /// also removes a failure: a group of one value has no bandwidth of its own and a
+        /// density over it raises, where under a shared one it draws the whole sample's kernel
+        /// over its single point, which is what it is.
+        ///
+        /// A sample with no spread at all still has no density to estimate, and says so.
+        let violin (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
+            let groups = Stat.groupBy keys values
+            let levels = Levels.ofSeq (groups |> Array.map fst)
+            let h = tag<'uy> (Stat.frameOf values).Bandwidth
+
+            if float h <= 0.0 then
+                invalidArg
+                    "values"
+                    "Marey: a violin needs a sample with spread. Every value here is the same, so there is no density to estimate."
+
+            let densities =
+                groups
+                |> Array.map (fun (_, vs) -> Stat.densityWith uy h Stat.DefaultDensityPoints vs)
+
+            let reach =
+                densities |> Array.collect (fun d -> [| d.X.[0]; d.X.[d.X.Length - 1] |])
+
+            let s =
+                bandSeries uy levels (paddedOr 0.05 reach) (groups |> Array.map (fun (_, vs) -> Stat.quantile 0.5 vs))
+
+            ofSeries (Geom.violin 0.8 s densities) s |> unlabelledX
+
     // ---- Combinators. All pure; every one returns a new figure. -------------------------------
 
     let withTitle (t: string) (fig: Figure) = { fig with Title = t }
@@ -576,6 +865,38 @@ module Chart =
 
     let withOpacity (o: float) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withOpacity o l.Style }) fig
+
+    /// Label the points of the most recently added series, one string per point.
+    ///
+    /// **It reuses that layer's own data and style**, which is the whole reason it is a
+    /// combinator and not a constructor: the labels then sit on the marks they name, in the
+    /// colour of the series they belong to, and there is no second copy of the positions to
+    /// fall out of step with the first. It is not in the legend — the labels *are* the reading,
+    /// so a swatch saying so adds nothing.
+    ///
+    /// `Chart.withStyle` on the result moves the labels, because the offset and the face live in
+    /// the geom and the style: `Chart.addLabels names |> Chart.withStyle (Geom.withFont small)`.
+    let addLabels (labels: string[]) (fig: Figure) : Figure =
+        mapLast
+            (fun p ->
+                if p.Layers.Length = 0 then
+                    p
+                else
+                    let last = p.Layers.[p.Layers.Length - 1]
+                    let n = Erase.seriesLength last.Data
+
+                    if labels.Length <> n then
+                        invalidArg "labels" (sprintf "Marey: the series has %d points and %d labels." n labels.Length)
+
+                    { p with
+                        Layers =
+                            Array.append
+                                p.Layers
+                                [| { last with
+                                       Geom = Geom.text labels
+                                       Channels = [||]
+                                       ShowInLegend = false } |] })
+            fig
 
     // ---- Non-positional channels (§9, D46, D49) -----------------------------------------------
 
@@ -677,6 +998,27 @@ module Chart =
     /// Interpolated in area rather than in diameter, because area is what the eye reads off a
     /// disc. Size is the weakest of the channels for accurate reading, so it is the one to
     /// reach for last: the key it produces is three marks in the legend, not a bar.
+    /// §9 — **a heatmap**: one tile per row, sized to the grid's own pitch, coloured by a third
+    /// quantity.
+    ///
+    /// Three witnesses and three measures, and the middle one is what a heatmap usually gets
+    /// wrong: `z` has its own unit, so the colorbar labels itself `T [K]` off the same witness
+    /// the values were declared with (D49), and a `z` handed the x array does not compile.
+    ///
+    /// The cell size is derived rather than asked for, because it is a property of the grid and
+    /// not a choice: the smallest positive gap between two x values is the column pitch, and a
+    /// tile that size tessellates. `Chart.tile` takes the size for the case where the grid is
+    /// irregular and the caller knows what the cells are.
+    let heatmap
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (uz: U<'uz>)
+        (x: float<'ux>[])
+        (y: float<'uy>[])
+        (z: float<'uz>[])
+        : Figure =
+        tile ux uy (pitch x) (pitch y) x y |> colorBy uz z
+
     let sizeByWith (smallest: float<px>) (largest: float<px>) (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
         let domain =
             match Scale.domainOf values with
@@ -771,6 +1113,85 @@ module Chart =
             Rows = a.Rows + b.Rows
             Cols = max a.Cols b.Cols
             Panels = Array.append a.Panels (b.Panels |> Array.map (fun p -> { p with Row = p.Row + a.Rows })) }
+
+    // ---- Facets (§9, D48) ----------------------------------------------------------------------
+
+    /// The wrap width a facet takes when nobody states one: as square as the panel count allows,
+    /// which is what keeps each panel's aspect ratio closest to the single-panel figure the
+    /// caller was looking at a moment ago.
+    let wrapCols (n: int) : int =
+        if n <= 1 then 1 else int (ceil (sqrt (float n)))
+
+    /// **The key is drawn once.** Every layer outside the first drawn panel leaves the legend and
+    /// the colorbar (D53, as D48 widens it).
+    ///
+    /// A facet's channels are built over the whole block and then sliced, so every panel's key is
+    /// the same key. Repeating it says nothing the first one did not, and a colorbar repeated
+    /// takes a column out of every panel to do it.
+    let private keyOnFirstPanelOnly (fig: Figure) : Figure =
+        let first =
+            fig.Panels |> Array.tryFindIndex (fun p -> p.Layers.Length > 0)
+
+        match first with
+        | None -> fig
+        | Some k ->
+            { fig with
+                Panels =
+                    fig.Panels
+                    |> Array.mapi (fun i p ->
+                        if i = k then
+                            p
+                        else
+                            { p with
+                                Layers = p.Layers |> Array.map (fun l -> { l with ShowInLegend = false }) }) }
+
+    /// §9 / D48 — **lay independently built figures out as a facet**: a wrapped grid of panels
+    /// over shared axes.
+    ///
+    /// This is the *hand-composed* facet, and it is the only one whose panels can disagree
+    /// dimensionally — which makes it the one place the cross-panel `Dim` check can actually fire.
+    /// The block's `facetWrap` splits one dataset by a key, so every panel there reads the same
+    /// column under the same witness and a mismatch is unconstructible.
+    ///
+    /// Each part is a **single-panel** figure and a title for it. A multi-panel figure is refused
+    /// rather than flattened: a facet cell holds one panel, and silently spreading two of them
+    /// across the grid would put a caller's `beside` composition somewhere they did not ask for.
+    let facetWith (mode: FacetScales) (cols: int) (parts: (string * Figure)[]) : Figure =
+        if parts.Length = 0 then
+            failwith "Marey: a facet needs at least one panel."
+
+        parts
+        |> Array.iteri (fun i (title, f) ->
+            if f.Panels.Length <> 1 then
+                failwithf
+                    "Marey: facet cell %d ('%s') is a %d-panel figure, and a facet cell holds one panel. Compose it with `beside` or `above` instead, or facet the parts separately."
+                    i
+                    title
+                    f.Panels.Length)
+
+        let n = parts.Length
+        let cols = max 1 (min cols n)
+
+        let panels =
+            parts
+            |> Array.mapi (fun i (title, f) ->
+                { f.Panels.[0] with
+                    Title = title
+                    Row = i / cols
+                    Col = i % cols })
+
+        { Figure.create panels with
+            Theme = (snd parts.[0]).Theme }
+        |> Figure.shareScales mode
+        |> keyOnFirstPanelOnly
+
+    /// `facetWith` sharing both axes — what a facet means — over an automatic wrap width.
+    let facet (parts: (string * Figure)[]) : Figure =
+        facetWith ShareBoth (wrapCols parts.Length) parts
+
+    /// `facet` at a stated wrap width.
+    let facetIn (cols: int) (parts: (string * Figure)[]) : Figure =
+        facetWith ShareBoth cols parts
 
     // ---- Output ---------------------------------------------------------------------------------
 

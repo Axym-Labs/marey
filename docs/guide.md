@@ -234,7 +234,8 @@ printfn "ticks: %A" (Ticks.linear 5 (0.0, 9.2))
 
 ## 5. Geoms
 
-Five, each with a constructor that starts a figure and an `add*` that layers onto the last panel.
+Each has a constructor that starts a figure, and most have an `add*` that layers onto the last
+panel.
 
 ```fsharp
 let categories = [| 1.0<s>; 2.0<s>; 3.0<s>; 4.0<s> |]
@@ -246,10 +247,75 @@ let scatterOnly = Chart.scatter  U.second U.metre t x
 let areaOnly    = Chart.area     U.second U.metre t x
 let barOnly     = Chart.bar      U.second U.metre categories counts
 let errorOnly   = Chart.errorbar U.second U.metre categories counts sigma
+let stepOnly    = Chart.step     U.second U.metre categories counts
 ```
 
 `errorbar` is two layers in one call — the bars and the centre points — and only one of them
-appears in the legend.
+appears in the legend. `step` draws a staircase; `Chart.stepWith` places the riser at the previous
+sample (`StepBefore`) or halfway between (`StepMid`) instead of at the sample itself.
+
+**A band** is two y series and the region between them — a confidence interval, an envelope, a
+minimum and maximum. Both bounds are in the y unit, so an interval in the wrong unit does not
+compile.
+
+```fsharp
+let lo = counts |> Array.map (fun v -> v - 1.0<m>)
+let hi = counts |> Array.map (fun v -> v + 1.0<m>)
+
+let withBand =
+    Chart.line U.second U.metre categories counts
+    |> Chart.addRibbon U.second U.metre categories lo hi
+```
+
+**Segments** join pairs of points, and **labels** annotate the series already on the figure —
+`addLabels` reuses that layer's own positions and colour, so the labels stay on their marks.
+
+```fsharp
+let displacements =
+    Chart.segment U.second U.metre categories counts (categories |> Array.map ((+) 0.5<s>)) hi
+
+let annotated =
+    Chart.scatter U.second U.metre categories counts
+    |> Chart.addLabels [| "a"; "b"; "c"; "d" |]
+```
+
+**A heatmap** is tiles plus a colour channel. The cell size comes from the grid's own spacing, and
+the third quantity carries its own unit, so the colorbar labels itself from the witness:
+
+```fsharp
+let cells =
+    [| for gy in 0.0 .. 2.0 do
+           for gx in 0.0 .. 3.0 -> gx * 1.0<s>, gy * 1.0<m> |]
+
+let field =
+    Chart.heatmap
+        U.second
+        U.metre
+        U.kelvin
+        (cells |> Array.map fst)
+        (cells |> Array.map snd)
+        (cells |> Array.map (fun (gx, gy) -> 280.0<K> + 4.0<K/s> * gx + 7.0<K/m> * gy))
+    |> Chart.withColorLabel "T"
+```
+
+**Distributions by category** are box plots and violins. Both take one value per row and a key per
+row; the rows are grouped, summarised or smoothed, and drawn one band per level:
+
+```fsharp
+let subject = [| "control"; "treated"; "control"; "treated"; "control"; "treated" |]
+let yield' = [| 12.4<m>; 19.1<m>; 13.0<m>; 18.2<m>; 12.9<m>; 19.6<m> |]
+
+let boxes = Chart.Category.boxplot U.metre subject yield'
+```
+
+The whiskers reach the most extreme observation within 1.5 × IQR of the box, and anything past
+them is drawn as a point rather than absorbed into the whisker. The y domain covers those points,
+so an outlier is never clipped by the panel edge.
+
+`Chart.Category.violin` draws the same split as a kernel density instead of a summary. Every
+violin in a figure shares one bandwidth, taken from the undivided sample, so a sparse level is not
+smoothed harder than a populous one — and the widths are normalised together, so a level with more
+rows draws a wider violin.
 
 Per-layer style overrides apply to the most recently added layer:
 
