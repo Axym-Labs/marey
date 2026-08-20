@@ -165,24 +165,33 @@ module Erase =
             member _.Ticks n =
                 let vs = s.TickHint n
 
-                let decimals =
+                // How a tick value becomes text, which is the one thing a categorical axis does
+                // differently from every other kind: its labels are names and there is no
+                // decimal count to derive. D45 puts the level array in `Kind` precisely so that
+                // this path — the erased one, all a reloaded figure has (§15) — can still read
+                // them.
+                let label =
                     match s.Kind with
+                    | ScaleKind.Ordinal levels -> Scale.levelLabel levels
                     | ScaleKind.Log _ ->
                         // Log ticks are not on a uniform grid, so a single step-derived
                         // decimal count is wrong. Take the finest any individual tick needs.
-                        vs
-                        |> Array.fold
-                            (fun acc v ->
-                                let a = abs (float v)
-                                if a = 0.0 then acc else max acc (Ticks.decimalsFor a))
-                            0
-                    | _ -> Ticks.decimalsFor (Ticks.linearStep n s.Domain)
+                        let decimals =
+                            vs
+                            |> Array.fold
+                                (fun acc v ->
+                                    let a = abs (float v)
+                                    if a = 0.0 then acc else max acc (Ticks.decimalsFor a))
+                                0
+
+                        Ticks.format decimals
+                    | _ -> Ticks.format (Ticks.decimalsFor (Ticks.linearStep n s.Domain))
 
                 vs
                 |> Array.map (fun v ->
                     { Value = float v
                       Position = s.Forward v
-                      Label = Ticks.format decimals (float v) }) }
+                      Label = label (float v) }) }
 
     let series (name: string) (sx: Scale<'ux>) (sy: Scale<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : PackedSeries =
         if x.Length <> y.Length then

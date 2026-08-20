@@ -147,6 +147,87 @@ module DimensionlessShim =
         Assert.DoesNotContain("[p]", svg)
 
 // ======================================================================================
+// D45 — a categorical axis, and the check that keeps two of them apart
+// ======================================================================================
+
+module CategoricalAxes =
+
+    let private levels = [| "control"; "treated"; "placebo"; "washout" |]
+
+    let private bars (ls: string[]) (ys: float<m>[]) : Series<1, m> =
+        { Name = ""
+          X = Array.init ls.Length float
+          Y = ys
+          XScale = Scale.ordinal ls
+          YScale = Scale.linear U.metre (0.0<m>, 21.0<m>) }
+
+    let private yields = [| 12.4<m>; 19.1<m>; 7.8<m>; 15.0<m> |]
+
+    let private layerOf i (s: Series<1, m>) : Layer =
+        { Name = ""
+          Data = Erase.packSeries s
+          Geom = GeomPoint
+          Style = Geom.styleFor Theme.initial i
+          ShowInLegend = false }
+
+    /// The whole point of D45, rendered: a bar per level, a named tick per band, and no
+    /// configuration beyond the level set.
+    [<Fact>]
+    let ``a categorical axis renders one named tick per level`` () =
+        let s = bars levels yields
+        let svg = renderFig surface (Chart.ofSeries (Geom.bar 0.7 s) s)
+
+        for name in levels do
+            Assert.Contains(">" + name + "<", svg)
+
+    /// An ordinal scale is dimensionless, so `Figure.unify`'s runtime `Dim` check — the one
+    /// runtime dimensional check in the library — cannot tell two *different* categories apart.
+    /// Verified before the guard was written: the panel unified silently and the second layer's
+    /// points were drawn against the first layer's labels.
+    [<Fact>]
+    let ``two categories cannot share an axis`` () =
+        let panel =
+            Figure.panelOf
+                [| layerOf 0 (bars levels yields)
+                   layerOf 1 (bars [| "a"; "b"; "c"; "d" |] yields) |]
+
+        let ex = Assert.Throws<System.Exception>(fun () -> Figure.unify panel |> ignore)
+        Assert.Contains("different sets of levels", ex.Message)
+        // The message names both level sets, because "they differ" is not actionable.
+        Assert.Contains("control", ex.Message)
+        Assert.Contains("a, b, c, d", ex.Message)
+
+    /// The same guard in its other direction: a categorical axis and a continuous one are not
+    /// the same axis either, and both are dimensionless when the continuous one is a bare ratio.
+    [<Fact>]
+    let ``a category cannot share an axis with a continuous scale`` () =
+        let continuous: Series<1, m> =
+            { bars levels yields with
+                XScale = Scale.linear U.one (0.0, 3.0) }
+
+        let panel =
+            Figure.panelOf [| layerOf 0 (bars levels yields); layerOf 1 continuous |]
+
+        let ex = Assert.Throws<System.Exception>(fun () -> Figure.unify panel |> ignore)
+        Assert.Contains("categorical", ex.Message)
+
+    /// Two layers over the *same* levels are a legitimate figure — a grouped bar chart is
+    /// exactly that — and the guard must not refuse them.
+    [<Fact>]
+    let ``two layers over the same levels unify`` () =
+        let panel =
+            Figure.panelOf
+                [| layerOf 0 (bars levels yields)
+                   layerOf 1 (bars levels [| 3.0<m>; 4.0<m>; 5.0<m>; 6.0<m> |]) |]
+
+        let unified = Figure.unify panel
+        let x, _ = Erase.seriesScales unified.Layers.[1].Data
+
+        // Unification did not stretch the bands: a categorical domain is its level count.
+        Assert.Equal(ScaleKind.Ordinal levels, x.Kind)
+        Assert.Equal((-0.5, 3.5), x.Domain)
+
+// ======================================================================================
 // §13 — layout invariants
 // ======================================================================================
 

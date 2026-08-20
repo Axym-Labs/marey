@@ -234,6 +234,104 @@ module Erasure =
         Assert.Equal(c.Dim, k.Dim)
         Assert.NotEqual(c.OffsetSI, k.OffsetSI)
 
+/// D45 — the categorical scale.
+///
+/// `ScaleKind.Ordinal` is the sixth kind and the only one whose ticks are named rather than
+/// numbered. The claims here are what the decision rests on: that a category reaches the scale
+/// as a dimensionless *index*, that its names survive erasure, and that the two combinators
+/// which rebuild a scale do the categorical thing rather than the numeric one.
+[<Properties(Arbitrary = [| typeof<MareyArbs> |], MaxTest = 200, Replay = Seed, QuietOnSuccess = true)>]
+module Ordinal =
+
+    let private levels = [| "control"; "treated"; "placebo"; "washout" |]
+
+    /// Levels sit at band *centres*, so a bar of full band width fits in the panel and the
+    /// first and last bands are as wide as the ones between them.
+    [<Fact>]
+    let ``levels project to band centres`` () =
+        let s = Scale.ordinal levels
+        let at i = float (s.Forward(float i))
+
+        Assert.Equal(0.125, at 0, 12)
+        Assert.Equal(0.375, at 1, 12)
+        Assert.Equal(0.625, at 2, 12)
+        Assert.Equal(0.875, at 3, 12)
+
+    /// Distinct and order-preserving: the property a level set has to have for the axis to mean
+    /// anything. `n` levels give `n` strictly increasing positions, whatever `n` is.
+    [<Property>]
+    let ``level positions are distinct and order-preserving`` (n: int) =
+        let n = 1 + abs (n % 60)
+        let s = Scale.ordinal (Array.init n (sprintf "level %d"))
+        let ps = Array.init n (fun i -> float (s.Forward(float i)))
+
+        Array.forall2 (<) ps.[.. n - 2] ps.[1..] || n = 1
+
+    /// One tick per level, named, however many the caller asks for. The tick *count* is a
+    /// negotiation for a continuous axis; a category has as many ticks as it has levels.
+    [<Property>]
+    let ``every level gets one named tick, whatever count is requested`` (requested: int) =
+        let e = Erase.scale (Scale.ordinal levels)
+        let ticks = e.Ticks(1 + abs (requested % 40))
+
+        ticks.Length = levels.Length
+        && Array.forall2 (fun (t: TickLabel) name -> t.Label = name) ticks levels
+
+    /// §15 — a reloaded figure has only `IScaleErased`. The level names are in `Kind`, so they
+    /// cross the boundary with everything else and no second erased interface is needed.
+    [<Fact>]
+    let ``the level names survive erasure`` () =
+        let e = Erase.scale (Scale.ordinal levels)
+
+        Assert.Equal(ScaleKind.Ordinal levels, e.Kind)
+        Assert.Equal(Dim.zero, e.Dim)
+        Assert.Equal("", e.Symbol)
+
+    /// The measured and erased axis compilers must name a category identically — the same
+    /// claim D16 makes for `ToSI`, and the reason both route through `Scale.levelLabel`.
+    [<Fact>]
+    let ``the measured and erased axis compilers agree on the labels`` () =
+        let s = Scale.ordinal levels
+        let measured = Axis.ofPacked Unicode "treatment" (Erase.packScale s)
+        let erased = Axis.ofErased Unicode "treatment" (Erase.scale s)
+
+        Assert.Equal<string[]>(levels, measured.Ticks |> Array.map (fun t -> t.Label))
+        Assert.Equal<string[]>(levels, erased.Ticks |> Array.map (fun t -> t.Label))
+
+        // No bracket: a category has no unit, and `Axis.title` drops the bracket for an empty
+        // unit text rather than printing `treatment [1]`.
+        Assert.Equal("treatment", measured.Title)
+
+    /// A dimensionless axis is never rescaled — `Prefix.selectFor` refuses — so a 2000-level
+    /// category cannot come back labelled in kilolevels.
+    [<Fact>]
+    let ``a categorical axis is never prefixed`` () =
+        let s = Scale.ordinal (Array.init 2000 (sprintf "level %d"))
+        let spec = Axis.ofPacked Unicode "id" (Erase.packScale s)
+
+        Assert.Equal(0, spec.Prefix.Exponent)
+
+    /// Zoom is meaningless on a category, and `Figure.unify` unions domains as raw numbers —
+    /// so accepting a wider one here is how a shared categorical axis would end up with its
+    /// bands in the wrong places.
+    [<Fact>]
+    let ``withDomain leaves a categorical scale alone`` () =
+        let s = Scale.ordinal levels
+        let stretched = Scale.withDomain (-5.0, 20.0) s
+
+        Assert.Equal(s.Domain, stretched.Domain)
+        Assert.Equal(s.Kind, stretched.Kind)
+
+    /// Reversing a category reverses its level order. It is the one scale whose reversal is not
+    /// a domain swap, because its domain carries nothing but the level count.
+    [<Fact>]
+    let ``reverse reverses the levels`` () =
+        let s = Scale.ordinal levels
+        let r = Scale.reverse s
+
+        Assert.Equal(ScaleKind.Ordinal(Array.rev levels), r.Kind)
+        Assert.Equal(s.Domain, r.Domain)
+
 /// Preconditions that `Scale` enforces, and one that it does not.
 module Preconditions =
 

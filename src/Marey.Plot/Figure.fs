@@ -84,13 +84,6 @@ module Figure =
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
                     Erase.packScale s.XScale, Erase.packScale s.YScale }
 
-    let private ofKind (k: ScaleKind) (u: U<'u>) (d: float<'u> * float<'u>) : Scale<'u> =
-        match k with
-        | ScaleKind.Linear -> Scale.linear u d
-        | ScaleKind.Log b -> Scale.logBase b u d
-        | ScaleKind.Symlog(b, l) -> Scale.symlog b l u d
-        | ScaleKind.Power p -> Scale.power p u d
-        | ScaleKind.Reciprocal -> Scale.reciprocal u d
 
     /// Rebuild a packed series over new raw domains.
     ///
@@ -145,7 +138,7 @@ module Figure =
                                 else
                                     s.XScale.Domain
 
-                            ofKind k s.XScale.Unit d
+                            Scale.ofKind k s.XScale.Unit d
 
                     let y =
                         match ky with
@@ -159,7 +152,7 @@ module Figure =
                                 else
                                     s.YScale.Domain
 
-                            ofKind k s.YScale.Unit d
+                            Scale.ofKind k s.YScale.Unit d
 
                     Erase.packSeries { s with XScale = x; YScale = y } }
 
@@ -222,8 +215,42 @@ module Figure =
                 else
                     sprintf "layer %d ('%s')" i name
 
+            // The categorical counterpart of the dimensional check below, and it is needed for
+            // exactly the reason that check is: an ordinal scale is dimensionless (D45), so two
+            // layers with *different* level sets have identical `Dim` and the check cannot see
+            // the difference. Verified before it was written: two four-level layers over
+            // unrelated levels unified silently, and the second layer's points were drawn
+            // against the first layer's labels — the same class of lie as joules on a metre
+            // axis, arrived at by a different route.
+            let levelsOf (s: IScaleErased) =
+                match s.Kind with
+                | ScaleKind.Ordinal levels -> Some levels
+                | _ -> None
+
+            let checkLevels (axis: string) (i: int) (a: IScaleErased) (b: IScaleErased) =
+                match levelsOf a, levelsOf b with
+                | Some la, Some lb when la <> lb ->
+                    failwithf
+                        "Marey: %s and %s have %s axes over different sets of levels (%s against %s). Two categories cannot share an axis."
+                        (describe 0)
+                        (describe i)
+                        axis
+                        (String.concat ", " la)
+                        (String.concat ", " lb)
+                | Some _, None
+                | None, Some _ ->
+                    failwithf
+                        "Marey: %s has a categorical %s axis and %s has a continuous one. They cannot share an axis."
+                        (describe 0)
+                        axis
+                        (describe i)
+                | _ -> ()
+
             for i in 1 .. scales.Length - 1 do
                 let (xi, yi) = scales.[i]
+
+                checkLevels "x" i x0 xi
+                checkLevels "y" i y0 yi
 
                 if xi.Dim <> x0.Dim then
                     failwithf
