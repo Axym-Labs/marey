@@ -204,13 +204,20 @@ module Geom =
                 let sorted = Array.sort gaps
                 sorted.[sorted.Length / 2]
 
-    /// Compile a geom into the IR, in **panel-local nd**.
+    /// The body of `compile`, with one parameter `compile` does not expose.
     ///
-    /// `plotSize` is the plot area's device size, and it is here for exactly one reason: an error
-    /// bar's cap is `px` wide (D12) while this function's output is about to be scaled by the
-    /// panel transform. Dividing by the panel's own pixel size is what makes a 3 px cap 3 px
-    /// wide after that scaling, on both a wide panel and a tall one.
-    let rec compile (coord: Coord) (plotSize: Extent<px>) (st: GeomStyle) (geom: Geom) (pts: Vec2<nd>[]) : Node =
+    /// `spacing` overrides the rhythm a bar's width is taken from. `None` means "the points
+    /// you were given", which is right for a whole layer and wrong for one channel batch of
+    /// one — three coloured batches of a bar chart are not three bar charts, and each would
+    /// otherwise measure its own width from the gaps between its own bars. See `compileSubset`.
+    let rec private compileWith
+        (spacing: float option)
+        (coord: Coord)
+        (plotSize: Extent<px>)
+        (st: GeomStyle)
+        (geom: Geom)
+        (pts: Vec2<nd>[])
+        : Node =
         if pts.Length = 0 then
             Scene.empty
         else
@@ -281,10 +288,10 @@ module Geom =
                 else
                     Group
                         [| Path(segs, None, Some(fillOf st), NonZero)
-                           compile coord plotSize st GeomLine pts |]
+                           compileWith spacing coord plotSize st GeomLine pts |]
 
             | GeomBar(baseline, widthFraction) ->
-                let half = medianSpacing pts * widthFraction * 0.5
+                let half = (defaultArg spacing (medianSpacing pts)) * widthFraction * 0.5
 
                 let segs =
                     [| for p in pts do
@@ -381,6 +388,46 @@ module Geom =
                     Scene.empty
                 else
                     Path(segs, Some { stroke with Cap = Butt }, None, NonZero)
+
+    /// Compile a geom into the IR, in **panel-local nd**.
+    ///
+    /// `plotSize` is the plot area's device size, and it is here for exactly one reason: an error
+    /// bar's cap is `px` wide (D12) while this function's output is about to be scaled by the
+    /// panel transform. Dividing by the panel's own pixel size is what makes a 3 px cap 3 px
+    /// wide after that scaling, on both a wide panel and a tall one.
+    let compile (coord: Coord) (plotSize: Extent<px>) (st: GeomStyle) (geom: Geom) (pts: Vec2<nd>[]) : Node =
+        compileWith None coord plotSize st geom pts
+
+    /// D46 — **one channel batch of a layer**: the points named by `indices`, drawn with
+    /// everything that belongs to the *layer* still taken from the layer.
+    ///
+    /// Only bar width is such a thing today, and it is enough to justify the second entry
+    /// point: split a four-band bar chart into two coloured batches and each batch would read
+    /// the gaps between its own two bars as the data's rhythm, so the bars would come out
+    /// twice as wide as an uncoloured chart's. The geometry a channel changes is the paint,
+    /// not the layout.
+    let compileSubset
+        (coord: Coord)
+        (plotSize: Extent<px>)
+        (st: GeomStyle)
+        (geom: Geom)
+        (all: Vec2<nd>[])
+        (indices: int[])
+        : Node =
+        // Only a bar reads the layer's rhythm, and reading it is a sort of every gap in the
+        // series. Computing it for a geom that will not look at it would put that sort inside
+        // the per-batch loop, which is 256 sorts of 100 000 gaps for one continuous colour
+        // channel — measured at 1.5 s against 4 ms.
+        let spacing =
+            match geom with
+            | GeomBar _ -> Some(medianSpacing all)
+            | GeomLine
+            | GeomPoint
+            | GeomArea _
+            | GeomErrorY _
+            | GeomErrorX _ -> None
+
+        compileWith spacing coord plotSize st geom (indices |> Array.map (fun i -> all.[i]))
 
     /// The legend swatch that matches a geom. Derived, never chosen separately.
     let legendMark (geom: Geom) (st: GeomStyle) : LegendMark =

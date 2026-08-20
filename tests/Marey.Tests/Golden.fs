@@ -321,6 +321,43 @@ let categoryFigure: Figure =
     |> Chart.withTitle "Yield by treatment"
     |> Chart.withGrid false true
 
+/// D46 / D49 — a categorical colour channel with shape as its redundant encoding.
+///
+/// One series, three levels, and the baseline records what the counts cannot: that the legend
+/// enumerates the *levels* rather than the series, that each level's marks carry both its colour
+/// and its shape, and that a channelled layer is still one batch per level in the emitted
+/// document rather than one element per point.
+let channelFigure: Figure =
+    let keys = Array.init 24 (fun i -> [| "control"; "treated"; "washout" |].[i % 3])
+    let ts = Array.init 24 (fun i -> float i * 0.4<s>)
+    let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
+
+    Chart.scatter U.second U.metre ts xs
+    |> Chart.colorByKey keys
+    |> Chart.shapeByKey keys
+    |> Chart.withTitle "Fall by treatment"
+    |> Chart.withLegend LegendTopLeft
+
+/// D49 — **the colorbar, in both backends, and this is the baseline the decision asked for.**
+///
+/// The failure it exists to catch is one no assertion can see. A gradient-filled bar is valid in
+/// SVG and comes out of the TikZ backend as a single flat `#23908c` block, because
+/// `Gradients = false` makes `Degrade.forCaps` collapse the ramp to its Oklab midpoint — valid
+/// TeX, clean text diff, and no colorbar. So the bar is strips, and here are the strips, in a
+/// file a reviewer can count.
+///
+/// It also records the placement claim: the bar is one more content column, the plot gives up
+/// its width to it, and the x axis keeps its ticks.
+let colorbarFigure: Figure =
+    let ts = Array.init 24 (fun i -> float i * 0.4<s>)
+    let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
+    let temps = ts |> Array.map (fun t -> (280.0 + 2.5 * float t) * 1.0<K>)
+
+    Chart.scatter U.second U.metre ts xs
+    |> Chart.colorBy U.kelvin temps
+    |> Chart.withColorLabel "T"
+    |> Chart.withTitle "Fall by temperature"
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }

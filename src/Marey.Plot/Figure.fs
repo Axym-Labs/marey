@@ -10,6 +10,15 @@ type Layer =
       Data: PackedSeries
       Geom: Geom
       Style: GeomStyle
+      /// §9 / D46 — the non-positional channels driving this layer: colour, size, shape.
+      ///
+      /// They live on the layer rather than being resolved into styles at construction time
+      /// because two things downstream need them *unresolved*. The legend needs the level
+      /// names, and the colorbar needs the scale with its unit still attached — and both are
+      /// compiled at figure-compile time, not when the caller says `colorByKey`.
+      ///
+      /// Empty is the overwhelmingly common case and costs one array comparison.
+      Channels: Channel[]
       ShowInLegend: bool }
 
 /// Per-axis configuration. Every field has a defensible default, which is what "no
@@ -287,13 +296,85 @@ module Figure =
     let private textBox (m: ITextMeasurer) (f: FontSpec) (s: string) =
         TextMeasure.bounds m f AnchorMiddle BaselineMiddle 0.0<rad> s
 
-    let private legendEntries (p: Panel) =
-        p.Layers
-        |> Array.filter (fun l -> l.ShowInLegend && not (isEmpty l.Name))
-        |> Array.map (fun l ->
-            { Name = l.Name
-              Color = l.Style.Color
-              Mark = Geom.legendMark l.Geom l.Style })
+    /// D49 — **the legend enumerates.** What one layer contributes to it.
+    ///
+    /// A layer with a **categorical** channel contributes one entry per level rather than one
+    /// entry for itself: what the reader has to tell apart is the level, and the series name is
+    /// already on the panel. Colour and shape keyed to the same levels merge into a single
+    /// entry per level, because both read the same level number — which is why `Channel.split`
+    /// mixes buckets into one key rather than taking a product.
+    ///
+    /// A **size** channel contributes a size key: entries at the ends and the middle of its
+    /// domain, at the sizes the marks are actually drawn at, labelled through the axis compiler
+    /// so they carry the prefix and the unit. `LegendSizedMarker` exists for exactly this.
+    ///
+    /// A continuous **colour** channel contributes nothing here. It gets a colorbar.
+    let private layerEntries (theme: Theme) (l: Layer) : LegendEntry[] =
+        let categorical = l.Channels |> Array.filter Channel.isCategorical
+
+        let levelEntries =
+            if categorical.Length = 0 then
+                [||]
+            else
+                match Channel.levelsOf categorical.[0] with
+                | None -> [||]
+                | Some levels ->
+                    levels
+                    |> Array.mapi (fun i name ->
+                        let st =
+                            categorical
+                            |> Array.fold (fun acc (c: Channel) -> Channel.restyle c.Map i acc) l.Style
+
+                        { Name = name
+                          Color = st.Color
+                          Mark = Geom.legendMark l.Geom st })
+
+        let sizeEntries =
+            l.Channels
+            |> Array.collect (fun c ->
+                match c.Map with
+                | SizeByValue(scale, smallest, largest) ->
+                    let spec =
+                        Axis.ofPackedWith theme.UnitStyle UnitRegistry.si 3 (Colorbar.labelOf c.Label scale) scale
+
+                    // The ends and the middle of what the axis compiler chose, so the key's
+                    // numbers are the round ones an axis would have printed.
+                    let ticks = spec.Ticks
+
+                    let picks =
+                        if ticks.Length <= 3 then
+                            ticks
+                        else
+                            [| ticks.[0]; ticks.[ticks.Length / 2]; ticks.[ticks.Length - 1] |]
+
+                    picks
+                    |> Array.map (fun t ->
+                        let size =
+                            Channel.quantiseSize (smallest + (largest - smallest) * float t.Position)
+
+                        { Name =
+                            if isEmpty spec.UnitText then
+                                t.Label
+                            else
+                                t.Label + " " + spec.UnitText
+                          Color = l.Style.Color
+                          Mark = LegendSizedMarker(l.Style.Shape, size) })
+                | ColorByLevel _
+                | ShapeByLevel _
+                | ColorByValue _ -> [||])
+
+        let own =
+            if l.ShowInLegend && not (isEmpty l.Name) && levelEntries.Length = 0 then
+                [| { Name = l.Name
+                     Color = l.Style.Color
+                     Mark = Geom.legendMark l.Geom l.Style } |]
+            else
+                [||]
+
+        Array.concat [ own; levelEntries; sizeEntries ]
+
+    let private legendEntries (theme: Theme) (p: Panel) =
+        p.Layers |> Array.collect (layerEntries theme)
 
     /// Compile one panel into a device-space region.
     let private compilePanel (m: ITextMeasurer) (theme: Theme) (extent: Extent<px>) (region: Rect<px>) (p: Panel) : Node =
@@ -319,9 +400,31 @@ module Figure =
                 else
                     Rect.height (textBox m theme.PanelTitleFont p.Title) + theme.TitleGap
 
+            // D49 — a continuous colour channel gets a colorbar, and the bar is a column of the
+            // panel's own grid. The first one on the panel wins: two different colour scales on
+            // one panel are two keys the reader has to arbitrate between, and unifying them is
+            // the facet question (D48), not this one.
+            let colorbar =
+                p.Layers
+                |> Array.tryPick (fun l ->
+                    l.Channels
+                    |> Array.tryPick (fun c -> Colorbar.specOf theme.UnitStyle theme.TickCount c))
+
+            // The gap between the plot's right edge and the bar. A `PanelGap` rather than a
+            // `LabelGap`, because what it separates is two things the eye reads separately.
+            let barGap =
+                match colorbar with
+                | Some _ -> theme.PanelGap
+                | None -> 0.0<px>
+
             // Build the inner grid for a given tick plan. Called twice: once against an
             // estimated plot size, once against the real one.
-            let build (xPlan: TickPlan) (yPlan: TickPlan) =
+            let build (xPlan: TickPlan) (yPlan: TickPlan) (barPlan: TickPlan option) =
+                let barW =
+                    match colorbar, barPlan with
+                    | Some(spec, _), Some plan -> Colorbar.measure m theme spec plan
+                    | _ -> 0.0<px>
+
                 let xTicksH =
                     if p.XAxis.Visible then
                         Axes.tickExtent m theme AxisBottom xSpec xPlan
@@ -362,7 +465,12 @@ module Figure =
                         0.0<px>
 
                 let cols =
-                    [| Track.Content yTitleW; Track.Content yTicksW; Track.Frac 1.0; Track.Content rightPad |]
+                    [| Track.Content yTitleW
+                       Track.Content yTicksW
+                       Track.Frac 1.0
+                       Track.Content rightPad
+                       Track.Content barGap
+                       Track.Content barW |]
 
                 let rows =
                     [| Track.Content titleH
@@ -379,8 +487,10 @@ module Figure =
                        fixedCell "yticks" 2 1 yTicksW 0.0<px>
                        Layout.fill "plot" 2 2
                        fixedCell "rightpad" 2 3 rightPad 0.0<px>
-                       fixedCell "ptitle" 0 0 0.0<px> titleH |> Layout.spanning 1 4
-                       fixedCell "toppad" 1 0 0.0<px> topPad |> Layout.spanning 1 4
+                       fixedCell "bargap" 2 4 barGap 0.0<px>
+                       fixedCell "colorbar" 2 5 barW 0.0<px>
+                       fixedCell "ptitle" 0 0 0.0<px> titleH |> Layout.spanning 1 6
+                       fixedCell "toppad" 1 0 0.0<px> topPad |> Layout.spanning 1 6
                        fixedCell "xticks" 3 2 0.0<px> xTicksH
                        fixedCell "xtitle" 4 2 0.0<px> xTitleH |]
 
@@ -392,16 +502,21 @@ module Figure =
             let estW = Rect.width region * 0.78
             let estH = Rect.height region * 0.72
 
+            // The bar's plan is made against its own height, which is the plot's — the bar
+            // sits in the plot's row. That is why `Legend.fs`'s objection to outside placement
+            // does not transfer: the width this adds is settled by a vertical measurement, so
+            // nothing here is circular and the loop is still the same two passes.
             let plan (w: float<px>) (h: float<px>) =
                 Axes.planTicks m theme.TickFont theme.LabelGap w AxisBottom xSpec.Ticks,
-                Axes.planTicks m theme.TickFont theme.LabelGap h AxisLeft ySpec.Ticks
+                Axes.planTicks m theme.TickFont theme.LabelGap h AxisLeft ySpec.Ticks,
+                colorbar |> Option.map (fun (spec, _) -> Colorbar.planTicks m theme h spec)
 
-            let (xPlan0, yPlan0) = plan estW estH
-            let a0 = build xPlan0 yPlan0
+            let (xPlan0, yPlan0, barPlan0) = plan estW estH
+            let a0 = build xPlan0 yPlan0 barPlan0
             let plot0 = Layout.findPx "plot" a0
 
-            let (xPlan, yPlan) = plan (Rect.width plot0) (Rect.height plot0)
-            let arrangement = build xPlan yPlan
+            let (xPlan, yPlan, barPlan) = plan (Rect.width plot0) (Rect.height plot0)
+            let arrangement = build xPlan yPlan barPlan
             let plotPx = Layout.findPx "plot" arrangement
             let plotNd = Layout.ndRect extent plotPx
 
@@ -433,11 +548,37 @@ module Figure =
                     |> Array.map (fun l ->
                         let pts = Erase.projectXY l.Data
 
+                        // D46 — **one batch per bucket, not one per point.** With no channels
+                        // this is `Geom.compile`'s own path; with a continuous colour channel
+                        // it is at most 256 groups for any number of points, which is what
+                        // keeps §5.1's batching intact while the colour varies.
+                        let body, counts =
+                            if l.Channels.Length = 0 then
+                                // No channels, no counts: an unchannelled layer's annotation is
+                                // exactly what it was before phase 2, so every baseline that
+                                // predates channels stays byte-identical.
+                                Geom.compile p.Coord plotSize l.Style l.Geom pts, [||]
+                            else
+                                let (batches, unmapped) = Channel.split l.Channels pts.Length
+
+                                let nodes =
+                                    batches
+                                    |> Array.map (fun b ->
+                                        Geom.compileSubset p.Coord plotSize (b.Restyle l.Style) l.Geom pts b.Indices)
+
+                                // `unmapped` is reported rather than swallowed: a point whose
+                                // channel value was missing is not drawn (see
+                                // `Channel.bucketer`), and a figure that contains fewer marks
+                                // than it has rows should be able to say so.
+                                Group nodes,
+                                [| "batches", string nodes.Length
+                                   "unmapped", string unmapped |]
+
                         Annotated(
                             { Role = RoleSeries
                               Label = (if isEmpty l.Name then "series" else l.Name)
-                              Data = [| "series", l.Name; "points", string pts.Length |] },
-                            Geom.compile p.Coord plotSize l.Style l.Geom pts
+                              Data = Array.append [| "series", l.Name; "points", string pts.Length |] counts },
+                            body
                         ))
 
                 Transform(Axes.panelTransform plotNd, Clip(Axes.panelShape p.Coord, Group layers))
@@ -481,7 +622,13 @@ module Figure =
                           Rotation = 0.0<rad> }
 
             let legend =
-                Legend.compile m theme extent plotNd p.Legend (legendEntries p)
+                Legend.compile m theme extent plotNd p.Legend (legendEntries theme p)
+
+            let colorbarNode =
+                match colorbar, barPlan with
+                | Some(spec, ramp), Some plan ->
+                    Colorbar.compile m theme extent (Layout.findPx "colorbar" arrangement) spec plan ramp
+                | _ -> Scene.empty
 
             Annotated(
                 { Role = RoleOther "panel"
@@ -501,7 +648,8 @@ module Figure =
                            axisNode AxisLeft p.YAxis ySpec yPlan
                            Axes.panelFrame theme p.Coord plotNd
                            panelTitle
-                           legend |]
+                           legend
+                           colorbarNode |]
                 )
             )
 

@@ -69,6 +69,10 @@ type Theme =
       LegendPadding: float<px>
       LegendItemGap: float<px>
       LegendSwatchWidth: float<px>
+      /// D49 — the width of a colorbar's strip. The rest of the bar's column is its tick
+      /// labels and its title, and those are measured by the axis compiler's own helpers
+      /// rather than given a theme field of their own.
+      ColorbarWidth: float<px>
 
       // ---- Palettes -----------------------------------------------------------------
       Categorical: Color[]
@@ -189,6 +193,7 @@ module Theme =
           LegendPadding = 6.0<px>
           LegendItemGap = 4.0<px>
           LegendSwatchWidth = 20.0<px>
+          ColorbarWidth = 12.0<px>
 
           Categorical = Palette.series
           Sequential = Palette.cividis

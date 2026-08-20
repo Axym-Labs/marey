@@ -85,6 +85,7 @@ module Chart =
           Data = data
           Geom = g
           Style = Geom.styleFor theme index
+          Channels = [||]
           ShowInLegend = not (System.String.IsNullOrEmpty name) }
 
     // ---- Constructors ------------------------------------------------------------------------
@@ -342,6 +343,21 @@ module Chart =
     let withTheme (t: Theme) (fig: Figure) =
         let old = fig.Theme
 
+        // A categorical channel's colours came off the outgoing theme's palette, so they follow
+        // a retheme on exactly the rule a layer's style does: replaced when they are still what
+        // the old theme would have chosen, kept when they are not. Without this, a rethemed
+        // figure would draw its levels in the old palette while its unchannelled layers moved —
+        // the worst of both, and silent.
+        let retheme (c: Channel) =
+            match c.Map with
+            | ColorByLevel(levels, colors) when colors = Channel.levelColors old levels.Length ->
+                { c with
+                    Map = ColorByLevel(levels, Channel.levelColors t levels.Length) }
+            | ShapeByLevel(levels, shapes) when shapes = Channel.levelShapes old levels.Length ->
+                { c with
+                    Map = ShapeByLevel(levels, Channel.levelShapes t levels.Length) }
+            | _ -> c
+
         { fig with
             Theme = t
             Panels =
@@ -350,7 +366,15 @@ module Chart =
                     { p with
                         Layers =
                             p.Layers
-                            |> Array.mapi (fun i l -> if l.Style = Geom.styleFor old i then { l with Style = Geom.styleFor t i } else l) }) }
+                            |> Array.mapi (fun i l ->
+                                let l =
+                                    { l with
+                                        Channels = l.Channels |> Array.map retheme }
+
+                                if l.Style = Geom.styleFor old i then
+                                    { l with Style = Geom.styleFor t i }
+                                else
+                                    l) }) }
 
     let private mapLast (f: Panel -> Panel) (fig: Figure) = mapPanel (lastPanel fig) f fig
 
@@ -383,6 +407,113 @@ module Chart =
 
     let withOpacity (o: float) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withOpacity o l.Style }) fig
+
+    // ---- Non-positional channels (§9, D46, D49) -----------------------------------------------
+
+    /// Attach a channel to the most recently added layer.
+    ///
+    /// The length check is here rather than inside `Channel` because here is where the caller's
+    /// array is: a channel with the wrong number of values would otherwise silently leave the
+    /// tail of a series unmapped, and unmapped points are not drawn.
+    let private withChannel (what: string) (values: int) (ch: Channel) (fig: Figure) : Figure =
+        mapLastLayer
+            (fun l ->
+                let n = Erase.seriesLength l.Data
+
+                if values <> n then
+                    invalidArg
+                        "values"
+                        (sprintf "Marey: the %s channel has %d values but the series has %d points." what values n)
+
+                { l with
+                    Channels = Array.append l.Channels [| ch |] })
+            fig
+
+    /// **Colour by a category.** One colour per level, one batch per level, one legend entry
+    /// per level — and the levels come from the keys themselves, in first-appearance order,
+    /// exactly as `Chart.Category` derives them (D45).
+    ///
+    /// ```fsharp
+    /// Chart.scatter U.second U.metre ts xs
+    /// |> Chart.colorByKey species
+    /// |> Chart.shapeByKey species
+    /// ```
+    ///
+    /// Applying both to the same keys is §9's colour-blind-safe scatter, and it is still *one
+    /// batch per level*: the two channels read the same level number, so the grouping does not
+    /// take their product.
+    let colorByKey (keys: 'k[]) (fig: Figure) : Figure =
+        let levels = Levels.ofSeq keys
+
+        withChannel "colour" keys.Length (Channel.colorByLevel fig.Theme levels.Labels (Levels.positions levels keys)) fig
+
+    /// **Shape by a category** — the redundant encoding that keeps a scatter readable in
+    /// greyscale and under colour-vision deficiency, which is why `MarkerShape` is on the
+    /// batched node at all (D5).
+    let shapeByKey (keys: 'k[]) (fig: Figure) : Figure =
+        let levels = Levels.ofSeq keys
+
+        withChannel "shape" keys.Length (Channel.shapeByLevel fig.Theme levels.Labels (Levels.positions levels keys)) fig
+
+    /// **Colour by a quantity**, over a named ramp.
+    ///
+    /// The witness is an argument for the same reason it is one on `Chart.line`: `float<K>` is
+    /// `float` at runtime, and something has to hand the library the evidence exactly once.
+    /// What it buys is the same thing it buys on an axis — the colorbar labels itself `T [K]`,
+    /// picks its own prefix, and its ticks are the axis compiler's (D49).
+    ///
+    /// The domain is the data's own range, **unpadded**: an axis pads so that the extreme
+    /// points are not on the frame, and a colour ramp has no frame to sit on — padding it would
+    /// simply throw away both ends of the ramp.
+    let colorByWith (ramp: Ramp) (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
+        let domain =
+            match Scale.domainOf values with
+            | Some d -> d
+            | None -> tag<'u> 0.0, tag<'u> 1.0
+
+        withChannel "colour" values.Length (Channel.colorByValue "" ramp (Scale.linear u domain) values) fig
+
+    /// `colorByWith` over the theme's sequential ramp — viridis-family, perceptually ordered
+    /// and lightness-monotone, so it survives greyscale printing.
+    let colorBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
+        colorByWith fig.Theme.Sequential u values fig
+
+    /// Name the quantity a colour channel encodes: `T` in `T [K]`. The unit half is never
+    /// configured, exactly as on an axis.
+    ///
+    /// Without it the name is read from the channel's *dimension* — a kelvin channel is `T`, a
+    /// time channel is `t` — and a dimension with no conventional symbol leaves the bar
+    /// labelled with its unit alone rather than borrowing an axis's `y`.
+    let withColorLabel (label: string) (fig: Figure) : Figure =
+        mapLastLayer
+            (fun l ->
+                { l with
+                    Channels =
+                        l.Channels
+                        |> Array.map (fun c ->
+                            match c.Map with
+                            | ColorByValue _ -> { c with Label = label }
+                            | _ -> c) })
+            fig
+
+    /// **Size by a quantity**, between two device diameters.
+    ///
+    /// Interpolated in area rather than in diameter, because area is what the eye reads off a
+    /// disc. Size is the weakest of the channels for accurate reading, so it is the one to
+    /// reach for last: the key it produces is three marks in the legend, not a bar.
+    let sizeByWith (smallest: float<px>) (largest: float<px>) (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
+        let domain =
+            match Scale.domainOf values with
+            | Some d -> d
+            | None -> tag<'u> 0.0, tag<'u> 1.0
+
+        withChannel "size" values.Length (Channel.sizeByValue "" smallest largest (Scale.linear u domain) values) fig
+
+    /// `sizeByWith` over a range centred on the theme's marker size: half of it to three times
+    /// it, which is a visible span without producing marks that swallow their neighbours.
+    let sizeBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
+        let m = fig.Theme.MarkerSize
+        sizeByWith (m * 0.5) (m * 3.0) u values fig
 
     // ---- Axes ---------------------------------------------------------------------------------
 

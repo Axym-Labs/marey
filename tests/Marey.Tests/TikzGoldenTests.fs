@@ -133,6 +133,36 @@ module Figures =
     let ``a categorical figure`` () =
         check "figure-category.tex" (Chart.render TikzBackend.render figureSurface categoryFigure)
 
+    /// The channelled figure through the other backend. Shape is the encoding that survives
+    /// greyscale, so a pair of baselines is also the check that both backends draw the same
+    /// three shapes for the same three levels.
+    [<Fact>]
+    let ``a channelled figure`` () =
+        check "figure-channels.tex" (Chart.render TikzBackend.render figureSurface channelFigure)
+
+    /// **D49's third exit criterion, and the only gate that would have caught the gradient.**
+    ///
+    /// A `LinearGradient`-filled colorbar comes through this backend as one flat `#23908c`
+    /// rectangle: `Gradients = false`, so `Degrade.forCaps` collapses the ramp to its Oklab
+    /// midpoint. The document stays valid, the diff stays clean, and the bar is gone. What this
+    /// baseline records is a column of individually coloured strips — countable in the file.
+    [<Fact>]
+    let ``a figure with a colorbar`` () =
+        check "figure-colorbar.tex" (Chart.render TikzBackend.render figureSurface colorbarFigure)
+
+    /// The claim above, as an assertion rather than as a reviewer's attention: the bar in the
+    /// TeX document really does carry many distinct colours. One would mean it had degraded.
+    [<Fact>]
+    let ``the colorbar reaches TeX as strips, not as one flat block`` () =
+        let tex = Chart.render TikzBackend.render figureSurface colorbarFigure
+
+        let colors =
+            System.Text.RegularExpressions.Regex.Matches(tex, @"[0-9a-fA-F]{6}")
+            |> Seq.map (fun m -> m.Value.ToLowerInvariant())
+            |> Set.ofSeq
+
+        Assert.True(colors.Count > 100, sprintf "only %d distinct colours in the document" colors.Count)
+
     /// The milestone's headline as a committed artefact rather than a substring assertion:
     /// `Theme.tikz` alone turns the unit witnesses into siunitx markup. TeX-only, because
     /// `\qty{}{\metre}` in an SVG would be nonsense.

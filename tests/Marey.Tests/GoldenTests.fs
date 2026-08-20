@@ -635,6 +635,18 @@ module Figures =
     let ``a categorical figure`` () =
         check "figure-category.svg" (Chart.render SvgBackend.render figureSurface categoryFigure)
 
+    /// D46 — a categorical colour channel. Three levels, three batches, and a legend that
+    /// enumerates the levels rather than the series.
+    [<Fact>]
+    let ``a channelled figure`` () =
+        check "figure-channels.svg" (Chart.render SvgBackend.render figureSurface channelFigure)
+
+    /// D49 — the colorbar. Its pair in `TikzGoldenTests` is the one that matters: a bar that
+    /// degraded to a single flat block would still produce a clean diff *here*.
+    [<Fact>]
+    let ``a figure with a colorbar`` () =
+        check "figure-colorbar.svg" (Chart.render SvgBackend.render figureSurface colorbarFigure)
+
     /// A figure is a scene like any other, so it has to be one: if `Figure.toScene` ever emitted
     /// something outside the nine cases this would not compile, and if it stopped exercising them
     /// the golden above would be measuring less than it claims.

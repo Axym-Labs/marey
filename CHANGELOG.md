@@ -28,6 +28,16 @@ M2 — *Grammar* — in progress. Nothing here has shipped to nuget.org.
 - `Chart.Category.bar` and `Chart.Category.scatter`: a chart whose x is a category. The y axis is
   dimensioned as everywhere else, so `Chart.Category.bar U.metre keys values` labels its bands
   and its y unit with nothing configured.
+- **Non-positional channels**: `Chart.colorByKey`, `Chart.shapeByKey`, `Chart.colorBy`,
+  `Chart.sizeBy`, and the `Channel` module beneath them. A categorical channel is one colour or
+  shape per level; a continuous one is dimensioned, so it carries a unit.
+- A **colorbar** for a continuous colour channel, in a column of its own beside the plot. Its
+  ticks, prefix and title come from the axis compiler, so a colour channel over `float<K>`
+  labels its bar `T [K]` with nothing configured. It is drawn as strips rather than as a
+  gradient, which is what makes it survive a backend that has no gradients.
+- A **size key** in the legend for a continuous size channel: three marks at the ends and middle
+  of the domain, labelled with the unit. `LegendSizedMarker` is the mark kind behind it.
+- `Theme.ColorbarWidth`, and `Erase.seriesLength`.
 
 ### Changed
 
@@ -39,6 +49,9 @@ M2 — *Grammar* — in progress. Nothing here has shipped to nuget.org.
 - Two layers on one panel whose x or y are *different* categories now raise instead of unifying.
   A categorical scale is dimensionless, so the existing runtime dimension check could not tell
   two categories apart, and the second layer was drawn against the first layer's labels.
+- `Chart.withTheme` now recolours a categorical channel as well as a layer's style, on the same
+  rule: replaced when the colours are still exactly what the outgoing theme would have chosen,
+  kept when they are not.
 
 ## [0.1.1] — 2026-08-20
 

@@ -229,6 +229,13 @@ module Erase =
                         { X = s.XScale.Forward s.X.[i]
                           Y = s.YScale.Forward s.Y.[i] }) }
 
+    /// How many points a packed series holds. Cheaper than projecting it to find out, which is
+    /// what a caller checking that a channel is the same length as its layer would otherwise do.
+    let seriesLength (p: PackedSeries) =
+        p.Accept
+            { new ISeriesConsumer<int> with
+                member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) = s.X.Length }
+
     let seriesName (p: PackedSeries) =
         p.Accept
             { new ISeriesConsumer<string> with

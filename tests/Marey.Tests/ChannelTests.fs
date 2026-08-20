@@ -1,4 +1,5 @@
-/// M2 phase 0 — `PackedChannel`, the two-channel reunifier, and `Chart.ofPacked`.
+/// M2 phases 0 and 2 — `PackedChannel`, the two-channel reunifier, `Chart.ofPacked`, and the
+/// non-positional channels that map data to appearance.
 ///
 /// D44 finding 2 gives the encoding CE a shape the erasure boundary could not express: a
 /// channel is *one* witness and *one* array, erased where it is declared, long before anything
@@ -128,3 +129,181 @@ module PlotBoundary =
             |> Chart.ofPacked GeomLine
 
         Assert.Equal(render (Chart.line U.second U.metre times displacements), render viaChannels)
+
+// ======================================================================================
+// D46 — the quantiser: how many batches, in what order, and what happens to a NaN
+// ======================================================================================
+
+/// The claims here are the ones D46 rests on, and every one of them is a *count* rather than a
+/// picture — the whole decision is about how many IR nodes a varying colour costs, and the
+/// number of groups is exactly where that shows.
+module Quantisation =
+
+    let private levels = [| "control"; "treated"; "washout" |]
+
+    /// 30 points cycling through three levels.
+    let private levelValues = Array.init 30 (fun i -> float (i % 3))
+
+    let private colorChannel () =
+        Channel.colorByLevel Theme.initial levels levelValues
+
+    let private shapeChannel () =
+        Channel.shapeByLevel Theme.initial levels levelValues
+
+    let private temperatures = Array.init 30 (fun i -> (280.0 + float i) * 1.0<K>)
+
+    let private tempChannel () =
+        Channel.colorByValue "T" Palette.viridis (Scale.linear U.kelvin (280.0<K>, 309.0<K>)) temperatures
+
+    /// The empty case has to be the identity, because it is the case every existing figure is
+    /// in: one group of every point, styled by nothing.
+    [<Fact>]
+    let ``no channels is one batch of every point`` () =
+        let batches, unmapped = Channel.split [||] 40
+
+        Assert.Equal(1, batches.Length)
+        Assert.Equal(40, batches.[0].Indices.Length)
+        Assert.Equal(0, unmapped)
+
+    /// Phase 2's first exit criterion, at the level the decision was made: three levels are
+    /// three groups, whatever the point count.
+    [<Fact>]
+    let ``three levels are three batches, and they partition the points`` () =
+        let batches, unmapped = Channel.split [| colorChannel () |] 30
+
+        Assert.Equal(3, batches.Length)
+        Assert.Equal(0, unmapped)
+
+        let all = batches |> Array.collect (fun b -> b.Indices) |> Array.sort
+        Assert.Equal<int[]>(Array.init 30 id, all)
+
+    /// §9's colour-blind-safe scatter is colour *and* shape over the same key, and what makes
+    /// it affordable is that it stays three batches. A product would be nine — and a product is
+    /// what an implementation keyed on the visual attributes rather than the level would give.
+    [<Fact>]
+    let ``colour and shape over the same levels is still one batch per level`` () =
+        let batches, _ = Channel.split [| colorChannel (); shapeChannel () |] 30
+
+        Assert.Equal(3, batches.Length)
+
+        // And the redundancy is real: the three batches differ in both attributes.
+        let styled =
+            batches |> Array.map (fun b -> b.Restyle(Geom.styleFor Theme.initial 0))
+
+        Assert.Equal(3, styled |> Array.map (fun s -> Color.toHex s.Color) |> Array.distinct |> Array.length)
+        Assert.Equal(3, styled |> Array.map (fun s -> s.Shape) |> Array.distinct |> Array.length)
+
+    /// Two channels over *different* keys do take the product, and should: the reader has two
+    /// things to tell apart, so the marks do too.
+    [<Fact>]
+    let ``two channels over different keys take their product`` () =
+        let byThree = colorChannel ()
+
+        let byTwo =
+            Channel.shapeByLevel Theme.initial [| "a"; "b" |] (Array.init 30 (fun i -> float (i % 2)))
+
+        let batches, _ = Channel.split [| byThree; byTwo |] 30
+
+        // 30 points cycling 3 and 2 visit all six combinations.
+        Assert.Equal(6, batches.Length)
+
+    /// D46's bound. 100 000 points, 256 steps, and the assertion is `<=` rather than `=`
+    /// because a domain the data does not fill leaves steps empty. A bound is what fails
+    /// loudly if anybody ever reaches for one batch per point.
+    [<Fact>]
+    let ``a hundred thousand points cost at most 256 batches`` () =
+        let n = 100_000
+        let rng = System.Random 11
+        let values = Array.init n (fun _ -> (280.0 + rng.NextDouble() * 25.0) * 1.0<K>)
+
+        let ch =
+            Channel.colorByValue "T" Palette.viridis (Scale.linear U.kelvin (280.0<K>, 305.0<K>)) values
+
+        let batches, unmapped = Channel.split [| ch |] n
+
+        Assert.True(batches.Length <= Channel.ColorSteps, sprintf "%d batches" batches.Length)
+        Assert.Equal(0, unmapped)
+        Assert.Equal(n, batches |> Array.sumBy (fun b -> b.Indices.Length))
+
+    /// §13's determinism gate compares two renders byte for byte, and a `Dictionary`'s
+    /// enumeration order is not a guarantee. Batches come out sorted by bucket key, which also
+    /// means the drawing order of a channelled layer is the channel's own order — low values
+    /// under high ones — rather than an accident of hashing.
+    [<Fact>]
+    let ``batches come out in ascending bucket order`` () =
+        let batches, _ = Channel.split [| tempChannel () |] 30
+
+        let heads =
+            batches |> Array.map (fun b -> temperatures.[Array.min b.Indices])
+
+        Assert.Equal<float<K>[]>(Array.sort heads, heads)
+
+    /// A missing value has no colour, and neither quiet alternative is honest: clamping paints
+    /// missing data as a real measurement, and a fallback colour invents a category. It is
+    /// dropped, and the count is reported so that a figure can say so.
+    [<Fact>]
+    let ``a non-finite value is unmapped rather than clamped`` () =
+        let values =
+            Array.init 30 (fun i -> if i % 10 = 0 then nan * 1.0<K> else (280.0 + float i) * 1.0<K>)
+
+        let ch =
+            Channel.colorByValue "T" Palette.viridis (Scale.linear U.kelvin (280.0<K>, 309.0<K>)) values
+
+        let batches, unmapped = Channel.split [| ch |] 30
+
+        Assert.Equal(3, unmapped)
+        Assert.Equal(27, batches |> Array.sumBy (fun b -> b.Indices.Length))
+
+    /// A level number outside the level set is the same case. It reaches here rather than
+    /// raising because `Levels.positions` is the door that raises (D45); this is the backstop
+    /// for a channel built by hand.
+    [<Fact>]
+    let ``a level number outside the level set is unmapped`` () =
+        let ch = Channel.colorByLevel Theme.initial levels [| 0.0; 1.0; 2.0; 7.0; -1.0 |]
+
+        let batches, unmapped = Channel.split [| ch |] 5
+
+        Assert.Equal(2, unmapped)
+        Assert.Equal(3, batches.Length)
+
+    /// D46's second quantum. Two marks whose diameters differ by less than half a pixel are the
+    /// same mark, so they must land in the same bucket — otherwise a size channel over
+    /// continuous data is one batch per point by another route.
+    [<Fact>]
+    let ``sizes within half a pixel share a bucket`` () =
+        let scale = Scale.linear U.kilogram (0.0<kg>, 1.0<kg>)
+        let map = SizeByValue(Erase.packScale scale, 4.0<px>, 12.0<px>)
+        let bucket = Channel.bucketer map
+
+        // 1000 evenly spaced values across an 8 px span cannot need more than 17 buckets.
+        let buckets = Array.init 1000 (fun i -> bucket (float i / 999.0)) |> Array.distinct
+
+        Assert.True(buckets.Length <= 17, sprintf "%d distinct sizes" buckets.Length)
+
+    /// A size channel encodes in **area**, because area is what the eye reads off a disc. The
+    /// middle of the domain is therefore the mark of middling *area*, not of middling
+    /// diameter — which would be the same picture only if the reader were measuring radii.
+    [<Fact>]
+    let ``size interpolates area, not diameter`` () =
+        let small = 4.0<px>
+        let large = 12.0<px>
+        let mid = Channel.sizeAt small large 0.5
+
+        let area (d: float<px>) = float d * float d
+
+        Assert.Equal((area small + area large) / 2.0, area mid, 6)
+        Assert.NotEqual((float small + float large) / 2.0, float mid, 6)
+
+    /// The colorbar's strips and the marks take their colour from the same call, at the
+    /// midpoint of the step. This is what keeps D49's bar honest — "the bar agrees with the
+    /// marks" as a fact about the code rather than about two implementations that currently
+    /// happen to match.
+    [<Fact>]
+    let ``a bucket's colour is the midpoint of its step`` () =
+        let ch = tempChannel ()
+        let styled = Channel.restyle ch.Map 100 (Geom.styleFor Theme.initial 0)
+
+        Assert.Equal(
+            Color.toHex (Ramp.at Palette.viridis (Channel.stepMidpoint Channel.ColorSteps 100)),
+            Color.toHex styled.Color
+        )

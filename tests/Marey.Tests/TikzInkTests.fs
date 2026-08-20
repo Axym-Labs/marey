@@ -366,3 +366,124 @@ module ``toolchain report`` =
     let ``the ink gate says whether it ran`` () =
         System.Console.WriteLine("Marey ink gate: " + Raster.report ())
         Assert.True(true)
+
+// ======================================================================================
+// D49 — the colorbar, in ink
+// ======================================================================================
+
+/// **The gate the decision was written for.**
+///
+/// D49 rejected a gradient-filled colorbar because `Gradients = false` makes `Degrade.forCaps`
+/// collapse the ramp to its Oklab midpoint, and the result is a single flat block: valid TeX, a
+/// clean golden diff, and no colorbar. Every text-level assertion in this repository would pass
+/// on that document — which is the same shape of failure as D33's invisible markers, arrived at
+/// from the other direction.
+///
+/// So the bar is checked the only way that can tell the two apart: compile it, rasterise it, and
+/// look at the greys down its length. A viridis ramp is lightness-monotone by construction, so a
+/// bar of strips is a gradient of greys and a degraded bar is one value repeated.
+module ColorbarInk =
+
+    let private times = Array.init 24 (fun i -> float i * 0.4<s>)
+    let private falls = times |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
+
+    let private temperatures =
+        times |> Array.map (fun t -> (280.0 + 2.5 * float t) * 1.0<K>)
+
+    let private withBar =
+        Chart.scatter U.second U.metre times falls
+        |> Chart.colorBy U.kelvin temperatures
+        |> Chart.withColorLabel "T"
+        |> Chart.withTheme Theme.tikz
+        |> Chart.withLegend LegendNone
+
+    let private withoutBar =
+        Chart.scatter U.second U.metre times falls
+        |> Chart.withTheme Theme.tikz
+        |> Chart.withLegend LegendNone
+
+    /// Where the bar actually is, read off the compiled scene rather than guessed at.
+    ///
+    /// The strips are the filled paths inside the colorbar's own `Annotated` node, so their
+    /// union is the bar. Deriving the region this way means the test keeps working when the
+    /// theme changes the bar's width — the alternative, a hand-measured fraction of the page,
+    /// would be measuring the layout instead of the ink.
+    let private barRegion (node: Node) : Region option =
+        let bounds =
+            Scene.fold
+                (fun acc n ->
+                    match n with
+                    | Annotated(sem, body) when sem.Role = RoleOther "colorbar" ->
+                        Scene.fold
+                            (fun (x0, y0, x1, y1) inner ->
+                                match inner with
+                                | Path(segs, _, Some _, _) ->
+                                    segs
+                                    |> Array.fold
+                                        (fun (a, b, c, d) seg ->
+                                            match seg with
+                                            | MoveTo pt
+                                            | LineTo pt ->
+                                                min a (float pt.X), min b (float pt.Y), max c (float pt.X), max d (float pt.Y)
+                                            | _ -> a, b, c, d)
+                                        (x0, y0, x1, y1)
+                                | _ -> x0, y0, x1, y1)
+                            acc
+                            body
+                    | _ -> acc)
+                (infinity, infinity, -infinity, -infinity)
+                node
+
+        match bounds with
+        | (x0, y0, x1, y1) when x0 <= x1 ->
+            // nd is bottom-up and the raster is top-down. Inset by a strip's own width so the
+            // region is the bar's interior rather than its frame.
+            Some
+                { Left = x0 + 0.004
+                  Right = x1 - 0.004
+                  Top = 1.0 - y1 + 0.01
+                  Bottom = 1.0 - y0 - 0.01 }
+        | _ -> None
+
+    /// The distinct grey levels inside a region, ignoring the near-white page.
+    let private greysIn (r: Region) (g: Gray) =
+        let x0 = max 0 (int (r.Left * float g.Width))
+        let x1 = min g.Width (int (r.Right * float g.Width))
+        let y0 = max 0 (int (r.Top * float g.Height))
+        let y1 = min g.Height (int (r.Bottom * float g.Height))
+
+        let mutable found = Set.empty
+
+        for y in y0 .. y1 - 1 do
+            for x in x0 .. x1 - 1 do
+                let v = g.Pixels.[y * g.Width + x]
+
+                if int v < 250 then
+                    found <- Set.add (int v) found
+
+        found
+
+    /// D49's claim, in pixels: the bar is inked, its greys form a ramp rather than a block, and
+    /// the ink is *there because of the bar* — the same figure without a colour channel leaves
+    /// that column of the page empty.
+    [<Fact>]
+    let ``the colorbar is a ramp of greys, not one flat block`` () =
+        let scene = Chart.toScene size withBar
+
+        match barRegion scene with
+        | None -> failwith "no colorbar was compiled"
+        | Some region ->
+            withRasters2 (rasterOf "colorbar-with" scene) (rasterOfFigure "colorbar-without" withoutBar) (fun a b ->
+                let inked = coverageIn region a
+                Assert.True(inked > 0.9, sprintf "the bar covers only %.1f%% of its own region" (inked * 100.0))
+
+                let greys = greysIn region a
+
+                Assert.True(
+                    greys.Count > 20,
+                    sprintf "the bar rasterises to %d grey levels — a degraded gradient is one\n%s" greys.Count (inkMap 100 a)
+                )
+
+                // The differential: without the channel there is no bar, and no ink where it was.
+                let empty = coverageIn region b
+                Assert.True(empty < 0.02, sprintf "%.1f%% ink where the bar is not" (empty * 100.0)))

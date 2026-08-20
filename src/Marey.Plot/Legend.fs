@@ -9,6 +9,16 @@ type LegendMark =
     | LegendLineMarker of dash: float<px>[] * shape: MarkerShape
     /// A filled rectangle: areas and bars.
     | LegendSwatch
+    /// D49 — a marker drawn at a stated diameter rather than the theme's: the size key of a
+    /// continuous size channel, three of them at the domain's ends and middle.
+    ///
+    /// **A new case here is cheap in a way an IR case is not**, which is the whole of D11's
+    /// "one variant against six backends" read the other way. `LegendMark` is a `Marey.Plot`
+    /// type with exactly one consumer — the `match` inside `Legend.compile` — and it is
+    /// compiled into `Path`/`Markers` before any backend sees it. So the size key is a case
+    /// and the colorbar is a sibling compiler: the question is never whether a new case is
+    /// allowed, it is what the case costs the thing it lives in.
+    | LegendSizedMarker of shape: MarkerShape * size: float<px>
 
 [<NoComparison>]
 type LegendEntry =
@@ -39,12 +49,24 @@ type LegendPlacement =
 [<RequireQualifiedAccess>]
 module Legend =
 
+    /// The drawn size of a swatch: the theme's, unless the entry states one.
+    let private swatchSize (theme: Theme) (e: LegendEntry) =
+        match e.Mark with
+        | LegendSizedMarker(_, size) -> size
+        | _ -> theme.MarkerSize
+
     /// Height of one row: the taller of the type and the swatch.
     let private rowHeight (m: ITextMeasurer) (theme: Theme) (e: LegendEntry) =
         let b =
             TextMeasure.bounds m theme.LegendFont AnchorStart BaselineMiddle 0.0<rad> e.Name
 
-        max (Rect.height b) theme.MarkerSize
+        max (Rect.height b) (swatchSize theme e)
+
+    /// The swatch column's width. A sized marker can be wider than the theme's swatch, and a
+    /// key whose largest mark is clipped by its own box is worse than no key.
+    let private swatchWidth (theme: Theme) (entries: LegendEntry[]) =
+        entries
+        |> Array.fold (fun acc e -> max acc (swatchSize theme e)) theme.LegendSwatchWidth
 
     /// The box the legend needs, in device px.
     let measure (m: ITextMeasurer) (theme: Theme) (entries: LegendEntry[]) : Extent<px> =
@@ -62,7 +84,7 @@ module Legend =
 
             let rows = entries |> Array.map (rowHeight m theme)
 
-            { Width = 2.0 * theme.LegendPadding + theme.LegendSwatchWidth + theme.LabelGap * 2.0 + textW
+            { Width = 2.0 * theme.LegendPadding + swatchWidth theme entries + theme.LabelGap * 2.0 + textW
               Height = 2.0 * theme.LegendPadding + Array.sum rows + theme.LegendItemGap * float (entries.Length - 1) }
 
     /// Position the box inside a plot area, in device px.
@@ -119,7 +141,7 @@ module Legend =
             let rows = entries |> Array.map (rowHeight m theme)
 
             let swatchX0 = b.X0 + theme.LegendPadding
-            let swatchX1 = swatchX0 + theme.LegendSwatchWidth
+            let swatchX1 = swatchX0 + swatchWidth theme entries
             let textX = swatchX1 + theme.LabelGap * 2.0
 
             let mutable y = b.Y0 + theme.LegendPadding
@@ -138,19 +160,22 @@ module Legend =
                        let lineOf (dash: float<px>[]) =
                            Path([| MoveTo(pt swatchX0 cy); LineTo(pt swatchX1 cy) |], Some { stroke with Dash = dash }, None, NonZero)
 
-                       let markerOf (shape: MarkerShape) =
+                       let markerAt (shape: MarkerShape) (size: float<px>) =
                            Markers
                                { Points = [| pt mid cy |]
                                  Shape = shape
-                                 Size = theme.MarkerSize
+                                 Size = size
                                  Fill = Some(Solid e.Color)
                                  Stroke = None }
+
+                       let markerOf (shape: MarkerShape) = markerAt shape theme.MarkerSize
 
                        let swatch =
                            match e.Mark with
                            | LegendLine dash -> lineOf dash
                            | LegendMarker shape -> markerOf shape
                            | LegendLineMarker(dash, shape) -> Group [| lineOf dash; markerOf shape |]
+                           | LegendSizedMarker(shape, size) -> markerAt shape size
                            | LegendSwatch ->
                                let r: Rect<nd> =
                                    Layout.ndRect
