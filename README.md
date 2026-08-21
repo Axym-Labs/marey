@@ -143,8 +143,8 @@ Without the extension, render to SVG and the built-in formatter draws it, with n
 ## Building
 
 ```
-dotnet build          # warning-free; warnings are errors
-dotnet test           # 738 tests
+dotnet build
+dotnet test
 ```
 
 The suite is FsCheck property suites for the dimension group laws, all seven scale kinds, ticks,
