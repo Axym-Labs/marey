@@ -222,11 +222,19 @@ module ``D31 capabilities are honest`` =
 
     let private caps = (TikzBackend() :> IBackend).Caps
 
+    /// **`Rasters` inverted at M2.5, and it is the first capability in the project to go from
+    /// `false` to `true`.** D31 set it `false` because "an honest raster needs a sidecar .png and
+    /// `\\includegraphics`, which breaks the one-string-output contract", and named
+    /// `renderWithAssets` as the door. D64 built the door: `RenderedDocument` carries the
+    /// sidecar, so the reason expired rather than the judgement being wrong.
+    ///
+    /// `Gradients` did not follow it and will not. That `false` is about PGF shadings being
+    /// two-stop and axis-constrained, which no output shape fixes.
     [<Fact>]
-    let ``gradients and rasters are refused, clipping and dashes are not`` () =
+    let ``gradients are refused, rasters and clipping and dashes are not`` () =
         Assert.False caps.Gradients
         Assert.False caps.RadialGradients
-        Assert.False caps.Rasters
+        Assert.True caps.Rasters
         Assert.False caps.TextShaping
         Assert.True caps.Clipping
         Assert.True caps.Dashes
@@ -269,14 +277,25 @@ module ``D31 capabilities are honest`` =
                   Bounds = { X0 = 0.0<nd>; Y0 = 0.0<nd>; X1 = 1.0<nd>; Y1 = 1.0<nd> }
                   Smooth = false }
 
-        // Degrade removes the node entirely, so the picture is well-formed and empty of content.
+        // D64. The backend advertises `Rasters = true`, but `render` promises a bare `string`
+        // and a string has nowhere to put a sidecar — so it degrades against its own reduced
+        // capabilities and the node goes away. Emitting the \includegraphics and dropping the bytes
+        // would produce a `.tex` that fails to compile with a missing-file error, which is the
+        // same class of wrong output as the gradient above, arriving in somebody else's build.
         let out = render raster
         Assert.DoesNotContain("includegraphics", out)
         Assert.Contains("\\end{tikzpicture}", out)
 
-    /// Driving `IBackend` by hand skips degradation, so the backend itself must still be total.
+        // The same scene through the asset-shaped door: drawn, and the bytes come back.
+        let rendered = TikzBackend.renderWithAssets surface raster
+        Assert.Contains("includegraphics", rendered.Document)
+        Assert.Single rendered.Assets |> ignore
+
+    /// Driving `IBackend` by hand skips degradation, so the backend sees the raster it advertises
+    /// it can draw — and D64 is what changed underneath this test. It read
+    /// `a raster reaching the backend undegraded leaves a visible comment` until M2.5.
     [<Fact>]
-    let ``a raster reaching the backend undegraded leaves a visible comment`` () =
+    let ``a raster reaching the backend is drawn, with its bytes on the side`` () =
         let backend = TikzBackend()
         let sink = backend :> IBackend
         sink.Begin surface
@@ -290,7 +309,19 @@ module ``D31 capabilities are honest`` =
 
         sink.Finish()
 
-        Assert.Contains("% marey: raster 4x3 skipped", backend.Result)
+        // This assertion used to read `Assert.Contains("% marey: raster 4x3 skipped", ...)`,
+        // and the inversion is the point of D64: the backend can now draw one.
+        Assert.Contains("\\includegraphics", backend.Result)
+        Assert.DoesNotContain("skipped", backend.Result)
+
+        // The half that would be easy to omit, and useless output if omitted: the document names
+        // a file, so a file has to exist. A `.tex` referring to a `.png` nobody wrote is a
+        // missing-file error in somebody else's build.
+        let asset = Assert.Single backend.Assets
+        Assert.Contains(asset.Name, backend.Result)
+        Assert.NotEmpty asset.Bytes
+        // PNG's signature, so this is an image rather than a plausible-looking blob.
+        Assert.Equal<byte[]>([| 0x89uy; 0x50uy; 0x4Euy; 0x47uy |], asset.Bytes.[0..3])
 
 // ======================================================================================
 // D33 — batched markers

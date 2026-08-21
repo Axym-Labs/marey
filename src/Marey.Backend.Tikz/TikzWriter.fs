@@ -355,6 +355,12 @@ type internal TikzDocument() =
     let mutable footer = ""
     let mutable nextId = 0
 
+    /// Sidecar files this picture refers to but does not contain (D64). Assigned in traversal
+    /// order, which is what makes `RenderedDocument.Assets` deterministic in order as well as
+    /// in name — a render that produced `marey-raster-0.png` and `marey-raster-1.png` in
+    /// swapped order would be a golden diff for no reason.
+    let assets = ResizeArray<RenderedAsset>()
+
     member _.Body = body
 
     member _.Header
@@ -370,6 +376,7 @@ type internal TikzDocument() =
         defs.Clear()
         defIds.Clear()
         usedIds.Clear()
+        assets.Clear()
         header <- ""
         footer <- ""
         nextId <- 0
@@ -410,6 +417,19 @@ type internal TikzDocument() =
             defIds.[key] <- id
             defs.Add(render id)
             id
+
+    /// Register a sidecar file and return the name the document should refer to it by.
+    ///
+    /// The name is derived from the position in traversal order and nothing else: no hash, no
+    /// GUID, no source-derived string. `\includegraphics` resolves it relative to the `.tex`,
+    /// so it is a bare file name and the caller chooses the directory.
+    member _.AddAsset(extension: string, bytes: byte[]) : string =
+        let name = "marey-raster-" + string assets.Count + extension
+        assets.Add { Name = name; Bytes = bytes }
+        name
+
+    /// The sidecar files registered so far, in traversal order.
+    member _.Assets: RenderedAsset[] = assets.ToArray()
 
     /// Compose the finished picture: header, then definitions, then body, then footer.
     member _.Compose() : string =

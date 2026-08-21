@@ -7,10 +7,12 @@
 ///
 /// Three things this suite checks that the SVG one cannot:
 ///
-/// * **Degradation is visible as text.** `Capabilities.Gradients = false` and `Rasters = false`, so
-///   `gradients.tex` shows the Oklab-midpoint solid D10 promises — both ramps collapsing to the
-///   same colour, which is the cost stated plainly — and `raster.tex` shows an empty picture where
-///   two images were. D10's first real exercise, recorded in files a reviewer reads.
+/// * **Degradation is visible as text.** `Capabilities.Gradients = false`, so `gradients.tex`
+///   shows the Oklab-midpoint solid D10 promises — both ramps collapsing to the same colour,
+///   which is the cost stated plainly. `raster.tex` shows an empty picture where two images were
+///   for a different reason after D64: the capability is now `true`, but `TikzBackend.render`
+///   returns a `string` and degrades rasters away because a string cannot carry a sidecar. D10's
+///   first real exercise, recorded in files a reviewer reads.
 /// * **Every baseline compiles.** The SVG suite's oracle is `XDocument.Parse`; the only authority
 ///   on a `.tex` file is a TeX engine, so one runs over all thirteen.
 /// * **A figure has a baseline at all** — in either backend. See `Golden.figure`.
@@ -63,40 +65,59 @@ module Snapshots =
     [<Fact>]
     let ``keyed and annotated`` () = tikz "keyed-annotated"
 
-    /// `Rasters = false`, so the baseline is a **bare bounding box** — and that is worth being
-    /// precise about, because the emitter contains a branch that writes
-    /// `% marey: raster 2x2 skipped ...` and it never runs on this path.
+    /// The baseline is still a **bare bounding box**, and after D64 that is a statement about the
+    /// *entry point* rather than about TeX.
     ///
-    /// `Degrade.forCaps` replaces an unsupported `Raster` with `Scene.empty` before the backend
-    /// sees it, which is exactly the contract: a backend advertising `Rasters = false` never gets
-    /// handed one. The emitter's branch is still correct and still reachable — `IBackend.Draw` is
-    /// public and can be driven with an un-degraded scene — so it is defensive, not dead. Both
-    /// facts are pinned by the test below.
+    /// `TikzBackend.render` returns a `string`, and a string has nowhere to put a sidecar `.png`,
+    /// so it degrades with `Rasters = false` of its own and the node goes away — which is why
+    /// this baseline did not move when the capability flipped. The picture a *reader* of this
+    /// file sees is unchanged; what changed is that there is now a second door out of the
+    /// backend, and it draws the image.
     ///
-    /// The consequence for a user is real and accepted: an image in a TikZ figure disappears
-    /// without a trace in the document. Routing around `Degrade` to preserve a comment would make
-    /// Core's contract conditional on the backend, which is a worse trade for a `%` comment that
-    /// nobody reading the compiled PDF can see.
+    /// The consequence for a user of `render` is real and accepted, and it is the same one as
+    /// before: an image in a `.tex` produced this way disappears without a trace. The fix is to
+    /// call `renderWithAssets` or `renderToFileWithAssets`, which is what the test below pins.
     [<Fact>]
-    let ``rasters degraded away`` () = tikz "raster"
+    let ``rasters degraded away on the string-shaped path`` () = tikz "raster"
 
-    /// The two halves of the paragraph above, so neither can drift into a comment that is no
-    /// longer true. This is the second time a claim about this backend's output was written down
-    /// before being checked; the golden review caught it both times.
+    /// Both doors out of the backend, on one scene, so neither claim can drift into a comment
+    /// that is no longer true. This test read
+    /// `the raster skip comment is unreachable through render and reachable through Draw` until
+    /// M2.5 — the second half inverted, and the first half is why the baseline above is
+    /// byte-identical across the change.
     [<Fact>]
-    let ``the raster skip comment is unreachable through render and reachable through Draw`` () =
+    let ``a raster is absent through render and present through renderWithAssets`` () =
         let _, scene, extent = Scenes.all |> List.find (fun (n, _, _) -> n = "raster")
 
-        // Through the public entry point: degraded first, so no trace survives.
+        // Through the string-shaped entry point: degraded first, so no trace survives.
         Assert.DoesNotContain("raster", TikzBackend.render extent scene)
 
-        // Driven directly with the scene as authored: the branch fires.
-        let backend = TikzBackend()
-        let sink = backend :> IBackend
-        sink.Begin extent
-        sink.Draw scene
-        sink.Finish()
-        Assert.Contains("% marey: raster 2x2 skipped", backend.Result)
+        // Through the asset-shaped one: two images in the fixture, two sidecars, and the
+        // document refers to both by the names the backend chose.
+        let rendered = TikzBackend.renderWithAssets extent scene
+        Assert.Equal(2, rendered.Assets.Length)
+
+        for asset in rendered.Assets do
+            Assert.Contains("\\includegraphics[width=", rendered.Document)
+            Assert.Contains(asset.Name, rendered.Document)
+
+        // Deterministic in name *and* order (D64): the names are positions in traversal order,
+        // so a reordering would be visible here rather than in a golden diff months later.
+        Assert.Equal<string[]>([| "marey-raster-0.png"; "marey-raster-1.png" |], rendered.Assets |> Array.map (fun a -> a.Name))
+
+    /// The same figure twice. A sidecar whose bytes or whose name moved between renders would
+    /// make `renderToFileWithAssets` non-reproducible in a way no `.tex` diff would show.
+    [<Fact>]
+    let ``a rendered document and its assets are byte-identical across renders`` () =
+        let _, scene, extent = Scenes.all |> List.find (fun (n, _, _) -> n = "raster")
+        let a = TikzBackend.renderWithAssets extent scene
+        let b = TikzBackend.renderWithAssets extent scene
+
+        Assert.Equal(a.Document, b.Document)
+        Assert.Equal<string[]>(a.Assets |> Array.map (fun x -> x.Name), b.Assets |> Array.map (fun x -> x.Name))
+
+        for (x, y) in Array.zip a.Assets b.Assets do
+            Assert.Equal<byte[]>(x.Bytes, y.Bytes)
 
     [<Fact>]
     let ``groups and transforms`` () = tikz "groups-transforms"
