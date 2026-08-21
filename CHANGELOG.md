@@ -10,9 +10,9 @@ set rather than any one package.
 listed under `Changed` or `Removed` with the reason and the replacement, and until 1.0 they may
 land in a minor release.
 
-## v.0.2.0
+## [0.2.0] — 2026-08-21
 
-**M2 — *Grammar*.** Complete, and not yet published to nuget.org.
+**M2 — *Grammar*.** Published to nuget.org.
 
 `0.1.0` could draw a figure from two arrays. This release adds what a figure needs when the data is
 a table instead: categorical axes, colour/shape/size channels, summary statistics, small multiples,
@@ -180,7 +180,8 @@ Superseded by `0.1.0` and not recommended for use. `Marey.Verso` in particular c
 installed from it: prerelease versions do not appear in Verso's Extensions panel at all, so an
 rc validates the package and the formatter but never the installation path.
 
-[Unreleased]: https://github.com/Jonathan-Schaefer-git/marey/compare/0.1.1...HEAD
+[Unreleased]: https://github.com/Jonathan-Schaefer-git/marey/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/Jonathan-Schaefer-git/marey/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/Jonathan-Schaefer-git/marey/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/Jonathan-Schaefer-git/marey/compare/0.1.0-rc.1...0.1.0
 [0.1.0-rc.1]: https://github.com/Jonathan-Schaefer-git/marey/releases/tag/0.1.0-rc.1
