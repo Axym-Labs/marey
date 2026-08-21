@@ -216,6 +216,28 @@ let coverageIn (r: Region) (g: Gray) : float =
 
 let coverage (g: Gray) : float = coverageIn whole g
 
+/// The mean grey level of a region, 0 black to 255 white (D64).
+///
+/// `coverageIn` answers "is there ink"; this answers "how dark", which is the question
+/// **orientation** needs. A flipped image has ink in exactly the same box and the same amount
+/// of it — only the light and dark halves have swapped — so a coverage differential cannot see
+/// the bug at all, and a mean level can.
+let meanLevelIn (r: Region) (g: Gray) : float =
+    let x0, y0, x1, y1 = pixelBounds r g
+    let mutable total = 0.0
+    let mutable n = 0
+
+    for y in y0 .. y1 - 1 do
+        let row = y * g.Width
+
+        for x in x0 .. x1 - 1 do
+            total <- total + float g.Pixels.[row + x]
+            n <- n + 1
+
+    if n = 0 then 255.0 else total / float n
+
+let meanLevel (g: Gray) (r: Region) : float = meanLevelIn r g
+
 // ======================================================================================
 // RASTERISING
 // ======================================================================================
@@ -280,10 +302,19 @@ let rasterise (dpi: float) (pdf: string) : Result<Gray, string> =
 /// Reuses `TexToolchain.compileWith`, so the engine is invoked with exactly the flags the compile
 /// gate uses and a broken document fails here with the engine's own error message. The
 /// rasterisation happens inside the compiler's temporary directory, before it is cleaned up.
-let ofDocument (name: string) (document: string) : TexToolchain.PdfResult<Gray> =
+let rec ofDocument (name: string) (document: string) : TexToolchain.PdfResult<Gray> =
+    ofRendered name { Document = document; Assets = [||] }
+
+/// `ofDocument` for a picture that refers to sidecar files (D64).
+///
+/// The assets are written beside the `.tex` before the engine runs, so a `\includegraphics`
+/// pointing at a file nobody wrote fails here as a TeX error rather than as a blank region
+/// nobody notices. That is the failure this gate is for: a valid document with no ink in it is
+/// exactly what `Raster.fs` was written about.
+and ofRendered (name: string) (rendered: RenderedDocument) : TexToolchain.PdfResult<Gray> =
     match toolPath.Force() with
     | None -> TexToolchain.PdfUnavailable(Tool + " not found on PATH")
-    | Some _ -> TexToolchain.compileWith name document (rasterise Dpi)
+    | Some _ -> TexToolchain.compileAssetsWith name rendered.Document rendered.Assets (rasterise Dpi)
 
 // ======================================================================================
 // REPORTING

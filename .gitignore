@@ -12,6 +12,7 @@ artifacts/
 *.actual.svg
 *.actual.tex
 *.actual.txt
+*.actual.png
 
 # TeX byproducts from the golden-compile gate (the .tex baselines themselves are tracked).
 *.aux

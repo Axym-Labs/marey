@@ -222,6 +222,77 @@ let check (name: string) (actual: string) : unit =
             if File.Exists candidate then
                 File.Delete candidate
 
+/// Compare rendered **bytes** against their baseline (D64).
+///
+/// The same three-way behaviour as `check`, and deliberately not the same failure message: a
+/// binary has no lines to diff, so what a reader gets instead is the first differing offset and
+/// the two bytes there, which is what actually locates a change in an encoder's output.
+///
+/// **§5 of the M2.5 plan says a PNG baseline is not a golden, and this does not contradict it.**
+/// That argument is about a *rasteriser's* output — a bitmap that moves on a Skia version bump
+/// for reasons unrelated to Marey. These bytes come from Marey's own zero-dependency encoder
+/// over a hand-written pixel array, so nothing outside this repository can move them, and they
+/// are the only check anywhere that the encoder's actual output is stable. The file is a few
+/// hundred bytes and a reviewer can open it.
+let checkBytes (name: string) (actual: byte[]) : unit =
+    let file = path name
+    let candidate = actualPath file
+
+    let describe (expected: byte[]) (actual: byte[]) =
+        let n = min expected.Length actual.Length
+
+        let firstDiff =
+            let rec go i =
+                if i >= n then n
+                elif expected.[i] <> actual.[i] then i
+                else go (i + 1)
+
+            go 0
+
+        if firstDiff < n then
+            sprintf "First difference at byte %d: expected 0x%02X, actual 0x%02X. (%d bytes expected, %d actual)" firstDiff expected.[firstDiff] actual.[firstDiff] expected.Length actual.Length
+        else
+            sprintf "Identical for %d bytes, then the lengths differ: %d expected, %d actual." n expected.Length actual.Length
+
+    if updateRequested then
+        File.WriteAllBytes(file, actual)
+
+        if File.Exists candidate then
+            File.Delete candidate
+    elif not (File.Exists file) then
+        File.WriteAllBytes(candidate, actual)
+
+        failwithf
+            "Marey golden: no baseline for '%s'.
+  expected at: %s
+  candidate written to: %s
+
+Re-run with %s=1 to accept it."
+            name
+            file
+            candidate
+            UpdateVariable
+    else
+        let expected = File.ReadAllBytes file
+
+        if expected <> actual then
+            File.WriteAllBytes(candidate, actual)
+
+            failwithf
+                "Marey golden mismatch: %s
+  expected: %s
+  actual:   %s
+
+%s
+Re-run with %s=1 to accept the new output."
+                name
+                file
+                candidate
+                (describe expected actual)
+                UpdateVariable
+        elif File.Exists candidate then
+            File.Delete candidate
+
 /// The standard surface for golden documents.
 ///
 /// Deliberately **not square and not round**: 320x200 is 8:5, so an anisotropic nd → px map is
@@ -408,6 +479,33 @@ let heatmapFigure: Figure =
     Chart.heatmap U.second U.metre U.kelvin (grid |> Array.map (fst >> (*) 1.0<s>)) (grid |> Array.map (snd >> (*) 1.0<m>)) temps
     |> Chart.withColorLabel "T"
     |> Chart.withTitle "Temperature field"
+
+/// M2.5 phase 1 — **the image, and the sidecar it makes the TikZ backend write** (D64).
+///
+/// The first figure in the suite that puts a `Raster` into a scene. Nothing above the IR
+/// produced one before `Chart.image`, which is why `renderWithAssets` had no customer and
+/// `figure-heatmap` — which *looks* like the raster figure — contains no raster at all: a
+/// heatmap is tiles.
+///
+/// **The image is deliberately asymmetric in both axes and in colour**, and that is the whole
+/// design of the fixture. Orientation is the one property no coordinate test can reach, because
+/// a flip applied wrongly to both backends still satisfies cross-backend agreement — so the top
+/// row is bright and the bottom row is dark, and the left column differs from the right. A
+/// symmetric test image would hide exactly the bug this figure exists to catch, in both the
+/// `data:` URI path and the `\includegraphics` one.
+///
+/// Six pixels rather than six hundred: the sidecar is a committed baseline, and the encoder's
+/// output is what is under review.
+let imageFigure: Figure =
+    let px r g b = [| byte r; byte g; byte b; 255uy |]
+
+    let rgba =
+        Array.concat
+            [| px 250 240 60; px 250 140 40; px 230 40 40 // top row, bright, left to right
+               px 40 60 150; px 30 40 110; px 15 20 70 |] // bottom row, dark
+
+    Chart.image U.second U.metre { Width = 3; Height = 2; Rgba = rgba } 0.0<s> 0.0<m> 6.0<s> 4.0<m> false
+    |> Chart.withTitle "Placed image"
 
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.

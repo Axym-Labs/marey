@@ -258,6 +258,62 @@ module Chart =
 
         ofSeries (Geom.tile w h s) s
 
+    /// An RGBA image placed in data space — a micrograph under its scale bar, a map under a
+    /// track, a reference plate beside a measurement (D64).
+    ///
+    /// The box is given in the axes' own units, so the image lands where the data says it does
+    /// and the axes label themselves from the witnesses as they do for anything else. `smooth`
+    /// is bilinear interpolation: `false` is right for anything whose pixels are measurements,
+    /// where smoothing invents values that were never recorded.
+    ///
+    /// **This is the only thing in Marey that produces a `Raster`**, and until it existed
+    /// `renderWithAssets` had no customer — which is D10's failure mode, and the reason D64
+    /// insists the two ship together. `Chart.heatmap` is *tiles*, not a raster, and always was.
+    ///
+    /// Both backends draw it: SVG inlines a `data:` URI, and TikZ writes a sidecar `.png`
+    /// through `TikzBackend.renderToFileWithAssets`. `TikzBackend.render` returns a bare string
+    /// and so cannot carry the sidecar; it degrades the image away rather than emitting an
+    /// `\\includegraphics` of a file nobody wrote.
+    ///
+    /// The domain is the box, unpadded, on the same rule as a tessellation's: an image
+    /// partitions the region it covers, and a margin past its edge draws part of that region as
+    /// if the image did not cover it.
+    let image
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (img: Image)
+        (x0: float<'ux>)
+        (y0: float<'uy>)
+        (x1: float<'ux>)
+        (y1: float<'uy>)
+        (smooth: bool)
+        : Figure =
+        if img.Width <= 0 || img.Height <= 0 then
+            invalidArg "img" (sprintf "Marey: an image of %dx%d has no pixels to draw." img.Width img.Height)
+
+        let expected = int64 img.Width * int64 img.Height * 4L
+        let actual = if isNull img.Rgba then 0L else int64 img.Rgba.Length
+
+        // Checked here rather than left to the backends, which pad the missing rows with
+        // transparent black and say so in a comment. That is the right behaviour for a scene
+        // built by hand and the wrong one for a constructor: at this level the caller has the
+        // array in their hand and a wrong stride is a bug in the line above, not a figure to
+        // draw approximately.
+        if actual <> expected then
+            invalidArg "img" (sprintf "Marey: a %dx%d RGBA image needs %d bytes; got %d." img.Width img.Height expected actual)
+
+        // Two points, the box's opposite corners, so the axes fit the image exactly. They are
+        // also what any later layer's domain is unified against, which is what makes
+        // `Chart.image … |> Chart.addScatter …` land the points on the picture.
+        let s: Series<'ux, 'uy> =
+            { Name = ""
+              X = [| x0; x1 |]
+              Y = [| y0; y1 |]
+              XScale = Scale.linear ux (min x0 x1, max x0 x1)
+              YScale = Scale.linear uy (min y0 y1, max y0 y1) }
+
+        ofSeries (Geom.image s img x0 y0 x1 y1 smooth) s
+
     /// A line from each `(x0, y0)` to the matching `(x1, y1)` — a displacement, an edge of a
     /// graph, a before-and-after pair.
     ///

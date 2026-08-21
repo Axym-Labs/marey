@@ -21,6 +21,7 @@ open System
 open System.Diagnostics
 open System.IO
 open System.Text
+open Marey
 
 /// The engine to compile with. `pdflatex` rather than `lualatex` or `xelatex` because it is the
 /// strictest of the three about Unicode input, so a document that satisfies it satisfies all
@@ -139,7 +140,13 @@ let private errorLines (log: string) =
 /// This is the only implementation of the engine plumbing; `compile` is a projection of it. One
 /// implementation rather than two means the ink gate and the compile gate can never disagree
 /// about which flags the engine was given or how its failure was detected.
-let compileWith (name: string) (document: string) (inspect: string -> Result<'a, string>) : PdfResult<'a> =
+/// `compileWith` with the sidecar files a `RenderedDocument` carries (D64).
+///
+/// The assets are written into the same temporary directory as the `.tex`, because that is
+/// where `\includegraphics{marey-raster-0.png}` looks for them — and getting the two into one
+/// directory is the only thing `renderToFileWithAssets` can get wrong, so the gate has to
+/// exercise it rather than assume it.
+let compileAssetsWith (name: string) (document: string) (assets: RenderedAsset[]) (inspect: string -> Result<'a, string>) : PdfResult<'a> =
     match enginePath.Force() with
     | None -> PdfUnavailable(Engine + " not found on PATH")
     | Some exe ->
@@ -155,6 +162,9 @@ let compileWith (name: string) (document: string) (inspect: string -> Result<'a,
 
             let texFile = Path.Combine(dir, stem + ".tex")
             File.WriteAllText(texFile, document, UTF8Encoding false)
+
+            for asset in assets do
+                File.WriteAllBytes(Path.Combine(dir, asset.Name), asset.Bytes)
 
             let psi =
                 ProcessStartInfo(
@@ -220,6 +230,12 @@ let compileWith (name: string) (document: string) (inspect: string -> Result<'a,
 ///
 /// A projection of `compileWith` that discards the PDF. Written this way round so there is exactly
 /// one place that knows how to run the engine.
+/// `compileAssetsWith` for a document that stands alone, which is every document in this suite
+/// bar the raster one. One implementation of the engine plumbing, projected — the same rule the
+/// header states, extended rather than broken.
+let compileWith (name: string) (document: string) (inspect: string -> Result<'a, string>) : PdfResult<'a> =
+    compileAssetsWith name document [||] inspect
+
 let compile (name: string) (document: string) : CompileResult =
     match compileWith name document (fun _ -> Ok()) with
     | PdfUnavailable _ -> Unavailable

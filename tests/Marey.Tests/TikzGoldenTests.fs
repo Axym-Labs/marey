@@ -206,6 +206,72 @@ module Figures =
     let ``a heatmap figure`` () =
         check "figure-heatmap.tex" (Chart.render TikzBackend.render figureSurface heatmapFigure)
 
+    /// **The golden pair D64 is really about: a `.tex` baseline and its sidecar `.png`.**
+    ///
+    /// Two files, checked together, because either alone is a document that cannot be drawn. The
+    /// `.tex` names a file; the `.png` is that file; and `renderToFileWithAssets` is what puts
+    /// them in one directory. A reviewer can read the first and open the second.
+    ///
+    /// The `.png` is a committed *binary* baseline, which §13 otherwise argues against, and the
+    /// reason it is admissible here is narrow: these bytes come from Marey's own zero-dependency
+    /// encoder over a hand-written pixel array, so nothing outside this repository can move
+    /// them. It is also the only place the encoder's actual output is checked — it has been in
+    /// the tree since M1 and every test of it until now went through a base64 `data:` URI.
+    [<Fact>]
+    let ``an image figure, and the sidecar it refers to`` () =
+        let rendered = Chart.render TikzBackend.renderWithAssets figureSurface imageFigure
+
+        check "figure-image.tex" rendered.Document
+
+        let asset = Assert.Single rendered.Assets
+        Assert.Contains(asset.Name, rendered.Document)
+        checkBytes "figure-image.png" asset.Bytes
+
+    /// Gate 6 meets gate 7 for the sidecar path: the pair is compiled by a real engine with the
+    /// `.png` written beside the `.tex`, and the page is looked at.
+    ///
+    /// Two ways this fails that no string test can see. `\\includegraphics` pointing at a file
+    /// nobody wrote is a TeX error, which the engine reports here. An image placed correctly but
+    /// drawn upside down is a valid document with ink in the right box — so the fixture's top
+    /// row is bright and its bottom row dark, and the test compares the two halves.
+    [<Fact>]
+    let ``the image pair compiles, and the image is the right way up`` () =
+        let rendered = Chart.render TikzBackend.renderWithAssets figureSurface imageFigure
+
+        let standalone =
+            { rendered with Document = TikzBackend.standalone rendered.Document }
+
+        match Raster.ofRendered "golden-figure-image" standalone with
+        | TexToolchain.PdfUnavailable _ -> System.Console.WriteLine("SKIPPED: " + Raster.report ())
+        | TexToolchain.PdfFailed why -> failwithf "the image pair did not compile:\n%s" why
+        | TexToolchain.PdfProduced page ->
+            // The panel, loosely — the image fills the data area, which is inside the axes.
+            let upper: Raster.Region =
+                { Left = 0.25
+                  Top = 0.15
+                  Right = 0.95
+                  Bottom = 0.40 }
+
+            let lower =
+                { upper with
+                    Top = 0.55
+                    Bottom = 0.80 }
+
+            let above = Raster.meanLevel page upper
+            let below = Raster.meanLevel page lower
+
+            // The image is bright on top and dark underneath, and a raster's y grows *downward*
+            // — so on a correctly oriented page the upper region is the lighter one. A y flip
+            // applied wrongly anywhere between `Chart.image` and `\\includegraphics` inverts
+            // this, and nothing else in the suite would notice.
+            Assert.True(
+                above > below + 20.0,
+                sprintf "the image is upside down or missing: upper mean %.1f, lower mean %.1f" above below
+            )
+
+            // And it is an image rather than an empty box: a blank page is uniformly 255.
+            Assert.True(below < 200.0, sprintf "no dark pixels where the image's dark half belongs (mean %.1f)" below)
+
     /// The milestone's headline as a committed artefact rather than a substring assertion:
     /// `Theme.tikz` alone turns the unit witnesses into siunitx markup. TeX-only, because
     /// `\qty{}{\metre}` in an SVG would be nonsense.

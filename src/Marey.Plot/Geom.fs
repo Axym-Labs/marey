@@ -109,6 +109,19 @@ type Geom =
     | GeomBox of spans: BoxSpan[] * widthFraction: float
     /// Mirrored density profiles, one per point; width as a fraction of the median x spacing.
     | GeomViolin of profiles: ViolinProfile[] * widthFraction: float
+    /// A user-supplied RGBA image filling a box, in panel-local nd (D64).
+    ///
+    /// The one geom in this file that does **not** bottom out in `Path`, `Markers` or `Text`:
+    /// it is the only producer of §5's `Raster` node anywhere above the IR, and until M2.5
+    /// there was none, which is why `renderWithAssets` had no customer and D31's "M2 door" had
+    /// nothing to walk through it.
+    ///
+    /// **D55 does not apply here, and the reason is worth stating.** Every other geom carrying
+    /// its own payload carries a per-*point* array and must be told which rows a channel batch
+    /// renumbered it to. This one carries a whole image and one box — scalars, not arrays — so
+    /// a batched subset draws the same image in the same place, which is correct rather than
+    /// lucky. A channel over an image layer has nothing to say.
+    | GeomImage of image: Image * bounds: Rect<nd> * smooth: bool
 
 /// §5.5 — **"error bars … are compiled into `Path`/`Text`/`Markers` by the layer above."**
 ///
@@ -291,6 +304,25 @@ module Geom =
             s.Y |> Array.map (fun y -> s.YScale.Forward(y - hh)),
             s.X |> Array.map (fun x -> s.XScale.Forward(x + hw)),
             s.Y |> Array.map (fun y -> s.YScale.Forward(y + hh))
+        )
+
+    /// An RGBA image filling a box given in the series' own units (D64).
+    ///
+    /// Both measures are checked, so the box cannot be given its width in the y unit — the same
+    /// guarantee `rect` makes, for the same reason and by the same route.
+    ///
+    /// The box is projected corner by corner rather than as an origin plus a size, which is
+    /// D57's correction applied before it can become a bug: on a log axis a size in data units
+    /// is not a size on the panel, so an image placed by one corner and a width would be the
+    /// right size only in the middle of the domain.
+    let image (s: Series<'ux, 'uy>) (img: Image) (x0: float<'ux>) (y0: float<'uy>) (x1: float<'ux>) (y1: float<'uy>) (smooth: bool) : Geom =
+        GeomImage(
+            img,
+            { X0 = s.XScale.Forward x0
+              Y0 = s.YScale.Forward y0
+              X1 = s.XScale.Forward x1
+              Y1 = s.YScale.Forward y1 },
+            smooth
         )
 
     /// A line from each of the series' points to a second point, in the series' own units.
@@ -858,6 +890,40 @@ module Geom =
                                 Fill = None
                                 Stroke = Some { stroke with Width = stroke.Width * 0.75 } } ]
 
+            | GeomImage(image, bounds, smooth) ->
+                // The only `Raster` this library produces above the IR (D64).
+                //
+                // **The pixels are not warped, and that is a limit rather than an oversight.**
+                // `RasterNode.Bounds` is an axis-aligned `Rect<nd>` by construction, so under a
+                // non-identity coordinate — a polar panel — the box's corners are mapped and
+                // their bounding box is used, and the image inside it is *not* resampled along
+                // the warp. Doing that honestly needs a resampler, which is a rasteriser inside
+                // a zero-dependency package, and D64 rules that out of this milestone by name.
+                // Under the identity coord, which is every Cartesian figure and so every figure
+                // `Chart.image` is for, this is exact.
+                let corners =
+                    [| { X = bounds.X0; Y = bounds.Y0 }
+                       { X = bounds.X1; Y = bounds.Y0 }
+                       { X = bounds.X1; Y = bounds.Y1 }
+                       { X = bounds.X0; Y = bounds.Y1 } |]
+                    |> Array.map mapPt
+
+                let box: Rect<nd> =
+                    { X0 = corners |> Array.map (fun p -> p.X) |> Array.min
+                      Y0 = corners |> Array.map (fun p -> p.Y) |> Array.min
+                      X1 = corners |> Array.map (fun p -> p.X) |> Array.max
+                      Y1 = corners |> Array.map (fun p -> p.Y) |> Array.max }
+
+                if image.Width <= 0 || image.Height <= 0 then
+                    // Both backends already say so in their output when handed one, so nothing
+                    // is gained by emitting a node whose only effect is a diagnostic comment.
+                    Scene.empty
+                else
+                    Raster
+                        { Image = image
+                          Bounds = box
+                          Smooth = smooth }
+
             | GeomViolin(profiles, widthFraction) ->
                 let half = (defaultArg spacing (medianSpacing pts)) * widthFraction * 0.5
 
@@ -937,7 +1003,9 @@ module Geom =
             | GeomRibbon _
             | GeomRect _
             | GeomSegment _
-            | GeomText _ -> None
+            | GeomText _
+            // An image occupies a stated box and has no rhythm to read.
+            | GeomImage _ -> None
 
         compileWith spacing (Some indices) coord plotSize st geom (indices |> Array.map (fun i -> all.[i]))
 
@@ -959,3 +1027,8 @@ module Geom =
         | GeomText _ -> LegendSwatch
         | GeomErrorY _
         | GeomErrorX _ -> LegendLineMarker(st.Dash, st.Shape)
+        // An image carries no series colour, so a swatch of the layer's paint would name a
+        // colour that appears nowhere in what was drawn. `Chart.image` gives its layer no name,
+        // and an unnamed layer gets no legend entry, so this is reached only by a caller who
+        // named one deliberately — and a swatch is then the least wrong of the four marks.
+        | GeomImage _ -> LegendSwatch

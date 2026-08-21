@@ -772,6 +772,16 @@ module Figures =
     let ``a heatmap figure`` () =
         check "figure-heatmap.svg" (Chart.render SvgBackend.render figureSurface heatmapFigure)
 
+    /// M2.5, D64 — the first figure in the suite with a `Raster` in it.
+    ///
+    /// SVG inlines the pixels as a `data:` URI, so this baseline is self-contained and there is
+    /// no sidecar on this path — deliberately, and stated in `RenderedDocument`: a single file
+    /// is the property that makes SVG the notebook and golden format. The TikZ half of the pair
+    /// is the one that grows a `.png` beside it.
+    [<Fact>]
+    let ``an image figure`` () =
+        check "figure-image.svg" (Chart.render SvgBackend.render figureSurface imageFigure)
+
     /// A figure is a scene like any other, so it has to be one: if `Figure.toScene` ever emitted
     /// something outside the nine cases this would not compile, and if it stopped exercising them
     /// the golden above would be measuring less than it claims.
