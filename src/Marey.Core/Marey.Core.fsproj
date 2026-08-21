@@ -30,6 +30,9 @@
     <Compile Include="Erased.fs" />
     <Compile Include="Stat.fs" />
     <Compile Include="Scene.fs" />
+    <!-- After Scene.fs: `Png.dataUri` takes an `Image`. D65 — promoted out of
+         Marey.Backend.Svg when TikZ's sidecar raster became its second consumer. -->
+    <Compile Include="Png.fs" />
     <Compile Include="Coord.fs" />
     <Compile Include="Backend.fs" />
   </ItemGroup>
