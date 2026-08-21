@@ -40,6 +40,7 @@
     <Compile Include="Golden.fs" />
     <Compile Include="GoldenTests.fs" />
     <Compile Include="TikzGoldenTests.fs" />
+    <Compile Include="SkiaTests.fs" />
     <Compile Include="PlotTests.fs" />
     <Compile Include="ChannelTests.fs" />
     <Compile Include="StatTests.fs" />
@@ -53,6 +54,13 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Marey.Core\Marey.Core.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Units\Marey.Units.fsproj" />
+    <!-- D66 — the Skia tests live here rather than in a `Marey.Tests.Skia` of their own.
+         A second test project is a second place for a gate to rot, and the precedent for
+         "the real enforcement is in CI, and a missing toolchain skips loudly" is already
+         set twice over by `TexToolchain.fs` and `Raster.fs`. This reference is also the
+         one that gate 6 has to watch: it must not put SkiaSharp on the transitive graph of
+         Core, Units, Plot, Svg or Tikz, and `SkiaTests` asserts exactly that. -->
+    <ProjectReference Include="..\..\src\Marey.Backend.Skia\Marey.Backend.Skia.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Backend.Tikz\Marey.Backend.Tikz.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Plot\Marey.Plot.fsproj" />
@@ -80,6 +88,7 @@
          a reviewer reads in the PR diff; MAREY_UPDATE_GOLDEN writes back to it, not here. -->
     <None Include="golden\**\*.svg" Exclude="golden\**\*.actual.svg" CopyToOutputDirectory="PreserveNewest" />
     <None Include="golden\**\*.tex" Exclude="golden\**\*.actual.tex" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="golden\**\*.png" Exclude="golden\**\*.actual.png" CopyToOutputDirectory="PreserveNewest" />
     <None Include="README.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

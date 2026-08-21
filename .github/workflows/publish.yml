@@ -145,8 +145,12 @@ jobs:
       - name: Check the packages before anything leaves the machine
         run: |
           set -e
+          # Eight since M2.5 added Marey.Backend.Skia. The literal is the point: the
+          # solution is packed whole, so a new project joins a release automatically, and a
+          # count that has to be edited by hand is what stops one appearing on nuget.org
+          # because somebody added an .fsproj.
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 7 ] || { echo "::error::expected 7 packages, packed $count"; exit 1; }
+          [ "$count" -eq 8 ] || { echo "::error::expected 8 packages, packed $count"; exit 1; }
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
             grep -q "<version>${{ steps.version.outputs.value }}</version>" /tmp/nuspec.xml \

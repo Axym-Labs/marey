@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Marey.Backend.Skia/Marey.Backend.Skia.fsproj" />
     <Project Path="src/Marey.Backend.Svg/Marey.Backend.Svg.fsproj" />
     <Project Path="src/Marey.Backend.Tikz/Marey.Backend.Tikz.fsproj" />
     <Project Path="src/Marey.Core/Marey.Core.fsproj" />
