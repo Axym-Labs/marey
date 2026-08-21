@@ -57,6 +57,40 @@ type IBackend =
     abstract Draw: Node -> unit
     abstract Finish: unit -> unit
 
+/// One file that a rendered document refers to but does not contain.
+///
+/// `Bytes` is compared structurally and that is O(bytes), for the same reason `Image` carries
+/// the warning it does (§5.2). Compare `Name` first if you are diffing.
+[<NoComparison>]
+type RenderedAsset =
+    { /// A file name, not a path. The backend that emitted it chose it; the caller decides
+      /// which directory it lands in, because a `.tex` and its sidecar have to agree on a
+      /// relative name and only the caller knows where the `.tex` is going.
+      Name: string
+      Bytes: byte[] }
+
+/// A document that does not stand alone: the text, plus the files it refers to.
+///
+/// **D64 — this ships with a producer.** `renderWithAssets` was named at M1 as "the M2 door"
+/// for TikZ's `Rasters = false`, and D10 records what happens to a facility with no caller:
+/// `Capabilities` was "a record nobody reads" until the TikZ backend needed it. So this type
+/// arrives in the same milestone as `Chart.image`, which is the thing that finally puts a
+/// `Raster` node into a scene — nothing above the IR produced one before M2.5, which is why
+/// `golden/figure-heatmap.svg` contains no raster and never did.
+///
+/// **Not a member of `IBackend`.** A backend that needs no sidecar does not implement this and
+/// is not made to: the SVG backend keeps inlining a `data:` URI, because a single
+/// self-contained file is the property that makes SVG the notebook and golden format. The
+/// asymmetry is deliberate and is stated here rather than discovered.
+///
+/// `Assets` is deterministic in **both** name and order. Two renders of one figure that
+/// produced `plot-0.png` and `plot-1.png` in swapped order would be a golden diff for no
+/// reason, so names are assigned in traversal order and the array is emitted in that order.
+[<NoComparison>]
+type RenderedDocument =
+    { Document: string
+      Assets: RenderedAsset[] }
+
 [<RequireQualifiedAccess>]
 module Capabilities =
 
