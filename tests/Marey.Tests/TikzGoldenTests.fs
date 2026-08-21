@@ -114,6 +114,15 @@ module Snapshots =
     [<Fact>]
     let ``all nine Node cases`` () = tikz "all-nine-nodes"
 
+    /// M2 phase 6, gate 5. The pair of this and `geoms-bands.svg` is the reviewable half of
+    /// "cross-backend geometry agreement, extended to every new geom" — `GeomTests` asserts the
+    /// coordinate relationship numerically, and these two files are where it can be *seen*.
+    [<Fact>]
+    let ``the band geoms`` () = tikz "geoms-bands"
+
+    [<Fact>]
+    let ``the distribution geoms`` () = tikz "geoms-distributions"
+
 // ======================================================================================
 // THE FIGURE — gate 6
 // ======================================================================================
@@ -125,6 +134,56 @@ module Figures =
     [<Fact>]
     let ``a complete figure`` () =
         check "figure.tex" (Chart.render TikzBackend.render figureSurface figure)
+
+    /// The categorical figure through the other backend. Level names are ordinary text in both,
+    /// so the pair is also the check that a category survives TeX escaping — which is the half
+    /// of a categorical axis that has no counterpart on a numeric one.
+    [<Fact>]
+    let ``a categorical figure`` () =
+        check "figure-category.tex" (Chart.render TikzBackend.render figureSurface categoryFigure)
+
+    /// The channelled figure through the other backend. Shape is the encoding that survives
+    /// greyscale, so a pair of baselines is also the check that both backends draw the same
+    /// three shapes for the same three levels.
+    [<Fact>]
+    let ``a channelled figure`` () =
+        check "figure-channels.tex" (Chart.render TikzBackend.render figureSurface channelFigure)
+
+    /// **D49's third exit criterion, and the only gate that would have caught the gradient.**
+    ///
+    /// A `LinearGradient`-filled colorbar comes through this backend as one flat `#23908c`
+    /// rectangle: `Gradients = false`, so `Degrade.forCaps` collapses the ramp to its Oklab
+    /// midpoint. The document stays valid, the diff stays clean, and the bar is gone. What this
+    /// baseline records is a column of individually coloured strips — countable in the file.
+    [<Fact>]
+    let ``a figure with a colorbar`` () =
+        check "figure-colorbar.tex" (Chart.render TikzBackend.render figureSurface colorbarFigure)
+
+    /// The claim above, as an assertion rather than as a reviewer's attention: the bar in the
+    /// TeX document really does carry many distinct colours. One would mean it had degraded.
+    [<Fact>]
+    let ``the colorbar reaches TeX as strips, not as one flat block`` () =
+        let tex = Chart.render TikzBackend.render figureSurface colorbarFigure
+
+        let colors =
+            System.Text.RegularExpressions.Regex.Matches(tex, @"[0-9a-fA-F]{6}")
+            |> Seq.map (fun m -> m.Value.ToLowerInvariant())
+            |> Set.ofSeq
+
+        Assert.True(colors.Count > 100, sprintf "only %d distinct colours in the document" colors.Count)
+
+    /// D55 — the box plot through the other backend. The outlier is a `\marey@mark` and the
+    /// whiskers are a stroked path, so the pair also records that a summary geom degrades to
+    /// nothing on a backend with no gradients and no rasters: there is nothing in it to degrade.
+    [<Fact>]
+    let ``a box plot figure`` () =
+        check "figure-boxplot.tex" (Chart.render TikzBackend.render figureSurface boxplotFigure)
+
+    /// The heatmap through the other backend, and the one place a tile's batching is visible as
+    /// file length: one path per quantised colour step (D46), not one per cell.
+    [<Fact>]
+    let ``a heatmap figure`` () =
+        check "figure-heatmap.tex" (Chart.render TikzBackend.render figureSurface heatmapFigure)
 
     /// The milestone's headline as a committed artefact rather than a substring assertion:
     /// `Theme.tikz` alone turns the unit witnesses into siunitx markup. TeX-only, because

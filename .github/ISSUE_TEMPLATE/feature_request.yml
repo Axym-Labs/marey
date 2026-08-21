@@ -1,0 +1,44 @@
+name: Feature request
+description: A geom, a scale, a unit, a backend, or an API that should exist.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The roadmap is deliberately sequenced and most of the obvious gaps are already on it:
+        the grammar-of-graphics front door, stats, facets and raster output are planned work
+        rather than oversights. Saying what you are trying to plot is more useful than naming
+        the feature, because the answer is sometimes a unit witness that already exists.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to plot?
+      description: The figure you want, and what stops you making it today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: sketch
+    attributes:
+      label: How it might look
+      description: Optional. A sketch of the API you would want to write.
+      render: fsharp
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Units and axis labelling
+        - Scales and ticks
+        - Geoms
+        - Themes and colour
+        - Layout, legends, facets
+        - Backends and output formats
+        - Notebooks
+        - Other
+    validations:
+      required: true

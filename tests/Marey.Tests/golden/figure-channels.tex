@@ -1,0 +1,116 @@
+\begin{tikzpicture}[every node/.style={inner sep=0bp,outer sep=0bp}]
+  \definecolor{qcA}{rgb}{1,1,1}
+  \definecolor{qcB}{rgb}{0.078431,0.094118,0.121569}
+  \definecolor{qcC}{rgb}{0.905882,0.913725,0.929412}
+  \def\mareymarkD#1#2{\path[fill,shift={(#1,#2)}] (0bp,0bp) circle[radius=1.875bp];}
+  \definecolor{qcE}{rgb}{0,0.447059,0.698039}
+  \def\mareymarkF#1#2{\path[fill,shift={(#1,#2)}] (-1.875bp,-1.875bp) rectangle (1.875bp,1.875bp);}
+  \definecolor{qcG}{rgb}{0.835294,0.368627,0}
+  \def\mareymarkH#1#2{\path[fill,shift={(#1,#2)}] (0bp,1.875bp) -- (-1.624bp,-0.938bp) -- (1.624bp,-0.938bp) -- cycle;}
+  \definecolor{qcI}{rgb}{0,0.619608,0.45098}
+  \definecolor{qcJ}{rgb}{0.223529,0.254902,0.301961}
+  \useasboundingbox (0bp,0bp) rectangle (360bp,225bp);
+  % marey-key: figure
+  \path[fill=qcA] (0bp,0bp) -- (360bp,0bp) -- (360bp,225bp) -- (0bp,225bp) -- cycle;
+  % marey-role: annotation -- Fall by treatment
+  \node[anchor=north,text=qcB,font=\bfseries\fontsize{13}{15.6}\selectfont] at (180bp,214.5bp) {Fall by treatment};
+  % marey-role: other:panel -- panel
+  % marey-data: row = 0
+  % marey-data: col = 0
+  % marey-data: layers = 1
+  % marey-data: x-tick-rule = all
+  % marey-data: y-tick-rule = all
+  % marey-role: decoration -- gridlines
+  % marey-data: lines = 5
+  \path[draw=qcC,line width=0.75bp] (45.262bp,44.574bp) -- (346.998bp,44.574bp) (45.262bp,73.476bp) -- (346.998bp,73.476bp) (45.262bp,102.378bp) -- (346.998bp,102.378bp) (45.262bp,131.28bp) -- (346.998bp,131.28bp) (45.262bp,160.182bp) -- (346.998bp,160.182bp);
+  \begin{scope}
+    \clip (45.262bp,38.575bp) -- (346.998bp,38.575bp) -- (346.998bp,170.563bp) -- (45.262bp,170.563bp) -- cycle;
+    % marey-role: series -- series
+    % marey-data: series =
+    % marey-data: points = 24
+    % marey-data: batches = 3
+    % marey-data: unmapped = 0
+    \begin{scope}[fill=qcE]
+      \mareymarkD{58.977bp}{44.574bp}
+      \mareymarkD{94.756bp}{46.616bp}
+      \mareymarkD{130.535bp}{52.74bp}
+      \mareymarkD{166.314bp}{62.947bp}
+      \mareymarkD{202.093bp}{77.237bp}
+      \mareymarkD{237.872bp}{95.609bp}
+      \mareymarkD{273.651bp}{118.065bp}
+      \mareymarkD{309.43bp}{144.603bp}
+    \end{scope}
+    \begin{scope}[fill=qcG]
+      \mareymarkF{70.904bp}{44.801bp}
+      \mareymarkF{106.683bp}{48.204bp}
+      \mareymarkF{142.462bp}{55.689bp}
+      \mareymarkF{178.241bp}{67.257bp}
+      \mareymarkF{214.019bp}{82.907bp}
+      \mareymarkF{249.798bp}{102.641bp}
+      \mareymarkF{285.577bp}{126.457bp}
+      \mareymarkF{321.356bp}{154.356bp}
+    \end{scope}
+    \begin{scope}[fill=qcI]
+      \mareymarkH{82.83bp}{45.482bp}
+      \mareymarkH{118.609bp}{50.245bp}
+      \mareymarkH{154.388bp}{59.091bp}
+      \mareymarkH{190.167bp}{72.02bp}
+      \mareymarkH{225.946bp}{89.031bp}
+      \mareymarkH{261.725bp}{110.126bp}
+      \mareymarkH{297.504bp}{135.303bp}
+      \mareymarkH{333.283bp}{164.563bp}
+    \end{scope}
+  \end{scope}
+  % marey-role: axis -- t [s]
+  % marey-data: side = bottom
+  % marey-data: unit = s
+  % marey-data: prefix =
+  % marey-data: ticks = 5
+  % marey-data: tick-rule = all
+  \path[draw=qcJ,line width=0.675bp] (45.262bp,38.575bp) -- (346.998bp,38.575bp);
+  \path[draw=qcJ,line width=0.675bp] (58.977bp,38.575bp) -- (58.977bp,36.325bp) (118.609bp,38.575bp) -- (118.609bp,36.325bp) (178.241bp,38.575bp) -- (178.241bp,36.325bp) (237.872bp,38.575bp) -- (237.872bp,36.325bp) (297.504bp,38.575bp) -- (297.504bp,36.325bp);
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (58.977bp,33.325bp) {0};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (118.609bp,33.325bp) {2};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (178.241bp,33.325bp) {4};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (237.872bp,33.325bp) {6};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (297.504bp,33.325bp) {8};
+  \node[anchor=north,text=qcB,font=\fontsize{10}{12}\selectfont] at (196.13bp,19.75bp) {t [s]};
+  % marey-role: axis -- x [m]
+  % marey-data: side = left
+  % marey-data: unit = m
+  % marey-data: prefix =
+  % marey-data: ticks = 5
+  % marey-data: tick-rule = all
+  \path[draw=qcJ,line width=0.675bp] (45.262bp,38.575bp) -- (45.262bp,170.563bp);
+  \path[draw=qcJ,line width=0.675bp] (45.262bp,44.574bp) -- (43.012bp,44.574bp) (45.262bp,73.476bp) -- (43.012bp,73.476bp) (45.262bp,102.378bp) -- (43.012bp,102.378bp) (45.262bp,131.28bp) -- (43.012bp,131.28bp) (45.262bp,160.182bp) -- (43.012bp,160.182bp);
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (40.012bp,44.574bp) {0};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (40.012bp,73.476bp) {100};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (40.012bp,102.378bp) {200};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (40.012bp,131.28bp) {300};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (40.012bp,160.182bp) {400};
+  \node[anchor=base,text=qcB,rotate=90,font=\fontsize{10}{12}\selectfont] at (19.75bp,104.569bp) {x [m]};
+  % marey-role: legend -- legend
+  % marey-data: entries = 3
+  \path[fill=qcA,fill opacity=0.9] (50.512bp,119.45bp) -- (115.89bp,119.45bp) -- (115.89bp,165.313bp) -- (50.512bp,165.313bp) -- cycle;
+  % marey-role: other:legend-entry -- control
+  % marey-data: series = control
+  % marey-data: color = #0072b2
+  \begin{scope}[fill=qcE]
+    \mareymarkD{62.512bp}{155.669bp}
+  \end{scope}
+  \node[anchor=west,text=qcB,font=\fontsize{9.5}{11.4}\selectfont] at (75.262bp,155.669bp) {control};
+  % marey-role: other:legend-entry -- treated
+  % marey-data: series = treated
+  % marey-data: color = #d55e00
+  \begin{scope}[fill=qcG]
+    \mareymarkF{62.512bp}{142.381bp}
+  \end{scope}
+  \node[anchor=west,text=qcB,font=\fontsize{9.5}{11.4}\selectfont] at (75.262bp,142.381bp) {treated};
+  % marey-role: other:legend-entry -- washout
+  % marey-data: series = washout
+  % marey-data: color = #009e73
+  \begin{scope}[fill=qcI]
+    \mareymarkH{62.512bp}{129.094bp}
+  \end{scope}
+  \node[anchor=west,text=qcB,font=\fontsize{9.5}{11.4}\selectfont] at (75.262bp,129.094bp) {washout};
+\end{tikzpicture}

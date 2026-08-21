@@ -22,6 +22,16 @@ type ScaleKind =
     /// `1/x`. Arrhenius plots against `1/T`, and the reason it is on §4's ship list.
     | Reciprocal
 
+    /// §9 — **a categorical axis**, `n` named levels in `n` equal bands.
+    ///
+    /// D45: the levels ride in the tag because a category *is* its level set, and that is data
+    /// in exactly the sense the note at the top of this type argues for. It serializes (§15
+    /// reloads a categorical axis with its names intact, through `IScaleErased.Kind`, and no
+    /// new erased interface is needed for it), it is inspectable in a test, and adding it here
+    /// makes the compiler enumerate every consumer that has to decide what a category means —
+    /// which a sibling type would not have done.
+    | Ordinal of levels: string[]
+
 /// §4 — A scale maps **data space to normalized panel space**.
 ///
 /// `Forward` deliberately does *not* clamp. A point outside the domain projects outside
@@ -154,31 +164,92 @@ module Scale =
 
         ofTransform (ScaleKind.Symlog(b, linthresh)) u domain fwd inv (fun n -> Ticks.linear n domain)
 
+    /// The label for a tick sitting at level index `v`, and the only place that mapping is
+    /// written. `Erase.scale` and the axis compiler both format ordinal ticks through this, so
+    /// the measured and erased paths cannot drift — the same argument D16 makes for `ToSI`.
+    let levelLabel (levels: string[]) (v: float) =
+        let i = int (round v)
+        if i >= 0 && i < levels.Length then levels.[i] else ""
+
+    let private ordinalIn<[<Measure>] 'u> (u: U<'u>) (levels: string[]) : Scale<'u> =
+        let n = levels.Length
+
+        if n = 0 then
+            invalidArg "levels" "Marey: an ordinal scale needs at least one level."
+
+        // Level `i` sits at index `i`, and the domain is half a band wider at each end, so the
+        // levels land at band *centres* and a bar of full band width fits inside the panel.
+        let lo, hi = -0.5, float n - 0.5
+        let span = hi - lo
+
+        { Unit = u
+          Kind = ScaleKind.Ordinal levels
+          Domain = (tag<'u> lo, tag<'u> hi)
+          Forward = fun x -> nd ((float x - lo) / span)
+          Inverse = fun t -> tag<'u> (lo + unNd t * span)
+          // One tick per level, always. The requested count is what a *continuous* axis
+          // negotiates with the tick ladder; a category has as many ticks as it has levels,
+          // and thinning them is the collision-avoidance layer's job, not this one's.
+          TickHint = fun _ -> Array.init n (fun i -> tag<'u> (float i)) }
+
+    /// §9 / D45 — **a categorical axis**: `n` levels, one band each, level `i` at index `i`.
+    ///
+    /// The type is `Scale<1>` and not `Scale<'k>`, and that is the decision rather than an
+    /// accident. A category has no measure, so a measure-indexed scale over one is a
+    /// contradiction; but a category also never needs to *reach* a scale as a `'k`. The layer
+    /// that knows the category type maps each value to its level index while the row type is
+    /// still alive, and what arrives here is the index — a dimensionless number, which is what
+    /// `float<1>` says. The names travel beside it in `Kind`, as data.
+    ///
+    /// Everything downstream then applies unchanged: `Prefix.selectFor` refuses to rescale a
+    /// dimensionless axis, so no categorical axis ever grows a `k` prefix; `Axis.title` drops
+    /// the bracket when the unit text is empty, so a categorical axis is titled by name alone;
+    /// and `GeomBar`'s width comes from the median spacing between projected points, which over
+    /// evenly spaced level indices is exactly one band.
+    let ordinal (levels: string[]) : Scale<1> = ordinalIn U.one levels
+
     // ---- Combinators -----------------------------------------------------------------
+
+    /// Rebuild a scale of a given kind, over a given domain: the one place the tag maps back
+    /// to a constructor.
+    ///
+    /// It was written three times before D45 — here twice and once in `Marey.Plot`'s
+    /// `Figure` — and adding a sixth `ScaleKind` is what made that expensive: three matches
+    /// to extend, and nothing but a build error at each to connect them. One function, so a
+    /// seventh kind is one branch.
+    let ofKind (k: ScaleKind) (u: U<'u>) (domain: float<'u> * float<'u>) : Scale<'u> =
+        match k with
+        | ScaleKind.Linear -> linear u domain
+        | ScaleKind.Log b -> logBase b u domain
+        | ScaleKind.Symlog(b, l) -> symlog b l u domain
+        | ScaleKind.Power p -> power p u domain
+        | ScaleKind.Reciprocal -> reciprocal u domain
+        // The domain is not the input: a categorical one is fixed by the level count, and the
+        // levels are in the kind.
+        | ScaleKind.Ordinal levels -> ordinalIn u levels
 
     /// Reverse the direction of a scale by swapping its domain. `Kind` and `Unit` survive,
     /// which is why they had to be data.
     let reverse (s: Scale<'u>) : Scale<'u> =
         let lo, hi = s.Domain
-        let d = (hi, lo)
 
         match s.Kind with
-        | ScaleKind.Linear -> linear s.Unit d
-        | ScaleKind.Log b -> logBase b s.Unit d
-        | ScaleKind.Symlog(b, l) -> symlog b l s.Unit d
-        | ScaleKind.Power p -> power p s.Unit d
-        | ScaleKind.Reciprocal -> reciprocal s.Unit d
+        // Reversing a category reverses its level *order*. It is the one scale whose reversal
+        // is not a domain swap, because its domain says nothing but how many levels there are.
+        | ScaleKind.Ordinal levels -> ordinalIn s.Unit (Array.rev levels)
+        | k -> ofKind k s.Unit (hi, lo)
 
     /// Rebuild the same kind of scale over a new domain. This is *the* zoom/pan primitive:
     /// interaction changes the domain and nothing else, so a zoom is a pure value change and
     /// the diff in §5.2 sees exactly the subtree that moved.
     let withDomain (domain: float<'u> * float<'u>) (s: Scale<'u>) : Scale<'u> =
         match s.Kind with
-        | ScaleKind.Linear -> linear s.Unit domain
-        | ScaleKind.Log b -> logBase b s.Unit domain
-        | ScaleKind.Symlog(b, l) -> symlog b l s.Unit domain
-        | ScaleKind.Power p -> power p s.Unit domain
-        | ScaleKind.Reciprocal -> reciprocal s.Unit domain
+        // A categorical axis has no domain to widen, and accepting one here is how a shared
+        // categorical axis would end up with its bands in the wrong places — `Figure.unify`
+        // unions domains as raw numbers and would otherwise stretch the bands of every panel
+        // it touched.
+        | ScaleKind.Ordinal _ -> s
+        | k -> ofKind k s.Unit domain
 
     /// Clamp projected values into `[0,1]`. Opt-in, never the default — see the note on
     /// `Forward` above.

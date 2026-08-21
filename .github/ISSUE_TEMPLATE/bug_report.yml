@@ -1,0 +1,66 @@
+name: Defect report
+description: Something renders wrongly, throws, or does not compile when it should.
+labels: [defect]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A figure that renders wrongly is best reported as the shortest F# script that produces
+        it, plus the output. If units are involved, include the witnesses — most surprising axis
+        labels are a question about which unit was passed rather than about the axis compiler.
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: The script
+      description: The shortest thing that reproduces it. Include the `#r` lines.
+      render: fsharp
+      placeholder: |
+        #r "nuget: Marey.Plot"
+        #r "nuget: Marey.Backend.Svg"
+        open Marey
+
+        let t = Array.init 24 (fun i -> float i * 0.4<s>)
+        Chart.line U.second U.metre t (Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t) t)
+        |> Chart.toSvg SvgBackend.render "fall.svg" (Chart.size 800.0 500.0)
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened
+      description: >
+        For a rendering defect, attach the output or paste the relevant fragment — the axis
+        title, the tick labels, the emitted TeX line.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Marey version
+      placeholder: "0.1.1"
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: .NET SDK and OS
+      placeholder: "dotnet 10.0.400, Windows 11"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend
+      multiple: true
+      options:
+        - SVG
+        - TikZ
+        - HTML / notebook
+        - Not backend-specific
+    validations:
+      required: true

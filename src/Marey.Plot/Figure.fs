@@ -10,6 +10,15 @@ type Layer =
       Data: PackedSeries
       Geom: Geom
       Style: GeomStyle
+      /// §9 / D46 — the non-positional channels driving this layer: colour, size, shape.
+      ///
+      /// They live on the layer rather than being resolved into styles at construction time
+      /// because two things downstream need them *unresolved*. The legend needs the level
+      /// names, and the colorbar needs the scale with its unit still attached — and both are
+      /// compiled at figure-compile time, not when the caller says `colorByKey`.
+      ///
+      /// Empty is the overwhelmingly common case and costs one array comparison.
+      Channels: Channel[]
       ShowInLegend: bool }
 
 /// Per-axis configuration. Every field has a defensible default, which is what "no
@@ -53,6 +62,27 @@ type Figure =
       Panels: Panel[]
       Theme: Theme }
 
+/// §9 / D48 — **which axes the panels of a composed figure share.**
+///
+/// Three cases, and the two that are missing are the decision.
+///
+/// **Fully free is not here**, because a grid of panels that shares nothing is not a facet — it
+/// is a page of charts, and `Chart.beside` / `Chart.above` already spell that. A fourth case
+/// would give two ways to say one thing, and the one named `Facet…` would be the misleading one.
+///
+/// **Free per row or per column is not here either**, and that is stronger than "not yet": under
+/// `facetWrap` it is incoherent. A wrapped facet's rows come from the *wrap width*, not from the
+/// data, so an axis shared along a row would change when the grid was reshaped — a scale that
+/// depends on the layout rather than on what is being plotted. It becomes meaningful only under a
+/// `facetGrid` whose rows and columns are each keyed by a variable, which is not built.
+type FacetScales =
+    /// Every panel gets the same x and the same y. What "facet" means, and the default.
+    | ShareBoth
+    /// One x across the panels; each panel keeps its own y.
+    | ShareX
+    /// One y across the panels; each panel keeps its own x.
+    | ShareY
+
 /// **The compiler.** A `Figure` in, a `Node` out, nothing in between that a backend can see.
 ///
 /// This is the layer §5.5 describes: "axes, legends, titles, colorbars, facets, error bars, box
@@ -84,13 +114,6 @@ module Figure =
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
                     Erase.packScale s.XScale, Erase.packScale s.YScale }
 
-    let private ofKind (k: ScaleKind) (u: U<'u>) (d: float<'u> * float<'u>) : Scale<'u> =
-        match k with
-        | ScaleKind.Linear -> Scale.linear u d
-        | ScaleKind.Log b -> Scale.logBase b u d
-        | ScaleKind.Symlog(b, l) -> Scale.symlog b l u d
-        | ScaleKind.Power p -> Scale.power p u d
-        | ScaleKind.Reciprocal -> Scale.reciprocal u d
 
     /// Rebuild a packed series over new raw domains.
     ///
@@ -145,7 +168,7 @@ module Figure =
                                 else
                                     s.XScale.Domain
 
-                            ofKind k s.XScale.Unit d
+                            Scale.ofKind k s.XScale.Unit d
 
                     let y =
                         match ky with
@@ -159,7 +182,7 @@ module Figure =
                                 else
                                     s.YScale.Domain
 
-                            ofKind k s.YScale.Unit d
+                            Scale.ofKind k s.YScale.Unit d
 
                     Erase.packSeries { s with XScale = x; YScale = y } }
 
@@ -195,58 +218,93 @@ module Figure =
           Panels = panels
           Theme = Theme.initial }
 
-    // ---- Shared domains across the layers of one panel -------------------------------------
+    // ---- Sharing an axis: the one runtime dimensional check --------------------------------
+
+    /// **The check, once.** Whether a set of things can share one axis, and what domain they
+    /// share if they can.
+    ///
+    /// Inside a single `Chart.line (xs, ys)` call the compiler already rejects metres against
+    /// seconds, because the two arrays have different measures and `Series<'ux,'uy>` names both.
+    /// Across *two* of anything — two layers on a panel, two panels of a facet — the measures
+    /// have been erased into the existential and F# cannot compare them, so the `Dim` values are
+    /// compared at runtime instead and a mismatch raises rather than silently plotting joules on
+    /// a metre axis.
+    ///
+    /// `describe` names the thing at index `i` in the message, because "layer 3" and "panel 3"
+    /// are different mistakes and this is the one dimensional error the compiler cannot catch —
+    /// so it is the one whose message has to work hardest.
+    let private agreeOn (describe: int -> string) (axis: string) (scales: IScaleErased[]) : float * float =
+        let s0 = scales.[0]
+
+        // The categorical counterpart of the dimensional check, and it is needed for exactly the
+        // reason that check is: an ordinal scale is dimensionless (D45), so two scales with
+        // *different* level sets have identical `Dim` and the check cannot see the difference.
+        // Verified before it was written: two four-level layers over unrelated levels unified
+        // silently, and the second layer's points were drawn against the first layer's labels —
+        // the same class of lie as joules on a metre axis, arrived at by a different route.
+        let levelsOf (s: IScaleErased) =
+            match s.Kind with
+            | ScaleKind.Ordinal levels -> Some levels
+            | _ -> None
+
+        for i in 1 .. scales.Length - 1 do
+            let si = scales.[i]
+
+            match levelsOf s0, levelsOf si with
+            | Some la, Some lb when la <> lb ->
+                failwithf
+                    "Marey: %s and %s have %s axes over different sets of levels (%s against %s). Two categories cannot share an axis."
+                    (describe 0)
+                    (describe i)
+                    axis
+                    (String.concat ", " la)
+                    (String.concat ", " lb)
+            | Some _, None
+            | None, Some _ ->
+                failwithf
+                    "Marey: %s has a categorical %s axis and %s has a continuous one. They cannot share an axis."
+                    (describe 0)
+                    axis
+                    (describe i)
+            | _ -> ()
+
+            if si.Dim <> s0.Dim then
+                failwithf
+                    "Marey: %s has %s %s axis in %s but %s has one in %s. Two physical dimensions cannot share an axis."
+                    (describe 0)
+                    (if axis = "x" then "an" else "a")
+                    axis
+                    (Dim.show s0.Dim)
+                    (describe i)
+                    (Dim.show si.Dim)
+
+        let ds = scales |> Array.map (fun s -> s.Domain)
+        (ds |> Array.map fst |> Array.min), (ds |> Array.map snd |> Array.max)
 
     /// Give every layer on a panel the same x and y domains.
     ///
-    /// **This is where the one runtime dimensional check in the library lives.** Inside a single
-    /// `Chart.line (xs, ys)` call the compiler already rejects metres against seconds, because
-    /// the two arrays have different measures and `Series('ux,'uy)` names both. Across *two*
-    /// layers the measures have been erased into the existential and F# cannot compare them, so
-    /// the `Dim` values are compared at runtime instead, and a mismatch raises rather than
-    /// silently plotting joules on a metre axis.
+    /// Applied at **compile** time rather than at construction, and that is deliberate: a panel
+    /// accumulates layers after it is built — `Chart.add` is one call — so there is no moment
+    /// before rendering at which its layer set is known to be complete. `shareScales` below makes
+    /// the opposite choice, for the opposite reason.
     let unify (p: Panel) : Panel =
         if p.Layers.Length < 2 then
             p
         else
             let scales = p.Layers |> Array.map (fun l -> Erase.seriesScales l.Data)
-            let (x0, y0) = scales.[0]
 
             // Layers are usually unnamed until `Chart.withName` is applied, and "layer ''"
-            // identifies nothing. This is the one dimensional error the *compiler* cannot
-            // catch, so it is the one the message has to work hardest for.
+            // identifies nothing.
             let describe i =
                 let name = p.Layers.[i].Name
+
                 if System.String.IsNullOrWhiteSpace name then
                     sprintf "layer %d" i
                 else
                     sprintf "layer %d ('%s')" i name
 
-            for i in 1 .. scales.Length - 1 do
-                let (xi, yi) = scales.[i]
-
-                if xi.Dim <> x0.Dim then
-                    failwithf
-                        "Marey: %s has an x axis in %s but %s has one in %s. Two physical dimensions cannot share an axis."
-                        (describe 0)
-                        (Dim.show x0.Dim)
-                        (describe i)
-                        (Dim.show xi.Dim)
-
-                if yi.Dim <> y0.Dim then
-                    failwithf
-                        "Marey: %s has a y axis in %s but %s has one in %s. Two physical dimensions cannot share an axis."
-                        (describe 0)
-                        (Dim.show y0.Dim)
-                        (describe i)
-                        (Dim.show yi.Dim)
-
-            let union (get: IScaleErased -> float * float) (pick: IScaleErased * IScaleErased -> IScaleErased) =
-                let ds = scales |> Array.map (pick >> get)
-                (ds |> Array.map fst |> Array.min), (ds |> Array.map snd |> Array.max)
-
-            let dx = union (fun s -> s.Domain) fst
-            let dy = union (fun s -> s.Domain) snd
+            let dx = agreeOn describe "x" (scales |> Array.map fst)
+            let dy = agreeOn describe "y" (scales |> Array.map snd)
 
             { p with
                 Layers =
@@ -255,18 +313,181 @@ module Figure =
                         { l with
                             Data = withDomains (Some dx) (Some dy) l.Data }) }
 
+    /// §9 / D48 — **give every panel of a figure the same axes.** What makes a grid of panels a
+    /// facet rather than a page of unrelated charts.
+    ///
+    /// Applied **eagerly**, by whoever composes the panels, so that the shared domains are on the
+    /// figure and can be read back off it without rendering — and so that a dimensional mismatch
+    /// is reported by the call that asked for the sharing rather than by the render, a long way
+    /// downstream. That is the opposite of `unify`'s choice above and for the opposite reason: a
+    /// facet's panel set is complete at the moment it is made.
+    ///
+    /// **The check follows the sharing.** An axis that is shared is checked; an axis left free
+    /// makes no cross-panel claim and is not checked. That is the whole answer to where the
+    /// runtime `Dim` check lives once panels share scales: it is not a property of the figure, it
+    /// is a property of the axis being shared.
+    let shareScales (mode: FacetScales) (fig: Figure) : Figure =
+        let drawn =
+            fig.Panels
+            |> Array.mapi (fun i p -> i, p)
+            |> Array.filter (fun (_, p) -> p.Layers.Length > 0)
+
+        if drawn.Length < 2 then
+            fig
+        else
+            // One entry per layer, tagged with the panel it came from: a panel with two layers
+            // agrees with the other panels layer by layer, exactly as it agrees with itself.
+            let entries =
+                [| for (pi, p) in drawn do
+                       for li in 0 .. p.Layers.Length - 1 do
+                           yield pi, p, li, Erase.seriesScales p.Layers.[li].Data |]
+
+            let describe i =
+                let (pi, p: Panel, li, _) = entries.[i]
+
+                let panel =
+                    if System.String.IsNullOrWhiteSpace p.Title then
+                        sprintf "panel %d" pi
+                    else
+                        sprintf "panel %d ('%s')" pi p.Title
+
+                if p.Layers.Length > 1 then
+                    sprintf "%s layer %d" panel li
+                else
+                    panel
+
+            let scalesOf pick =
+                entries |> Array.map (fun (_, _, _, pair) -> pick pair)
+
+            let dx =
+                match mode with
+                | ShareBoth
+                | ShareX -> Some(agreeOn describe "x" (scalesOf fst))
+                | ShareY -> None
+
+            let dy =
+                match mode with
+                | ShareBoth
+                | ShareY -> Some(agreeOn describe "y" (scalesOf snd))
+                | ShareX -> None
+
+            { fig with
+                Panels =
+                    fig.Panels
+                    |> Array.map (fun p ->
+                        { p with
+                            Layers =
+                                p.Layers
+                                |> Array.map (fun l ->
+                                    { l with
+                                        Data = withDomains dx dy l.Data }) }) }
+
     // ---- Compilation -----------------------------------------------------------------------
 
     let private textBox (m: ITextMeasurer) (f: FontSpec) (s: string) =
         TextMeasure.bounds m f AnchorMiddle BaselineMiddle 0.0<rad> s
 
-    let private legendEntries (p: Panel) =
-        p.Layers
-        |> Array.filter (fun l -> l.ShowInLegend && not (isEmpty l.Name))
-        |> Array.map (fun l ->
-            { Name = l.Name
-              Color = l.Style.Color
-              Mark = Geom.legendMark l.Geom l.Style })
+    /// D49 — **the legend enumerates.** What one layer contributes to it.
+    ///
+    /// A layer with a **categorical** channel contributes one entry per level rather than one
+    /// entry for itself: what the reader has to tell apart is the level, and the series name is
+    /// already on the panel. Colour and shape keyed to the same levels merge into a single
+    /// entry per level, because both read the same level number — which is why `Channel.split`
+    /// mixes buckets into one key rather than taking a product.
+    ///
+    /// A **size** channel contributes a size key: entries at the ends and the middle of its
+    /// domain, at the sizes the marks are actually drawn at, labelled through the axis compiler
+    /// so they carry the prefix and the unit. `LegendSizedMarker` exists for exactly this.
+    ///
+    /// A continuous **colour** channel contributes nothing here. It gets a colorbar.
+    ///
+    /// `ShowInLegend` gates **all** of it, not only the layer's own entry. The field says
+    /// whether this layer is in the legend, and a layer that is not cannot be in it by way of
+    /// its channels either. The encoding block (§9) is what makes the distinction matter: its
+    /// channels belong to the block rather than to one geom, so every layer carries them, and
+    /// three levels drawn as points *and* as a line would enumerate themselves twice under two
+    /// different swatches. `Chart.withChannel` sets the flag when it attaches a channel, so
+    /// nothing built through the quick front door notices this.
+    let private layerEntries (theme: Theme) (l: Layer) : LegendEntry[] =
+        let categorical =
+            if l.ShowInLegend then
+                l.Channels |> Array.filter Channel.isCategorical
+            else
+                [||]
+
+        let levelEntries =
+            if categorical.Length = 0 then
+                [||]
+            else
+                match Channel.levelsOf categorical.[0] with
+                | None -> [||]
+                | Some levels ->
+                    levels
+                    |> Array.mapi (fun i name ->
+                        let st =
+                            categorical
+                            |> Array.fold (fun acc (c: Channel) -> Channel.restyle c.Map i acc) l.Style
+
+                        { Name = name
+                          Color = st.Color
+                          Mark = Geom.legendMark l.Geom st })
+
+        let sizeEntries =
+            (if l.ShowInLegend then l.Channels else [||])
+            |> Array.collect (fun c ->
+                match c.Map with
+                | SizeByValue(scale, smallest, largest) ->
+                    let spec =
+                        Axis.ofPackedWith theme.UnitStyle UnitRegistry.si 3 (Colorbar.labelOf c.Label scale) scale
+
+                    // The ends and the middle of what the axis compiler chose, so the key's
+                    // numbers are the round ones an axis would have printed.
+                    let ticks = spec.Ticks
+
+                    let picks =
+                        if ticks.Length <= 3 then
+                            ticks
+                        else
+                            [| ticks.[0]; ticks.[ticks.Length / 2]; ticks.[ticks.Length - 1] |]
+
+                    picks
+                    |> Array.map (fun t ->
+                        let size =
+                            Channel.quantiseSize (smallest + (largest - smallest) * float t.Position)
+
+                        { Name =
+                            if isEmpty spec.UnitText then
+                                t.Label
+                            else
+                                t.Label + " " + spec.UnitText
+                          Color = l.Style.Color
+                          Mark = LegendSizedMarker(l.Style.Shape, size) })
+                | ColorByLevel _
+                | ShapeByLevel _
+                | ColorByValue _ -> [||])
+
+        let own =
+            if l.ShowInLegend && not (isEmpty l.Name) && levelEntries.Length = 0 then
+                [| { Name = l.Name
+                     Color = l.Style.Color
+                     Mark = Geom.legendMark l.Geom l.Style } |]
+            else
+                [||]
+
+        Array.concat [ own; levelEntries; sizeEntries ]
+
+    /// Every layer's contribution, with **identical entries collapsed**.
+    ///
+    /// A legend enumerates what the reader has to tell apart, so the same swatch under the same
+    /// name twice is not a second thing — it is the same thing counted twice. The encoding block
+    /// (§9) is what makes this reachable: its channels belong to the block rather than to one
+    /// geom, so a two-layer block over three levels would otherwise print six entries naming
+    /// three levels. `Array.distinct` keeps first-appearance order, which is level order.
+    ///
+    /// Entries that differ in *anything* the reader can see — name, colour, or mark — survive,
+    /// which is why this cannot quietly swallow a real second series.
+    let private legendEntries (theme: Theme) (p: Panel) =
+        p.Layers |> Array.collect (layerEntries theme) |> Array.distinct
 
     /// Compile one panel into a device-space region.
     let private compilePanel (m: ITextMeasurer) (theme: Theme) (extent: Extent<px>) (region: Rect<px>) (p: Panel) : Node =
@@ -292,9 +513,39 @@ module Figure =
                 else
                     Rect.height (textBox m theme.PanelTitleFont p.Title) + theme.TitleGap
 
+            // D49 — a continuous colour channel gets a colorbar, and the bar is a column of the
+            // panel's own grid. The first one on the panel wins: two different colour scales on
+            // one panel are two keys the reader has to arbitrate between, and that is a different
+            // question from D48's, which is about one scale across several panels.
+            //
+            // Gated on `ShowInLegend`, which D53 defines as a layer's whole legend entry and D48
+            // widens to a layer's whole *key* contribution — the bar and the entry are the same
+            // claim about the same channel, differing only in whether the values are levels or a
+            // range. A facet builds its channels over the whole block before it splits, so every
+            // panel's bar would be identical; drawing it n times says nothing the first one did
+            // not, and costs a column of every panel.
+            let colorbar =
+                p.Layers
+                |> Array.filter (fun l -> l.ShowInLegend)
+                |> Array.tryPick (fun l ->
+                    l.Channels
+                    |> Array.tryPick (fun c -> Colorbar.specOf theme.UnitStyle theme.TickCount c))
+
+            // The gap between the plot's right edge and the bar. A `PanelGap` rather than a
+            // `LabelGap`, because what it separates is two things the eye reads separately.
+            let barGap =
+                match colorbar with
+                | Some _ -> theme.PanelGap
+                | None -> 0.0<px>
+
             // Build the inner grid for a given tick plan. Called twice: once against an
             // estimated plot size, once against the real one.
-            let build (xPlan: TickPlan) (yPlan: TickPlan) =
+            let build (xPlan: TickPlan) (yPlan: TickPlan) (barPlan: TickPlan option) =
+                let barW =
+                    match colorbar, barPlan with
+                    | Some(spec, _), Some plan -> Colorbar.measure m theme spec plan
+                    | _ -> 0.0<px>
+
                 let xTicksH =
                     if p.XAxis.Visible then
                         Axes.tickExtent m theme AxisBottom xSpec xPlan
@@ -335,7 +586,12 @@ module Figure =
                         0.0<px>
 
                 let cols =
-                    [| Track.Content yTitleW; Track.Content yTicksW; Track.Frac 1.0; Track.Content rightPad |]
+                    [| Track.Content yTitleW
+                       Track.Content yTicksW
+                       Track.Frac 1.0
+                       Track.Content rightPad
+                       Track.Content barGap
+                       Track.Content barW |]
 
                 let rows =
                     [| Track.Content titleH
@@ -352,8 +608,10 @@ module Figure =
                        fixedCell "yticks" 2 1 yTicksW 0.0<px>
                        Layout.fill "plot" 2 2
                        fixedCell "rightpad" 2 3 rightPad 0.0<px>
-                       fixedCell "ptitle" 0 0 0.0<px> titleH |> Layout.spanning 1 4
-                       fixedCell "toppad" 1 0 0.0<px> topPad |> Layout.spanning 1 4
+                       fixedCell "bargap" 2 4 barGap 0.0<px>
+                       fixedCell "colorbar" 2 5 barW 0.0<px>
+                       fixedCell "ptitle" 0 0 0.0<px> titleH |> Layout.spanning 1 6
+                       fixedCell "toppad" 1 0 0.0<px> topPad |> Layout.spanning 1 6
                        fixedCell "xticks" 3 2 0.0<px> xTicksH
                        fixedCell "xtitle" 4 2 0.0<px> xTitleH |]
 
@@ -365,16 +623,21 @@ module Figure =
             let estW = Rect.width region * 0.78
             let estH = Rect.height region * 0.72
 
+            // The bar's plan is made against its own height, which is the plot's — the bar
+            // sits in the plot's row. That is why `Legend.fs`'s objection to outside placement
+            // does not transfer: the width this adds is settled by a vertical measurement, so
+            // nothing here is circular and the loop is still the same two passes.
             let plan (w: float<px>) (h: float<px>) =
                 Axes.planTicks m theme.TickFont theme.LabelGap w AxisBottom xSpec.Ticks,
-                Axes.planTicks m theme.TickFont theme.LabelGap h AxisLeft ySpec.Ticks
+                Axes.planTicks m theme.TickFont theme.LabelGap h AxisLeft ySpec.Ticks,
+                colorbar |> Option.map (fun (spec, _) -> Colorbar.planTicks m theme h spec)
 
-            let (xPlan0, yPlan0) = plan estW estH
-            let a0 = build xPlan0 yPlan0
+            let (xPlan0, yPlan0, barPlan0) = plan estW estH
+            let a0 = build xPlan0 yPlan0 barPlan0
             let plot0 = Layout.findPx "plot" a0
 
-            let (xPlan, yPlan) = plan (Rect.width plot0) (Rect.height plot0)
-            let arrangement = build xPlan yPlan
+            let (xPlan, yPlan, barPlan) = plan (Rect.width plot0) (Rect.height plot0)
+            let arrangement = build xPlan yPlan barPlan
             let plotPx = Layout.findPx "plot" arrangement
             let plotNd = Layout.ndRect extent plotPx
 
@@ -406,11 +669,37 @@ module Figure =
                     |> Array.map (fun l ->
                         let pts = Erase.projectXY l.Data
 
+                        // D46 — **one batch per bucket, not one per point.** With no channels
+                        // this is `Geom.compile`'s own path; with a continuous colour channel
+                        // it is at most 256 groups for any number of points, which is what
+                        // keeps §5.1's batching intact while the colour varies.
+                        let body, counts =
+                            if l.Channels.Length = 0 then
+                                // No channels, no counts: an unchannelled layer's annotation is
+                                // exactly what it was before phase 2, so every baseline that
+                                // predates channels stays byte-identical.
+                                Geom.compile p.Coord plotSize l.Style l.Geom pts, [||]
+                            else
+                                let (batches, unmapped) = Channel.split l.Channels pts.Length
+
+                                let nodes =
+                                    batches
+                                    |> Array.map (fun b ->
+                                        Geom.compileSubset p.Coord plotSize (b.Restyle l.Style) l.Geom pts b.Indices)
+
+                                // `unmapped` is reported rather than swallowed: a point whose
+                                // channel value was missing is not drawn (see
+                                // `Channel.bucketer`), and a figure that contains fewer marks
+                                // than it has rows should be able to say so.
+                                Group nodes,
+                                [| "batches", string nodes.Length
+                                   "unmapped", string unmapped |]
+
                         Annotated(
                             { Role = RoleSeries
                               Label = (if isEmpty l.Name then "series" else l.Name)
-                              Data = [| "series", l.Name; "points", string pts.Length |] },
-                            Geom.compile p.Coord plotSize l.Style l.Geom pts
+                              Data = Array.append [| "series", l.Name; "points", string pts.Length |] counts },
+                            body
                         ))
 
                 Transform(Axes.panelTransform plotNd, Clip(Axes.panelShape p.Coord, Group layers))
@@ -454,7 +743,13 @@ module Figure =
                           Rotation = 0.0<rad> }
 
             let legend =
-                Legend.compile m theme extent plotNd p.Legend (legendEntries p)
+                Legend.compile m theme extent plotNd p.Legend (legendEntries theme p)
+
+            let colorbarNode =
+                match colorbar, barPlan with
+                | Some(spec, ramp), Some plan ->
+                    Colorbar.compile m theme extent (Layout.findPx "colorbar" arrangement) spec plan ramp
+                | _ -> Scene.empty
 
             Annotated(
                 { Role = RoleOther "panel"
@@ -474,7 +769,8 @@ module Figure =
                            axisNode AxisLeft p.YAxis ySpec yPlan
                            Axes.panelFrame theme p.Coord plotNd
                            panelTitle
-                           legend |]
+                           legend
+                           colorbarNode |]
                 )
             )
 

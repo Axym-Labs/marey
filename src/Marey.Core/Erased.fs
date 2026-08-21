@@ -103,8 +103,46 @@ type IQuantityConsumer<'r> =
 type PackedQuantity =
     abstract Accept: IQuantityConsumer<'r> -> 'r
 
+/// D44 finding 2 — **one witness and one array**: a single encoding channel, packed before
+/// anything knows which pair of channels will become a series.
+///
+/// `PackedQuantity` above carries one witness and one *value*; `PackedSeries` carries a witness
+/// *pair* and two arrays. A channel is neither, and the gap is what the encoding CE (§9) walks
+/// into: it accumulates `x`, `y`, `color` … independently, each erased where it is declared,
+/// and only at the end decides which two of them are the positional pair. So this is a fourth
+/// instance of the rank-2 pattern this file already argues for three times, not a new idea.
+type IChannelConsumer<'res> =
+    abstract Apply<[<Measure>] 'u> : U<'u> * float<'u>[] -> 'res
+
+type PackedChannel =
+    abstract Accept: IChannelConsumer<'res> -> 'res
+
+/// Both measures of a channel *pair*, recovered together.
+///
+/// D44 finding 3: reunification is rank-2 twice, nested, and the two measures exist together in
+/// exactly one scope — the body of the inner `Apply` — and cannot be returned from it. Anything
+/// that wants the typed pair (`Erase.series`, `Chart.ofSeries`, a regression whose slope is
+/// `float<'uy/'ux>`) has to be *called* at that innermost point. This interface names that call
+/// site once, so no caller has to write the nesting a second time.
+type IChannelPairConsumer<'res> =
+    abstract Apply<[<Measure>] 'ux, [<Measure>] 'uy> : U<'ux> * float<'ux>[] * U<'uy> * float<'uy>[] -> 'res
+
 [<RequireQualifiedAccess>]
 module Erase =
+
+    /// The linear scale a channel gets when nobody picks one: the data's range with 5%
+    /// breathing room, and a unit interval when there is no data to take a range from. Kept
+    /// identical to `Chart.series`'s default, because a series built through the channels must
+    /// not render differently from the same series built through the front door.
+    ///
+    /// Public since M2 phase 4, on the rule stated in `Num.fs`: it acquired a second consumer.
+    /// A stat that builds its own series inside `reunify` — a fitted line, which is two points
+    /// and not the caller's data — needs the same default, and a private copy of it in
+    /// `Marey.Plot` is exactly the duplication that goes silently out of step.
+    let autoScale (u: U<'u>) (xs: float<'u>[]) : Scale<'u> =
+        match Scale.paddedDomain 0.05 xs with
+        | Some d -> Scale.linear u d
+        | None -> Scale.linear u (LanguagePrimitives.FloatWithMeasure<'u> 0.0, LanguagePrimitives.FloatWithMeasure<'u> 1.0)
 
     /// **The** erasure. The only sanctioned crossing from measured to unmeasured space.
     ///
@@ -132,24 +170,33 @@ module Erase =
             member _.Ticks n =
                 let vs = s.TickHint n
 
-                let decimals =
+                // How a tick value becomes text, which is the one thing a categorical axis does
+                // differently from every other kind: its labels are names and there is no
+                // decimal count to derive. D45 puts the level array in `Kind` precisely so that
+                // this path — the erased one, all a reloaded figure has (§15) — can still read
+                // them.
+                let label =
                     match s.Kind with
+                    | ScaleKind.Ordinal levels -> Scale.levelLabel levels
                     | ScaleKind.Log _ ->
                         // Log ticks are not on a uniform grid, so a single step-derived
                         // decimal count is wrong. Take the finest any individual tick needs.
-                        vs
-                        |> Array.fold
-                            (fun acc v ->
-                                let a = abs (float v)
-                                if a = 0.0 then acc else max acc (Ticks.decimalsFor a))
-                            0
-                    | _ -> Ticks.decimalsFor (Ticks.linearStep n s.Domain)
+                        let decimals =
+                            vs
+                            |> Array.fold
+                                (fun acc v ->
+                                    let a = abs (float v)
+                                    if a = 0.0 then acc else max acc (Ticks.decimalsFor a))
+                                0
+
+                        Ticks.format decimals
+                    | _ -> Ticks.format (Ticks.decimalsFor (Ticks.linearStep n s.Domain))
 
                 vs
                 |> Array.map (fun v ->
                     { Value = float v
                       Position = s.Forward v
-                      Label = Ticks.format decimals (float v) }) }
+                      Label = label (float v) }) }
 
     let series (name: string) (sx: Scale<'ux>) (sy: Scale<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : PackedSeries =
         if x.Length <> y.Length then
@@ -187,6 +234,13 @@ module Erase =
                         { X = s.XScale.Forward s.X.[i]
                           Y = s.YScale.Forward s.Y.[i] }) }
 
+    /// How many points a packed series holds. Cheaper than projecting it to find out, which is
+    /// what a caller checking that a channel is the same length as its layer would otherwise do.
+    let seriesLength (p: PackedSeries) =
+        p.Accept
+            { new ISeriesConsumer<int> with
+                member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) = s.X.Length }
+
     let seriesName (p: PackedSeries) =
         p.Accept
             { new ISeriesConsumer<string> with
@@ -197,3 +251,47 @@ module Erase =
         p.Accept
             { new ISeriesConsumer<IScaleErased * IScaleErased> with
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) = scale s.XScale, scale s.YScale }
+
+    /// Erase one channel — the witness and the values it binds — for later reunification.
+    let packChannel (u: U<'u>) (values: float<'u>[]) : PackedChannel =
+        { new PackedChannel with
+            member _.Accept c = c.Apply<'u>(u, values) }
+
+    /// **A subset of a channel, taken by row index** — the operation a facet is made of (D48).
+    ///
+    /// A facet does not re-read the data: by the time the block runs, every array in it has
+    /// already been erased where it was declared (D44 finding 2) and the accessors are gone. But
+    /// each of those arrays is one `Array.map` over the *same* rows — which is D53's argument for
+    /// a channel belonging to the block — so they are all index-aligned, and splitting the block
+    /// by a key is splitting one `int[]` of row indices and applying it to each.
+    ///
+    /// The measure is reattached inside `Apply`, where it is known, so this is measure-safe for a
+    /// caller who could not name the measure it selects from.
+    let selectChannel (rows: int[]) (c: PackedChannel) : PackedChannel =
+        c.Accept
+            { new IChannelConsumer<PackedChannel> with
+                member _.Apply<[<Measure>] 'u>(u: U<'u>, values: float<'u>[]) =
+                    packChannel u (rows |> Array.map (fun i -> values.[i])) }
+
+    /// **The two-channel reunifier.** `IChannelConsumer` nested inside `IChannelConsumer`, the
+    /// only construction in which two independently erased measures are both in scope, and `k`
+    /// is invoked where they are.
+    let reunify (x: PackedChannel) (y: PackedChannel) (k: IChannelPairConsumer<'res>) : 'res =
+        x.Accept
+            { new IChannelConsumer<'res> with
+                member _.Apply<[<Measure>] 'ux>(ux: U<'ux>, xs: float<'ux>[]) =
+                    y.Accept
+                        { new IChannelConsumer<'res> with
+                            member _.Apply<[<Measure>] 'uy>(uy: U<'uy>, ys: float<'uy>[]) = k.Apply<'ux, 'uy>(ux, xs, uy, ys) } }
+
+    /// Reunify two channels into a series over automatic linear scales — the termination the
+    /// CE takes when no scale was configured. A caller that wants log, or a domain of its own,
+    /// calls `reunify` with its own consumer and builds the scales inside it; there is nowhere
+    /// else the measures are available to build them.
+    let channelSeries (name: string) (x: PackedChannel) (y: PackedChannel) : PackedSeries =
+        reunify
+            x
+            y
+            { new IChannelPairConsumer<PackedSeries> with
+                member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(ux: U<'ux>, xs: float<'ux>[], uy: U<'uy>, ys: float<'uy>[]) =
+                    series name (autoScale ux xs) (autoScale uy ys) xs ys }

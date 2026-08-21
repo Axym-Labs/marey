@@ -490,6 +490,7 @@ module Html =
             | ScaleKind.Symlog(b, t) -> sprintf "symlog base %s, linthresh %s" (num b) (num t)
             | ScaleKind.Power e -> sprintf "power %s" (num e)
             | ScaleKind.Reciprocal -> "reciprocal"
+            | ScaleKind.Ordinal levels -> sprintf "ordinal, %d levels" levels.Length
 
         let (lo, hi) = s.Domain
 

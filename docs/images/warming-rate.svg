@@ -1,0 +1,216 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="820" height="480" viewBox="0 0 820 480">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M61.009 428.567L795.992 428.567L795.992 91.917L61.009 91.917Z"/></clipPath>
+    <circle id="qm" r="2.5"/>
+  </defs>
+  <g id="figure">
+    <path d="M0 480L820 480L820 0L0 0Z" fill="#ffffff"/>
+    <g role="note" data-marey-role="annotation" aria-label="Global temperature anomaly">
+      <text x="410" y="14" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="17.333" font-weight="600" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">Global temperature anomaly</text>
+      <text x="410" y="37.033" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" text-anchor="middle" dominant-baseline="hanging" fill="#606a78">annual mean against the 1951–1980 base period, with a least-squares trend</text>
+    </g>
+    <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="2" data-x-tick-rule="all" data-y-tick-rule="all">
+      <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="4">
+        <path d="M61.009 414.914L795.992 414.914M61.009 328.482L795.992 328.482M61.009 242.05L795.992 242.05M61.009 155.617L795.992 155.617" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+      </g>
+      <g clip-path="url(#qc)">
+        <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="146" data-batches="3" data-unmapped="0">
+          <g fill="#0072b2">
+            <use xlink:href="#qm" x="94.418" y="357.869"/>
+            <use xlink:href="#qm" x="99.026" y="344.04"/>
+            <use xlink:href="#qm" x="103.634" y="347.497"/>
+            <use xlink:href="#qm" x="108.242" y="357.869"/>
+            <use xlink:href="#qm" x="112.85" y="376.884"/>
+            <use xlink:href="#qm" x="117.458" y="385.527"/>
+            <use xlink:href="#qm" x="122.066" y="383.799"/>
+            <use xlink:href="#qm" x="126.674" y="390.713"/>
+            <use xlink:href="#qm" x="131.282" y="359.597"/>
+            <use xlink:href="#qm" x="135.89" y="347.497"/>
+            <use xlink:href="#qm" x="140.498" y="390.713"/>
+            <use xlink:href="#qm" x="145.106" y="366.512"/>
+            <use xlink:href="#qm" x="149.714" y="375.155"/>
+            <use xlink:href="#qm" x="154.322" y="382.07"/>
+            <use xlink:href="#qm" x="158.93" y="380.341"/>
+            <use xlink:href="#qm" x="163.538" y="368.241"/>
+            <use xlink:href="#qm" x="168.146" y="349.226"/>
+            <use xlink:href="#qm" x="172.754" y="347.497"/>
+            <use xlink:href="#qm" x="177.362" y="376.884"/>
+            <use xlink:href="#qm" x="181.97" y="359.597"/>
+            <use xlink:href="#qm" x="186.578" y="344.04"/>
+            <use xlink:href="#qm" x="191.187" y="354.412"/>
+            <use xlink:href="#qm" x="195.795" y="376.884"/>
+            <use xlink:href="#qm" x="200.403" y="392.442"/>
+            <use xlink:href="#qm" x="205.011" y="411.457"/>
+            <use xlink:href="#qm" x="209.619" y="375.155"/>
+            <use xlink:href="#qm" x="214.227" y="368.241"/>
+            <use xlink:href="#qm" x="218.835" y="395.899"/>
+            <use xlink:href="#qm" x="223.443" y="402.814"/>
+            <use xlink:href="#qm" x="228.051" y="413.185"/>
+            <use xlink:href="#qm" x="232.659" y="404.542"/>
+            <use xlink:href="#qm" x="237.267" y="406.271"/>
+            <use xlink:href="#qm" x="241.875" y="392.442"/>
+            <use xlink:href="#qm" x="246.483" y="388.984"/>
+            <use xlink:href="#qm" x="251.091" y="356.14"/>
+            <use xlink:href="#qm" x="255.699" y="354.412"/>
+            <use xlink:href="#qm" x="260.307" y="390.713"/>
+            <use xlink:href="#qm" x="264.915" y="408"/>
+            <use xlink:href="#qm" x="269.523" y="380.341"/>
+            <use xlink:href="#qm" x="274.131" y="376.884"/>
+            <use xlink:href="#qm" x="278.739" y="376.884"/>
+            <use xlink:href="#qm" x="283.347" y="361.326"/>
+            <use xlink:href="#qm" x="287.955" y="376.884"/>
+            <use xlink:href="#qm" x="292.563" y="373.427"/>
+            <use xlink:href="#qm" x="297.171" y="375.155"/>
+            <use xlink:href="#qm" x="301.78" y="366.512"/>
+            <use xlink:href="#qm" x="306.388" y="347.497"/>
+            <use xlink:href="#qm" x="310.996" y="366.512"/>
+            <use xlink:href="#qm" x="315.604" y="363.055"/>
+            <use xlink:href="#qm" x="320.212" y="390.713"/>
+            <use xlink:href="#qm" x="324.82" y="356.14"/>
+            <use xlink:href="#qm" x="329.428" y="344.04"/>
+            <use xlink:href="#qm" x="334.036" y="356.14"/>
+            <use xlink:href="#qm" x="338.644" y="378.613"/>
+            <use xlink:href="#qm" x="343.252" y="350.954"/>
+            <use xlink:href="#qm" x="347.86" y="363.055"/>
+            <use xlink:href="#qm" x="352.468" y="354.412"/>
+            <use xlink:href="#qm" x="357.076" y="333.668"/>
+            <use xlink:href="#qm" x="361.684" y="328.482"/>
+            <use xlink:href="#qm" x="366.292" y="331.939"/>
+          </g>
+          <g fill="#d55e00">
+            <use xlink:href="#qm" x="370.9" y="307.738"/>
+            <use xlink:href="#qm" x="375.508" y="297.366"/>
+            <use xlink:href="#qm" x="380.116" y="318.11"/>
+            <use xlink:href="#qm" x="384.724" y="312.924"/>
+            <use xlink:href="#qm" x="389.332" y="293.909"/>
+            <use xlink:href="#qm" x="393.94" y="312.924"/>
+            <use xlink:href="#qm" x="398.548" y="340.582"/>
+            <use xlink:href="#qm" x="403.156" y="333.668"/>
+            <use xlink:href="#qm" x="407.764" y="347.497"/>
+            <use xlink:href="#qm" x="412.373" y="347.497"/>
+            <use xlink:href="#qm" x="416.981" y="357.869"/>
+            <use xlink:href="#qm" x="421.589" y="340.582"/>
+            <use xlink:href="#qm" x="426.197" y="326.753"/>
+            <use xlink:href="#qm" x="430.805" y="314.653"/>
+            <use xlink:href="#qm" x="435.413" y="350.954"/>
+            <use xlink:href="#qm" x="440.021" y="352.683"/>
+            <use xlink:href="#qm" x="444.629" y="361.326"/>
+            <use xlink:href="#qm" x="449.237" y="319.839"/>
+            <use xlink:href="#qm" x="453.845" y="318.11"/>
+            <use xlink:href="#qm" x="458.453" y="323.296"/>
+            <use xlink:href="#qm" x="463.061" y="331.939"/>
+            <use xlink:href="#qm" x="467.669" y="318.11"/>
+            <use xlink:href="#qm" x="472.277" y="323.296"/>
+            <use xlink:href="#qm" x="476.885" y="319.839"/>
+            <use xlink:href="#qm" x="481.493" y="363.055"/>
+            <use xlink:href="#qm" x="486.101" y="347.497"/>
+            <use xlink:href="#qm" x="490.709" y="338.854"/>
+            <use xlink:href="#qm" x="495.317" y="331.939"/>
+            <use xlink:href="#qm" x="499.925" y="342.311"/>
+            <use xlink:href="#qm" x="504.533" y="319.839"/>
+            <use xlink:href="#qm" x="509.141" y="323.296"/>
+            <use xlink:href="#qm" x="513.749" y="342.311"/>
+            <use xlink:href="#qm" x="518.357" y="326.753"/>
+            <use xlink:href="#qm" x="522.966" y="300.824"/>
+            <use xlink:href="#qm" x="527.574" y="340.582"/>
+            <use xlink:href="#qm" x="532.182" y="330.21"/>
+            <use xlink:href="#qm" x="536.79" y="345.768"/>
+            <use xlink:href="#qm" x="541.398" y="297.366"/>
+            <use xlink:href="#qm" x="546.006" y="316.381"/>
+            <use xlink:href="#qm" x="550.614" y="300.824"/>
+          </g>
+          <g fill="#009e73">
+            <use xlink:href="#qm" x="555.222" y="283.537"/>
+            <use xlink:href="#qm" x="559.83" y="273.165"/>
+            <use xlink:href="#qm" x="564.438" y="304.281"/>
+            <use xlink:href="#qm" x="569.046" y="274.894"/>
+            <use xlink:href="#qm" x="573.654" y="302.552"/>
+            <use xlink:href="#qm" x="578.262" y="307.738"/>
+            <use xlink:href="#qm" x="582.87" y="297.366"/>
+            <use xlink:href="#qm" x="587.478" y="273.165"/>
+            <use xlink:href="#qm" x="592.086" y="261.065"/>
+            <use xlink:href="#qm" x="596.694" y="281.808"/>
+            <use xlink:href="#qm" x="601.302" y="250.693"/>
+            <use xlink:href="#qm" x="605.91" y="259.336"/>
+            <use xlink:href="#qm" x="610.518" y="290.452"/>
+            <use xlink:href="#qm" x="615.126" y="288.723"/>
+            <use xlink:href="#qm" x="619.734" y="274.894"/>
+            <use xlink:href="#qm" x="624.342" y="252.421"/>
+            <use xlink:href="#qm" x="628.95" y="271.437"/>
+            <use xlink:href="#qm" x="633.559" y="248.964"/>
+            <use xlink:href="#qm" x="638.167" y="223.034"/>
+            <use xlink:href="#qm" x="642.775" y="262.793"/>
+            <use xlink:href="#qm" x="647.383" y="261.065"/>
+            <use xlink:href="#qm" x="651.991" y="236.864"/>
+            <use xlink:href="#qm" x="656.599" y="219.577"/>
+            <use xlink:href="#qm" x="661.207" y="221.306"/>
+            <use xlink:href="#qm" x="665.815" y="236.864"/>
+            <use xlink:href="#qm" x="670.423" y="210.934"/>
+            <use xlink:href="#qm" x="675.031" y="217.849"/>
+            <use xlink:href="#qm" x="679.639" y="214.391"/>
+            <use xlink:href="#qm" x="684.247" y="235.135"/>
+            <use xlink:href="#qm" x="688.855" y="214.391"/>
+            <use xlink:href="#qm" x="693.463" y="202.291"/>
+            <use xlink:href="#qm" x="698.071" y="223.034"/>
+            <use xlink:href="#qm" x="702.679" y="216.12"/>
+            <use xlink:href="#qm" x="707.287" y="210.934"/>
+            <use xlink:href="#qm" x="711.895" y="198.833"/>
+            <use xlink:href="#qm" x="716.503" y="172.904"/>
+            <use xlink:href="#qm" x="721.111" y="153.889"/>
+            <use xlink:href="#qm" x="725.719" y="169.446"/>
+            <use xlink:href="#qm" x="730.327" y="181.547"/>
+            <use xlink:href="#qm" x="734.935" y="159.075"/>
+            <use xlink:href="#qm" x="739.543" y="153.889"/>
+            <use xlink:href="#qm" x="744.152" y="181.547"/>
+            <use xlink:href="#qm" x="748.76" y="174.632"/>
+            <use xlink:href="#qm" x="753.368" y="126.23"/>
+            <use xlink:href="#qm" x="757.976" y="107.215"/>
+            <use xlink:href="#qm" x="762.584" y="122.773"/>
+          </g>
+        </g>
+        <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="2">
+          <path d="M94.418 418.174L762.584 210.326" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+      </g>
+      <g role="graphics-object" data-marey-role="axis" aria-label="years since 1880 [yr]" data-side="bottom" data-unit="yr" data-prefix="" data-ticks="4" data-tick-rule="all">
+        <path d="M61.009 428.567L795.992 428.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+        <path d="M94.418 428.567L94.418 431.567M324.82 428.567L324.82 431.567M555.222 428.567L555.222 431.567M785.624 428.567L785.624 431.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+        <text x="94.418" y="435.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+        <text x="324.82" y="435.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">50</text>
+        <text x="555.222" y="435.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">100</text>
+        <text x="785.624" y="435.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">150</text>
+        <text x="428.501" y="453.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">years since 1880 [yr]</text>
+      </g>
+      <g role="graphics-object" data-marey-role="axis" aria-label="anomaly [K]" data-side="left" data-unit="K" data-prefix="" data-ticks="4" data-tick-rule="all">
+        <path d="M61.009 428.567L61.009 91.917" fill="none" stroke="#39414d" stroke-width="0.9"/>
+        <path d="M61.009 414.914L58.009 414.914M61.009 328.482L58.009 328.482M61.009 242.05L58.009 242.05M61.009 155.617L58.009 155.617" fill="none" stroke="#39414d" stroke-width="0.9"/>
+        <text x="54.009" y="414.914" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-0.5</text>
+        <text x="54.009" y="328.482" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.0</text>
+        <text x="54.009" y="242.05" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.5</text>
+        <text x="54.009" y="155.617" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.0</text>
+        <text x="26.333" y="260.242" transform="rotate(-90 26.333 260.242)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">anomaly [K]</text>
+      </g>
+      <g role="group" data-marey-role="legend" aria-label="legend" data-entries="3">
+        <path d="M68.009 160.067L171.393 160.067L171.393 98.917L68.009 98.917Z" fill="#ffffff" fill-opacity="0.9"/>
+        <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="1880–1939" data-series="1880–1939" data-color="#0072b2">
+          <g fill="#0072b2">
+            <use xlink:href="#qm" x="84.009" y="111.775"/>
+          </g>
+          <text x="101.009" y="111.775" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">1880–1939</text>
+        </g>
+        <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="1940–1979" data-series="1940–1979" data-color="#d55e00">
+          <g fill="#d55e00">
+            <use xlink:href="#qm" x="84.009" y="129.492"/>
+          </g>
+          <text x="101.009" y="129.492" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">1940–1979</text>
+        </g>
+        <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="1980–2025" data-series="1980–2025" data-color="#009e73">
+          <g fill="#009e73">
+            <use xlink:href="#qm" x="84.009" y="147.208"/>
+          </g>
+          <text x="101.009" y="147.208" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">1980–2025</text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

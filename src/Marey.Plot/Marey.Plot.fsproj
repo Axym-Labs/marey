@@ -19,8 +19,12 @@
     <Compile Include="Axes.fs" />
     <Compile Include="Legend.fs" />
     <Compile Include="Geom.fs" />
+    <Compile Include="Channel.fs" />
+    <Compile Include="Colorbar.fs" />
     <Compile Include="Figure.fs" />
+    <Compile Include="Levels.fs" />
     <Compile Include="Chart.fs" />
+    <Compile Include="Plot.fs" />
   </ItemGroup>
 
   <ItemGroup>

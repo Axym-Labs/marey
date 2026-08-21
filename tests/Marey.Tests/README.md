@@ -8,7 +8,7 @@ invariants.
 dotnet test
 ```
 
-**506 tests: 155 FsCheck properties and 351 examples, ~74 700 generated cases per run.**
+**738 tests: 158 FsCheck properties and 580 example-based tests, ~75 000 generated cases per run.**
 
 Around six seconds of that is `pdflatex`. The TikZ backend has no in-process oracle — the only
 authority on whether a `.tex` file is valid is a TeX engine, and the only authority on whether the
@@ -33,15 +33,15 @@ without a notebook host installed.
 | --- | --- |
 | `Generators.fs` | **Start here.** Custom FsCheck generators, the tolerance policy, and the culture-isolation helper. |
 | `DimProperties.fs` | `Dim` group laws — associativity, identity, inverse, commutativity, `pow` as n-fold `add`. |
-| `WitnessProperties.fs` | §12.1 witness algebra: `U.mul`/`U.div`/`recip`/`square` over `Dim` and `ToSI`, plus compile-time instantiation checks. |
-| `ScaleProperties.fs` | §4 round-trip, endpoint and monotonicity laws over all five `ScaleKind`s. |
-| `TickProperties.fs` | §4 tick count, containment and **label injectivity**, plus the measured exceptions. |
-| `InterpProperties.fs` | §7.1 endpoint and containment laws for `float<'u>`, `Vec2`, `Vec3`, `Color`, `Rect`, and the affine tween. |
+| `WitnessProperties.fs` | Witness algebra: `U.mul`/`U.div`/`recip`/`square` over `Dim` and `ToSI`, plus compile-time instantiation checks. |
+| `ScaleProperties.fs` | Round-trip, endpoint and monotonicity laws over all six `ScaleKind`s. |
+| `TickProperties.fs` | Tick count, containment and **label injectivity**, plus the measured exceptions. |
+| `InterpProperties.fs` | Endpoint and containment laws for `float<'u>`, `Vec2`, `Vec3`, `Color`, `Rect`, and the affine tween. |
 | `AffineProperties.fs` | Composition order, associativity, units, inversion — across three coordinate spaces. |
 | `GeometryProperties.fs` | `Rect` algebra, `mapRectBounds` under rotation, panel-subdivision invariants, text bounds. |
 | `ColorProperties.fs` | Oklab/Oklch round trips, `Color.mix`, `contrastRatio`, capability degradation. |
 | `SceneProperties.fs` | **D1** structural equality, `count`/`primitiveCount`, `prune`, and the nine-case guard. |
-| `RegressionTests.fs` | §12.3, §12.4, §12.5, §12.6, §12.1/D2, D16, D17, D32 and D38, locked in. |
+| `RegressionTests.fs` | The regression pins: D2, D16, D17, D32 and D38, locked in. |
 | `TexToolchain.fs` | Drives a real `pdflatex`. A deliberately-broken document is part of the suite, so that the gate is shown to be able to fail. |
 | `Raster.fs` | Compiles a document and counts pixels, via `pdftoppm -gray`. Measurement only, no assertions; renders a bitmap as ASCII for failure messages. |
 | `TikzWriterTests.fs` | The emitter primitives: `bp` dimensions, colour definitions, escaping, superscript runs, macro naming. |
@@ -52,6 +52,11 @@ without a notebook host installed.
 | `TikzGoldenTests.fs` | The same scenes through the TikZ backend, plus the figure baselines both backends share. |
 | `GuideTests.fs` | Extracts every `fsharp` block from `docs/guide.md`, concatenates them into one script and runs it under `dotnet fsi`. |
 | `PlotTests.fs` | `Marey.Plot`: self-labelling axes, layout invariants across four themes and four sizes, the 50 000-point batching claim, purity of the `with*` combinators, and palette validation. |
+| `ChannelTests.fs` | The colour, shape and size channels; the legend and the colorbar they produce; the encoding block, including three `dotnet fsi` snippets that must *fail* to compile. |
+| `StatTests.fs` | The statistics, each against a closed form, and the measures that come out of them — a dimensionless count, a probability, a reciprocal-unit density, and a typed slope. |
+| `FacetTests.fs` | Small multiples: that every panel reports the same domains and the same plot rectangle, and that a faceted histogram bins every panel into one grid. |
+| `GeomTests.fs` | The geoms: the five-number summary, each geom's compiled geometry, the row-alignment gate for channelled layers, and cross-backend coordinate agreement over every geom. |
+| `ExampleTests.fs` | Runs each script in `examples/` on its own under `dotnet fsi`, and fails if one prints a `false`. |
 | `NotebookTests.fs` | The notebook integration, in three parts: `Html` fragments parsed as XML with the golden suite's own oracle, plus escaping, culture invariance and the two theme rules; `MareyFormatter` driven through Verso's `StubFormatterContext`; and the extension loaded into a genuinely separate collectible `AssemblyLoadContext`, which is the assumption the whole package rests on. |
 
 ## Golden images
@@ -66,8 +71,9 @@ itself — `rotated-text.svg` carries `rotate(-30 104 100)` where `rotated-text.
 `rotate=30` at `(78bp,75bp)`, because the SVG backend flips y and negates the angle while the TikZ
 backend does neither, and `104 x 0.75 = 78`.
 
-`figure.svg` / `figure.tex` are the only baselines built from a `Figure` rather than a hand-made
-`Node`, and the only ones that exercise layout, axes, ticks, legend and theme together.
+The `figure-*` baselines are the ones built from a `Figure` rather than from a hand-made `Node`,
+and so the only ones that exercise layout, axes, ticks, legend and theme together: `figure` itself,
+plus the categorical axis, a channelled figure, a colorbar, a box plot and a heatmap.
 
 To regenerate after an intentional rendering change:
 
@@ -159,9 +165,9 @@ and fixing it is a deliberate, test-breaking act rather than a silent one. They 
 | Test | Finding |
 | --- | --- |
 | `ScaleProperties.Preconditions` | `Scale.symlog` does not validate its logarithm base, while `Scale.logBase` does. Base 1 gives NaN for every projection outside the linear region; base 0 silently gives a constant map. |
-| `TickProperties.MeasuredExceptions` (count) | §4's `[n/2, 2n]` tick-count bound is false at `n = 1` and `n = 3`. `Ticks.linear 3 (0.49, 921.3)` returns one tick; `Ticks.linear 1 (0.5, 8.0)` returns none. |
+| `TickProperties.MeasuredExceptions` (count) | The `[n/2, 2n]` tick-count bound is false at `n = 1` and `n = 3`. `Ticks.linear 3 (0.49, 921.3)` returns one tick; `Ticks.linear 1 (0.5, 8.0)` returns none. |
 | `TickProperties.MeasuredExceptions` (containment) | `Ticks.linear` can emit a tick **below the domain**. `first = ceil(lo/step - 1e-9) * step` compares an absolute epsilon against `lo/step`, so once `lo/step <= 1e-9` the `ceil` drops a grid line. `Ticks.linear 10 (1.0, 1e10)` puts a tick at 0. |
-| `TickProperties.InjectivityLimits` | §4's label injectivity fails once fixed-point formatting runs out of decimals — `Ticks.format` clamps at 15 places. A log axis spanning 36 decades yields 21 ticks all reading `0.000000000000000`; so does a dimensionless axis below 1e-15. `Ticks.formatScientific` exists and is never called. |
+| `TickProperties.InjectivityLimits` | Label injectivity fails once fixed-point formatting runs out of decimals — `Ticks.format` clamps at 15 places. A log axis spanning 36 decades yields 21 ticks all reading `0.000000000000000`; so does a dimensionless axis below 1e-15. `Ticks.formatScientific` exists and is never called. |
 None of them is a weakened property. The properties they sit beside are stated in full, with the
 precondition under which they hold made explicit, and every precondition is either a documented
 numerical-conditioning bound or a pointer to the defect test that owns the excluded case.

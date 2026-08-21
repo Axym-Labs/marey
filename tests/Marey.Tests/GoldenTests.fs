@@ -538,6 +538,110 @@ module Scenes =
     /// Room for a realistic axis composition to be legible.
     let wide: Extent<px> = { Width = 480.0<px>; Height = 320.0<px> }
 
+    // ======================================================================================
+    // M2 PHASE 6 — the rest of §9's geom list
+    //
+    // Two scenes rather than one, because the two halves are read for different things: the
+    // band geoms are read for where their *edges* are, and the distribution geoms for whether a
+    // summary is drawn correctly. Both go through `Geom.compile` rather than being hand-built,
+    // so what a reviewer diffs is the geom compiler's output and not a restatement of it.
+    // ======================================================================================
+
+    /// A nine-point series on the unit square, so every coordinate in the baseline is the data
+    /// value scaled by the surface and a wrong number can be read rather than reverse-engineered.
+    let private wave: Series<1, 1> =
+        let n = 9
+        let x = Array.init n (fun i -> float i / float (n - 1))
+
+        { Name = "wave"
+          X = x
+          Y = x |> Array.map (fun v -> 0.45 + 0.22 * sin (v * System.Math.PI * 1.5))
+          XScale = Scale.linear U.one (0.0, 1.0)
+          YScale = Scale.linear U.one (0.0, 1.0) }
+
+    let private wavePts =
+        Array.init wave.X.Length (fun i -> pt wave.X.[i] wave.Y.[i])
+
+    let private geomStyle i =
+        Geom.styleFor Theme.initial i |> Geom.withMarkerSize 5.0<px>
+
+    let private drawn i (g: Geom) (pts: Vec2<nd>[]) =
+        Geom.compile Coord.cartesian Golden.surface (geomStyle i) g pts
+
+    /// `ribbon`, `step`, `segment`, `tile` and `text` in one picture.
+    ///
+    /// The band is drawn first and the staircase over it, which is the composition
+    /// `Chart.line |> Chart.addRibbon` produces and the order a reviewer has to be able to see:
+    /// a ribbon painted last hides the line it was drawn for.
+    let phase6Bands =
+        let low = wave.Y |> Array.map (fun v -> v - 0.12)
+        let high = wave.Y |> Array.map (fun v -> v + 0.12)
+
+        let labels =
+            wave.Y |> Array.mapi (fun i v -> if i % 4 = 0 then sprintf "%.2f" v else "")
+
+        Group
+            [| drawn 2 (Geom.ribbon wave low high) wavePts
+               drawn 0 (GeomStep StepAfter) wavePts
+               // A tile grid along the bottom, at a size that tessellates exactly: nine tiles of
+               // 1/9 filling the unit interval, so there is neither a seam nor an overlap and
+               // nothing hangs off the surface — a scene has no panel to clip it.
+               //
+               // The corners come from the *series*, not from the points `compile` is handed —
+               // `Geom.tile` spends the measures at construction — so the shifted centres go in
+               // the series and the two must agree. That asymmetry is the one thing about this
+               // geom that is easy to get wrong twice.
+               (let centres = wave.X |> Array.map (fun x -> 1.0 / 18.0 + x * 8.0 / 9.0)
+
+                let strip =
+                    { wave with
+                        X = centres
+                        Y = Array.create centres.Length 0.08 }
+
+                drawn 1 (Geom.tile (1.0 / 9.0) 0.09 strip) (centres |> Array.map (fun x -> pt x 0.08)))
+               // Each point joined to the one below it on the axis — the geom read for its
+               // direction, so both ends have to be right and not only the start.
+               drawn 3 (Geom.segment wave wave.X (Array.create wave.X.Length 0.2)) wavePts
+               drawn 0 (Geom.text labels) wavePts |]
+
+    /// `boxplot` and `violin`, side by side over four evenly spaced bands.
+    ///
+    /// Both are compiled from real `Stat` output rather than from hand-written spans, so the
+    /// baseline also pins the quartile definition and the KDE grid: a change to either shows up
+    /// here as a diff before it shows up as a wrong figure.
+    let phase6Distributions =
+        let bands: Series<1, 1> =
+            { Name = "bands"
+              X = [| 0.0; 1.0; 2.0; 3.0 |]
+              Y = Array.create 4 0.5
+              XScale = Scale.linear U.one (-0.5, 3.5)
+              // Wide enough for the KDE grid, which runs three bandwidths past the sample: the
+              // outlier at 22.5 plus 3 x 1.2 is 26.1, and a scene has no panel to clip it.
+              YScale = Scale.linear U.one (4.0, 28.0) }
+
+        let bandPts =
+            bands.X |> Array.map (fun x -> pt (float (bands.XScale.Forward x)) 0.5)
+
+        let control = [| 12.1; 12.8; 13.4; 13.9; 14.2; 14.6; 15.1; 15.9; 22.5 |]
+        let treated = [| 16.4; 17.0; 17.3; 17.9; 18.4; 18.8; 19.2; 19.9; 20.6 |]
+
+        let summaries =
+            [| Stat.summary U.one control
+               Stat.summary U.one treated
+               Stat.summary U.one control
+               Stat.summary U.one treated |]
+
+        // One stated bandwidth for every violin, which is what makes the four comparable — and
+        // a stated one rather than Silverman's, because a golden master must not move when a
+        // bandwidth rule is tuned.
+        let densities =
+            [| control; treated; control; treated |]
+            |> Array.map (Stat.densityWith U.one 1.2 32)
+
+        Group
+            [| drawn 0 (Geom.boxplot 0.6 bands summaries) bandPts.[..1]
+               drawn 1 (Geom.violin 0.8 bands densities) bandPts.[2..] |]
+
     /// Base name, scene, and the surface it is rendered at.
     ///
     /// The surface belongs in this table rather than in each test because there are now **two**
@@ -559,7 +663,9 @@ module Scenes =
           "groups-transforms", groupsAndTransforms, Golden.surface
           "rotated-text", rotatedText, anisotropic
           "axis-composition", axisComposition, wide
-          "all-nine-nodes", allNineCases, Golden.surface ]
+          "all-nine-nodes", allNineCases, Golden.surface
+          "geoms-bands", phase6Bands, Golden.surface
+          "geoms-distributions", phase6Distributions, Golden.surface ]
 
 // ======================================================================================
 // THE SNAPSHOTS
@@ -614,6 +720,15 @@ module Snapshots =
         assertAllNineCases Scenes.allNineCases
         render "all-nine-nodes.svg" Scenes.allNineCases
 
+    /// M2 phase 6 — `ribbon`, `step`, `tile`, `segment` and `text`, through `Geom.compile`.
+    [<Fact>]
+    let ``the band geoms`` () = render "geoms-bands.svg" Scenes.phase6Bands
+
+    /// M2 phase 6 — `boxplot` and `violin`, from real `Stat` output.
+    [<Fact>]
+    let ``the distribution geoms`` () =
+        render "geoms-distributions.svg" Scenes.phase6Distributions
+
 // ======================================================================================
 // THE FIGURE — gate 6
 //
@@ -628,6 +743,34 @@ module Figures =
     [<Fact>]
     let ``a complete figure`` () =
         check "figure.svg" (Chart.render SvgBackend.render figureSurface figure)
+
+    /// D45 — the categorical axis, as a picture. The claim under review in the diff is that the
+    /// bands are evenly spaced and the bars sit one band wide inside them.
+    [<Fact>]
+    let ``a categorical figure`` () =
+        check "figure-category.svg" (Chart.render SvgBackend.render figureSurface categoryFigure)
+
+    /// D46 — a categorical colour channel. Three levels, three batches, and a legend that
+    /// enumerates the levels rather than the series.
+    [<Fact>]
+    let ``a channelled figure`` () =
+        check "figure-channels.svg" (Chart.render SvgBackend.render figureSurface channelFigure)
+
+    /// D49 — the colorbar. Its pair in `TikzGoldenTests` is the one that matters: a bar that
+    /// degraded to a single flat block would still produce a clean diff *here*.
+    [<Fact>]
+    let ``a figure with a colorbar`` () =
+        check "figure-colorbar.svg" (Chart.render SvgBackend.render figureSurface colorbarFigure)
+
+    /// D55 — the box plot as a whole figure: a categorical axis, a summary geom and an outlier.
+    [<Fact>]
+    let ``a box plot figure`` () =
+        check "figure-boxplot.svg" (Chart.render SvgBackend.render figureSurface boxplotFigure)
+
+    /// The tile with the colour channel that makes it mean something, and a colorbar over it.
+    [<Fact>]
+    let ``a heatmap figure`` () =
+        check "figure-heatmap.svg" (Chart.render SvgBackend.render figureSurface heatmapFigure)
 
     /// A figure is a scene like any other, so it has to be one: if `Figure.toScene` ever emitted
     /// something outside the nine cases this would not compile, and if it stopped exercising them
@@ -695,17 +838,40 @@ module Determinism =
         let again = once Scenes.axisComposition
         Assert.Equal(first, again)
 
+    /// A hex colour is not a number, and `#009e73` is Okabe–Ito's bluish green.
+    ///
+    /// The exponent guard below is a search for `digit e digit`, and every six-digit colour in
+    /// the palette is a candidate false positive — which is exactly what happened the first time
+    /// a golden scene was built out of `Geom.styleFor` rather than out of hand-picked colours.
+    /// Stripping the colour literals first is what keeps the guard a claim about *numbers*; the
+    /// alternative, picking scene colours that do not contain an `e`, makes the test pass by
+    /// avoiding the input it was written to check.
+    let private withoutColorLiterals (doc: string) =
+        System.Text.RegularExpressions.Regex.Replace(doc, @"#[0-9a-fA-F]{3,8}\b", "#")
+
     /// No number in the output may carry an exponent: "the SVG number grammar has no exponent in
     /// path data", which is why every number goes through a custom .NET numeric format.
     [<Fact>]
     let ``no rendered document contains scientific notation`` () =
         for name, scene, extent in Scenes.all do
-            let doc = SvgBackend.render extent scene
+            let doc = withoutColorLiterals (SvgBackend.render extent scene)
             // Guard against digit-E-digit and digit-e-digit, which is what "R"/"%g" would emit.
             let bad =
                 System.Text.RegularExpressions.Regex.IsMatch(doc, @"\d[eE][-+]?\d")
 
             Assert.False(bad, sprintf "%s contains scientific notation" name)
+
+    /// The guard's own guard: a document that really does carry an exponent must still be
+    /// caught after the colours are stripped, and a palette colour must not be.
+    [<Fact>]
+    let ``the exponent guard still sees an exponent and no longer sees a colour`` () =
+        let exponential = System.Text.RegularExpressions.Regex.IsMatch(withoutColorLiterals "d=\"M1e-05 2\"", @"\d[eE][-+]?\d")
+
+        let colored =
+            System.Text.RegularExpressions.Regex.IsMatch(withoutColorLiterals "fill=\"#009e73\"", @"\d[eE][-+]?\d")
+
+        Assert.True exponential
+        Assert.False colored
 
     /// Tiny coordinates are the case that would trip a `%g`-style format: 1e-5 formats as
     /// "1e-05" under "R" and as "0" under the backend's three-decimal coordinate format.

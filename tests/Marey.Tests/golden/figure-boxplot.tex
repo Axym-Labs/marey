@@ -1,0 +1,59 @@
+\begin{tikzpicture}[every node/.style={inner sep=0bp,outer sep=0bp}]
+  \definecolor{qcA}{rgb}{1,1,1}
+  \definecolor{qcB}{rgb}{0.078431,0.094118,0.121569}
+  \definecolor{qcC}{rgb}{0.905882,0.913725,0.929412}
+  \definecolor{qcD}{rgb}{0,0.447059,0.698039}
+  \def\mareymarkE#1#2{\path[draw,shift={(#1,#2)}] (0bp,0bp) circle[radius=1.875bp];}
+  \definecolor{qcF}{rgb}{0.223529,0.254902,0.301961}
+  \useasboundingbox (0bp,0bp) rectangle (360bp,225bp);
+  % marey-key: figure
+  \path[fill=qcA] (0bp,0bp) -- (360bp,0bp) -- (360bp,225bp) -- (0bp,225bp) -- cycle;
+  % marey-role: annotation -- Yield by treatment
+  \node[anchor=north,text=qcB,font=\bfseries\fontsize{13}{15.6}\selectfont] at (180bp,214.5bp) {Yield by treatment};
+  % marey-role: other:panel -- panel
+  % marey-data: row = 0
+  % marey-data: col = 0
+  % marey-data: layers = 1
+  % marey-data: x-tick-rule = all
+  % marey-data: y-tick-rule = all
+  % marey-role: decoration -- gridlines
+  % marey-data: lines = 6
+  \path[draw=qcC,line width=0.75bp] (40.258bp,33.223bp) -- (332.742bp,33.223bp) (40.258bp,58.114bp) -- (332.742bp,58.114bp) (40.258bp,83.006bp) -- (332.742bp,83.006bp) (40.258bp,107.898bp) -- (332.742bp,107.898bp) (40.258bp,132.789bp) -- (332.742bp,132.789bp) (40.258bp,157.681bp) -- (332.742bp,157.681bp);
+  \begin{scope}
+    \clip (40.258bp,24.075bp) -- (332.742bp,24.075bp) -- (332.742bp,170.562bp) -- (40.258bp,170.562bp) -- cycle;
+    % marey-role: series -- series
+    % marey-data: series =
+    % marey-data: points = 3
+    \path[fill=qcD,fill opacity=0.18,draw=qcD,line width=1.5bp,line cap=round,line join=round] (59.757bp,50.647bp) -- (118.254bp,50.647bp) -- (118.254bp,71.805bp) -- (59.757bp,71.805bp) -- cycle (157.252bp,99.186bp) -- (215.748bp,99.186bp) -- (215.748bp,122.833bp) -- (157.252bp,122.833bp) -- cycle (254.746bp,46.913bp) -- (313.243bp,46.913bp) -- (313.243bp,75.539bp) -- (254.746bp,75.539bp) -- cycle;
+    \path[draw=qcD,line width=1.5bp,line join=round] (59.757bp,60.604bp) -- (118.254bp,60.604bp) (89.005bp,71.805bp) -- (89.005bp,81.761bp) (74.381bp,81.761bp) -- (103.63bp,81.761bp) (89.005bp,50.647bp) -- (89.005bp,34.467bp) (74.381bp,34.467bp) -- (103.63bp,34.467bp) (157.252bp,112.876bp) -- (215.748bp,112.876bp) (186.5bp,122.833bp) -- (186.5bp,140.257bp) (171.876bp,140.257bp) -- (201.124bp,140.257bp) (186.5bp,99.186bp) -- (186.5bp,87.984bp) (171.876bp,87.984bp) -- (201.124bp,87.984bp) (254.746bp,58.114bp) -- (313.243bp,58.114bp) (283.995bp,75.539bp) -- (283.995bp,92.963bp) (269.37bp,92.963bp) -- (298.619bp,92.963bp) (283.995bp,46.913bp) -- (283.995bp,30.734bp) (269.37bp,30.734bp) -- (298.619bp,30.734bp);
+    \begin{scope}[draw=qcD,line width=1.125bp,line cap=round,line join=round]
+      \mareymarkE{89.005bp}{163.904bp}
+    \end{scope}
+  \end{scope}
+  % marey-role: axis
+  % marey-data: side = bottom
+  % marey-data: unit =
+  % marey-data: prefix =
+  % marey-data: ticks = 3
+  % marey-data: tick-rule = all
+  \path[draw=qcF,line width=0.675bp] (40.258bp,24.075bp) -- (332.742bp,24.075bp);
+  \path[draw=qcF,line width=0.675bp] (89.005bp,24.075bp) -- (89.005bp,21.825bp) (186.5bp,24.075bp) -- (186.5bp,21.825bp) (283.995bp,24.075bp) -- (283.995bp,21.825bp);
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (89.005bp,18.825bp) {control};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (186.5bp,18.825bp) {treated};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (283.995bp,18.825bp) {washout};
+  % marey-role: axis -- yield [m]
+  % marey-data: side = left
+  % marey-data: unit = m
+  % marey-data: prefix =
+  % marey-data: ticks = 6
+  % marey-data: tick-rule = all
+  \path[draw=qcF,line width=0.675bp] (40.258bp,24.075bp) -- (40.258bp,170.563bp);
+  \path[draw=qcF,line width=0.675bp] (40.258bp,33.223bp) -- (38.008bp,33.223bp) (40.258bp,58.114bp) -- (38.008bp,58.114bp) (40.258bp,83.006bp) -- (38.008bp,83.006bp) (40.258bp,107.898bp) -- (38.008bp,107.898bp) (40.258bp,132.789bp) -- (38.008bp,132.789bp) (40.258bp,157.681bp) -- (38.008bp,157.681bp);
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (35.008bp,33.223bp) {12};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (35.008bp,58.114bp) {14};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (35.008bp,83.006bp) {16};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (35.008bp,107.898bp) {18};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (35.008bp,132.789bp) {20};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (35.008bp,157.681bp) {22};
+  \node[anchor=base,text=qcB,rotate=90,font=\fontsize{10}{12}\selectfont] at (19.75bp,97.319bp) {yield [m]};
+\end{tikzpicture}

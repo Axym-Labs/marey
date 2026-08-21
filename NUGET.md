@@ -24,13 +24,26 @@ compile error.
 Swapping the theme turns the same figure into `tikzpicture` source, typeset by the LaTeX
 document's own engine and fonts, with axis titles set by `siunitx`.
 
+When the data is a table rather than two arrays, `plot` declares what each column means in one
+place — positional channels, colour, shape and size, a statistic, and small multiples:
+
+```fsharp
+plot trials {
+    x U.second (fun r -> r.Time)
+    y U.metre  (fun r -> r.Displacement)
+    color      (fun r -> r.Sample)
+    layer GeomPoint
+    fit
+}
+```
+
 ## The packages
 
 | Package | |
 |---|---|
 | `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the scene IR. Zero dependencies. |
 | `Marey.Units` | SI, derived and non-SI unit witnesses; canonicalisation, prefix selection, and four rendering styles. |
-| `Marey.Plot` | `Chart`, geoms, themes, colour-blind-safe palettes, layout. No backend reference. |
+| `Marey.Plot` | `Chart` and the `plot` encoding block, twelve geoms, channels, statistics, facets, themes, colour-blind-safe palettes, layout. No backend reference. |
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, deterministic. |
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX. |
 | `Marey.Html` | HTML renderings for a notebook cell. Host-neutral. |

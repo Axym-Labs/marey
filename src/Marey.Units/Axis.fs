@@ -128,6 +128,19 @@ module Axis =
                 0
         | _ -> Ticks.decimalsFor step
 
+    /// How a tick value becomes text. Numeric for every continuous kind; a level name for
+    /// `Ordinal`, read out of the kind through `Scale.levelLabel` — the same function
+    /// `Erase.scale` uses, so the measured, packed and erased paths cannot label a category
+    /// three different ways.
+    ///
+    /// A categorical axis is not rescaled, so the value handed here is the level index whatever
+    /// path it arrived by: `Prefix.selectFor` refuses to rescale a dimensionless axis and an
+    /// ordinal scale is dimensionless by construction (D45).
+    let private labelFor (kind: ScaleKind) (decimals: int) =
+        match kind with
+        | ScaleKind.Ordinal levels -> Scale.levelLabel levels
+        | _ -> Ticks.format decimals
+
     /// The full form: choose the registry, the style, the tick count and the label.
     let ofScaleWith<[<Measure>] 'u>
         (style: UnitStyle)
@@ -146,11 +159,13 @@ module Axis =
         let decimals =
             decimalsFor scale.Kind (Ticks.linearStep tickCount scale.Domain / factor) rescaled
 
+        let tickText = labelFor scale.Kind decimals
+
         let ticks =
             Array.init raw.Length (fun i ->
                 { Value = rescaled.[i]
                   Position = scale.Forward raw.[i]
-                  Label = Ticks.format decimals rescaled.[i] })
+                  Label = tickText rescaled.[i] })
 
         let unitText =
             UnitDisplay.unitText (plainCounterpart style) registry prefix scale.Unit
@@ -226,11 +241,13 @@ module Axis =
         let decimals =
             decimalsFor scale.Kind (Ticks.linearStep tickCount scale.Domain / factor) rescaled
 
+        let tickText = labelFor scale.Kind decimals
+
         let ticks =
             Array.init raw.Length (fun i ->
                 { Value = rescaled.[i]
                   Position = raw.[i].Position
-                  Label = Ticks.format decimals rescaled.[i] })
+                  Label = tickText rescaled.[i] })
 
         let unitTextIn s =
             UnitDisplay.unitTextErasedWith

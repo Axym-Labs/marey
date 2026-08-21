@@ -1,0 +1,725 @@
+/// M2 phase 4 — the stats, and D47's answer to where one sits.
+///
+/// D47 puts a stat *below* the erasure boundary: a pure function over typed arrays, called
+/// while both measures are still alive, returning a typed result. Everything in this file is
+/// either a closed-form check on the arithmetic — the plan's rule for which stats ship at all —
+/// or a claim about the measure that came out of it.
+///
+/// The measure claims are the reason this file exists rather than the arithmetic ones. A
+/// histogram of metres is a *dimensionless count* against a metre axis; a density over metres is
+/// in **reciprocal** metres; a fit of metres against seconds has a slope in metres per second.
+/// Two of those are asserted by *compiling* a binding whose type annotation is the claim, in the
+/// style `RegressionTests.fs` and `ChannelTests.fs` use, because a measure does not survive to
+/// runtime where an assertion could look at it. The rest are asserted through the witness, which
+/// does.
+module Marey.Tests.StatTests
+
+open Xunit
+open Marey
+
+// ======================================================================================
+// Fixtures
+// ======================================================================================
+
+/// A linear congruential generator, spelled out rather than taken from `System.Random`.
+///
+/// The tolerance tests below are only meaningful against a *fixed* sample, and `System.Random`'s
+/// seeded sequence is a framework implementation detail that has changed before. Eleven lines
+/// here buys a sample that is the same on every runtime, which is the same argument `Num.fs`
+/// makes for not trusting the platform's number formatting.
+type private Lcg(seed: uint64) =
+    let mutable s = seed
+
+    member _.NextFloat() =
+        s <- s * 6364136223846793005UL + 1442695040888963407UL
+        float (s >>> 11) / float (1UL <<< 53)
+
+    /// Box–Muller, so the sample really is normal and Silverman's rule is being asked the
+    /// question it answers.
+    member this.NextNormal() =
+        let u1 = max 1e-12 (this.NextFloat())
+        let u2 = this.NextFloat()
+        sqrt (-2.0 * log u1) * cos (2.0 * System.Math.PI * u2)
+
+/// Two thousand draws from a standard normal, in metres.
+let private heights =
+    let g = Lcg 20260820UL
+    Array.init 2000 (fun _ -> g.NextNormal() * 1.0<m>)
+
+/// An exact straight line: 3.5 m/s from 2 m.
+let private times = Array.init 50 (fun i -> float i * 0.1<s>)
+let private positions = times |> Array.map (fun t -> 3.5<m / s> * t + 2.0<m>)
+
+let private close (tol: float) (expected: float) (actual: float) =
+    Assert.True(
+        abs (expected - actual) <= tol,
+        sprintf "expected %g +/- %g, got %g" expected tol actual
+    )
+
+// ======================================================================================
+// regression — the typed slope, which is M2's headline claim
+// ======================================================================================
+
+module Regression =
+
+    /// **The gate, first half: the arithmetic.** Data generated from a known line gives that
+    /// line back, exactly enough that the tolerance is float noise rather than method error.
+    [<Fact>]
+    let ``a fit of a straight line recovers its slope, intercept and R2`` () =
+        let f = Stat.regression U.second U.metre times positions
+
+        close 1e-9 3.5 (float f.Slope)
+        close 1e-9 2.0 (float f.Intercept)
+        close 1e-12 1.0 f.R2
+        Assert.Equal(50, f.N)
+        Assert.Equal(0, f.Dropped)
+
+    /// **The gate, second half, and the one M2 exists to pass: the slope is a velocity.**
+    ///
+    /// The annotation on `v` is the whole test. `Fit.Slope` is `float<'uy/'ux>`, so binding it to
+    /// an annotated `float<m/s>` is a claim the *compiler* checks: if the quotient were ever
+    /// weakened to `float` or to `float<'uy>`, this file would stop building. Nothing at runtime
+    /// can stand in for it, because the measure is gone by then.
+    ///
+    /// The runtime half is what the slope can still *say* about itself once it is a number on a
+    /// page. The witness is `U.div uy ux`, so D18's recorded factorisation survives and the axis
+    /// compiler prints `m·s⁻¹` rather than falling back to a base-unit expansion.
+    [<Fact>]
+    let ``the slope of metres against seconds is a velocity, and says so`` () =
+        let f = Stat.regression U.second U.metre times positions
+
+        // The claim, checked at compile time.
+        let v: float<m / s> = f.Slope
+        close 1e-9 3.5 (float v)
+
+        // The claim, checked at runtime, through the same path an axis title takes.
+        Assert.Equal(Dim.sub Dim.length Dim.time, f.SlopeUnit.Dim)
+        Assert.Equal<(string * int) list>([ "m", 1; "s", -1 ], f.SlopeUnit.Factors)
+
+        let axis =
+            Axis.auto UnitStyle.Unicode "v" (Scale.linear f.SlopeUnit (0.0<m / s>, 4.0<m / s>))
+
+        Assert.Equal("m·s⁻¹", axis.UnitText)
+
+    /// The intercept keeps y's measure, which is the other half of the quotient being right: a
+    /// slope of `m/s` and an intercept of `m` is the only pair that makes `predict` type-check.
+    [<Fact>]
+    let ``the intercept is in y's own unit`` () =
+        let f = Stat.regression U.second U.metre times positions
+        let x0: float<m> = f.Intercept
+
+        close 1e-9 2.0 (float x0)
+        Assert.Equal(Dim.length, f.InterceptUnit.Dim)
+
+    /// `predict` is the one-line proof that the quotient cancels. If `Slope` were not
+    /// `float<'uy/'ux>`, `Intercept + Slope * x` would not be a `float<m>` and this would not
+    /// compile.
+    [<Fact>]
+    let ``predict is the fitted line, in y's unit`` () =
+        let f = Stat.regression U.second U.metre times positions
+        let atTwoSeconds: float<m> = Stat.predict f 2.0<s>
+
+        close 1e-9 9.0 (float atTwoSeconds)
+
+    /// Noise averages out. A tolerance test rather than an exact one, and the sample is fixed
+    /// (see `Lcg`) so it is a tolerance on the *method* and not on the runtime.
+    [<Fact>]
+    let ``a fit through noisy data recovers the slope it was generated from`` () =
+        let g = Lcg 7UL
+
+        let ys =
+            times |> Array.map (fun t -> 3.5<m / s> * t + 2.0<m> + g.NextNormal() * 0.05<m>)
+
+        let f = Stat.regression U.second U.metre times ys
+
+        close 0.05 3.5 (float f.Slope)
+        Assert.True(f.R2 > 0.99, sprintf "R2 was %g" f.R2)
+
+    /// D52's rule, one layer earlier: a pair the fit cannot use is not folded in as if it were a
+    /// measurement, and the count is reported rather than swallowed.
+    [<Fact>]
+    let ``a fit drops non-finite pairs and reports how many`` () =
+        let xs = Array.append times [| 5.0<s>; nan * 1.0<s> |]
+
+        let ys =
+            Array.append positions [| nan * 1.0<m>; 1.0<m> |]
+
+        let f = Stat.regression U.second U.metre xs ys
+
+        Assert.Equal(50, f.N)
+        Assert.Equal(2, f.Dropped)
+        close 1e-9 3.5 (float f.Slope)
+
+    /// Both ways of having no line at all. Raising is the decision (D47): the alternative is a
+    /// NaN slope that renders as an empty layer with no explanation.
+    [<Fact>]
+    let ``a fit with fewer than two finite pairs raises`` () =
+        let e =
+            Assert.Throws<System.Exception>(fun () -> Stat.regression U.second U.metre [| 1.0<s> |] [| 1.0<m> |] |> ignore)
+
+        Assert.Contains("at least two finite", e.Message)
+
+    [<Fact>]
+    let ``a fit whose x does not vary raises, and the message says which value`` () =
+        let xs = Array.create 5 2.0<s>
+        let ys = Array.init 5 (fun i -> float i * 1.0<m>)
+
+        let e =
+            Assert.Throws<System.Exception>(fun () -> Stat.regression U.second U.metre xs ys |> ignore)
+
+        Assert.Contains("needs x to vary", e.Message)
+        Assert.Contains("2", e.Message)
+        Assert.Contains("[s]", e.Message)
+
+    /// D47's escape hatch, exercised. Outside the scope that knows the measure the slope is an
+    /// existential — but the witness travelled with it, so it can still be *printed* correctly
+    /// by code that cannot name its type.
+    [<Fact>]
+    let ``the packed slope still knows it is a velocity`` () =
+        let f = Stat.regression U.second U.metre times positions
+
+        let shown =
+            (Stat.slopeQuantity f)
+                .Accept
+                { new IQuantityConsumer<string * Dim> with
+                    member _.Apply<[<Measure>] 'u>(u: U<'u>, x: float<'u>) = Num.at 3 (float x), u.Dim }
+
+        Assert.Equal(("3.5", Dim.sub Dim.length Dim.time), shown)
+
+    /// A perfect fit through data with no y variation is not a division by zero. The residuals
+    /// are all zero, so the fit is perfect, and 1.0 is the only answer consistent with that.
+    [<Fact>]
+    let ``a fit through constant y has zero slope and R2 of one`` () =
+        let f =
+            Stat.regression U.second U.metre times (Array.create times.Length 4.0<m>)
+
+        close 1e-12 0.0 (float f.Slope)
+        close 1e-12 4.0 (float f.Intercept)
+        Assert.Equal(1.0, f.R2)
+
+// ======================================================================================
+// bin — a histogram
+// ======================================================================================
+
+module Binning =
+
+    [<Fact>]
+    let ``every value lands in exactly one bin`` () =
+        let h = Stat.bin U.metre heights
+
+        Assert.Equal(heights.Length, h.Total)
+        Assert.Equal(0, h.Dropped)
+
+    [<Fact>]
+    let ``there is one more edge than there are bins, and they are evenly spaced`` () =
+        let h = Stat.binWith U.metre 17 heights
+
+        Assert.Equal(17, h.Counts.Length)
+        Assert.Equal(18, h.Edges.Length)
+
+        let w = float h.Width
+
+        for i in 0 .. h.Edges.Length - 2 do
+            close 1e-9 w (float h.Edges.[i + 1] - float h.Edges.[i])
+
+    /// The top edge is closed, so the sample maximum is inside the histogram rather than in a
+    /// phantom bin past the end. This is the off-by-one every histogram implementation gets
+    /// wrong once.
+    [<Fact>]
+    let ``the largest value is in the last bin, not past it`` () =
+        let h = Stat.binWith U.metre 4 [| 0.0<m>; 1.0<m>; 2.0<m>; 3.0<m>; 4.0<m> |]
+
+        Assert.Equal(0, h.Dropped)
+        Assert.Equal(5, h.Total)
+        Assert.True(h.Counts.[3] >= 1, "the maximum should be counted in the last bin")
+
+    /// A closed form, and a reminder of what "the data's own range" means: ten values `0 … 9`
+    /// binned into ten bins span `0 … 9`, not `0 … 10`, so each bin is **0.9** wide. One value
+    /// still lands in each — including the last, which the closed top edge catches.
+    [<Fact>]
+    let ``evenly spaced data over its own range fills one value per bin`` () =
+        let xs = Array.init 10 (fun i -> float i * 1.0<m>)
+        let h = Stat.binWith U.metre 10 xs
+
+        Assert.Equal<int[]>([| 1; 1; 1; 1; 1; 1; 1; 1; 1; 1 |], h.Counts)
+        close 1e-9 0.9 (float h.Width)
+
+        // The same ten values over a *stated* domain one wider give the unit-width bins the
+        // intuition reaches for first.
+        let stated = Stat.binIn U.metre 10 (0.0<m>, 10.0<m>) xs
+        Assert.Equal<int[]>([| 1; 1; 1; 1; 1; 1; 1; 1; 1; 1 |], stated.Counts)
+        close 1e-9 1.0 (float stated.Width)
+
+    /// A stated domain narrower than the data drops what falls outside it and says how much —
+    /// rather than folding it into the end bins, where it draws a spike that is an artefact of
+    /// the domain rather than a feature of the data.
+    [<Fact>]
+    let ``a stated domain drops what falls outside it and reports the count`` () =
+        let xs = Array.init 11 (fun i -> float i * 1.0<m>)
+        let h = Stat.binIn U.metre 5 (2.0<m>, 7.0<m>) xs
+
+        Assert.Equal(6, h.Total)
+        Assert.Equal(5, h.Dropped)
+
+    /// Freedman–Diaconis divides by the interquartile range, so all-ties data asks it for
+    /// infinitely many bins. Sturges depends on `n` alone and therefore always answers.
+    [<Fact>]
+    let ``the bin count falls back to Sturges when the interquartile range is zero`` () =
+        let ties = Array.create 64 3.0<m>
+
+        // ceil(log2 64) + 1 = 7.
+        Assert.Equal(7, Stat.binCountFor ties)
+
+    /// A histogram of one distinct value is still a histogram: the domain is widened rather than
+    /// collapsed, exactly as `Scale.paddedDomain` widens a single-valued axis.
+    [<Fact>]
+    let ``a sample with one distinct value still bins`` () =
+        let h = Stat.binWith U.metre 3 (Array.create 8 5.0<m>)
+
+        Assert.Equal(8, h.Total)
+        Assert.True(float h.Width > 0.0, "a degenerate domain must be widened, not collapsed")
+
+// ======================================================================================
+// count — the categorical counterpart
+// ======================================================================================
+
+module Counting =
+
+    /// First-appearance order, which is `Levels.ofSeq`'s (D45). The two have to agree or a
+    /// counted axis and a plotted one put the same category in different bands.
+    [<Fact>]
+    let ``count is in first-appearance order and agrees with Levels`` () =
+        let keys = [| "washout"; "control"; "treated"; "control"; "washout"; "control" |]
+        let pairs = Stat.count keys
+
+        Assert.Equal<string[]>([| "washout"; "control"; "treated" |], pairs |> Array.map fst)
+        Assert.Equal<int[]>([| 2; 3; 1 |], pairs |> Array.map snd)
+        Assert.Equal<string[]>((Levels.ofSeq keys).Values, pairs |> Array.map fst)
+
+    [<Fact>]
+    let ``the counts sum to the number of rows`` () =
+        let keys = Array.init 97 (fun i -> i % 5)
+        Assert.Equal(97, Stat.count keys |> Array.sumBy snd)
+
+// ======================================================================================
+// ecdf
+// ======================================================================================
+
+module EmpiricalCdf =
+
+    [<Fact>]
+    let ``F is non-decreasing and ends at exactly one`` () =
+        let e = Stat.ecdf U.metre heights
+
+        Assert.Equal(1.0, Array.last e.F)
+        Assert.Equal(heights.Length, e.N)
+
+        for i in 0 .. e.F.Length - 2 do
+            Assert.True(e.F.[i] < e.F.[i + 1], "F must be strictly increasing over distinct values")
+            Assert.True(float e.X.[i] < float e.X.[i + 1], "X must be strictly increasing")
+
+    /// The closed form: four distinct values, F = 1/4, 2/4, 3/4, 4/4.
+    [<Fact>]
+    let ``F of a four-point sample is the quarters`` () =
+        let e = Stat.ecdf U.metre [| 3.0<m>; 1.0<m>; 4.0<m>; 2.0<m> |]
+
+        Assert.Equal<float[]>([| 0.25; 0.5; 0.75; 1.0 |], e.F)
+        Assert.Equal<float[]>([| 1.0; 2.0; 3.0; 4.0 |], e.X |> Array.map float)
+
+    /// Ties are one point at the *top* of their step, which is what makes this the
+    /// right-continuous function it is defined to be rather than a staircase with a landing in
+    /// the middle of each riser.
+    [<Fact>]
+    let ``ties collapse to one point carrying the higher F`` () =
+        let e = Stat.ecdf U.metre [| 1.0<m>; 2.0<m>; 2.0<m>; 2.0<m>; 3.0<m> |]
+
+        Assert.Equal<float[]>([| 1.0; 2.0; 3.0 |], e.X |> Array.map float)
+        Assert.Equal<float[]>([| 0.2; 0.8; 1.0 |], e.F)
+
+    [<Fact>]
+    let ``non-finite values are dropped and counted`` () =
+        let e = Stat.ecdf U.metre [| 1.0<m>; nan * 1.0<m>; 2.0<m>; infinity * 1.0<m> |]
+
+        Assert.Equal(2, e.N)
+        Assert.Equal(2, e.Dropped)
+        Assert.Equal(1.0, Array.last e.F)
+
+// ======================================================================================
+// density — and the reciprocal measure, which is the interesting claim
+// ======================================================================================
+
+module Kde =
+
+    /// **The closed form.** A KDE of a single observation, evaluated at that observation, is the
+    /// standard normal kernel at zero scaled by the bandwidth: `1 / (h·sqrt(2π))`. Nothing about
+    /// the sample can hide an error in the normalisation.
+    [<Fact>]
+    let ``a one-point estimate peaks at one over h root two pi`` () =
+        let h = 0.25<m>
+        let d = Stat.densityWith U.metre h 3 [| 0.0<m> |]
+
+        // Three points: -3h, 0, +3h.
+        close 1e-12 0.0 (float d.X.[1])
+        close 1e-12 (1.0 / (0.25 * sqrt (2.0 * System.Math.PI))) (float d.Y.[1])
+
+    /// The estimate is a probability density, so it integrates to one — the property that makes
+    /// the reciprocal measure the *right* one rather than merely a consistent one. Trapezoid,
+    /// over the grid the estimate itself chose.
+    [<Fact>]
+    let ``a density integrates to one over its own grid`` () =
+        let d = Stat.density U.metre heights
+
+        let area =
+            Array.init (d.X.Length - 1) (fun i ->
+                (float d.Y.[i] + float d.Y.[i + 1]) * 0.5 * (float d.X.[i + 1] - float d.X.[i]))
+            |> Array.sum
+
+        close 5e-3 1.0 area
+
+    /// **The measure claim, checked by compiling it.** A density over metres is per metre. If
+    /// `Density.Y` were ever weakened to `float<'u>` or to a bare `float`, this binding would
+    /// stop compiling — and the runtime half shows the witness agrees, so an axis over it labels
+    /// itself without anyone writing the reciprocal down.
+    [<Fact>]
+    let ``the density of a metre sample is in reciprocal metres`` () =
+        let d = Stat.density U.metre heights
+        let atGrid: float<1 / m> = d.Y.[64]
+
+        Assert.True(float atGrid >= 0.0)
+        Assert.Equal(Dim.neg Dim.length, d.DensityUnit.Dim)
+
+        let axis =
+            Axis.auto UnitStyle.Unicode "f" (Scale.linear d.DensityUnit (0.0</m>, 1.0</m>))
+
+        Assert.Equal("m⁻¹", axis.UnitText)
+
+    /// Silverman's rule is `0.9 · min(sigma, IQR/1.34) · n^(-1/5)`, and every term in it is
+    /// homogeneous of degree one in the data — so doubling the sample doubles the bandwidth,
+    /// exactly. A closed form that does not depend on the distribution.
+    [<Fact>]
+    let ``the bandwidth scales with the data`` () =
+        let a = Stat.bandwidth heights
+        let b = Stat.bandwidth (heights |> Array.map (fun v -> v * 2.0))
+
+        close 1e-9 (2.0 * float a) (float b)
+
+    /// A distribution concentrated on one point has no density to estimate, and `bandwidth`
+    /// answers zero rather than pretending otherwise. The refusal is at the point of use.
+    [<Fact>]
+    let ``a sample with no spread has no bandwidth and no density`` () =
+        let ties = Array.create 20 3.0<m>
+
+        Assert.Equal(0.0, float (Stat.bandwidth ties))
+        Assert.Throws<System.ArgumentException>(fun () -> Stat.density U.metre ties |> ignore)
+        |> ignore
+
+    [<Fact>]
+    let ``the grid runs three bandwidths past the data at each end`` () =
+        let d = Stat.densityWith U.metre 0.5<m> 64 [| -1.0<m>; 1.0<m> |]
+
+        close 1e-9 -2.5 (float d.X.[0])
+        close 1e-9 2.5 (float (Array.last d.X))
+
+// ======================================================================================
+// The charts the stats draw
+// ======================================================================================
+
+module Charts =
+
+    let private yScaleOf (fig: Figure) =
+        snd (Erase.seriesScales fig.Panels.[0].Layers.[0].Data)
+
+    let private xScaleOf (fig: Figure) =
+        fst (Erase.seriesScales fig.Panels.[0].Layers.[0].Data)
+
+    /// A histogram partitions an interval, so the bars are full width and the x domain is the
+    /// outer edges exactly. Padding it would draw a piece of the axis that no bin covers.
+    [<Fact>]
+    let ``a histogram is full-width bars from zero over its exact edges`` () =
+        let h = Stat.binWith U.metre 12 heights
+        let fig = Chart.ofHistogram h
+
+        match fig.Panels.[0].Layers.[0].Geom with
+        | GeomBar(baseline, width) ->
+            Assert.Equal(1.0, width)
+            Assert.Equal(0.0<nd>, baseline)
+        | g -> failwithf "expected bars, got %A" g
+
+        let xs = xScaleOf fig
+        close 1e-9 (float h.Edges.[0]) (fst xs.Domain)
+        close 1e-9 (float (Array.last h.Edges)) (snd xs.Domain)
+
+    /// D50 in a second mark: a count is read as a length from zero, so zero is the bottom of the
+    /// axis exactly — not zero minus five percent, which would draw a strip of negative count.
+    [<Fact>]
+    let ``a histogram's count axis starts at exactly zero and carries no unit`` () =
+        let fig = Chart.histogram U.metre heights
+        let ys = yScaleOf fig
+
+        Assert.Equal(0.0, fst ys.Domain)
+        Assert.Equal(Dim.zero, ys.Dim)
+        Assert.Equal("", ys.Symbol)
+
+    /// The claim the type made, now visible on a figure: the y axis of a density figure is in
+    /// reciprocal x units, and it labels itself off a witness nobody wrote down.
+    [<Fact>]
+    let ``a density figure's y axis is in reciprocal x units`` () =
+        let fig = Chart.density U.metre heights
+        let ys = yScaleOf fig
+
+        Assert.Equal(Dim.neg Dim.length, ys.Dim)
+        Assert.Equal(0.0, fst ys.Domain)
+
+    /// **The consequence a user actually meets**, and the reason the reciprocal measure earns
+    /// its keep: a density curve and the sample it summarises are different physical dimensions,
+    /// so they cannot share a y axis, and the library says so instead of drawing it.
+    [<Fact>]
+    let ``a density layer cannot share a panel with the sample it summarises`` () =
+        let fig =
+            Chart.density U.metre heights
+            |> Chart.addScatter U.metre U.metre heights heights
+
+        let e =
+            Assert.Throws<System.Exception>(fun () ->
+                Chart.render SvgBackend.render Chart.defaultSize fig |> ignore)
+
+        Assert.Contains("cannot share an axis", e.Message)
+
+    /// An ECDF's range is known before the data is.
+    [<Fact>]
+    let ``an ecdf figure's y axis is exactly zero to one`` () =
+        let fig = Chart.ecdf U.metre heights
+        let ys = yScaleOf fig
+
+        Assert.Equal((0.0, 1.0), ys.Domain)
+        Assert.Equal(Dim.zero, ys.Dim)
+
+    /// Two points per distinct value — the foot and the head of each riser — because a line
+    /// through one point per value interpolates data between observations that was not observed.
+    [<Fact>]
+    let ``an ecdf is drawn as a staircase, two points per distinct value`` () =
+        let e = Stat.ecdf U.metre [| 1.0<m>; 2.0<m>; 3.0<m> |]
+        let s, geom = Chart.ecdfSeries "" e
+
+        Assert.Equal(GeomLine, geom)
+        Assert.Equal<float[]>([| 1.0; 1.0; 2.0; 2.0; 3.0; 3.0 |], s.X |> Array.map float)
+
+        Assert.Equal<float[]>(
+            [| 0.0
+               1.0 / 3.0
+               1.0 / 3.0
+               2.0 / 3.0
+               2.0 / 3.0
+               1.0 |],
+            s.Y
+        )
+
+    [<Fact>]
+    let ``Chart.addFit adds one line layer over the range of the data`` () =
+        let fig =
+            Chart.scatter U.second U.metre times positions
+            |> Chart.addFit U.second U.metre times positions
+
+        Assert.Equal(2, fig.Panels.[0].Layers.Length)
+        Assert.Equal(GeomLine, fig.Panels.[0].Layers.[1].Geom)
+        Assert.Equal(2, Erase.seriesLength fig.Panels.[0].Layers.[1].Data)
+
+    [<Fact>]
+    let ``Chart.Category.count draws one bar per level, in first-appearance order`` () =
+        let keys = [| "b"; "a"; "b"; "c"; "b" |]
+        let fig = Chart.Category.count keys
+        let xs = xScaleOf fig
+
+        match xs.Kind with
+        | ScaleKind.Ordinal levels -> Assert.Equal<string[]>([| "b"; "a"; "c" |], levels)
+        | k -> failwithf "expected an ordinal axis, got %A" k
+
+        Assert.Equal(0.0, fst (yScaleOf fig).Domain)
+
+// ======================================================================================
+// The block — D47's answer to "where does a stat sit"
+// ======================================================================================
+
+module Block =
+
+    type private Row =
+        { Time: float<s>
+          Displacement: float<m>
+          Sample: string }
+
+    let private rows =
+        Array.init 40 (fun i ->
+            { Time = float i * 0.1<s>
+              Displacement = 3.5<m / s> * (float i * 0.1<s>) + 2.0<m>
+              Sample = (if i % 2 = 0 then "A" else "B") })
+
+    /// `fit` appends. Layer 0 is still the data.
+    [<Fact>]
+    let ``fit adds a second layer and keeps the points in front of it`` () =
+        let fig =
+            plot rows {
+                x U.second (fun r -> r.Time)
+                y U.metre (fun r -> r.Displacement)
+                fit
+            }
+
+        let layers = fig.Panels.[0].Layers
+        Assert.Equal(2, layers.Length)
+        Assert.Equal(GeomPoint, layers.[0].Geom)
+        Assert.Equal(GeomLine, layers.[1].Geom)
+        Assert.Equal(2, Erase.seriesLength layers.[1].Data)
+
+    /// **D53's near-miss, from the other side.** The legend entry — the layer's name *and* its
+    /// channels' levels — sits on the block's first layer. A fitted line prepended rather than
+    /// appended would take `ShowInLegend` with it, and since a fit layer carries no channels the
+    /// figure would render with both levels silently missing from the legend.
+    [<Fact>]
+    let ``fit does not take the legend away from a categorical channel`` () =
+        let fig =
+            plot rows {
+                x U.second (fun r -> r.Time)
+                y U.metre (fun r -> r.Displacement)
+                color (fun r -> r.Sample)
+                fit
+            }
+
+        // The levels first, because they are the thing that goes missing. Under the prepended
+        // spelling this figure still renders — with a legend box and nothing in it — so the
+        // assertion that catches the regression has to come before the ones about indices, which
+        // would otherwise fail first and for the wrong reason.
+        let scene = Chart.render SvgBackend.render Chart.defaultSize fig
+        Assert.Contains(">A<", scene)
+        Assert.Contains(">B<", scene)
+
+        let layers = fig.Panels.[0].Layers
+        Assert.Equal<bool[]>([| true; false |], layers |> Array.map (fun l -> l.ShowInLegend))
+        Assert.Empty(layers.[1].Channels)
+
+    /// The fitted layer shares the block's base style, because D54 makes the layers of a block
+    /// one series and a fit is a statement *about* that series rather than a second one.
+    [<Fact>]
+    let ``the fitted line takes the block's own colour, and fitWith restyles it`` () =
+        let plain =
+            plot rows {
+                x U.second (fun r -> r.Time)
+                y U.metre (fun r -> r.Displacement)
+                fit
+            }
+
+        let layers = plain.Panels.[0].Layers
+        Assert.Equal(layers.[0].Style.Color, layers.[1].Style.Color)
+
+        let dashed =
+            plot rows {
+                x U.second (fun r -> r.Time)
+                y U.metre (fun r -> r.Displacement)
+                fitWith (Geom.withDash [| 4.0<px>; 3.0<px> |])
+            }
+
+        Assert.Equal(2, (dashed.Panels.[0].Layers.[1].Style.Dash).Length)
+        Assert.Empty(dashed.Panels.[0].Layers.[0].Style.Dash)
+
+    [<Fact>]
+    let ``a histogram block needs no y channel and draws bars`` () =
+        let fig =
+            plot rows {
+                x U.metre (fun r -> r.Displacement)
+                histogram
+            }
+
+        Assert.Equal(1, fig.Panels.[0].Layers.Length)
+
+        match fig.Panels.[0].Layers.[0].Geom with
+        | GeomBar(_, width) -> Assert.Equal(1.0, width)
+        | g -> failwithf "expected bars, got %A" g
+
+    [<Fact>]
+    let ``histogramWith takes the bin count and densityWith the grid size`` () =
+        let binned =
+            plot rows {
+                x U.metre (fun r -> r.Displacement)
+                histogramWith 6
+            }
+
+        Assert.Equal(6, Erase.seriesLength binned.Panels.[0].Layers.[0].Data)
+
+        let smooth =
+            plot rows {
+                x U.metre (fun r -> r.Displacement)
+                densityWith 32
+            }
+
+        Assert.Equal(32, Erase.seriesLength smooth.Panels.[0].Layers.[0].Data)
+
+    /// The block's theme reaches a stat's layer, which it would not if `runDistribution` simply
+    /// returned what `Chart` built.
+    [<Fact>]
+    let ``a stat block still takes the block's theme and name`` () =
+        let fig =
+            plot rows {
+                x U.metre (fun r -> r.Displacement)
+                density
+                name "heights"
+                theme Theme.publication
+            }
+
+        Assert.Equal(Theme.publication, fig.Theme)
+        Assert.Equal("heights", fig.Panels.[0].Layers.[0].Name)
+        Assert.Equal(Geom.styleFor Theme.publication 0, fig.Panels.[0].Layers.[0].Style)
+
+    /// **The three refusals, which are D47's finding rather than defensive coding.** A
+    /// distribution stat manufactures y and changes the row count, so a y channel, an encoding
+    /// channel and a `layer` are each a request the block cannot honour — and silently dropping
+    /// any of them lets a caller believe it was drawn.
+    [<Fact>]
+    let ``a distribution block refuses a y channel`` () =
+        let e =
+            Assert.Throws<System.Exception>(fun () ->
+                plot rows {
+                    x U.metre (fun r -> r.Displacement)
+                    y U.second (fun r -> r.Time)
+                    histogram
+                }
+                |> ignore)
+
+        Assert.Contains("has no y channel", e.Message)
+
+    [<Fact>]
+    let ``a distribution block refuses an encoding channel`` () =
+        let e =
+            Assert.Throws<System.Exception>(fun () ->
+                plot rows {
+                    x U.metre (fun r -> r.Displacement)
+                    color (fun r -> r.Sample)
+                    ecdf
+                }
+                |> ignore)
+
+        Assert.Contains("changes the row count", e.Message)
+
+    [<Fact>]
+    let ``a distribution block refuses a layer`` () =
+        let e =
+            Assert.Throws<System.Exception>(fun () ->
+                plot rows {
+                    x U.metre (fun r -> r.Displacement)
+                    layer GeomLine
+                    density
+                }
+                |> ignore)
+
+        Assert.Contains("chooses its own mark", e.Message)
+
+    /// Gate 6, extended to the stats: a stat must not let iteration order or accumulated float
+    /// noise reach the output.
+    [<Fact>]
+    let ``a stat block renders identically twice`` () =
+        let build () =
+            plot rows {
+                x U.metre (fun r -> r.Displacement)
+                density
+            }
+
+        let a = Chart.render SvgBackend.render Chart.defaultSize (build ())
+        let b = Chart.render SvgBackend.render Chart.defaultSize (build ())
+        Assert.Equal(a, b)
