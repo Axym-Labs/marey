@@ -586,6 +586,94 @@ module Determinism =
             System.Threading.Thread.CurrentThread.CurrentCulture <- previous
 
 // ======================================================================================
+// D60 — the output surface is the renderer's shape, not `string`
+//
+// Every function-shaped entry point named `string` in its signature until M2.5. That is a
+// claim about the *artifact* made by a function that only forwards it, and a raster backend
+// does not fit through it: a PNG has no UTF-8 encoding and a PDF's is a lie.
+//
+// These tests are the ones that would have caught the two ways the generalisation could go
+// wrong — inference silently pinning `render` to `string` at a call site, and `toFileBytes`
+// acquiring an encoding on the way to disk.
+// ======================================================================================
+
+module ByteShapedOutput =
+
+    open System.IO
+
+    /// A byte-producing renderer of the shape a raster backend has. It ignores the scene's
+    /// content on purpose: what is under test is the *path*, not a rasteriser.
+    let private byteRenderer (_: Extent<px>) (node: Node) : byte[] =
+        let count = node |> Scene.fold (fun acc _ -> acc + 1) 0
+        // A BOM's bytes, deliberately, followed by something that is not valid UTF-8. If the
+        // write path ever grows an encoding, one of the two halves will not survive it.
+        [| 0xEFuy; 0xBBuy; 0xBFuy; 0xFFuy; 0xFEuy; byte count |]
+
+    /// The generalisation itself. `render` returns what the renderer returns.
+    [<Fact>]
+    let ``render returns bytes for a byte-producing renderer`` () =
+        let bytes = baseFigure () |> Chart.render byteRenderer surface
+        Assert.NotEmpty bytes
+        Assert.Equal(0xEFuy, bytes.[0])
+
+    /// The inference risk D60 weighed against the general form, exercised rather than argued.
+    /// A generic `render` must still pin to `string` from `SvgBackend.render` alone, with no
+    /// annotation at the call site and no annotation on the binding — which is how every
+    /// example in the repository and every snippet in the guide calls it.
+    [<Fact>]
+    let ``render still infers string from the renderer alone`` () =
+        let svg = baseFigure () |> Chart.render SvgBackend.render surface
+        // `String.length` only compiles if `svg` was inferred as `string`, not left generic
+        // and not defaulted to `obj`.
+        Assert.True(String.length svg > 0)
+        Assert.StartsWith("<svg", svg)
+
+    /// Both entry points must reach the same artifact, or the byte path is a second
+    /// implementation of the render pipeline rather than a second exit from it.
+    [<Fact>]
+    let ``toFileBytes writes exactly what render produced`` () =
+        let fig = baseFigure ()
+        let path = Path.Combine(Path.GetTempPath(), "marey-d60-" + string (System.Guid.NewGuid()) + ".bin")
+
+        try
+            fig |> Chart.toFileBytes byteRenderer path surface
+            Assert.Equal<byte[]>(fig |> Chart.render byteRenderer surface, File.ReadAllBytes path)
+        finally
+            if File.Exists path then File.Delete path
+
+    /// The failure this rules out is the one that produces a file no decoder opens: a
+    /// three-byte BOM prepended to a PNG signature. `WriteAllBytes` has no encoding, and this
+    /// asserts that nothing on the way to it acquired one.
+    [<Fact>]
+    let ``toFileBytes adds no encoding preamble and alters no byte`` () =
+        let path = Path.Combine(Path.GetTempPath(), "marey-d60-raw-" + string (System.Guid.NewGuid()) + ".bin")
+
+        try
+            baseFigure () |> Chart.toFileBytes byteRenderer path surface
+            let onDisk = File.ReadAllBytes path
+            // 0xFF 0xFE is not valid UTF-8 in any position, so a round trip through any text
+            // encoding would have replaced it with U+FFFD's bytes rather than preserved it.
+            Assert.Equal<byte[]>([| 0xEFuy; 0xBBuy; 0xBFuy; 0xFFuy; 0xFEuy |], onDisk.[0..4])
+            Assert.Equal(6, onDisk.Length)
+        finally
+            if File.Exists path then File.Delete path
+
+    /// `toFile` is unchanged and stays string-typed, which is the other half of D60: the
+    /// existing path keeps its encoding guarantee (UTF-8, no BOM — these files are golden
+    /// masters) and does not become generic over something it has to branch on.
+    [<Fact>]
+    let ``toFile still writes UTF-8 without a byte-order mark`` () =
+        let path = Path.Combine(Path.GetTempPath(), "marey-d60-text-" + string (System.Guid.NewGuid()) + ".svg")
+
+        try
+            baseFigure () |> Chart.toFile SvgBackend.render path surface
+            let onDisk = File.ReadAllBytes path
+            Assert.NotEqual<byte[]>([| 0xEFuy; 0xBBuy; 0xBFuy |], onDisk.[0..2])
+            Assert.Equal('<', char onDisk.[0])
+        finally
+            if File.Exists path then File.Delete path
+
+// ======================================================================================
 // §9 — the colour system, which the design says is embarrassing to get wrong
 // ======================================================================================
 

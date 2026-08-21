@@ -1223,7 +1223,17 @@ module Chart =
     /// `Marey.Plot` takes no backend dependency, on purpose: §0's diagram has the DSLs above the
     /// IR and the backends below it, and a grammar package that references a renderer inverts
     /// that. Passing the renderer in costs one identifier and keeps the layering honest.
-    let render (renderer: Extent<px> -> Node -> string) (extent: Extent<px>) (fig: Figure) : string =
+    ///
+    /// **D60 — the return type is the renderer's, not `string`.** Every function-shaped entry
+    /// point named `string` until M2.5, which is a claim about the *artifact* smuggled into the
+    /// signature of a function that only forwards it. A PNG has no UTF-8 encoding and a PDF's is
+    /// a lie, so a raster backend does not fit through a `string`-typed hole. One type parameter
+    /// removes the claim without adding an entry point: `SvgBackend.render` still gives back a
+    /// `string`, and a byte-producing renderer gives back a `byte[]`.
+    ///
+    /// The `IBackend` protocol never had this problem — `Finish` returns `unit` and the artifact
+    /// is exposed by the concrete type — so `renderTo` needed no change and got none.
+    let render (renderer: Extent<px> -> Node -> 'a) (extent: Extent<px>) (fig: Figure) : 'a =
         renderer extent (toScene extent fig)
 
     /// One line to a file: `fig |> Chart.toFile SvgBackend.render "plot.svg" (Chart.size 800.0 500.0)`.
@@ -1244,3 +1254,16 @@ module Chart =
     /// than SVG-specific — the name was the only thing that said otherwise.
     let toSvg (renderer: Extent<px> -> Node -> string) (path: string) (extent: Extent<px>) (fig: Figure) : unit =
         toFile renderer path extent fig
+
+    /// `toFile` for a renderer that produces bytes: `fig |> Chart.toFileBytes SkiaBackend.renderPng
+    /// "plot.png" (Chart.size 800.0 500.0)`.
+    ///
+    /// This exists even though `render` is generic, because writing a `string` and writing a
+    /// `byte[]` are different calls whatever the renderer's return type is — `WriteAllText` has
+    /// an encoding and `WriteAllBytes` does not. Generalising `toFile` over the same `'a` would
+    /// mean branching on the runtime type inside it, which is worse than two names.
+    ///
+    /// Deliberately *not* encoding-aware: the bytes are written exactly as the renderer produced
+    /// them, because a PNG that gained a BOM would not open.
+    let toFileBytes (renderer: Extent<px> -> Node -> byte[]) (path: string) (extent: Extent<px>) (fig: Figure) : unit =
+        System.IO.File.WriteAllBytes(path, render renderer extent fig)
