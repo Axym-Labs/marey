@@ -5,10 +5,14 @@ open SkiaSharp
 open SkiaSharp.HarfBuzz
 
 // ======================================================================================
-// §6 / §14 — THE RASTER BACKEND.
+// §6 / §14 — THE SKIA BACKEND: PNG, AND PDF.
 //
 // The third implementation of the `IBackend` contract, and the first whose artifact is
-// **bytes**. §6 puts it after SVG and TikZ for a reason worth restating: this is a traversal
+// **bytes**. Two containers share one traversal — `SkiaFormat.Png` and `SkiaFormat.Pdf` — and
+// the whole of the difference is in `Begin`, `Finish` and the page unit. "Raster backend" is
+// the name §6 gives it and it is half wrong from phase 4 onward: the PDF path keeps paths as
+// paths and glyphs as glyphs, and is what a caller wants for a publication figure without a
+// TeX installation. §6 puts it after SVG and TikZ for a reason worth restating: this is a traversal
 // against a contract that already has two independent implementations to be read against, so
 // where this file disagrees with `SvgBackend.fs` about where something lands, this file is
 // wrong until proved otherwise. §6 on the SVG backend: "treat it as the spec."
@@ -54,6 +58,59 @@ open SkiaSharp.HarfBuzz
 //   happens to lay out against.
 // ======================================================================================
 
+/// What a Skia render produces. One traversal, two containers.
+///
+/// The difference is smaller than it looks and it is entirely in `Begin`, `Finish` and the page
+/// unit: a PDF page is measured in `pt` while the traversal is in `px`, so the canvas takes one
+/// uniform scale and everything below it is unchanged. See the note on `Begin`.
+[<RequireQualifiedAccess>]
+type SkiaFormat =
+    /// An RGBA raster, encoded as PNG.
+    | Png
+    /// A single-page vector PDF, at the exact `pt` size of the requested `px` extent.
+    | Pdf
+
+/// A PDF's document information dictionary — **fixed, never discovered**. D63.
+///
+/// Every field here is a string the caller chose. What is *not* here is the interesting part:
+/// there is no creation date and no modification date, and that is the decision rather than an
+/// omission.
+///
+/// Skia writes `/CreationDate` and `/ModDate` from a `DateTime`, formatted with the **renderer's
+/// local UTC offset** — and it does so regardless of the value's `DateTimeKind`, which was
+/// measured rather than assumed: the same pinned instant renders as `+01'00'` on this machine,
+/// `-23'00'` when tagged local and `-22'00'` when tagged unspecified. So a timestamp cannot be
+/// pinned to a value that survives crossing a timezone, and a PDF carrying one is not
+/// byte-reproducible between two machines however carefully the instant is chosen.
+///
+/// Both keys are optional in the PDF specification, so the answer is to write neither. A caller
+/// who wants provenance has `Title`, `Author`, `Subject` and `Keywords`, all of which are
+/// theirs and none of which the clock touches.
+///
+/// `Producer` is pinned for the same reason at one remove: left unset, Skia writes
+/// `Skia/PDF m151`, which puts the rasteriser's build number in the file and moves it on every
+/// SkiaSharp bump.
+type PdfMetadata =
+    { Title: string
+      Author: string
+      Subject: string
+      Keywords: string
+      Creator: string
+      Producer: string }
+
+[<RequireQualifiedAccess>]
+module PdfMetadata =
+
+    /// Empty everywhere the caller has not spoken, and `Marey` where the file has to name
+    /// something. An empty string is written as an absent key rather than as `/Title ()`.
+    let Default =
+        { Title = ""
+          Author = ""
+          Subject = ""
+          Keywords = ""
+          Creator = "Marey"
+          Producer = "Marey" }
+
 /// Options for a Skia render. One record rather than a widening constructor, matching
 /// `TikzOptions`.
 [<Struct>]
@@ -78,7 +135,9 @@ type SkiaOptions =
       /// `None` resolves the stack and reports what it got on `SkiaBackend.ResolvedFaces`,
       /// which is what a user wants; `Some` is what a golden, a regression test or a paper
       /// figure wants, because it is the only way two machines produce the same pixels.
-      FontFile: string option }
+      FontFile: string option
+      /// The document information dictionary written into a PDF. Ignored by a PNG render.
+      Pdf: PdfMetadata }
 
 [<RequireQualifiedAccess>]
 module SkiaOptions =
@@ -87,21 +146,26 @@ module SkiaOptions =
         { Dpi = Space.screenDpi
           Background = Color.white
           Antialias = true
-          FontFile = None }
+          FontFile = None
+          Pdf = PdfMetadata.Default }
 
-/// The raster backend. Renders a `Node` to PNG bytes.
+/// The Skia backend. Renders a `Node` to PNG bytes, or to a one-page PDF.
 ///
 /// The artifact is exposed by the concrete type, through `Result`, because `IBackend.Finish`
 /// returns `unit` by design (see `Backend.fs`) — and this backend is the reason that design was
 /// right: a `string`-typed protocol could not have carried it.
 ///
-/// One instance may be reused: `Begin` disposes the previous surface and starts a new one, so
+/// **`format` comes second** so that `new SkiaBackend(options)` keeps meaning what it meant.
+/// One traversal serves both: the whole difference is in `Begin`, `Finish` and the page unit.
+///
+/// One instance may be reused: `Begin` disposes the previous document and starts a new one, so
 /// the same backend can render a sequence of scenes and two renders of one scene produce
 /// byte-identical output.
 [<Sealed>]
-type SkiaBackend(?options: SkiaOptions) =
+type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
 
     let opts = defaultArg options SkiaOptions.Default
+    let format = defaultArg format SkiaFormat.Png
 
     // **The measurer, and the same one the traversal draws with.** `Shaping` hands back the
     // cached `SKFont` and `SKShaper` behind a `FontSpec`, so `drawText` centres a run against
@@ -115,8 +179,59 @@ type SkiaBackend(?options: SkiaOptions) =
     let mutable canvas: SKCanvas = null
     let mutable cached: byte[] = null
 
+    // PDF only. The document owns the canvas, the stream owns the bytes, and neither exists on
+    // the PNG path.
+    let mutable document: SKDocument = null
+    let mutable pdfStream: SKDynamicMemoryWStream = null
+
     let mutable root: Affine<nd, px> =
         Affine.scaleUniform (LanguagePrimitives.FloatWithMeasure<px / nd> 1.0)
+
+    /// The SkiaSharp shape of D63's pinned dictionary. An empty string is left unset, so the
+    /// key is absent rather than present and empty — and `Creation`/`Modified` are never set at
+    /// all, which is the decision.
+    let pdfMetadata () =
+        // **`SKDocumentPdfMetadata.Default`, not `SKDocumentPdfMetadata()`.** The
+        // parameterless struct constructor zeroes two numeric fields that are not zero-valued:
+        // `EncodingQuality` becomes 0, which is JPEG at its worst rather than the lossless 101
+        // the static default carries, and would quietly destroy any embedded raster; and
+        // `RasterDpi` becomes 0.
+        let mutable md = SKDocumentPdfMetadata.Default
+
+        // **`RasterDpi` decides the page box's precision, which was found by measuring.** Skia
+        // snaps the `MediaBox` to a whole number of device pixels at this resolution, so a
+        // 187.5 pt page is written as `188` at the default 72 and as `187.5` at 96 — where
+        // 187.5 pt is exactly 250 px. Setting it from the render's own dpi is both what makes
+        // gate 4's fractional half true and what it should have been anyway: it is the
+        // resolution Skia rasterises at for anything it cannot express as vectors.
+        md.RasterDpi <- float32 (float (Space.pxOfPt opts.Dpi 72.0<pt>))
+
+        let set (v: string) (assign: string -> unit) = if not (String.IsNullOrEmpty v) then assign v
+        set opts.Pdf.Title (fun v -> md.Title <- v)
+        set opts.Pdf.Author (fun v -> md.Author <- v)
+        set opts.Pdf.Subject (fun v -> md.Subject <- v)
+        set opts.Pdf.Keywords (fun v -> md.Keywords <- v)
+        set opts.Pdf.Creator (fun v -> md.Creator <- v)
+        set opts.Pdf.Producer (fun v -> md.Producer <- v)
+        md
+
+    /// Everything `Begin` has to let go of before it starts again, and everything `Dispose` has
+    /// to let go of once. One function rather than two copies, because the PDF path added a
+    /// second handle and a copy is where the second one gets forgotten.
+    let release () =
+        canvas <- null
+
+        if not (isNull document) then
+            document.Dispose()
+            document <- null
+
+        if not (isNull pdfStream) then
+            pdfStream.Dispose()
+            pdfStream <- null
+
+        if not (isNull surface) then
+            surface.Dispose()
+            surface <- null
 
     let requireStarted () =
         if not started then
@@ -610,25 +725,39 @@ type SkiaBackend(?options: SkiaOptions) =
 
     // ---- public surface --------------------------------------------------------------
 
-    /// The encoded PNG.
+    /// The encoded document — a PNG, or a one-page PDF.
     ///
-    /// Available as soon as `Begin` has been called and stable afterwards, so a partial render
-    /// is inspectable — the same contract the two text backends' `Result` offers.
+    /// On the raster path this is available as soon as `Begin` has been called and is stable
+    /// afterwards, so a partial render is inspectable — the same contract the two text backends'
+    /// `Result` offers.
+    ///
+    /// **On the PDF path it requires `Finish` first**, and the asymmetry is not a wart worth
+    /// hiding: a PDF's cross-reference table is written when the document is closed, so there
+    /// are no partial bytes to hand back. Saying so beats returning a truncated file.
     member _.Result: byte[] =
         if not started then
             invalidOp "Marey.SkiaBackend: Begin must be called before Result."
 
-        if isNull cached then
-            use image = surface.Snapshot()
-            use data = image.Encode(SKEncodedImageFormat.Png, 100)
-            let bytes = data.ToArray()
+        match format with
+        | SkiaFormat.Pdf ->
+            if isNull cached then
+                invalidOp
+                    "Marey.SkiaBackend: Finish must be called before Result on the PDF path -- a PDF has no bytes until its cross-reference table is written."
 
-            if finished then
-                cached <- bytes
-
-            bytes
-        else
             cached
+
+        | SkiaFormat.Png ->
+            if isNull cached then
+                use image = surface.Snapshot()
+                use data = image.Encode(SKEncodedImageFormat.Png, 100)
+                let bytes = data.ToArray()
+
+                if finished then
+                    cached <- bytes
+
+                bytes
+            else
+                cached
 
     /// Every font this backend has actually opened, in the order the scene first asked for it.
     ///
@@ -676,6 +805,13 @@ type SkiaBackend(?options: SkiaOptions) =
               // and which no scene had ever had done to it. The cost is real and accepted:
               // §5.3's structure cannot be reviewed through this path, and the SVG goldens
               // keep that job.
+              //
+              // A *tagged* PDF could carry structure, and that is not an argument for flipping
+              // this to `true`: `Caps` belongs to the backend and both of its formats go
+              // through the same traversal, SkiaSharp exposes no tagging API at 4.151.1, and a
+              // capability advertised on one format out of two is a capability that lies half
+              // the time. If tagging ever arrives it wants the D64 treatment — the capability
+              // moving to the entry point.
               Semantics = false
               // No instance-buffer ceiling. Skia takes a path of any size, and §5.1's whole
               // point is that one batch stays one batch. The GPU backend is where `MaxBatch`
@@ -685,35 +821,70 @@ type SkiaBackend(?options: SkiaOptions) =
         member _.Measurer = measurer
 
         member _.Begin(extent: Extent<px>) =
-            if not (isNull canvas) then
-                canvas <- null
-
-            if not (isNull surface) then
-                surface.Dispose()
-                surface <- null
+            release ()
 
             started <- true
             finished <- false
             cached <- null
 
-            // A surface has to be a whole number of pixels, and rounding *up* is the safe
-            // direction: a figure laid out for 400.5 px that rasterises to 400 loses half a
-            // pixel of its right edge, which is where the axis line is.
-            let w = max 1 (int (ceil (float extent.Width)))
-            let h = max 1 (int (ceil (float extent.Height)))
+            match format with
+            | SkiaFormat.Png ->
+                // A surface has to be a whole number of pixels, and rounding *up* is the safe
+                // direction: a figure laid out for 400.5 px that rasterises to 400 loses half a
+                // pixel of its right edge, which is where the axis line is.
+                let w = max 1 (int (ceil (float extent.Width)))
+                let h = max 1 (int (ceil (float extent.Height)))
 
-            surface <- SKSurface.Create(SKImageInfo(w, h, SKColorType.Rgba8888, SKAlphaType.Premul))
+                surface <- SKSurface.Create(SKImageInfo(w, h, SKColorType.Rgba8888, SKAlphaType.Premul))
 
-            if isNull surface then
-                invalidOp (sprintf "Marey.SkiaBackend: could not create a %dx%d surface." w h)
+                if isNull surface then
+                    invalidOp (sprintf "Marey.SkiaBackend: could not create a %dx%d surface." w h)
 
-            canvas <- surface.Canvas
-            canvas.Clear(skColor opts.Background)
+                canvas <- surface.Canvas
+                canvas.Clear(skColor opts.Background)
+
+            | SkiaFormat.Pdf ->
+                // **The page is not rounded.** A PDF page is measured in points and points are
+                // not pixels, so 400 x 250 px at the screen convention is a 300 x 187.5 pt page
+                // — exactly, fractional part included. M1 proved that claim for TikZ, whose
+                // `bp` is this same unit; this is the second, unrelated producer of it.
+                let wPt = Space.ptOfPx opts.Dpi extent.Width
+                let hPt = Space.ptOfPx opts.Dpi extent.Height
+
+                pdfStream <- new SKDynamicMemoryWStream()
+                document <- SKDocument.CreatePdf(pdfStream, pdfMetadata ())
+
+                if isNull document then
+                    invalidOp "Marey.SkiaBackend: could not create a PDF document."
+
+                canvas <- document.BeginPage(float32 (float wPt), float32 (float hPt))
+
+                // **The one canvas transform in the whole backend, and it is a unit
+                // conversion.** D15/D30 keep group transforms out of the canvas because
+                // `Stroke.Width`, `Dash`, `DashOffset` and `MarkerBatch.Size` are in `px` and an
+                // anisotropic panel scale would stop a hairline being a hairline. This scale is
+                // the opposite case: it is uniform, it is the device resolution, and a 1 px
+                // hairline *should* become 0.75 pt on the page, because that is the same
+                // physical mark. Not scaling it would put a 1 pt rule on a page laid out for a
+                // 1 px one, 33% too heavy — and it is what TikZ already does by converting
+                // every width through `Space.ptOfPx`.
+                //
+                // Everything below this line is therefore the same traversal, in px, as the
+                // raster path runs.
+                let scale = float32 (float (Space.ptOfPx opts.Dpi 1.0<px>))
+                canvas.Scale scale
+
+                // `Clear` ignores the matrix and fills the clip, so it paints the whole page.
+                canvas.Clear(skColor opts.Background)
 
             // The one place the y flip lives, and it is byte-for-byte the SVG backend's: the
             // unit panel onto a device box whose y runs from Height at nd y = 0 to 0 at nd
             // y = 1. Sharing the construction is what lets the cross-backend oracle compare
             // the two traversals' coordinates at all.
+            //
+            // **In px for both formats.** The PDF's page is in pt and its canvas carries the
+            // conversion, so the traversal — and `RootTransform`, and every coordinate a test
+            // checks — stays in one unit whichever container is being written.
             root <-
                 Affine.fromRects
                     Rect.unit
@@ -734,13 +905,20 @@ type SkiaBackend(?options: SkiaOptions) =
             finished <- true
             cached <- null
 
+            match format with
+            | SkiaFormat.Png -> ()
+            | SkiaFormat.Pdf ->
+                // Closing is what writes the page tree and the cross-reference table, so the
+                // bytes are taken here and cached: the stream is detached by the read and there
+                // is no second chance at it.
+                document.EndPage()
+                document.Close()
+                use data = pdfStream.DetachAsData()
+                cached <- data.ToArray()
+
     interface IDisposable with
         member _.Dispose() =
-            canvas <- null
-
-            if not (isNull surface) then
-                surface.Dispose()
-                surface <- null
+            release ()
 
             // The measurer owns every `SKTypeface`, `SKFont` and `SKShaper` this render
             // opened, so it is the one thing here that frees more than a surface.
@@ -791,3 +969,47 @@ module SkiaBackend =
     /// that acquired a byte-order mark would not open. That asymmetry is the whole of D60.
     let renderPngToFile (path: string) (extent: Extent<px>) (node: Node) : unit =
         IO.File.WriteAllBytes(path, renderPng extent node)
+
+    /// Render a scene to a one-page PDF at the `pt` size of the given `px` extent.
+    ///
+    /// 400 x 250 px is a 300 x 187.5 pt page at the screen convention — exact, fractional part
+    /// included. That is M1's claim for TikZ, made by a second producer that shares none of its
+    /// code.
+    ///
+    /// **Vector output from the raster backend**, which is only a contradiction in the name:
+    /// what Skia is doing here is replaying the same traversal into a PDF canvas, so the paths
+    /// stay paths and the glyphs stay glyphs. It is the answer for a caller who wants a
+    /// publication figure without a TeX installation.
+    ///
+    /// Degrades first, for D31's reason and `renderPng`'s.
+    let renderPdf (extent: Extent<px>) (node: Node) : byte[] =
+        use backend = new SkiaBackend(SkiaOptions.Default, SkiaFormat.Pdf)
+        let sink = backend :> IBackend
+
+        let scene =
+            node |> Degrade.forCaps sink.Caps |> Degrade.splitBatches sink.Caps
+
+        sink.Begin extent
+        sink.Draw scene
+        sink.Finish()
+        backend.Result
+
+    /// `renderPdf` with explicit options — which is how a caller sets the document title, and
+    /// how they state a font file so the PDF is reproducible on another machine.
+    let renderPdfWith (options: SkiaOptions) (extent: Extent<px>) (node: Node) : byte[] =
+        use backend = new SkiaBackend(options, SkiaFormat.Pdf)
+        let sink = backend :> IBackend
+
+        let scene =
+            node |> Degrade.forCaps sink.Caps |> Degrade.splitBatches sink.Caps
+
+        sink.Begin extent
+        sink.Draw scene
+        sink.Finish()
+        backend.Result
+
+    /// Render a scene and write it to a file as PDF. No encoding, for `renderPngToFile`'s
+    /// reason.
+    let renderPdfToFile (path: string) (extent: Extent<px>) (node: Node) : unit =
+        IO.File.WriteAllBytes(path, renderPdf extent node)
+

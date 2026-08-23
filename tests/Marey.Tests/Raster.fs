@@ -316,6 +316,39 @@ and ofRendered (name: string) (rendered: RenderedDocument) : TexToolchain.PdfRes
     | None -> TexToolchain.PdfUnavailable(Tool + " not found on PATH")
     | Some _ -> TexToolchain.compileAssetsWith name rendered.Document rendered.Assets (rasterise Dpi)
 
+
+/// Rasterise a PDF a backend produced directly, with no TeX between.
+///
+/// The TikZ path exists because a `tikzpicture` is source that has to be *compiled* before there
+/// is anything to look at. `SkiaBackend.renderPdf` hands over a finished document, so the compile
+/// half drops out and only the pixel census is left — which is F2's promote-on-the-second-consumer
+/// rule applied to `rasterise`, rather than a second rasteriser.
+///
+/// **96 dpi is the same invariant, arrived at from the other end.** A Skia PDF's page is the
+/// requested `Extent<px>` converted at `SkiaOptions.Dpi`, so a 400 x 250 px figure is a
+/// 300 x 187.5 pt page; rasterising that at 96 dpi gives back exactly 400 x 250 pixels. A region
+/// can therefore be written in the numbers the layout used, and the grid is the SVG backend's
+/// coordinate space with y downward, exactly as for TikZ.
+let ofPdfBytes (name: string) (pdf: byte[]) : TexToolchain.PdfResult<Gray> =
+    match toolPath.Force() with
+    | None -> TexToolchain.PdfUnavailable(Tool + " not found on PATH")
+    | Some _ ->
+        let dir = Path.Combine(Path.GetTempPath(), "marey-pdf-" + Guid.NewGuid().ToString "N")
+        Directory.CreateDirectory dir |> ignore
+
+        try
+            let file = Path.Combine(dir, name + ".pdf")
+            File.WriteAllBytes(file, pdf)
+
+            match rasterise Dpi file with
+            | Ok g -> TexToolchain.PdfProduced g
+            | Error why -> TexToolchain.PdfFailed why
+        finally
+            try
+                Directory.Delete(dir, true)
+            with _ ->
+                ()
+
 // ======================================================================================
 // REPORTING
 //

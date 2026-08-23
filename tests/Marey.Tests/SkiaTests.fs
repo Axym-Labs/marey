@@ -515,6 +515,226 @@ module ``the zero-dependency rule`` =
 
         Assert.True(unexpected.Length = 0, "Marey.Core references " + String.concat ", " unexpected)
 
+
+// ======================================================================================
+// PHASE 4 — PDF
+//
+// GATE 3 (the PDF half): two renders of one figure are byte-identical. It is the half the plan
+// said would fail without D63, and it would have: Skia writes `/CreationDate` and `/ModDate`
+// from a `DateTime` formatted with the **renderer's local UTC offset**, and does so regardless
+// of the value's `DateTimeKind` — the same pinned instant renders `+01'00'`, `-23'00'` or
+// `-22'00'` depending only on how it was tagged and where the machine is. So there is no
+// timestamp that survives crossing a timezone, and both keys are omitted.
+//
+// GATE 4: the page is exactly the requested extent. 400 x 250 px is 300 x 187.5 pt — including
+// the fractional part, which is the half of the claim a rounding bug would eat. M1 proved this
+// for TikZ, whose `bp` is this same unit; Skia is a second producer that shares none of its code.
+// ======================================================================================
+
+module ``pdf`` =
+
+    /// Latin-1 rather than UTF-8: a PDF is a byte format with binary streams in it, and decoding
+    /// those as UTF-8 either throws or silently replaces bytes, which would make a search for a
+    /// key report the wrong answer rather than fail.
+    let private text (pdf: byte[]) =
+        System.Text.Encoding.Latin1.GetString pdf
+
+    let private fontFile =
+        lazy (System.IO.Path.Combine(Golden.projectDir.Force(), "fonts", "LiberationSans-Regular.ttf"))
+
+    /// A stated face, so the embedded font subset is the same on every machine. Without it the
+    /// bytes are still deterministic *here*, which is what gate 3 asks, but the file would carry
+    /// whatever face the machine resolved and a reader comparing two checkouts would be misled.
+    let private options =
+        { SkiaOptions.Default with
+            FontFile = Some(fontFile.Force())
+            Pdf =
+                { PdfMetadata.Default with
+                    Title = "free fall" } }
+
+    [<Fact>]
+    let ``the artifact is a pdf`` () =
+        withSkia (fun () ->
+            let pdf = Chart.render (SkiaBackend.renderPdfWith options) surface (figure ())
+            let s = text pdf
+
+            Assert.StartsWith("%PDF-", s)
+            Assert.Contains("%%EOF", s)
+            Assert.Contains("/MediaBox", s)
+
+            // One page, because a figure is one page. A backend that opened a page per `Draw`
+            // would still produce a valid PDF and a reader would find the figure on page 1 — so
+            // the page tree's own count is the thing to read.
+            Assert.Contains("/Count 1", s))
+
+    /// **Gate 3, the half that needed D63.**
+    [<Fact>]
+    let ``two renders of one figure are byte-identical`` () =
+        withSkia (fun () ->
+            let a = Chart.render (SkiaBackend.renderPdfWith options) surface (figure ())
+            let b = Chart.render (SkiaBackend.renderPdfWith options) surface (figure ())
+            Assert.Equal(a.Length, b.Length)
+            Assert.Equal<byte[]>(a, b))
+
+    /// D63, asserted against the file rather than against the intention. Three keys, and each
+    /// one of them moves between machines or between SkiaSharp versions.
+    [<Fact>]
+    let ``the document carries no clock and no toolchain version`` () =
+        withSkia (fun () ->
+            let s = text (Chart.render (SkiaBackend.renderPdfWith options) surface (figure ()))
+
+            Assert.DoesNotContain("/CreationDate", s)
+            Assert.DoesNotContain("/ModDate", s)
+
+            // Left unset, Skia writes `/Producer (Skia/PDF m151)`, which puts the rasteriser's
+            // build number in every file this library produces.
+            Assert.DoesNotContain("Skia/PDF", s)
+            Assert.Contains("/Producer (Marey)", s))
+
+    [<Fact>]
+    let ``metadata the caller states reaches the file`` () =
+        withSkia (fun () ->
+            let stated =
+                { options with
+                    Pdf =
+                        { Title = "free fall"
+                          Author = "Marey"
+                          Subject = "a test"
+                          Keywords = "kinematics"
+                          Creator = "Marey"
+                          Producer = "Marey" } }
+
+            let s = text (Chart.render (SkiaBackend.renderPdfWith stated) surface (figure ()))
+
+            Assert.Contains("/Title (free fall)", s)
+            Assert.Contains("/Subject (a test)", s)
+            Assert.Contains("/Keywords (kinematics)", s)
+
+            // And an empty field is an absent key rather than `/Title ()`.
+            let bare =
+                { options with
+                    Pdf = { PdfMetadata.Default with Creator = "" } }
+
+            let t = text (Chart.render (SkiaBackend.renderPdfWith bare) surface (figure ()))
+            Assert.DoesNotContain("/Creator", t))
+
+    /// **Gate 4.** The fractional half is the point: 250 px is 187.5 pt, and a producer that
+    /// rounded its page to whole points would still pass a test written at 400 x 240.
+    [<Theory>]
+    [<InlineData(400.0, 250.0, "300", "187.5")>]
+    [<InlineData(800.0, 600.0, "600", "450")>]
+    [<InlineData(300.0, 300.0, "225", "225")>]
+    let ``the page is exactly the requested extent`` (w: float, h: float, expectW: string, expectH: string) =
+        withSkia (fun () ->
+            let extent: Extent<px> =
+                { Width = w * 1.0<px>
+                  Height = h * 1.0<px> }
+
+            let s = text (Chart.render (SkiaBackend.renderPdfWith options) extent (figure ()))
+            let expected = sprintf "/MediaBox [0 0 %s %s]" expectW expectH
+
+            Assert.Contains(expected, s))
+
+    /// A PDF has no bytes until its cross-reference table is written, so there is nothing honest
+    /// to return from a partial render. The raster path *can* answer, and does — the asymmetry is
+    /// stated rather than smoothed over.
+    [<Fact>]
+    let ``Result before Finish is refused on the pdf path and allowed on the raster one`` () =
+        withSkia (fun () ->
+            use pdf = new SkiaBackend(options, SkiaFormat.Pdf)
+            (pdf :> IBackend).Begin surface
+            Assert.Throws<System.InvalidOperationException>(fun () -> pdf.Result |> ignore) |> ignore
+
+            use png = new SkiaBackend(options)
+            (png :> IBackend).Begin surface
+            Assert.NotEmpty png.Result)
+
+    /// **Gate 5, through the second container.** D33's incident was a valid document containing
+    /// no visible ink, and the vector path is a fresh opportunity for it: a PDF canvas that
+    /// dropped every paint would produce a perfectly well-formed 900-byte file.
+    ///
+    /// Rasterised at 96 dpi, where the page's own `pt` size converts back to exactly the
+    /// requested pixel extent — so the regions below are written in the numbers the layout used.
+    [<Fact>]
+    let ``the page has ink in it, and the right way up`` () =
+        withSkia (fun () ->
+            let pdf = Chart.render (SkiaBackend.renderPdfWith options) surface (figure ())
+
+            match Raster.ofPdfBytes "skia-figure" pdf with
+            | TexToolchain.PdfUnavailable _ -> System.Console.WriteLine("SKIPPED: " + Raster.report ())
+            | TexToolchain.PdfFailed why -> failwithf "the Skia PDF did not rasterise: %s" why
+            | TexToolchain.PdfProduced page ->
+                // The page came back at the size the extent asked for, which is gate 4 again
+                // through an independent instrument: Poppler measured the MediaBox this time.
+                Assert.Equal(400, page.Width)
+                Assert.Equal(250, page.Height)
+
+                let coverage = Raster.coverage page
+
+                Assert.True(
+                    coverage > 0.005,
+                    sprintf "the PDF page is essentially blank (%.4f%% ink)\n%s" (coverage * 100.0) (Raster.inkMap 72 page)
+                )
+
+                // The free-fall curve is convex and rising, so in *page* coordinates — y
+                // downward — the bottom-left of the panel carries the curve and the top-left
+                // carries nothing but a gridline. Same claim the PNG path makes, made again
+                // against a different rasteriser and a different container.
+                let region l t r b : Raster.Region =
+                    { Left = l
+                      Top = t
+                      Right = r
+                      Bottom = b }
+
+                let lowerLeft = Raster.coverageIn (region 0.20 0.55 0.50 0.85) page
+                let upperLeft = Raster.coverageIn (region 0.20 0.15 0.50 0.40) page
+
+                Assert.True(
+                    lowerLeft > upperLeft,
+                    sprintf
+                        "the curve is not where a rising convex curve should be: lower-left %.4f, upper-left %.4f\n%s"
+                        lowerLeft
+                        upperLeft
+                        (Raster.inkMap 72 page)
+                ))
+
+
+    /// **A raster inside a vector page, which is the one thing the page scale could break.**
+    ///
+    /// `drawRaster` is the only place in this backend that touches the canvas matrix, and the
+    /// PDF path puts a `Scale` under it. Using `SetMatrix` there instead of `Save` and `Concat`
+    /// would *replace* the page's pt-per-px conversion and land the image at 4/3 its size,
+    /// off the right edge — a bug the PNG path cannot see, because its page scale is the
+    /// identity.
+    ///
+    /// The orientation half is D64's, restated here because a flip is exactly the kind of thing
+    /// that survives one container and not the other: the fixture's top row is bright and its
+    /// bottom row dark.
+    [<Fact>]
+    let ``a placed image survives the page scale, and the right way up`` () =
+        withSkia (fun () ->
+            let pdf =
+                Chart.render (SkiaBackend.renderPdfWith options) Golden.figureSurface Golden.imageFigure
+
+            match Raster.ofPdfBytes "skia-image" pdf with
+            | TexToolchain.PdfUnavailable _ -> System.Console.WriteLine("SKIPPED: " + Raster.report ())
+            | TexToolchain.PdfFailed why -> failwithf "the Skia PDF did not rasterise: %s" why
+            | TexToolchain.PdfProduced page ->
+                let region l t r b : Raster.Region =
+                    { Left = l
+                      Top = t
+                      Right = r
+                      Bottom = b }
+
+                // Inside the panel, well clear of the axis lines on every side.
+                let upper = Raster.meanLevel page (region 0.25 0.30 0.85 0.45)
+                let lower = Raster.meanLevel page (region 0.25 0.60 0.85 0.75)
+
+                Assert.True(
+                    upper > lower + 20.0,
+                    sprintf "the image is upside down, missing, or scaled off the page: upper mean %.1f, lower mean %.1f\n%s" upper lower (Raster.inkMap 72 page)
+                ))
+
 // ======================================================================================
 // GATE 2 — SHAPING ACTUALLY CHANGES THE LAYOUT, AND THE AMOUNT IS WRITTEN DOWN
 //
