@@ -22,7 +22,9 @@ derived from the two unit witnesses — and plotting seconds against seconds on 
 compile error.
 
 Swapping the theme turns the same figure into `tikzpicture` source, typeset by the LaTeX
-document's own engine and fonts, with axis titles set by `siunitx`.
+document's own engine and fonts, with axis titles set by `siunitx`. Swapping the *renderer* turns
+it into a PNG or a vector PDF, through `Marey.Backend.Skia`, with text shaped by HarfBuzz rather
+than estimated.
 
 When the data is a table rather than two arrays, `plot` declares what each column means in one
 place — positional channels, colour, shape and size, a statistic, and small multiples:
@@ -46,6 +48,7 @@ plot trials {
 | `Marey.Plot` | `Chart` and the `plot` encoding block, twelve geoms, channels, statistics, facets, themes, colour-blind-safe palettes, layout. No backend reference. |
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, deterministic. |
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX. |
+| `Marey.Backend.Skia` | PNG and vector PDF, with real text shaping. The only package with third-party dependencies. |
 | `Marey.Html` | HTML renderings for a notebook cell. Host-neutral. |
 | `Marey.Verso` | The Verso notebook extension. |
 

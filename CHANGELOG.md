@@ -3,12 +3,87 @@
 Notable changes to Marey. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-All seven packages are versioned and released together, so a version number identifies the whole
+All eight packages are versioned and released together, so a version number identifies the whole
 set rather than any one package.
 
 **Pre-1.0, and versioned accordingly.** The API is still free to move. Breaking changes are
 listed under `Changed` or `Removed` with the reason and the replacement, and until 1.0 they may
 land in a minor release.
+
+## [Unreleased]
+
+**M2.5 — *Raster*.** An eighth package, and the first output that is not text.
+
+`Marey.Backend.Skia` renders a figure to PNG or to a vector PDF without a TeX installation, and
+is the first backend that measures text properly rather than estimating it. Nothing in the
+existing API changed shape; `Chart.render` gained a type parameter it already behaved as if it
+had.
+
+### Added
+
+**`Marey.Backend.Skia`.** PNG through `SkiaBackend.renderPng`, PDF through
+`SkiaBackend.renderPdf`, and the `IBackend` protocol through `SkiaBackend` with
+`Result : byte[]`. All nine IR cases, including `Raster`, which this is the first backend to draw
+natively. `SkiaOptions` carries the resolution, the background, antialiasing, an optional font
+file and the PDF's document information.
+
+The PDF is **vector** — paths stay paths and glyphs stay glyphs — and its page is the requested
+extent converted exactly: a 400 × 250 px figure is a 300 × 187.5 pt page. It carries no
+timestamp, so two renders of one figure are byte-identical.
+
+**Real text shaping.** `SkiaTextMeasurer` implements `ITextMeasurer` over HarfBuzz, and
+`Capabilities.TextShaping` is `true` for the first time in the project. `Marey.Core`'s
+approximation is a Helvetica advance-width table with no kerning; measured against it, `AVATAR`
+at 12 px is 48.01 px estimated and 44.51 px shaped in Arial, and a real face reserves about a
+quarter more vertical room than the estimate. Both reach `Figure.arrangement`, which is the point.
+
+**`ResolvedFace` and `SkiaBackend.ResolvedFaces`.** A PNG's glyph widths come from a face on the
+machine that rendered it. That is reported rather than hidden: for every distinct font the scene
+asked for, which entry in the theme's CSS stack matched and which family was actually opened.
+`SkiaOptions.FontFile` states a file and skips resolution, which is the only way two machines
+produce the same pixels.
+
+**`Chart.image` and `Geom.image`.** An RGBA image placed in data space, with witnesses on both
+axes like every other constructor. This is the first producer of a `Raster` node anywhere above
+the IR — the case existed since M0 and nothing made one.
+
+**`TikzBackend.renderWithAssets` and `renderToFileWithAssets`.** A `RenderedDocument` — the
+`tikzpicture` plus the sidecar `.png` files it refers to through `\includegraphics`. TikZ's
+`Capabilities.Rasters` is now `true`, the first capability in the project to go from `false` to
+`true`. `TikzBackend.render` is unchanged and still degrades a raster to a comment, because a
+bare `string` has nowhere to put a sidecar.
+
+**`Chart.toFileBytes`**, for a renderer whose artifact is bytes. Separate from `Chart.toFile`
+because writing text has an encoding and writing bytes does not.
+
+**`Marey.Png`**, promoted out of the SVG backend now that it has a second consumer. The
+zero-dependency PNG encoder — CRC-32, Adler-32, stored deflate — that writes TikZ's sidecar
+without pulling a native dependency into a package that must not have one.
+
+### Changed
+
+- **`Chart.render` is generic in the renderer's result**: `(Extent<px> -> Node -> 'a) ->
+  Extent<px> -> Figure -> 'a` rather than returning `string`. Source-compatible — every existing
+  call still infers `string` — and it is what lets a byte-producing backend through the same
+  door. `Chart.toFile` and `Chart.toSvg` are unchanged.
+- **Two backends of this library now place an axis title at different coordinates for the same
+  figure.** Layout is a measure–arrange pass against `ITextMeasurer`, and the Skia backend's is
+  not the other two's. This is what measuring text properly means, and it is not a defect.
+
+### Known limitations
+
+- A PNG or PDF is reproducible on the machine that rendered it unless `SkiaOptions.FontFile`
+  states a face. `ResolvedFaces` reports what was chosen so the difference is visible.
+- The shaper works against one face and has no fallback list, so a codepoint the face lacks
+  measures as the missing-glyph box. Every symbol the unit system produces is in any Latin face;
+  a CJK axis title is not.
+- `Semantics` is `false` for the Skia backend, so `Degrade.forCaps` strips every `Annotated` node
+  before it draws. A PNG has nowhere to put a label, and SkiaSharp exposes no tagged-PDF API.
+- A raster placed under a non-identity coordinate has its box mapped and its bounding box used;
+  the pixels are not resampled along the warp. Exact under every Cartesian coordinate.
+- `Marey.Backend.Skia` needs native libraries. If one is missing, the entry points raise a
+  message naming the package to install. On a slim Linux image `libfontconfig1` and
+  `libfreetype6` are needed as well.
 
 ## [0.2.0] — 2026-08-21
 

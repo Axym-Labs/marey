@@ -3,7 +3,7 @@
 # The default on Windows (`core.autocrlf=true`) checks text files out as CRLF, which means the
 # bytes a contributor edits are not the bytes committed. That is usually harmless. It is not
 # harmless here, because the two backends emit `\n` unconditionally -- SvgWriter.fs: "line endings
-# are always `\n`, never `Environment.NewLine`" -- and 29 golden baselines are their recorded
+# are always `\n`, never `Environment.NewLine`" -- and the golden baselines are their recorded
 # output. `Golden.normalise` already defends the comparison on both sides, so this file is not
 # fixing a bug; it stops the working tree and the repository from disagreeing about the contents
 # of files whose whole purpose is to be compared as text and reviewed as a diff.
@@ -27,3 +27,8 @@
 *.png           binary
 *.pdf           binary
 *.nupkg         binary
+# D62's stated face, under tests/Marey.Tests/fonts/. A font is the one binary in this tree a
+# text-classifying heuristic might plausibly get wrong, and a mangled one fails as "Skia opens
+# the file and the metrics are nonsense", which is a bad afternoon.
+*.ttf           binary
+*.otf           binary

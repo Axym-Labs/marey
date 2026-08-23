@@ -37,6 +37,12 @@ let private assemblies =
       "Marey.Plot"
       "Marey.Backend.Svg"
       "Marey.Backend.Tikz"
+      "Marey.Backend.Skia"
+      // See the note in `GuideTests`: F# needs SkiaSharp on hand to type-check a construction
+      // of `SkiaTextMeasurer`, and only this harness references the dlls directly rather than
+      // through the package that would bring it transitively.
+      "SkiaSharp"
+      "SkiaSharp.HarfBuzz"
       "Marey.Html" ]
 
 let private exampleDir =
@@ -183,16 +189,20 @@ let ``the example compiles and runs`` (name: string) =
 
         // Every example writes at least one figure. This is the assertion that would catch a
         // rendering call quietly removed while the script still exits 0.
+        //
+        // `.png` and `.pdf` joined the list at M2.5: `shaped-text.fsx` writes nothing else, and
+        // a filter that still knew only about the two text formats would have failed it for
+        // being a raster example rather than for being wrong.
         let produced =
             Directory.GetFiles(workDir)
             |> Array.filter (fun f ->
                 let ext = Path.GetExtension f
-                ext = ".svg" || ext = ".tex")
+                ext = ".svg" || ext = ".tex" || ext = ".png" || ext = ".pdf")
 
         Assert.True(
             produced.Length > 0,
             sprintf
-                "examples/%s wrote no .svg or .tex into %s. Its stdout was:\n%s"
+                "examples/%s wrote no figure into %s. Its stdout was:\n%s"
                 name
                 workDir
                 stdout

@@ -92,7 +92,7 @@ jobs:
       # Two of this suite's gates shell out, and both are written to report "not installed"
       # rather than to fail -- which is right on a contributor's laptop and wrong here.
       #
-      #   pdflatex   compiles all 16 golden .tex baselines. Without it, the single most
+      #   pdflatex   compiles every golden .tex baseline. Without it, the single most
       #              valuable test in the milestone does not run.
       #   pdftoppm   rasterises the compiled PDF for the ink gate, which exists because D33
       #              once produced a perfectly valid document containing no visible markers

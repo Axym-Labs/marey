@@ -27,7 +27,7 @@ The blocks form one continuous session, so bindings introduced early are still i
 12. [Statistics](#12-statistics)
 13. [The encoding block](#13-the-encoding-block)
 14. [Facets](#14-facets)
-15. [Output: SVG, TikZ, files](#15-output-svg-tikz-files)
+15. [Output: SVG, TikZ, PNG, PDF](#15-output-svg-tikz-png-pdf)
 16. [Notebooks](#16-notebooks)
 17. [The scene IR](#17-the-scene-ir)
 18. [Escape hatches](#18-escape-hatches)
@@ -52,6 +52,7 @@ open Marey
 | `Marey.Plot` | `Chart`, the `plot` block, geoms, channels, statistics, facets, themes, palettes, layout. No backend reference — see §15. |
 | `Marey.Backend.Svg` | Rendering to SVG. |
 | `Marey.Backend.Tikz` | Rendering to `tikzpicture` source for LaTeX. |
+| `Marey.Backend.Skia` | Rendering to PNG or PDF, and real text shaping. The only one with third-party dependencies, and native ones at that — see §15. |
 | `Marey.Html` | HTML renderings of nine Marey types, for a notebook cell. Host-neutral. |
 | `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension. Installed *into the host*, not referenced from user code. |
 
@@ -746,7 +747,7 @@ let facetedHistogram =
 
 ---
 
-## 15. Output: SVG, TikZ, files
+## 15. Output: SVG, TikZ, PNG, PDF
 
 `Marey.Plot` does not reference a backend. A backend is a function passed in at render time, which
 is why the same figure goes to either without the figure knowing either exists.
@@ -790,7 +791,119 @@ printfn "deterministic: %b" (asSvg = (fall |> Chart.render SvgBackend.render (Ch
 ```
 
 Constructs TikZ cannot draw degrade visibly rather than silently: a gradient becomes its Oklab
-midpoint, and a raster becomes a comment naming what was skipped and at what size.
+midpoint. A raster becomes a comment naming what was skipped and at what size through
+`TikzBackend.render`, and is drawn for real through `TikzBackend.renderWithAssets`, which returns
+the document *and* the sidecar `.png` files it refers to.
+
+### PNG and PDF
+
+`Marey.Backend.Skia` is the third backend, and the first that produces **bytes** rather than a
+string. It is also the first that measures text properly, which is the subject of the next part.
+
+```fsharp
+let png = fall |> Chart.render SkiaBackend.renderPng (Chart.size 720.0 450.0)
+let pdf = fall |> Chart.render SkiaBackend.renderPdf (Chart.size 720.0 450.0)
+
+printfn "png magic: %b" (png.[1..3] = "PNG"B)
+printfn "pdf magic: %b" (pdf.[0..4] = "%PDF-"B)
+```
+
+To a file, `Chart.toFileBytes` is the byte-shaped sibling of `Chart.toSvg` — a separate name
+because writing text has an encoding and writing bytes does not, and a PNG that picked up a
+byte-order mark on the way to disk would not open.
+
+```fsharp
+fall
+|> Chart.toFileBytes SkiaBackend.renderPng (System.IO.Path.Combine(out, "fall.png")) (Chart.size 800.0 500.0)
+
+fall
+|> Chart.toFileBytes SkiaBackend.renderPdf (System.IO.Path.Combine(out, "fall.pdf")) (Chart.size 800.0 500.0)
+```
+
+The PDF is **vector**, despite coming out of the backend the design calls the raster one: paths
+stay paths and glyphs stay glyphs. Its page is the requested extent converted exactly — a
+400 × 250 px figure is a 300 × 187.5 pt page — and it carries no timestamp, so two renders of one
+figure are byte-identical.
+
+`SkiaOptions` is the knob: resolution, background colour, antialiasing, a font file, and the PDF's
+document information.
+
+```fsharp
+let opts =
+    { SkiaOptions.Default with
+        Background = Color.transparent
+        Pdf = { PdfMetadata.Default with Title = "free fall" } }
+
+let sprite = fall |> Chart.render (SkiaBackend.renderPngWith opts) (Chart.size 400.0 250.0)
+printfn "transparent sprite: %d bytes" sprite.Length
+```
+
+### Which font a PNG is drawn in, and why it matters
+
+SVG names a font family and lets whatever opens the file resolve it. TikZ ignores the name and
+inherits the document's face. Skia has to **pick one**, from what is installed on the machine
+doing the rendering — so the same figure is a slightly different PNG on your laptop and on
+someone else's.
+
+That is not hidden. A backend reports what it opened:
+
+```fsharp
+let backend = new SkiaBackend()
+fall |> Chart.renderTo backend (Chart.size 400.0 250.0)
+
+for face in backend.ResolvedFaces |> Array.distinctBy (fun f -> f.Family) do
+    printfn "asked for %s, drew with %s" (face.Requested.Split(',').[0]) face.Family
+```
+
+`Matched = None` on a reported face means every entry in the theme's stack missed and Skia's
+default was used — the figure looks like nothing the theme asked for, and it says so rather than
+leaving you to notice.
+
+For output that has to be identical on two machines, state a file and resolution is skipped
+entirely:
+
+```fsharp
+// let pinned = { SkiaOptions.Default with FontFile = Some "/path/to/Inter-Regular.ttf" }
+```
+
+### Real text shaping
+
+`Marey.Core` ships an *approximate* measurer: a Helvetica advance-width table, no kerning, no
+ligatures, accurate to a few per cent. It exists because the core may not take a dependency, and
+both text backends advertise `TextShaping = false` honestly.
+
+The Skia backend advertises `true`, and it is the first thing in the project for which the flag
+means anything:
+
+```fsharp
+printfn "svg shapes text:  %b" (SvgBackend() :> IBackend).Caps.TextShaping
+printfn "skia shapes text: %b" (new SkiaBackend() :> IBackend).Caps.TextShaping
+```
+
+The consequence is worth stating plainly, because it looks like a bug the first time it is
+noticed: **two backends of this library place an axis title at different coordinates for the same
+figure**. Measured text is not estimated text. At 12 px, `AVATAR` is 48.01 px under the
+approximation and 44.51 px shaped in Arial — the kerning in `AV`, `VA`, `TA` and `AT` — and a real
+face reserves about a quarter more vertical room than Helvetica's ascent fraction estimates. Both
+reach layout, so the panel rectangle moves. The shaped number depends on the face, which is the
+previous section's point: run the snippet below and you will get whatever your machine resolved.
+
+Layout is a measure–arrange pass against `ITextMeasurer`, and `Chart.renderTo` uses the backend's
+own. That one seam is the whole mechanism — not a line of the layout code changed when the shaper
+arrived — and both measurers are ordinary values you can ask directly:
+
+```fsharp
+let spec: FontSpec =
+    { Family = Theme.Sans
+      Size = 9.0<pt>
+      Weight = 400
+      Italic = false }
+
+let shaper = new SkiaTextMeasurer() :> ITextMeasurer
+
+printfn "approximated: %.2f px" (float (TextMeasure.approx.Measure spec "AVATAR").Advance)
+printfn "shaped:       %.2f px" (float (shaper.Measure spec "AVATAR").Advance)
+```
 
 ---
 
@@ -882,7 +995,6 @@ For a stateful backend there is `IBackend` and `Chart.renderTo`, which is the pa
 ## What is not here yet
 
 What exists today is static plotting: everything this guide covers, from two arrays and a chart
-call up to the encoding block. Animation, fields and simulation, a raster backend with real text
-shaping, further backends, and native mathematical typesetting are all intended, and none of them
-exist yet. Among the geoms, the field ones — contour, quiver, streamline and hexbin — are the
+call up to the encoding block. Animation, fields and simulation, further backends, an interactive
+canvas, and native mathematical typesetting are all intended, and none of them exist yet. Among the geoms, the field ones — contour, quiver, streamline and hexbin — are the
 group still to come.

@@ -45,6 +45,15 @@ let private assemblies =
       "Marey.Plot"
       "Marey.Backend.Svg"
       "Marey.Backend.Tikz"
+      "Marey.Backend.Skia"
+      // Not Marey packages. `SkiaTextMeasurer` has an internal member whose signature mentions
+      // `SKFont` and `SKShaper`, and F# needs both defining assemblies on hand to type-check a
+      // construction of the type at all — so a script referencing only the Marey dlls fails
+      // with FS0074. A reader following the guide never sees this: `#r "nuget:
+      // Marey.Backend.Skia"` brings both transitively, and only this harness references the
+      // dlls directly.
+      "SkiaSharp"
+      "SkiaSharp.HarfBuzz"
       "Marey.Html" ]
 
 let private guidePath =

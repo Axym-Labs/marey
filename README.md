@@ -36,7 +36,9 @@ dotnet add package Marey.Plot
 dotnet add package Marey.Backend.Svg
 ```
 
-`Marey.Html` sits at the top of the graph, so referencing it alone brings the rest.
+`Marey.Html` sits at the top of the graph, so referencing it alone brings the rest. For PNG and
+PDF, add `Marey.Backend.Skia` — the one package here with third-party dependencies, which is why
+it is a separate one.
 
 ## Units, end to end
 
@@ -131,6 +133,7 @@ datasets.
 | `Marey.Plot` | `Chart` and the `plot` encoding block, twelve geoms, colour/shape/size channels, statistics, facets, six themes, colour-blind-safe palettes with a validator, constraint layout, and the axis and legend compilers. No backend reference. |
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, byte-identical across renders. |
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX, with `siunitx` units and inherited fonts. |
+| `Marey.Backend.Skia` | PNG and vector PDF, and real text shaping through HarfBuzz. The only package with third-party dependencies. |
 | `Marey.Html` | HTML renderings of nine Marey types for a notebook cell. Host-neutral. |
 | `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension, so a bare `Figure` displays as a figure. |
 
@@ -148,15 +151,17 @@ dotnet test
 ```
 
 The suite is FsCheck property suites for the dimension group laws, all seven scale kinds, ticks,
-interpolation, colour and the scene IR; 35 golden baselines in SVG *and* `tikzpicture` source; a
-real `pdflatex` compile gate; a rasterised ink gate that checks the picture is not blank; and
-executable checks over every example in [the guide](docs/guide.md) and in [`examples/`](examples/).
+interpolation, colour and the scene IR; golden baselines in SVG *and* `tikzpicture` source; a real
+`pdflatex` compile gate; rasterised ink gates over the compiled TeX, the rendered PNG and the
+rendered PDF, checking the picture is not blank and is the right way up; an assertion over the
+built assembly graph that no package but `Marey.Backend.Skia` can see SkiaSharp; and executable
+checks over every example in [the guide](docs/guide.md) and in [`examples/`](examples/).
 
 ## Documentation
 
 - **[The guide](docs/guide.md)** — everything the library does today, with a runnable example for
   each part. Every example in it is extracted and executed by the test suite.
-- **[Examples](examples/)** — six standalone scripts, also executed by the test suite.
+- **[Examples](examples/)** — seven standalone scripts, also executed by the test suite.
 - **[Why Marey is like this](docs/why.md)** — the case for a unit witness over a string label,
   what the other design decisions buy, what they cost, and when not to use the library.
 - **[Changelog](CHANGELOG.md)** — what changed in each release, and what is still known to be
