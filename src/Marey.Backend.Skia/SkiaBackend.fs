@@ -748,9 +748,11 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
 
         | SkiaFormat.Png ->
             if isNull cached then
-                use image = surface.Snapshot()
-                use data = image.Encode(SKEncodedImageFormat.Png, 100)
-                let bytes = data.ToArray()
+                let bytes =
+                    SkiaNative.guard (fun () ->
+                        use image = surface.Snapshot()
+                        use data = image.Encode(SKEncodedImageFormat.Png, 100)
+                        data.ToArray())
 
                 if finished then
                     cached <- bytes
@@ -827,55 +829,59 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
             finished <- false
             cached <- null
 
-            match format with
-            | SkiaFormat.Png ->
-                // A surface has to be a whole number of pixels, and rounding *up* is the safe
-                // direction: a figure laid out for 400.5 px that rasterises to 400 loses half a
-                // pixel of its right edge, which is where the axis line is.
-                let w = max 1 (int (ceil (float extent.Width)))
-                let h = max 1 (int (ceil (float extent.Height)))
+            // Gate 8. This is where `libSkiaSharp` is first touched on the drawing side, and
+            // a machine without it should learn which package to add rather than be handed a
+            // `DllNotFoundException` naming a file.
+            SkiaNative.guard (fun () ->
+                match format with
+                | SkiaFormat.Png ->
+                    // A surface has to be a whole number of pixels, and rounding *up* is the safe
+                    // direction: a figure laid out for 400.5 px that rasterises to 400 loses half a
+                    // pixel of its right edge, which is where the axis line is.
+                    let w = max 1 (int (ceil (float extent.Width)))
+                    let h = max 1 (int (ceil (float extent.Height)))
 
-                surface <- SKSurface.Create(SKImageInfo(w, h, SKColorType.Rgba8888, SKAlphaType.Premul))
+                    surface <- SKSurface.Create(SKImageInfo(w, h, SKColorType.Rgba8888, SKAlphaType.Premul))
 
-                if isNull surface then
-                    invalidOp (sprintf "Marey.SkiaBackend: could not create a %dx%d surface." w h)
+                    if isNull surface then
+                        invalidOp (sprintf "Marey.SkiaBackend: could not create a %dx%d surface." w h)
 
-                canvas <- surface.Canvas
-                canvas.Clear(skColor opts.Background)
+                    canvas <- surface.Canvas
+                    canvas.Clear(skColor opts.Background)
 
-            | SkiaFormat.Pdf ->
-                // **The page is not rounded.** A PDF page is measured in points and points are
-                // not pixels, so 400 x 250 px at the screen convention is a 300 x 187.5 pt page
-                // — exactly, fractional part included. M1 proved that claim for TikZ, whose
-                // `bp` is this same unit; this is the second, unrelated producer of it.
-                let wPt = Space.ptOfPx opts.Dpi extent.Width
-                let hPt = Space.ptOfPx opts.Dpi extent.Height
+                | SkiaFormat.Pdf ->
+                    // **The page is not rounded.** A PDF page is measured in points and points are
+                    // not pixels, so 400 x 250 px at the screen convention is a 300 x 187.5 pt page
+                    // — exactly, fractional part included. M1 proved that claim for TikZ, whose
+                    // `bp` is this same unit; this is the second, unrelated producer of it.
+                    let wPt = Space.ptOfPx opts.Dpi extent.Width
+                    let hPt = Space.ptOfPx opts.Dpi extent.Height
 
-                pdfStream <- new SKDynamicMemoryWStream()
-                document <- SKDocument.CreatePdf(pdfStream, pdfMetadata ())
+                    pdfStream <- new SKDynamicMemoryWStream()
+                    document <- SKDocument.CreatePdf(pdfStream, pdfMetadata ())
 
-                if isNull document then
-                    invalidOp "Marey.SkiaBackend: could not create a PDF document."
+                    if isNull document then
+                        invalidOp "Marey.SkiaBackend: could not create a PDF document."
 
-                canvas <- document.BeginPage(float32 (float wPt), float32 (float hPt))
+                    canvas <- document.BeginPage(float32 (float wPt), float32 (float hPt))
 
-                // **The one canvas transform in the whole backend, and it is a unit
-                // conversion.** D15/D30 keep group transforms out of the canvas because
-                // `Stroke.Width`, `Dash`, `DashOffset` and `MarkerBatch.Size` are in `px` and an
-                // anisotropic panel scale would stop a hairline being a hairline. This scale is
-                // the opposite case: it is uniform, it is the device resolution, and a 1 px
-                // hairline *should* become 0.75 pt on the page, because that is the same
-                // physical mark. Not scaling it would put a 1 pt rule on a page laid out for a
-                // 1 px one, 33% too heavy — and it is what TikZ already does by converting
-                // every width through `Space.ptOfPx`.
-                //
-                // Everything below this line is therefore the same traversal, in px, as the
-                // raster path runs.
-                let scale = float32 (float (Space.ptOfPx opts.Dpi 1.0<px>))
-                canvas.Scale scale
+                    // **The one canvas transform in the whole backend, and it is a unit
+                    // conversion.** D15/D30 keep group transforms out of the canvas because
+                    // `Stroke.Width`, `Dash`, `DashOffset` and `MarkerBatch.Size` are in `px` and an
+                    // anisotropic panel scale would stop a hairline being a hairline. This scale is
+                    // the opposite case: it is uniform, it is the device resolution, and a 1 px
+                    // hairline *should* become 0.75 pt on the page, because that is the same
+                    // physical mark. Not scaling it would put a 1 pt rule on a page laid out for a
+                    // 1 px one, 33% too heavy — and it is what TikZ already does by converting
+                    // every width through `Space.ptOfPx`.
+                    //
+                    // Everything below this line is therefore the same traversal, in px, as the
+                    // raster path runs.
+                    let scale = float32 (float (Space.ptOfPx opts.Dpi 1.0<px>))
+                    canvas.Scale scale
 
-                // `Clear` ignores the matrix and fills the clip, so it paints the whole page.
-                canvas.Clear(skColor opts.Background)
+                    // `Clear` ignores the matrix and fills the clip, so it paints the whole page.
+                    canvas.Clear(skColor opts.Background))
 
             // The one place the y flip lives, and it is byte-for-byte the SVG backend's: the
             // unit panel onto a device box whose y runs from Height at nd y = 0 to 0 at nd
@@ -911,10 +917,11 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
                 // Closing is what writes the page tree and the cross-reference table, so the
                 // bytes are taken here and cached: the stream is detached by the read and there
                 // is no second chance at it.
-                document.EndPage()
-                document.Close()
-                use data = pdfStream.DetachAsData()
-                cached <- data.ToArray()
+                SkiaNative.guard (fun () ->
+                    document.EndPage()
+                    document.Close()
+                    use data = pdfStream.DetachAsData()
+                    cached <- data.ToArray())
 
     interface IDisposable with
         member _.Dispose() =

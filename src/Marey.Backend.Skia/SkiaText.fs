@@ -57,6 +57,84 @@ open SkiaSharp.HarfBuzz
 // and drew with another would centre every label against the wrong width.
 // ======================================================================================
 
+// ======================================================================================
+// GATE 8 — A MISSING NATIVE ASSET FAILS LOUDLY.
+//
+// This is the only package in the solution that needs something the .NET runtime cannot supply
+// on its own, and there are **two** native libraries behind it on **two** version lines:
+// `libSkiaSharp` and `libHarfBuzzSharp`. Each ships as a per-platform asset package, and
+// neither pulls the Linux one in by default — which is the omission this project has now made
+// twice and caught twice by reading `dotnet list package`.
+//
+// Left alone, the third time surfaces as a `DllNotFoundException` from three frames inside a
+// render, on somebody else's CI, naming a file rather than a package. D33's incident was a
+// valid document with no visible ink; this is the same class of failure with a different cause,
+// and the fix is the same one: say what is wrong at the point it can still be acted on.
+// ======================================================================================
+
+/// Diagnosing a native-loading failure, and turning it into a sentence that names the fix.
+[<RequireQualifiedAccess>]
+module SkiaNative =
+
+    /// The asset packages for the platform actually being run on.
+    ///
+    /// Named rather than inferred from a RID string: a caller reading this message wants
+    /// something they can paste into `dotnet add package`, and `linux-musl-x64` is not that.
+    let private packagesFor () =
+        if Runtime.InteropServices.RuntimeInformation.IsOSPlatform Runtime.InteropServices.OSPlatform.Linux then
+            "SkiaSharp.NativeAssets.Linux and HarfBuzzSharp.NativeAssets.Linux",
+            " On a slim container image the packages are not enough on their own: libfontconfig1 and libfreetype6 have to be installed too."
+        elif Runtime.InteropServices.RuntimeInformation.IsOSPlatform Runtime.InteropServices.OSPlatform.OSX then
+            "SkiaSharp.NativeAssets.macOS and HarfBuzzSharp.NativeAssets.macOS", ""
+        elif Runtime.InteropServices.RuntimeInformation.IsOSPlatform Runtime.InteropServices.OSPlatform.Windows then
+            "SkiaSharp.NativeAssets.Win32 and HarfBuzzSharp.NativeAssets.Win32", ""
+        else
+            "the SkiaSharp.NativeAssets and HarfBuzzSharp.NativeAssets package for this platform", ""
+
+    /// Is this exception, or anything it wraps, a failure to load a native library?
+    ///
+    /// The chain matters. A static initialiser that touches Skia surfaces the real cause as the
+    /// `InnerException` of a `TypeInitializationException`, and a test that only looked at the
+    /// outer type would miss the most common shape of this failure entirely.
+    let rec private isNativeLoad (e: exn) =
+        match e with
+        | :? DllNotFoundException
+        | :? EntryPointNotFoundException
+        | :? BadImageFormatException -> true
+        | null -> false
+        | _ -> not (isNull e.InnerException) && isNativeLoad e.InnerException
+
+    /// A message naming the package to install, for a native-loading failure — and `None` for
+    /// anything else, so an ordinary bug is never dressed up as a missing dependency.
+    let tryDiagnose (e: exn) : string option =
+        if isNativeLoad e then
+            let packages, extra = packagesFor ()
+
+            Some(
+                sprintf
+                    "Marey.Backend.Skia: the native SkiaSharp or HarfBuzz library could not be loaded. Add a PackageReference to %s.%s (The underlying error was: %s)"
+                    packages
+                    extra
+                    (e.GetBaseException().Message)
+            )
+        else
+            None
+
+    /// Run something that touches the native libraries, translating a loading failure into a
+    /// message that names the fix.
+    ///
+    /// Wrapped at the points where a native library is *first* touched — `Begin`, `Finish`,
+    /// `Result`, and opening a face — rather than around every call, because once `Begin` has
+    /// produced a surface the library is loaded and a closure per `Draw` would be an allocation
+    /// on the hot path for a failure that can no longer happen.
+    let guard (body: unit -> 'a) : 'a =
+        try
+            body ()
+        with e ->
+            match tryDiagnose e with
+            | Some message -> raise (PlatformNotSupportedException(message, e))
+            | None -> reraise ()
+
 /// What a font family stack resolved to on this machine. D62's "and report it" half.
 ///
 /// One of these exists for every distinct `(family, weight, italic)` a render actually asked
@@ -172,19 +250,23 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>) =
     /// regular face, because that is the file they named. Synthesising a bold from it would put
     /// a face in the figure that is not the one on disk, and silently so.
     let resolve (family: string) (weight: int) (italic: bool) =
-        let tf, face =
-            match stated with
-            | Some tf ->
-                tf,
-                { Requested = family
-                  Weight = weight
-                  Italic = italic
-                  Matched = None
-                  Family = tf.FamilyName
-                  File = fontFile }
-            | None -> resolveStack family weight italic
+        // Gate 8: opening a face is where `libSkiaSharp` is first touched by a measurer, and
+        // `new SKShaper` is where `libHarfBuzzSharp` is. Both happen once per face, so the
+        // guard costs one closure per distinct font in the scene.
+        SkiaNative.guard (fun () ->
+            let tf, face =
+                match stated with
+                | Some tf ->
+                    tf,
+                    { Requested = family
+                      Weight = weight
+                      Italic = italic
+                      Matched = None
+                      Family = tf.FamilyName
+                      File = fontFile }
+                | None -> resolveStack family weight italic
 
-        tf, new SKShaper(tf), face
+            tf, new SKShaper(tf), face)
 
     let faceOf (spec: FontSpec) =
         let key = struct (spec.Family, spec.Weight, spec.Italic)

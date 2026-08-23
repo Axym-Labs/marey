@@ -314,6 +314,77 @@ module ``the traversal agrees with the reference backend`` =
             Assert.True(topLeft > 254.0, sprintf "unexpected ink in the top-left quadrant (mean %.1f)" topLeft)
             Assert.True(bottomRight > 254.0, sprintf "unexpected ink in the bottom-right quadrant (mean %.1f)" bottomRight))
 
+    /// **Gate 1's absolute half, one vertex at a time.**
+    ///
+    /// The quadrant test above catches a flip. It does not catch a scale that is off by a few
+    /// per cent, or a half-pixel offset, or an anisotropy applied to the wrong axis — all of
+    /// which leave a rising line rising. A raster has no coordinates to compare, so the
+    /// comparison is made the other way round: take the nd vertex, push it through
+    /// `RootTransform` — the same matrix the SVG backend builds, asserted equal to it above —
+    /// and look at that pixel.
+    ///
+    /// This is as close to M1's gate 2 as a bitmap allows, and it is an *absolute* claim rather
+    /// than a cross-backend one: it fails if Skia and Core disagree, whatever SVG does.
+    [<Fact>]
+    let ``ink lands on the pixel the root transform names`` () =
+        withSkia (fun () ->
+            // An asymmetric zig-zag: every vertex is at a different fraction of both axes, so
+            // no swap of the two axes and no reflection leaves the set of points unchanged.
+            let vertices =
+                [| at 0.10 0.20; at 0.35 0.80; at 0.55 0.30; at 0.90 0.65 |]
+
+            let scene = Scene.polyline (Stroke.solid ink 3.0<px>) vertices
+            let png = SkiaBackend.renderPng surface scene
+            let gray = SkiaPixels.decode png
+
+            use backend = new SkiaBackend()
+            (backend :> IBackend).Begin surface
+            let root = backend.RootTransform
+
+            /// The darkest pixel within a small window, because a 3 px antialiased stroke does
+            /// not put its centre exactly on an integer pixel and demanding that it does would
+            /// be testing Skia's rasteriser rather than this traversal.
+            let darkestNear (x: int) (y: int) =
+                let mutable best = 255
+
+                for dy in -2 .. 2 do
+                    for dx in -2 .. 2 do
+                        let px = x + dx
+                        let py = y + dy
+
+                        if px >= 0 && py >= 0 && px < gray.Width && py < gray.Height then
+                            best <- min best (int gray.Pixels.[py * gray.Width + px])
+
+                best
+
+            for v in vertices do
+                let p = Affine.apply root v
+                let x = int (round (float p.X))
+                let y = int (round (float p.Y))
+
+                Assert.True(
+                    darkestNear x y < Raster.InkThreshold,
+                    sprintf
+                        "nd (%.2f, %.2f) maps to device (%d, %d) and there is no ink there -- the traversal and the root transform disagree"
+                        (float v.X)
+                        (float v.Y)
+                        x
+                        y
+                )
+
+            // The negative half. The zig-zag's vertices are inked; the point reflected through
+            // the centre of the surface is not, for any of them — which is what a flipped or
+            // transposed traversal would have produced instead.
+            for v in vertices do
+                let p = Affine.apply root v
+                let x = int (round (float surface.Width - float p.X))
+                let y = int (round (float surface.Height - float p.Y))
+
+                Assert.True(
+                    darkestNear x y >= Raster.InkThreshold,
+                    sprintf "there is ink at the point-reflection of nd (%.2f, %.2f), which a correct traversal never draws" (float v.X) (float v.Y)
+                ))
+
 // ======================================================================================
 // GATE 5 — ink, and every scene in the corpus
 // ======================================================================================
@@ -370,6 +441,35 @@ module ``ink`` =
             // a drawn panel with no furniture.
             Assert.True(SkiaPixels.meanIn gray 0.0 0.0 0.14 0.85 < 254.0, "no ink in the left margin")
             Assert.True(SkiaPixels.meanIn gray 0.25 0.10 0.95 0.75 < 254.0, "no ink in the panel"))
+
+    /// **Gate 5's second half: the right way up.**
+    ///
+    /// Orientation is the one property no coordinate test can reach. Cross-backend agreement is
+    /// satisfied by a flip applied wrongly to *both* sides, and `coverage` cannot see it either
+    /// — a flipped image has ink in the same box and the same amount of it, with only the light
+    /// and dark halves exchanged. So the fixture's top row is bright and its bottom row dark,
+    /// and the halves are compared by mean level rather than by coverage.
+    ///
+    /// The same claim D64 makes for the TikZ sidecar and phase 4 makes for the PDF page, made
+    /// here against the PNG directly. Three containers, one flip, three chances to get it
+    /// wrong independently.
+    [<Fact>]
+    let ``a placed image is the right way up`` () =
+        withSkia (fun () ->
+            let png =
+                Chart.render SkiaBackend.renderPng Golden.figureSurface Golden.imageFigure
+
+            let gray = SkiaPixels.decode png
+
+            // Inside the panel and clear of the axis lines. y runs downward in the image, so
+            // "upper" is the fixture's bright row.
+            let upper = SkiaPixels.meanIn gray 0.25 0.30 0.85 0.45
+            let lower = SkiaPixels.meanIn gray 0.25 0.60 0.85 0.75
+
+            Assert.True(
+                upper > lower + 20.0,
+                sprintf "the image is upside down or missing: upper mean %.1f, lower mean %.1f" upper lower
+            ))
 
 // ======================================================================================
 // The capability set, and what it costs
@@ -432,6 +532,110 @@ module ``capabilities`` =
 
             // Degrading removed the wrapper, so the two scenes draw the same pixels.
             Assert.Equal<byte[]>(SkiaBackend.renderPng surface annotated, SkiaBackend.renderPng surface bare))
+
+
+// ======================================================================================
+// GATE 8 — A MISSING NATIVE ASSET FAILS LOUDLY
+//
+// **What can and cannot be tested here, stated rather than implied.** A process that has
+// already loaded `libSkiaSharp` cannot un-load it, so no test in this suite can make the real
+// failure happen. What *can* be tested is the whole of the machinery that turns it into a
+// sentence: which exception shapes are recognised, which are deliberately not, and what the
+// message says. `guard` takes a thunk precisely so that half is reachable — the placement of
+// the calls is verified by reading, and §5 of the M2.5 plan says so.
+//
+// The negative case is the one that keeps this honest. A gate that translated *every* exception
+// into "install SkiaSharp.NativeAssets" would pass every positive test here and mislead every
+// reader of a real stack trace.
+// ======================================================================================
+
+module ``the native asset gate`` =
+
+    open System
+
+    /// The shape a missing native library actually arrives in.
+    let private missing () =
+        DllNotFoundException "Unable to load shared library 'libSkiaSharp' or one of its dependencies."
+
+    /// And the shape it arrives in when the first touch is inside a static initialiser, which
+    /// is the *common* case: the real cause is two levels down.
+    let private missingNested () =
+        TypeInitializationException("SkiaSharp.SKSurface", missing ()) :> exn
+
+    [<Fact>]
+    let ``a missing native library is diagnosed, however deeply it is wrapped`` () =
+        for e in [ missing () :> exn; missingNested (); InvalidOperationException("render failed", missingNested ()) :> exn ] do
+            match SkiaNative.tryDiagnose e with
+            | None -> failwithf "a %s wrapping a DllNotFoundException was not recognised" (e.GetType().Name)
+            | Some message ->
+                // The message has to name a package, not a file. `libSkiaSharp` is not
+                // something anyone can install; `SkiaSharp.NativeAssets.Linux` is.
+                Assert.Contains("SkiaSharp.NativeAssets", message)
+                Assert.Contains("HarfBuzzSharp.NativeAssets", message)
+
+                // Two native libraries on two version lines, so naming only the first would
+                // send a reader to add a package and hit the same wall one frame later.
+                Assert.Contains("PackageReference", message)
+
+                // And it keeps the original text, because the package name is the fix and the
+                // loader's own message is the evidence.
+                Assert.Contains("libSkiaSharp", message)
+
+    [<Fact>]
+    let ``the package named is the one for this platform`` () =
+        match SkiaNative.tryDiagnose (missing ()) with
+        | None -> failwith "the diagnosis did not fire"
+        | Some message ->
+            let expected =
+                if Runtime.InteropServices.RuntimeInformation.IsOSPlatform Runtime.InteropServices.OSPlatform.Linux then
+                    "SkiaSharp.NativeAssets.Linux"
+                elif Runtime.InteropServices.RuntimeInformation.IsOSPlatform Runtime.InteropServices.OSPlatform.OSX then
+                    "SkiaSharp.NativeAssets.macOS"
+                else
+                    "SkiaSharp.NativeAssets.Win32"
+
+            Assert.Contains(expected, message)
+
+    /// **The half that stops the gate being a liar.**
+    [<Fact>]
+    let ``an ordinary bug is not dressed up as a missing dependency`` () =
+        for e in
+            [ InvalidOperationException "Begin must be called before Draw" :> exn
+              ArgumentException "bad extent" :> exn
+              NullReferenceException() :> exn
+              Exception("outer", InvalidOperationException "inner") ] do
+            Assert.True(
+                (SkiaNative.tryDiagnose e).IsNone,
+                sprintf "a %s was misreported as a missing native library" (e.GetType().Name)
+            )
+
+    [<Fact>]
+    let ``guard translates a native failure and leaves everything else alone`` () =
+        let translated =
+            Assert.Throws<PlatformNotSupportedException>(fun () -> SkiaNative.guard (fun () -> raise (missingNested ())) |> ignore)
+
+        Assert.Contains("SkiaSharp.NativeAssets", translated.Message)
+
+        // The original is kept as the inner exception, so a stack trace still leads to the
+        // frame that failed rather than to this translation.
+        Assert.NotNull translated.InnerException
+
+        // Anything else passes through with its own type, which is what makes the rest of the
+        // backend's `invalidOp` messages still mean what they say.
+        Assert.Throws<InvalidOperationException>(fun () -> SkiaNative.guard (fun () -> invalidOp "not a native problem") |> ignore)
+        |> ignore
+
+        // And the success path returns the value rather than swallowing it.
+        Assert.Equal(7, SkiaNative.guard (fun () -> 7))
+
+    /// The guard is on the entry points, so the entry points still work when the library *is*
+    /// present. Trivial, and it is the thing that would break if `guard` were ever written to
+    /// catch and return a default instead of rethrowing.
+    [<Fact>]
+    let ``the guarded entry points still render`` () =
+        withSkia (fun () ->
+            Assert.NotEmpty(Chart.render SkiaBackend.renderPng surface (figure ()))
+            Assert.NotEmpty(Chart.render SkiaBackend.renderPdf surface (figure ())))
 
 // ======================================================================================
 // GATE 6 — the zero-dependency rule
