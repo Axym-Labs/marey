@@ -395,11 +395,19 @@ module ``capabilities`` =
         Assert.True caps.RotatedText
         Assert.True caps.MaxBatch.IsNone
 
-    /// Phase 3 flips this, and this assertion is the thing that will fail when it does — which
-    /// is the point. Advertising shaping before the shaper is wired in would be a lie in the
-    /// one place the flag exists to tell the truth.
+    /// **Inverted in phase 3, and it was written to be.** The previous version of this test was
+    /// `text shaping is not yet advertised`, asserting `False`, with a comment saying that
+    /// flipping the flag is what would make it fail. It failed, on the commit that wired
+    /// `SkiaTextMeasurer` in, which is the only kind of notice a capability flag deserves.
+    ///
+    /// This is the first `true` for `TextShaping` in the project. The flag has three readers
+    /// and they are all assertions; nothing branches on it, because there is no degradation to
+    /// perform — see the comment on `Caps` in `SkiaBackend.fs`.
     [<Fact>]
-    let ``text shaping is not yet advertised`` () = Assert.False caps.TextShaping
+    let ``text shaping is advertised, and this backend is the first to advertise it`` () =
+        Assert.True caps.TextShaping
+        Assert.False (SvgBackend() :> IBackend).Caps.TextShaping
+        Assert.False (TikzBackend() :> IBackend).Caps.TextShaping
 
     /// D31's trap, in the backend that has the most to lose from it. `Chart.render` and
     /// `Chart.toFileBytes` do not degrade — only `Chart.renderTo` does — so `renderPng` has to
@@ -506,3 +514,417 @@ module ``the zero-dependency rule`` =
                 && n <> "mscorlib")
 
         Assert.True(unexpected.Length = 0, "Marey.Core references " + String.concat ", " unexpected)
+
+// ======================================================================================
+// GATE 2 — SHAPING ACTUALLY CHANGES THE LAYOUT, AND THE AMOUNT IS WRITTEN DOWN
+//
+// The M2.5 plan states the gate and states what its *failure* would mean: "If this gate fails
+// — if the numbers agree — then either the shaper is not being used or the approximation was
+// already exact, and both are worth knowing before the milestone claims anything."
+//
+// It half-fails, in the interesting direction, and that is the finding of this phase. The
+// approximation is **exact** against the unshaped face — 48.012 against 48.0117 for Arial 12 px
+// "AVATAR" — because `ApproxTextMeasurer`'s table is Helvetica's and Arial is metric-compatible
+// with Helvetica. So every bit of the 7.3% difference is kerning, and none of it is a
+// coincidentally-cancelling pair of errors in the advance table. That attribution is what the
+// first two tests below establish, and it is a stronger claim than "the numbers differ".
+//
+// D62's stated face is what makes the numbers reproducible: `tests/Marey.Tests/fonts/` carries
+// Liberation Sans, which is metric-compatible with Arial to the last digit measured here. See
+// that directory's README for why a binary is in the source tree.
+// ======================================================================================
+
+module ``text shaping`` =
+
+    open SkiaSharp
+
+    /// D62's stated face, found the way the baselines are found.
+    let private fontFile =
+        lazy (System.IO.Path.Combine(Golden.projectDir.Force(), "fonts", "LiberationSans-Regular.ttf"))
+
+    /// 9 pt is 12 px at the screen dpi both measurers default to, and 12 px is the size every
+    /// number in this file and in the decision log was measured at.
+    let private spec: FontSpec =
+        { Family = "Liberation Sans"
+          Size = 9.0<pt>
+          Weight = 400
+          Italic = false }
+
+    /// The string the plan picked, and it earns its place: `AV`, `VA`, `TA` and `AT` are four of
+    /// the five kerning pairs any Latin face has, so the effect is large enough to survive
+    /// rounding and small enough to be believable.
+    [<Literal>]
+    let private Kerned = "AVATAR"
+
+    /// Digits are the control. A face that kerned these would be a broken face, so this string
+    /// is where the shaped and approximated numbers *should* agree — and if it disagreed by as
+    /// much as `AVATAR` does, the difference would be an advance-table error rather than
+    /// kerning and every claim in this section would be about the wrong thing.
+    [<Literal>]
+    let private Unkerned = "0123456789"
+
+    [<Fact>]
+    let ``the approximation is exact against the unshaped face, so the difference is kerning alone`` () =
+        withSkia (fun () ->
+            use tf = SKTypeface.FromFile(fontFile.Force())
+            Assert.False(isNull tf, "the stated face did not open")
+            use font = new SKFont(tf, 12.0f)
+
+            let approximated = float (TextMeasure.approx.Measure spec Kerned).Advance
+            let unshaped = float (font.MeasureText Kerned)
+
+            // 48.012 against 48.0117. `ApproxTextMeasurer`'s table is Helvetica's, Arial is
+            // metric-compatible with Helvetica, and Liberation Sans is metric-compatible with
+            // Arial — so this holds by construction rather than by luck, and the tolerance is
+            // the table's own rounding to 1/1000 em.
+            Assert.Equal(unshaped, approximated, 2)
+
+            // Which is the whole point: the approximation has no error left to hide kerning in.
+            Assert.True(
+                abs (unshaped - approximated) < 0.01,
+                sprintf
+                    "the advance tables disagree by %.4f px, so a shaped-vs-approximated difference could not be attributed to kerning"
+                    (abs (unshaped - approximated))
+            ))
+
+    [<Fact>]
+    let ``a kerned string measures shorter shaped than approximated, by 7.3 per cent`` () =
+        withSkia (fun () ->
+            use skia = new SkiaTextMeasurer(fontFile = fontFile.Force())
+            let shaped = float ((skia :> ITextMeasurer).Measure spec Kerned).Advance
+            let approximated = float (TextMeasure.approx.Measure spec Kerned).Advance
+
+            // The numbers, stated rather than described: 44.5078 shaped against 48.012
+            // approximated, 3.504 px and 7.30% at 12 px.
+            Assert.Equal(44.5078, shaped, 3)
+            Assert.Equal(48.012, approximated, 3)
+
+            let ratio = (approximated - shaped) / approximated
+
+            Assert.True(
+                ratio > 0.05 && ratio < 0.10,
+                sprintf "expected a kerning difference near 7.3%%, got %.2f%% (shaped %.4f, approximated %.4f)" (ratio * 100.0) shaped approximated
+            ))
+
+    [<Fact>]
+    let ``a string with nothing to kern measures the same either way`` () =
+        withSkia (fun () ->
+            use skia = new SkiaTextMeasurer(fontFile = fontFile.Force())
+            let shaped = float ((skia :> ITextMeasurer).Measure spec Unkerned).Advance
+            let approximated = float (TextMeasure.approx.Measure spec Unkerned).Advance
+            let ratio = abs (approximated - shaped) / approximated
+
+            Assert.True(
+                ratio < 0.005,
+                sprintf
+                    "the digits disagree by %.2f%% (shaped %.4f, approximated %.4f) -- a difference here is an advance-table error, not kerning"
+                    (ratio * 100.0)
+                    shaped
+                    approximated
+            ))
+
+    /// **The vertical half, and it is the larger one.**
+    ///
+    /// `ApproxTextMeasurer` reports Helvetica's own ascent and descent as fractions of the em —
+    /// 0.718 and 0.207. A real face reports its `hhea` metrics, which include room for accents
+    /// and internal leading, and Liberation Sans's come to 0.905 and 0.212 of the em. So the
+    /// *height* of a laid-out string changes by more than its width does, and that is what
+    /// actually moves a panel rectangle: gutters are sized by label heights at least as much as
+    /// by label widths.
+    ///
+    /// Neither number is wrong. They answer different questions — "how tall is Helvetica's
+    /// caps-and-descenders band" and "how much vertical room does this face reserve" — and the
+    /// second is the one a renderer that owns the glyphs can actually answer.
+    [<Fact>]
+    let ``a real face reserves more vertical room than the approximation estimates`` () =
+        withSkia (fun () ->
+            use skia = new SkiaTextMeasurer(fontFile = fontFile.Force())
+            let shaped = (skia :> ITextMeasurer).Measure spec Kerned
+            let approximated = TextMeasure.approx.Measure spec Kerned
+
+            Assert.True(
+                float shaped.Ascent > float approximated.Ascent,
+                sprintf "shaped ascent %.4f is not greater than the approximated %.4f" (float shaped.Ascent) (float approximated.Ascent)
+            )
+
+            // 10.863 against 8.616 at 12 px, and 2.543 against 2.484.
+            Assert.Equal(10.8633, float shaped.Ascent, 3)
+            Assert.Equal(2.543, float shaped.Descent, 3))
+
+
+    /// **A glyph the face does not have is `.notdef`, and there is no fallback.** Recorded as a
+    /// test rather than as a comment, because it is a real regression in one narrow place.
+    ///
+    /// `SKShaper` shapes against **one** typeface. A codepoint outside it becomes glyph 0 and
+    /// measures as the missing-glyph box — 9.0 px at 12 px in Liberation Sans — where the SVG
+    /// backend would have handed the string to a viewer that walks the whole font stack, and
+    /// `ApproxTextMeasurer` would have guessed 6.7 px from its fallback width. All three are
+    /// different and only the browser's is right.
+    ///
+    /// It does not reach the unit system: every symbol the `U` module produces — `·`, `²`,
+    /// `⁻¹`, `Ω`, `µ`, `Å` — is in any Latin face, and the probe that measured this checked
+    /// them. It reaches a CJK axis title, which is M3's problem and wants a font-fallback list
+    /// rather than a single face.
+    [<Fact>]
+    let ``a codepoint the face lacks measures as the missing-glyph box`` () =
+        withSkia (fun () ->
+            use skia = new SkiaTextMeasurer(fontFile = fontFile.Force())
+            let m = skia :> ITextMeasurer
+
+            // In the face: the unit system's whole alphabet, and none of it degenerate.
+            for symbol in [ "µm"; "Ω"; "m·s⁻¹"; "Å" ] do
+                let shaped = float (m.Measure spec symbol).Advance
+                let approximated = float (TextMeasure.approx.Measure spec symbol).Advance
+
+                Assert.True(
+                    abs (shaped - approximated) / approximated < 0.25,
+                    sprintf "'%s' measured %.4f shaped against %.4f approximated -- a unit symbol should not be a missing glyph" symbol shaped approximated
+                )
+
+            // Not in the face, and it shows: one `.notdef` box, not a fallback face's glyph.
+            let cjk = float (m.Measure spec "中").Advance
+            Assert.Equal(9.0, cjk, 3))
+
+    /// The nd bounding box of the longest polyline in a scene.
+    ///
+    /// **This is the panel rectangle, observed through what is drawn in it.** The data curve
+    /// spans the plot area by construction — `Scale.linear` maps the domain onto the panel's
+    /// full width and height — so its extent in nd *is* the panel, and reading it from the
+    /// scene asks the question the way a reader of the picture would. `Figure.arrangement`
+    /// cannot be used: it reports the *outer* grid, whose only cell is `panel-0-0`, and the
+    /// plot rectangle is chosen inside `Figure.compilePanel`, which is private.
+    let private curveBounds (scene: Node) =
+        let mutable x0, y0, x1, y1 = infinity, infinity, -infinity, -infinity
+        let mutable best = 0
+
+        // **The transform has to be threaded, not ignored.** D15/D30: a panel's geometry is
+        // authored in panel-local nd and placed by a `Transform` node, so the raw coordinates
+        // on the curve are the *domain padding* — 0.0455 to 0.9545 whatever the layout does —
+        // and reading them without composing the transform measures the padding constant
+        // instead of the panel. That was the first spelling of this helper and it reported the
+        // same box under both measurers, which is exactly the false pass a gate must not give.
+        let rec walk (ctm: Affine<nd, nd>) node =
+            match node with
+            | Path(segs, _, _, _) when segs.Length > best ->
+                best <- segs.Length
+                x0 <- infinity
+                y0 <- infinity
+                x1 <- -infinity
+                y1 <- -infinity
+
+                let take (p: Vec2<nd>) =
+                    let q = Affine.apply ctm p
+                    x0 <- min x0 (float q.X)
+                    y0 <- min y0 (float q.Y)
+                    x1 <- max x1 (float q.X)
+                    y1 <- max y1 (float q.Y)
+
+                for seg in segs do
+                    match seg with
+                    | MoveTo p
+                    | LineTo p -> take p
+                    | CubicTo(_, _, p) -> take p
+                    | ClosePath -> ()
+            | Path _
+            | Text _
+            | Markers _
+            | Raster _ -> ()
+            | Group ns -> Array.iter (walk ctm) ns
+            | Transform(a, c) -> walk (Affine.compose a ctm) c
+            | Clip(_, c)
+            | Keyed(_, c)
+            | Annotated(_, c) -> walk ctm c
+
+        walk Affine.identity scene
+        x0, y0, x1, y1
+
+    /// **Gate 2's second half: the difference reaches the layout.**
+    ///
+    /// A measurement that changed and a layout that did not would mean the seam is decorative,
+    /// which is precisely what M0's comment on `ITextMeasurer` promised it was not: "having one
+    /// seam here is what makes it possible to start with an approximation and swap in HarfBuzz
+    /// at M2 without touching the layout code." Not one line of `Layout.fs` or `Figure.fs`
+    /// changed this milestone, and the panel rectangle moved anyway.
+    [<Fact>]
+    let ``the difference reaches the panel rectangle`` () =
+        withSkia (fun () ->
+            use skia = new SkiaTextMeasurer(fontFile = fontFile.Force())
+            let fig = figure ()
+
+            let ax0, ay0, ax1, ay1 = curveBounds (Chart.toSceneWith TextMeasure.approx surface fig)
+            let sx0, sy0, sx1, sy1 = curveBounds (Chart.toSceneWith (skia :> ITextMeasurer) surface fig)
+
+            let show (a, b, c, d) = sprintf "(%.4f, %.4f)-(%.4f, %.4f)" a b c d
+
+            // Both edges the gutters control, so the claim is not satisfied by one of them
+            // moving: the left edge is driven by the y tick labels' *advances* and the top edge
+            // by the title's and x labels' *heights*, and shaping changes both.
+            Assert.True(
+                abs (ax0 - sx0) > 1e-6,
+                sprintf "the panel's left edge did not move: approx %s -- shaped %s" (show (ax0, ay0, ax1, ay1)) (show (sx0, sy0, sx1, sy1))
+            )
+
+            Assert.True(
+                abs (ay1 - sy1) > 1e-6,
+                sprintf "the panel's top edge did not move: approx %s -- shaped %s" (show (ax0, ay0, ax1, ay1)) (show (sx0, sy0, sx1, sy1))
+            )
+
+            // And the panel is still a sane rectangle inside the unit square, because "it
+            // moved" is also satisfied by a layout that collapsed.
+            Assert.InRange(sx0, 0.0, 1.0)
+            Assert.InRange(sy1, 0.0, 1.0)
+            Assert.True(sx1 > sx0)
+            Assert.True(sy1 > sy0)
+
+            System.Console.WriteLine(
+                sprintf "panel in nd: approx %s -- shaped %s" (show (ax0, ay0, ax1, ay1)) (show (sx0, sy0, sx1, sy1))
+            ))
+
+    /// D8's claim, from M0: `Chart.renderTo` lays out against the backend's own measurer, "so
+    /// nothing needs to change when SkiaSharp arrives at M2". Never tested, because until now
+    /// every backend had the same measurer. This is the test.
+    [<Fact>]
+    let ``renderTo lays out against the backend's own measurer, unchanged`` () =
+        withSkia (fun () ->
+            let options =
+                { SkiaOptions.Default with
+                    FontFile = Some(fontFile.Force()) }
+
+            use backend = new SkiaBackend(options)
+            Chart.renderTo backend surface (figure ())
+
+            // Not one line of `Chart.renderTo` changed this milestone. What changed is which
+            // measurer it picks up, and the proof is that the scene it laid out is the shaped
+            // one rather than the approximated one.
+            let ax0, _, _, _ =
+                curveBounds (Chart.toSceneWith TextMeasure.approx surface (figure ()))
+
+            let sx0, _, _, _ =
+                curveBounds (Chart.toSceneWith backend.TextMeasurer surface (figure ()))
+
+            Assert.True(abs (ax0 - sx0) > 1e-6)
+            Assert.True(backend.Result.Length > 0))
+
+// ======================================================================================
+// D62 — THE FONT IS RESOLVED AND REPORTED, OR STATED AND OBEYED
+// ======================================================================================
+
+module ``the resolved face`` =
+
+    let private fontFile =
+        lazy (System.IO.Path.Combine(Golden.projectDir.Force(), "fonts", "LiberationSans-Regular.ttf"))
+
+    let private sans: FontSpec =
+        { Family = Theme.Sans
+          Size = 9.0<pt>
+          Weight = 400
+          Italic = false }
+
+    [<Fact>]
+    let ``a stated file is the face that is used, and it says so`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer(fontFile = fontFile.Force())
+            let face = m.Face sans
+
+            // The theme asked for a seven-entry CSS stack and got none of it, because a stated
+            // file overrides resolution entirely. `Matched = None` and `File = Some` together
+            // are how a reader tells that apart from "the stack fell through".
+            Assert.Equal("Liberation Sans", face.Family)
+            Assert.Equal<string option>(Some(fontFile.Force()), face.File)
+            Assert.Equal<string option>(None, face.Matched)
+            Assert.Equal(Theme.Sans, face.Requested))
+
+    [<Fact>]
+    let ``a stack that matches nothing falls through to a real face and admits it`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer()
+
+            let face =
+                m.Face
+                    { sans with
+                        Family = "Marey No Such Face, Also Not This One" }
+
+            // The fall-through must still produce something drawable — a null typeface here is
+            // a blank figure, which is D33's failure mode.
+            Assert.False(System.String.IsNullOrEmpty face.Family)
+            Assert.Equal<string option>(None, face.Matched)
+            Assert.Equal<string option>(None, face.File))
+
+    /// Machine-dependent by nature, so the assertion is the *invariant* rather than the answer:
+    /// whatever matched must be a name that was actually asked for, and must be the family that
+    /// was actually opened. On a machine with none of the stack installed both are `None`, and
+    /// that is a pass — CI runs on a different font set from the author's laptop and this gate
+    /// has to mean the same thing on both.
+    [<Fact>]
+    let ``a resolved stack reports an entry it was actually asked for`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer()
+            let face = m.Face sans
+
+            match face.Matched with
+            | None -> Assert.False(System.String.IsNullOrEmpty face.Family)
+            | Some name ->
+                Assert.Contains(name, Theme.Sans)
+                Assert.Equal(name.ToLowerInvariant(), face.Family.ToLowerInvariant()))
+
+    [<Fact>]
+    let ``the backend reports every face the scene asked for, and nothing it did not`` () =
+        withSkia (fun () ->
+            let options =
+                { SkiaOptions.Default with
+                    FontFile = Some(fontFile.Force()) }
+
+            use backend = new SkiaBackend(options)
+
+            // Lazy resolution: nothing has been measured, so nothing has been opened.
+            Assert.Empty backend.ResolvedFaces
+
+            Chart.renderTo backend surface (figure ())
+
+            Assert.NotEmpty backend.ResolvedFaces
+
+            for face in backend.ResolvedFaces do
+                Assert.Equal<string option>(Some(fontFile.Force()), face.File)
+                Assert.Equal("Liberation Sans", face.Family))
+
+    [<Fact>]
+    let ``a font file that is not there fails at construction, naming the path`` () =
+        withSkia (fun () ->
+            let missing =
+                System.IO.Path.Combine(System.IO.Path.GetTempPath(), "marey-no-such-font.ttf")
+
+            let e =
+                Assert.Throws<System.ArgumentException>(fun () -> (new SkiaTextMeasurer(fontFile = missing)) |> ignore)
+
+            // Gate 8's shape, applied to a font: a message that names what is wrong beats a
+            // null dereference on the first tick label three frames down.
+            Assert.Contains(missing, e.Message))
+
+    /// The measurer owns native handles and hands them out without ownership, so using one after
+    /// disposal is a use-after-free waiting to happen. It throws instead.
+    [<Fact>]
+    let ``a disposed measurer refuses to measure`` () =
+        withSkia (fun () ->
+            let m = new SkiaTextMeasurer(fontFile = fontFile.Force())
+            (m :> ITextMeasurer).Measure sans "x" |> ignore
+            (m :> System.IDisposable).Dispose()
+
+            Assert.Throws<System.ObjectDisposedException>(fun () -> (m :> ITextMeasurer).Measure sans "x" |> ignore)
+            |> ignore)
+
+    /// A stated face is the only way two machines produce the same pixels, so the property has
+    /// to hold across *instances* rather than within one — a cache that returned the same bytes
+    /// because it never re-rendered would satisfy a weaker test.
+    [<Fact>]
+    let ``a stated face renders the same bytes from two separate backends`` () =
+        withSkia (fun () ->
+            let options =
+                { SkiaOptions.Default with
+                    FontFile = Some(fontFile.Force()) }
+
+            let once () =
+                use backend = new SkiaBackend(options)
+                Chart.renderTo backend surface (figure ())
+                backend.Result
+
+            Assert.Equal<byte[]>(once (), once ()))

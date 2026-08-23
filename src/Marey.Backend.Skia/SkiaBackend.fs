@@ -2,6 +2,7 @@ namespace Marey
 
 open System
 open SkiaSharp
+open SkiaSharp.HarfBuzz
 
 // ======================================================================================
 // §6 / §14 — THE RASTER BACKEND.
@@ -45,11 +46,12 @@ open SkiaSharp
 //   not one. So this backend is covered by structure, determinism and *ink* rather than by
 //   baselines, which is the argument `tests/Marey.Tests/Raster.fs` already makes at length for
 //   the TikZ compile gate.
-// * **Its measurer will not be the others'.** Not yet: this phase still lays out against
-//   `ApproxTextMeasurer`, so that the traversal can be checked against the SVG backend
-//   coordinate-for-coordinate before shaping is allowed to move anything. The shaper arrives
-//   next, behind `TextShaping`, and moving the panel rectangle is then a *result* rather than
-//   a regression.
+// * **Its measurer is not the others'.** `SkiaTextMeasurer` shapes with HarfBuzz, so a figure
+//   laid out through `Chart.renderTo` against this backend has *different gutters* from the
+//   same figure through the SVG backend. That is a result rather than a regression and it is
+//   the milestone's headline — but it is also why the cross-backend oracle below compares
+//   scenes under a **stated** measurer (D61) rather than comparing whatever each backend
+//   happens to lay out against.
 // ======================================================================================
 
 /// Options for a Skia render. One record rather than a widening constructor, matching
@@ -69,7 +71,14 @@ type SkiaOptions =
       Background: Color
       /// Antialiasing. On, because the alternative is a chart whose hairlines disappear at
       /// sub-pixel widths, and `Stroke.Width` is in px precisely so that hairlines exist.
-      Antialias: bool }
+      Antialias: bool
+      /// A font file to use for **every** run, in place of resolving the theme's family stack
+      /// against the machine. D62's reproducibility answer.
+      ///
+      /// `None` resolves the stack and reports what it got on `SkiaBackend.ResolvedFaces`,
+      /// which is what a user wants; `Some` is what a golden, a regression test or a paper
+      /// figure wants, because it is the only way two machines produce the same pixels.
+      FontFile: string option }
 
 [<RequireQualifiedAccess>]
 module SkiaOptions =
@@ -77,7 +86,8 @@ module SkiaOptions =
     let Default =
         { Dpi = Space.screenDpi
           Background = Color.white
-          Antialias = true }
+          Antialias = true
+          FontFile = None }
 
 /// The raster backend. Renders a `Node` to PNG bytes.
 ///
@@ -93,7 +103,11 @@ type SkiaBackend(?options: SkiaOptions) =
 
     let opts = defaultArg options SkiaOptions.Default
 
-    let measurer = ApproxTextMeasurer(opts.Dpi) :> ITextMeasurer
+    // **The measurer, and the same one the traversal draws with.** `Shaping` hands back the
+    // cached `SKFont` and `SKShaper` behind a `FontSpec`, so `drawText` centres a run against
+    // the width layout sized the gutter with, rather than against a second opinion.
+    let shaping = new SkiaTextMeasurer(?fontFile = opts.FontFile, dpi = opts.Dpi)
+    let measurer = shaping :> ITextMeasurer
 
     let mutable started = false
     let mutable finished = false
@@ -364,48 +378,6 @@ type SkiaBackend(?options: SkiaOptions) =
 
         ox, oy
 
-    /// The typeface for a run.
-    ///
-    /// `FontSpec.Family` is a **CSS stack** — `Theme.Sans` is "Inter, -apple-system, ..." — and
-    /// Skia takes one family name. The stack is therefore walked in order and the first name
-    /// that resolves wins, which is what a browser does with the same string and what makes an
-    /// SVG and a PNG of one figure pick the same face where both are installed.
-    ///
-    /// Falling through the whole stack lands on Skia's default, which is a real face rather
-    /// than nothing. **Which face was chosen is not reported here**, and that is the open half
-    /// of D62: a PNG whose glyph widths depend on the renderer's font cache is not reproducible
-    /// across machines. Phase 3 owns it.
-    let typefaceFor (family: string) (weight: int) (italic: bool) =
-        let skWeight: SKFontStyleWeight = enum weight
-        let skSlant = if italic then SKFontStyleSlant.Italic else SKFontStyleSlant.Upright
-
-        let names =
-            if String.IsNullOrWhiteSpace family then
-                [||]
-            else
-                family.Split ','
-                |> Array.map (fun s -> s.Trim().Trim('\'').Trim('"'))
-                |> Array.filter (fun s -> s <> "")
-
-        let rec pick i =
-            if i >= names.Length then
-                SKTypeface.FromFamilyName(null, skWeight, SKFontStyleWidth.Normal, skSlant)
-            else
-                let tf = SKTypeface.FromFamilyName(names.[i], skWeight, SKFontStyleWidth.Normal, skSlant)
-
-                // A miss returns Skia's default rather than null, so "did this name resolve"
-                // has to be asked by comparing the family back. Without that check the first
-                // entry in every stack always "succeeds" and the stack is decorative.
-                if isNull tf then
-                    pick (i + 1)
-                elif String.Equals(tf.FamilyName, names.[i], StringComparison.OrdinalIgnoreCase) then
-                    tf
-                else
-                    tf.Dispose()
-                    pick (i + 1)
-
-        pick 0
-
     // ---- traversal -------------------------------------------------------------------
 
     let rec draw (ctm: Affine<nd, px>) (node: Node) =
@@ -479,14 +451,19 @@ type SkiaBackend(?options: SkiaOptions) =
         if not (String.IsNullOrEmpty t.Text) then
             let struct (x, y) = point ctm t.At
 
-            use typeface = typefaceFor t.Font.Family t.Font.Weight t.Font.Italic
-            use font = new SKFont(typeface, f32 (float (Space.pxOfPt opts.Dpi t.Font.Size)))
+            // Not `use`: the font and the shaper belong to the measurer, which caches them
+            // per face and per size and disposes them with this backend. Disposing them here
+            // would free a handle the next run is about to use.
+            let struct (font, shaper) = shaping.Shaping t.Font
 
-            // Phase 2 measures the same way `ApproxTextMeasurer` does — one advance, no
-            // shaping — so that this traversal can be compared to the SVG backend's
-            // coordinate-for-coordinate before phase 3 is allowed to move anything.
-            let advance = font.MeasureText t.Text
-            let ox, oy = textOrigin font t advance x y
+            // **Shaped, and shaped with the object that measured it.** The advance that places
+            // an `AnchorMiddle` or `AnchorEnd` run has to be the advance the glyphs actually
+            // occupy, or a centred title is off-centre by exactly the kerning. `MeasureText`
+            // would give the unshaped sum — 48.01 px against the shaped 44.51 for Arial 12 px
+            // "AVATAR" — so a run anchored at its end would sit 3.5 px to the left of where it
+            // was drawn.
+            let shaped = shaper.Shape(t.Text, font)
+            let ox, oy = textOrigin font t shaped.Width x y
 
             // ROTATION. The arithmetic is `SvgBackend.drawText`'s, and the long comment there
             // is the argument for it: the frame's rotation and the run's own rotation are
@@ -514,7 +491,7 @@ type SkiaBackend(?options: SkiaOptions) =
             // `SKTextAlign.Left` because the anchor was already resolved above, against
             // the same rule Core's `TextMeasure.bounds` uses. Handing Skia the anchor
             // instead would put the two in different places the moment they disagreed.
-            canvas.DrawText(t.Text, ox, oy, SKTextAlign.Left, font, paint)
+            canvas.DrawShapedText(shaper, t.Text, ox, oy, SKTextAlign.Left, font, paint)
 
             if rotated then
                 canvas.Restore()
@@ -653,6 +630,21 @@ type SkiaBackend(?options: SkiaOptions) =
         else
             cached
 
+    /// Every font this backend has actually opened, in the order the scene first asked for it.
+    ///
+    /// D62's reporting half, and the answer to "why does this PNG look different on your
+    /// machine": a `ResolvedFace` whose `Matched` is `None` fell through the whole stack onto
+    /// Skia's default, and one whose `File` is `Some` came from a path the caller stated and is
+    /// therefore the same face everywhere.
+    ///
+    /// **Empty before anything has been measured or drawn**, because resolution is lazy. Read
+    /// it after `Finish`.
+    member _.ResolvedFaces: ResolvedFace[] = shaping.ResolvedFaces
+
+    /// The measurer this backend lays out against, for a caller who wants to arrange a figure
+    /// against the same shaping the render will use without going through `Chart.renderTo`.
+    member _.TextMeasurer: ITextMeasurer = measurer
+
     /// The surface size passed to `Begin`, as an nd → px map. Exposed for tests, which need to
     /// check drawn coordinates against the transform that produced them.
     member _.RootTransform: Affine<nd, px> = root
@@ -666,10 +658,17 @@ type SkiaBackend(?options: SkiaOptions) =
               Clipping = true
               Dashes = true
               Rasters = true
-              // Phase 3 flips this, and it is the first backend for which the flag will mean
-              // anything. Until the shaper is wired in, advertising `true` would be a lie in
-              // exactly the place the flag exists to tell the truth.
-              TextShaping = false
+              // **The first `true` for this flag in the project**, and the first time it means
+              // anything: `SkiaTextMeasurer` shapes with HarfBuzz, so kerning pairs and
+              // ligatures reach `Figure.arrangement` and the panel rectangle moves.
+              //
+              // *Nothing branches on it.* `Degrade.forCaps` does not read it, because there is
+              // no degradation to perform — a backend that cannot shape still draws the same
+              // string, just at slightly different widths, and rewriting the scene could not
+              // help. Its readers are the tests and a caller choosing a backend. That was true
+              // when the flag was invented and it is still true now that it is finally `true`
+              // somewhere, which is worth saying plainly rather than inventing a reader for it.
+              TextShaping = true
               RotatedText = true
               // **A PNG has nowhere to put a label.** This is the first backend in the project
               // for which `Semantics = false`, so it is the first time `Degrade.forCaps`
@@ -742,6 +741,10 @@ type SkiaBackend(?options: SkiaOptions) =
             if not (isNull surface) then
                 surface.Dispose()
                 surface <- null
+
+            // The measurer owns every `SKTypeface`, `SKFont` and `SKShaper` this render
+            // opened, so it is the one thing here that frees more than a surface.
+            (shaping :> IDisposable).Dispose()
 
 /// Convenience entry points. The interface is what a heterogeneous list of backends is driven
 /// through; these are what a caller with one backend actually wants.

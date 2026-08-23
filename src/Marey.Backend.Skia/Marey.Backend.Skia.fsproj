@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <!-- §6's Skia row, and §14's M2.5 line: "PNG and PDF without a TeX installation, and the
@@ -21,6 +21,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The measurer before the backend: `SkiaBackend` holds a `SkiaTextMeasurer` and draws
+         with the `SKFont` and `SKShaper` it measured against, so the two cannot disagree. -->
+    <Compile Include="SkiaText.fs" />
     <Compile Include="SkiaBackend.fs" />
   </ItemGroup>
 
@@ -40,6 +43,12 @@
     <PackageReference Include="SkiaSharp" Version="4.151.1" />
     <PackageReference Include="SkiaSharp.HarfBuzz" Version="4.151.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.151.1" />
+    <!-- HarfBuzz is a *second* native library with a *second* set of asset packages and its
+         own version line — `SkiaSharp.HarfBuzz` 4.151.1 pulls `HarfBuzzSharp` 14.2.1.1, which
+         carries Win32 and macOS assets and, again, not Linux. Measured with
+         `dotnet list package` with transitives shown rather than assumed, because this is the
+         same omission twice and the second one is the one nobody checks for. -->
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1.1" />
   </ItemGroup>
 
 </Project>

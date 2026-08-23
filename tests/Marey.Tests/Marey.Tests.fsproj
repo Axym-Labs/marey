@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <!-- §13: "Marey.Tests — FsCheck laws + golden SVG snapshots."
@@ -90,6 +90,10 @@
     <None Include="golden\**\*.tex" Exclude="golden\**\*.actual.tex" CopyToOutputDirectory="PreserveNewest" />
     <None Include="golden\**\*.png" Exclude="golden\**\*.actual.png" CopyToOutputDirectory="PreserveNewest" />
     <None Include="README.md" CopyToOutputDirectory="PreserveNewest" />
+    <!-- D62's stated face. Copied beside the assembly for the same reason the baselines are:
+         the tests find it through the source tree when there is one and fall back to the build
+         output when the assembly has been moved away from its checkout. -->
+    <None Include="fonts\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
