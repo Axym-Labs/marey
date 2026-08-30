@@ -994,18 +994,35 @@ module ``text shaping`` =
             Assert.False(isNull tf, "the stated face did not open")
             use font = new SKFont(tf, 12.0f)
 
+            // **Linear metrics, or this measures Skia's grid fitting rather than the face.** A
+            // default `SKFont` hints, and hinting rounds every glyph advance to a whole pixel:
+            // "AVATAR" then measures 48.0 and the digits control measures 70.0 against a true
+            // 66.74. Neither is a number Marey ever computes — `SkiaTextMeasurer` measures
+            // through `SKShaper`, which is unhinted — so comparing the table against them would
+            // be a claim about one rasteriser's grid fit, not about the advance table, and it
+            // is the shaper's numbers the other tests in this section use.
+            font.LinearMetrics <- true
+
             let approximated = float (TextMeasure.approx.Measure spec Kerned).Advance
             let unshaped = float (font.MeasureText Kerned)
 
             // 48.012 against 48.0117. `ApproxTextMeasurer`'s table is Helvetica's, Arial is
             // metric-compatible with Helvetica, and Liberation Sans is metric-compatible with
-            // Arial — so this holds by construction rather than by luck, and the tolerance is
-            // the table's own rounding to 1/1000 em.
-            Assert.Equal(unshaped, approximated, 2)
-
-            // Which is the whole point: the approximation has no error left to hide kerning in.
+            // Arial — so this holds by construction rather than by luck.
+            //
+            // **Stated as a difference, and not as `Assert.Equal(_, _, 2)`.** That overload
+            // rounds both sides to a number of decimal places and compares the rounded values,
+            // so its real tolerance is however far the two happen to sit from a bucket edge —
+            // not a bound anyone chose, and it can reject a pair closer together than one it
+            // accepts. It was what stood here, and it rejected 48.0 against 48.012.
+            //
+            // The bound: the table stores 1/1000 em, which is 0.012 px at 12 px, and these two
+            // agree to a *tenth* of that — 0.00028 px, or 1/42000 em. A tenth of a unit rather
+            // than a whole one, because the hinted measurement this test used to take is out by
+            // exactly one unit: `< 0.012` would separate them only by double rounding, four
+            // parts in 1e16, which is not a margin an argument can rest on.
             Assert.True(
-                abs (unshaped - approximated) < 0.01,
+                abs (unshaped - approximated) < 0.0012,
                 sprintf
                     "the advance tables disagree by %.4f px, so a shaped-vs-approximated difference could not be attributed to kerning"
                     (abs (unshaped - approximated))
