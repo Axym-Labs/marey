@@ -28,6 +28,7 @@ open System.Diagnostics
 open System.IO
 open System.Text
 open Xunit
+open Marey
 
 /// The assemblies an example may reference, in dependency order. They sit beside the test binary
 /// because the test project references all of them.
@@ -91,11 +92,13 @@ let ``the examples reference their packages`` () =
 [<Theory>]
 [<MemberData(nameof exampleNames)>]
 let ``the example compiles and runs`` (name: string) =
-    match TexToolchain.onPath "dotnet" with
+    let tool = Tools.dotnet.Force()
+
+    match tool.Path with
     | None ->
         // No SDK on PATH. Say so in the assertion message rather than passing silently.
-        Assert.True(true, "dotnet not found on PATH; the examples were not executed")
-    | Some dotnet ->
+        Assert.True(true, Toolchain.missing "the examples were not executed" tool)
+    | Some _ ->
         let source = Path.Combine(exampleDir.Force(), name)
         let binDir = Path.GetDirectoryName(Uri(typeof<Marey.Figure>.Assembly.Location).LocalPath)
 
@@ -135,21 +138,20 @@ let ``the example compiles and runs`` (name: string) =
         let scriptPath = Path.Combine(workDir, Path.GetFileNameWithoutExtension name + ".check.fsx")
         File.WriteAllText(scriptPath, script.ToString(), UTF8Encoding false)
 
-        let psi = ProcessStartInfo(dotnet, sprintf "fsi --nologo \"%s\"" scriptPath)
-        psi.RedirectStandardOutput <- true
-        psi.RedirectStandardError <- true
-        psi.UseShellExecute <- false
         // The examples write to the current directory, which is what makes them behave the way a
-        // reader expects when run by hand. Point that at the temp directory rather than the repo.
-        psi.WorkingDirectory <- workDir
+        // reader expects when run by hand. `workDir` rather than the repo, so they cannot write
+        // into the tree they were read from.
+        let run =
+            match Toolchain.run tool (sprintf "fsi --nologo \"%s\"" scriptPath) workDir 600_000 with
+            | ToolUnavailable why
+            | ToolTimedOut why -> failwith why
+            | ToolRan r -> r
 
-        use proc = Process.Start psi
-        let stdout = proc.StandardOutput.ReadToEnd()
-        let stderr = proc.StandardError.ReadToEnd()
-        proc.WaitForExit()
+        let stdout = run.Out
+        let stderr = run.Error
 
         Assert.True(
-            proc.ExitCode = 0,
+            run.ExitCode = 0,
             sprintf
                 "examples/%s does not run.\n\nThe checked script is at %s — it is the example with \
                  its `#r \"nuget: …\"` lines replaced, so fsi's line numbers are close to but not \

@@ -32,6 +32,9 @@
     <Compile Include="ColorProperties.fs" />
     <Compile Include="SceneProperties.fs" />
     <Compile Include="RegressionTests.fs" />
+    <!-- Before TexToolchain.fs: the external-tool registry every shelling gate reads. -->
+    <Compile Include="Tools.fs" />
+    <Compile Include="ToolchainTests.fs" />
     <Compile Include="TexToolchain.fs" />
     <Compile Include="Raster.fs" />
     <Compile Include="TikzWriterTests.fs" />
@@ -64,6 +67,9 @@
     <ProjectReference Include="..\..\src\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Backend.Tikz\Marey.Backend.Tikz.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Plot\Marey.Plot.fsproj" />
+    <!-- Not a published package yet (see its .fsproj), so a ProjectReference is the only
+         way in. It is what `Tools.fs` and every shelling gate resolve their programs through. -->
+    <ProjectReference Include="..\..\src\Marey.Toolchain\Marey.Toolchain.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Html\Marey.Html.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Verso\Marey.Verso.fsproj" />
   </ItemGroup>

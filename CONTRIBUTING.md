@@ -4,7 +4,7 @@
 
 ```
 dotnet build          # warning-free; warnings are errors
-dotnet test           # 819 tests
+dotnet test           # 830 tests
 ```
 
 `TreatWarningsAsErrors` is on for every project, set in `Directory.Build.props`. It is not
@@ -17,17 +17,29 @@ The library targets `netstandard2.1`; the test project targets `net10.0`.
 
 ## The toolchains the tests shell out to
 
-Two gates shell out: `pdflatex` compiles every golden `.tex` baseline, and `pdftoppm` rasterises
-a PDF to check the page is not blank — the compiled one, and since M2.5 the Skia backend's own.
-Both print a `SKIPPED:` line and pass when the toolchain is absent, which is right on a
-contributor's machine and wrong in CI — so CI installs them and enforcement is real there.
+Three programs the library does not ship are driven by the suite:
+
+| Program | What it gates |
+|---|---|
+| `pdflatex` | compiles every golden `.tex` baseline — the only authority on whether emitted TeX is valid |
+| `pdftoppm` | rasterises a PDF to check the page is not blank: the compiled TeX one, and since M2.5 the Skia backend's own |
+| `dotnet fsi` | runs every `docs/guide.md` snippet, every `examples/*.fsx`, and the encoding-block compile checks |
+
+All three are resolved and run through **`Marey.Toolchain`**, and named once in
+`tests/Marey.Tests/Tools.fs`. Add a gate that needs a fourth program by adding it there rather
+than by walking `PATH` again — the walk and the `Process` were each written five times across
+four files before that module existed, and one of the copies' bugs is described in `decisions.md`
+D81.
+
+Each prints a line saying what it found and passes when the program is absent, which is right on
+a contributor's machine and wrong in CI — so CI installs all three and enforcement is real there.
 
 The Skia tests do the same thing for a different missing thing: they probe the native library by
 rendering a 4 × 4 scene, and print `SKIPPED: SkiaSharp native assets unavailable` with the actual
 exception if it is not there.
 
 **Read the test output rather than the green tick**: a local run that skips these has not checked
-the TikZ backend or the raster one at all.
+the TikZ backend, the raster one, the guide or the examples at all.
 
 The package list and the reason for each entry are in `.github/tex-packages.txt`.
 

@@ -672,6 +672,9 @@ module ``the zero-dependency rule`` =
     [<InlineData "Marey.Plot">]
     [<InlineData "Marey.Backend.Svg">]
     [<InlineData "Marey.Backend.Tikz">]
+    // Not a vector backend, but it makes the same zero-dependency claim in its .fsproj and the
+    // packages that will consume it (D75, D79) each drag a toolchain already.
+    [<InlineData "Marey.Toolchain">]
     let ``no vector package references SkiaSharp`` (name: string) =
         let a = load name
 

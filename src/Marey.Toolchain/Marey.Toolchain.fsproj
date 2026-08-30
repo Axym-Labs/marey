@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- netstandard2.1 to match every other library here, though this one is *not*
+         Fable-compatible and does not claim to be: a PATH walk and a `Process` have no browser
+         meaning. That is precisely why it is a separate project rather than a file in
+         `Marey.Core`, whose §13 Fable promise is load-bearing and actively defended.
+
+         NOTHING may be added to <PackageReference> in this file. It takes no dependency so that
+         nothing referencing it acquires a transitive one — the same rule Core follows, kept here
+         for a different reason: the packages that will consume this (D75's video tools, D79's TeX
+         typesetting) already drag a toolchain each, and the probe that reports their absence must
+         not be a third thing to install. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Marey.Toolchain</AssemblyName>
+    <RootNamespace>Marey</RootNamespace>
+    <Description>Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies.</Description>
+    <PackageTags>fsharp visualization plotting process toolchain</PackageTags>
+
+    <!-- **Not published yet, deliberately, and this flips the day it has a shipping consumer.**
+         D64's rule is that a facility ships with a producer, and D10 records what happens
+         otherwise: `Capabilities` sat in the tree as "a record nobody reads". Today every
+         consumer of this module is in `Marey.Tests`, which needs a ProjectReference and not a
+         package. Publishing it now would put a ninth package on nuget.org, bump the
+         package-count literal in `publish.yml`, and ask a reader to install something no shipped
+         package depends on.
+
+         Flip to `true` — and bump that literal — when D75's `Marey.Tools.Video` or D79's TeX
+         package takes a ProjectReference to it, because a published package may not depend on an
+         unpublished one. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Toolchain.fs" />
+  </ItemGroup>
+
+</Project>

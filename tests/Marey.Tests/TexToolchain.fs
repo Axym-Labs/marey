@@ -29,42 +29,16 @@ open Marey
 [<Literal>]
 let Engine = "pdflatex"
 
-/// Full path to an executable found on `PATH`, or `None`.
+/// The engine, resolved once through the shared registry.
 ///
-/// Hand-rolled rather than shelled out to `where`/`which`, because those are themselves external
-/// tools whose absence would be reported as the absence of the thing being looked for.
-/// `Raster.fs` is the second consumer, which is why this is a named function rather than the body
-/// of `enginePath`.
-let onPath (name: string) : string option =
-    let exe =
-        if Environment.OSVersion.Platform = PlatformID.Win32NT then
-            name + ".exe"
-        else
-            name
+/// This module used to own the `PATH` walk, and `Raster.fs` and `ExampleTests.fs` reached into it
+/// for the copy — which made the ink gate and the example runner depend on the TeX module for a
+/// function that has nothing to do with TeX. `Tools.pdflatex` is the registry entry now and
+/// `Toolchain.onPath` the one implementation; these two names stay because the rest of this
+/// module reads better for them.
+let enginePath: Lazy<string option> = lazy (Tools.pdflatex.Force()).Path
 
-    let dirs =
-        (Environment.GetEnvironmentVariable "PATH" |> Option.ofObj |> Option.defaultValue "")
-            .Split(Path.PathSeparator)
-
-    dirs
-    |> Array.tryPick (fun d ->
-        if String.IsNullOrWhiteSpace d then
-            None
-        else
-            let candidate =
-                try
-                    Some(Path.Combine(d.Trim(), exe))
-                with _ ->
-                    None
-
-            match candidate with
-            | Some p when File.Exists p -> Some p
-            | _ -> None)
-
-/// Full path to the engine, or `None` when it is not installed.
-let enginePath: Lazy<string option> = lazy onPath Engine
-
-let available = lazy (enginePath.Force() |> Option.isSome)
+let available: Lazy<bool> = lazy (Tools.pdflatex.Force()).IsAvailable
 
 /// The result of asking TeX to read a document.
 type CompileResult =
@@ -147,9 +121,11 @@ let private errorLines (log: string) =
 /// directory is the only thing `renderToFileWithAssets` can get wrong, so the gate has to
 /// exercise it rather than assume it.
 let compileAssetsWith (name: string) (document: string) (assets: RenderedAsset[]) (inspect: string -> Result<'a, string>) : PdfResult<'a> =
-    match enginePath.Force() with
-    | None -> PdfUnavailable(Engine + " not found on PATH")
-    | Some exe ->
+    let tool = Tools.pdflatex.Force()
+
+    if not tool.IsAvailable then
+        PdfUnavailable(Toolchain.missing "the document was not compiled" tool)
+    else
         let dir =
             Path.Combine(Path.GetTempPath(), "marey-tex-" + Guid.NewGuid().ToString("N").Substring(0, 12))
 
@@ -166,33 +142,18 @@ let compileAssetsWith (name: string) (document: string) (assets: RenderedAsset[]
             for asset in assets do
                 File.WriteAllBytes(Path.Combine(dir, asset.Name), asset.Bytes)
 
-            let psi =
-                ProcessStartInfo(
-                    FileName = exe,
-                    // Two deliberate omissions. `-halt-on-error` is not passed because we want
-                    // every error the engine finds, so one failure report is actionable in one
-                    // pass. `-file-line-error` is not passed because it rewrites errors into a
-                    // form `errorLines` cannot see — see the note there.
-                    Arguments = "-interaction=nonstopmode " + stem + ".tex",
-                    WorkingDirectory = dir,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                )
+            // Two deliberate omissions. `-halt-on-error` is not passed because we want every
+            // error the engine finds, so one failure report is actionable in one pass.
+            // `-file-line-error` is not passed because it rewrites errors into a form
+            // `errorLines` cannot see — see the note there.
+            let outcome =
+                Toolchain.run tool ("-interaction=nonstopmode " + stem + ".tex") dir 120_000
 
-            use p = Process.Start psi
-            let stdout = p.StandardOutput.ReadToEnd()
-            p.StandardError.ReadToEnd() |> ignore
+            match outcome with
+            | ToolUnavailable why -> PdfUnavailable why
+            | ToolTimedOut why -> PdfFailed why
+            | ToolRan run ->
 
-            if not (p.WaitForExit 120_000) then
-                try
-                    p.Kill()
-                with _ ->
-                    ()
-
-                PdfFailed "the engine did not terminate within 120 s"
-            else
                 // The log file is more complete than stdout when the engine is chatty.
                 let logFile = Path.Combine(dir, stem + ".log")
 
@@ -201,14 +162,14 @@ let compileAssetsWith (name: string) (document: string) (assets: RenderedAsset[]
                         try
                             File.ReadAllText logFile
                         with _ ->
-                            stdout
+                            run.Out
                     else
-                        stdout
+                        run.Out
 
                 // Two independent signals, because relying on one is how this gate went vacuous
                 // the first time. The log gives a useful message; the exit code cannot be missed
                 // by a pattern that stops matching after a flag change or an engine update.
-                match errorLines log, p.ExitCode with
+                match errorLines log, run.ExitCode with
                 | [||], 0 ->
                     let pdf = Path.Combine(dir, stem + ".pdf")
 
@@ -259,7 +220,8 @@ let accepts (name: string) (document: string) : bool =
             document
 
 /// A human-readable description of what was found, for test output.
+///
+/// One wording for every tool, from `Toolchain.report`, so a reader of a local run does not have
+/// to know which file printed which sentence.
 let report () =
-    match enginePath.Force() with
-    | None -> Engine + " not found on PATH — TeX gates did not run"
-    | Some p -> Engine + " found at " + p
+    Toolchain.report "TeX gates did not run" (Tools.pdflatex.Force())

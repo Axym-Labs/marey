@@ -51,9 +51,9 @@ open Marey
 [<Literal>]
 let Tool = "pdftoppm"
 
-let toolPath: Lazy<string option> = lazy TexToolchain.onPath Tool
+let toolPath: Lazy<string option> = lazy (Tools.pdftoppm.Force()).Path
 
-let available = lazy (toolPath.Force() |> Option.isSome)
+let available = lazy (Tools.pdftoppm.Force()).IsAvailable
 
 /// The resolution to rasterise at, and it is not an arbitrary choice.
 ///
@@ -249,53 +249,37 @@ let meanLevel (g: Gray) (r: Region) : float = meanLevelIn r g
 /// would also risk dropping a sub-pixel hairline entirely, which is exactly the false "no ink"
 /// this gate must never report.
 let rasterise (dpi: float) (pdf: string) : Result<Gray, string> =
-    match toolPath.Force() with
-    | None -> Error(Tool + " not found on PATH")
-    | Some exe ->
+    let tool = Tools.pdftoppm.Force()
+
+    if not tool.IsAvailable then
+        Error(Toolchain.missing "the page was not rasterised" tool)
+    else
         let dir = Path.GetDirectoryName pdf
         let prefix = Path.Combine(dir, Path.GetFileNameWithoutExtension pdf + "-raster")
         let output = prefix + ".pgm"
 
-        let psi =
-            ProcessStartInfo(
-                FileName = exe,
-                // `-gray` for one byte per pixel, `-singlefile` so the output name is
-                // predictable rather than page-numbered. The resolution goes through the
-                // library's own invariant formatter — a comma decimal separator here would be
-                // read by the tool as a different number, or as none.
-                Arguments =
-                    String.Concat
-                        [| "-gray -singlefile -r "
-                           Num.at 4 dpi
-                           " \""
-                           pdf
-                           "\" \""
-                           prefix
-                           "\"" |],
-                WorkingDirectory = dir,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            )
+        // `-gray` for one byte per pixel, `-singlefile` so the output name is predictable rather
+        // than page-numbered. The resolution goes through the library's own invariant formatter —
+        // a comma decimal separator here would be read by the tool as a different number, or as
+        // none.
+        let arguments =
+            String.Concat
+                [| "-gray -singlefile -r "
+                   Num.at 4 dpi
+                   " \""
+                   pdf
+                   "\" \""
+                   prefix
+                   "\"" |]
 
-        use p = Process.Start psi
-        p.StandardOutput.ReadToEnd() |> ignore
-        let stderr = p.StandardError.ReadToEnd()
-
-        if not (p.WaitForExit 120_000) then
-            try
-                p.Kill()
-            with _ ->
-                ()
-
-            Error(Tool + " did not terminate within 120 s")
-        elif p.ExitCode <> 0 then
-            Error(sprintf "%s exited with code %d: %s" Tool p.ExitCode (stderr.Trim()))
-        elif not (File.Exists output) then
+        match Toolchain.run tool arguments dir 120_000 with
+        | ToolUnavailable why -> Error why
+        | ToolTimedOut why -> Error why
+        | ToolRan run when run.ExitCode <> 0 ->
+            Error(sprintf "%s exited with code %d: %s" Tool run.ExitCode (run.Error.Trim()))
+        | ToolRan _ when not (File.Exists output) ->
             Error(sprintf "%s reported success but wrote no %s" Tool (Path.GetFileName output))
-        else
-            parsePgm (File.ReadAllBytes output)
+        | ToolRan _ -> parsePgm (File.ReadAllBytes output)
 
 /// Compile a LaTeX document and rasterise the page it produces.
 ///
@@ -313,7 +297,7 @@ let rec ofDocument (name: string) (document: string) : TexToolchain.PdfResult<Gr
 /// exactly what `Raster.fs` was written about.
 and ofRendered (name: string) (rendered: RenderedDocument) : TexToolchain.PdfResult<Gray> =
     match toolPath.Force() with
-    | None -> TexToolchain.PdfUnavailable(Tool + " not found on PATH")
+    | None -> TexToolchain.PdfUnavailable(Toolchain.missing "the ink gate did not run" (Tools.pdftoppm.Force()))
     | Some _ -> TexToolchain.compileAssetsWith name rendered.Document rendered.Assets (rasterise Dpi)
 
 
@@ -331,7 +315,7 @@ and ofRendered (name: string) (rendered: RenderedDocument) : TexToolchain.PdfRes
 /// coordinate space with y downward, exactly as for TikZ.
 let ofPdfBytes (name: string) (pdf: byte[]) : TexToolchain.PdfResult<Gray> =
     match toolPath.Force() with
-    | None -> TexToolchain.PdfUnavailable(Tool + " not found on PATH")
+    | None -> TexToolchain.PdfUnavailable(Toolchain.missing "the ink gate did not run" (Tools.pdftoppm.Force()))
     | Some _ ->
         let dir = Path.Combine(Path.GetTempPath(), "marey-pdf-" + Guid.NewGuid().ToString "N")
         Directory.CreateDirectory dir |> ignore
