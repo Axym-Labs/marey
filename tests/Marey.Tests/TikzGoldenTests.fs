@@ -133,7 +133,7 @@ module Snapshots =
     let ``a realistic axis composition`` () = tikz "axis-composition"
 
     [<Fact>]
-    let ``all nine Node cases`` () = tikz "all-nine-nodes"
+    let ``all ten Node cases`` () = tikz "all-ten-nodes"
 
     /// M2 phase 6, gate 5. The pair of this and `geoms-bands.svg` is the reviewable half of
     /// "cross-backend geometry agreement, extended to every new geom" — `GeomTests` asserts the

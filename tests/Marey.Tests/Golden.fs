@@ -512,7 +512,7 @@ let imageFigure: Figure =
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
 
 /// Assert that a scene really does exercise the `Node` cases it claims to. §5 makes the case
-/// count the thing to defend, so a golden test that says it covers all nine should be able to
+/// count the thing to defend, so a golden test that says it covers all ten should be able to
 /// prove it rather than be believed.
 let casesUsed (n: Node) =
     Scene.fold
@@ -526,6 +526,7 @@ let casesUsed (n: Node) =
                 | Group _ -> "Group"
                 | Transform _ -> "Transform"
                 | Clip _ -> "Clip"
+                | Opacity _ -> "Opacity"
                 | Keyed _ -> "Keyed"
                 | Annotated _ -> "Annotated"
 
@@ -533,10 +534,10 @@ let casesUsed (n: Node) =
         Set.empty
         n
 
-let assertAllNineCases (n: Node) =
+let assertAllTenCases (n: Node) =
     let used = casesUsed n
 
     let all =
-        set [ "Path"; "Text"; "Markers"; "Raster"; "Group"; "Transform"; "Clip"; "Keyed"; "Annotated" ]
+        set [ "Path"; "Text"; "Markers"; "Raster"; "Group"; "Transform"; "Clip"; "Opacity"; "Keyed"; "Annotated" ]
 
     Assert.Equal<Set<string>>(all, used)

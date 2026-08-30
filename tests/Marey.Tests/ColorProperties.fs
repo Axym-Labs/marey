@@ -213,6 +213,7 @@ module Degradation =
             && c.TextShaping
             && c.RotatedText
             && c.Semantics
+            && c.GroupOpacity
         )
 
         Assert.True(c.MaxBatch.IsNone)

@@ -22,10 +22,15 @@ namespace Marey
 //      a 60 fps loop. The hot path (scene -> backend, particle stepping) must be struct/array
 //      -based, not list-based." A 100 000-segment path as a cons list is 100 000 heap objects.
 //
-// One deliberate omission, recorded so the next person does not think it was an oversight:
-// there is **no group-opacity node**. Fading a whole group is a real M3 need, `Color.A`
-// covers the common case, and the two differ only where a group's own shapes overlap. When
-// M3 forces the issue it is a costed decision — one variant, six backends — not a reflex.
+// One omission, now closed, and left legible rather than tidied away. Through M2.5 there was
+// **no group-opacity node**, on the argument that `Color.A` covers the common case, that the
+// two differ only where a group's own shapes overlap, and that when M3 forced the issue it
+// should be a costed decision — one variant, six backends — not a reflex.
+//
+// M3 forced it. Fading a group in is what a storyboard asks for, and per-shape alpha cannot
+// express it: the moment two shapes in the group overlap, the fade shows a seam that is not in
+// the figure. D67 pays the cost as it was quoted — one variant, one `Capabilities` field, one
+// `Degrade` rule — and nothing else was let in alongside it.
 // ======================================================================================
 
 /// A stop in a gradient ramp. `Offset` is in [0,1] along the gradient axis.
@@ -126,7 +131,7 @@ type TextRun =
       ///
       /// No `Capabilities` flag guards this, deliberately: `Text` is always present, so a
       /// backend that cannot typeset TeX has a lossless-enough fallback by construction and
-      /// there is nothing to degrade. That is what keeps `Capabilities` at nine fields.
+      /// there is nothing to degrade. That is what keeps `Capabilities` at ten fields.
       ///
       /// §10's three routes to mathematical typesetting all read this one field — shelling out
       /// to LaTeX, MathJax/KaTeX on the web backend at M3, and native OpenType MATH layout at
@@ -232,7 +237,7 @@ type Semantics =
       /// comparable and Fable-friendly.
       Data: (string * string)[] }
 
-/// §5 — The IR. Nine cases. Guard it obsessively.
+/// §5 — The IR. Ten cases. Guard it obsessively.
 [<NoComparison>]
 type Node =
     | Path of segments: PathSeg[] * stroke: Stroke option * fill: Paint option * rule: FillRule
@@ -242,6 +247,19 @@ type Node =
     | Group of Node[]
     | Transform of Affine<nd, nd> * Node
     | Clip of PathSeg[] * Node
+    /// D67 — uniform opacity over the **composited** subtree. In [0,1]; `Scene.opacity` clamps.
+    ///
+    /// Not the same thing as multiplying `Color.A` through the subtree, and the difference is
+    /// exactly where the group's own shapes overlap: with per-shape alpha an overlap shows both
+    /// shapes through each other and reads darker, while group opacity composites the subtree
+    /// first and fades the result, so the overlap reads like the rest of the group. A single
+    /// shape does not overlap itself, which is why `Color.A` stays the right tool for one shape
+    /// and this node exists for a group.
+    ///
+    /// `Capabilities.GroupOpacity` guards it, and `Degrade.forCaps` folds it into paint alpha
+    /// for a backend that cannot composite — the approximation above, applied deliberately and
+    /// with its failure mode named, rather than a silently wrong picture.
+    | Opacity of alpha: float * Node
     | Keyed of Key * Node
     | Annotated of Semantics * Node
 
@@ -268,6 +286,18 @@ module Scene =
     let group (ns: Node seq) = Group(Array.ofSeq ns)
 
     let keyed (name: string) (n: Node) = Keyed(Key name, n)
+
+    /// Fade a whole subtree, clamping `alpha` into [0,1].
+    ///
+    /// Clamped here rather than at each backend: an opacity of 1.4 has no compositing meaning,
+    /// and three backends left to their own devices would invent three different answers to it
+    /// — SVG clamps, Skia truncates a byte, TikZ passes it to a driver. One answer, at the
+    /// constructor, is the only way the IR stays the thing all three agree about.
+    let opacity (alpha: float) (n: Node) =
+        Opacity((if alpha < 0.0 then 0.0
+                 elif alpha > 1.0 then 1.0
+                 else alpha),
+                n)
 
     let annotate (role: SemanticRole) (label: string) (n: Node) =
         Annotated({ Role = role; Label = label; Data = [||] }, n)
@@ -314,6 +344,7 @@ module Scene =
         | Group ns -> f (Group(Array.map (transform f) ns))
         | Transform(a, c) -> f (Transform(a, transform f c))
         | Clip(p, c) -> f (Clip(p, transform f c))
+        | Opacity(a, c) -> f (Opacity(a, transform f c))
         | Keyed(k, c) -> f (Keyed(k, transform f c))
         | Annotated(s, c) -> f (Annotated(s, transform f c))
         | leaf -> f leaf
@@ -326,12 +357,102 @@ module Scene =
         | Group ns -> Array.fold (fold f) state ns
         | Transform(_, c)
         | Clip(_, c)
+        | Opacity(_, c)
         | Keyed(_, c)
         | Annotated(_, c) -> fold f state c
         | Path _
         | Text _
         | Markers _
         | Raster _ -> state
+
+    /// §5.2 — the subtree a key names, or `None`.
+    ///
+    /// Returns the **child** of the matching `Keyed` node, not the node itself, so that it
+    /// pairs with `mapKey`: what you can read is what you can replace, and neither can lose
+    /// the key by accident.
+    ///
+    /// **The first match in pre-order**, and that is a statement about scenes rather than a
+    /// hedge. Keys are meant to be unique and nothing enforces it — `Keyed(Key "panel", …)`
+    /// twice is a legal scene, and the SVG backend deduplicates the resulting ids by suffixing
+    /// rather than refusing. So the question genuinely has more than one answer sometimes, and
+    /// taking the first is the answer a diff and an animation both want: the one that was
+    /// drawn first.
+    ///
+    /// Groups are searched left to right and abandoned as soon as something is found, which is
+    /// what keeps addressing a mark cheaper than walking the figure.
+    let tryFindKey (key: Key) (n: Node) : Node option =
+        let rec go (n: Node) =
+            match n with
+            | Keyed(k, c) when k = key -> Some c
+            | Group ns ->
+                let mutable found = None
+                let mutable i = 0
+
+                while found.IsNone && i < ns.Length do
+                    found <- go ns.[i]
+                    i <- i + 1
+
+                found
+            | Transform(_, c)
+            | Clip(_, c)
+            | Opacity(_, c)
+            | Keyed(_, c)
+            | Annotated(_, c) -> go c
+            | Path _
+            | Text _
+            | Markers _
+            | Raster _ -> None
+
+        go n
+
+    /// §5.2 — rewrite the subtree a key names, leaving the rest of the scene alone.
+    ///
+    /// `f` is applied to the *child* of the matching `Keyed` node and the wrapper is put back,
+    /// so a rewrite cannot drop the key it was addressed by. This is what an animation holds a
+    /// key for: `mapKey k (Scene.opacity 0.3)` fades one layer of one panel and touches nothing
+    /// else.
+    ///
+    /// **Every subtree that was not rewritten is returned by reference.** That is the property
+    /// worth having and not an optimisation detail: it is what makes a per-frame rewrite cost
+    /// the *path* to the key rather than the figure, and what lets a structural diff of two
+    /// consecutive frames stop at the first shared reference. Only the containers along that
+    /// path are rebuilt.
+    ///
+    /// **Every** node carrying the key is rewritten, where `tryFindKey` returns only the first.
+    /// The asymmetry is the honest one: "find one of them" has to pick, and "rewrite the thing
+    /// named X" should not leave a second thing named X behind. On the unique keys the producer
+    /// emits the two agree, and on a duplicate they each do the useful thing.
+    ///
+    /// Recursion stops at a match, so a duplicate key *inside* a subtree that was just replaced
+    /// is not visited: rewriting the inside of something already rewritten is not a coherent
+    /// request — `f` was handed that subtree and can do as it likes with it.
+    let mapKey (key: Key) (f: Node -> Node) (n: Node) : Node =
+        let inline same (a: Node) (b: Node) = System.Object.ReferenceEquals(a, b)
+
+        let rec go (n: Node) =
+            match n with
+            | Keyed(k, c) when k = key -> Keyed(k, f c)
+            | Group ns ->
+                let out = Array.map go ns
+                if Array.forall2 same ns out then n else Group out
+            | Transform(a, c) ->
+                let c' = go c
+                if same c c' then n else Transform(a, c')
+            | Clip(p, c) ->
+                let c' = go c
+                if same c c' then n else Clip(p, c')
+            | Opacity(a, c) ->
+                let c' = go c
+                if same c c' then n else Opacity(a, c')
+            | Keyed(k, c) ->
+                let c' = go c
+                if same c c' then n else Keyed(k, c')
+            | Annotated(s, c) ->
+                let c' = go c
+                if same c c' then n else Annotated(s, c')
+            | leaf -> leaf
+
+        go n
 
     /// Total number of nodes. A cheap sanity check in tests, and the denominator when
     /// arguing that §5.2's diff is actually O(changed).
@@ -367,6 +488,16 @@ module Scene =
             match prune c with
             | c when c = empty -> empty
             | c -> Clip(p, c)
+        // **`Opacity(0.0, _)` is not pruned**, and the temptation to prune it is a trap an
+        // animation walks straight into. A group fading in from zero would have its whole
+        // subtree vanish at t = 0 and reappear at the next frame, so the node count would
+        // change between two frames that differ only in a float — which is exactly the diff
+        // instability §5.2 exists to prevent. `prune` drops what *cannot* draw; a transparent
+        // subtree is one that is not drawing *yet*.
+        | Opacity(a, c) ->
+            match prune c with
+            | c when c = empty -> empty
+            | c -> Opacity(a, c)
         | Keyed(k, c) ->
             match prune c with
             | c when c = empty -> empty

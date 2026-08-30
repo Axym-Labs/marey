@@ -128,7 +128,7 @@ datasets.
 
 | Package | |
 |---|---|
-| `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the nine-case scene IR. Zero dependencies. |
+| `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the ten-case scene IR. Zero dependencies. |
 | `Marey.Units` | SI, 22 derived and 18 non-SI unit witnesses; canonicalisation, prefix selection, and Unicode/ASCII/LaTeX/siunitx rendering. |
 | `Marey.Plot` | `Chart` and the `plot` encoding block, twelve geoms, colour/shape/size channels, statistics, facets, six themes, colour-blind-safe palettes with a validator, constraint layout, and the axis and legend compilers. No backend reference. |
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, byte-identical across renders. |

@@ -488,6 +488,22 @@ type SvgBackend(?dpi: float<px / mm>) =
                 draw ctm (depth + 1) child
                 endTag depth "g"
 
+        // D67 — group opacity, which is what `<g opacity>` means in SVG: the subtree is
+        // composited into its own buffer and *that* is faded, so an overlap inside the group
+        // does not read darker than the rest of it. This is the case `Degrade.forCaps`
+        // approximates for a backend without it; here it is exact and no rewrite happens.
+        //
+        // The attribute is written even when it is 1, unlike `fill-rule` and the baseline
+        // attributes, which are omitted at their SVG defaults. Those two omissions describe a
+        // property the scene did not ask about; an `Opacity` node is something the scene said,
+        // and a golden that shows what the scene said is worth one redundant attribute.
+        | Opacity(a, child) ->
+            openTag depth "g"
+            attr "opacity" (Svg.ratio (max 0.0 (min 1.0 a)))
+            closeOpen ()
+            draw ctm (depth + 1) child
+            endTag depth "g"
+
         // §5.2 — stable identity, so a future diff can address this subtree by name.
         | Keyed(Key name, child) ->
             let id = doc.UniqueId(Svg.ncname name)
@@ -703,6 +719,9 @@ type SvgBackend(?dpi: float<px / mm>) =
               // document. `Capabilities.full` has this false because it describes a generic
               // vector backend; this one earns it.
               Semantics = true
+              // D67 — `<g opacity>` is group opacity by definition: SVG composites the group
+              // into its own buffer and fades the result. Nothing to degrade.
+              GroupOpacity = true
               // No instance-buffer ceiling: a text file has no hardware limit, and §5.1's
               // whole point is that one batch stays one batch.
               MaxBatch = None }

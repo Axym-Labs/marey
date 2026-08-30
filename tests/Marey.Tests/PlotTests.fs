@@ -468,6 +468,7 @@ module LayoutInvariants =
 
             | Transform(a, child) -> collect (Affine.compose a ctm) child
             | Group ns -> ns |> Array.toList |> List.collect (collect ctm)
+            | Opacity(_, child)
             | Keyed(_, child)
             | Annotated(_, child) -> collect ctm child
             | Path _
@@ -1215,3 +1216,128 @@ module Channels =
 
         Assert.Contains("2 values", ex.Message)
         Assert.Contains("30 points", ex.Message)
+
+// ======================================================================================
+// §5.2 / D68 — THE PRODUCER NAMES WHAT IT DREW
+//
+// Before this milestone `Marey.Plot` produced exactly one `Keyed` node — the root — so the diff
+// §5.2 designed the IR around had a granularity of one, and D1's rejection of closure-valued
+// transforms was protecting a facility nothing used. These tests are the claim that the
+// granularity is now the layer.
+// ======================================================================================
+
+module Keying =
+
+    let private keysOf (n: Node) =
+        Scene.fold
+            (fun acc node ->
+                match node with
+                | Keyed(Key k, _) -> k :: acc
+                | _ -> acc)
+            []
+            n
+        |> List.rev
+
+    /// The scheme, spelled out once so nothing downstream has to guess at it. D69's storyboard
+    /// quotes `curve.[42]` as `figure/panel-0-0/layer-0/mark-42`, and this is where that string
+    /// is fixed — before the phase that constructs one exists, so it cannot invent a second
+    /// spelling.
+    [<Fact>]
+    let ``the four levels compose into a path`` () =
+        let panel = Keys.panel 0 1
+        let layer = Keys.layer panel 2
+
+        Assert.Equal(Key "figure", Keys.figure)
+        Assert.Equal(Key "figure/panel-0-1", panel)
+        Assert.Equal(Key "figure/panel-0-1/layer-2", layer)
+        Assert.Equal(Key "figure/panel-0-0/layer-0/mark-42", Keys.mark (Keys.layer (Keys.panel 0 0) 0) 42)
+
+    [<Fact>]
+    let ``a figure carries a key for its root, each panel and each layer`` () =
+        let fig =
+            Chart.line U.second U.metre fallT fallX
+            |> Chart.addScatter U.second U.metre fallT (Array.rev fallX)
+            |> Chart.beside (Chart.line U.second U.metre fallT fallX)
+
+        Assert.Equal<string list>(
+            [ "figure"
+              "figure/panel-0-0"
+              "figure/panel-0-0/layer-0"
+              "figure/panel-0-0/layer-1"
+              "figure/panel-0-1"
+              "figure/panel-0-1/layer-0" ],
+            keysOf (Chart.toScene surface fig)
+        )
+
+    /// **Ordinals, not names**, and this is the test that says why. Two layers of one panel may
+    /// carry the same `Name` — nothing forbids it and `Chart.withName` is optional — so a key
+    /// built from the name would collide, and `Scene.mapKey` would then fade both when asked to
+    /// fade one. The label still says "measured" twice, because that is `Annotated`'s job.
+    [<Fact>]
+    let ``two layers with the same name still get different keys`` () =
+        let fig =
+            Chart.line U.second U.metre fallT fallX
+            |> Chart.withName "measured"
+            |> Chart.addLine U.second U.metre fallT (Array.rev fallX)
+
+        let scene = Chart.toScene surface (fig |> Chart.withName "measured")
+
+        Assert.Equal<string list>(
+            [ "figure"; "figure/panel-0-0"; "figure/panel-0-0/layer-0"; "figure/panel-0-0/layer-1" ],
+            keysOf scene
+        )
+
+    /// The property M3 actually needs: a figure rebuilt from changed data keeps its keys, so two
+    /// frames of an animation are addressable by the same names and a diff can compare subtree
+    /// to subtree rather than figure to figure.
+    ///
+    /// **What this does not claim**, because no positional scheme can: identity across a *row
+    /// removal*. Drop row 3 and every later row's index shifts, so `mark-417` names a different
+    /// datum. Stable identity under an edit to the data needs an id supplied by the data, and
+    /// that is the differ's problem at M4. What M3 needs is stability under restyling,
+    /// re-theming and a change of values — which is what an animation does between frames.
+    [<Fact>]
+    let ``keys survive a restyle, a rename and a change of values`` () =
+        let before = Chart.toScene surface (Chart.line U.second U.metre fallT fallX)
+
+        let after =
+            Chart.line U.second U.metre fallT (fallX |> Array.map (fun x -> x * 0.5))
+            |> Chart.withName "renamed"
+            |> Chart.withTheme Theme.dark
+            |> Chart.toScene surface
+
+        Assert.Equal<string list>(keysOf before, keysOf after)
+
+        // And the keys address something different in each, which is what makes the equality
+        // above a statement about identity rather than about two identical scenes.
+        Assert.NotEqual(
+            Scene.tryFindKey (Keys.layer (Keys.panel 0 0) 0) before,
+            Scene.tryFindKey (Keys.layer (Keys.panel 0 0) 0) after
+        )
+
+    /// One layer of one panel, faded, and nothing else moved. This is the operation the whole
+    /// scheme exists to make possible, run against a real figure rather than a hand-built tree.
+    [<Fact>]
+    let ``one layer of one panel can be faded through its key`` () =
+        let fig =
+            Chart.line U.second U.metre fallT fallX
+            |> Chart.addScatter U.second U.metre fallT (Array.rev fallX)
+
+        let scene = Chart.toScene surface fig
+        let target = Keys.layer (Keys.panel 0 0) 1
+        let faded = Scene.mapKey target (Scene.opacity 0.25) scene
+
+        match Scene.tryFindKey target faded with
+        | Some(Opacity(a, inner)) ->
+            Assert.Equal(0.25, a)
+            Assert.Equal(Scene.tryFindKey target scene, Some inner)
+        | other -> failwithf "expected the second layer to be wrapped in an Opacity, got %A" other
+
+        // Exactly one node was added, and the first layer is the same object it was.
+        Assert.Equal(Scene.count scene + 1, Scene.count faded)
+
+        let untouched = Keys.layer (Keys.panel 0 0) 0
+
+        match Scene.tryFindKey untouched scene, Scene.tryFindKey untouched faded with
+        | Some a, Some b -> Assert.True(System.Object.ReferenceEquals(a, b), "the untouched layer was rebuilt")
+        | _ -> failwith "the untouched layer went missing"

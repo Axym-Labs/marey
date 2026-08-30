@@ -240,7 +240,57 @@ module ``D31 capabilities are honest`` =
         Assert.True caps.Dashes
         Assert.True caps.RotatedText
         Assert.True caps.Semantics
+        Assert.False caps.GroupOpacity
         Assert.True caps.MaxBatch.IsNone
+
+    /// D67 — **the only `GroupOpacity = false` in the project**, and the reason the flag is a
+    /// capability rather than a constant.
+    ///
+    /// The obvious implementation is `\begin{scope}[opacity=0.5]`, and it is wrong twice. pgf
+    /// inherits `opacity` into each path rather than compositing the scope, so it is the
+    /// *approximation* wearing the capability's name; and a path's own `fill opacity=` — which
+    /// this backend emits for every colour carrying alpha — **overrides** the inherited value,
+    /// so a half-transparent series inside a fading group would come out at its original alpha.
+    /// The pgf feature that does composite is `transparency group`, which the manual gates on
+    /// driver support, and this backend hands a `string` to an unknown preamble and driver.
+    [<Fact>]
+    let ``a group opacity is folded into paint alpha rather than emitted as a scope`` () =
+        let group =
+            Scene.opacity
+                0.5
+                (Group
+                    [| Scene.rect None (Some(Solid accent)) { X0 = 0.1<nd>; Y0 = 0.1<nd>; X1 = 0.6<nd>; Y1 = 0.9<nd> }
+                       Scene.rect None (Some(Solid ink)) { X0 = 0.4<nd>; Y0 = 0.1<nd>; X1 = 0.9<nd>; Y1 = 0.9<nd> } |])
+
+        let out = render group
+
+        Assert.Equal(2, countOccurrences "fill opacity=0.5" out)
+
+        // No scope at all: the scene has no clip, so a `\begin{scope}` here could only be an
+        // attempt to carry the opacity as a scope option, which is the thing this is not.
+        Assert.Equal(0, countOccurrences "\\begin{scope}" out)
+        Assert.DoesNotContain("transparency group", out)
+
+    /// The same fold, reached the other way. `render` degrades before it draws, so the
+    /// backend's own `Opacity` branch is only met by a caller driving `IBackend` by hand — the
+    /// case `SkiaBackend`'s `Annotated` comment calls defensive rather than dead. It performs
+    /// the identical fold, and says so in a comment, because a reviewer of a `.tex` file should
+    /// be able to see that a group opacity was here.
+    [<Fact>]
+    let ``driving IBackend by hand with an undegraded scene folds it too`` () =
+        let backend = TikzBackend()
+        let b = backend :> IBackend
+
+        b.Begin surface
+
+        b.Draw(
+            Scene.opacity 0.5 (Scene.rect None (Some(Solid accent)) { X0 = 0.1<nd>; Y0 = 0.1<nd>; X1 = 0.9<nd>; Y1 = 0.9<nd> })
+        )
+
+        b.Finish()
+
+        Assert.Contains("marey-opacity: 0.5 -- folded into paint alpha", backend.Result)
+        Assert.Contains("fill opacity=0.5", backend.Result)
 
     /// D10 built `Degrade.forCaps` and nothing needed it until now. A gradient must arrive as the
     /// solid colour at its midpoint rather than as a missing fill or a crash.

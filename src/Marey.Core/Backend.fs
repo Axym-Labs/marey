@@ -39,6 +39,19 @@ type Capabilities =
       /// Can carry `Annotated` metadata into the output — `aria-label` on SVG, nothing on a
       /// raster target.
       Semantics: bool
+      /// D67 — can composite a subtree and fade the *result*: SVG's `opacity` on a `<g>`,
+      /// Skia's `SaveLayer` with an alpha paint. False for a backend that can only set alpha
+      /// per shape, which is a visibly different picture wherever the group's own shapes
+      /// overlap. `Degrade.forCaps` folds the node into paint alpha when this is false, which
+      /// is that different picture, chosen deliberately.
+      ///
+      /// **TikZ is the backend that cannot**, which is why this is a field and not a constant.
+      /// pgf's `opacity=` on a scope is *inherited by each path*, not composited over the
+      /// scope, so emitting it would be the degraded picture wearing the capability's name.
+      /// The pgf feature that does composite — `transparency group` — is documented as
+      /// requiring driver support, and this backend's contract is a `string` that has to
+      /// compile under a caller's own preamble and driver.
+      GroupOpacity: bool
       /// Largest batch the backend will take in one node; `None` for unlimited. The GPU
       /// backend has a real instance-buffer ceiling and the compiler must split at it.
       MaxBatch: int option }
@@ -112,6 +125,7 @@ module Capabilities =
           TextShaping = true
           RotatedText = true
           Semantics = true
+          GroupOpacity = true
           MaxBatch = None }
 
     /// The realistic starting point for a vector backend (SVG, TikZ, PDF): everything except
@@ -139,6 +153,69 @@ module Degrade =
             else
                 let mid = Interp.stops (stops |> Array.map (fun s -> s.Offset, s.Color)) 0.5
                 Solid mid
+
+    /// Multiply a constant into every alpha a subtree paints with — D67's approximation of
+    /// group opacity, for a target that cannot composite a subtree and fade the result.
+    ///
+    /// This is D11's `Color.A` route, applied to a whole group at once, and it is the
+    /// approximation `Node.Opacity` names: identical to true group opacity everywhere the
+    /// group's shapes do not overlap, and darker than it where they do, because each shape is
+    /// composited separately and an overlap is therefore painted twice.
+    ///
+    /// Rasters are included. Skipping them would be cheaper — it is the one case that copies a
+    /// buffer rather than rewriting a record — but a half-faded group containing a heatmap
+    /// whose heatmap does not fade is the *visible* kind of wrong, and the approximation is
+    /// only defensible while it is uniform.
+    /// **Public because a backend needs it directly.** `IBackend.Draw` can be driven with an
+    /// un-degraded scene, so a backend whose `GroupOpacity` is false still meets an `Opacity`
+    /// node and has to do something with it. Re-deriving this fold there would put a second
+    /// implementation of one approximation in the tree, and the TikZ backend's version would
+    /// be the subtly wrong one: pgf's scope `opacity=` is *inherited* by each path and is
+    /// therefore **overridden** by a path's own `fill opacity=`, so a subtree that already
+    /// carries alpha would come out unfaded exactly where it was already translucent.
+    let foldOpacity (a: float) (n: Node) : Node =
+        let a = if a < 0.0 then 0.0 elif a > 1.0 then 1.0 else a
+
+        if a >= 1.0 then
+            n
+        else
+            let colour (c: Color) = { c with A = c.A * a }
+
+            let paint (p: Paint) =
+                match p with
+                | Solid c -> Solid(colour c)
+                | LinearGradient(f, u, stops) ->
+                    LinearGradient(f, u, stops |> Array.map (fun s -> { s with Color = colour s.Color }))
+                | RadialGradient(centre, r, stops) ->
+                    RadialGradient(centre, r, stops |> Array.map (fun s -> { s with Color = colour s.Color }))
+
+            let stroke (s: Stroke) = { s with Paint = paint s.Paint }
+
+            n
+            |> Scene.transform (fun node ->
+                match node with
+                | Path(segs, st, fill, rule) -> Path(segs, Option.map stroke st, Option.map paint fill, rule)
+                | Text t -> Text { t with Paint = paint t.Paint }
+                | Markers b ->
+                    Markers
+                        { b with
+                            Fill = Option.map paint b.Fill
+                            Stroke = Option.map stroke b.Stroke }
+                | Raster r ->
+                    let src = r.Image.Rgba
+
+                    if isNull src then
+                        node
+                    else
+                        let dst = Array.copy src
+                        let mutable i = 3
+
+                        while i < dst.Length do
+                            dst.[i] <- byte (System.Math.Round(float dst.[i] * a))
+                            i <- i + 4
+
+                        Raster { r with Image = { r.Image with Rgba = dst } }
+                | other -> other)
 
     let private degradeStroke (caps: Capabilities) (s: Stroke) =
         let s =
@@ -182,6 +259,11 @@ module Degrade =
             | Raster _ when not caps.Rasters -> Scene.empty
 
             | Clip(_, child) when not caps.Clipping -> child
+
+            // D67. Note that this fires *bottom-up*, so nested opacities compose the way they
+            // read: an inner `Opacity(0.5, x)` is already folded into `x`'s paints by the time
+            // the enclosing `Opacity(0.4, _)` gets here, and the result carries 0.2.
+            | Opacity(a, child) when not caps.GroupOpacity -> foldOpacity a child
 
             | Annotated(_, child) when not caps.Semantics -> child
 

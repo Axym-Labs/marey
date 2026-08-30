@@ -549,6 +549,27 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
             draw ctm child
             canvas.Restore()
 
+        // D67 — `SaveLayer` *is* group opacity: the subtree is drawn into an offscreen layer
+        // and the layer is composited back with the paint's alpha, so an overlap inside the
+        // group does not read darker than the rest of it. Setting `canvas.Alpha` or folding
+        // the value into each paint would be the degraded picture, which is what
+        // `Degrade.forCaps` produces for a backend that has no layers — and this one has.
+        //
+        // A layer costs a full-surface allocation, so `1.0` skips it. That is not an
+        // optimisation with a caveat: at alpha 1 the composite is the identity, so the two
+        // paths produce the same pixels, and an animation that opens at full opacity should
+        // not pay for a buffer to multiply by one.
+        | Opacity(a, child) ->
+            let a = max 0.0 (min 1.0 a)
+
+            if a >= 1.0 then
+                draw ctm child
+            else
+                use paint = new SKPaint(Color = SKColors.White.WithAlpha(byte (Math.Round(a * 255.0))))
+                canvas.SaveLayer paint |> ignore
+                draw ctm child
+                canvas.Restore()
+
         // §5.2's stable identity has nowhere to land in a bitmap and is not an error: the node
         // is a container, so its child is drawn and the name is dropped. Unlike `Annotated`
         // below, this is *not* something `Degrade` removes — a key is not a capability — so
@@ -815,6 +836,9 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
               // the time. If tagging ever arrives it wants the D64 treatment — the capability
               // moving to the entry point.
               Semantics = false
+              // D67 — `SKCanvas.SaveLayer` composites the subtree and fades the result, which
+              // is exactly the node's meaning. Nothing to degrade.
+              GroupOpacity = true
               // No instance-buffer ceiling. Skia takes a path of any size, and §5.1's whole
               // point is that one batch stays one batch. The GPU backend is where `MaxBatch`
               // finally has a real value.

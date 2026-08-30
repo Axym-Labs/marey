@@ -494,6 +494,12 @@ module Figure =
         if p.Layers.Length = 0 then
             Scene.empty
         else
+            // D68 — this panel's name, from the grid position it already writes into the
+            // `Annotated` node at the end of this function. `Keyed` says *which* panel; the
+            // `Annotated` beside it says that it is a panel. Both, because §5.2 and §5.3 are
+            // different questions.
+            let panelKey = Keys.panel p.Row p.Col
+
             let (xPacked, yPacked) = packedScales p.Layers.[0].Data
 
             // The one place the theme's unit spelling and a per-axis override meet. Resolved here
@@ -666,7 +672,7 @@ module Figure =
             let data =
                 let layers =
                     p.Layers
-                    |> Array.map (fun l ->
+                    |> Array.mapi (fun ordinal l ->
                         let pts = Erase.projectXY l.Data
 
                         // D46 — **one batch per bucket, not one per point.** With no channels
@@ -695,11 +701,20 @@ module Figure =
                                 [| "batches", string nodes.Length
                                    "unmapped", string unmapped |]
 
-                        Annotated(
-                            { Role = RoleSeries
-                              Label = (if isEmpty l.Name then "series" else l.Name)
-                              Data = Array.append [| "series", l.Name; "points", string pts.Length |] counts },
-                            body
+                        // D68 — the layer's **ordinal**, not its name. `l.Name` is written
+                        // into the `Annotated` node just below because that is where a
+                        // human-readable label belongs; it is kept out of the key because it
+                        // is caller-supplied, is empty until `Chart.withName` is called, and
+                        // may be the same on two layers of one panel. The ordinal is unique
+                        // and survives a restyle, a rename and a change of data.
+                        Keyed(
+                            Keys.layer panelKey ordinal,
+                            Annotated(
+                                { Role = RoleSeries
+                                  Label = (if isEmpty l.Name then "series" else l.Name)
+                                  Data = Array.append [| "series", l.Name; "points", string pts.Length |] counts },
+                                body
+                            )
                         ))
 
                 Transform(Axes.panelTransform plotNd, Clip(Axes.panelShape p.Coord, Group layers))
@@ -751,26 +766,29 @@ module Figure =
                     Colorbar.compile m theme extent (Layout.findPx "colorbar" arrangement) spec plan ramp
                 | _ -> Scene.empty
 
-            Annotated(
-                { Role = RoleOther "panel"
-                  Label = (if isEmpty p.Title then "panel" else p.Title)
-                  Data =
-                    [| "row", string p.Row
-                       "col", string p.Col
-                       "layers", string p.Layers.Length
-                       "x-tick-rule", xPlan.Rule
-                       "y-tick-rule", yPlan.Rule |] },
-                Scene.prune (
-                    Group
-                        [| Axes.panelBackground theme p.Coord plotNd
-                           Axes.gridlines theme p.Coord plotNd gridX gridY
-                           data
-                           axisNode AxisBottom p.XAxis xSpec xPlan
-                           axisNode AxisLeft p.YAxis ySpec yPlan
-                           Axes.panelFrame theme p.Coord plotNd
-                           panelTitle
-                           legend
-                           colorbarNode |]
+            Keyed(
+                panelKey,
+                Annotated(
+                    { Role = RoleOther "panel"
+                      Label = (if isEmpty p.Title then "panel" else p.Title)
+                      Data =
+                        [| "row", string p.Row
+                           "col", string p.Col
+                           "layers", string p.Layers.Length
+                           "x-tick-rule", xPlan.Rule
+                           "y-tick-rule", yPlan.Rule |] },
+                    Scene.prune (
+                        Group
+                            [| Axes.panelBackground theme p.Coord plotNd
+                               Axes.gridlines theme p.Coord plotNd gridX gridY
+                               data
+                               axisNode AxisBottom p.XAxis xSpec xPlan
+                               axisNode AxisLeft p.YAxis ySpec yPlan
+                               Axes.panelFrame theme p.Coord plotNd
+                               panelTitle
+                               legend
+                               colorbarNode |]
+                    )
                 )
             )
 
@@ -871,7 +889,7 @@ module Figure =
 
         Scene.prune (
             Keyed(
-                Key "figure",
+                Keys.figure,
                 Group(Array.append [| background; head |] panels)
             )
         )

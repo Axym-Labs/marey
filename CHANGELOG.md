@@ -23,7 +23,7 @@ had.
 
 **`Marey.Backend.Skia`.** PNG through `SkiaBackend.renderPng`, PDF through
 `SkiaBackend.renderPdf`, and the `IBackend` protocol through `SkiaBackend` with
-`Result : byte[]`. All nine IR cases, including `Raster`, which this is the first backend to draw
+`Result : byte[]`. All ten IR cases, including `Raster`, which this is the first backend to draw
 natively. `SkiaOptions` carries the resolution, the background, antialiasing, an optional font
 file and the PDF's document information.
 
@@ -70,7 +70,58 @@ without pulling a native dependency into a package that must not have one.
   figure.** Layout is a measure–arrange pass against `ITextMeasurer`, and the Skia backend's is
   not the other two's. This is what measuring text properly means, and it is not a defect.
 
+---
+
+**M3 — *Motion*.** In progress, and shipping in the same release as M2.5 above. What has landed
+so far is the two gaps in the IR that everything else in the milestone needs: the producer could
+not name what it drew, and a group could not be faded.
+
+### Added
+
+**`Node.Opacity of float * Node` — a tenth IR case, and the first since M0.** Fades a
+**composited** subtree, which is not the same thing as multiplying `Color.A` through it: the two
+differ exactly where the group's own shapes overlap, because per-shape alpha paints an overlap
+twice. `Scene.opacity` clamps into `[0,1]`. `Color.A` stays the right tool for a single shape.
+
+`Capabilities.GroupOpacity` guards it, and `Degrade.forCaps` folds the node into paint alpha when
+a backend cannot composite — the documented approximation above, with its failure mode named.
+SVG (`<g opacity>`) and Skia (`SaveLayer`) composite; **TikZ does not**, because pgf's scope
+`opacity=` is inherited per path rather than composited over the scope and is overridden by a
+path's own `fill opacity=`, and the feature that does composite — `transparency group` — is
+gated on driver support this backend cannot assume.
+
+**`Scene.tryFindKey` and `Scene.mapKey`.** Read and rewrite one subtree by its `Key`. `mapKey`
+returns every subtree it did not rewrite **by reference**, so a per-frame rewrite costs the path
+to the key rather than the figure.
+
+**`Keys` — hierarchical names for what `Marey.Plot` produces.** `figure`,
+`figure/panel-0-1`, `figure/panel-0-1/layer-2`, `figure/panel-0-1/layer-2/mark-417`. A figure now
+carries a key on its root, on every panel and on every layer; before this it carried exactly one,
+at the root, so the diff §5.2 designed the IR around had a granularity of the whole figure.
+
+Layer keys are **ordinals**, not names: a layer's `Name` is optional and may be duplicated across
+layers of one panel, so a key built from it would collide. A mark's key is its **original row**,
+not its position within a channel batch, which is a renumbered subset.
+
+### Changed
+
+- **`Capabilities` has a tenth field** and `Node` a tenth case, so both break every backend
+  implementation at compile time. That is the intended cost of an IR change and the reason the
+  type is guarded.
+- **Golden baselines moved**: `all-nine-nodes.{svg,tex}` are now `all-ten-nodes.{svg,tex}`, and
+  every figure baseline gained the keyed groups described above. No geometry changed.
+
 ### Known limitations
+
+- Keys are positional, so they are stable under a restyle, a rename, a re-theme and a change of
+  values — which is what an animation does between frames — and **not** under an edit that adds
+  or removes a row, which shifts every later index. Identity across a data edit needs an id the
+  data supplies, and the scene differ that would consume one is M4.
+- Nothing emits a node carrying a `mark` key yet. The spelling is fixed and tested so that the
+  storyboard phase, which splits a `MarkerBatch` to give one mark a node of its own, does not
+  invent a second one.
+
+### M2.5's known limitations, unchanged
 
 - A PNG or PDF is reproducible on the machine that rendered it unless `SkiaOptions.FontFile`
   states a face. `ResolvedFaces` reports what was chosen so the difference is visible.

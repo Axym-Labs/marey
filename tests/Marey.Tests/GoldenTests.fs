@@ -1,7 +1,7 @@
 /// §13 — the golden-image suite.
 ///
 /// Every scene below is chosen to make one part of the SVG backend's behaviour visible in a
-/// text diff. Between them they cover all nine `Node` cases, all seven `MarkerShape`s, both
+/// text diff. Between them they cover all ten `Node` cases, all seven `MarkerShape`s, both
 /// gradient kinds, clipping, dashes, rotated text, semantics, and a realistic axis composition.
 ///
 /// **Determinism is the property that makes any of this work.** SvgWriter.fs opens with it:
@@ -483,17 +483,17 @@ module Scenes =
                    yTicksAndLabels |]
         )
 
-    /// Every one of the nine `Node` cases in a single document, asserted rather than asserted-by-
-    /// eye. §5: "this type is small, closed, total" — nine cases, and the reference backend has
-    /// to handle all nine.
-    let allNineCases =
+    /// Every one of the ten `Node` cases in a single document, asserted rather than asserted-by-
+    /// eye. §5: "this type is small, closed, total" — ten cases, and the reference backend has
+    /// to handle all ten.
+    let allTenCases =
         Group
             [| Keyed(
-                   Key "all-nine",
+                   Key "all-ten",
                    Annotated(
                        { Role = RoleSeries
                          Label = "everything"
-                         Data = [| "cases", "9" |] },
+                         Data = [| "cases", "10" |] },
                        Group
                            [| Transform(
                                   Affine.translate (pt 0.0 0.05),
@@ -525,7 +525,39 @@ module Scenes =
                                                             30uy; 30uy; 200uy; 255uy; 200uy; 200uy; 30uy; 128uy |] }
                                                    Bounds = { X0 = 0.6<nd>; Y0 = 0.68<nd>; X1 = 0.9<nd>; Y1 = 0.86<nd> }
                                                    Smooth = false }
-                                             text "all nine" 0.06 0.08 AnchorStart BaselineAlphabetic 0.0 |]
+                                             // D67, and the reason group opacity is a node
+                                             // rather than an alpha on each fill: these two
+                                             // rectangles *overlap*. `Opacity` composites the
+                                             // pair and fades the result, so the overlap reads
+                                             // like the rest of the group; folding 0.5 into
+                                             // each fill instead paints the overlap twice and
+                                             // it comes out darker.
+                                             //
+                                             // The three baselines are where that is legible.
+                                             // SVG and Skia composite, TikZ advertises
+                                             // `GroupOpacity = false` and gets the fold, so
+                                             // `all-ten-nodes.tex` and `all-ten-nodes.svg`
+                                             // disagree about exactly one rectangle-sized
+                                             // region — which is what the capability costs,
+                                             // stated in a file a reviewer can open.
+                                             Scene.opacity
+                                                 0.5
+                                                 (Group
+                                                     [| Scene.rect
+                                                            None
+                                                            (Some(Solid accent))
+                                                            { X0 = 0.10<nd>
+                                                              Y0 = 0.10<nd>
+                                                              X1 = 0.30<nd>
+                                                              Y1 = 0.26<nd> }
+                                                        Scene.rect
+                                                            None
+                                                            (Some(Solid warm))
+                                                            { X0 = 0.22<nd>
+                                                              Y0 = 0.17<nd>
+                                                              X1 = 0.42<nd>
+                                                              Y1 = 0.33<nd> } |])
+                                             text "all ten" 0.06 0.08 AnchorStart BaselineAlphabetic 0.0 |]
                                   )
                               ) |]
                    )
@@ -663,7 +695,7 @@ module Scenes =
           "groups-transforms", groupsAndTransforms, Golden.surface
           "rotated-text", rotatedText, anisotropic
           "axis-composition", axisComposition, wide
-          "all-nine-nodes", allNineCases, Golden.surface
+          "all-ten-nodes", allTenCases, Golden.surface
           "geoms-bands", phase6Bands, Golden.surface
           "geoms-distributions", phase6Distributions, Golden.surface ]
 
@@ -716,9 +748,9 @@ module Snapshots =
         renderAt Scenes.wide "axis-composition.svg" Scenes.axisComposition
 
     [<Fact>]
-    let ``all nine Node cases`` () =
-        assertAllNineCases Scenes.allNineCases
-        render "all-nine-nodes.svg" Scenes.allNineCases
+    let ``all ten Node cases`` () =
+        assertAllTenCases Scenes.allTenCases
+        render "all-ten-nodes.svg" Scenes.allTenCases
 
     /// M2 phase 6 — `ribbon`, `step`, `tile`, `segment` and `text`, through `Geom.compile`.
     [<Fact>]
@@ -783,13 +815,14 @@ module Figures =
         check "figure-image.svg" (Chart.render SvgBackend.render figureSurface imageFigure)
 
     /// A figure is a scene like any other, so it has to be one: if `Figure.toScene` ever emitted
-    /// something outside the nine cases this would not compile, and if it stopped exercising them
+    /// something outside the ten cases this would not compile, and if it stopped exercising them
     /// the golden above would be measuring less than it claims.
     [<Fact>]
     let ``the figure is built from the IR and nothing else`` () =
         let used = casesUsed (Chart.toScene figureSurface figure)
 
-        // Not all nine: a figure has no `Raster`, and no `Clip` is needed for a series that fits.
+        // Not all ten: a figure has no `Raster` and no `Opacity` — a static figure fades
+        // nothing — and no `Clip` is needed for a series that fits.
         // Asserting the *set* rather than a count keeps this honest as layout changes.
         Assert.Contains("Path", used)
         Assert.Contains("Text", used)

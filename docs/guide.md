@@ -933,7 +933,7 @@ See [`notebooks/README.md`](notebooks/README.md) for installation and
 
 ## 17. The scene IR
 
-Everything above compiles to one closed nine-case `Scene` IR, and every backend consumes only that.
+Everything above compiles to one closed ten-case `Scene` IR, and every backend consumes only that.
 It is the level at which a figure that came out wrong can be inspected.
 
 ```fsharp
@@ -941,8 +941,8 @@ let scene = Chart.toScene (Chart.size 480.0 300.0) fall
 printfn "nodes: %d   primitives: %d" (Scene.count scene) (Scene.primitiveCount scene)
 ```
 
-The nine cases are `Path`, `Text`, `Markers`, `Raster`, `Group`, `Transform`, `Clip`, `Keyed` and
-`Annotated`. The split between `count` and `primitiveCount` is the whole point of `Markers`: a
+The ten cases are `Path`, `Text`, `Markers`, `Raster`, `Group`, `Transform`, `Clip`, `Opacity`,
+`Keyed` and `Annotated`. The split between `count` and `primitiveCount` is the whole point of `Markers`: a
 scatter of any size is **one** node.
 
 ```fsharp
@@ -955,6 +955,25 @@ printfn "20 000 points -> %d nodes, %d primitives" (Scene.count bigScene) (Scene
 `Keyed` and `Annotated` carry identity and semantics through to the output — SVG gets `id`s and
 ARIA roles, TikZ gets `% marey-key:` and `% marey-role:` comments — so a rendered figure can be
 diffed and read as text.
+
+The keys are hierarchical, and a figure assigns them: `figure`, then `figure/panel-0-0`, then
+`figure/panel-0-0/layer-0` for each layer of each panel. `Keys` spells them and `Scene.mapKey`
+rewrites one subtree by name, leaving every other subtree exactly as it was — which is what makes
+"fade this one series" a change to the path down to that series rather than to the figure.
+
+```fsharp
+let faded =
+    scene |> Scene.mapKey (Keys.layer (Keys.panel 0 0) 0) (Scene.opacity 0.25)
+
+printfn "found: %b   nodes: %d -> %d"
+    (Scene.tryFindKey (Keys.panel 0 0) scene |> Option.isSome)
+    (Scene.count scene)
+    (Scene.count faded)
+```
+
+`Scene.opacity` fades a **composited** subtree, which is not the same as setting alpha on each
+shape inside it: the two differ wherever the group's own shapes overlap, because per-shape alpha
+paints the overlap twice. For a single shape, `Color.A` is still the simpler tool.
 
 ---
 

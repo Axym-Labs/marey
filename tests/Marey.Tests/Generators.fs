@@ -215,7 +215,7 @@ type RectNd = RectNd of Rect<nd>
 /// A rotation angle in `(-2pi, 2pi)`.
 type Rotation = Rotation of float<rad>
 
-/// A scene tree, bounded in depth and breadth, drawing from all nine `Node` cases.
+/// A scene tree, bounded in depth and breadth, drawing from all ten `Node` cases.
 type SceneTree = SceneTree of Node
 
 // ======================================================================================
@@ -709,6 +709,18 @@ module Gens =
                       let! segs = Gen.arrayOfLength n pathSeg
                       let! c = child
                       return Clip(segs, c)
+                  }
+                  2,
+                  gen {
+                      // Generated in [0,1] rather than over the whole `float` line. An
+                      // out-of-range opacity is not a scene anything produces — `Scene.opacity`
+                      // clamps — so generating one would make every property here a statement
+                      // about a value the IR is not meant to hold. `0.0` and `1.0` are included,
+                      // because those two are the boundaries a backend is most likely to
+                      // special-case.
+                      let! a = Gen.elements [ 0.0; 0.25; 0.5; 1.0 ]
+                      let! c = child
+                      return Opacity(a, c)
                   }
                   2,
                   gen {

@@ -57,6 +57,7 @@ let rec private pathPoints (n: Node) : Vec2<nd> list =
     | Group ns -> ns |> Array.toList |> List.collect pathPoints
     | Transform(_, c)
     | Clip(_, c)
+    | Opacity(_, c)
     | Keyed(_, c)
     | Annotated(_, c) -> pathPoints c
     | Text _

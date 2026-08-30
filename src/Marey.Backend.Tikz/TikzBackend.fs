@@ -504,6 +504,26 @@ type TikzBackend(?options: TikzOptions) =
                 draw ctm (depth + 1) child
                 sb.Append(indent depth).Append("\\end{scope}\n") |> ignore
 
+        // D67 — this backend advertises `GroupOpacity = false`, so `Degrade.forCaps` normally
+        // folds the node away before the traversal sees it and this branch is for a caller
+        // driving `IBackend` by hand. It performs the identical fold rather than inventing a
+        // second answer.
+        //
+        // **Not `\begin{scope}[opacity=…]`**, which is the obvious thing and is wrong. pgf's
+        // `opacity` key is inherited by each path in the scope rather than composited over it,
+        // so it is the approximation and not the capability — and worse, it is *overridden* by
+        // a path's own `fill opacity=`, which this backend emits for every colour with alpha.
+        // A half-transparent series inside a fading group would come out at its original alpha.
+        // The pgf feature that does composite is `transparency group`, which the manual gates
+        // on driver support, and this backend promises a string that compiles under a caller's
+        // own preamble and driver.
+        | Opacity(a, child) ->
+            if opts.Comments then
+                sb.Append(Tikz.comment (indent depth) ("marey-opacity: " + Tikz.ratio a + " -- folded into paint alpha"))
+                |> ignore
+
+            draw ctm depth (Degrade.foldOpacity a child)
+
         // §5.2 — stable identity. There is no `id` attribute in TeX, so the key becomes a comment:
         // it survives into the output for a reviewer and for anyone diffing two pictures, which is
         // what the key is for at this stage.
@@ -813,6 +833,14 @@ type TikzBackend(?options: TikzOptions) =
               // `Degrade.forCaps` strips every `Annotated` node when this is false, which would
               // discard the structure the golden diff is there to review.
               Semantics = true
+              // D67, and the one `false` this flag has anywhere in the project — which is what
+              // makes it a capability rather than a speculative switch. pgf's scope `opacity=`
+              // is inherited per path, not composited over the scope, so it is the *degraded*
+              // picture; `transparency group` is the one that composites and the pgf manual
+              // gates it on driver support, which a `string` this backend hands to an unknown
+              // preamble cannot assume. `Degrade.forCaps` folds the node into paint alpha, and
+              // the two agree except where the group's own shapes overlap.
+              GroupOpacity = false
               // A text file has no instance-buffer ceiling, and §5.1's whole point is that one
               // batch stays one batch.
               MaxBatch = None }

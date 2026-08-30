@@ -98,6 +98,20 @@ module private SkiaPixels =
 
         if n = 0 then 255.0 else total / float n
 
+    /// One pixel's colour, by fraction of the image, y **downward**. Greyscale answers "is
+    /// there ink"; compositing questions need the channels apart, because the two ways of
+    /// fading a group differ in hue and not only in lightness.
+    let rgbAt (png: byte[]) (fx: float) (fy: float) : int * int * int =
+        use bitmap = SKBitmap.Decode png
+
+        if isNull bitmap then
+            failwith "the raster backend produced bytes no PNG decoder would read"
+
+        let x = max 0 (min (bitmap.Width - 1) (int (fx * float bitmap.Width)))
+        let y = max 0 (min (bitmap.Height - 1) (int (fy * float bitmap.Height)))
+        let c = bitmap.GetPixel(x, y)
+        int c.Red, int c.Green, int c.Blue
+
     /// The fraction of the whole image carrying ink, in 0..1.
     let coverage (g: Gray) : float =
         let inked = g.Pixels |> Array.sumBy (fun v -> if isInk v then 1 else 0)
@@ -412,7 +426,7 @@ module ``ink`` =
     [<InlineData "groups-transforms">]
     [<InlineData "rotated-text">]
     [<InlineData "axis-composition">]
-    [<InlineData "all-nine-nodes">]
+    [<InlineData "all-ten-nodes">]
     [<InlineData "geoms-bands">]
     [<InlineData "geoms-distributions">]
     let ``every golden scene renders with ink in it`` (name: string) =
@@ -1176,6 +1190,7 @@ module ``text shaping`` =
             | Group ns -> Array.iter (walk ctm) ns
             | Transform(a, c) -> walk (Affine.compose a ctm) c
             | Clip(_, c)
+            | Opacity(_, c)
             | Keyed(_, c)
             | Annotated(_, c) -> walk ctm c
 
@@ -1372,3 +1387,91 @@ module ``the resolved face`` =
                 backend.Result
 
             Assert.Equal<byte[]>(once (), once ()))
+
+// ======================================================================================
+// D67 — GROUP OPACITY IS COMPOSITING, NOT AN ALPHA ON EACH SHAPE
+//
+// This backend advertises `GroupOpacity = true`, and the claim behind that flag is not "the
+// group comes out fainter". It is that the subtree is composited *first* and the result faded,
+// which differs from folding the constant into each paint exactly where the group's own shapes
+// overlap. A pixel in the overlap is where the two answers separate, so that is where this
+// looks — the flag is otherwise indistinguishable from the degraded path, and a capability
+// nothing can tell apart from its own fallback is a capability nobody should trust.
+// ======================================================================================
+
+module ``group opacity composites`` =
+
+    let private box (c: Color) (x0: float) (y0: float) (x1: float) (y1: float) =
+        Scene.rect
+            None
+            (Some(Solid c))
+            { X0 = x0 * 1.0<nd>
+              Y0 = y0 * 1.0<nd>
+              X1 = x1 * 1.0<nd>
+              Y1 = y1 * 1.0<nd> }
+
+    /// Opaque red, then opaque blue over it, both inside one `Opacity 0.5`, on a white page.
+    ///
+    /// * **Composited** — blue wins the overlap outright, then the group is faded once against
+    ///   white: `(127, 127, 255)`.
+    /// * **Folded into each paint** — red at half over white gives `(255, 127, 127)`, and blue
+    ///   at half over *that* gives `(127, 64, 191)`.
+    ///
+    /// Sixty-three levels apart on green and blue both. There is no tolerance argument to have
+    /// here: the two answers are different colours, and the test names the one it expects rather
+    /// than asserting that something changed.
+    [<Fact>]
+    let ``the overlap of a faded group is the composite, not the double fade`` () =
+        withSkia (fun () ->
+            let scene =
+                Scene.opacity
+                    0.5
+                    (Group
+                        [| box (Color.rgb 1.0 0.0 0.0) 0.1 0.1 0.6 0.9
+                           box (Color.rgb 0.0 0.0 1.0) 0.4 0.1 0.9 0.9 |])
+
+            let png = SkiaBackend.renderPng surface scene
+
+            // Inside the overlap: x in [0.4, 0.6] of the panel, and `nd` is y-up while the
+            // reader's y runs down — the band spans the full height, so the flip does not
+            // matter here and is not being relied on.
+            let r, g, b = SkiaPixels.rgbAt png 0.5 0.5
+
+            let near (expected: int) (actual: int) name =
+                Assert.True(
+                    abs (expected - actual) <= 2,
+                    sprintf "%s was %d, expected %d -- the group was faded per shape rather than composited" name actual expected
+                )
+
+            near 127 r "red"
+            near 127 g "green"
+            near 255 b "blue"
+
+            // The red-only band, where both answers agree, so a failure above is about
+            // compositing and not about the fade happening at all.
+            let r2, g2, b2 = SkiaPixels.rgbAt png 0.2 0.5
+            near 255 r2 "red (no overlap)"
+            near 127 g2 "green (no overlap)"
+            near 127 b2 "blue (no overlap)")
+
+    /// **The gate can fail.** The same scene put through `Degrade.forCaps` with the capability
+    /// denied produces the other colour, from the same backend and the same reader — so the test
+    /// above is measuring compositing rather than measuring whatever Skia happens to do.
+    [<Fact>]
+    let ``the degraded scene produces the double fade instead`` () =
+        withSkia (fun () ->
+            let scene =
+                Scene.opacity
+                    0.5
+                    (Group
+                        [| box (Color.rgb 1.0 0.0 0.0) 0.1 0.1 0.6 0.9
+                           box (Color.rgb 0.0 0.0 1.0) 0.4 0.1 0.9 0.9 |])
+
+            let degraded = Degrade.forCaps { Capabilities.full with GroupOpacity = false } scene
+            let png = SkiaBackend.renderPng surface degraded
+            let r, g, b = SkiaPixels.rgbAt png 0.5 0.5
+
+            Assert.True(
+                abs (r - 127) <= 2 && abs (g - 64) <= 2 && abs (b - 191) <= 2,
+                sprintf "the folded scene rendered (%d, %d, %d); the double fade is (127, 64, 191)" r g b
+            ))
