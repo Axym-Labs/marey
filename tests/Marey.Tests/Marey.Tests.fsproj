@@ -31,6 +31,7 @@
     <Compile Include="GeometryProperties.fs" />
     <Compile Include="ColorProperties.fs" />
     <Compile Include="SceneProperties.fs" />
+    <Compile Include="AnimProperties.fs" />
     <Compile Include="RegressionTests.fs" />
     <!-- Before TexToolchain.fs: the external-tool registry every shelling gate reads. -->
     <Compile Include="Tools.fs" />
@@ -57,6 +58,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Marey.Core\Marey.Core.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Units\Marey.Units.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Anim\Marey.Anim.fsproj" />
     <!-- D66 — the Skia tests live here rather than in a `Marey.Tests.Skia` of their own.
          A second test project is a second place for a gate to rot, and the precedent for
          "the real enforcement is in CI, and a missing toolchain skips loudly" is already

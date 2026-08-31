@@ -73,8 +73,9 @@ without pulling a native dependency into a package that must not have one.
 ---
 
 **M3 — *Motion*.** In progress, and shipping in the same release as M2.5 above. What has landed
-so far is the two gaps in the IR that everything else in the milestone needs: the producer could
-not name what it drew, and a group could not be faded.
+so far is the two gaps in the IR that everything else in the milestone needs — the producer could
+not name what it drew, and a group could not be faded — and the algebra the rest of the milestone
+is written in.
 
 ### Added
 
@@ -103,6 +104,27 @@ Layer keys are **ordinals**, not names: a layer's `Name` is optional and may be 
 layers of one panel, so a key built from it would collide. A mark's key is its **original row**,
 not its position within a channel batch, which is a renumbered subset.
 
+**`Marey.Anim` — the tenth project in the tree, and animation as a value.** `Anim<'a>` is a duration and a
+function of time, so seeking is evaluation (`anim.At 12.7<s>`), frames can be rendered out of
+order, and a render parallelises with `Array.Parallel.map` and no scheduler. It depends on
+`Marey.Core` and nothing else, which keeps a scrubbable timeline compilable under Fable.
+
+The algebra is `pure'`, `map`, `map2` (parallel, duration = max), `andThen` (sequential,
+duration = sum), `stretch`, `ease` and `tween`, with two constructors — `ofFraction`, which
+admits an overshoot, and `ofSeconds`, which clamps. `tween` goes through Core's `Interpolate`
+witness, so one combinator tweens `float<m>`, `float32`, `Vec2`, `Vec3`, `Color` and `Rect` with
+no boxing.
+
+**The clock clamps at the seek and nowhere else.** `At` is total on every `float<s>` — `nan` and
+both infinities included — and holds the first or last frame outside `[0, Duration]`. The
+normalised clock underneath it is *not* clamped, which is what lets `Ease.backOut` overshoot past
+1 and settle back; clamping there would leave a library in which the interesting half of the
+easing catalogue compiles, runs and does nothing.
+
+**`Ease`** — twenty-eight functions: linear, quad/cubic/quart, sine, expo, circ, back, elastic
+and bounce, each in `In`, `Out` and `InOut`. Every one starts at 0 and ends at 1; `back` and
+`elastic` leave `[0, 1]` in between, and exactly those two do.
+
 ### Changed
 
 - **`Capabilities` has a tenth field** and `Node` a tenth case, so both break every backend
@@ -120,6 +142,15 @@ not its position within a channel batch, which is a renumbered subset.
 - Nothing emits a node carrying a `mark` key yet. The spelling is fixed and tested so that the
   storyboard phase, which splits a `MarkerBatch` to give one mark a node of its own, does not
   invent a second one.
+- **`Marey.Anim` is in the repository and not on nuget.org.** It can tween and ease a value; it
+  cannot yet turn an animated figure into a picture, because that needs an entry point taking a
+  pre-computed arrangement. It is packed and published in the same commit that adds one.
+- An overshoot survives `tween`, `map` and `stretch` and is **absorbed** by `andThen` and `map2`,
+  which reach their components through the clamped seek because that is what "the shorter one
+  holds" and "the first one has finished" mean. Ease the components, not the composition.
+- Colour overshoot is gamut-limited and **alpha overshoot does not exist**: `Color.ofOklab` ends
+  in an unconditional `clamp01` on alpha, so a fade eased with `Ease.backOut` overshoots its hue
+  and lightness and not its opacity. Correct, and surprising enough to write down.
 
 ### M2.5's known limitations, unchanged
 

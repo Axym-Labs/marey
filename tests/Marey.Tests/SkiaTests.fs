@@ -689,6 +689,9 @@ module ``the zero-dependency rule`` =
     // Not a vector backend, but it makes the same zero-dependency claim in its .fsproj and the
     // packages that will consume it (D75, D79) each drag a toolchain already.
     [<InlineData "Marey.Toolchain">]
+    // Nor is this one, and its claim is stronger still: `Marey.Anim` references `Marey.Core`
+    // and nothing else, which is what keeps a scrubbable timeline compilable under Fable.
+    [<InlineData "Marey.Anim">]
     let ``no vector package references SkiaSharp`` (name: string) =
         let a = load name
 

@@ -218,6 +218,29 @@ type Rotation = Rotation of float<rad>
 /// A scene tree, bounded in depth and breadth, drawing from all ten `Node` cases.
 type SceneTree = SceneTree of Node
 
+/// A duration in seconds: an exact multiple of 1/8 s in `[0, 8]`.
+///
+/// **The eighths are not decoration.** `andThen` adds durations and `stretch` multiplies them,
+/// and the laws in `AnimProperties` compare `(d1 + d2) + d3` against `d1 + (d2 + d3)`, which is
+/// not an identity over the doubles. Restricting the generator to binary fractions takes
+/// IEEE754's non-associativity out of a law that is about the algebra — the same move every
+/// other generator in this file makes for its own domain. Zero is included, and often: `pure'`
+/// has duration zero and it is the whole identity case.
+type AnimSeconds = AnimSeconds of float
+
+/// A stretch factor: a power of two between 1/16 and 16. Powers of two for the same reason the
+/// durations are eighths, and because `stretch` divides by the factor as well as multiplying.
+type StretchFactor = StretchFactor of float
+
+/// A seek time in seconds, reaching well past both ends of any duration this file generates, so
+/// that the clamp at each boundary is exercised rather than assumed. Also an exact multiple of
+/// 1/8, so a seek can land precisely on a seam.
+type Seek = Seek of float
+
+/// A generated animation: a duration, and a seed that separates one animation from another so a
+/// law comparing two compositions is comparing something.
+type AnimSpec = AnimSpec of seconds: float * seed: float
+
 // ======================================================================================
 // THE GENERATORS
 // ======================================================================================
@@ -737,6 +760,25 @@ module Gens =
 
     let scene: Gen<Node> = Gen.choose (0, 3) |> Gen.bind nodeOfDepth
 
+    let animSeconds: Gen<float> = Gen.choose (0, 64) |> Gen.map (fun i -> float i / 8.0)
+
+    let stretchFactor: Gen<float> =
+        Gen.choose (-4, 4) |> Gen.map (fun i -> 2.0 ** float i)
+
+    /// Deliberately unbounded by the durations: a third of the range is outside `[0, 8]` on one
+    /// side or the other, which is where `At`'s clamp lives.
+    let seek: Gen<float> =
+        Gen.frequency
+            [ 2, Gen.elements [ 0.0; 1.0; 8.0; -1.0 ]
+              8, Gen.choose (-32, 96) |> Gen.map (fun i -> float i / 8.0) ]
+
+    let animSpec: Gen<AnimSpec> =
+        gen {
+            let! d = animSeconds
+            let! k = Gen.choose (-40, 40) |> Gen.map (fun i -> float i / 10.0)
+            return AnimSpec(d, k)
+        }
+
 // ======================================================================================
 // ARBITRARY REGISTRATION
 //
@@ -796,6 +838,15 @@ type MareyArbs =
     static member SceneTree() = Gens.scene |> Gen.map SceneTree |> Arb.fromGen
 
     static member MarkerShape() = Gens.markerShape |> Arb.fromGen
+
+    static member AnimSeconds() = Gens.animSeconds |> Gen.map AnimSeconds |> Arb.fromGen
+
+    static member StretchFactor() =
+        Gens.stretchFactor |> Gen.map StretchFactor |> Arb.fromGen
+
+    static member Seek() = Gens.seek |> Gen.map Seek |> Arb.fromGen
+
+    static member AnimSpec() = Gens.animSpec |> Arb.fromGen
 
 // ======================================================================================
 // SHARED HELPERS
