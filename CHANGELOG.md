@@ -74,8 +74,9 @@ without pulling a native dependency into a package that must not have one.
 
 **M3 — *Motion*.** In progress, and shipping in the same release as M2.5 above. What has landed
 so far is the two gaps in the IR that everything else in the milestone needs — the producer could
-not name what it drew, and a group could not be faded — and the algebra the rest of the milestone
-is written in.
+not name what it drew, and a group could not be faded — the algebra the rest of the milestone is
+written in, and the two interpolations that algebra had nothing to say about: a transform and a
+shape.
 
 ### Added
 
@@ -125,6 +126,31 @@ easing catalogue compiles, runs and does nothing.
 and bounce, each in `In`, `Out` and `InOut`. Every one starts at 0 and ends at 1; `back` and
 `elastic` leave `[0, 1]` in between, and exactly those two do.
 
+**`Affine` joins the interpolation witness — a seventh overload, and the only one that is not
+componentwise.** `interp a b t` on a transform decomposes both sides to
+translate/rotate/scale/skew, interpolates those, and recomposes; the componentwise answer between
+a 0° and a 180° rotation passes through the *zero matrix*, so a shape collapses to a point and
+pops back out. The decomposition was already in `Marey.Core`; what is new is that it is reachable
+through `interp`, `Interp.between`, `Interp.stops` and `Anim.tween` rather than only by name.
+
+Rotations take the **shortest arc**, so a 350° → 10° tween goes forwards through 0°. A matrix does
+not remember which way round its angle was written, so `rotate 181°` and `rotate -179°` are the
+same six floats and tween the same way; the long way round needs two tweens or an explicit angle
+track.
+
+**`Morph` — path morphing as a function, with its policies visible.** `Morph.paths` flattens both
+paths to polylines, splits them into subpaths, resamples each subpath to a fixed number of points
+spaced evenly **by arc length**, and interpolates point by point. `Morph.anim` is the same morph
+with the preparation hoisted out of the frame loop, and `Morph.prepare` returns both sides in the
+common form so a still frame before the morph can be drawn without a pop.
+
+It is a function rather than an eighth `Interp` overload because it has to choose three times, and
+a `static member Interp(a, b, t)` has nowhere to record that it chose: how subpaths are paired
+when the counts differ (`SubpathPadding`), how many samples the common parameterisation gets, and
+what a closed path morphing into an open one produces (`ClosurePolicy`). Unmatched subpaths grow
+out of a point of their own, so a second shape blooms where it belongs rather than flying in from
+wherever the first one sits.
+
 ### Changed
 
 - **`Capabilities` has a tenth field** and `Node` a tenth case, so both break every backend
@@ -151,6 +177,28 @@ and bounce, each in `In`, `Out` and `InOut`. Every one starts at 0 and ends at 1
 - Colour overshoot is gamut-limited and **alpha overshoot does not exist**: `Color.ofOklab` ends
   in an unconditional `clamp01` on alpha, so a fade eased with `Ease.backOut` overshoots its hue
   and lightness and not its opacity. Correct, and surprising enough to write down.
+- **A morph of two curves is not a curve.** The output is always a polyline: an arc-length
+  correspondence between two arbitrary cubics has no cubic answer, and fitting one would mean
+  calling a residual zero. `Samples` is the resolution, and 64 holds a circle to about 0.06% of
+  its radius.
+- **A closed subpath's last morph sample repeats its first**, because the sampler traces the
+  closing edge — otherwise a square would be morphed over three of its four sides — and lands back
+  where it started. One point in `Samples`, invisible in every renderer.
+- **Subpaths are paired by index, not by position**, so two paths that list their subpaths in
+  different orders morph by crossing over. Pairing by proximity is a better default and a worse
+  policy: it is unstable under exactly the small motions an animation is made of.
+- **The start point of a closed subpath is not rotated to match its partner**, so a circle morphing
+  into a square whose first vertex is a quarter-turn away twists as it goes. Ring alignment is a
+  fourth policy and is not in this milestone.
+- **A reflection cannot be tweened into a rotation without collapsing.** The orientation-reversing
+  matrices are not connected to the orientation-preserving ones, so a decomposed tween between a
+  transform and its mirror passes through a frame with zero determinant — the shape flattens to a
+  line and comes back mirrored. That is the honest answer rather than a defect; what is gated is
+  that it stays finite throughout.
+- **A transform whose first column is zero loses its shear through the decomposition.** Such a
+  matrix maps the plane onto a line, and no rotation-scale-shear factorisation records the
+  direction the collapsed axis came from. `decompose` preserves what is left rather than producing
+  NaNs that would propagate through a whole animation.
 
 ### M2.5's known limitations, unchanged
 

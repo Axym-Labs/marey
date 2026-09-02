@@ -32,6 +32,7 @@
     <Compile Include="ColorProperties.fs" />
     <Compile Include="SceneProperties.fs" />
     <Compile Include="AnimProperties.fs" />
+    <Compile Include="MorphProperties.fs" />
     <Compile Include="RegressionTests.fs" />
     <!-- Before TexToolchain.fs: the external-tool registry every shelling gate reads. -->
     <Compile Include="Tools.fs" />

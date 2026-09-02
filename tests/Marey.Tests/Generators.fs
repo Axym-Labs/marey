@@ -241,6 +241,24 @@ type Seek = Seek of float
 /// law comparing two compositions is comparing something.
 type AnimSpec = AnimSpec of seconds: float * seed: float
 
+/// A **well-formed** path for the morph laws: zero to three subpaths, each opened by a `MoveTo`,
+/// each carrying up to four line or cubic segments, each independently closed.
+///
+/// Deliberately not `pathSeg`'s free sequence. `Morph` is total on a malformed path — a leading
+/// `LineTo`, a stray `ClosePath` — and `MorphProperties` says so in named facts, because that
+/// totality is a decision (Skia's implicit `moveTo(0,0)`) rather than an accident. But a law
+/// about an arc-length correspondence between two shapes is not a law about a path that starts
+/// by closing nothing, and quantifying it over one would be testing the recovery rather than
+/// the correspondence.
+///
+/// Zero subpaths is generated, and often: the empty path is the padding rule's whole edge case.
+type MorphPath = MorphPath of PathSeg[]
+
+/// The *free* sequence: `pathSeg` drawn without structure, so a leading `LineTo`, a `ClosePath`
+/// with nothing open and a run of bare `MoveTo`s all occur. Only one law is quantified over it —
+/// that `Morph` is total — and that is the point of having it.
+type RawPath = RawPath of PathSeg[]
+
 // ======================================================================================
 // THE GENERATORS
 // ======================================================================================
@@ -779,6 +797,43 @@ module Gens =
             return AnimSpec(d, k)
         }
 
+    let morphPath: Gen<PathSeg[]> =
+        let subpath =
+            gen {
+                let! start = vec2Nd
+                let! n = Gen.choose (0, 4)
+
+                let! segs =
+                    Gen.arrayOfLength
+                        n
+                        (Gen.frequency
+                            [ 3, vec2Nd |> Gen.map LineTo
+                              1,
+                              gen {
+                                  let! c1 = vec2Nd
+                                  let! c2 = vec2Nd
+                                  let! until = vec2Nd
+                                  return CubicTo(c1, c2, until)
+                              } ])
+
+                let! closed = Gen.elements [ true; false ]
+
+                return
+                    [| yield MoveTo start
+                       yield! segs
+                       if closed then
+                           yield ClosePath |]
+            }
+
+        gen {
+            let! n = Gen.choose (0, 3)
+            let! subs = Gen.arrayOfLength n subpath
+            return Array.concat subs
+        }
+
+    let rawPath: Gen<PathSeg[]> =
+        Gen.choose (0, 8) |> Gen.bind (fun n -> Gen.arrayOfLength n pathSeg)
+
 // ======================================================================================
 // ARBITRARY REGISTRATION
 //
@@ -847,6 +902,10 @@ type MareyArbs =
     static member Seek() = Gens.seek |> Gen.map Seek |> Arb.fromGen
 
     static member AnimSpec() = Gens.animSpec |> Arb.fromGen
+
+    static member MorphPath() = Gens.morphPath |> Gen.map MorphPath |> Arb.fromGen
+
+    static member RawPath() = Gens.rawPath |> Gen.map RawPath |> Arb.fromGen
 
 // ======================================================================================
 // SHARED HELPERS

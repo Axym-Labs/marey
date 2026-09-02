@@ -14,7 +14,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>Marey.Anim</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>Animation as a pure function of time: a seekable, composable Anim&lt;'a&gt; with a verified algebra, and the easing catalogue. Depends only on Marey.Core.</Description>
+    <Description>Animation as a pure function of time: a seekable, composable Anim&lt;'a&gt; with a verified algebra, the easing catalogue, and arc-length path morphing. Depends only on Marey.Core.</Description>
     <PackageTags>fsharp visualization plotting animation easing tweening scientific</PackageTags>
 
     <!-- **Not published yet, and this flips at phase 3.** D64's rule is that a facility ships
@@ -31,9 +31,11 @@
   <ItemGroup>
     <!-- Compile order is the layer order. `Ease` is a catalogue of `float -> float` and knows
          nothing about `Anim`; `Anim.ease` takes any such function, so the dependency runs one
-         way and this order is the one that says so. -->
+         way and this order is the one that says so. `Morph` is last because it is the only file
+         here that knows what a `PathSeg` is, and because `Morph.anim` returns one. -->
     <Compile Include="Ease.fs" />
     <Compile Include="Anim.fs" />
+    <Compile Include="Morph.fs" />
   </ItemGroup>
 
   <ItemGroup>

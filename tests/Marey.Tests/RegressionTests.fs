@@ -101,8 +101,12 @@ module ``12_4 the SRTP member is Interp, not Lerp`` =
 
         Assert.DoesNotContain("Lerp", members)
         Assert.Contains("Interp", members)
-        // One overload per supported type: float<'u>, float32, Vec2, Vec3, Color, Rect.
-        Assert.Equal(6, members |> Array.filter ((=) "Interp") |> Array.length)
+        // One overload per supported type: float<'u>, float32, Vec2, Vec3, Color, Rect, Affine.
+        //
+        // The count is a pin, not a fact about arity, and it caught D74 adding the seventh — which
+        // is what it is for. A new overload is a decision about the witness's surface and has to
+        // be acknowledged here; a *renamed* one is the failure §12.4 is actually guarding.
+        Assert.Equal(7, members |> Array.filter ((=) "Interp") |> Array.length)
 
     /// The BCL member the collision was with is still there, so the hazard has not gone away —
     /// it has been named around. Worth asserting so that a future rename back to `Lerp` is

@@ -534,6 +534,20 @@ module Overshoot =
         Assert.Equal(3.5, float got.X1, 12)
         Assert.Equal(6.0, float got.Y1, 12)
 
+    /// **The affine case overshoots in the decomposition, not in the matrix** — which is the
+    /// whole of D74 restated as a gate. A quarter past a 60° turn is a 75° turn: the rotation
+    /// component is extrapolated and then recomposed, so the result is still a rotation. The
+    /// componentwise answer at `t = 1.25` is not a rotation at all, and its determinant says so.
+    [<Fact>]
+    let ``Affine overshoots as a rotation`` () =
+        let deg (d: float) = Affine.rotate<nd> (d * System.Math.PI / 180.0 * 1.0<rad>)
+        let got = Anim.tween 1.0<s> (deg 0.0) (deg 60.0) |> Anim.atFraction Beyond
+
+        Assert.Equal(1.0, float (Affine.determinant got), 12)
+
+        let angle = atan2 (float got.M21) (float got.M11) * 180.0 / System.Math.PI
+        Assert.Equal(75.0, angle, 12)
+
     /// **The colour case is asserted in Oklab, and it has to be.**
     ///
     /// `Interp(Color, ...)` goes sRGB -> linear -> Oklab, interpolates there, and returns
