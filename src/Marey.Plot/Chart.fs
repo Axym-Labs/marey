@@ -1257,6 +1257,45 @@ module Chart =
 
     let toSceneWith (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Node = Figure.toScene m extent fig
 
+    // ---- Output, for something that moves — D72 ---------------------------------------------
+
+    /// The layout this figure would be drawn in. One shot, one sample.
+    ///
+    /// `Chart.arrangement` still hands out the outer grid on its own, which is the older and
+    /// narrower question; this is the whole layout, including each panel's gutters, and it is
+    /// what `toSceneIn` takes.
+    let arrangeFor (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Shot =
+        Figure.arrangeFor m extent fig
+
+    /// **D72 — lay out once for the whole shot, against the union of its sampled states.**
+    ///
+    /// The reason this exists rather than "just call `toScene` per frame": since D61 the plot
+    /// rectangle is what is left after the widest tick label has taken its room, so a domain
+    /// crossing `9.5 → 10.5` gains a digit on every label at once and the panel *breathes* while
+    /// the data is the thing supposed to be moving. Sizing against the union gives an arrangement
+    /// no frame can overflow, and tick labels still recompute per frame inside it.
+    ///
+    /// ```fsharp
+    /// let shot = Chart.arrangeUnion 32 TextMeasure.approx extent (fun u -> Anim.atFraction u anim)
+    /// let frame u = Chart.toSceneIn TextMeasure.approx shot (Anim.atFraction u anim)
+    /// ```
+    ///
+    /// `samples` is stated because the union is only as good as it: an animation with a spike
+    /// between two samples can still overflow. Thirty-two is D72's default and a good one.
+    let arrangeUnion (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (sample: float -> Figure) : Shot =
+        Figure.arrangeUnion samples m extent sample
+
+    /// **Draw a figure inside a layout that is already decided.** The frame renderer's entry
+    /// point, and the one function in this section that an animation calls per frame.
+    ///
+    /// No `Extent<px>`: the shot carries the surface it was arranged against, and a second one
+    /// beside it could only ever disagree.
+    let toSceneIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : Node = Figure.toSceneIn m shot fig
+
+    /// The outer grid `toScene` chose — the head row and the panel regions. For inspection.
+    let arrangement (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Arrangement =
+        Figure.arrangement m extent fig
+
     /// Drive any backend.
     ///
     /// This is the path that honours the backend contract in full: layout measures against the

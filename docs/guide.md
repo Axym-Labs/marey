@@ -28,9 +28,10 @@ The blocks form one continuous session, so bindings introduced early are still i
 13. [The encoding block](#13-the-encoding-block)
 14. [Facets](#14-facets)
 15. [Output: SVG, TikZ, PNG, PDF](#15-output-svg-tikz-png-pdf)
-16. [Notebooks](#16-notebooks)
-17. [The scene IR](#17-the-scene-ir)
-18. [Escape hatches](#18-escape-hatches)
+16. [Animation](#16-animation)
+17. [Notebooks](#17-notebooks)
+18. [The scene IR](#18-the-scene-ir)
+19. [Escape hatches](#19-escape-hatches)
 
 ---
 
@@ -53,6 +54,7 @@ open Marey
 | `Marey.Backend.Svg` | Rendering to SVG. |
 | `Marey.Backend.Tikz` | Rendering to `tikzpicture` source for LaTeX. |
 | `Marey.Backend.Skia` | Rendering to PNG or PDF, and real text shaping. The only one with third-party dependencies, and native ones at that — see §15. |
+| `Marey.Anim` | Animation as a pure function of time: `Anim<'a>`, the easing catalogue and path morphing. Depends on `Marey.Core` alone — see §16. |
 | `Marey.Html` | HTML renderings of nine Marey types, for a notebook cell. Host-neutral. |
 | `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension. Installed *into the host*, not referenced from user code. |
 
@@ -907,7 +909,153 @@ printfn "shaped:       %.2f px" (float (shaper.Measure spec "AVATAR").Advance)
 
 ---
 
-## 16. Notebooks
+## 16. Animation
+
+`Marey.Anim` holds one type, and its whole design is in the signature: **an animation is a pure
+function of time, not a mutation.**
+
+```fsharp
+#r "nuget: Marey.Anim"
+
+let animClimb = Anim.tween 2.0<s> 0.0<m> 100.0<m>
+
+printfn "at 1 s:      %.1f m" (float (animClimb |> Anim.at 1.0<s>))
+printfn "at 90%%:      %.1f m" (float (animClimb |> Anim.atFraction 0.9))
+printfn "past the end: %.1f m" (float (animClimb |> Anim.at 9.0<s>))
+```
+
+Nothing is stepped and nothing accumulates, so frame 900 costs what frame 1 costs and you can ask
+for them in any order. That is what a scrubbable timeline needs and what a mutable scene graph
+cannot give you.
+
+`tween` goes through the same `Interpolate` witness the rest of the library uses, so it tweens
+whatever Core can interpolate — a `float<'u>`, a `Vec2`, a `Rect`, a `Color` (through Oklab, so it
+does not pass through grey), and an affine transform.
+
+### Composing
+
+Six combinators, and the two that matter are parallel and sequential composition.
+
+```fsharp
+let animFade = Anim.tween 0.5<s> 0.0 1.0
+
+// Parallel: the duration is the **maximum**, and the shorter one holds its final value.
+let animBoth = Anim.map2 (fun x a -> x, a) animClimb animFade
+printfn "both, at 2 s: %A" (animBoth |> Anim.at 2.0<s>)
+
+// Sequential: the duration is the **sum**.
+let animTwice = Anim.andThen animClimb (Anim.tween 1.0<s> 100.0<m> 0.0<m>)
+printfn "up then down lasts %.1f s" (float (Anim.duration animTwice))
+```
+
+`Anim.stretch` scales a duration and `Anim.ease` reparameterises the clock. `Anim.pure'` is a
+constant of zero duration.
+
+### The clock clamps; the fraction does not
+
+`Anim.at` clamps its argument to `[0, duration]`, which is what makes the hold above well-defined
+and `andThen` total at every instant. The *normalised* clock is deliberately not clamped, and that
+is the entire easing catalogue:
+
+```fsharp
+let animBack = Anim.tween 1.0<s> 0.0 1.0 |> Anim.ease Ease.backOut
+
+printfn "backOut overshoots to %.3f" (animBack |> Anim.atFraction 0.35)
+printfn "and still lands on %.3f" (animBack |> Anim.atFraction 1.0)
+```
+
+Twenty-eight easings ship — quad, cubic, quart, sine, expo, circ, back, elastic and bounce, each
+in, out and in-out, plus linear. One caveat, because it is surprising rather than wrong: a
+**colour** overshoot is gamut-clamped on the way back to sRGB, and alpha is clamped
+unconditionally, so an eased `fadeIn` cannot overshoot its opacity.
+
+### Morphing a shape
+
+`Morph.paths` interpolates two paths through a common form: both are flattened to polylines and
+resampled by **arc length**, so a square becomes a triangle at a steady speed rather than racing
+along one edge and crawling down the next.
+
+```fsharp
+let animSquare =
+    [| MoveTo { X = 0.2<nd>; Y = 0.2<nd> }
+       LineTo { X = 0.8<nd>; Y = 0.2<nd> }
+       LineTo { X = 0.8<nd>; Y = 0.8<nd> }
+       LineTo { X = 0.2<nd>; Y = 0.8<nd> }
+       ClosePath |]
+
+let animTriangle =
+    [| MoveTo { X = 0.5<nd>; Y = 0.9<nd> }
+       LineTo { X = 0.9<nd>; Y = 0.1<nd> }
+       LineTo { X = 0.1<nd>; Y = 0.1<nd> }
+       ClosePath |]
+
+let animMorph = Morph.anim Morph.defaults 1.0<s> animSquare animTriangle
+printfn "the midpoint has %d segments" (Anim.atFraction 0.5 animMorph).Length
+```
+
+Two things about it look like bugs the first time you see them, and neither is one. Both are
+pinned by tests rather than argued away.
+
+<img src="images/morph-pairing.svg" alt="Two morphs: a square twisting into itself, and two discs swapping places" width="720">
+
+**Top row — a closed ring's start point is not rotated to match its partner.** Those are the same
+square twice, written from different corners; the morph pairs sample zero with sample zero, so it
+twists a quarter turn on the way rather than sitting still. **Bottom row — subpaths pair by
+index.** That is one picture written in two subpath orders: the ends agree that nothing moved, and
+in between the two discs cross through each other and trade size. Matching rings by rotation, or
+subpaths by proximity, are both real algorithms and neither is built.
+
+Three other things worth knowing: the output is always a **polyline**, so a morphed curve is a
+flattened one; `Morph.paths a b 0.0` is `a` *in the common form* rather than `a` itself, which is
+what `Morph.prepare` hands back and what the still frame before a morph should be drawn from; and
+`MorphOptions` states the sample count, the flattening resolution and what happens when an open
+path meets a closed one, rather than hiding them.
+
+### Animating a figure
+
+An `Anim<Figure>` is what you usually want, and rendering one has exactly one subtlety. Since the
+plot rectangle is what is **left over** after the widest tick label has taken its room, laying out
+each frame on its own makes the panel *breathe*: a y domain climbing past 100 gains a digit on
+every label at once, the gutter widens, and the axis crawls sideways while the data is the thing
+that was supposed to move. Freezing the first frame's layout has the opposite failure — a later
+frame's labels are wider than the gutters that were sized for frame zero.
+
+So lay out **once, against the union of the animation's sampled states**, and draw every frame
+inside an arrangement no frame can overflow:
+
+```fsharp
+let animGrow (u: float) =
+    let ts = Array.init 24 (fun i -> float i * 0.4<s>)
+    let xs = ts |> Array.map (fun t -> t / 1.0<s> * (1.0 + 40.0 * u) * 1.0<m>)
+    Chart.line U.second U.metre ts xs
+
+let animExtent = Chart.size 640.0 400.0
+let animShot = Chart.arrangeUnion 32 TextMeasure.approx animExtent animGrow
+
+let animFrame (u: float) = Chart.toSceneIn TextMeasure.approx animShot (animGrow u)
+
+let animPanels = [| 0.0; 0.5; 1.0 |] |> Array.map (animFrame >> Scene.count)
+printfn "every frame is the same scene shape: %b" (Array.distinct animPanels |> Array.length = 1)
+printfn "the shot was sized over %d samples" animShot.Samples
+```
+
+The same union pins the **unit prefix**, so a zoom crossing a decade cannot step `mm → µm`
+mid-shot and change the axis title while the data moves. Tick labels still recompute every frame;
+it is the rectangle and the prefix that are held.
+
+The sample count is stated rather than hidden because the union is only as good as it: an
+animation with a spike between two samples can still overflow. Thirty-two is a sound default, and
+`animShot.Samples` reports what was used. One accepted consequence: a still frame lifted out of an
+animation has slightly more gutter than the same `Figure` rendered on its own, because it is
+wearing the whole shot's clothes.
+
+`Marey.Anim` mentions no `Figure` and depends only on `Marey.Core`, which is why the sampler above
+is a plain `float -> Figure` rather than an `Anim<Figure>`: tweening a `float<m>` should not make
+you install the grammar. `fun u -> Anim.atFraction u anim` is the bridge.
+
+---
+
+## 17. Notebooks
 
 In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
 cell whose value is a `Figure` displays as a figure. No `.Show()`, no save-then-open, no display
@@ -931,7 +1079,7 @@ See [`notebooks/README.md`](notebooks/README.md) for installation and
 
 ---
 
-## 17. The scene IR
+## 18. The scene IR
 
 Everything above compiles to one closed ten-case `Scene` IR, and every backend consumes only that.
 It is the level at which a figure that came out wrong can be inspected.
@@ -977,7 +1125,7 @@ paints the overlap twice. For a single shape, `Color.A` is still the simpler too
 
 ---
 
-## 18. Escape hatches
+## 19. Escape hatches
 
 **Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so the scales are
 the caller's and everything downstream still works.

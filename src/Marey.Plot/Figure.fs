@@ -83,6 +83,106 @@ type FacetScales =
     /// One y across the panels; each panel keeps its own x.
     | ShareY
 
+/// D72 — one panel's inner grid, frozen.
+///
+/// The nine sizes are the `Track.Content` extents of the panel's inner grid: its *gutters*. They
+/// are what an axis title, a column of tick labels, a panel title or a colorbar takes out of the
+/// region the figure gave the panel, and the plot rectangle is what is left over. That order is
+/// the reason a panel breathes when it is re-arranged per frame — since D61 the rectangle is a
+/// function of shaped text, so a domain crossing `9.5 → 10.5` gains a digit on every label at
+/// once, every gutter widens together, and the axis crawls while the data is the thing that was
+/// supposed to be moving.
+///
+/// `Probe` is the rectangle the *tick plan* is measured against — how many labels survive and
+/// whether they tilt. It is one of the two passes' inputs rather than one of its outputs, and it
+/// is frozen for the same reason and stated separately for that one.
+///
+/// **What is deliberately not here: the tick plan, and the labels.** D72 freezes the rectangle,
+/// not its contents. An animation whose numbers change and whose labels do not is not showing the
+/// numbers changing.
+type PanelLayout =
+    { TitleH: float<px>
+      TopPad: float<px>
+      XTicksH: float<px>
+      XTitleH: float<px>
+      YTitleW: float<px>
+      YTicksW: float<px>
+      RightPad: float<px>
+      BarGap: float<px>
+      BarW: float<px>
+      /// The plot rectangle the tick plan is measured against.
+      Probe: Extent<px>
+      /// D73 — the prefix the x axis is pinned to. `None` chooses one from this figure's own
+      /// domain, which is what a still figure does and has always done.
+      XPrefix: Prefix option
+      YPrefix: Prefix option }
+
+[<RequireQualifiedAccess>]
+module PanelLayout =
+
+    let empty: PanelLayout =
+        { TitleH = 0.0<px>
+          TopPad = 0.0<px>
+          XTicksH = 0.0<px>
+          XTitleH = 0.0<px>
+          YTitleW = 0.0<px>
+          YTicksW = 0.0<px>
+          RightPad = 0.0<px>
+          BarGap = 0.0<px>
+          BarW = 0.0<px>
+          Probe = { Width = 0.0<px>; Height = 0.0<px> }
+          XPrefix = None
+          YPrefix = None }
+
+    /// D72's union, and the whole rule is one sentence: **every size is the largest any sampled
+    /// frame needed.**
+    ///
+    /// Componentwise, not "the sample with the biggest gutters". There is no such sample — one
+    /// frame can want a wider y gutter and a shorter x one than another, and picking either
+    /// whole arrangement then overflows in the direction it did not win. The componentwise
+    /// maximum is the arrangement no frame can overflow, which is the property D72 is actually
+    /// asking for, and it is the same rule for `Probe`: a larger probe keeps *more* tick labels,
+    /// and the gutters that hold them have already been maximised.
+    ///
+    /// The prefixes are not unioned — a prefix has no maximum, and D73 decides it from the union
+    /// *domain* rather than from the sampled choices. `union` carries the left operand's through
+    /// and `arrangeUnion` writes the pinned pair afterwards.
+    let union (a: PanelLayout) (b: PanelLayout) : PanelLayout =
+        { TitleH = max a.TitleH b.TitleH
+          TopPad = max a.TopPad b.TopPad
+          XTicksH = max a.XTicksH b.XTicksH
+          XTitleH = max a.XTitleH b.XTitleH
+          YTitleW = max a.YTitleW b.YTitleW
+          YTicksW = max a.YTicksW b.YTicksW
+          RightPad = max a.RightPad b.RightPad
+          BarGap = max a.BarGap b.BarGap
+          BarW = max a.BarW b.BarW
+          Probe =
+            { Width = max a.Probe.Width b.Probe.Width
+              Height = max a.Probe.Height b.Probe.Height }
+          XPrefix = a.XPrefix
+          YPrefix = a.YPrefix }
+
+/// D72 — **the layout of one shot**: everything every frame of an animation shares, and nothing
+/// a frame is allowed to recompute.
+///
+/// A still figure has one of these too, over a single sample. That is not a courtesy: it is what
+/// makes `toScene` and this type the same code path, and the reason `Figure.arrangement` — the
+/// hand-written second copy that this replaces — could disagree with the renderer for two
+/// milestones without a test noticing.
+[<NoComparison>]
+type Shot =
+    { /// The figure's outer grid: the head row, and one region per panel.
+      Outer: Arrangement
+      /// Per panel key — `panel-0-1`, `Keys.panel`'s spelling — that panel's frozen inner grid.
+      /// A panel whose key is absent is measured from its own data, so a shot taken over a
+      /// figure that later grows a panel degrades to today's behaviour rather than failing.
+      Panels: (string * PanelLayout)[]
+      /// How many states the union was taken over. **Reported rather than assumed, per D72:**
+      /// the union is only as good as its samples, and an animation with a spike between two of
+      /// them can still overflow. A single figure's own shot reports 1.
+      Samples: int }
+
 /// **The compiler.** A `Figure` in, a `Node` out, nothing in between that a backend can see.
 ///
 /// This is the layer §5.5 describes: "axes, legends, titles, colorbars, facets, error bars, box
@@ -490,9 +590,31 @@ module Figure =
         p.Layers |> Array.collect (layerEntries theme) |> Array.distinct
 
     /// Compile one panel into a device-space region.
-    let private compilePanel (m: ITextMeasurer) (theme: Theme) (extent: Extent<px>) (region: Rect<px>) (p: Panel) : Node =
+    /// D72 — one function, two answers: the panel's frozen inner grid, and a thunk that draws
+    /// the panel inside it.
+    ///
+    /// **Why one function and not two.** Measuring and drawing share every intermediate here —
+    /// the two axis specs, the colorbar, the inner grid, the tick planner — and this file already
+    /// carries the proof of what splitting them costs: `Figure.arrangement` was a second copy of
+    /// `toScene`'s grid, and it had been silently wrong since M1, omitting the head row so that
+    /// every titled figure reported a layout the renderer did not use. So the two answers come
+    /// out of one body, and a caller that only wants the layout simply never calls the thunk —
+    /// which matters, because sampling an animation 32 times must not compile 32 scenes' worth
+    /// of geometry to find out how wide a gutter is.
+    ///
+    /// `frozen = None` measures the panel from its own data, which is every still figure.
+    /// `Some layout` skips the measuring pass and uses the layout given — the animation path,
+    /// where the layout is a union over the whole shot and no single frame may move it.
+    let private compilePanel
+        (m: ITextMeasurer)
+        (theme: Theme)
+        (extent: Extent<px>)
+        (region: Rect<px>)
+        (frozen: PanelLayout option)
+        (p: Panel)
+        : PanelLayout * (unit -> Node) =
         if p.Layers.Length = 0 then
-            Scene.empty
+            PanelLayout.empty, (fun () -> Scene.empty)
         else
             // D68 — this panel's name, from the grid position it already writes into the
             // `Annotated` node at the end of this function. `Keyed` says *which* panel; the
@@ -507,11 +629,18 @@ module Figure =
             // changes its axis titles — which is what `Chart.withTheme Theme.tikz` has to do.
             let unitStyle (cfg: AxisConfig) = defaultArg cfg.Style theme.UnitStyle
 
+            // D73 — the prefix comes from the frozen layout when there is one. A still figure
+            // pins nothing and chooses per figure, which is what it has always done; an
+            // animation pins both axes against the union of every frame's domain, so the axis
+            // *title* cannot step from `mm` to `µm` halfway through a zoom.
+            let pinX = frozen |> Option.bind (fun f -> f.XPrefix)
+            let pinY = frozen |> Option.bind (fun f -> f.YPrefix)
+
             let xSpec =
-                Axes.specOf (unitStyle p.XAxis) p.XAxis.TickCount p.XAxis.Label AxisBottom xPacked
+                Axes.specOfPinned pinX (unitStyle p.XAxis) p.XAxis.TickCount p.XAxis.Label AxisBottom xPacked
 
             let ySpec =
-                Axes.specOf (unitStyle p.YAxis) p.YAxis.TickCount p.YAxis.Label AxisLeft yPacked
+                Axes.specOfPinned pinY (unitStyle p.YAxis) p.YAxis.TickCount p.YAxis.Label AxisLeft yPacked
 
             let titleH =
                 if isEmpty p.Title then
@@ -544,90 +673,98 @@ module Figure =
                 | Some _ -> theme.PanelGap
                 | None -> 0.0<px>
 
-            // Build the inner grid for a given tick plan. Called twice: once against an
-            // estimated plot size, once against the real one.
-            let build (xPlan: TickPlan) (yPlan: TickPlan) (barPlan: TickPlan option) =
-                let barW =
+            // D72 — the gutters, measured. This is the half of the panel that depends on the
+            // data: how tall the surviving x labels are, how wide the widest y label is, how
+            // much the outermost label hangs past the end of its axis, how wide the colorbar
+            // needs to be. Every one of them is a `Track.Content` size below, and every one of
+            // them moves when the numbers move.
+            let gutters (xPlan: TickPlan) (yPlan: TickPlan) (barPlan: TickPlan option) (probe: Extent<px>) : PanelLayout =
+                { TitleH = titleH
+                  BarGap = barGap
+
+                  BarW =
                     match colorbar, barPlan with
                     | Some(spec, _), Some plan -> Colorbar.measure m theme spec plan
                     | _ -> 0.0<px>
 
-                let xTicksH =
+                  XTicksH =
                     if p.XAxis.Visible then
                         Axes.tickExtent m theme AxisBottom xSpec xPlan
                     else
                         0.0<px>
 
-                let yTicksW =
+                  YTicksW =
                     if p.YAxis.Visible then
                         Axes.tickExtent m theme AxisLeft ySpec yPlan
                     else
                         0.0<px>
 
-                let xTitleH =
+                  XTitleH =
                     if p.XAxis.Visible && p.XAxis.ShowTitle then
                         Axes.titleExtent m theme xSpec.Title
                     else
                         0.0<px>
 
-                let yTitleW =
+                  YTitleW =
                     if p.YAxis.Visible && p.YAxis.ShowTitle then
                         Axes.titleExtent m theme ySpec.Title
                     else
                         0.0<px>
 
-                // Half of the outermost tick label hangs past the end of the axis. Reserving it
-                // is half of §13's "labels inside bounds"; without it the right-hand x label and
-                // the top y label are clipped by the figure edge.
-                let rightPad =
+                  // Half of the outermost tick label hangs past the end of the axis. Reserving
+                  // it is half of §13's "labels inside bounds"; without it the right-hand x
+                  // label and the top y label are clipped by the figure edge.
+                  RightPad =
                     if p.XAxis.Visible then
                         Axes.labelOverhang m theme AxisBottom xSpec xPlan
                     else
                         0.0<px>
 
-                let topPad =
+                  TopPad =
                     if p.YAxis.Visible then
                         Axes.labelOverhang m theme AxisLeft ySpec yPlan
                     else
                         0.0<px>
 
+                  Probe = probe
+                  XPrefix = pinX
+                  YPrefix = pinY }
+
+            // The inner grid, from gutters that are already decided. Pure arithmetic on the
+            // record above plus the solver — it measures nothing, which is exactly what lets a
+            // frozen layout be handed in from outside and produce the same rectangle every time.
+            let build (g: PanelLayout) =
                 let cols =
-                    [| Track.Content yTitleW
-                       Track.Content yTicksW
+                    [| Track.Content g.YTitleW
+                       Track.Content g.YTicksW
                        Track.Frac 1.0
-                       Track.Content rightPad
-                       Track.Content barGap
-                       Track.Content barW |]
+                       Track.Content g.RightPad
+                       Track.Content g.BarGap
+                       Track.Content g.BarW |]
 
                 let rows =
-                    [| Track.Content titleH
-                       Track.Content topPad
+                    [| Track.Content g.TitleH
+                       Track.Content g.TopPad
                        Track.Frac 1.0
-                       Track.Content xTicksH
-                       Track.Content xTitleH |]
+                       Track.Content g.XTicksH
+                       Track.Content g.XTitleH |]
 
                 let fixedCell key row col (w: float<px>) (h: float<px>) =
                     Layout.cell key row col (fun _ -> { Width = w; Height = h })
 
                 let cells =
-                    [| fixedCell "ytitle" 2 0 yTitleW 0.0<px>
-                       fixedCell "yticks" 2 1 yTicksW 0.0<px>
+                    [| fixedCell "ytitle" 2 0 g.YTitleW 0.0<px>
+                       fixedCell "yticks" 2 1 g.YTicksW 0.0<px>
                        Layout.fill "plot" 2 2
-                       fixedCell "rightpad" 2 3 rightPad 0.0<px>
-                       fixedCell "bargap" 2 4 barGap 0.0<px>
-                       fixedCell "colorbar" 2 5 barW 0.0<px>
-                       fixedCell "ptitle" 0 0 0.0<px> titleH |> Layout.spanning 1 6
-                       fixedCell "toppad" 1 0 0.0<px> topPad |> Layout.spanning 1 6
-                       fixedCell "xticks" 3 2 0.0<px> xTicksH
-                       fixedCell "xtitle" 4 2 0.0<px> xTitleH |]
+                       fixedCell "rightpad" 2 3 g.RightPad 0.0<px>
+                       fixedCell "bargap" 2 4 g.BarGap 0.0<px>
+                       fixedCell "colorbar" 2 5 g.BarW 0.0<px>
+                       fixedCell "ptitle" 0 0 0.0<px> g.TitleH |> Layout.spanning 1 6
+                       fixedCell "toppad" 1 0 0.0<px> g.TopPad |> Layout.spanning 1 6
+                       fixedCell "xticks" 3 2 0.0<px> g.XTicksH
+                       fixedCell "xtitle" 4 2 0.0<px> g.XTitleH |]
 
                 Layout.arrangeIn m extent region (Layout.grid rows cols cells)
-
-            // Iteration 1: plan against an estimate of the plot area. 78% x 72% of the region is
-            // what a labelled panel typically ends up with; the estimate only has to be close
-            // enough that the second pass converges.
-            let estW = Rect.width region * 0.78
-            let estH = Rect.height region * 0.72
 
             // The bar's plan is made against its own height, which is the plot's — the bar
             // sits in the plot's row. That is why `Legend.fs`'s objection to outside placement
@@ -638,205 +775,389 @@ module Figure =
                 Axes.planTicks m theme.TickFont theme.LabelGap h AxisLeft ySpec.Ticks,
                 colorbar |> Option.map (fun (spec, _) -> Colorbar.planTicks m theme h spec)
 
-            let (xPlan0, yPlan0, barPlan0) = plan estW estH
-            let a0 = build xPlan0 yPlan0 barPlan0
-            let plot0 = Layout.findPx "plot" a0
+            let layout =
+                match frozen with
+                | Some f -> f
+                | None ->
+                    // Iteration 1: plan against an estimate of the plot area. 78% x 72% of the
+                    // region is what a labelled panel typically ends up with; the estimate only
+                    // has to be close enough that the second pass converges.
+                    let estW = Rect.width region * 0.78
+                    let estH = Rect.height region * 0.72
+                    let (xPlan0, yPlan0, barPlan0) = plan estW estH
+                    let a0 = build (gutters xPlan0 yPlan0 barPlan0 { Width = estW; Height = estH })
+                    let plot0 = Layout.findPx "plot" a0
 
-            let (xPlan, yPlan, barPlan) = plan (Rect.width plot0) (Rect.height plot0)
-            let arrangement = build xPlan yPlan barPlan
-            let plotPx = Layout.findPx "plot" arrangement
-            let plotNd = Layout.ndRect extent plotPx
+                    let probe: Extent<px> =
+                        { Width = Rect.width plot0
+                          Height = Rect.height plot0 }
 
-            let plotSize: Extent<px> =
-                { Width = Rect.width plotPx
-                  Height = Rect.height plotPx }
+                    let (xPlan1, yPlan1, barPlan1) = plan probe.Width probe.Height
+                    gutters xPlan1 yPlan1 barPlan1 probe
 
-            // ---- gridlines ---------------------------------------------------------------
-            let gridX =
-                if (defaultArg p.XAxis.Grid theme.ShowGridX) && p.XAxis.Visible then
-                    Axes.keptTicks xSpec xPlan |> Array.map (fun t -> t.Position)
-                else
-                    [||]
+            let draw () =
+                // D72 — the plan is *not* frozen, only the rectangle it is measured against. A
+                // frame's own tick values decide its own labels, inside a panel that does not
+                // move. Freezing the plan too would freeze the labels, and an animation whose
+                // numbers change and whose labels do not is not showing the numbers changing.
+                let (xPlan, yPlan, barPlan) = plan layout.Probe.Width layout.Probe.Height
+                let arrangement = build layout
+                let plotPx = Layout.findPx "plot" arrangement
+                let plotNd = Layout.ndRect extent plotPx
 
-            let gridY =
-                if (defaultArg p.YAxis.Grid theme.ShowGridY) && p.YAxis.Visible then
-                    Axes.keptTicks ySpec yPlan |> Array.map (fun t -> t.Position)
-                else
-                    [||]
+                let plotSize: Extent<px> =
+                    { Width = Rect.width plotPx
+                      Height = Rect.height plotPx }
 
-            // ---- the data ------------------------------------------------------------------
-            //
-            // One Transform for the panel, one Clip inside it. D9: `Scale.Forward` does not
-            // clamp, so out-of-domain data projects outside [0,1] and this Clip is what removes
-            // it. That is also why a backend without clipping still gets the common case right.
-            let data =
-                let layers =
-                    p.Layers
-                    |> Array.mapi (fun ordinal l ->
-                        let pts = Erase.projectXY l.Data
+                // ---- gridlines ---------------------------------------------------------------
+                let gridX =
+                    if (defaultArg p.XAxis.Grid theme.ShowGridX) && p.XAxis.Visible then
+                        Axes.keptTicks xSpec xPlan |> Array.map (fun t -> t.Position)
+                    else
+                        [||]
 
-                        // D46 — **one batch per bucket, not one per point.** With no channels
-                        // this is `Geom.compile`'s own path; with a continuous colour channel
-                        // it is at most 256 groups for any number of points, which is what
-                        // keeps §5.1's batching intact while the colour varies.
-                        let body, counts =
-                            if l.Channels.Length = 0 then
-                                // No channels, no counts: an unchannelled layer's annotation is
-                                // exactly what it was before phase 2, so every baseline that
-                                // predates channels stays byte-identical.
-                                Geom.compile p.Coord plotSize l.Style l.Geom pts, [||]
-                            else
-                                let (batches, unmapped) = Channel.split l.Channels pts.Length
+                let gridY =
+                    if (defaultArg p.YAxis.Grid theme.ShowGridY) && p.YAxis.Visible then
+                        Axes.keptTicks ySpec yPlan |> Array.map (fun t -> t.Position)
+                    else
+                        [||]
 
-                                let nodes =
-                                    batches
-                                    |> Array.map (fun b ->
-                                        Geom.compileSubset p.Coord plotSize (b.Restyle l.Style) l.Geom pts b.Indices)
+                // ---- the data ------------------------------------------------------------------
+                //
+                // One Transform for the panel, one Clip inside it. D9: `Scale.Forward` does not
+                // clamp, so out-of-domain data projects outside [0,1] and this Clip is what removes
+                // it. That is also why a backend without clipping still gets the common case right.
+                let data =
+                    let layers =
+                        p.Layers
+                        |> Array.mapi (fun ordinal l ->
+                            let pts = Erase.projectXY l.Data
 
-                                // `unmapped` is reported rather than swallowed: a point whose
-                                // channel value was missing is not drawn (see
-                                // `Channel.bucketer`), and a figure that contains fewer marks
-                                // than it has rows should be able to say so.
-                                Group nodes,
-                                [| "batches", string nodes.Length
-                                   "unmapped", string unmapped |]
+                            // D46 — **one batch per bucket, not one per point.** With no channels
+                            // this is `Geom.compile`'s own path; with a continuous colour channel
+                            // it is at most 256 groups for any number of points, which is what
+                            // keeps §5.1's batching intact while the colour varies.
+                            let body, counts =
+                                if l.Channels.Length = 0 then
+                                    // No channels, no counts: an unchannelled layer's annotation is
+                                    // exactly what it was before phase 2, so every baseline that
+                                    // predates channels stays byte-identical.
+                                    Geom.compile p.Coord plotSize l.Style l.Geom pts, [||]
+                                else
+                                    let (batches, unmapped) = Channel.split l.Channels pts.Length
 
-                        // D68 — the layer's **ordinal**, not its name. `l.Name` is written
-                        // into the `Annotated` node just below because that is where a
-                        // human-readable label belongs; it is kept out of the key because it
-                        // is caller-supplied, is empty until `Chart.withName` is called, and
-                        // may be the same on two layers of one panel. The ordinal is unique
-                        // and survives a restyle, a rename and a change of data.
-                        Keyed(
-                            Keys.layer panelKey ordinal,
-                            Annotated(
-                                { Role = RoleSeries
-                                  Label = (if isEmpty l.Name then "series" else l.Name)
-                                  Data = Array.append [| "series", l.Name; "points", string pts.Length |] counts },
-                                body
-                            )
-                        ))
+                                    let nodes =
+                                        batches
+                                        |> Array.map (fun b ->
+                                            Geom.compileSubset p.Coord plotSize (b.Restyle l.Style) l.Geom pts b.Indices)
 
-                Transform(Axes.panelTransform plotNd, Clip(Axes.panelShape p.Coord, Group layers))
+                                    // `unmapped` is reported rather than swallowed: a point whose
+                                    // channel value was missing is not drawn (see
+                                    // `Channel.bucketer`), and a figure that contains fewer marks
+                                    // than it has rows should be able to say so.
+                                    Group nodes,
+                                    [| "batches", string nodes.Length
+                                       "unmapped", string unmapped |]
 
-            // ---- axes -----------------------------------------------------------------------
-            let axisNode (side: AxisSide) (cfg: AxisConfig) (spec: AxisSpec) (tickPlan: TickPlan) =
-                if not cfg.Visible then
-                    Scene.empty
-                else
-                    Axes.compile
-                        { Spec = spec
-                          Side = side
-                          Plan = tickPlan
-                          Panel = plotNd
-                          Extent = extent
-                          Theme = theme
-                          ShowSpine = not theme.PanelFrame
-                          ShowTicks = true
-                          ShowLabels = true
-                          ShowTitle = cfg.ShowTitle
-                          TitleOffset = Axes.tickExtent m theme side spec tickPlan + theme.TitleGap }
+                            // D68 — the layer's **ordinal**, not its name. `l.Name` is written
+                            // into the `Annotated` node just below because that is where a
+                            // human-readable label belongs; it is kept out of the key because it
+                            // is caller-supplied, is empty until `Chart.withName` is called, and
+                            // may be the same on two layers of one panel. The ordinal is unique
+                            // and survives a restyle, a rename and a change of data.
+                            Keyed(
+                                Keys.layer panelKey ordinal,
+                                Annotated(
+                                    { Role = RoleSeries
+                                      Label = (if isEmpty l.Name then "series" else l.Name)
+                                      Data = Array.append [| "series", l.Name; "points", string pts.Length |] counts },
+                                    body
+                                )
+                            ))
 
-            let panelTitle =
-                if isEmpty p.Title then
-                    Scene.empty
-                else
-                    let box = Layout.findPx "ptitle" arrangement
+                    Transform(Axes.panelTransform plotNd, Clip(Axes.panelShape p.Coord, Group layers))
 
-                    Text
-                        { Text = p.Title
-                          // Titles, subtitles and legend names are caller-supplied prose, not
-                          // unit markup, so they have no TeX form of their own — a TeX backend
-                          // escapes the plain text instead. Only the axis compiler produces a
-                          // `Tex` form, because only it has a unit rendering to produce one from.
-                          Tex = None
-                          At = Layout.ndPoint extent { X = (plotPx.X0 + plotPx.X1) / 2.0; Y = box.Y0 }
-                          Font = theme.PanelTitleFont
-                          Paint = Solid theme.Foreground
-                          Anchor = AnchorMiddle
-                          Baseline = BaselineHanging
-                          Rotation = 0.0<rad> }
+                // ---- axes -----------------------------------------------------------------------
+                let axisNode (side: AxisSide) (cfg: AxisConfig) (spec: AxisSpec) (tickPlan: TickPlan) =
+                    if not cfg.Visible then
+                        Scene.empty
+                    else
+                        Axes.compile
+                            { Spec = spec
+                              Side = side
+                              Plan = tickPlan
+                              Panel = plotNd
+                              Extent = extent
+                              Theme = theme
+                              ShowSpine = not theme.PanelFrame
+                              ShowTicks = true
+                              ShowLabels = true
+                              ShowTitle = cfg.ShowTitle
+                              TitleOffset = Axes.tickExtent m theme side spec tickPlan + theme.TitleGap }
 
-            let legend =
-                Legend.compile m theme extent plotNd p.Legend (legendEntries theme p)
+                let panelTitle =
+                    if isEmpty p.Title then
+                        Scene.empty
+                    else
+                        let box = Layout.findPx "ptitle" arrangement
 
-            let colorbarNode =
-                match colorbar, barPlan with
-                | Some(spec, ramp), Some plan ->
-                    Colorbar.compile m theme extent (Layout.findPx "colorbar" arrangement) spec plan ramp
-                | _ -> Scene.empty
+                        Text
+                            { Text = p.Title
+                              // Titles, subtitles and legend names are caller-supplied prose, not
+                              // unit markup, so they have no TeX form of their own — a TeX backend
+                              // escapes the plain text instead. Only the axis compiler produces a
+                              // `Tex` form, because only it has a unit rendering to produce one from.
+                              Tex = None
+                              At = Layout.ndPoint extent { X = (plotPx.X0 + plotPx.X1) / 2.0; Y = box.Y0 }
+                              Font = theme.PanelTitleFont
+                              Paint = Solid theme.Foreground
+                              Anchor = AnchorMiddle
+                              Baseline = BaselineHanging
+                              Rotation = 0.0<rad> }
 
-            Keyed(
-                panelKey,
-                Annotated(
-                    { Role = RoleOther "panel"
-                      Label = (if isEmpty p.Title then "panel" else p.Title)
-                      Data =
-                        [| "row", string p.Row
-                           "col", string p.Col
-                           "layers", string p.Layers.Length
-                           "x-tick-rule", xPlan.Rule
-                           "y-tick-rule", yPlan.Rule |] },
-                    Scene.prune (
-                        Group
-                            [| Axes.panelBackground theme p.Coord plotNd
-                               Axes.gridlines theme p.Coord plotNd gridX gridY
-                               data
-                               axisNode AxisBottom p.XAxis xSpec xPlan
-                               axisNode AxisLeft p.YAxis ySpec yPlan
-                               Axes.panelFrame theme p.Coord plotNd
-                               panelTitle
-                               legend
-                               colorbarNode |]
+                let legend =
+                    Legend.compile m theme extent plotNd p.Legend (legendEntries theme p)
+
+                let colorbarNode =
+                    match colorbar, barPlan with
+                    | Some(spec, ramp), Some plan ->
+                        Colorbar.compile m theme extent (Layout.findPx "colorbar" arrangement) spec plan ramp
+                    | _ -> Scene.empty
+
+                Keyed(
+                    panelKey,
+                    Annotated(
+                        { Role = RoleOther "panel"
+                          Label = (if isEmpty p.Title then "panel" else p.Title)
+                          Data =
+                            [| "row", string p.Row
+                               "col", string p.Col
+                               "layers", string p.Layers.Length
+                               "x-tick-rule", xPlan.Rule
+                               "y-tick-rule", yPlan.Rule |] },
+                        Scene.prune (
+                            Group
+                                [| Axes.panelBackground theme p.Coord plotNd
+                                   Axes.gridlines theme p.Coord plotNd gridX gridY
+                                   data
+                                   axisNode AxisBottom p.XAxis xSpec xPlan
+                                   axisNode AxisLeft p.YAxis ySpec yPlan
+                                   Axes.panelFrame theme p.Coord plotNd
+                                   panelTitle
+                                   legend
+                                   colorbarNode |]
+                        )
                     )
                 )
-            )
 
-    /// **`Figure -> Node`.** The one entry point a backend's caller needs.
-    let toScene (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Node =
+            layout, draw
+
+    /// The figure's own outer grid: one content row for the head, then one row of tracks per
+    /// panel row. Split out of `toScene` by D72 so that `arrangeFor` and the renderer cannot be
+    /// looking at two different grids — which they were, for two milestones. See `Shot`.
+    ///
+    /// `head` overrides the measured head height when it is `Some`, which is how the union takes
+    /// the tallest head of the shot rather than each frame's own.
+    let private outerGrid (head: float<px> option) (fig: Figure) =
         let theme = fig.Theme
         let rows = max 1 fig.Rows
         let cols = max 1 fig.Cols
 
         let headHeight (measurer: ITextMeasurer) =
+            match head with
+            | Some h -> h
+            | None ->
+                let a =
+                    if isEmpty fig.Title then
+                        0.0<px>
+                    else
+                        Rect.height (textBox measurer theme.TitleFont fig.Title) + theme.TitleGap
+
+                let b =
+                    if isEmpty fig.Subtitle then
+                        0.0<px>
+                    else
+                        Rect.height (textBox measurer theme.SubtitleFont fig.Subtitle) + theme.TitleGap
+
+                a + b
+
+        let trackRows =
+            Array.append [| Track.Content 0.0<px> |] (Array.create rows (Track.Frac 1.0))
+
+        let trackCols = Array.create cols (Track.Frac 1.0)
+
+        let cells =
+            [| yield Layout.cell "head" 0 0 (fun mm -> { Width = 0.0<px>; Height = headHeight mm })
+                   |> Layout.spanning 1 cols
+
+               for p in fig.Panels do
+                   yield Layout.fill (sprintf "panel-%d-%d" p.Row p.Col) (1 + max 0 p.Row) (max 0 p.Col) |]
+
+        Layout.grid trackRows trackCols cells
+        |> Layout.withGaps theme.PanelGap theme.PanelGap
+        |> Layout.withPadding theme.FigurePadding
+
+    /// **`Figure -> Shot`.** The layout this figure would be drawn in, measured and nothing more.
+    ///
+    /// This is D72's cheap half and it is public API on the type every example in the repository
+    /// touches, because `Chart`'s surface had no way to say "lay out once and draw many times":
+    /// `toScene` computed its arrangement internally and `arrangement` computed a *second* one
+    /// for inspection. Both are now this function.
+    let arrangeFor (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Shot =
+        let outer = Layout.arrange m extent (outerGrid None fig)
+
+        let panels =
+            fig.Panels
+            |> Array.choose (fun p ->
+                let key = sprintf "panel-%d-%d" p.Row p.Col
+
+                match Layout.tryFindPx key outer with
+                | None -> None
+                | Some region ->
+                    let layout, _ = compilePanel m fig.Theme extent region None (unify p)
+                    Some(key, layout))
+
+        { Outer = outer
+          Panels = panels
+          Samples = 1 }
+
+    /// **D72 — one arrangement for the whole shot.** Sample the animation, arrange each state,
+    /// and take the union: the arrangement no frame can overflow.
+    ///
+    /// `sample` is `float -> Figure` over `[0, 1]`, which is deliberately not `Anim<Figure>`.
+    /// `Marey.Anim` depends on `Marey.Core` and mentions no `Figure`, and `Marey.Plot` returns
+    /// the compliment by depending on no animation package: an `Anim<'a>` is generic in what it
+    /// animates, and a user tweening a `float<m>` should not be made to carry the grammar. The
+    /// animation supplies the sampler at the call site — `fun u -> Anim.atFraction u anim` — and
+    /// nothing in the dependency graph moves. It is also strictly more general, because a union
+    /// over hand-listed keyframes needs no `Anim` at all.
+    ///
+    /// The two alternatives D72 rejected, since a reader will reach for both. **Re-arranging per
+    /// frame makes the panel breathe** — see `PanelLayout`. **Freezing frame zero's arrangement
+    /// overflows**, because a later frame's labels are wider than the gutters that were sized for
+    /// frame zero. The union does neither, and tick labels still recompute per frame inside a
+    /// rectangle that does not move.
+    ///
+    /// `samples` is stated rather than hidden, and reported back on the `Shot`, because the
+    /// union is only as good as it: an animation with a spike between two samples can still
+    /// overflow. D72's default is 32 and this function does not supply it — a default belongs
+    /// where a caller can see it.
+    let arrangeUnion
+        (samples: int)
+        (m: ITextMeasurer)
+        (extent: Extent<px>)
+        (sample: float -> Figure)
+        : Shot =
+        if samples < 1 then
+            invalidArg "samples" "Marey: a shot needs at least one sample."
+
+        let times =
+            if samples = 1 then
+                [| 0.0 |]
+            else
+                Array.init samples (fun i -> float i / float (samples - 1))
+
+        let states = times |> Array.map sample
+
+        // The outer grid first, because a panel cannot be measured until it knows its region and
+        // the region depends on how tall the head row is.
+        let headOf (fig: Figure) =
             let a =
                 if isEmpty fig.Title then
                     0.0<px>
                 else
-                    Rect.height (textBox measurer theme.TitleFont fig.Title) + theme.TitleGap
+                    Rect.height (textBox m fig.Theme.TitleFont fig.Title) + fig.Theme.TitleGap
 
             let b =
                 if isEmpty fig.Subtitle then
                     0.0<px>
                 else
-                    Rect.height (textBox measurer theme.SubtitleFont fig.Subtitle) + theme.TitleGap
+                    Rect.height (textBox m fig.Theme.SubtitleFont fig.Subtitle) + fig.Theme.TitleGap
 
             a + b
 
-        let outer =
-            let trackRows =
-                Array.append [| Track.Content 0.0<px> |] (Array.create rows (Track.Frac 1.0))
+        let head = states |> Array.map headOf |> Array.max
 
-            let trackCols = Array.create cols (Track.Frac 1.0)
+        // The frame the grid is taken from is the one with the most panels, so an animation that
+        // adds a panel mid-shot still has a region for it. Everything else about the grid — rows,
+        // columns, gaps, padding — is the theme's and does not vary with the data.
+        let widest =
+            states |> Array.maxBy (fun f -> (f.Panels.Length, max 1 f.Rows, max 1 f.Cols))
 
-            let cells =
-                [| yield Layout.cell "head" 0 0 (fun mm -> { Width = 0.0<px>; Height = headHeight mm })
-                       |> Layout.spanning 1 cols
+        let outer = Layout.arrange m extent (outerGrid (Some head) widest)
 
-                   for p in fig.Panels do
-                       yield Layout.fill (sprintf "panel-%d-%d" p.Row p.Col) (1 + max 0 p.Row) (max 0 p.Col) |]
+        // Then every panel of every state, unioned by key. `Array.choose` rather than an
+        // exception when a key is missing: a state that lacks a panel another state has
+        // contributes nothing to that panel's union, which is the right answer — an absent panel
+        // needs no gutters.
+        let measured =
+            states
+            |> Array.collect (fun fig ->
+                fig.Panels
+                |> Array.choose (fun p ->
+                    let key = sprintf "panel-%d-%d" p.Row p.Col
 
-            Layout.grid trackRows trackCols cells
-            |> Layout.withGaps theme.PanelGap theme.PanelGap
-            |> Layout.withPadding theme.FigurePadding
+                    match Layout.tryFindPx key outer with
+                    | None -> None
+                    | Some region ->
+                        let unified = unify p
+                        let layout, _ = compilePanel m fig.Theme extent region None unified
+                        Some(key, (layout, unified))))
 
-        let arrangement = Layout.arrange m extent outer
+        let panels =
+            measured
+            |> Array.groupBy fst
+            |> Array.map (fun (key, entries) ->
+                let layouts = entries |> Array.map (fun (_, (l, _)) -> l)
+                let unified = entries |> Array.map (fun (_, (_, u)) -> u)
+                let merged = layouts |> Array.reduce PanelLayout.union
+
+                // D73 — the prefix, chosen once from the union of every frame's domain rather
+                // than per frame from its own. This is the same mechanism as the gutters and not
+                // a second one: which decade a prefix comes from is a property of "the numbers"
+                // (D19), and across a shot the numbers are all of them.
+                //
+                // A layerless panel has no numbers and therefore no prefix to pin. `toScene`
+                // draws one as `Scene.empty`, so it is a case that exists and has to be answered
+                // rather than indexed into.
+                let drawn = unified |> Array.filter (fun p -> p.Layers.Length > 0)
+
+                let pinFor (packedOf: Panel -> PackedScale) =
+                    if drawn.Length = 0 then
+                        None
+                    else
+                        let domains = drawn |> Array.map (packedOf >> Axis.domainOfPacked)
+                        let lo = domains |> Array.map fst |> Array.min
+                        let hi = domains |> Array.map snd |> Array.max
+                        Some(Axis.prefixForPacked (lo, hi) (packedOf drawn.[0]))
+
+                let layout =
+                    { merged with
+                        XPrefix = pinFor (fun p -> fst (packedScales p.Layers.[0].Data))
+                        YPrefix = pinFor (fun p -> snd (packedScales p.Layers.[0].Data)) }
+
+                key, layout)
+
+        { Outer = outer
+          Panels = panels
+          Samples = samples }
+
+    /// **`Shot -> Figure -> Node`.** Draw this figure inside a layout that has already been
+    /// decided — the frame renderer's entry point.
+    ///
+    /// There is no `Extent<px>` parameter, and the plan that asked for one was wrong: the shot
+    /// already carries the surface it was arranged against, and a second extent beside it is a
+    /// second chance to be inconsistent with no way to detect it. An arrangement is in device
+    /// pixels for one surface; it does not travel to another.
+    let toSceneIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : Node =
+        let theme = fig.Theme
+        let extent = shot.Outer.Extent
 
         let background =
             Scene.rect None (Some(Solid theme.Background)) Rect.unit
 
         let head =
-            let box = Layout.findPx "head" arrangement
+            let box = Layout.findPx "head" shot.Outer
 
             if isEmpty fig.Title && isEmpty fig.Subtitle then
                 Scene.empty
@@ -883,9 +1204,12 @@ module Figure =
             |> Array.map (fun p ->
                 let key = sprintf "panel-%d-%d" p.Row p.Col
 
-                match Layout.tryFindPx key arrangement with
+                match Layout.tryFindPx key shot.Outer with
                 | None -> Scene.empty
-                | Some region -> compilePanel m theme extent region (unify p))
+                | Some region ->
+                    let frozen = shot.Panels |> Array.tryPick (fun (k, l) -> if k = key then Some l else None)
+                    let _, draw = compilePanel m theme extent region frozen (unify p)
+                    draw ())
 
         Scene.prune (
             Keyed(
@@ -894,21 +1218,23 @@ module Figure =
             )
         )
 
-    /// The same compilation, but reporting the layout it chose. For tests and for anyone
-    /// debugging why a label landed where it did.
+    /// **`Figure -> Node`.** The one entry point a backend's caller needs.
+    ///
+    /// D72 split this into `arrangeFor` and `toSceneIn`; this is their composition and it is what
+    /// every still figure in the library goes through. It is byte-for-byte what it was before the
+    /// split — the two-pass tick solve, the estimate it plans against, and the grid it settles on
+    /// are all unchanged, which is what the 46 golden baselines are for.
+    let toScene (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Node =
+        toSceneIn m (arrangeFor m extent fig) fig
+
+    /// The layout `toScene` chose. For tests, and for anyone debugging why a label landed where
+    /// it did.
+    ///
+    /// **This used to be a second, hand-written copy of `toScene`'s grid, and it had been wrong
+    /// since M1.** It omitted the head row entirely, so every figure with a title or a subtitle
+    /// reported panel regions taller than the ones it was actually drawn in — by exactly the
+    /// height of the title. §1 of the M3 plan predicted the class of the bug from the shape of
+    /// the code ("two functions that must agree and have no test saying they do") without knowing
+    /// it had already happened. There is now one grid and a test that says so.
     let arrangement (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Arrangement =
-        let theme = fig.Theme
-        let rows = max 1 fig.Rows
-        let cols = max 1 fig.Cols
-
-        let trackRows =
-            Array.append [| Track.Content 0.0<px> |] (Array.create rows (Track.Frac 1.0))
-
-        let cells =
-            [| for p in fig.Panels do
-                   yield Layout.fill (sprintf "panel-%d-%d" p.Row p.Col) (1 + max 0 p.Row) (max 0 p.Col) |]
-
-        Layout.grid trackRows (Array.create cols (Track.Frac 1.0)) cells
-        |> Layout.withGaps theme.PanelGap theme.PanelGap
-        |> Layout.withPadding theme.FigurePadding
-        |> Layout.arrange m extent
+        (arrangeFor m extent fig).Outer

@@ -49,6 +49,7 @@ plot trials {
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, deterministic. |
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX. |
 | `Marey.Backend.Skia` | PNG and vector PDF, with real text shaping. The only package with third-party dependencies. |
+| `Marey.Anim` | Animation as a pure function of time: a seekable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
 | `Marey.Html` | HTML renderings for a notebook cell. Host-neutral. |
 | `Marey.Verso` | The Verso notebook extension. |
 

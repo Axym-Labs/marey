@@ -44,6 +44,7 @@ let private assemblies =
     [ "Marey.Core"
       "Marey.Units"
       "Marey.Plot"
+      "Marey.Anim"
       "Marey.Backend.Svg"
       "Marey.Backend.Tikz"
       "Marey.Backend.Skia"

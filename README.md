@@ -134,6 +134,7 @@ datasets.
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, byte-identical across renders. |
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX, with `siunitx` units and inherited fonts. |
 | `Marey.Backend.Skia` | PNG and vector PDF, and real text shaping through HarfBuzz. The only package with third-party dependencies. |
+| `Marey.Anim` | Animation as a pure function of time: a seekable, composable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
 | `Marey.Html` | HTML renderings of nine Marey types for a notebook cell. Host-neutral. |
 | `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension, so a bare `Figure` displays as a figure. |
 
@@ -161,7 +162,7 @@ checks over every example in [the guide](docs/guide.md) and in [`examples/`](exa
 
 - **[The guide](docs/guide.md)** — everything the library does today, with a runnable example for
   each part. Every example in it is extracted and executed by the test suite.
-- **[Examples](examples/)** — seven standalone scripts, also executed by the test suite.
+- **[Examples](examples/)** — eight standalone scripts, also executed by the test suite.
 - **[Why Marey is like this](docs/why.md)** — the case for a unit witness over a string label,
   what the other design decisions buy, what they cost, and when not to use the library.
 - **[Changelog](CHANGELOG.md)** — what changed in each release, and what is still known to be

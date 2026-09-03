@@ -3,8 +3,8 @@
 Notable changes to Marey. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-All eight packages are versioned and released together, so a version number identifies the whole
-set rather than any one package.
+All nine packages are versioned and released together, so a version number identifies the whole
+set rather than any one package. The ninth, `Marey.Anim`, is new in this release.
 
 **Pre-1.0, and versioned accordingly.** The API is still free to move. Breaking changes are
 listed under `Changed` or `Removed` with the reason and the replacement, and until 1.0 they may
@@ -75,8 +75,9 @@ without pulling a native dependency into a package that must not have one.
 **M3 — *Motion*.** In progress, and shipping in the same release as M2.5 above. What has landed
 so far is the two gaps in the IR that everything else in the milestone needs — the producer could
 not name what it drew, and a group could not be faded — the algebra the rest of the milestone is
-written in, and the two interpolations that algebra had nothing to say about: a transform and a
-shape.
+written in, the two interpolations that algebra had nothing to say about (a transform and a
+shape), and the thing none of them can do on their own: **hold the layout still while the data
+moves.**
 
 ### Added
 
@@ -151,11 +152,42 @@ what a closed path morphing into an open one produces (`ClosurePolicy`). Unmatch
 out of a point of their own, so a second shape blooms where it belongs rather than flying in from
 wherever the first one sits.
 
+**One arrangement for a whole animation.** `Chart.arrangeUnion` samples an animation, lays out
+every state, and takes the union: the arrangement no frame can overflow. `Chart.toSceneIn` then
+draws each frame inside it, and `Chart.arrangeFor` gives the same thing for a single figure.
+
+This exists because correct per-frame layout is wrong for animation. The plot rectangle is what is
+**left over** once the widest tick label has taken its room, so a y domain climbing past 100 gains
+a digit on every label at once, the gutter widens, and the axis crawls sideways while the data is
+the thing that was supposed to be moving. Freezing the first frame's layout fails the other way,
+since a later frame's labels are wider than the gutters that were sized for frame zero. The union
+does neither, and tick labels still recompute every frame inside a rectangle that does not move.
+
+The same union pins the **unit prefix**, so a zoom crossing a decade cannot step `mm → µm` and
+change the axis title mid-shot. `Shot` reports how many samples it was taken over, because the
+union is only as good as them.
+
+**A ninth package: `Marey.Anim` is published.** It was in the repository from the algebra commit
+and held back until something shipped could turn an animated figure into a picture. The two
+functions above are that, so it ships. It still depends on `Marey.Core` alone and mentions no
+`Figure`: the sampler `Chart.arrangeUnion` takes is a plain `float -> Figure`, so tweening a
+`float<m>` does not make anyone install the grammar.
+
+**A guide chapter and a worked example.** `docs/guide.md` §16 covers the algebra, the clock, the
+easing catalogue, morphing and animating a figure. `examples/morph.fsx` draws the two morph
+behaviours that look like defects and are not.
+
 ### Changed
 
 - **`Capabilities` has a tenth field** and `Node` a tenth case, so both break every backend
   implementation at compile time. That is the intended cost of an IR change and the reason the
   type is guarded.
+- **`Chart.arrangement` and `Figure.arrangement` now report the layout the figure is actually
+  drawn in.** They were a second, hand-written copy of the grid `toScene` builds, and the copy
+  omitted the figure's head row — so for any figure with a title or a subtitle they reported panel
+  regions taller than the real ones, by exactly the height of the title. Untitled figures were
+  unaffected, which is why it went unnoticed. There is now one grid, built once, and a test that
+  says so. No rendered output changed.
 - **Golden baselines moved**: `all-nine-nodes.{svg,tex}` are now `all-ten-nodes.{svg,tex}`, and
   every figure baseline gained the keyed groups described above. No geometry changed.
 
@@ -168,9 +200,17 @@ wherever the first one sits.
 - Nothing emits a node carrying a `mark` key yet. The spelling is fixed and tested so that the
   storyboard phase, which splits a `MarkerBatch` to give one mark a node of its own, does not
   invent a second one.
-- **`Marey.Anim` is in the repository and not on nuget.org.** It can tween and ease a value; it
-  cannot yet turn an animated figure into a picture, because that needs an entry point taking a
-  pre-computed arrangement. It is packed and published in the same commit that adds one.
+- **A still frame lifted out of an animation is not the same picture as the figure rendered on
+  its own.** The union arrangement sizes the gutters for the worst frame in the shot, so a frame
+  extracted from one wears the whole shot's clothes. Accepted rather than argued away, and pinned
+  by a test.
+- **The union is only as good as its samples.** An animation with a spike between two sample times
+  can still overflow the arrangement. The sample count is a stated argument to
+  `Chart.arrangeUnion` and is reported back on the `Shot`; the default anyone should reach for is
+  32.
+- **A shot cannot freeze a panel it never saw.** `Chart.toSceneIn` measures any panel key the shot
+  does not carry from that frame's own data, so an animation that grows a panel mid-shot gets
+  per-frame layout for the new one rather than an exception.
 - An overshoot survives `tween`, `map` and `stretch` and is **absorbed** by `andThen` and `map2`,
   which reach their components through the clamped seek because that is what "the shorter one
   holds" and "the first one has finished" mean. Ease the components, not the composition.

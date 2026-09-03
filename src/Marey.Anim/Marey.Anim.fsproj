@@ -17,15 +17,26 @@
     <Description>Animation as a pure function of time: a seekable, composable Anim&lt;'a&gt; with a verified algebra, the easing catalogue, and arc-length path morphing. Depends only on Marey.Core.</Description>
     <PackageTags>fsharp visualization plotting animation easing tweening scientific</PackageTags>
 
-    <!-- **Not published yet, and this flips at phase 3.** D64's rule is that a facility ships
-         with a producer, and `Marey.Toolchain` set the precedent one milestone ago: a package
-         nothing shipped can consume is a package a reader is asked to install for nothing.
+    <!-- **Published from phase 3, which is where the producer arrived.** D64's rule is that a
+         facility ships with a producer: a package nothing shipped can consume is a package a
+         reader is asked to install for nothing.
 
-         Today this can tween a `float<m>` and ease it. It cannot yet turn an `Anim<Figure>`
-         into a picture — that needs `Chart.toSceneIn` and `Anim.arrangeUnion`, which are
-         phase 3. Flip to `true` there, and bump the package-count literal in `publish.yml`
-         (`.github/workflows/publish.yml`, "expected 8 packages") in the same commit. -->
-    <IsPackable>false</IsPackable>
+         Until phase 3 this could tween a `float<m>` and ease it, and could not turn an
+         `Anim<Figure>` into a picture. `Chart.toSceneIn` and `Chart.arrangeUnion` are that
+         route and they landed with D72, so the trigger this comment named has fired — one
+         `Anim.atFraction` per frame, into an arrangement sized for the whole shot.
+
+         **The producer is in `Marey.Plot`, not here, and that is deliberate.** D72's plan
+         spelled it `Anim.arrangeUnion` and put it in this project; it cannot live here, because
+         it would have to name `Figure`, `Arrangement` and `ITextMeasurer` and this project
+         mentions none of them by design. Referencing `Marey.Plot` from here would break that;
+         referencing this from `Marey.Plot` would make every static-only consumer of the main
+         package carry an animation assembly. So the union takes a `float -> Figure` sampler,
+         lives where `Arrangement` lives, and the graph did not move.
+
+         The package-count literal in `.github/workflows/publish.yml` went 8 -> 9 in the same
+         commit as this flip. `Marey.Toolchain` is still `false` and flips at phase 6. -->
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
