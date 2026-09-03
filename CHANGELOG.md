@@ -3,8 +3,10 @@
 Notable changes to Marey. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-All nine packages are versioned and released together, so a version number identifies the whole
-set rather than any one package. The ninth, `Marey.Anim`, is new in this release.
+All eleven packages are versioned and released together, so a version number identifies the whole
+set rather than any one package. Three are new in this release: `Marey.Anim`,
+`Marey.Tools.Video`, and `Marey.Toolchain` — which ships only because the video package depends
+on it, and a published package may not depend on an unpublished one.
 
 **Pre-1.0, and versioned accordingly.** The API is still free to move. Breaking changes are
 listed under `Changed` or `Removed` with the reason and the replacement, and until 1.0 they may
@@ -76,8 +78,8 @@ without pulling a native dependency into a package that must not have one.
 so far is the two gaps in the IR that everything else in the milestone needs — the producer could
 not name what it drew, and a group could not be faded — the algebra the rest of the milestone is
 written in, the two interpolations that algebra had nothing to say about (a transform and a
-shape), and the thing none of them can do on their own: **hold the layout still while the data
-moves.**
+shape), the thing none of them can do on their own — **hold the layout still while the data
+moves** — and, since motion was complete, the encoder that turns the frames into a file.
 
 ### Added
 
@@ -260,6 +262,40 @@ render they are equal, which is the cache's whole promise stated as an assertion
 **`Storyboard.shoot`** returns the `Shot` beside the `Anim<Node>` — one function, two answers, the
 shape `compilePanel` already had. `Storyboard.animateWith` is `shoot` without the layout and is
 unchanged.
+
+**`Marey.Tools.Video`, a tenth package — a frame sequence becomes a video.** `Video.mux` runs
+`ffmpeg`, which is resolved on `PATH` and *reported*: found with its version, or absent with the
+sentence naming what to install. **A missing ffmpeg degrades rather than fails.**
+`MuxUnavailable` is an outcome carrying both what to install and the fact that the frames are
+still on disk, because they are — and a numbered directory is what every editor imports.
+
+A subprocess rather than a binding, and licence is the deciding argument: `FFmpeg.AutoGen` links
+`libav*` into the process, LGPL at best and GPL as soon as the build carries x264, which would
+put an audit on every consumer of a plotting library. The package therefore has no third-party
+dependency of any kind.
+
+`Video.args` is a **pure function** from the options and the sequence to the argument vector, so
+the exact command is a value that can be printed, diffed and gated — and it is gated, on a
+machine with no ffmpeg installed. Two positions in it are load-bearing and silent when wrong:
+`-framerate` before `-i` keeps every rendered frame, where the same number after `-i` resamples
+(24 frames at 12 fps is 24 frames written correctly and **13** with the flag moved), and
+`-fflags +bitexact` after `-i` is what stops the container carrying `encoder=Lavf63.1.101`.
+
+`Video.inspect` reads the result back with `ffprobe` — codec, dimensions, frames *counted* rather
+than claimed, and the declared rate — because exit status is a weak gate: an encoder that wrote
+13 of 24 frames exits zero. `VideoInfo.BuildTags` is the reproducibility check and is empty.
+
+`Video.check` refuses, before ffmpeg is started, on a sequence with leftover frames from a longer
+render (the `Stale` trap above, and this is the consumer it was reported for) and on odd pixel
+dimensions under a chroma-subsampled format — read out of the first frame's own PNG header rather
+than derived from the extent, because the raster backend rounds an extent up.
+
+**`Marey.Toolchain` is published, as an eleventh package.** It was in the repository from M2.5
+and held back because nothing shipped depended on it. `Marey.Tools.Video` does, and a published
+package may not depend on an unpublished one. It gained `Toolchain.runArgs`, which hands the
+argument vector to the process unsplit — `ProcessStartInfo.Arguments` is one string that .NET
+re-splits using Windows' quoting rules on every platform — and `Toolchain.commandLine`, which
+renders a command for a log and is deliberately not round-trippable.
 
 ### Changed
 

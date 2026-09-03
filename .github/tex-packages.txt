@@ -1,4 +1,4 @@
-# The TeX and raster toolchain, installed identically by ci.yml and publish.yml.
+# The external toolchain, installed identically by ci.yml and publish.yml.
 #
 # One file rather than two inline lists, because they drifted once already: publish.yml was
 # still missing texlive-latex-extra after ci.yml gained it, which would have failed a release
@@ -18,6 +18,10 @@
 #                              braces -- but a Skia backend that cannot load its native library
 #                              takes out every raster gate at once, and naming the dependency
 #                              costs nothing next to diagnosing it on a slimmer runner later.
+#   ffmpeg                     the muxer D75 shells out to, and ffprobe, which is in the same
+#                              package and is how the video gates read a container back. Without
+#                              it every gate in VideoTests that needs a binary skips itself and
+#                              says so -- which is right on a laptop and wrong here.
 #
 # Changing this file changes the apt cache key in both workflows, so a package added here is
 # fetched fresh once and then cached.
@@ -29,3 +33,4 @@ texlive-science
 poppler-utils
 libfontconfig1
 libfreetype6
+ffmpeg

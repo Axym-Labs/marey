@@ -157,28 +157,31 @@ module Toolchain =
         | Some p -> sprintf "%s found at %s" tool.Name p
         | None -> missing consequence tool
 
-    /// Run a tool to completion, capturing both streams.
+    /// The body `run` and `runArgs` share.
     ///
-    /// Returns `ToolUnavailable` rather than throwing when the tool is missing, so a caller can
-    /// decide between skipping and failing — the two behaviours this repository actually wants,
-    /// and they differ per gate.
-    ///
-    /// Both streams are drained concurrently and the process is killed on timeout. See the
-    /// comments in the body: each of those is a bug that exists in the call sites this replaces.
-    let run (tool: ResolvedTool) (arguments: string) (workingDirectory: string) (timeoutMs: int) : ToolOutcome =
+    /// `setArguments` writes exactly one of `ProcessStartInfo.Arguments` and
+    /// `ProcessStartInfo.ArgumentList`: setting both throws, and which one a caller wants is the
+    /// only difference between the two entry points below.
+    let private runCore
+        (tool: ResolvedTool)
+        (setArguments: ProcessStartInfo -> unit)
+        (workingDirectory: string)
+        (timeoutMs: int)
+        : ToolOutcome =
         match tool.Path with
         | None -> ToolUnavailable(missing "it was not run" tool)
         | Some exe ->
             let psi =
                 ProcessStartInfo(
                     FileName = exe,
-                    Arguments = arguments,
                     WorkingDirectory = workingDirectory,
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true
                 )
+
+            setArguments psi
 
             // **`onPath` proves a file exists, not that it can be executed.** A directory named
             // `ffmpeg`, or a file without the execute bit, satisfies `File.Exists` and then
@@ -225,3 +228,53 @@ module Toolchain =
                         { ExitCode = p.ExitCode
                           Out = out.Result
                           Error = err.Result }
+
+    /// Run a tool to completion, capturing both streams.
+    ///
+    /// Returns `ToolUnavailable` rather than throwing when the tool is missing, so a caller can
+    /// decide between skipping and failing — the two behaviours this repository actually wants,
+    /// and they differ per gate.
+    ///
+    /// Both streams are drained concurrently and the process is killed on timeout. See the
+    /// comments in `runCore`: each of those is a bug that exists in the call sites this replaces.
+    ///
+    /// **`arguments` is one string, and .NET splits it back apart.** Prefer `runArgs` whenever an
+    /// argument is a path.
+    let run (tool: ResolvedTool) (arguments: string) (workingDirectory: string) (timeoutMs: int) : ToolOutcome =
+        runCore tool (fun psi -> psi.Arguments <- arguments) workingDirectory timeoutMs
+
+    /// `run`, with the argument vector handed over as a list rather than as one joined string.
+    ///
+    /// **Prefer this whenever an argument is a path or comes from a caller.**
+    /// `ProcessStartInfo.Arguments` is a single string that .NET re-splits using *Windows'*
+    /// quoting rules on every platform, so the caller owns the quoting — and the rule that
+    /// catches people is that a backslash immediately before the closing quote escapes the
+    /// quote rather than itself, which makes `"C:\out\"` a parse error rather than a directory.
+    /// A vector is handed over unsplit and there is nothing to quote.
+    ///
+    /// `run` stays for the caller assembling a fixed string of flags, which is every call site
+    /// that existed before this one and has no path in it.
+    let runArgs (tool: ResolvedTool) (arguments: string seq) (workingDirectory: string) (timeoutMs: int) : ToolOutcome =
+        runCore
+            tool
+            (fun psi ->
+                for a in arguments do
+                    psi.ArgumentList.Add a)
+            workingDirectory
+            timeoutMs
+
+    /// The command as a person would type it, for a log, a failure message or a bug report.
+    ///
+    /// **Display only, and deliberately not round-trippable.** The quoting here is good enough to
+    /// paste into a shell and not good enough to hand back to `run` — feeding it back is exactly
+    /// the mistake `runArgs` exists to make unnecessary, so nothing in this module consumes what
+    /// this returns.
+    let commandLine (tool: ResolvedTool) (arguments: string seq) : string =
+        let show (a: string) =
+            if a.Length = 0 || a |> Seq.exists (fun c -> Char.IsWhiteSpace c || c = '"' || c = '\'') then
+                "\"" + a.Replace("\"", "\\\"") + "\""
+            else
+                a
+
+        Seq.append (Seq.singleton (show (defaultArg tool.Path tool.Name))) (Seq.map show arguments)
+        |> String.concat " "

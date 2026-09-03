@@ -17,18 +17,18 @@
     <Description>Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies.</Description>
     <PackageTags>fsharp visualization plotting process toolchain</PackageTags>
 
-    <!-- **Not published yet, deliberately, and this flips the day it has a shipping consumer.**
+    <!-- **Published as of M3 phase 6, and this is the flip the comment above predicted.**
          D64's rule is that a facility ships with a producer, and D10 records what happens
-         otherwise: `Capabilities` sat in the tree as "a record nobody reads". Today every
-         consumer of this module is in `Marey.Tests`, which needs a ProjectReference and not a
-         package. Publishing it now would put a ninth package on nuget.org, bump the
-         package-count literal in `publish.yml`, and ask a reader to install something no shipped
-         package depends on.
+         otherwise: `Capabilities` sat in the tree as "a record nobody reads". Until now every
+         consumer of this module was in `Marey.Tests`, which needs a ProjectReference and not a
+         package.
 
-         Flip to `true` — and bump that literal — when D75's `Marey.Tools.Video` or D79's TeX
-         package takes a ProjectReference to it, because a published package may not depend on an
-         unpublished one. -->
-    <IsPackable>false</IsPackable>
+         The producer arrived: `Marey.Tools.Video` resolves and invokes `ffmpeg` through this
+         module and is published, and a published package may not depend on an unpublished one.
+         D79's TeX package will be the second. The package-count literal in `publish.yml` moved
+         from nine to eleven in the same commit, which is the check that exists so a project
+         cannot join a release unnoticed. -->
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

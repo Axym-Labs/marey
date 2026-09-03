@@ -37,8 +37,9 @@ jobs:
           path: ~/apt-archives
           key: apt-tex-${{ runner.os }}-${{ hashFiles('.github/tex-packages.txt') }}
 
-      # Two of this suite's gates shell out, and both are written to report "not installed"
-      # rather than to fail -- which is right on a contributor's laptop and wrong here.
+      # Several of this suite's gates shell out, and every one of them is written to report
+      # "not installed" rather than to fail -- which is right on a contributor's laptop and
+      # wrong here.
       #
       #   pdflatex   compiles every golden .tex baseline. Without it, the single most
       #              valuable test in the milestone does not run.
@@ -46,9 +47,12 @@ jobs:
       #              a perfectly valid document containing no visible markers while every other
       #              test passed. Since M2.5 it reads the Skia backend's own PDF as well as the
       #              one pdflatex produces.
+      #   ffmpeg     encodes a frame sequence (D75). Without it the whole of VideoTests'
+      #   ffprobe    encoding half skips, and ffprobe is what reads the container back --
+      #              which is the difference between gating a video and gating an exit code.
       #
       # The package list and the reason for each entry live in .github/tex-packages.txt.
-      - name: Install the TeX and raster toolchain
+      - name: Install the external toolchain
         run: |
           set -e
           pkgs=$(grep -vE '^[[:space:]]*(#|$)' .github/tex-packages.txt | tr '\n' ' ')
@@ -80,7 +84,7 @@ jobs:
       - name: Assert the gates can actually run
         run: |
           set -e
-          for tool in pdflatex pdftoppm; do
+          for tool in pdflatex pdftoppm ffmpeg ffprobe; do
             command -v "$tool" >/dev/null || { echo "::error::$tool missing; the gate that needs it would silently skip"; exit 1; }
             echo "$tool -> $(command -v "$tool")"
           done

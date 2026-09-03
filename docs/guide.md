@@ -31,9 +31,10 @@ The blocks form one continuous session, so bindings introduced early are still i
 16. [Animation](#16-animation)
 17. [The storyboard](#17-the-storyboard)
 18. [Frames](#18-frames)
-19. [Notebooks](#19-notebooks)
-20. [The scene IR](#20-the-scene-ir)
-21. [Escape hatches](#21-escape-hatches)
+19. [Video](#19-video)
+20. [Notebooks](#20-notebooks)
+21. [The scene IR](#21-the-scene-ir)
+22. [Escape hatches](#22-escape-hatches)
 
 ---
 
@@ -57,6 +58,8 @@ open Marey
 | `Marey.Backend.Tikz` | Rendering to `tikzpicture` source for LaTeX. |
 | `Marey.Backend.Skia` | Rendering to PNG or PDF, and real text shaping. The only one with third-party dependencies, and native ones at that — see §15. |
 | `Marey.Anim` | Animation as a pure function of time: `Anim<'a>`, the easing catalogue and path morphing. Depends on `Marey.Core` alone, and arrives with `Marey.Plot` — see §16. |
+| `Marey.Tools.Video` | Encoding a rendered frame sequence to video with `ffmpeg` — see §19. |
+| `Marey.Toolchain` | Resolving and running the external programs Marey drives but does not ship. Zero dependencies; arrives with `Marey.Tools.Video`. |
 | `Marey.Html` | HTML renderings of nine Marey types, for a notebook cell. Host-neutral. |
 | `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension. Installed *into the host*, not referenced from user code. |
 
@@ -1311,7 +1314,101 @@ quadrupling the frame rate on a two-decade zoom moved that count by one.
 
 ---
 
-## 19. Notebooks
+## 19. Video
+
+`Frames.write` leaves a numbered directory, and a numbered directory is already something: every
+editor imports one, every encoder reads one, and it is what a paper's supplementary material
+wants anyway. `Marey.Tools.Video` turns it into one file by running `ffmpeg`.
+
+```fsharp
+#r "nuget: Marey.Tools.Video"
+```
+
+**A subprocess rather than a binding, and licence is why.** `FFmpeg.AutoGen` links `libav*` into
+your process — LGPL at best, GPL as soon as the build carries x264 — which puts an audit on
+everyone who references your project. A subprocess boundary keeps ffmpeg's licence ffmpeg's
+problem. The managed wrappers shell out too, so what they cost is a dependency and what they buy
+is not writing one `ProcessStartInfo`.
+
+`ffmpeg` is looked for on `PATH`, once per process, and reported:
+
+```fsharp
+printfn "%s" (Video.report ())
+
+let vidDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "marey-guide-video")
+
+let vidSeq =
+    film
+    |> Frames.write FramePass.Concurrent SkiaBackend.renderPng (FrameTarget.into vidDir ".png") 25.0
+
+let vidOut = System.IO.Path.Combine(vidDir, "shot.mp4")
+
+match Video.mux MuxOptions.Default vidSeq vidOut with
+| MuxRan run when run.Succeeded -> printfn "encoded %d frames into %s" run.FrameCount run.Output
+| MuxUnavailable why -> printfn "%s" why
+| other -> printfn "%A" other
+```
+
+**A missing ffmpeg is an outcome, not an exception.** `MuxUnavailable` says what to install and
+says the frames are still on disk, because they are. That is the same choice §15 makes about a
+font it cannot find and the raster backend makes about a native library: degrade, and name what
+would fix it.
+
+### The command is a value
+
+`Video.args` is a pure function from the options and the sequence to the argument vector, so you
+can print it, diff it, or paste it into a shell:
+
+```fsharp
+printfn "ffmpeg %s" (String.concat " " (Video.args MuxOptions.Default vidSeq vidOut))
+```
+
+Two positions in that vector are load-bearing, and both are silent when wrong:
+
+- **`-framerate` comes before `-i`.** It is an *input* option — it says what rate the images
+  already are, and every one of them is kept. The same number after `-i` is an *output* option:
+  the images are read at the demuxer's default 25 fps and then resampled, which drops frames or
+  duplicates them. Twenty-four frames at 12 fps is twenty-four frames written correctly and
+  **thirteen** with the flag moved. At 24 fps both spellings happen to agree, which is exactly
+  why this is worth stating.
+- **`-fflags +bitexact` comes after `-i`**, so it reaches the muxer rather than the demuxer. It
+  is what stops the container carrying `encoder=Lavf63.1.101` — a stamp that does not vary
+  between two runs on one machine, and does vary between ffmpeg builds.
+
+### Read it back
+
+Exit status is a weak gate: an encoder that put thirteen of twenty-four frames in the file exits
+zero. `Video.inspect` decodes the result with `ffprobe` and says what is actually in it.
+
+```fsharp
+match Video.inspect vidOut with
+| Inspected info ->
+    printfn "%s, %d x %d, %d frames at %g fps" info.Codec info.Width info.Height info.FrameCount info.Fps
+    printfn "names no ffmpeg build: %b" (List.isEmpty info.BuildTags)
+| other -> printfn "%A" other
+```
+
+`Duration` is `FrameCount / Fps`, which is one frame period longer than the last frame's own
+time — §18's rule arriving in the container.
+
+### What it refuses, and why
+
+`Video.check` starts no process, so you can ask it before rendering an hour of frames:
+
+- **Leftover frames.** `FrameSequence.Stale` is every file matching the pattern this render did
+  not write, `-i frame-%05d.png` reads until the first gap, and the encode would quietly gain a
+  tail from a longer shot that no longer exists. Refused by default; `MuxOptions.AllowStale`
+  overrides it.
+- **Odd pixel dimensions.** `yuv420p` subsamples chroma and needs even width and height. The
+  size is read out of the first frame's own header rather than derived from the extent, because
+  the raster backend rounds an extent *up*: a 320.5 px figure is a 321 px bitmap, and 321 is the
+  number that decides. The default pixel format is `yuv420p` and not negotiable by accident —
+  H.264 from PNG otherwise encodes as `yuv444p`, which is a legal file that QuickTime, Safari
+  and PowerPoint all refuse to play, so the author sees it work and the audience sees nothing.
+
+---
+
+## 20. Notebooks
 
 In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
 cell whose value is a `Figure` displays as a figure. No `.Show()`, no save-then-open, no display
@@ -1335,7 +1432,7 @@ See [`notebooks/README.md`](notebooks/README.md) for installation and
 
 ---
 
-## 20. The scene IR
+## 21. The scene IR
 
 Everything above compiles to one closed ten-case `Scene` IR, and every backend consumes only that.
 It is the level at which a figure that came out wrong can be inspected.
@@ -1381,7 +1478,7 @@ paints the overlap twice. For a single shape, `Color.A` is still the simpler too
 
 ---
 
-## 21. Escape hatches
+## 22. Escape hatches
 
 **Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so the scales are
 the caller's and everything downstream still works.
@@ -1416,10 +1513,6 @@ For a stateful backend there is `IBackend` and `Chart.renderTo`, which is the pa
 ---
 
 ## What is not here yet
-
-Animation exists as of §16 to §18 — the algebra, the storyboard block and the frame writer — and
-what it does not yet do is *encode*: `Frames.write` leaves a numbered directory, and turning that
-into a video is a call to `ffmpeg` you make yourself for now.
 
 Fields and simulation, further backends, an interactive canvas, and native mathematical
 typesetting are all intended, and none of them exist yet. Among the geoms, the field ones —

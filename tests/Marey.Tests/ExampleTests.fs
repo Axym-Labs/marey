@@ -45,6 +45,8 @@ let private assemblies =
       // through the package that would bring it transitively.
       "SkiaSharp"
       "SkiaSharp.HarfBuzz"
+      "Marey.Toolchain"
+      "Marey.Tools.Video"
       "Marey.Html" ]
 
 let private exampleDir =
@@ -200,7 +202,11 @@ let ``the example compiles and runs`` (name: string) =
             Directory.GetFiles(workDir)
             |> Array.filter (fun f ->
                 let ext = Path.GetExtension f
-                ext = ".svg" || ext = ".tex" || ext = ".png" || ext = ".pdf")
+                // `.mp4` joined at M3 phase 6, for `video.fsx` — which also writes a poster
+                // frame, so the list would have caught it either way. It is here because a
+                // video is a figure this library now produces, and a checker that did not know
+                // that would fail the first example that only produces one.
+                ext = ".svg" || ext = ".tex" || ext = ".png" || ext = ".pdf" || ext = ".mp4")
 
         Assert.True(
             produced.Length > 0,

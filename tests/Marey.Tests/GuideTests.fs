@@ -56,6 +56,8 @@ let private assemblies =
       // dlls directly.
       "SkiaSharp"
       "SkiaSharp.HarfBuzz"
+      "Marey.Toolchain"
+      "Marey.Tools.Video"
       "Marey.Html" ]
 
 let private guidePath =

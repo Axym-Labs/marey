@@ -50,6 +50,8 @@ plot trials {
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX. |
 | `Marey.Backend.Skia` | PNG and vector PDF, with real text shaping. The only package with third-party dependencies. |
 | `Marey.Anim` | Animation as a pure function of time: a seekable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
+| `Marey.Tools.Video` | Encoding a rendered frame sequence to video with `ffmpeg`, resolved on `PATH` and reported. |
+| `Marey.Toolchain` | Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies. |
 | `Marey.Html` | HTML renderings for a notebook cell. Host-neutral. |
 | `Marey.Verso` | The Verso notebook extension. |
 

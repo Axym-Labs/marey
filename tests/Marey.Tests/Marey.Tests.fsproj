@@ -52,6 +52,9 @@
     <!-- After StoryboardTests.fs and SkiaTests.fs: it renders a storyboard, and it reuses
          `SkiaTests.withSkia` rather than probing for the native libraries a second time. -->
     <Compile Include="FrameTests.fs" />
+    <!-- After FrameTests.fs: it encodes what that one writes, and it reuses `SkiaTests.withSkia`
+         for the one gate that goes end to end through a real film. -->
+    <Compile Include="VideoTests.fs" />
     <Compile Include="ChannelTests.fs" />
     <Compile Include="StatTests.fs" />
     <Compile Include="FacetTests.fs" />
@@ -75,9 +78,11 @@
     <ProjectReference Include="..\..\src\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Backend.Tikz\Marey.Backend.Tikz.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Plot\Marey.Plot.fsproj" />
-    <!-- Not a published package yet (see its .fsproj), so a ProjectReference is the only
-         way in. It is what `Tools.fs` and every shelling gate resolve their programs through. -->
+    <!-- A ProjectReference rather than the package, like everything else here: the suite tests
+         the working tree. It is what `Tools.fs` and every shelling gate resolve their programs
+         through, and since M3 phase 6 it ships as a package of its own. -->
     <ProjectReference Include="..\..\src\Marey.Toolchain\Marey.Toolchain.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Tools.Video\Marey.Tools.Video.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Html\Marey.Html.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Verso\Marey.Verso.fsproj" />
   </ItemGroup>

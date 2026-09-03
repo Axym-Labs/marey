@@ -1,6 +1,6 @@
 name: Publish
 
-# Publishes the nine packages to nuget.org using **trusted publishing**: GitHub mints a
+# Publishes the eleven packages to nuget.org using **trusted publishing**: GitHub mints a
 # short-lived OIDC token, nuget.org validates it against a policy you registered and hands back
 # an API key valid for one hour. No long-lived secret is stored in this repository.
 #
@@ -89,17 +89,21 @@ jobs:
           path: ~/apt-archives
           key: apt-tex-${{ runner.os }}-${{ hashFiles('.github/tex-packages.txt') }}
 
-      # Two of this suite's gates shell out, and both are written to report "not installed"
-      # rather than to fail -- which is right on a contributor's laptop and wrong here.
+      # Several of this suite's gates shell out, and every one of them is written to report
+      # "not installed" rather than to fail -- which is right on a contributor's laptop and
+      # wrong here.
       #
       #   pdflatex   compiles every golden .tex baseline. Without it, the single most
       #              valuable test in the milestone does not run.
       #   pdftoppm   rasterises the compiled PDF for the ink gate, which exists because D33
       #              once produced a perfectly valid document containing no visible markers
       #              while every other test passed.
+      #   ffmpeg     encodes a frame sequence (D75), and ffprobe -- in the same package --
+      #              reads the container back, which is the difference between gating a video
+      #              and gating an exit code.
       #
       # The package list and the reason for each entry live in .github/tex-packages.txt.
-      - name: Install the TeX and raster toolchain
+      - name: Install the external toolchain
         run: |
           set -e
           pkgs=$(grep -vE '^[[:space:]]*(#|$)' .github/tex-packages.txt | tr '\n' ' ')
@@ -145,13 +149,14 @@ jobs:
       - name: Check the packages before anything leaves the machine
         run: |
           set -e
+          # Eleven since M3 phase 6, which published Marey.Tools.Video and — because a
+          # published package may not depend on an unpublished one — Marey.Toolchain with it.
           # Nine since M3 phase 3 published Marey.Anim; eight before that, when M2.5 added
           # Marey.Backend.Skia. The literal is the point: the solution is packed whole, so a
           # new project joins a release automatically, and a count that has to be edited by
           # hand is what stops one appearing on nuget.org because somebody added an .fsproj.
-          # Marey.Toolchain is still IsPackable=false and joins at M3 phase 6.
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 9 ] || { echo "::error::expected 9 packages, packed $count"; exit 1; }
+          [ "$count" -eq 11 ] || { echo "::error::expected 11 packages, packed $count"; exit 1; }
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
             grep -q "<version>${{ steps.version.outputs.value }}</version>" /tmp/nuspec.xml \
