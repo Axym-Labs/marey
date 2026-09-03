@@ -485,13 +485,23 @@ module Storyboard =
     /// How long the storyboard runs.
     let duration (story: Story<unit>) : float<s> = (stages story).Duration
 
-    /// **The storyboard as an animation of scenes**, laid out once for the whole shot.
+    /// **The storyboard as a shot and its scenes** — one function, two answers, for
+    /// `compilePanel`'s reason: the layout the whole film is drawn inside, and the frames drawn
+    /// inside it. Handing back only the second would make a renderer that needs the surface
+    /// take it as a second argument, and a second extent beside a decided layout is a second
+    /// chance to disagree with nothing able to notice (D72). `Film` is built from this pair.
     ///
     /// `samples` is D72's union: the storyboard is sampled that many times, every state is
     /// arranged, and the gutters are the componentwise maximum, so the panel does not breathe
     /// while the data moves. There is deliberately no default — 32 is a good number and it
     /// belongs at the call site, where a reader can see it.
-    let animateWith (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (story: Story<unit>) : Anim<Node> =
+    ///
+    /// **The union pass is where the fonts are resolved**, and that matters to a parallel
+    /// render: it runs here, once, on the calling thread, before any frame exists. So a
+    /// measurer that resolves a face against the machine (D62) has done all of its resolving
+    /// by the time `Array.Parallel.map` starts, and `ResolvedFaces` is in first-seen order
+    /// rather than in whichever order sixteen threads happened to ask. See D77.
+    let shoot (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (story: Story<unit>) : Shot * Anim<Node> =
         let st = stages story
         let total = st.Duration
 
@@ -513,11 +523,18 @@ module Storyboard =
         let shot =
             Figure.arrangeUnion samples m extent (fun u -> figureAt (u * total))
 
+        shot,
         Anim.ofSeconds total (fun t ->
             let stage = st.At t
             let scene = Figure.toSceneIn m shot (figureAt t)
 
             stage.Edits |> Array.fold (fun n (k, f) -> Scene.mapKey k f n) scene)
+
+    /// **The storyboard as an animation of scenes**, laid out once for the whole shot.
+    ///
+    /// `shoot` without the layout, for a caller who only wants the picture.
+    let animateWith (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (story: Story<unit>) : Anim<Node> =
+        snd (shoot samples m extent story)
 
     /// `animateWith`, measured with the zero-dependency default measurer — `Chart.toScene`'s
     /// relationship to `Chart.toSceneWith`, one milestone later.

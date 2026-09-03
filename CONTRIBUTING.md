@@ -4,7 +4,7 @@
 
 ```
 dotnet build          # warning-free; warnings are errors
-dotnet test           # 990 tests
+dotnet test           # 1023 tests
 ```
 
 `TreatWarningsAsErrors` is on for every project, set in `Directory.Build.props`. It is not
@@ -72,7 +72,7 @@ policy, the determinism checks and the seed sweep. Read it before adding tests.
 
 ## What the layering rules are
 
-Three constraints hold across the whole tree, and a change that breaks one needs to argue for it
+Four constraints hold across the whole tree, and a change that breaks one needs to argue for it
 rather than work around it:
 
 - **`Marey.Core` takes no dependencies.** Not a package, not a backend, nothing. Nor do
@@ -81,10 +81,15 @@ rather than work around it:
   package, and a test asserts the other five against the built assembly graph rather than
   against the project files.
 - **`Marey.Plot` references no backend.** Rendering enters as a function — this is why
-  `Chart.toSvg` takes a renderer rather than importing one. It does reference `Marey.Anim`, and
-  that edge was argued rather than assumed: the storyboard block names an `Anim` and a `Figure` in
-  one signature, `Marey.Anim` is 36 KB with no dependencies of its own, and the other direction
-  would put the whole plotting stack behind `Anim.tween`.
+  `Chart.toSvg` takes a renderer rather than importing one, and why `Frames.render` takes one too.
+  It does reference `Marey.Anim`, and that edge was argued rather than assumed: the storyboard
+  block names an `Anim` and a `Figure` in one signature, `Marey.Anim` is 36 KB with no
+  dependencies of its own, and the other direction would put the whole plotting stack behind
+  `Anim.tween`.
+- **`Marey.Core` and `Marey.Anim` stay Fable-compatible.** Both `.fsproj` files say so, and it is
+  why the frame writer is in `Marey.Plot` despite naming nothing above `Anim<Node>`: `System.IO`
+  and `Array.Parallel` do not belong in either. A change that puts a concurrency primitive or a
+  file handle in one of those two has broken something the packages promise.
 - **The scene IR has ten cases and gains none casually.** Axes, legends, error bars and bars are
   *compiled into* `Path`/`Text`/`Markers` by the layer above. A new node variant is a cost against
   every backend — the tenth, `Opacity`, was added in M3 because fading a composited group cannot

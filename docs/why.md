@@ -222,9 +222,10 @@ in the guide, the README and the examples.)*
   library. The library still works; it is simply not *for* this.
 - **The units are known only at runtime.** There is no UDUNITS-2 parser. The witness carries the
   fields such a parser would need, but the parser does not exist.
-- **Interactivity, animation or 3D are needed.** Twelve geoms and two backends, but the output is
-  static. The [guide's closing section](guide.md#what-is-not-here-yet) is the current list of what
-  does not exist.
+- **Interactivity or 3D are needed.** Twelve geoms and three backends, and a figure can now be
+  animated and rendered frame by frame — but nothing is clickable, nothing is projected, and there
+  is no video encoder in the box. The [guide's closing
+  section](guide.md#what-is-not-here-yet) is the current list of what does not exist.
 - **The host is not .NET.** The argument above rests on F# units of measure, and there is no version
   of this library for a language without them.
 

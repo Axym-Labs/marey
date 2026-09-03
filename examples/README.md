@@ -19,6 +19,7 @@ resolve from nuget.org, so nothing needs to be built first.
 | [`shaped-text.fsx`](shaped-text.fsx) | The same figure arranged by two text measurers and drawn by the same renderer, so the only difference in the two PNGs is what measuring text properly does to a layout. Also the vector PDF, and which font the machine actually resolved. |
 | [`morph.fsx`](morph.fsx) | Path morphing, and the two things about it that look like defects and are not: a closed ring's start point is not rotated to match its partner, and subpaths pair by index. Writes the filmstrip the guide uses to show both. |
 | [`storyboard.fsx`](storyboard.fsx) | The `scene` block: a figure drawn, morphed and zoomed at once, then one mark picked out by name. Writes a six-frame filmstrip, and checks that the panel holds still across all of it while the data moves. |
+| [`frames.fsx`](frames.fsx) | Rendering an animation: one `map` over the frame times. Checks the three things that follow from an animation being a pure function of time — a frame rendered alone is the frame rendered in sequence, a concurrent render is the serial one, and the measuring is bounded by the distinct strings in the shot rather than by the frames. |
 | [`warming-rate.fsx`](warming-rate.fsx) | The encoding block on a real table: x, y and a colour declared in one place, a fitted trend, and the same record faceted into one panel per era. The fitted slope is a `float<K/yr>` — a warming rate, typed as one. |
 
 ## The data

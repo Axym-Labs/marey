@@ -27,6 +27,9 @@
     <Compile Include="Chart.fs" />
     <Compile Include="Plot.fs" />
     <Compile Include="Storyboard.fs" />
+    <!-- After Storyboard.fs: `Film.ofStory` names a `Story`, and `Frames` is what a storyboard
+         is finally *for*. D77. -->
+    <Compile Include="Frames.fs" />
   </ItemGroup>
 
   <ItemGroup>

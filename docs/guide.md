@@ -30,9 +30,10 @@ The blocks form one continuous session, so bindings introduced early are still i
 15. [Output: SVG, TikZ, PNG, PDF](#15-output-svg-tikz-png-pdf)
 16. [Animation](#16-animation)
 17. [The storyboard](#17-the-storyboard)
-18. [Notebooks](#18-notebooks)
-19. [The scene IR](#19-the-scene-ir)
-20. [Escape hatches](#20-escape-hatches)
+18. [Frames](#18-frames)
+19. [Notebooks](#19-notebooks)
+20. [The scene IR](#20-the-scene-ir)
+21. [Escape hatches](#21-escape-hatches)
 
 ---
 
@@ -1205,7 +1206,112 @@ still frame, a caption, or a different renderer entirely.
 
 ---
 
-## 18. Notebooks
+## 18. Frames
+
+`Anim.At` is a direct evaluation, so rendering an animation is one `map` over the frame times.
+There is no scheduler and no replay: frames come out in any order, on any number of threads, and
+a frame rendered on its own is the frame rendered in sequence.
+
+A **`Film`** is the pair a renderer needs — the scene at every instant, and the layout it was
+arranged inside:
+
+```fsharp
+open Marey.Storyboard
+
+let filmPoints =
+    let ts = Array.init 12 (fun i -> float i * 1.0<s>)
+    Chart.scatter U.second U.metre ts (ts |> Array.map (fun t -> float t * 2.0<m>))
+
+let filmStory =
+    scene {
+        let! filmCurve = draw filmPoints |> over 0.6<s>
+        do! filmCurve |> zoomToY (0.0, 40.0) |> over 1.0<s>
+    }
+
+let film = Film.ofStory 32 (Chart.size 320.0 220.0) filmStory
+
+printfn "%g s on a %g x %g surface" (float film.Duration) (float film.Extent.Width) (float film.Extent.Height)
+```
+
+The surface is not an argument anywhere below this line. `Film.Extent` is the extent the film's
+shot was arranged against, so a film cannot be rendered at a size its layout was not sized for —
+which is silent when it happens and looks like a picture in the corner of a page.
+
+`Frames.render` evaluates every frame and hands them back. `Frames.write` and `Frames.writeText`
+also put them on disk, numbered:
+
+```fsharp
+let frameDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "marey-guide-frames")
+
+let filmSeq =
+    film
+    |> Frames.writeText FramePass.Concurrent SvgBackend.render (FrameTarget.into frameDir ".svg") 24.0
+
+printfn "wrote %d frames as %s" filmSeq.Files.Length filmSeq.Pattern
+printfn "nothing left over from an earlier render: %b" (Array.isEmpty filmSeq.Stale)
+```
+
+`Pattern` is the `frame-%05d.svg` shape an encoder is pointed at, and `Stale` is every file
+matching it that *this* render did not write. That second one is not tidiness: a directory holding
+a previous, longer render still has frames past the end of this one, `ffmpeg -i frame-%05d.png`
+reads until the first gap, and the encode quietly gains a tail from a shot that no longer exists.
+The files are reported rather than deleted, because deleting a directory's contents is not a
+rendering function's decision to make.
+
+### The frame clock
+
+`Frames.times fps duration` is `round(duration * fps)` instants at `i / fps`. **The final instant
+is not a frame.** A frame occupies the interval that starts at its own time, so a 2 s film at
+30 fps is 60 frames ending at 1.9667 s; a sixty-first frame at `t = 2` would hold the final state
+for one frame longer than the film asked for, which is a visible stutter in a loop.
+
+```fsharp
+printfn "60 frames, last at %g s: %b" (float (Array.last (Frames.times 30.0 2.0<s>))) (Frames.count 30.0 2.0<s> = 60)
+```
+
+### Serial and concurrent are the same frames
+
+`FramePass.Concurrent` is `Array.Parallel.map` over the frame times; `FramePass.Serial` is
+`Array.map`. They produce the same bytes in the same order, and a gate asserts it on both the
+SVG and the PNG backend.
+
+Two rules make that true, and they are the contract in `Backend.fs` rather than a property of the
+backends that happen to be in the box:
+
+- **An `IBackend` is single-threaded.** `Begin`/`Draw`/`Finish` is a state machine over a mutable
+  surface. What crosses threads is a *renderer function*, `Extent<px> -> Node -> 'a`, and such a
+  function must be safe to call concurrently. `SvgBackend.render` and `SkiaBackend.renderPng`
+  both are, by constructing their backend inside the call.
+- **An `ITextMeasurer` must be thread-safe, and one of them serves the whole film.** Not for
+  speed: font resolution walks a family stack against whatever is installed (§15), so a measurer
+  per thread is a chance for one frame of a video to be set in a different typeface from the frame
+  before it — invisible in a single frame, invisible in review, and unfixable after the render.
+
+### One measurer, memoised
+
+Sharing one measurer means sharing whatever lock it needs, and layout asks it about every tick
+label, legend entry and axis title. `MemoTextMeasurer` answers that: it wraps any measurer and
+remembers `(FontSpec, string)`, so no string is ever measured twice and the hit path is a
+lock-free dictionary read.
+
+```fsharp
+let filmMemo = MemoTextMeasurer TextMeasure.approx
+let filmMeasured = Film.ofStoryWith 32 filmMemo (Chart.size 320.0 220.0) filmStory
+Frames.render FramePass.Concurrent SvgBackend.render 24.0 filmMeasured |> ignore
+
+printfn "%d distinct strings, %d measurements" filmMemo.Entries filmMemo.Measurements
+```
+
+Pass one of these when the measurer underneath costs something — which means whenever the film is
+rendered through Skia, where every measurement is a HarfBuzz shaping run behind a mutex.
+
+How much it saves is bounded by the *distinct strings in the shot*, not by the frames: the
+arrangement is frozen once (§17), tick labels are round numbers drawn from a small set, and
+quadrupling the frame rate on a two-decade zoom moved that count by one.
+
+---
+
+## 19. Notebooks
 
 In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
 cell whose value is a `Figure` displays as a figure. No `.Show()`, no save-then-open, no display
@@ -1229,7 +1335,7 @@ See [`notebooks/README.md`](notebooks/README.md) for installation and
 
 ---
 
-## 19. The scene IR
+## 20. The scene IR
 
 Everything above compiles to one closed ten-case `Scene` IR, and every backend consumes only that.
 It is the level at which a figure that came out wrong can be inspected.
@@ -1275,7 +1381,7 @@ paints the overlap twice. For a single shape, `Color.A` is still the simpler too
 
 ---
 
-## 20. Escape hatches
+## 21. Escape hatches
 
 **Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so the scales are
 the caller's and everything downstream still works.
@@ -1311,7 +1417,10 @@ For a stateful backend there is `IBackend` and `Chart.renderTo`, which is the pa
 
 ## What is not here yet
 
-What exists today is static plotting: everything this guide covers, from two arrays and a chart
-call up to the encoding block. Animation, fields and simulation, further backends, an interactive
-canvas, and native mathematical typesetting are all intended, and none of them exist yet. Among the geoms, the field ones — contour, quiver, streamline and hexbin — are the
-group still to come.
+Animation exists as of §16 to §18 — the algebra, the storyboard block and the frame writer — and
+what it does not yet do is *encode*: `Frames.write` leaves a numbered directory, and turning that
+into a video is a call to `ffmpeg` you make yourself for now.
+
+Fields and simulation, further backends, an interactive canvas, and native mathematical
+typesetting are all intended, and none of them exist yet. Among the geoms, the field ones —
+contour, quiver, streamline and hexbin — are the group still to come.

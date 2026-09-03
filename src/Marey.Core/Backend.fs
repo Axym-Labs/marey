@@ -17,6 +17,27 @@ type TextMetrics =
 /// §15 puts the stakes plainly: "Text and layout eat 40% of the effort. Everyone
 /// underestimates this." Having one seam here is what makes it possible to start with an
 /// approximation and swap in HarfBuzz at M2 without touching the layout code.
+///
+/// ### D77 — an implementation must be thread-safe, and one instance serves a whole render
+///
+/// This is a requirement on the implementer, not an observation about the implementations. A
+/// measurer is called from layout, and since M3 layout runs once per frame of an animation
+/// across `Array.Parallel.map`. `Measure` must therefore be safe to call from several threads
+/// at once. `ApproxTextMeasurer` is stateless and satisfies it for free; `SkiaTextMeasurer`
+/// caches native handles and satisfies it with a lock.
+///
+/// **And exactly one instance is shared across every frame of one render.** The alternative —
+/// a measurer per thread — is not a performance question, it is a correctness one: font
+/// resolution walks a family stack against whatever is installed (D62), so N independent
+/// resolutions are N chances for one frame of a video to be set in a different typeface from
+/// the frame before it. That is invisible in a single frame, invisible in review, and
+/// unfixable after the render. One measurer means one resolution and one `ResolvedFaces`
+/// report for the whole shot.
+///
+/// The cost of sharing is contention on whatever lock the implementation needs, and the answer
+/// is a cache rather than more measurers: `MemoTextMeasurer` in `Marey.Plot` memoises this
+/// method on `(FontSpec, string)`, which is enough because a shot is laid out once (D72) and
+/// every frame therefore asks about the same strings.
 type ITextMeasurer =
     abstract Measure: FontSpec -> string -> TextMetrics
 
@@ -63,6 +84,25 @@ type Capabilities =
 /// things — a string, a file, a GPU swapchain present — so the *result* is exposed by the
 /// concrete type (`SvgBackend.Result`) while the *protocol* stays uniform enough to hold a
 /// heterogeneous list of backends and drive them all from one scene.
+///
+/// ### D77 — the concurrency contract
+///
+/// **An `IBackend` is single-threaded. One instance per thread, and never two threads at
+/// once.** `Begin` / `Draw` / `Finish` is a state machine over a mutable surface, so this is
+/// what the interface has always meant; it was never written down, and M3 renders frames in
+/// parallel, so it is written down here where an implementer reads it. An instance may be
+/// *reused* serially — `Begin` starts a new document — and both built backends support that.
+///
+/// **What crosses threads is a renderer function**, `Extent<px> -> Node -> 'a`: the shape
+/// `SvgBackend.render` and `SkiaBackend.renderPng` already have, and the shape `Chart.render`
+/// and `Frames.render` consume. Such a function **must be safe to call concurrently**, and the
+/// way both built renderers achieve it is to construct their backend *inside* the call, so no
+/// instance is ever shared. A backend author adding a third renderer either does the same or
+/// says in its doc comment that it does not.
+///
+/// **`Measurer` is the exception, and it is deliberate.** An `ITextMeasurer` is required to be
+/// thread-safe (see above) precisely so that one of them can be shared by every frame of a
+/// render while the backends around it are not.
 type IBackend =
     abstract Caps: Capabilities
     abstract Measurer: ITextMeasurer

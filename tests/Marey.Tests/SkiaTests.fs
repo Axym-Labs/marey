@@ -149,7 +149,12 @@ let private available =
          with e ->
              Error(e.GetType().Name + ": " + e.Message))
 
-let private withSkia (body: unit -> unit) =
+/// Run a gate that needs the native libraries, or say loudly that it was not run.
+///
+/// **Public, and reused by `FrameTests`.** D81's lesson applied to a probe rather than to a
+/// `PATH` walk: the way this goes wrong is that a second file writes its own version, the two
+/// disagree about what "available" means, and one of them starts passing for the wrong reason.
+let withSkia (body: unit -> unit) =
     match available.Force() with
     | Ok() -> body ()
     | Error why -> System.Console.WriteLine("SKIPPED: SkiaSharp native assets unavailable -- " + why)

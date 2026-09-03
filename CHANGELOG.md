@@ -220,6 +220,47 @@ the easing catalogue, morphing and animating a figure; §17 covers the storyboar
 `examples/storyboard.fsx` writes a six-frame filmstrip of one storyboard and checks that the panel
 holds still across all of it.
 
+**The frame writer, and the concurrency contract underneath it.** `Frames.render` evaluates every
+frame of a film; `Frames.write` and `Frames.writeText` also number them onto disk. `FramePass`
+chooses between `Array.Parallel.map` and `Array.map`, and the two produce the same bytes in the
+same order — asserted frame for frame on both the SVG and the PNG backend, because a face resolved
+differently on another thread is a different PNG and no amount of SVG comparison would see it.
+
+A **`Film`** is the pair a renderer needs: the scene at every instant, and the shot it was
+arranged inside. It is a type rather than two arguments because the surface is already in the
+`Shot`, and passing a second one beside it is a chance to render a film at a size its layout was
+never sized for — which nothing would catch and which looks like a picture in the corner of a
+page. `Film.ofStory` builds one from a storyboard, `Film.ofFigures` from a bare `Anim<Figure>`.
+
+`Frames.times` is `round(duration * fps)` instants at `i / fps`, and **the final instant is not a
+frame**: a frame occupies the interval that starts at its own time, so a 2 s film at 30 fps is 60
+frames ending at 1.9667 s.
+
+`FrameSequence` reports the `frame-%05d.png` pattern an encoder is pointed at, and `Stale` — every
+file matching that pattern which this render did **not** write. A directory holding a previous,
+longer render still has frames past the end of this one, `ffmpeg -i frame-%05d.png` reads until
+the first gap, and the encode silently gains a tail from a shot that no longer exists. Reported
+rather than deleted: emptying a directory is not a rendering function's decision.
+
+**The contract is now in `Backend.fs`, where a backend author reads it.** An `IBackend` is
+single-threaded — `Begin`/`Draw`/`Finish` is a state machine over a mutable surface — and what
+crosses threads is a renderer *function*, `Extent<px> -> Node -> 'a`, which must be safe to call
+concurrently; both built renderers achieve that by constructing their backend inside the call. An
+`ITextMeasurer`, by contrast, **must** be thread-safe, and exactly one of them serves a whole
+film. That asymmetry is not about speed: font resolution walks a family stack against whatever is
+installed, so a measurer per thread is a chance for one frame of a video to be set in a different
+typeface from the frame before it — invisible in a frame, invisible in review, unfixable after the
+render.
+
+**`MemoTextMeasurer`** is what makes sharing one affordable. It wraps any `ITextMeasurer` and
+remembers `(FontSpec, string)`, so no string is ever measured twice and the hit path is a
+lock-free dictionary read. `Measurements` and `Entries` are counters a test can read: in a serial
+render they are equal, which is the cache's whole promise stated as an assertion.
+
+**`Storyboard.shoot`** returns the `Shot` beside the `Anim<Node>` — one function, two answers, the
+shape `compilePanel` already had. `Storyboard.animateWith` is `shoot` without the layout and is
+unchanged.
+
 ### Changed
 
 - **`Capabilities` has a tenth field** and `Node` a tenth case, so both break every backend
@@ -245,6 +286,22 @@ holds still across all of it.
 
 ### Known limitations
 
+- **Parallel scaling is sub-linear, and the number is measured rather than promised.** The
+  measurer cache removes the per-frame cost of measuring, not the per-render one, and the union
+  arrangement that warms it is serial by construction.
+- **"Frames after the first cause zero measurements" is true only of a film whose text does not
+  change.** The arrangement is frozen; the tick *values* inside it are not, so a sweeping domain
+  produces labels the union pass never sampled. What holds is the bound: measuring is proportional
+  to the distinct strings in the shot rather than to the frames — on a morph-then-zoom of 126
+  frames, quadrupling the frame rate moved the count from 64 to 65.
+- **The Skia backend still resolves its *drawing* face per frame.** One measurer serves the whole
+  film's layout, which is where a `ResolvedFaces` report comes from; `SkiaBackend.renderPng`
+  constructs its own backend, and therefore its own measurer, inside each call, which is also what
+  makes it safe to call concurrently. Within one process the resolution is stable, and the gate
+  that would catch it if it were not is stronger than the contract: the PNG frames of a concurrent
+  render are byte-identical to the serial ones. Sharing one measurer across the draw path would
+  serialise every text run in every frame behind one HarfBuzz lock, so it is a trade rather than a
+  fix, and it is not taken here.
 - Keys are positional, so they are stable under a restyle, a rename, a re-theme and a change of
   values — which is what an animation does between frames — and **not** under an edit that adds
   or removes a row, which shifts every later index. Identity across a data edit needs an id the

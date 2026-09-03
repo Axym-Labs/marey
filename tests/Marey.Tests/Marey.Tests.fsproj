@@ -49,6 +49,9 @@
     <Compile Include="PlotTests.fs" />
     <Compile Include="ShotTests.fs" />
     <Compile Include="StoryboardTests.fs" />
+    <!-- After StoryboardTests.fs and SkiaTests.fs: it renders a storyboard, and it reuses
+         `SkiaTests.withSkia` rather than probing for the native libraries a second time. -->
+    <Compile Include="FrameTests.fs" />
     <Compile Include="ChannelTests.fs" />
     <Compile Include="StatTests.fs" />
     <Compile Include="FacetTests.fs" />

@@ -59,6 +59,12 @@ out — and plotting metres against metres on these axes is a compile error.
   `let!` binds a name for something on stage; `animate` lays the whole shot out **once**, against
   the union of every state it sampled, so the panel holds still while the data moves. Seeking is
   evaluation, so `anim.At 2.7<s>` is a direct call and frames render in any order, in parallel.
+- **The frame writer.** `Film.ofStory` pairs the scene animation with the layout it is drawn
+  inside, and `Frames.write` renders every frame over `Array.Parallel.map` and numbers them onto
+  disk as `frame-00000.png`. The concurrent and serial passes produce the same bytes in the same
+  order, and one memoised `ITextMeasurer` serves the whole film — because font resolution walks a
+  family stack against whatever is installed, and a measurer per thread is a chance for one frame
+  of a video to be set in a different typeface from the frame before it.
 - Per-layer styling that survives a theme change where it was set explicitly and is recoloured
   where it was not, which is what makes `withTheme` safe to apply last.
 
