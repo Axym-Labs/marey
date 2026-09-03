@@ -4,7 +4,7 @@
 
 ```
 dotnet build          # warning-free; warnings are errors
-dotnet test           # 952 tests
+dotnet test           # 990 tests
 ```
 
 `TreatWarningsAsErrors` is on for every project, set in `Directory.Build.props`. It is not
@@ -81,10 +81,15 @@ rather than work around it:
   package, and a test asserts the other five against the built assembly graph rather than
   against the project files.
 - **`Marey.Plot` references no backend.** Rendering enters as a function — this is why
-  `Chart.toSvg` takes a renderer rather than importing one.
-- **The scene IR has nine cases and gains none casually.** Axes, legends, error bars and bars are
+  `Chart.toSvg` takes a renderer rather than importing one. It does reference `Marey.Anim`, and
+  that edge was argued rather than assumed: the storyboard block names an `Anim` and a `Figure` in
+  one signature, `Marey.Anim` is 36 KB with no dependencies of its own, and the other direction
+  would put the whole plotting stack behind `Anim.tween`.
+- **The scene IR has ten cases and gains none casually.** Axes, legends, error bars and bars are
   *compiled into* `Path`/`Text`/`Markers` by the layer above. A new node variant is a cost against
-  every backend.
+  every backend — the tenth, `Opacity`, was added in M3 because fading a composited group cannot
+  be expressed by multiplying alpha through a subtree, and it broke every backend at compile time
+  on the way in. That is the intended cost.
 
 Comments throughout the source and tests cite decision numbers (`D18`, `D41`). They refer to the
 project's implementation decision log, which is kept outside this repository; the numbers are

@@ -86,7 +86,8 @@ module Chart =
           Geom = g
           Style = Geom.styleFor theme index
           Channels = [||]
-          ShowInLegend = not (System.String.IsNullOrEmpty name) }
+          ShowInLegend = not (System.String.IsNullOrEmpty name)
+          Addressed = [||] }
 
     // ---- Constructors ------------------------------------------------------------------------
 
@@ -150,7 +151,8 @@ module Chart =
         figureOf
             [| layerOf "" Theme.initial 0 bars packed
                { layerOf "" Theme.initial 0 GeomPoint packed with
-                   ShowInLegend = false } |]
+                   ShowInLegend = false
+                   Addressed = [||] } |]
 
     // ---- Phase 6's constructors ---------------------------------------------------------------
 
@@ -919,6 +921,21 @@ module Chart =
     let withMarker (s: MarkerShape) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withShape s l.Style }) fig
 
+    /// D69 — **give these rows nodes of their own**, by original row index.
+    ///
+    /// §5.1 batches a scatter's marks into one `Markers` node, so mark 42 has nothing a
+    /// rewrite can address. Naming it here splits that batch three ways — before it, itself
+    /// under `Keys.mark`, after it — and `Scene.mapKey (Keys.mark layer 42)` then reaches
+    /// exactly one mark. Two extra nodes, not N.
+    ///
+    /// The storyboard's `highlight` calls this for you; it is public because addressing a mark
+    /// is not an animation idea. Circling the outlier in a still figure wants the same node.
+    ///
+    /// Only a scatter (`GeomPoint`) can honour it — that is the geom whose marks are a batch.
+    /// Rows named on a layer that draws a `Path` are carried and never asked for.
+    let addressMarks (rows: int[]) (fig: Figure) : Figure =
+        mapLastLayer (fun l -> { l with Addressed = Array.distinct (Array.append l.Addressed rows) }) fig
+
     let withOpacity (o: float) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withOpacity o l.Style }) fig
 
@@ -951,7 +968,8 @@ module Chart =
                                 [| { last with
                                        Geom = Geom.text labels
                                        Channels = [||]
-                                       ShowInLegend = false } |] })
+                                       ShowInLegend = false
+                                       Addressed = [||] } |] })
             fig
 
     // ---- Non-positional channels (§9, D46, D49) -----------------------------------------------

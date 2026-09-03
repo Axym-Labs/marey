@@ -39,6 +39,26 @@ out — and plotting metres against metres on these axes is a compile error.
 - **Palettes** — Okabe–Ito, viridis, cividis, magma and an Oklab diverging ramp, with a
   colour-vision-deficiency and contrast validator that every shipped theme is checked against.
 - **A measure–arrange constraint layout**, and the axis and legend compilers.
+- **The `scene` storyboard block**, for a figure that moves:
+
+  ```fsharp
+  open Marey.Storyboard
+
+  let intro =
+      scene {
+          let! curve = draw measured |> over 1.2<s>
+          do! wait 0.5<s>
+          do! parallel' [ curve |> morphTo fitted |> over 2.0<s>
+                          curve |> zoomToX (0.0, 8.0) |> over 2.0<s> ]
+          do! highlight curve.[42]
+      }
+
+  let anim = animate 32 (Chart.size 640.0 400.0) intro
+  ```
+
+  `let!` binds a name for something on stage; `animate` lays the whole shot out **once**, against
+  the union of every state it sampled, so the panel holds still while the data moves. Seeking is
+  evaluation, so `anim.At 2.7<s>` is a direct call and frames render in any order, in parallel.
 - Per-layer styling that survives a theme change where it was set explicitly and is recoloured
   where it was not, which is what makes `withTheme` safe to apply last.
 
@@ -53,8 +73,10 @@ Install one:
 - [`Marey.Backend.Tikz`](https://www.nuget.org/packages/Marey.Backend.Tikz) — `tikzpicture`
   source for LaTeX, with `siunitx` units.
 
-Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and
-[`Marey.Units`](https://www.nuget.org/packages/Marey.Units).
+Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core),
+[`Marey.Units`](https://www.nuget.org/packages/Marey.Units) and
+[`Marey.Anim`](https://www.nuget.org/packages/Marey.Anim) — the last because the storyboard names
+an `Anim` and a `Figure` in one signature. It is 36 KB and has no dependencies of its own.
 
 - [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
 - [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)

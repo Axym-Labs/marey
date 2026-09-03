@@ -362,7 +362,8 @@ module private PlotCompile =
                   // contributes its levels and its size key — `Figure.layerEntries` drops the
                   // layer's own entry when the name is empty, which is the same rule the quick
                   // front door plays by.
-                  ShowInLegend = i = 0 })
+                  ShowInLegend = i = 0
+                  Addressed = [||] })
 
         // **The fitted line is a layer, and it is appended — the order is load-bearing** (D47).
         //
@@ -382,7 +383,8 @@ module private PlotCompile =
                       Geom = GeomLine
                       Style = restyle baseStyle
                       Channels = [||]
-                      ShowInLegend = false } ]
+                      ShowInLegend = false
+                      Addressed = [||] } ]
             | _ -> layers
 
         let panel =

@@ -173,15 +173,67 @@ functions above are that, so it ships. It still depends on `Marey.Core` alone an
 `Figure`: the sampler `Chart.arrangeUnion` takes is a plain `float -> Figure`, so tweening a
 `float<m>` does not make anyone install the grammar.
 
-**A guide chapter and a worked example.** `docs/guide.md` §16 covers the algebra, the clock, the
-easing catalogue, morphing and animating a figure. `examples/morph.fsx` draws the two morph
-behaviours that look like defects and are not.
+**The storyboard block.** `scene { … }` in `Marey.Storyboard` — §7.2's shape, re-spelled against
+M2's grammar:
+
+```fsharp
+let intro =
+    scene {
+        let! curve = draw measured |> over 1.2<s>
+        do! wait 0.5<s>
+        do! parallel' [ curve |> morphTo fitted |> over 2.0<s> |> ease Ease.cubicInOut
+                        curve |> zoomToX (0.0, 8.0) |> over 2.0<s> ]
+        do! highlight curve.[42]
+    }
+
+let anim = animate 32 (Chart.size 640.0 400.0) intro
+```
+
+`let!` binds a **handle** — a name for something on stage, plus the duration it arrived over,
+which is the default for every later verb applied to it. Not the animation itself: the handle is
+a name and the scene is a value. The verbs are `draw`, `over`, `wait`, `parallel'`, `ease`,
+`morphTo`, `zoomToX`/`zoomToY`, `highlight` and `fadeIn`; `Storyboard.animate` renders one into an
+`Anim<Node>` laid out once against the union of everything it saw, and `Storyboard.stages` gives
+the `Figure` on stage at any instant for anything else.
+
+`parallel'` runs its branches from the same stage and takes the longest one's duration, with the
+shorter ones holding their final state — `Anim.map2`'s rule, inherited rather than restated.
+
+**`Chart.addressMarks`, and a mark that has a node of its own.** A scatter is *one* `Markers` node
+holding N positions, which is why mark 42 had nothing to highlight. Naming a row splits that batch
+three ways — before it, the mark under `Keys.mark`, after it — for two extra nodes rather than N.
+Nothing splits until something is named, so every figure that addresses nothing is exactly the
+figure it was.
+
+The index is the datum's **original row**, not its position among the drawn marks: those differ
+the moment a non-finite value earlier in the series goes undrawn. Only a scatter can honour it —
+a line is one `Path`, and there is no node between its vertices to name.
+
+**`Erase.tweenSeries`, `Erase.seriesValues` and `Keys.covers`.** Interpolating one packed series
+into another is what `morphTo` is: both sides are resampled to the longer by index fraction and
+interpolated pointwise, domains included, with the target converted into the unit on stage through
+SI. `Keys.covers` is the segment-wise prefix test that makes a key a scope.
+
+**Two guide chapters and two worked examples.** `docs/guide.md` §16 covers the algebra, the clock,
+the easing catalogue, morphing and animating a figure; §17 covers the storyboard.
+`examples/morph.fsx` draws the two morph behaviours that look like defects and are not, and
+`examples/storyboard.fsx` writes a six-frame filmstrip of one storyboard and checks that the panel
+holds still across all of it.
 
 ### Changed
 
 - **`Capabilities` has a tenth field** and `Node` a tenth case, so both break every backend
   implementation at compile time. That is the intended cost of an IR change and the reason the
   type is guarded.
+- **`Layer` has a new field, `Addressed: int[]`** — the rows that get nodes of their own. Empty on
+  every layer nothing names, which is why no rendered output moved.
+- **`Marey.Plot` now depends on `Marey.Anim`.** The storyboard names `Anim` and `Figure` in one
+  signature and there is no third place for it to stand. The direction is chosen by weight:
+  `Marey.Anim` is 36 KB with no dependencies of its own, so a static-only consumer of the main
+  package carries ten percent more assembly and no new package reference, where the other
+  direction would put the whole plotting stack behind `Anim.tween`.
+- **`Geom.compile` and `Geom.compileSubset` are one body.** Both now delegate to `Geom.compileFor`,
+  which takes the channel batch and the addressed rows as options. Neither signature changed.
 - **`Chart.arrangement` and `Figure.arrangement` now report the layout the figure is actually
   drawn in.** They were a second, hand-written copy of the grid `toScene` builds, and the copy
   omitted the figure's head row — so for any figure with a title or a subtitle they reported panel
@@ -197,9 +249,19 @@ behaviours that look like defects and are not.
   values — which is what an animation does between frames — and **not** under an edit that adds
   or removes a row, which shifts every later index. Identity across a data edit needs an id the
   data supplies, and the scene differ that would consume one is M4.
-- Nothing emits a node carrying a `mark` key yet. The spelling is fixed and tested so that the
-  storyboard phase, which splits a `MarkerBatch` to give one mark a node of its own, does not
-  invent a second one.
+- **Only a scatter has addressable marks.** `Markers` is the one node that batches N data points
+  into one; a `Path` is a single shape, and splitting a polyline in three would change the joins
+  between the pieces rather than name one of them. `Chart.addressMarks` on a line layer carries
+  the rows and never asks for them; a storyboard's `curve.[i]` on one raises instead.
+- **A storyboard shows one figure at a time.** Two charts on one surface is a two-panel `Figure`,
+  which `Chart.beside`, `Chart.above` and `Chart.facet` already spell; a second composition
+  mechanism inside the storyboard would be a second layout system.
+- **`parallel'` composes its branches left to right onto the stage as it stands**, so two branches
+  that write the same property end with the later one's answer. A morph and a zoom meet on the
+  domain, because a morph's domain follows its own data.
+- **A morph does not land exactly on its target**, for the same reason `interp a b 1.0` does not
+  land exactly on `b`: `a + (b - a) * t` is not exact at the endpoints. The endpoint law is stated
+  against the scale of the larger endpoint here as everywhere else in the library.
 - **A still frame lifted out of an animation is not the same picture as the figure rendered on
   its own.** The union arrangement sizes the gutters for the worst frame in the shot, so a frame
   extracted from one wears the whole shot's clothes. Accepted rather than argued away, and pinned

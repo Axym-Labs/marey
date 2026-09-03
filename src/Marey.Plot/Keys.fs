@@ -71,3 +71,15 @@ module Keys =
     /// Nothing emits a node carrying this yet; D69's batch split is its first producer. It is
     /// spelled here so that there is one spelling.
     let mark (layerKey: Key) (row: int) = child layerKey (sprintf "mark-%d" row)
+
+    /// Does `ancestor` name `key`, or something `key` sits under?
+    ///
+    /// A key is a path, so this is a prefix test — but on *segments*, not on characters.
+    /// `figure/panel-0-1` is not an ancestor of `figure/panel-0-10`, and a bare
+    /// `String.StartsWith` says it is. That is one grid position away from being wrong on a
+    /// figure with ten columns, which is a facet of a year of months.
+    let covers (Key ancestor) (Key key) =
+        key = ancestor
+        || (key.Length > ancestor.Length
+            && key.[ancestor.Length] = Separator
+            && key.StartsWith(ancestor, System.StringComparison.Ordinal))

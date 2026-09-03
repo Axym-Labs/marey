@@ -29,9 +29,10 @@ The blocks form one continuous session, so bindings introduced early are still i
 14. [Facets](#14-facets)
 15. [Output: SVG, TikZ, PNG, PDF](#15-output-svg-tikz-png-pdf)
 16. [Animation](#16-animation)
-17. [Notebooks](#17-notebooks)
-18. [The scene IR](#18-the-scene-ir)
-19. [Escape hatches](#19-escape-hatches)
+17. [The storyboard](#17-the-storyboard)
+18. [Notebooks](#18-notebooks)
+19. [The scene IR](#19-the-scene-ir)
+20. [Escape hatches](#20-escape-hatches)
 
 ---
 
@@ -50,11 +51,11 @@ open Marey
 |---|---|
 | `Marey.Core` | The `Scene` IR, colour, scales and geometry, and nothing else. Zero dependencies. |
 | `Marey.Units` | SI + 22 derived + 18 non-SI unit witnesses, and self-labelling axes. |
-| `Marey.Plot` | `Chart`, the `plot` block, geoms, channels, statistics, facets, themes, palettes, layout. No backend reference — see §15. |
+| `Marey.Plot` | `Chart`, the `plot` block, geoms, channels, statistics, facets, themes, palettes, layout, and the storyboard block (§17). No backend reference — see §15. |
 | `Marey.Backend.Svg` | Rendering to SVG. |
 | `Marey.Backend.Tikz` | Rendering to `tikzpicture` source for LaTeX. |
 | `Marey.Backend.Skia` | Rendering to PNG or PDF, and real text shaping. The only one with third-party dependencies, and native ones at that — see §15. |
-| `Marey.Anim` | Animation as a pure function of time: `Anim<'a>`, the easing catalogue and path morphing. Depends on `Marey.Core` alone — see §16. |
+| `Marey.Anim` | Animation as a pure function of time: `Anim<'a>`, the easing catalogue and path morphing. Depends on `Marey.Core` alone, and arrives with `Marey.Plot` — see §16. |
 | `Marey.Html` | HTML renderings of nine Marey types, for a notebook cell. Host-neutral. |
 | `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension. Installed *into the host*, not referenced from user code. |
 
@@ -1055,7 +1056,156 @@ you install the grammar. `fun u -> Anim.atFraction u anim` is the bridge.
 
 ---
 
-## 17. Notebooks
+## 17. The storyboard
+
+An animation is usually a *sequence*: something arrives, it changes, an axis zooms, one point is
+picked out. Written as a bare `float -> Figure` that means working out which step you are in and
+how far through it you are, by hand, every time. The storyboard block does that arithmetic.
+
+```fsharp
+open Marey.Storyboard
+
+let storyT = Array.init 12 (fun i -> float i * 1.0<s>)
+
+let storyRise =
+    Chart.scatter U.second U.metre storyT (storyT |> Array.map (fun t -> float t * 1.0<m>))
+
+let storyBend =
+    Chart.scatter U.second U.metre storyT (storyT |> Array.map (fun t -> float t * float t * 0.25<m>))
+
+let storyIntro =
+    scene {
+        let! curve = draw storyRise |> over 1.2<s>
+        do! wait 0.5<s>
+
+        do!
+            parallel'
+                [ curve |> morphTo storyBend |> over 2.0<s>
+                  curve |> zoomToX (0.0, 8.0) |> over 2.0<s> ]
+
+        do! highlight curve.[7] |> over 0.6<s>
+    }
+
+printfn "the storyboard runs for %g s" (float (Storyboard.duration storyIntro))
+```
+
+The block is a value. Nothing has been measured, nothing rendered, no time has passed.
+
+### What `let!` binds
+
+A **handle**: a name for something on stage, plus the duration it arrived over. Not the animation
+itself — `curve` is used three times after it is bound, every time to refer to something already
+drawn. A handle that *was* the animation would make `morphTo` composition rather than reference,
+and the storyboard would lose the ability to say "that thing, again".
+
+The duration is not decoration either. It is the default for every verb applied to that handle,
+so `do! highlight curve.[7]` with no `over` runs for as long as `curve` took to appear — a
+default that comes from your storyboard rather than from a constant inside the library.
+
+### The verbs
+
+| | |
+|---|---|
+| `draw fig` | put a figure on stage and reveal it. A zero-duration draw is a cut |
+| `over d` | how long the step takes |
+| `wait d` | hold |
+| `parallel' [ … ]` | run branches together from the same starting stage |
+| `morphTo fig` | interpolate what is on stage into another figure |
+| `zoomToX (lo, hi)`, `zoomToY` | animate an axis domain |
+| `highlight h.[i]` | grow one mark and ring it in the theme's foreground |
+| `fadeIn h` | fade a named subtree in |
+
+`parallel'` takes the duration of its **longest** branch, and the shorter ones hold their final
+state through the tail — which is `Anim.map2`'s rule from §16, inherited rather than restated.
+
+**`morphTo` interpolates the data, not the drawn geometry.** A `Figure` carries its own scales,
+so two figures are two coordinate systems; morphing one's paths into the other's would put half
+of the first figure's geometry on the second's axes, and the tick labels would be telling the
+truth about neither. Interpolating the series instead leaves a real `Figure` at every instant,
+whose domain, ticks and unit prefix all come from the numbers actually on screen. The two sides
+need not be the same length — both are resampled to the longer — and the units may differ, as
+long as the dimensions match: a series in kilometres morphs into one in metres by converting,
+not by reading the numbers across.
+
+### `curve.[7]`, and the node that had to exist for it
+
+A scatter of 100 000 points is **one** `Markers` node. That is the single biggest performance
+decision in the IR, and it is also why point 7 has nothing to highlight: there is no node with
+its name on it.
+
+Naming one splits that batch three ways — the marks before it, the mark itself under its own
+key, the marks after — which costs two extra nodes rather than a hundred thousand. Nothing is
+split until something is named, so every figure that highlights nothing is exactly the figure it
+was.
+
+The key is `Keys.mark`'s spelling, and the index is the datum's **original row**, not its
+position among the drawn marks. Those differ the moment a non-finite value earlier in the series
+goes undrawn, and a key built from the drawn position would quietly name a different point from
+there on.
+
+You do not need a storyboard to use it — `Chart.addressMarks` is the still version, which is
+what circling an outlier in a static figure wants:
+
+```fsharp
+let storyRinged = storyRise |> Chart.addressMarks [| 7 |]
+let storyRingedScene = Chart.toScene (Chart.size 640.0 400.0) storyRinged
+
+printfn
+    "mark 7 has a node of its own: %b"
+    (Scene.tryFindKey (Keys.mark (Keys.layer (Keys.panel 0 0) 0) 7) storyRingedScene).IsSome
+```
+
+Only a scatter can honour it. A line is one `Path`, so there is no node between its vertices to
+name, and asking for one raises rather than drawing nothing.
+
+### Rendering
+
+`animate` samples the storyboard, sizes one arrangement against the union of everything it saw
+(§16), and hands back an `Anim<Node>` you can seek:
+
+```fsharp
+let storyAnim = animate 32 (Chart.size 640.0 400.0) storyIntro
+
+let storyRect (n: Node) =
+    n
+    |> Scene.fold
+        (fun acc x ->
+            match x with
+            | Transform(a, _) -> a :: acc
+            | _ -> acc)
+        []
+
+let storyPlots =
+    [| 0.0; 0.25; 0.5; 0.75; 1.0 |]
+    |> Array.map (fun u -> storyRect (storyAnim.At(u * storyAnim.Duration)))
+    |> Array.distinct
+
+printfn "the panel holds still while the data moves: %b" (storyPlots.Length = 1)
+
+printfn
+    "the highlighted mark is addressed by the end: %b"
+    (Scene.tryFindKey (Keys.mark (Keys.layer (Keys.panel 0 0) 0) 7) (storyAnim.At storyAnim.Duration))
+        .IsSome
+```
+
+<img src="images/storyboard-filmstrip.svg" alt="Six frames of one storyboard: a ringdown fading in, morphing onto its envelope, and one mark picked out" width="720">
+
+Six frames of `examples/storyboard.fsx`, which writes exactly this. The panel rectangle is the
+same in all six — the layout was sized once — while the y tick labels run `-30 … 30` in the first
+three and `0 … 40` in the last three. That is the line D72 draws: the *rectangle* is frozen, its
+*contents* are not, because an animation whose numbers change and whose labels do not is not
+showing the numbers changing.
+
+`animateWith` takes a measurer, for the same reason `Chart.toSceneWith` does — a PNG or PDF
+render should be arranged with the backend's own shaping (§15).
+
+If the picture is not what you want out, `Storyboard.stages` gives the animation of `Stage`
+values themselves, each carrying the `Figure` on stage at that instant. That is the door to a
+still frame, a caption, or a different renderer entirely.
+
+---
+
+## 18. Notebooks
 
 In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
 cell whose value is a `Figure` displays as a figure. No `.Show()`, no save-then-open, no display
@@ -1079,7 +1229,7 @@ See [`notebooks/README.md`](notebooks/README.md) for installation and
 
 ---
 
-## 18. The scene IR
+## 19. The scene IR
 
 Everything above compiles to one closed ten-case `Scene` IR, and every backend consumes only that.
 It is the level at which a figure that came out wrong can be inspected.
@@ -1125,7 +1275,7 @@ paints the overlap twice. For a single shape, `Color.A` is still the simpler too
 
 ---
 
-## 19. Escape hatches
+## 20. Escape hatches
 
 **Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so the scales are
 the caller's and everything downstream still works.

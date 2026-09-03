@@ -19,7 +19,19 @@ type Layer =
       ///
       /// Empty is the overwhelmingly common case and costs one array comparison.
       Channels: Channel[]
-      ShowInLegend: bool }
+      ShowInLegend: bool
+
+      /// D69 — the rows that get a **node of their own**, by original row index.
+      ///
+      /// §5.1 batches N marks into one `Markers` node, which is "the single biggest performance
+      /// decision in the IR" and the reason mark 42 has nothing to address. A row named here
+      /// splits that batch three ways — before it, itself under `Keys.mark`, after it — so a
+      /// storyboard's `highlight curve.[42]` has a subtree to rewrite. Two extra nodes per
+      /// addressed mark, not N.
+      ///
+      /// Empty is the overwhelmingly common case, takes the unsplit path exactly, and is what
+      /// every figure in the library that does not name a mark carries.
+      Addressed: int[] }
 
 /// Per-axis configuration. Every field has a defensible default, which is what "no
 /// configuration" in §9 has to mean in practice.
@@ -832,6 +844,16 @@ module Figure =
                         p.Layers
                         |> Array.mapi (fun ordinal l ->
                             let pts = Erase.projectXY l.Data
+                            let layerKey = Keys.layer panelKey ordinal
+
+                            // D69 — the rows this layer was asked to name. `None` is the
+                            // unsplit path and is what every figure that highlights nothing
+                            // takes, which is why the golden baselines did not move.
+                            let address =
+                                if l.Addressed.Length = 0 then
+                                    None
+                                else
+                                    Some(layerKey, l.Addressed)
 
                             // D46 — **one batch per bucket, not one per point.** With no channels
                             // this is `Geom.compile`'s own path; with a continuous colour channel
@@ -842,14 +864,21 @@ module Figure =
                                     // No channels, no counts: an unchannelled layer's annotation is
                                     // exactly what it was before phase 2, so every baseline that
                                     // predates channels stays byte-identical.
-                                    Geom.compile p.Coord plotSize l.Style l.Geom pts, [||]
+                                    Geom.compileFor address None p.Coord plotSize l.Style l.Geom pts, [||]
                                 else
                                     let (batches, unmapped) = Channel.split l.Channels pts.Length
 
                                     let nodes =
                                         batches
                                         |> Array.map (fun b ->
-                                            Geom.compileSubset p.Coord plotSize (b.Restyle l.Style) l.Geom pts b.Indices)
+                                            Geom.compileFor
+                                                address
+                                                (Some b.Indices)
+                                                p.Coord
+                                                plotSize
+                                                (b.Restyle l.Style)
+                                                l.Geom
+                                                pts)
 
                                     // `unmapped` is reported rather than swallowed: a point whose
                                     // channel value was missing is not drawn (see
@@ -866,7 +895,7 @@ module Figure =
                             // may be the same on two layers of one panel. The ordinal is unique
                             // and survives a restyle, a rename and a change of data.
                             Keyed(
-                                Keys.layer panelKey ordinal,
+                                layerKey,
                                 Annotated(
                                     { Role = RoleSeries
                                       Label = (if isEmpty l.Name then "series" else l.Name)

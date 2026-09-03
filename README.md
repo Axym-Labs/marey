@@ -121,8 +121,38 @@ values with no unit to carry a prefix are not rescaled, and the label is left to
 
 <img src="docs/images/co2-record.svg" alt="Atmospheric CO2 at Mauna Loa, annual means with uncertainties" width="640">
 
-The [`examples/`](examples/) directory has six worked figures, three of them on real committed
+The [`examples/`](examples/) directory has nine worked scripts, three of them on real committed
 datasets.
+
+## A figure that moves
+
+An animation is a **pure function of time**, so seeking is evaluation: `anim.At 2.7<s>` is a
+direct call, frames come out in any order, and a render is `Array.Parallel.map` with no scheduler.
+The storyboard block writes the sequence:
+
+```fsharp
+open Marey.Storyboard
+
+let intro =
+    scene {
+        let! curve = draw measured |> over 1.2<s>
+        do! wait 0.5<s>
+        do! parallel' [ curve |> morphTo fitted   |> over 2.0<s> |> ease Ease.cubicInOut
+                        curve |> zoomToY (0.0, 0.045) |> over 2.0<s> |> ease Ease.cubicInOut ]
+        do! highlight curve.[peak]
+    }
+
+let anim = animate 32 (Chart.size 320.0 220.0) intro
+```
+
+<img src="docs/images/storyboard-filmstrip.svg" alt="Six frames of one storyboard: a ringdown drawn, morphed onto its envelope, zoomed, and one mark picked out" width="720">
+
+`let!` binds a **name** for something on stage, not the animation — which is what lets `curve` be
+referred to three more times. The whole shot is laid out **once**, against the union of every
+state sampled, so the panel holds still while the data moves rather than crawling sideways as the
+tick labels gain a digit. And `curve.[peak]` splits that scatter's single batched `Markers` node
+three ways, so one mark has something to highlight — two extra nodes rather than one per point,
+and only when something is named.
 
 ## What is in the box
 
@@ -130,7 +160,7 @@ datasets.
 |---|---|
 | `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the ten-case scene IR. Zero dependencies. |
 | `Marey.Units` | SI, 22 derived and 18 non-SI unit witnesses; canonicalisation, prefix selection, and Unicode/ASCII/LaTeX/siunitx rendering. |
-| `Marey.Plot` | `Chart` and the `plot` encoding block, twelve geoms, colour/shape/size channels, statistics, facets, six themes, colour-blind-safe palettes with a validator, constraint layout, and the axis and legend compilers. No backend reference. |
+| `Marey.Plot` | `Chart` and the `plot` encoding block, twelve geoms, colour/shape/size channels, statistics, facets, six themes, colour-blind-safe palettes with a validator, constraint layout, the axis and legend compilers, and the `scene` storyboard block. No backend reference. |
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, byte-identical across renders. |
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX, with `siunitx` units and inherited fonts. |
 | `Marey.Backend.Skia` | PNG and vector PDF, and real text shaping through HarfBuzz. The only package with third-party dependencies. |
@@ -162,7 +192,7 @@ checks over every example in [the guide](docs/guide.md) and in [`examples/`](exa
 
 - **[The guide](docs/guide.md)** — everything the library does today, with a runnable example for
   each part. Every example in it is extracted and executed by the test suite.
-- **[Examples](examples/)** — eight standalone scripts, also executed by the test suite.
+- **[Examples](examples/)** — nine standalone scripts, also executed by the test suite.
 - **[Why Marey is like this](docs/why.md)** — the case for a unit witness over a string label,
   what the other design decisions buy, what they cost, and when not to use the library.
 - **[Changelog](CHANGELOG.md)** — what changed in each release, and what is still known to be

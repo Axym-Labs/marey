@@ -471,6 +471,7 @@ module Geom =
     /// point. Phase 2 introduced that hazard for `GeomErrorY` and `GeomErrorX`; phase 6 would
     /// have introduced it six more times.
     let rec private compileWith
+        (address: (Key * int[]) option)
         (spacing: float option)
         (sel: int[] option)
         (coord: Coord)
@@ -512,21 +513,59 @@ module Geom =
 
                     Path(segs, Some stroke, None, NonZero)
 
-            // §5.1 — "a 100 000-point scatter must be *one* IR node". One `Markers`, always.
+            // §5.1 — "a 100 000-point scatter must be *one* IR node". One `Markers`, always —
+            // unless a row was **addressed** (D69), and then it is three, which is the whole
+            // cost of being able to name a single mark.
             | GeomPoint ->
-                let ps = pts |> Array.filter finite
+                // The row travels beside the point because the filter below destroys the
+                // correspondence otherwise: a non-finite y in the middle of a series shifts
+                // every later mark's position within the batch by one, and a key built from
+                // that position names a different datum. Which is D55's defect, and D68 wrote
+                // the rule this obeys — a mark's key is its original row.
+                let kept =
+                    [| for i in 0 .. pts.Length - 1 do
+                           if finite pts.[i] then
+                               yield row i, (if Coord.isIdentity coord then pts.[i] else coord.ToPanel pts.[i]) |]
 
-                let ps = if Coord.isIdentity coord then ps else Array.map coord.ToPanel ps
-
-                if ps.Length = 0 then
-                    Scene.empty
-                else
+                let batch (points: Vec2<nd>[]) =
                     Markers
-                        { Points = ps
+                        { Points = points
                           Shape = st.Shape
                           Size = st.MarkerSize
                           Fill = Some(Solid(Color.withAlpha (st.Color.A * st.Opacity) st.Color))
                           Stroke = None }
+
+                if kept.Length = 0 then
+                    Scene.empty
+                else
+                    match address with
+                    | None -> batch (kept |> Array.map snd)
+                    | Some(_, rows) when rows.Length = 0 -> batch (kept |> Array.map snd)
+                    | Some(layerKey, rows) ->
+                        let wanted = Set.ofArray rows
+                        let out = ResizeArray<Node>()
+                        let run = ResizeArray<Vec2<nd>>()
+
+                        let flush () =
+                            if run.Count > 0 then
+                                out.Add(batch (run.ToArray()))
+                                run.Clear()
+
+                        for r, p in kept do
+                            if wanted.Contains r then
+                                flush ()
+                                out.Add(Keyed(Keys.mark layerKey r, batch [| p |]))
+                            else
+                                run.Add p
+
+                        flush ()
+
+                        // One addressed mark in the middle of a scatter is three nodes; one at
+                        // either end is two. **One node is one node**: a layer whose addressed
+                        // rows were all filtered out, or were never in the data, is the batch it
+                        // always was rather than a `Group` around it. Asking for a row that is
+                        // not drawn must not change the picture, and a wrapper is a change.
+                        if out.Count = 1 then out.[0] else Group(out.ToArray())
 
             | GeomArea baseline ->
                 let runs = runsOf pts
@@ -557,7 +596,7 @@ module Geom =
                 else
                     Group
                         [| Path(segs, None, Some(fillOf st), NonZero)
-                           compileWith spacing sel coord plotSize st GeomLine pts |]
+                           compileWith address spacing sel coord plotSize st GeomLine pts |]
 
             | GeomBar(baseline, widthFraction) ->
                 let half = (defaultArg spacing (medianSpacing pts)) * widthFraction * 0.5
@@ -960,14 +999,64 @@ module Geom =
                 else
                     Path(segs, Some { stroke with Width = stroke.Width * 0.75 }, Some(fillOf st), NonZero)
 
-    /// Compile a geom into the IR, in **panel-local nd**.
+    /// **The one compile**, with the two things a whole unaddressed layer does not have.
     ///
     /// `plotSize` is the plot area's device size, and it is here for exactly one reason: an error
     /// bar's cap is `px` wide (D12) while this function's output is about to be scaled by the
     /// panel transform. Dividing by the panel's own pixel size is what makes a 3 px cap 3 px
     /// wide after that scaling, on both a wide panel and a tall one.
+    ///
+    /// `indices` is D46's **channel batch**: the rows this call draws, out of `all`. `None`
+    /// draws the whole layer, which is not the same thing as `Some [| 0 .. n - 1 |]` — see the
+    /// spacing note below.
+    ///
+    /// `address` is D69's **named rows**, with the layer key their names hang from. Only
+    /// `GeomPoint` can honour it, because `Markers` is the only node in this file that batches
+    /// N data points into one; a `Path` is one shape, not a batch of marks, and splitting it in
+    /// three would change the joins between the pieces rather than name one of them.
+    ///
+    /// `compile` and `compileSubset` are this function with one or both of them absent. They
+    /// are two names for one body rather than two bodies, which is the shape D72 arrived at the
+    /// hard way in `Figure.fs`.
+    let compileFor
+        (address: (Key * int[]) option)
+        (indices: int[] option)
+        (coord: Coord)
+        (plotSize: Extent<px>)
+        (st: GeomStyle)
+        (geom: Geom)
+        (all: Vec2<nd>[])
+        : Node =
+        match indices with
+        | None -> compileWith address None None coord plotSize st geom all
+        | Some ix ->
+            // Only a bar reads the layer's rhythm, and reading it is a sort of every gap in the
+            // series. Computing it for a geom that will not look at it would put that sort inside
+            // the per-batch loop, which is 256 sorts of 100 000 gaps for one continuous colour
+            // channel — measured at 1.5 s against 4 ms.
+            let spacing =
+                match geom with
+                | GeomBar _
+                | GeomBox _
+                | GeomViolin _ -> Some(medianSpacing all)
+                | GeomLine
+                | GeomPoint
+                | GeomArea _
+                | GeomErrorY _
+                | GeomErrorX _
+                | GeomStep _
+                | GeomRibbon _
+                | GeomRect _
+                | GeomSegment _
+                | GeomText _
+                // An image occupies a stated box and has no rhythm to read.
+                | GeomImage _ -> None
+
+            compileWith address spacing (Some ix) coord plotSize st geom (ix |> Array.map (fun i -> all.[i]))
+
+    /// A whole layer, nothing addressed. The path every static figure takes.
     let compile (coord: Coord) (plotSize: Extent<px>) (st: GeomStyle) (geom: Geom) (pts: Vec2<nd>[]) : Node =
-        compileWith None None coord plotSize st geom pts
+        compileFor None None coord plotSize st geom pts
 
     /// D46 — **one channel batch of a layer**: the points named by `indices`, drawn with
     /// everything that belongs to the *layer* still taken from the layer.
@@ -985,29 +1074,7 @@ module Geom =
         (all: Vec2<nd>[])
         (indices: int[])
         : Node =
-        // Only a bar reads the layer's rhythm, and reading it is a sort of every gap in the
-        // series. Computing it for a geom that will not look at it would put that sort inside
-        // the per-batch loop, which is 256 sorts of 100 000 gaps for one continuous colour
-        // channel — measured at 1.5 s against 4 ms.
-        let spacing =
-            match geom with
-            | GeomBar _
-            | GeomBox _
-            | GeomViolin _ -> Some(medianSpacing all)
-            | GeomLine
-            | GeomPoint
-            | GeomArea _
-            | GeomErrorY _
-            | GeomErrorX _
-            | GeomStep _
-            | GeomRibbon _
-            | GeomRect _
-            | GeomSegment _
-            | GeomText _
-            // An image occupies a stated box and has no rhythm to read.
-            | GeomImage _ -> None
-
-        compileWith spacing (Some indices) coord plotSize st geom (indices |> Array.map (fun i -> all.[i]))
+        compileFor None (Some indices) coord plotSize st geom all
 
     /// The legend swatch that matches a geom. Derived, never chosen separately.
     let legendMark (geom: Geom) (st: GeomStyle) : LegendMark =

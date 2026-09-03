@@ -295,3 +295,109 @@ module Erase =
             { new IChannelPairConsumer<PackedSeries> with
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(ux: U<'ux>, xs: float<'ux>[], uy: U<'uy>, ys: float<'uy>[]) =
                     series name (autoScale ux xs) (autoScale uy ys) xs ys }
+
+    /// The numbers a packed series holds, **in its own unit** — `seriesLength`'s sibling.
+    ///
+    /// The measures are erased on the way out, which is safe only because `seriesScales` hands
+    /// back the two `IScaleErased` that say what they were. Read the two together or not at all:
+    /// a bare `float[]` from a series in kilometres is not a length, it is a number.
+    let seriesValues (p: PackedSeries) : float[] * float[] =
+        p.Accept
+            { new ISeriesConsumer<float[] * float[]> with
+                member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
+                    s.X |> Array.map float, s.Y |> Array.map float }
+
+    /// Resample to `n` points by **index fraction**, linearly.
+    ///
+    /// Not by arc length, which is what `Morph` does one layer down and what would be wrong
+    /// here: arc length in data space is `sqrt(dx² + dy²)` over a metre and a second, which is
+    /// not a quantity. The index is the one parameterisation a series has that does not mix its
+    /// two units, and pairing by index is the same rule D74 took for subpaths.
+    let private resampleTo (n: int) (xs: float[]) : float[] =
+        if xs.Length = n then xs
+        elif xs.Length = 0 then Array.zeroCreate n
+        elif xs.Length = 1 then Array.create n xs.[0]
+        else
+            // `n >= xs.Length >= 2` at every call, so `n - 1` and `Length - 1` are both positive.
+            Array.init n (fun i ->
+                let pos = (float i / float (n - 1)) * float (xs.Length - 1)
+                let j = min (xs.Length - 2) (int (floor pos))
+                let f = pos - float j
+                xs.[j] + (xs.[j + 1] - xs.[j]) * f)
+
+    /// **Interpolate one packed series into another**, D69's `morphTo` one layer down.
+    ///
+    /// The result wears `a`'s name, `a`'s units and `a`'s scale kinds, and holds
+    /// `max (length a) (length b)` points: both sides are resampled to the longer of the two by
+    /// index fraction and then interpolated pointwise, domains included.
+    ///
+    /// **`b`'s numbers are converted into `a`'s unit through SI**, not read as if they were
+    /// already in it. Morphing a series in kilometres into one in metres is a legal thing to
+    /// ask for and reading the numbers across would be wrong by a factor of a thousand — the
+    /// same hazard `U.convert` exists for, in the one place where neither measure is nameable.
+    /// The dimensions must match, and that is the only check there is to make: this is the
+    /// runtime edge of the type system, exactly like `U.convert`.
+    ///
+    /// `t` is **not** clamped (D71): an easing that overshoots reaches here and extrapolates,
+    /// which is what makes `Ease.backOut` visible on a morph.
+    let tweenSeries (a: PackedSeries) (b: PackedSeries) (t: float) : PackedSeries =
+        let bx, by = seriesScales b
+        let bxs, bys = seriesValues b
+
+        a.Accept
+            { new ISeriesConsumer<PackedSeries> with
+                member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
+                    // Written twice rather than once over a pair: `'ux` and `'uy` are
+                    // different type variables and one shared helper would be monomorphised by
+                    // whichever axis reached it first (§12.2).
+                    if s.XScale.Unit.Dim <> bx.Dim then
+                        invalidArg
+                            "b"
+                            (sprintf
+                                "Marey: cannot morph an x axis in %s into one in %s — different dimensions."
+                                bx.Symbol
+                                s.XScale.Unit.Symbol)
+
+                    if s.YScale.Unit.Dim <> by.Dim then
+                        invalidArg
+                            "b"
+                            (sprintf
+                                "Marey: cannot morph a y axis in %s into one in %s — different dimensions."
+                                by.Symbol
+                                s.YScale.Unit.Symbol)
+
+                    let intoX (v: float) = float (U.ofSI s.XScale.Unit (v * bx.ToSI + bx.OffsetSI))
+                    let intoY (v: float) = float (U.ofSI s.YScale.Unit (v * by.ToSI + by.OffsetSI))
+
+                    let n = max s.X.Length bxs.Length
+
+                    let ax = resampleTo n (s.X |> Array.map float)
+                    let ay = resampleTo n (s.Y |> Array.map float)
+                    let px = resampleTo n (bxs |> Array.map intoX)
+                    let py = resampleTo n (bys |> Array.map intoY)
+
+                    let inline mix (u: float) (v: float) = u + (v - u) * t
+
+                    let bxLo, bxHi = bx.Domain
+                    let byLo, byHi = by.Domain
+                    let axLo, axHi = s.XScale.Domain
+                    let ayLo, ayHi = s.YScale.Domain
+
+                    let xScale =
+                        Scale.withDomain
+                            (LanguagePrimitives.FloatWithMeasure<'ux>(mix (float axLo) (intoX bxLo)),
+                             LanguagePrimitives.FloatWithMeasure<'ux>(mix (float axHi) (intoX bxHi)))
+                            s.XScale
+
+                    let yScale =
+                        Scale.withDomain
+                            (LanguagePrimitives.FloatWithMeasure<'uy>(mix (float ayLo) (intoY byLo)),
+                             LanguagePrimitives.FloatWithMeasure<'uy>(mix (float ayHi) (intoY byHi)))
+                            s.YScale
+
+                    packSeries
+                        { Name = s.Name
+                          X = Array.init n (fun i -> LanguagePrimitives.FloatWithMeasure<'ux>(mix ax.[i] px.[i]))
+                          Y = Array.init n (fun i -> LanguagePrimitives.FloatWithMeasure<'uy>(mix ay.[i] py.[i]))
+                          XScale = xScale
+                          YScale = yScale } }
