@@ -1483,3 +1483,394 @@ module ``group opacity composites`` =
                 abs (r - 127) <= 2 && abs (g - 64) <= 2 && abs (b - 191) <= 2,
                 sprintf "the folded scene rendered (%d, %d, %d); the double fade is (127, 64, 191)" r g b
             ))
+
+// ======================================================================================
+// D78 — FONT FALLBACK: THE SEGMENTATION, AND THE REPORT THAT MAKES IT HONEST
+//
+// M2.5 left one sentence open and `m2.5-plan.md` §5 named it M3's: `SKShaper` shapes against a
+// single typeface, so a codepoint that face lacks measures as the missing-glyph box — 9.0 px at
+// 12 px in Liberation Sans — where a browser opening the same figure as SVG walks the whole
+// stack and finds a face that has it. `a codepoint the face lacks measures as the missing-glyph
+// box`, above, is that defect recorded as a test. It still passes, and it should: a *stated*
+// file is obeyed alone, and this section is what changed around it.
+//
+// **The gates here are reproducible on any checkout, and that took a second binary.** The
+// covered half of gate 14 needs a face that has a CJK codepoint, and neither of the two ways of
+// getting one from the machine is a gate: `ubuntu-latest` has no CJK face, so a machine-resolved
+// assertion would skip on CI and pass on the author's laptop, and adding `fonts-noto-cjk` to the
+// apt list buys 60 MB of download for a result that still depends on which face apt installed.
+// `fonts/MareyTestCJK-Regular.otf` is a 4.7 KB subset of Noto Sans CJK JP carrying five
+// ideographs and no Latin at all — see that directory's README. Its family name is *not* Noto's,
+// which is what lets a gate tell "the stated file was used" from "the machine happened to have
+// Noto installed".
+//
+// The machine path is gated too, and it is gated as a **dichotomy** rather than as a skip: a
+// codepoint either resolves to a named face or is reported missing, and the test asserts
+// whichever of those the machine produces. Gates 12 and 13 go vacuous when a toolchain is
+// absent and `Toolchain.report` exists so a reader can see that they did; this one cannot go
+// vacuous, because there is no third answer.
+// ======================================================================================
+
+module ``font fallback`` =
+
+    /// The two stated faces, found the way the baselines are found.
+    let private latin =
+        lazy (System.IO.Path.Combine(Golden.projectDir.Force(), "fonts", "LiberationSans-Regular.ttf"))
+
+    let private cjk =
+        lazy (System.IO.Path.Combine(Golden.projectDir.Force(), "fonts", "MareyTestCJK-Regular.otf"))
+
+    /// 9 pt is 12 px at the screen dpi both measurers default to, and 12 px is the size every
+    /// number in this file and in the decision log was measured at.
+    let private spec: FontSpec =
+        { Family = "Liberation Sans"
+          Size = 9.0<pt>
+          Weight = 400
+          Italic = false }
+
+    /// `気温` — "temperature", and a real axis title rather than a lone specimen character. Both
+    /// ideographs are in the subset face and neither is in Liberation Sans.
+    [<Literal>]
+    let private Cjk = "気温"
+
+    /// The same title as a figure would actually carry it: a quantity in one script and its unit
+    /// in another. This is the string the whole feature exists for.
+    [<Literal>]
+    let private Mixed = "気温 (°C)"
+
+    /// **Three segments, and the third is what makes the pen walk testable.** `Mixed` splits in
+    /// two, and a pen that advanced by the *first* segment's width every time would place a
+    /// two-segment run correctly and be wrong from the third onwards — a mutation that survived
+    /// this gate until the string grew a second script change. CJK, Latin, CJK.
+    [<Literal>]
+    let private Twice = "気温 (°C) 時間"
+
+    let private measure (m: SkiaTextMeasurer) (s: string) = (m :> ITextMeasurer).Measure spec s
+
+    /// **Gate 14, the half that reports nothing covered it.**
+    ///
+    /// A stated file is obeyed *alone*: D62's "stated and obeyed" is a promise that the figure
+    /// contains the face the caller named and no other, and a fallback that quietly opened a
+    /// second one would have broken it. So the advance is still the missing-glyph box, exactly
+    /// as it was before D78 — and what is new is that the report says so instead of leaving the
+    /// caller to notice a row of boxes in a PNG.
+    [<Fact>]
+    let ``a stated file is obeyed alone, and what it lacks is a reported notdef`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer(fontFile = latin.Force())
+
+            // 9.0 px at 12 px, the number `a codepoint the face lacks measures as the
+            // missing-glyph box` pinned at M2.5. Two boxes, so 18.0.
+            Assert.Equal(18.0, float (measure m Cjk).Advance, 3)
+
+            let face = Assert.Single m.ResolvedFaces
+            Assert.Empty face.Fallbacks
+            Assert.Equal<int[]>([| 0x6C17; 0x6E29 |], face.Missing)
+
+            // The band did not move either: nothing but Liberation Sans was opened.
+            Assert.Equal(10.8633, float (measure m Cjk).Ascent, 3))
+
+    /// **Gate 14, the half that names the face that covered it.**
+    ///
+    /// The same string, the same primary face, one more entry on the list — and the boxes become
+    /// glyphs: 24.0 px against the 18.0 above, because the subset face's ideographs are full-width
+    /// at 12 px where the missing-glyph box is 9.0.
+    [<Fact>]
+    let ``a stated list covers what the first face cannot, and names the face that covered it`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer(fontFiles = [ latin.Force(); cjk.Force() ])
+
+            Assert.Equal(24.0, float (measure m Cjk).Advance, 3)
+
+            let face = Assert.Single m.ResolvedFaces
+            Assert.Equal("Liberation Sans", face.Family)
+            Assert.Empty face.Missing
+
+            let fallback = Assert.Single face.Fallbacks
+
+            // The name, and it is the *subset's* name rather than Noto's. A machine-resolved
+            // fallback on a laptop that has Noto installed would report "Noto Sans CJK JP", so
+            // this assertion cannot pass for the wrong reason.
+            Assert.Equal("Marey Test CJK", fallback.Family)
+            Assert.Equal<string option>(Some(cjk.Force()), fallback.File)
+            Assert.Equal<int[]>([| 0x6C17; 0x6E29 |], fallback.Covered))
+
+    /// One run, one codepoint the list covers and one it does not, reported in different places.
+    ///
+    /// `中華` — the first ideograph is in the subset face, the second deliberately is not. A
+    /// report that lumped them together, or that stopped at the first miss, would fail here and
+    /// nowhere else: 21.0 px is 12.0 for the covered glyph plus the 9.0 box for the other.
+    [<Fact>]
+    let ``a covered codepoint and an uncovered one in one run are reported separately`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer(fontFiles = [ latin.Force(); cjk.Force() ])
+
+            Assert.Equal(21.0, float (measure m "中華").Advance, 3)
+
+            let face = Assert.Single m.ResolvedFaces
+            Assert.Equal<int[]>([| 0x83EF |], face.Missing)
+            Assert.Equal<int[]>([| 0x4E2D |], (Assert.Single face.Fallbacks).Covered))
+
+    /// **The segmentation arithmetic, stated as an equality rather than as a tolerance.**
+    ///
+    /// `気温 (°C)` splits at the space — per codepoint, first face that has it, so the space
+    /// comes back to the primary because the primary has a space. Measured through the list it
+    /// is 48.8203 px; measured as its two pieces through the two faces alone, 24.0 and 24.8203.
+    /// Those are equal to the last digit, which is the whole claim: a segmented run is its
+    /// pieces, and nothing is lost or double-counted at a boundary.
+    [<Fact>]
+    let ``a mixed run measures exactly the sum of its pieces measured alone`` () =
+        withSkia (fun () ->
+            use both = new SkiaTextMeasurer(fontFiles = [ latin.Force(); cjk.Force() ])
+            use onlyLatin = new SkiaTextMeasurer(fontFile = latin.Force())
+            use onlyCjk = new SkiaTextMeasurer(fontFile = cjk.Force())
+
+            let whole = float (measure both Mixed).Advance
+            let pieces = float (measure onlyCjk Cjk).Advance + float (measure onlyLatin " (°C)").Advance
+
+            Assert.Equal(48.8203, whole, 3)
+            Assert.Equal(pieces, whole, 4))
+
+    /// **The vertical half, and it is the one a backend can silently get wrong.**
+    ///
+    /// The subset face reserves 13.92 px of ascent at 12 px against Liberation Sans's 10.8633,
+    /// so a run that uses it is taller than a Latin run beside it — which is true, and is what a
+    /// browser does. The fold is a maximum *including the primary*, so a Latin run is unchanged
+    /// and every number M2.5 measured still holds; the assertion below is what says the maximum
+    /// is being taken rather than the last segment's metrics being kept.
+    [<Fact>]
+    let ``the run's band is the maximum over the faces it uses`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer(fontFiles = [ latin.Force(); cjk.Force() ])
+
+            let latinOnly = measure m "AVATAR"
+            Assert.Equal(10.8633, float latinOnly.Ascent, 3)
+            Assert.Equal(2.543, float latinOnly.Descent, 3)
+
+            // The mixed run uses both faces, and takes the larger of each — not the primary's,
+            // which would clip the ideographs, and not the fallback's alone, which is what
+            // keeping the last segment's font would give.
+            let mixed = measure m Mixed
+            Assert.Equal(13.92, float mixed.Ascent, 3)
+            Assert.Equal(3.456, float mixed.Descent, 3))
+
+    /// A Latin run under a fallback list is one segment, and one segment is what the milestone
+    /// before this one measured. The regression this guards is the whole of M2.5's shaping
+    /// evidence quietly moving because a run is now assembled rather than shaped in one go.
+    [<Fact>]
+    let ``adding a fallback face moves no number in a Latin run`` () =
+        withSkia (fun () ->
+            use alone = new SkiaTextMeasurer(fontFile = latin.Force())
+            use listed = new SkiaTextMeasurer(fontFiles = [ latin.Force(); cjk.Force() ])
+
+            // 44.5078, the shaped `AVATAR` this suite has asserted since M2.5.
+            Assert.Equal(float (measure alone "AVATAR").Advance, float (measure listed "AVATAR").Advance, 6)
+            Assert.Equal(float (measure alone "0123456789").Advance, float (measure listed "0123456789").Advance, 6)
+
+            // And no fallback was consulted, so the report stays empty rather than naming a face
+            // that drew nothing.
+            Assert.Empty (Assert.Single listed.ResolvedFaces).Fallbacks)
+
+    /// Two answers to one question, refused at construction rather than silently ranked.
+    ///
+    /// The alternative — letting one win — is a caller who states a list, gets a single file's
+    /// behaviour, and finds out from a row of boxes in a PNG.
+    [<Fact>]
+    let ``a stated file and a stated list are two answers to one question`` () =
+        withSkia (fun () ->
+            Assert.Throws<System.ArgumentException>(fun () ->
+                (new SkiaTextMeasurer(fontFile = latin.Force(), fontFiles = [ cjk.Force() ]))
+                |> ignore)
+            |> ignore)
+
+    /// **The machine path, and the branch it takes is decided by something other than itself.**
+    ///
+    /// With nothing stated, fallback asks the machine's font manager, and the answer depends on
+    /// what is installed — the case a real user is in, and the case that makes a CJK axis title
+    /// render at all. There is no reproducible number to assert here, so the shape of the gate
+    /// is: ask the font manager *directly* whether this machine can cover U+4E2D, then require
+    /// the measurer's report to agree.
+    ///
+    /// Asking independently is the whole point. A dichotomy that only checked "either a face is
+    /// named or the codepoint is missing" is satisfied by a measurer with no fallback at all —
+    /// it would take the missing branch everywhere and look right — which is what a mutation run
+    /// found. The oracle below is a second opinion rather than the same opinion twice, and
+    /// `ubuntu-latest` and a developer's laptop land on opposite branches of it.
+    [<Fact>]
+    let ``machine fallback names a face exactly when the machine has one`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer()
+
+            let spec = { spec with Family = Theme.Sans }
+            let advance = float ((m :> ITextMeasurer).Measure spec "中").Advance
+            let face = Assert.Single m.ResolvedFaces
+
+            // The oracle: SkiaSharp's own font manager, asked the same question by a different
+            // route from the one the measurer took.
+            let installed =
+                use probe =
+                    SkiaSharp.SKFontManager.Default.MatchCharacter(
+                        null,
+                        SkiaSharp.SKFontStyleWeight.Normal,
+                        SkiaSharp.SKFontStyleWidth.Normal,
+                        SkiaSharp.SKFontStyleSlant.Upright,
+                        null,
+                        0x4E2D
+                    )
+
+                not (isNull probe)
+
+            Assert.Equal(installed, face.Fallbacks.Length = 1)
+
+            match face.Fallbacks with
+            | [||] ->
+                Assert.Equal<int[]>([| 0x4E2D |], face.Missing)
+
+                System.Console.WriteLine
+                    "font fallback: no installed face has U+4E2D; the codepoint is reported missing."
+            | fallbacks ->
+                let fallback = Assert.Single fallbacks
+
+                // Resolved rather than stated, so there is no file behind it -- which is exactly
+                // what makes this render irreproducible on another machine and exactly why D62
+                // makes the measurer say so.
+                Assert.Equal<string option>(None, fallback.File)
+                Assert.False(System.String.IsNullOrWhiteSpace fallback.Family)
+                Assert.Equal<int[]>([| 0x4E2D |], fallback.Covered)
+                Assert.Empty face.Missing
+
+                // A real glyph, not the 9.0 px box the primary would have drawn.
+                Assert.True(
+                    advance > 9.5,
+                    sprintf "%s reported covering U+4E2D but the advance is %.4f, which is the missing-glyph box" fallback.Family advance
+                )
+
+                System.Console.WriteLine(sprintf "font fallback: U+4E2D resolved to %s." fallback.Family))
+
+    /// **D77 and gate 3, one level down.** One measurer serves a whole film so that a video
+    /// cannot change typeface on a frame boundary; a fallback that asked the font manager afresh
+    /// on frame 200 would put that back, invisibly, in a file nobody re-reads.
+    ///
+    /// So the decision is cached per codepoint, and this is what says so: the same codepoint
+    /// asked a hundred times over reports one fallback face, not a hundred, and the answer does
+    /// not depend on which run it arrived in.
+    [<Fact>]
+    let ``a codepoint resolves to one face however often it is asked`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer(fontFiles = [ latin.Force(); cjk.Force() ])
+
+            let cjkFirst = float (measure m Cjk).Advance
+            let mixedFirst = float (measure m Mixed).Advance
+
+            // Alternated rather than repeated, so a cache keyed by the *string* would not be
+            // what makes this pass: the two runs share codepoints and the question is whether
+            // the codepoints resolve the same way whichever run they arrive in.
+            for i in 1..100 do
+                if i % 2 = 0 then
+                    Assert.Equal(cjkFirst, float (measure m Cjk).Advance, 6)
+                else
+                    Assert.Equal(mixedFirst, float (measure m Mixed).Advance, 6)
+
+            let face = Assert.Single m.ResolvedFaces
+
+            // And the covered set is a set: 気 arrived a hundred times and is listed once.
+            Assert.Equal<int[]>([| 0x6C17; 0x6E29 |], (Assert.Single face.Fallbacks).Covered))
+
+    /// **The empty string still has a band, and it is the primary's.**
+    ///
+    /// A blank tick label is common on a sparse axis, and it has no segments at all — so the
+    /// vertical fold is over nothing, and only the primary face standing in it unconditionally
+    /// keeps the answer from being zero. A gutter sized from a zero-height label is a label that
+    /// collides with the panel.
+    ///
+    /// This is also the *only* place the "always include the primary" rule is observable: the
+    /// subset face is taller than Liberation Sans in both directions, so for every non-empty run
+    /// the maximum is the same with the primary in the fold or out of it. Stated here rather
+    /// than left as a rule with no test behind it.
+    [<Fact>]
+    let ``a run with no segments reports the primary face's band`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer(fontFiles = [ latin.Force(); cjk.Force() ])
+            let blank = measure m ""
+
+            Assert.Equal(0.0, float blank.Advance, 6)
+            Assert.Equal(10.8633, float blank.Ascent, 3)
+            Assert.Equal(2.543, float blank.Descent, 3))
+
+    /// **A codepoint is a codepoint, not a UTF-16 char.**
+    ///
+    /// `𝄞` is U+1D11E, outside the BMP, and .NET holds it as the surrogate pair D834 DD1E. A
+    /// walk over `char`s would ask each half of that pair separately, find neither in any face,
+    /// and report two missing codepoints that do not exist. This is the assertion that says the
+    /// walk pairs them — and it is the cheapest place in the suite to catch it, because the
+    /// alternative surfaces as a garbled label in somebody's figure.
+    [<Fact>]
+    let ``an astral codepoint is reported as one codepoint and not as two surrogates`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer(fontFiles = [ latin.Force(); cjk.Force() ])
+
+            measure m "A\U0001D11EA" |> ignore
+
+            let face = Assert.Single m.ResolvedFaces
+            Assert.Equal<int[]>([| 0x1D11E |], face.Missing))
+
+    /// **D62's rule in the place D78 put it at risk: measuring and drawing must agree.**
+    ///
+    /// The measurer sums segment advances and the backend walks a pen across the same segments,
+    /// and there is no compiler keeping the two folds equal. So this reads the pixels back: the
+    /// ink of an `AnchorStart` run has to begin where the run was placed and end an advance
+    /// later. A backend that drew the whole string in the primary face would put 42.82 px of ink
+    /// where 48.82 is measured, and a pen that advanced by anything but each segment's own width
+    /// would pile the segments up or spread them out.
+    [<Fact>]
+    let ``the ink a mixed run leaves spans the advance the measurer reported`` () =
+        withSkia (fun () ->
+            let options =
+                { SkiaOptions.Default with
+                    FontFiles = [ latin.Force(); cjk.Force() ] }
+
+            // Placed a fifth of the way across a 400 px surface: 80 px, clear of both edges with
+            // room for the run and for a wrong answer to be visible rather than clipped.
+            let scene =
+                Text
+                    { Text = Twice
+                      Tex = None
+                      At = { X = 0.2<nd>; Y = 0.5<nd> }
+                      Font = spec
+                      Paint = Solid ink
+                      Anchor = AnchorStart
+                      Baseline = BaselineAlphabetic
+                      Rotation = 0.0<rad> }
+
+            let gray = SkiaPixels.decode (SkiaBackend.renderPngWith options surface scene)
+
+            let inkedColumns =
+                [| 0 .. gray.Width - 1 |]
+                |> Array.filter (fun x ->
+                    [| 0 .. gray.Height - 1 |]
+                    |> Array.exists (fun y -> int gray.Pixels.[y * gray.Width + x] < Raster.InkThreshold))
+
+            Assert.NotEmpty inkedColumns
+            let left = float (Array.min inkedColumns)
+            let right = float (Array.max inkedColumns) + 1.0
+
+            use m = new SkiaTextMeasurer(fontFiles = [ latin.Force(); cjk.Force() ])
+            let advance = float (measure m Twice).Advance
+
+            // **Two pixels, and every failure this gate is for moves an edge much further.**
+            // Ink is inset from the advance by the first glyph's left side bearing and by the
+            // last one's right, so this cannot be an equality — and it does not need to be:
+            // drawing the run in one face costs 6 px on a string this short, and a pen that
+            // walks by the wrong segment's width costs a whole segment.
+            Assert.True(
+                abs (left - 80.0) <= 2.0,
+                sprintf "the run was placed at x = 80 and its ink starts at %.0f" left
+            )
+
+            Assert.True(
+                abs (right - left - advance) <= 2.0,
+                sprintf
+                    "the ink spans %.1f px and the measurer reported %.4f -- drawing and measuring disagree, which is what puts an anchored label outside its own margin"
+                    (right - left)
+                    advance
+            ))

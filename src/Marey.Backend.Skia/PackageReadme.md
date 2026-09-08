@@ -41,6 +41,21 @@ whole stack missed and Skia's default was used.
 For output that must be identical everywhere, `SkiaOptions.FontFile` states a font file and
 resolution is skipped.
 
+## Font fallback
+
+A face holds the scripts it holds, and one face is not enough for a CJK axis title against a Latin
+theme. The measurer splits a run by coverage — per codepoint, the first face that has it, CSS font
+matching's rule — shapes each piece in its own face and sums the advances. `ITextMeasurer` is
+unchanged: it still answers a width, and a run one face covers is one piece.
+
+It reports. `ResolvedFace.Fallbacks` names the faces that covered what the primary could not, with
+the codepoints each covered; `ResolvedFace.Missing` lists the codepoints nothing covered, which are
+drawn as `.notdef`. Both are empty for a Latin figure.
+
+`SkiaOptions.FontFiles` states the whole chain and is the reproducible answer for a mixed-script
+figure. `FontFile` states one face and **does not fall back** — one face is the whole promise, and
+a codepoint it lacks is a reported box. Setting both is an error.
+
 ## PDF
 
 Vector, despite the package being the raster one: paths stay paths and glyphs stay glyphs. The

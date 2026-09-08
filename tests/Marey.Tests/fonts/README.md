@@ -34,3 +34,42 @@ different advance table and the gate would have proved less.
 
 `Regular` only. A bold or an italic would double the size of this directory to test a code path —
 `SKFontStyleWeight`, `SKFontStyleSlant` — that a stated file deliberately ignores.
+
+## The second face, and why it is a subset
+
+`MareyTestCJK-Regular.otf`, 4.7 KB: five ideographs — 中, 気, 温, 時, 間 — subset out of Noto Sans
+CJK JP Regular (Adobe, © 2014–2021), under the SIL Open Font License 1.1
+(`LICENSE-NotoSansCJK.txt`, verbatim from the upstream release). The OFL permits modification and
+redistribution of a modified face; this one is renamed to **Marey Test CJK** because it is a
+subset rather than Noto, and because a distinct family name is load-bearing in the tests.
+
+D78's gate 14 has two halves. "An uncovered codepoint reports `.notdef` rather than measuring
+silently" needs one face and Liberation Sans is it. "A covered CJK title names the face that
+covered it" needs a face that *has* a CJK codepoint, and neither way of getting one from the
+machine is a gate:
+
+- **Resolve against what is installed.** `ubuntu-latest` has no CJK face, so the assertion would
+  pass on the author's laptop and skip in CI — the vacuous gate the M3 plan warns about by name.
+- **Add `fonts-noto-cjk` to the apt list.** 60 MB of download, on both workflows, for a face whose
+  metrics are then whatever apt shipped that month. The numbers in `SkiaTests.fs` would not be
+  reproducible from a checkout, which is the whole reason this directory exists.
+
+So: a face in the tree, chosen the way Liberation Sans was chosen — for what it makes provable.
+
+**Why these five characters, and no Latin at all.** The subset covers *no* ASCII, not even the
+space. That is deliberate: it makes the coverage boundary sharp in both directions, so a mixed
+title splits into segments that can be counted, and a test can tell "the fallback face drew this"
+from "the primary face happened to have it". `気温` is a real axis title — temperature — rather
+than a specimen character, and `時間` (time) gives a second script change in one string, which is
+what makes a pen that walks by the wrong segment's width fail a gate rather than pass it.
+
+Measured on 2026-09-08, at 12 px:
+
+| string  | face             | shaped advance | ascent  | descent |
+|---------|------------------|----------------|---------|---------|
+| `気温`  | Marey Test CJK   | 24.0000        | 13.9200 | 3.4560  |
+| `気温`  | Liberation Sans  | 18.0000        | 10.8633 | 2.5430  |
+
+The second row is two missing-glyph boxes at 9.0 px each. Six pixels of advance and three of
+ascent separate "the fallback ran" from "it did not", which is the margin every assertion in
+`` module `font fallback` `` rests on.

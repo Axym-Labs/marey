@@ -297,6 +297,34 @@ argument vector to the process unsplit — `ProcessStartInfo.Arguments` is one s
 re-splits using Windows' quoting rules on every platform — and `Toolchain.commandLine`, which
 renders a command for a log and is deliberately not round-trippable.
 
+**Font fallback, and it reports.** `SkiaTextMeasurer` splits a run by coverage — per codepoint,
+the first face that has it, which is CSS font matching's rule — shapes each piece in its own face
+and sums the advances. Before this a codepoint outside the resolved face was the missing-glyph
+box: 9.0 px at 12 px in Liberation Sans, and two empty rectangles where a CJK axis title should
+be. It does not reach the unit system, every symbol of which is in any Latin face; it reached
+every non-Latin title in the library.
+
+`ITextMeasurer` did not move, and neither did `Layout.fs` or `Figure.fs`. The seam declared at M0
+has now survived a shaper and a fallback list without a line of the layout code changing.
+
+**`ResolvedFace` carries the account**: `Fallbacks`, the faces that covered what the primary could
+not and the codepoints each covered, and `Missing`, the codepoints nothing covered and which are
+therefore `.notdef`. Both are empty for a Latin figure, so the ordinary case reports nothing
+rather than a story about itself. A resolved fallback has `File = None`, which is the same
+admission `Matched = None` makes one level up: this render is not reproducible on another machine.
+
+**`SkiaOptions.FontFiles`** states the whole chain — those faces, in that order, `.notdef` past
+the end of them, and the machine never consulted. It is the reproducible answer to a mixed-script
+figure, where `FontFile` pins one face and the empty default resolves against what is installed.
+`FontFile` is unchanged and **does not fall back**: one face is the whole promise, and "stated and
+obeyed" would mean less if a second face could arrive behind it. Setting both is an
+`ArgumentException` at construction rather than a precedence rule nobody would guess.
+
+A run's vertical band is now the **maximum** over the primary face and every face the run uses, so
+a CJK label is taller than the Latin label beside it — which is what a browser does, and reserving
+only the Latin band would clip the ideographs. A run one face covers folds over one face and is
+unchanged, which is why every number M2.5 measured still holds.
+
 ### Changed
 
 - **`Capabilities` has a tenth field** and `Node` a tenth case, so both break every backend
@@ -399,9 +427,10 @@ renders a command for a log and is deliberately not round-trippable.
 
 - A PNG or PDF is reproducible on the machine that rendered it unless `SkiaOptions.FontFile`
   states a face. `ResolvedFaces` reports what was chosen so the difference is visible.
-- The shaper works against one face and has no fallback list, so a codepoint the face lacks
-  measures as the missing-glyph box. Every symbol the unit system produces is in any Latin face;
-  a CJK axis title is not.
+- ~~The shaper works against one face and has no fallback list, so a codepoint the face lacks
+  measures as the missing-glyph box.~~ **Closed by M3's font fallback, above.** What remains of it
+  is deliberate: a *stated* `FontFile` is still obeyed alone and still draws a box for a codepoint
+  it lacks — now reported on `ResolvedFace.Missing` rather than left to be found in the PNG.
 - `Semantics` is `false` for the Skia backend, so `Degrade.forCaps` strips every `Annotated` node
   before it draws. A PNG has nowhere to put a label, and SkiaSharp exposes no tagged-PDF API.
 - A raster placed under a non-identity coordinate has its box mapped and its bounding box used;

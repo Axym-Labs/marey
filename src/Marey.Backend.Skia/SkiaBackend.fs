@@ -135,7 +135,22 @@ type SkiaOptions =
       /// `None` resolves the stack and reports what it got on `SkiaBackend.ResolvedFaces`,
       /// which is what a user wants; `Some` is what a golden, a regression test or a paper
       /// figure wants, because it is the only way two machines produce the same pixels.
+      ///
+      /// **A stated file is obeyed alone and never falls back** (D78). One face is the whole
+      /// answer, and a codepoint it lacks is a `.notdef` box — reported, not hidden.
       FontFile: string option
+      /// D78's new option shape: a stated *list* of font files, in priority order. The first
+      /// covers what it can, the rest cover what it cannot, and a codepoint none of them has is
+      /// a reported `.notdef`.
+      ///
+      /// This is the reproducible answer to a mixed-script figure. `FontFile` pins one face and
+      /// makes a CJK title a row of boxes; the empty default resolves against the machine and
+      /// renders that title on a laptop that has a CJK face and not on CI. A list is what makes
+      /// the same figure the same pixels on both.
+      ///
+      /// **Setting this and `FontFile` together is an error**, caught at construction: they are
+      /// two answers to one question, and a one-element list is exactly what `FontFile` means.
+      FontFiles: string list
       /// The document information dictionary written into a PDF. Ignored by a PNG render.
       Pdf: PdfMetadata }
 
@@ -147,6 +162,7 @@ module SkiaOptions =
           Background = Color.white
           Antialias = true
           FontFile = None
+          FontFiles = []
           Pdf = PdfMetadata.Default }
 
 /// The Skia backend. Renders a `Node` to PNG bytes, or to a one-page PDF.
@@ -170,7 +186,8 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
     // **The measurer, and the same one the traversal draws with.** `Shaping` hands back the
     // cached `SKFont` and `SKShaper` behind a `FontSpec`, so `drawText` centres a run against
     // the width layout sized the gutter with, rather than against a second opinion.
-    let shaping = new SkiaTextMeasurer(?fontFile = opts.FontFile, dpi = opts.Dpi)
+    let shaping =
+        new SkiaTextMeasurer(?fontFile = opts.FontFile, dpi = opts.Dpi, fontFiles = opts.FontFiles)
     let measurer = shaping :> ITextMeasurer
 
     let mutable started = false
@@ -474,11 +491,13 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
     ///
     /// The sign convention is the trap. Skia's `Ascent` is **negative** (above the baseline)
     /// while Core's `TextMetrics.Ascent` is positive, so every use of it here converts first.
-    let textOrigin (font: SKFont) (t: TextRun) (advance: float32) (x: float32) (y: float32) =
-        let metrics = font.Metrics
-        let ascent = -metrics.Ascent
-        let descent = metrics.Descent
-
+    ///
+    /// **The band comes from the run, not from a font.** D78 splits a run across faces, and a
+    /// mixed-script run's band is the maximum over the faces it uses — the fold `ShapedRun`
+    /// carries. Reading `Metrics` off the first segment's font here would place a CJK title
+    /// against a Latin ascent while layout had reserved the CJK one, which is D62's
+    /// measuring-and-drawing-disagree bug in the vertical direction.
+    let textOrigin (ascent: float32) (descent: float32) (t: TextRun) (advance: float32) (x: float32) (y: float32) =
         let ox =
             match t.Anchor with
             | AnchorStart -> x
@@ -587,19 +606,32 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
         if not (String.IsNullOrEmpty t.Text) then
             let struct (x, y) = point ctm t.At
 
-            // Not `use`: the font and the shaper belong to the measurer, which caches them
-            // per face and per size and disposes them with this backend. Disposing them here
-            // would free a handle the next run is about to use.
-            let struct (font, shaper) = shaping.Shaping t.Font
+            // Not `use`: the fonts and shapers belong to the measurer, which caches them per
+            // face and per size and disposes them with this backend. Disposing them here would
+            // free a handle the next run is about to use.
+            //
+            // **D78 — one run, one *or more* faces.** `Segments` splits the string by which
+            // face has each codepoint and hands back the pieces with the font and shaper that
+            // draw each. A Latin run is one segment and this loop is what it always was; a CJK
+            // title against a Latin theme is several, and drawing it with the first segment's
+            // face would put boxes on the page.
+            let run = shaping.Segments t.Font t.Text
 
-            // **Shaped, and shaped with the object that measured it.** The advance that places
+            // **Shaped, and shaped with the objects that measured it.** The advance that places
             // an `AnchorMiddle` or `AnchorEnd` run has to be the advance the glyphs actually
             // occupy, or a centred title is off-centre by exactly the kerning. `MeasureText`
             // would give the unshaped sum — 48.01 px against the shaped 44.51 for Arial 12 px
             // "AVATAR" — so a run anchored at its end would sit 3.5 px to the left of where it
             // was drawn.
-            let shaped = shaper.Shape(t.Text, font)
-            let ox, oy = textOrigin font t shaped.Width x y
+            //
+            // Summed the same way `SkiaTextMeasurer.Measure` sums it, segment by segment, so
+            // the total the anchor is resolved against is the total layout sized the gutter
+            // with.
+            let widths =
+                run.Segments
+                |> Array.map (fun struct (font, shaper, s) -> (shaper.Shape(s, font)).Width)
+
+            let ox, oy = textOrigin run.Ascent run.Descent t (Array.sum widths) x y
 
             // ROTATION. The arithmetic is `SvgBackend.drawText`'s, and the long comment there
             // is the argument for it: the frame's rotation and the run's own rotation are
@@ -624,10 +656,20 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
 
             // Text is filled, never stroked — the same rule as the SVG backend.
             use paint = fillPaint ctm t.Paint
+
             // `SKTextAlign.Left` because the anchor was already resolved above, against
             // the same rule Core's `TextMeasure.bounds` uses. Handing Skia the anchor
             // instead would put the two in different places the moment they disagreed.
-            canvas.DrawShapedText(shaper, t.Text, ox, oy, SKTextAlign.Left, font, paint)
+            //
+            // The pen walks by each segment's own shaped width, which is why the widths were
+            // kept rather than recomputed: they are the numbers the anchor was resolved
+            // against, and re-shaping to advance the pen would let the two drift apart.
+            let mutable pen = ox
+
+            for i in 0 .. run.Segments.Length - 1 do
+                let struct (font, shaper, s) = run.Segments.[i]
+                canvas.DrawShapedText(shaper, s, pen, oy, SKTextAlign.Left, font, paint)
+                pen <- pen + widths.[i]
 
             if rotated then
                 canvas.Restore()

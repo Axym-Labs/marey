@@ -873,6 +873,68 @@ entirely:
 // let pinned = { SkiaOptions.Default with FontFile = Some "/path/to/Inter-Regular.ttf" }
 ```
 
+### When one face is not enough
+
+A face holds the scripts it holds. Liberation Sans has no CJK, so `気温 (°C)` measured against it
+is two missing-glyph boxes and a unit — and a PNG of that axis title has two empty rectangles in
+it, where a browser opening the same figure as SVG would have walked the whole stack and found a
+face that has them.
+
+So the measurer splits a run by coverage: **per codepoint, the first face that has it**, which is
+the rule CSS font matching uses. Each piece is shaped in its own face and the advances are summed.
+Nothing above the backend knows this is happening — `ITextMeasurer` still answers a width — and a
+run one face covers, which is every run in a Latin figure, is one piece and exactly the number it
+always was.
+
+What is new is the report. `ResolvedFace` says which faces covered what, and which codepoints
+nothing covered:
+
+```fsharp
+let title = "気温 (°C)"
+
+let titleFont: FontSpec =
+    { Family = Theme.Sans
+      Size = 9.0<pt>
+      Weight = 400
+      Italic = false }
+
+let fallbackAware = new SkiaTextMeasurer()
+
+printfn "%s: %.2f px" title (float ((fallbackAware :> ITextMeasurer).Measure titleFont title).Advance)
+
+for face in fallbackAware.ResolvedFaces do
+    for used in face.Fallbacks do
+        printfn "  %s covered %d codepoint(s) %s does not have" used.Family used.Covered.Length face.Family
+
+    if face.Missing.Length > 0 then
+        let names = face.Missing |> Array.map (sprintf "U+%04X") |> String.concat ", "
+        printfn "  nothing on this machine covers %s -- drawn as .notdef" names
+```
+
+Run that on a machine with a CJK face installed and it names the face; run it on one without and
+it names the codepoints. Neither is silent, which is the point: a figure with boxes in it says so
+before you find them in the PNG.
+
+The machine is doing the choosing there, which is the previous section's problem again, one level
+down — so the same answer is available. A stated **list** pins the whole chain:
+
+```fsharp
+// let pinned =
+//     { SkiaOptions.Default with
+//         FontFiles = [ "/path/to/Inter-Regular.ttf"; "/path/to/NotoSansJP-Regular.ttf" ] }
+```
+
+`FontFiles` is the reproducible answer to a mixed-script figure: those faces, in that order, and a
+reported `.notdef` past the end of them, with the machine never consulted. `FontFile` remains the
+single-face answer and **does not fall back** — one face is the whole promise, and a codepoint it
+lacks is a box. Setting both is an error rather than a precedence rule.
+
+Two things the split costs, both small and both worth knowing. Kerning is not applied across a
+segment boundary — but boundaries fall where coverage fails, which is where the script changes,
+and no face kerns across a script change. And a run's vertical band is the **largest** of the
+faces it uses, so a CJK label is taller than the Latin label beside it. That is also what a
+browser does, and reserving only the Latin band would clip the ideographs.
+
 ### Real text shaping
 
 `Marey.Core` ships an *approximate* measurer: a Helvetica advance-width table, no kerning, no

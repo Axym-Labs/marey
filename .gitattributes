@@ -27,8 +27,9 @@
 *.png           binary
 *.pdf           binary
 *.nupkg         binary
-# D62's stated face, under tests/Marey.Tests/fonts/. A font is the one binary in this tree a
-# text-classifying heuristic might plausibly get wrong, and a mangled one fails as "Skia opens
-# the file and the metrics are nonsense", which is a bad afternoon.
+# The stated faces, under tests/Marey.Tests/fonts/: D62's Liberation Sans and D78's CJK subset.
+# A font is the one binary in this tree a text-classifying heuristic might plausibly get wrong,
+# and a mangled one fails as "Skia opens the file and the metrics are nonsense", which is a bad
+# afternoon.
 *.ttf           binary
 *.otf           binary
