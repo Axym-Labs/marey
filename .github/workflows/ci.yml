@@ -84,7 +84,7 @@ jobs:
       - name: Assert the gates can actually run
         run: |
           set -e
-          for tool in pdflatex pdftoppm ffmpeg ffprobe; do
+          for tool in pdflatex pdftoppm ffmpeg ffprobe latex dvisvgm; do
             command -v "$tool" >/dev/null || { echo "::error::$tool missing; the gate that needs it would silently skip"; exit 1; }
             echo "$tool -> $(command -v "$tool")"
           done

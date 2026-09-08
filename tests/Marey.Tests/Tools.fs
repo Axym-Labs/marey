@@ -32,6 +32,20 @@ let pdflatex: Lazy<ResolvedTool> =
 let pdftoppm: Lazy<ResolvedTool> =
     lazy Toolchain.resolve "poppler-utils (see .github/tex-packages.txt)" "pdftoppm"
 
+/// The DVI engine and the DVI-to-paths converter behind `Marey.Tools.Tex` (D79).
+///
+/// `latex` rather than `pdflatex`, which is a *different* entry from the one above and
+/// deliberately so: the TeX gates ask "does this document compile" through `pdflatex`, and the
+/// typesetting package reads DVI. Two questions, two binaries, two lines in a report.
+let latex: Lazy<ResolvedTool> =
+    lazy
+        Toolchain.resolve
+            "a TeX distribution with texlive-latex-base, texlive-latex-recommended and texlive-science (see .github/tex-packages.txt)"
+            "latex"
+
+let dvisvgm: Lazy<ResolvedTool> =
+    lazy Toolchain.resolve "dvisvgm (see .github/tex-packages.txt)" "dvisvgm"
+
 /// The SDK, for `dotnet fsi`. Present by definition when the suite is running under `dotnet
 /// test` — but the suite can be run from a published test binary, so it is asked for rather than
 /// assumed.
@@ -46,5 +60,7 @@ let dotnet: Lazy<ResolvedTool> =
 let report () : string =
     [| Toolchain.report "the TeX gates did not run" (pdflatex.Force())
        Toolchain.report "the ink gates did not run" (pdftoppm.Force())
+       Toolchain.report "the typesetting gates did not run" (latex.Force())
+       Toolchain.report "the typesetting gates did not run" (dvisvgm.Force())
        Toolchain.report "the guide and example gates did not run" (dotnet.Force()) |]
     |> String.concat "\n"

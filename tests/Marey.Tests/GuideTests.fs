@@ -58,6 +58,7 @@ let private assemblies =
       "SkiaSharp.HarfBuzz"
       "Marey.Toolchain"
       "Marey.Tools.Video"
+      "Marey.Tools.Tex"
       "Marey.Html" ]
 
 let private guidePath =

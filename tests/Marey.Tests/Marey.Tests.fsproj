@@ -55,6 +55,10 @@
     <!-- After FrameTests.fs: it encodes what that one writes, and it reuses `SkiaTests.withSkia`
          for the one gate that goes end to end through a real film. -->
     <Compile Include="VideoTests.fs" />
+    <!-- After VideoTests.fs, and beside it in kind: the second package that shells out, and the
+         second whose absence has to degrade rather than fail. It reuses `SkiaTests.withSkia` for
+         the one gate that rasterises a typeset formula to check there is ink in it. -->
+    <Compile Include="TypesetTests.fs" />
     <Compile Include="ChannelTests.fs" />
     <Compile Include="StatTests.fs" />
     <Compile Include="FacetTests.fs" />
@@ -83,6 +87,7 @@
          through, and since M3 phase 6 it ships as a package of its own. -->
     <ProjectReference Include="..\..\src\Marey.Toolchain\Marey.Toolchain.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Tools.Video\Marey.Tools.Video.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Tools.Tex\Marey.Tools.Tex.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Html\Marey.Html.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Verso\Marey.Verso.fsproj" />
   </ItemGroup>

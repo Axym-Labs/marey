@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- netstandard2.1 to match every other library here. Like `Marey.Toolchain` and
+         `Marey.Tools.Video`, and for the same reason, this one is *not* Fable-compatible and
+         does not claim to be: a `Process` has no browser meaning. `Marey.Core`'s Fable floor is
+         untouched because the dependency points this way and not back. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Marey.Tools.Tex</AssemblyName>
+    <RootNamespace>Marey</RootNamespace>
+    <Description>Mathematical typesetting for Marey figures: TeX source on a scene's text runs becomes vector outlines, by shelling out to latex and dvisvgm. Degrades to plain text when TeX is absent.</Description>
+    <PackageTags>fsharp visualization plotting latex tex mathematics typesetting siunitx dvisvgm</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The reader before the runner. `TexOutline.fs` is pure and is where every way of
+         producing a *wrong picture* lives; `Typeset.fs` runs the tools and places the result. -->
+    <Compile Include="TexOutline.fs" />
+    <Compile Include="Typeset.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- `Marey.Core` only, plus the toolchain. This pass reads `TextRun.Tex` and writes `Path`
+         nodes, both of which are IR — it has no business knowing about figures, scales or
+         units, and a caller holding a `Node` is the only caller it needs.
+
+         That is the difference from `Marey.Tools.Video`, which references `Marey.Plot` because
+         a `FrameSequence` lives there. Nothing here needs anything above the IR.
+
+         NOTHING may be added to <PackageReference>. §10 sanctions this route as "acceptable as
+         a plugin, unacceptable as a dependency", and a managed TeX or SVG library would put
+         somebody else's transitive dependencies on every consumer of a plotting library,
+         which is the same argument D75 made for ffmpeg and D62 made for a font. `XDocument` is
+         in the framework and costs nothing. -->
+    <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
+    <ProjectReference Include="..\Marey.Toolchain\Marey.Toolchain.fsproj" />
+  </ItemGroup>
+
+</Project>

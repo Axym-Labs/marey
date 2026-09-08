@@ -8,6 +8,7 @@
     <Project Path="src/Marey.Html/Marey.Html.fsproj" />
     <Project Path="src/Marey.Plot/Marey.Plot.fsproj" />
     <Project Path="src/Marey.Toolchain/Marey.Toolchain.fsproj" />
+    <Project Path="src/Marey.Tools.Tex/Marey.Tools.Tex.fsproj" />
     <Project Path="src/Marey.Tools.Video/Marey.Tools.Video.fsproj" />
     <Project Path="src/Marey.Units/Marey.Units.fsproj" />
     <Project Path="src/Marey.Verso/Marey.Verso.fsproj" />

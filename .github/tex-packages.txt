@@ -22,6 +22,11 @@
 #                              package and is how the video gates read a container back. Without
 #                              it every gate in VideoTests that needs a binary skips itself and
 #                              says so -- which is right on a laptop and wrong here.
+#   dvisvgm                    turns the DVI that `latex` writes into vector paths (D79). Its
+#                              own package on Debian and Ubuntu, and NOT pulled in by any of the
+#                              texlive entries above -- which is the same omission the Skia
+#                              native assets made twice. `latex` itself comes from
+#                              texlive-latex-base, alongside the pdflatex the TeX gates use.
 #
 # Changing this file changes the apt cache key in both workflows, so a package added here is
 # fetched fresh once and then cached.
@@ -34,3 +39,4 @@ poppler-utils
 libfontconfig1
 libfreetype6
 ffmpeg
+dvisvgm

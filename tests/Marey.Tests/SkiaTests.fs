@@ -42,7 +42,11 @@ open Marey
 // through the same library genuinely could not check.
 // ======================================================================================
 
-module private SkiaPixels =
+/// **Public, and reused by `TypesetTests`**, for the reason `withSkia` below is: D81 found five
+/// copies of one `PATH` probe that had drifted into three spellings, and a second reader of a PNG
+/// would drift the same way — two ideas of what counts as ink, and one of them starts passing for
+/// the wrong reason.
+module SkiaPixels =
 
     open SkiaSharp
 

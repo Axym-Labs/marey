@@ -32,9 +32,10 @@ The blocks form one continuous session, so bindings introduced early are still i
 17. [The storyboard](#17-the-storyboard)
 18. [Frames](#18-frames)
 19. [Video](#19-video)
-20. [Notebooks](#20-notebooks)
-21. [The scene IR](#21-the-scene-ir)
-22. [Escape hatches](#22-escape-hatches)
+20. [Mathematical typesetting](#20-mathematical-typesetting)
+21. [Notebooks](#21-notebooks)
+22. [The scene IR](#22-the-scene-ir)
+23. [Escape hatches](#23-escape-hatches)
 
 ---
 
@@ -1470,7 +1471,112 @@ time — §18's rule arriving in the container.
 
 ---
 
-## 20. Notebooks
+## 20. Mathematical typesetting
+
+A visualization library that cannot set `\frac{\partial \vec{E}}{\partial t}` is not much use for
+physics, and there is no good .NET answer to setting one. `Marey.Tools.Tex` takes the answer
+everybody actually uses: it runs TeX.
+
+**What comes back is geometry, and that is the whole point.** The package walks a scene, finds
+every text run that carries a TeX form, sets it with `latex`, converts it to vector outlines with
+`dvisvgm`, and replaces the run with a filled `Path`. After that there is nothing left for a
+backend to know — SVG, TikZ and Skia all draw the formula with the code they already had.
+
+```fsharp
+#r "nuget: Marey.Tools.Tex"
+
+printfn "%s" (Typeset.report ())
+```
+
+That prints where `latex` and `dvisvgm` were found, or the sentence naming what to install. It is
+worth printing, because the failure mode here is quiet: a figure that typeset and a figure that
+did not both render and both look reasonable.
+
+`TextRun.Tex` is the field it reads, and the axis compiler already fills it — `Chart.withUnitStyle
+Siunitx` puts `\qty{}{\metre\per\second\squared}` on the axis title. You can also put a formula
+there yourself:
+
+```fsharp
+let formulaFont: FontSpec =
+    { Family = Theme.Serif
+      Size = 18.0<pt>
+      Weight = 400
+      Italic = false }
+
+let formulaScene: Node =
+    Text
+        { Text = "dE/dt = curl B"                     // always set, and never optional
+          Tex = Some @"$\frac{\partial \vec{E}}{\partial t} = \nabla \times \vec{B}$"
+          At = { X = 0.5<nd>; Y = 0.5<nd> }
+          Font = formulaFont
+          Paint = Solid(Color.rgb 0.1 0.1 0.12)
+          Anchor = AnchorMiddle
+          Baseline = BaselineAlphabetic
+          Rotation = 0.0<rad> }
+
+let formulaExtent = Chart.size 420.0 120.0
+let drawn, note = Typeset.sceneOrPlain TexOptions.Default formulaExtent formulaScene
+printfn "%s" note
+```
+
+`sceneOrPlain` always hands back something to draw. On a machine with TeX that is the outlines; on
+one without it is the scene that went in, and `note` says which. **A missing TeX installation
+costs the typesetting and nothing else**, because `TextRun.Text` is always set — a run's plain
+form is not optional, which is exactly what makes this degradation possible.
+
+```fsharp
+printfn
+    "the formula is now %s"
+    (match drawn with
+     | Path _ -> "outlines"
+     | Text _ -> "still text, because there is no TeX on this machine"
+     | _ -> "something else")
+```
+
+### It fails one formula at a time
+
+A snippet TeX rejects does not take the figure with it. That run keeps its text, and
+`Typeset.scene` reports it by name with TeX's own complaint, while every other formula still
+typesets:
+
+```fsharp
+let broken: Node =
+    Text
+        { Text = "broken"
+          Tex = Some @"$\notacommand{x}$"
+          At = { X = 0.5<nd>; Y = 0.2<nd> }
+          Font = formulaFont
+          Paint = Solid(Color.rgb 0.1 0.1 0.12)
+          Anchor = AnchorMiddle
+          Baseline = BaselineAlphabetic
+          Rotation = 0.0<rad> }
+
+match Typeset.scene TexOptions.Default formulaExtent (Group [| formulaScene; broken |]) with
+| Typeset result -> printfn "typeset %d, failed %d, engine runs %d" result.Typeset result.Failed.Length result.EngineRuns
+| TypesetUnavailable why -> printfn "%s" why
+```
+
+This is why each snippet gets its own engine run rather than all of them sharing one document: one
+document is about four times faster on a figure with ten distinct labels, and one bad label in it
+costs you every label.
+
+### What it costs, and the one thing it approximates
+
+About 105 ms per **distinct** snippet, memoised on the source — so the same axis title on twelve
+facets is one run, and an animation pays for its titles once rather than once a frame. An ordinary
+figure carries two.
+
+The font size is applied as a *scale* on the outline rather than as a second engine run, so one
+formula at 9 pt and at 18 pt costs one invocation between them. A TeX engine asked for 18 pt
+directly would pick a different optical design, with different stroke weights; the difference is
+not visible in a plot, and `TexOptions.BaseSize` is where the trade is written down.
+
+`TexOptions` also carries the preamble — `amsmath`, `textcomp` and `siunitx` by default — which is
+replaced rather than appended to, because a preamble is a document's own business.
+
+---
+
+## 21. Notebooks
 
 In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
 cell whose value is a `Figure` displays as a figure. No `.Show()`, no save-then-open, no display
@@ -1494,7 +1600,7 @@ See [`notebooks/README.md`](notebooks/README.md) for installation and
 
 ---
 
-## 21. The scene IR
+## 22. The scene IR
 
 Everything above compiles to one closed ten-case `Scene` IR, and every backend consumes only that.
 It is the level at which a figure that came out wrong can be inspected.
@@ -1540,7 +1646,7 @@ paints the overlap twice. For a single shape, `Color.A` is still the simpler too
 
 ---
 
-## 22. Escape hatches
+## 23. Escape hatches
 
 **Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so the scales are
 the caller's and everything downstream still works.

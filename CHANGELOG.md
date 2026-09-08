@@ -3,9 +3,9 @@
 Notable changes to Marey. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-All eleven packages are versioned and released together, so a version number identifies the whole
-set rather than any one package. Three are new in this release: `Marey.Anim`,
-`Marey.Tools.Video`, and `Marey.Toolchain` — which ships only because the video package depends
+All twelve packages are versioned and released together, so a version number identifies the whole
+set rather than any one package. Four are new in this release: `Marey.Anim`, `Marey.Tools.Video`,
+`Marey.Tools.Tex`, and `Marey.Toolchain` — which ships only because the two tool packages depend
 on it, and a published package may not depend on an unpublished one.
 
 **Pre-1.0, and versioned accordingly.** The API is still free to move. Breaking changes are
@@ -325,8 +325,43 @@ a CJK label is taller than the Latin label beside it — which is what a browser
 only the Latin band would clip the ideographs. A run one face covers folds over one face and is
 unchanged, which is why every number M2.5 measured still holds.
 
+**`Marey.Tools.Tex` — mathematical typesetting, as a twelfth package.** §10 of the design document
+puts it plainly: a library that cannot set `\frac{\partial \vec{E}}{\partial t}` is not a maths
+visualization library. `Typeset.scene` walks a scene, sets every run carrying a `TextRun.Tex` form
+with `latex`, converts it to vector outlines with `dvisvgm`, and replaces the run with a filled
+`Path`.
+
+**The result is geometry, and that is what makes it worth having.** Once a formula is outlines,
+the SVG, TikZ and Skia backends all draw it with the code they already had — no capability flag,
+no per-backend typesetting story, and nothing above the IR involved. `TextRun.Tex` has carried TeX
+source since M1 (D32) and nothing could set it until now.
+
+**Missing TeX degrades and does not fail.** `TextRun.Text` is always set, so a figure on a machine
+with no TeX renders exactly as it would have without the package, and `TypesetUnavailable` names
+what to install. A single snippet TeX *rejects* degrades the same way and alone: that run keeps
+its text and is reported with TeX's own error, while every other formula on the figure typesets.
+That isolation is the reason each snippet gets its own engine run rather than sharing one document
+— batching is about four times faster on ten labels and loses all ten to one bad one.
+
+Two tools, resolved separately, because a container image can carry one without the other and
+"which is missing" is the useful half of the message. `Typeset.report` prints what was found.
+About 105 ms per **distinct** snippet, memoised on the source; the font size is applied as a scale
+on the outline rather than as a second engine run, so one formula at two sizes costs one
+invocation. No third-party `PackageReference` of any kind: §10 sanctions this route as
+"acceptable as a plugin, unacceptable as a dependency", which is D75's argument for `ffmpeg` and
+D62's for a font, a third time.
+
+`SvgPathData.parse` and `TexOutline.ofSvg` are public and pure, because that is where a wrong
+*picture* would come from and it is gateable with no TeX installed. Both refuse by name rather
+than skipping: an elliptical arc (no exact cubic form), an unknown element, a `<use>` that resolves
+to nothing. Dropping a drawing instruction in silence is D33's incident, and it is not repeated.
+
 ### Changed
 
+- **§14's M3 roadmap line is corrected**, in the milestone it describes rather than in the
+  documents sweep after it. It promised "MathJax text on web" — §10's option 2 — on a web backend
+  that does not exist until M4, which §14's own M4 row and two previous plans all say. What ships
+  is option 1, the LaTeX shell-out, which needs no new backend at all.
 - **`Capabilities` has a tenth field** and `Node` a tenth case, so both break every backend
   implementation at compile time. That is the intended cost of an IR change and the reason the
   type is guarded.
