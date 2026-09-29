@@ -56,7 +56,7 @@ open System.Text
 /// One instance may be reused: `Begin` resets all state, so the same backend can render a
 /// sequence of scenes, and two renders of the same scene produce byte-identical strings.
 [<Sealed>]
-type SvgBackend(?dpi: float<px / mm>) =
+type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
 
     /// Points to pixels needs a resolution. 96 px per inch is the screen convention and the
     /// default of `ApproxTextMeasurer`, so the measurer that layout consults and the font size
@@ -66,7 +66,10 @@ type SvgBackend(?dpi: float<px / mm>) =
 
     let measurer = ApproxTextMeasurer(dpi) :> ITextMeasurer
 
-    let doc = SvgDocument()
+    /// Namespaces every id this render emits. Empty for an ordinary render; set by
+    /// `renderScoped` so that N frames can be stacked in one document without their clip paths,
+    /// markers and `Keyed` names colliding. See `SvgDocument`.
+    let doc = SvgDocument(defaultArg idPrefix "")
 
     let mutable started = false
     let mutable finished = false
@@ -782,14 +785,28 @@ type SvgBackend(?dpi: float<px / mm>) =
 [<RequireQualifiedAccess>]
 module SvgBackend =
 
-    /// Render a scene to an SVG document at the given surface size.
-    let render (extent: Extent<px>) (node: Node) : string =
-        let backend = SvgBackend()
+    /// Render a scene to an SVG document at the given surface size, with every id it emits
+    /// namespaced by `idPrefix`.
+    ///
+    /// **For stacking renders inside one document, and nothing else.** SVG ids are scoped to the
+    /// document, not to a nested `<svg>` element, so N frames of a film in one outer `<svg>`
+    /// share one id space: without this, frame 5's `url(#qc)` resolves to frame 0's clip path and
+    /// its `<use xlink:href="#qm">` to frame 0's marker — which is visible exactly when the two
+    /// differ, so a `highlight` that grows one mark renders at the wrong size and everything else
+    /// looks correct. D83, and `Html.filmAt` is the caller.
+    ///
+    /// The prefix is written verbatim, so it has to be a legal NCName start. `Html` uses
+    /// `f0-`, `f1-`, … and nothing else in the repository calls this.
+    let renderScoped (idPrefix: string) (extent: Extent<px>) (node: Node) : string =
+        let backend = SvgBackend(idPrefix = idPrefix)
         let sink = backend :> IBackend
         sink.Begin extent
         sink.Draw node
         sink.Finish()
         backend.Result
+
+    /// Render a scene to an SVG document at the given surface size.
+    let render (extent: Extent<px>) (node: Node) : string = renderScoped "" extent node
 
     /// Render a scene and write it to a file as UTF-8 with no byte-order mark.
     ///

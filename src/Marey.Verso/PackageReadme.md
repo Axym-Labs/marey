@@ -17,8 +17,12 @@ Chart.line U.second U.metre t x
 |> Chart.withTitle "Free fall"
 ```
 
-Nine types render: `Figure`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`, `Dim`, `U<'u>`
-and `IScaleErased`.
+Ten types render: `Figure`, `Film`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`, `Dim`,
+`U<'u>` and `IScaleErased`.
+
+A `Film` **plays in the cell** — an animation built with `Marey.Anim` and the `scene { … }` block
+displays as a looping flipbook rather than as a record field table, with no encoder installed and
+no video file on disk.
 
 ## Installing
 

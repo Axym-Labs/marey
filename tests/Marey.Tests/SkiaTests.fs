@@ -153,6 +153,14 @@ let private available =
          with e ->
              Error(e.GetType().Name + ": " + e.Message))
 
+/// The same probe, as an answer rather than as a control flow.
+///
+/// `withSkia` is what a *gate* wants; this is what the census wants — `Verification.fs` has to
+/// name the natives alongside the five programs on `PATH`, and it cannot do that through a
+/// combinator that swallows the result. Reading the same `Lazy` rather than probing again is the
+/// whole point of the note below: two answers to "is it available" is the failure mode.
+let nativeAssets () : Result<unit, string> = available.Force()
+
 /// Run a gate that needs the native libraries, or say loudly that it was not run.
 ///
 /// **Public, and reused by `FrameTests`.** D81's lesson applied to a probe rather than to a

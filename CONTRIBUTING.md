@@ -4,7 +4,7 @@
 
 ```
 dotnet build          # warning-free; warnings are errors
-dotnet test           # 1023 tests
+dotnet test           # 1121 tests
 ```
 
 `TreatWarningsAsErrors` is on for every project, set in `Directory.Build.props`. It is not
@@ -17,29 +17,54 @@ The library targets `netstandard2.1`; the test project targets `net10.0`.
 
 ## The toolchains the tests shell out to
 
-Three programs the library does not ship are driven by the suite:
+Programs the library does not ship are driven by the suite, and by two of the packages:
 
 | Program | What it gates |
 |---|---|
 | `pdflatex` | compiles every golden `.tex` baseline — the only authority on whether emitted TeX is valid |
 | `pdftoppm` | rasterises a PDF to check the page is not blank: the compiled TeX one, and since M2.5 the Skia backend's own |
 | `dotnet fsi` | runs every `docs/guide.md` snippet, every `examples/*.fsx`, and the encoding-block compile checks |
+| `ffmpeg` / `ffprobe` | `Marey.Tools.Video` encodes a frame sequence, and the container is read back rather than trusted |
+| `latex` / `dvisvgm` | `Marey.Tools.Tex` sets a formula and converts it to outlines. `latex`, not `pdflatex`: dvisvgm reads DVI, and the two ask different questions |
 
-All three are resolved and run through **`Marey.Toolchain`**, and named once in
-`tests/Marey.Tests/Tools.fs`. Add a gate that needs a fourth program by adding it there rather
-than by walking `PATH` again — the walk and the `Process` were each written five times across
-four files before that module existed, and one of the copies' bugs is described in `decisions.md`
-D81.
+All of them are resolved and run through **`Marey.Toolchain`**. The suite's own are named once in
+`tests/Marey.Tests/Tools.fs`; the two packages resolve theirs for themselves, because a consumer
+of `Marey.Tools.Video` has no test suite. Add a gate that needs another program by adding it there
+rather than by walking `PATH` again — the walk and the `Process` were each written five times
+across four files before that module existed, and one of the copies' bugs is described in
+`decisions.md` D81.
 
-Each prints a line saying what it found and passes when the program is absent, which is right on
-a contributor's machine and wrong in CI — so CI installs all three and enforcement is real there.
+Each prints a line saying what it found and **passes when the program is absent**, which is right
+on a contributor's machine and wrong in CI.
 
 The Skia tests do the same thing for a different missing thing: they probe the native library by
 rendering a 4 × 4 scene, and print `SKIPPED: SkiaSharp native assets unavailable` with the actual
-exception if it is not there.
+exception if it is not there. That one is not on `PATH`, and its absence takes out every raster,
+PDF, frame and ink gate at once.
+
+### The census, and the switch that makes it enforceable
 
 **Read the test output rather than the green tick**: a local run that skips these has not checked
 the TikZ backend, the raster one, the guide or the examples at all.
+
+Reading is a thing a person does once and then stops doing, so it is mechanised.
+`tests/Marey.Tests/Verification.fs` prints a census of all **nine** external dependencies on every
+run, whether or not anything was found:
+
+```
+Marey toolchain census — 9 of 9 dependencies live
+  pdflatex found at /usr/bin/pdflatex
+  ...
+```
+
+An absent one is a skip locally and a **failure** in CI, because `MAREY_REQUIRE_TOOLCHAIN=1` is
+set in both workflows. Set it yourself to check a change the way CI will:
+
+```
+MAREY_REQUIRE_TOOLCHAIN=1 dotnet test
+```
+
+The failure names every absent dependency at once, each with its own install sentence.
 
 The package list and the reason for each entry are in `.github/tex-packages.txt`.
 

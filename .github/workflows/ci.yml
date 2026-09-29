@@ -119,7 +119,22 @@ jobs:
       - name: Build
         run: dotnet build Marey.slnx --configuration Release --no-restore
 
+      # MAREY_REQUIRE_TOOLCHAIN turns "the tool is not installed, so the gate did not run" from
+      # a printed skip into a failure. Right here and wrong on a contributor's laptop: the steps
+      # above install the toolchain on purpose, so a gate that skips on this runner means the
+      # install silently stopped working, and every one of those gates degrades rather than
+      # throwing -- a green run proving nothing.
+      #
+      # Not a duplicate of "Assert the gates can actually run" above, which asks a shell whether
+      # six binaries are on PATH. This asks the test host, in process, through the same Lazy the
+      # gates themselves read, and it covers the two things a shell cannot see: the SkiaSharp and
+      # HarfBuzz natives, which are not on PATH and take out every raster, PDF, frame and ink
+      # gate at once, and a PATH that differs between the shell and the runner. The census in
+      # Verification.fs prints all nine dependencies either way; this decides whether an absent
+      # one is fatal.
       - name: Test
+        env:
+          MAREY_REQUIRE_TOOLCHAIN: '1'
         run: dotnet test Marey.slnx --configuration Release --no-build --logger "console;verbosity=normal"
 
       # Packaging is part of what CI protects. It has broken on its own before -- a package

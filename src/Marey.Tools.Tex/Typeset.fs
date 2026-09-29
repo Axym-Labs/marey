@@ -61,9 +61,20 @@ open System.Text.RegularExpressions
 // Measured on this machine: 80 ms for `latex` plus 26 ms for `dvisvgm`, near enough constant
 // across a fraction, a siunitx quantity, a Greek letter and a word — 106 ms a snippet. A figure
 // carries two of them, because the axis compiler fills `TitleTex` for the axis titles and
-// leaves tick labels alone (`Axes.fs`), so an ordinary figure costs about a fifth of a second
-// and an animation costs it once, because the cache is keyed on the source rather than on the
-// frame.
+// leaves tick labels alone (`Axes.fs`), so an ordinary figure costs about a fifth of a second.
+//
+// **The cache is per call, and a frame is a call.** It is keyed on the source, so it collapses
+// repetition *within* one scene — twelve facets carrying one axis title cost one engine run, not
+// twelve. It does not span calls, because it cannot: it is a local in `sceneWith`, and a
+// process-wide one would be a mutable keyed on a preamble that two callers with different
+// preambles would silently share (`runOnce` says so). So typesetting an animation frame by frame
+// pays the figure's fifth of a second *per frame* — measured at M3 phase 9, 235 ms for the first
+// frame and 1060 ms for five. An earlier draft of this header claimed the opposite and the guide
+// repeated it; `TypesetTests` now pins the real number so the claim cannot drift back.
+//
+// There is deliberately no film-level entry point yet. One would be a small function and a real
+// decision — what a shared cache is keyed on once it outlives a call — and the close of a
+// milestone is the wrong place to take it.
 //
 // **Batching every snippet into one multi-page document was tried and rejected.** It is roughly
 // four times faster on a figure with ten distinct labels, and it fails badly: one snippet TeX

@@ -121,7 +121,7 @@ values with no unit to carry a prefix are not rescaled, and the label is left to
 
 <img src="docs/images/co2-record.svg" alt="Atmospheric CO2 at Mauna Loa, annual means with uncertainties" width="640">
 
-The [`examples/`](examples/) directory has ten worked scripts, three of them on real committed
+The [`examples/`](examples/) directory has twelve worked scripts, three of them on real committed
 datasets.
 
 ## A figure that moves
@@ -184,7 +184,7 @@ chance for one frame of a video to be set in a different typeface from the frame
 | `Marey.Tools.Video` | Encoding a rendered frame sequence to video by shelling out to `ffmpeg`, degrading to the numbered frames when it is absent. |
 | `Marey.Tools.Tex` | Mathematical typesetting: TeX source on a scene's text runs becomes vector outlines, through `latex` and `dvisvgm`, so every backend draws it. Degrades to plain text when TeX is absent. |
 | `Marey.Toolchain` | Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies. |
-| `Marey.Html` | HTML renderings of nine Marey types for a notebook cell. Host-neutral. |
+| `Marey.Html` | HTML renderings of ten Marey types for a notebook cell, including a film as a playing flipbook. Host-neutral. |
 | `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension, so a bare `Figure` displays as a figure. |
 
 ## Notebooks
@@ -192,6 +192,10 @@ chance for one frame of a video to be set in a different typeface from the frame
 In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
 cell whose value is a `Figure` shows the figure — no `.Show()`, no save-then-open, no display call.
 Without the extension, render to SVG and the built-in formatter draws it, with nothing installed.
+
+**A `Film` plays.** An animation built with the `scene { … }` block displays as a looping flipbook
+in the cell — its frames stacked in one SVG and cycled with SMIL — so seeing what you just
+animated needs no encoder, no video file and no round trip through the filesystem.
 
 ## Building
 
@@ -207,11 +211,18 @@ rendered PDF, checking the picture is not blank and is the right way up; an asse
 built assembly graph that no package but `Marey.Backend.Skia` can see SkiaSharp; and executable
 checks over every example in [the guide](docs/guide.md) and in [`examples/`](examples/).
 
+Several of those gates shell out, and every one of them **passes when the program it needs is
+absent** — right on a laptop without a TeX installation, and worthless as evidence. So each run
+prints a census of all nine external dependencies and what became of them, and
+`MAREY_REQUIRE_TOOLCHAIN=1` turns an absent one into a failure. CI sets it.
+
 ## Documentation
 
 - **[The guide](docs/guide.md)** — everything the library does today, with a runnable example for
   each part. Every example in it is extracted and executed by the test suite.
-- **[Examples](examples/)** — ten standalone scripts, also executed by the test suite.
+- **[Examples](examples/)** — twelve standalone scripts, also executed by the test suite.
+  [`reel.fsx`](examples/reel.fsx) is the demo reel: the whole library in one shot, ending in an
+  `.mp4`.
 - **[Why Marey is like this](docs/why.md)** — the case for a unit witness over a string label,
   what the other design decisions buy, what they cost, and when not to use the library.
 - **[Changelog](CHANGELOG.md)** — what changed in each release, and what is still known to be

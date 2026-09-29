@@ -66,6 +66,11 @@
     <Compile Include="NotebookTests.fs" />
     <Compile Include="GuideTests.fs" />
     <Compile Include="ExampleTests.fs" />
+    <!-- Last, and it has to be: the census reads `Tools`, both shipped packages' own `report ()`
+         and `SkiaTests.nativeAssets`, so it can only be written once every one of them exists.
+         It is also the file a release sweep reads first, which is a reason to put it at the end
+         of this list rather than the top: the order here is what compiles, not what matters. -->
+    <Compile Include="Verification.fs" />
   </ItemGroup>
 
   <ItemGroup>

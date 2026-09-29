@@ -25,8 +25,9 @@ reviewed as a diff.
 
 ## Complete
 
-All nine cases of the scene IR: paths, polylines, batched markers, text, rectangles, gradients,
-clipping groups, images and transforms. Accessibility semantics are emitted alongside the geometry.
+All ten cases of the scene IR: paths, text, batched markers, rasters, groups, transforms, clips,
+group opacity, keys and semantic annotations — with polylines, rectangles and gradients falling out
+of `Path` and `Paint`. Accessibility semantics are emitted alongside the geometry.
 
 Because the output is a string starting with `<svg`, it renders in any notebook or viewer that
 knows what to do with one, without an extension installed.

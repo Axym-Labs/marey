@@ -74,12 +74,19 @@ without pulling a native dependency into a package that must not have one.
 
 ---
 
-**M3 — *Motion*.** In progress, and shipping in the same release as M2.5 above. What has landed
-so far is the two gaps in the IR that everything else in the milestone needs — the producer could
-not name what it drew, and a group could not be faded — the algebra the rest of the milestone is
-written in, the two interpolations that algebra had nothing to say about (a transform and a
-shape), the thing none of them can do on their own — **hold the layout still while the data
-moves** — and, since motion was complete, the encoder that turns the frames into a file.
+**M3 — *Motion*.** Complete, and shipping in the same release as M2.5 above. It closes the two
+gaps in the IR that everything else in the milestone needs — the producer could not name what it
+drew, and a group could not be faded — then adds the algebra the rest of the milestone is written
+in, the two interpolations that algebra had nothing to say about (a transform and a shape), the
+thing none of them can do on their own — **hold the layout still while the data moves** — the
+storyboard block that says all of it in one place, the encoder that turns the frames into a file,
+a text run that is no longer confined to one face, and a package that can set a fraction.
+
+Twelve packages now, four of them new: `Marey.Anim`, `Marey.Tools.Video`, `Marey.Tools.Tex`, and
+`Marey.Toolchain`, which ships only because the two tool packages depend on it.
+
+[`examples/reel.fsx`](examples/reel.fsx) is the demo reel — the whole library in one shot, ending
+in an `.mp4` — and it is the one file written for somebody who has read none of the rest.
 
 ### Added
 
@@ -382,6 +389,46 @@ to nothing. Dropping a drawing instruction in silence is D33's incident, and it 
   says so. No rendered output changed.
 - **Golden baselines moved**: `all-nine-nodes.{svg,tex}` are now `all-ten-nodes.{svg,tex}`, and
   every figure baseline gained the keyed groups described above. No geometry changed.
+
+**`Marey.Html` renders a `Film` as a flipbook that plays**, and `Film` joins the Verso bridge —
+taking it from nine displayed types to ten. An animation built with the `scene { … }` block now
+displays as motion in a notebook cell instead of as a record field table, which is where the rest
+of this milestone was previously invisible.
+
+The frames are sampled into stills, stacked in one SVG, and cycled with SMIL `<animate>` on each
+frame's opacity. **No `<style>` block** — a notebook output cell does not scope one, so CSS
+`@keyframes` is the one mechanism `Marey.Html` may not use, and `<animate>` is an SVG element that
+travels inside the fragment it animates. **No external tool**: a GIF or an `<video>` would put
+ffmpeg on the display path, so a reader without it would see a still where a colleague sees motion,
+from the same notebook, with nothing saying which.
+
+`Html.film` samples `Html.FlipbookFrames` — 48, a *budget* rather than a frame rate, about half a
+megabyte of markup and 40 KB gzipped. The effective rate is `48 / duration`, so a two-second film
+is smooth and a six-second one is visibly stepped; `Html.filmAt` takes the count. A film renders at
+`Film.Extent` and has no size argument, because its layout was arranged once against that surface
+and every frame's text measured for it. One frame, zero frames, or a film of zero duration render a
+still rather than an animation of one.
+
+**`SvgBackend.renderScoped`**, which exists for the flipbook and nothing else. It namespaces every
+id a render emits. SVG ids are scoped to the document rather than to a nested `<svg>`, so stacking
+frames in one document made frame 5's `url(#qc)` resolve to frame 0's clip path and its
+`<use xlink:href="#qm">` to frame 0's marker — invisible while the frames agree, and wrong exactly
+where `highlight` makes one mark bigger. `SvgBackend.render` is `renderScoped ""` and every golden
+baseline is byte-identical.
+
+### Fixed
+
+- **The documented cost of typesetting an animation was wrong, and is corrected.**
+  `Marey.Tools.Tex` said its outline cache made an animation "cost it once, because the cache is
+  keyed on the source rather than on the frame", and the guide repeated it. The cache is a local
+  in `sceneWith`, so it collapses repetition *within* a scene — twelve facets sharing an axis
+  title are one engine run, which was always true — and does not span calls. Typesetting a film
+  frame by frame therefore pays a figure's worth of `latex` per frame: measured at 235 ms for the
+  first frame and 1060 ms for five. No behaviour changed; the claim did. A test now pins both
+  halves so it cannot drift back, and the guide says to typeset the still you publish rather than
+  every frame of the reel. There is deliberately no film-level entry point yet — a shared cache
+  that outlives a call needs a decision about what it is keyed on, and the close of a milestone is
+  the wrong place to take it.
 
 ### Known limitations
 

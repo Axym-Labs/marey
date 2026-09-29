@@ -204,8 +204,16 @@ module Svg =
 
 /// Buffers the body of an SVG document, collects `defs` discovered during traversal, and hands
 /// out unique element ids.
+///
+/// `idPrefix` namespaces every id this document hands out — both the generated ones (`qc`, `qm`)
+/// and the `Keyed` names. Empty by default, which is every ordinary render. It exists for the
+/// flipbook (D83): SVG ids are scoped to the *document*, not to a nested `<svg>` element, so
+/// stacking N independently rendered frames inside one outer document makes frame 5's
+/// `url(#qc)` resolve to frame 0's clip path. Prefixing here rather than at the call sites is
+/// what makes that airtight — every id in this backend is allocated by `UniqueId`, including the
+/// ones `Def` reserves, so there is exactly one place it can leak from.
 [<Sealed>]
-type internal SvgDocument() =
+type internal SvgDocument(idPrefix: string) =
 
     /// Placeholder substituted into a definition when computing its deduplication key. NUL is
     /// a character `Svg.ncname` can never produce, so a key can never be confused with a
@@ -232,13 +240,16 @@ type internal SvgDocument() =
         header <- ""
 
     /// Reserve an id, deriving a unique one if the stem is already taken.
+    ///
+    /// Uniqueness is tracked on the *prefixed* name, so two documents with different prefixes
+    /// cannot collide and one document's own suffixing (`-2`, `-3`) is unaffected by the prefix.
     member _.UniqueId(stem: string) : string =
-        let mutable candidate = stem
+        let mutable candidate = idPrefix + stem
         let mutable n = 1
 
         while usedIds.Contains candidate do
             n <- n + 1
-            candidate <- stem + "-" + string n
+            candidate <- idPrefix + stem + "-" + string n
 
         usedIds.Add candidate |> ignore
         candidate

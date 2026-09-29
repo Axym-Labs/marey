@@ -28,8 +28,9 @@ Chart.line U.second U.metre t x
 |> Chart.withTitle "Free fall"
 ```
 
-Nine types then display: `Figure`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`, `Dim`,
-`U<'u>` and `IScaleErased`.
+Ten types then display: `Figure`, `Film`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`,
+`Dim`, `U<'u>` and `IScaleErased`. A `Film` **plays** — an animation built with the `scene { … }`
+block loops in the cell as a flipbook, with no encoder installed and no video file on disk.
 
 Installing the extension and referencing the library are **separate steps that cannot substitute
 for each other**. `#r "nuget: Marey.Html"` in a cell provides the types; the extension provides the

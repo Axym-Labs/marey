@@ -27,7 +27,7 @@ printfn "%A" (scale.Forward 5.0<m>)  // normalized panel space
   factorisation structurally so a composed unit can still name itself.
 - **`Vec2`/`Vec3`, `Affine`, `Coord`** — unit-indexed geometry and coordinate transforms.
 - **`Scale`** — seven scale kinds, each with `Forward`/`Inverse` verified as mutual inverses.
-- **`Scene`** — a small closed IR of nine cases. Every backend consumes this and nothing else.
+- **`Scene`** — a small closed IR of ten cases. Every backend consumes this and nothing else.
 - **`Interp`**, tick generation, and text metrics.
 
 ## Zero dependencies

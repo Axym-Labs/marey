@@ -25,7 +25,8 @@ out — and plotting metres against metres on these axes is a compile error.
 ## What is in it
 
 - **`Chart`** — twelve geoms: `line`, `scatter`, `area`, `bar`, `errorbar`, `step`, `ribbon`,
-  `tile`, `rect`, `segment`, `text`, and box plots and violins by category. Most have an `add*`
+  `tile`, `rect`, `image`, `segment` and `text`, with box plots and violins by category under
+  `Chart.Category`. Most have an `add*`
   that layers onto the last panel, and `Chart.Plain` covers data that genuinely has no units.
 - **The `plot` encoding block** — for data that is a table rather than two arrays. Declares x, y,
   colour, shape and size in one place, with each dimensioned channel checked against its witness.

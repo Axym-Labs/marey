@@ -61,7 +61,7 @@ open Marey
 | `Marey.Anim` | Animation as a pure function of time: `Anim<'a>`, the easing catalogue and path morphing. Depends on `Marey.Core` alone, and arrives with `Marey.Plot` — see §16. |
 | `Marey.Tools.Video` | Encoding a rendered frame sequence to video with `ffmpeg` — see §19. |
 | `Marey.Toolchain` | Resolving and running the external programs Marey drives but does not ship. Zero dependencies; arrives with `Marey.Tools.Video`. |
-| `Marey.Html` | HTML renderings of nine Marey types, for a notebook cell. Host-neutral. |
+| `Marey.Html` | HTML renderings of ten Marey types, for a notebook cell. Host-neutral. |
 | `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension. Installed *into the host*, not referenced from user code. |
 
 ---
@@ -1563,8 +1563,12 @@ costs you every label.
 ### What it costs, and the one thing it approximates
 
 About 105 ms per **distinct** snippet, memoised on the source — so the same axis title on twelve
-facets is one run, and an animation pays for its titles once rather than once a frame. An ordinary
-figure carries two.
+facets is one run. An ordinary figure carries two, and pays about a fifth of a second.
+
+**The cache lives for one call, and a frame is a call.** It collapses repetition inside a scene,
+not across scenes, so typesetting an animation frame by frame pays that fifth of a second per
+frame rather than once for the film — 235 ms for the first frame and 1060 ms for five, measured.
+Typeset the still you are going to publish, not every frame of the reel.
 
 The font size is applied as a *scale* on the outline rather than as a second engine run, so one
 formula at 9 pt and at 18 pt costs one invocation between them. A TeX engine asked for 18 pt
@@ -1580,8 +1584,8 @@ replaced rather than appended to, because a preamble is a document's own busines
 
 In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
 cell whose value is a `Figure` displays as a figure. No `.Show()`, no save-then-open, no display
-call. Nine types render: `Figure`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`, `Dim`,
-`U<'u>` and `IScaleErased`.
+call. Ten types render: `Figure`, `Film`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`,
+`Dim`, `U<'u>` and `IScaleErased`.
 
 Without the extension, render to SVG and Verso's built-in `SvgFormatter` — which claims any string
 beginning with `<svg` — draws it. That path needs nothing installed.
@@ -1594,6 +1598,50 @@ let fragment = Html.figure fall
 printfn "fragment is a div: %b" (fragment.StartsWith "<div")
 printfn "swatch: %b" (Html.color Palette.vermillion |> String.length > 0)
 ```
+
+### A film plays in the cell
+
+A `Film` displays as a **flipbook**: its frames sampled into stills, stacked in one SVG, and
+cycled. It needs no encoder, writes no file, and plays wherever the notebook renders.
+
+```fsharp
+let flipbook = Html.film film
+
+printfn "the flipbook is one svg: %b" (flipbook.Contains "<svg")
+printfn "it animates without a stylesheet: %b" (flipbook.Contains "<animate" && not (flipbook.Contains "<style"))
+```
+
+That last line is the whole design. A `<style>` element in a notebook output cell **is not scoped
+to the cell** — it restyles the reader's entire document and stacks up once per execution — so CSS
+`@keyframes`, the obvious way to build a flipbook, is the one mechanism this may not use.
+`<animate>` is an SVG *element*: it travels inside the fragment it animates and cannot escape it.
+
+The frame count is the cost. Each frame is roughly 11 KB of markup, so `Html.film` samples
+`Html.FlipbookFrames` — 48 — which is about half a megabyte, or 40 KB once the notebook is
+compressed. That is a **budget, not a frame rate**: the effective rate is `48 / duration`, so a
+two-second film is smooth and a six-second one is visibly stepped. Say so explicitly when you want
+a different trade:
+
+```fsharp
+printfn "a coarse flipbook is smaller: %b" ((Html.filmAt 12 film).Length < (Html.filmAt 48 film).Length)
+```
+
+The film renders at **its own extent** — `Film.Extent`, the surface its layout was arranged
+against — and not at `Html.defaultSize`. Every frame's text was measured for that surface, and the
+whole of §17's "the panel does not breathe" is a claim about it, so there is no size argument to
+get wrong.
+
+Asking for a single frame gives a still rather than an animation of one:
+
+```fsharp
+printfn "one frame is a still: %b" (not ((Html.filmAt 1 film).Contains "<animate"))
+```
+
+**What this is not.** It is not a video and not a GIF. Both would put `Marey.Tools.Video`, and
+therefore ffmpeg, on the display path — so a reader without ffmpeg would see a still where a
+colleague sees motion, from the same notebook, with nothing saying so. Use
+[`Marey.Tools.Video`](#19-video) when you want a file to send someone; use this when you want to
+see what you just built.
 
 See [`notebooks/README.md`](notebooks/README.md) for installation and
 [`notebooks/marey-tour.dib`](notebooks/marey-tour.dib) for the tour.

@@ -17,9 +17,14 @@ let figure = Chart.line U.second U.metre t x
 Html.figure figure
 ```
 
-Nine types render: `Figure` and `Node` as inline SVG, `Color` as a swatch that does not lie about
-alpha, `Ramp` resampled through Oklab, `Color[]`, `PaletteReport` as a colour-vision-deficiency and
-contrast report, and `Dim`, `U<'u>` and `IScaleErased` as themselves.
+Ten types render: `Figure` and `Node` as inline SVG, **`Film` as a flipbook that plays**, `Color`
+as a swatch that does not lie about alpha, `Ramp` resampled through Oklab, `Color[]`,
+`PaletteReport` as a colour-vision-deficiency and contrast report, and `Dim`, `U<'u>` and
+`IScaleErased` as themselves.
+
+A film is sampled into stills stacked in one SVG and cycled with SMIL `<animate>` — no `<style>`
+block, which a notebook cell cannot scope, and no external tool, so it plays wherever the notebook
+renders and looks the same for every reader.
 
 ## Host-neutral
 

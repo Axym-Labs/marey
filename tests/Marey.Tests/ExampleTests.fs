@@ -47,6 +47,10 @@ let private assemblies =
       "SkiaSharp.HarfBuzz"
       "Marey.Toolchain"
       "Marey.Tools.Video"
+      // Joined the list at M3 phase 9, with `reel.fsx` — the first example to typeset anything.
+      // Phase 8 shipped the package with no example using it, so the omission was invisible: a
+      // list of assemblies is only wrong once a script needs the missing one.
+      "Marey.Tools.Tex"
       "Marey.Html" ]
 
 let private exampleDir =
@@ -206,7 +210,12 @@ let ``the example compiles and runs`` (name: string) =
                 // frame, so the list would have caught it either way. It is here because a
                 // video is a figure this library now produces, and a checker that did not know
                 // that would fail the first example that only produces one.
-                ext = ".svg" || ext = ".tex" || ext = ".png" || ext = ".pdf" || ext = ".mp4")
+                // `.html` joined at M3 phase 10, for `reel.fsx`'s flipbook. It is here for the
+                // reason `.mp4` is: a film that plays in a browser is a figure this library now
+                // produces, and the first example that produces *only* one would otherwise fail
+                // for being a new kind of output rather than for being wrong. That is exactly
+                // how this list caught out `shaped-text.fsx` at M2.5.
+                ext = ".svg" || ext = ".tex" || ext = ".png" || ext = ".pdf" || ext = ".mp4" || ext = ".html")
 
         Assert.True(
             produced.Length > 0,

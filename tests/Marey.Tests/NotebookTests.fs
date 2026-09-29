@@ -18,6 +18,7 @@ module Marey.Tests.NotebookTests
 
 open System
 open System.IO
+open System.Text.RegularExpressions
 open System.Xml.Linq
 open Xunit
 open Marey
@@ -54,6 +55,25 @@ module private Fixtures =
     let erasedScale: IScaleErased =
         Erase.scale (Scale.linear U.second (0.0<s>, 10.0<s>))
 
+    /// A short film with something that actually moves, for D83's flipbook.
+    ///
+    /// A zoom rather than a fade: the y domain changes, so the tick labels change, so the frames
+    /// genuinely differ. A film whose frames are all the same picture would satisfy every
+    /// assertion below while proving nothing about any of them.
+    let film: Film =
+        let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
+
+        let fig =
+            Chart.line U.second U.metre ts xs |> Chart.withTitle "free fall"
+
+        let story =
+            Storyboard.scene {
+                let! curve = Storyboard.draw fig |> Storyboard.over 0.5<s>
+                do! curve |> Storyboard.zoomToY (0.0, 40.0) |> Storyboard.over 0.5<s>
+            }
+
+        Film.ofStoryWith 8 TextMeasure.approx (Chart.size 240.0 160.0) story
+
     let translucent: Color = Color.withAlpha 0.35 Palette.blue
 
     /// Names a user chose, containing the three characters that turn a fragment into markup.
@@ -87,7 +107,13 @@ module private Fixtures =
           "palette report", fun () -> Html.paletteReport report
           "dimension", fun () -> Html.dim acceleration
           "unit witness", fun () -> Html.witness U.metrePerSecondSquared
-          "erased scale", fun () -> Html.scale erasedScale ]
+          "erased scale", fun () -> Html.scale erasedScale
+          // D83. Small on purpose — the sweep renders this list several times, and a
+          // `FlipbookFrames`-sized film in it would dominate the suite's runtime for no extra
+          // coverage: what these gates check is the wrapper, and six frames exercise it exactly
+          // as well as forty-eight.
+          "film", fun () -> Html.filmAt 6 film
+          "film of one frame", fun () -> Html.filmAt 1 film ]
 
     let rendered () = all |> List.map (fun (name, f) -> name, f ())
 
@@ -161,6 +187,126 @@ module Fragments =
 
         Assert.DoesNotContain("<sup>", witness)
         Assert.Contains("&lt;sup&gt;", witness)
+
+    // ----------------------------------------------------------------------------------
+    // D83 — the flipbook
+    // ----------------------------------------------------------------------------------
+
+    /// **The gate the id prefix exists for, and it can fail.**
+    ///
+    /// SVG ids are scoped to the document, not to a nested `<svg>`, so N frames stacked in one
+    /// outer document share one id space. Without `SvgBackend.renderScoped`, every frame emits
+    /// `qc`, `qm` and the same `Keyed` names, `url(#qc)` in frame 5 resolves to frame 0's clip
+    /// path, and `<use xlink:href="#qm">` to frame 0's marker — which is invisible exactly while
+    /// the frames agree, and wrong the moment a `highlight` makes one mark bigger.
+    ///
+    /// Confirmed non-vacuous by rendering the same frames unscoped: 5 ids per frame, 5 distinct
+    /// across all six, against 30 distinct with the prefix.
+    [<Fact>]
+    let ``no two frames of a flipbook share an id`` () =
+        let html = Html.filmAt 6 Fixtures.film
+
+        let ids =
+            Regex.Matches(html, "id=\"([^\"]+)\"")
+            |> Seq.map (fun m -> m.Groups.[1].Value)
+            |> Seq.toList
+
+        Assert.NotEmpty ids
+
+        Assert.Equal<string list>(List.distinct ids |> List.sort, List.sort ids)
+
+        // And the same scene rendered the ordinary way *does* repeat them, which is what makes
+        // the assertion above a gate rather than a coincidence of this fixture.
+        let unscoped =
+            [ for i in 0..5 ->
+                SvgBackend.render Fixtures.film.Extent (Fixtures.film.Frames.At(float i / 6.0 * Fixtures.film.Duration)) ]
+            |> String.concat ""
+
+        let repeated =
+            Regex.Matches(unscoped, "id=\"([^\"]+)\"")
+            |> Seq.map (fun m -> m.Groups.[1].Value)
+            |> Seq.toList
+
+        Assert.True(
+            (List.distinct repeated).Length < repeated.Length,
+            "the unscoped render no longer repeats ids, so the scoped gate above proves nothing"
+        )
+
+    /// **The slices tile the cycle exactly once**: no gap, which would flash the empty surface,
+    /// and no overlap, which would draw two frames at once.
+    ///
+    /// Read out of the emitted `keyTimes` rather than out of the generator, because the
+    /// generator is the thing under test. Frame `i` is opaque from `i/n` and hidden again at
+    /// `(i+1)/n`; the first and last frames carry two stops because `calcMode="discrete"` holds
+    /// its final value to the end of the cycle.
+    [<Fact>]
+    let ``every instant of the cycle shows exactly one frame`` () =
+        let n = 6
+        let html = Html.filmAt n Fixtures.film
+
+        let starts =
+            Regex.Matches(html, "values=\"([^\"]+)\" keyTimes=\"([^\"]+)\"")
+            |> Seq.map (fun m ->
+                let values = m.Groups.[1].Value.Split(';')
+                let times = m.Groups.[2].Value.Split(';')
+                // The stop at which this frame becomes opaque.
+                let i = Array.findIndex ((=) "1") values
+                float times.[i])
+            |> Seq.toList
+
+        Assert.Equal(n, starts.Length)
+
+        // One frame starts at each n-th of the cycle, in order and without repetition. Both
+        // sides rounded to the six decimals the attribute carries: `1/6` is written `0.166667`,
+        // and comparing that against an unrounded `0.1666…` is a test of `Num.at`, not of the
+        // tiling.
+        let round6 (t: float) = System.Math.Round(t, 6)
+
+        Assert.Equal<float list>(
+            [ for i in 0 .. n - 1 -> round6 (float i / float n) ],
+            starts |> List.map round6
+        )
+
+    /// The frame count is the frame count.
+    [<Fact>]
+    let ``a flipbook holds the frames it was asked for`` () =
+        for n in [ 2; 6; 13 ] do
+            let html = Html.filmAt n Fixtures.film
+            Assert.Equal(n, Regex.Matches(html, "<animate ").Count)
+
+    /// Two renders of one film are the same string. The repeated gate of this repository, and it
+    /// reaches further here than usual: the id prefix is derived from the frame index, so a
+    /// generated-name scheme that reached for a GUID would fail exactly this.
+    [<Fact>]
+    let ``a flipbook is deterministic`` () =
+        Assert.Equal(Html.filmAt 6 Fixtures.film, Html.filmAt 6 Fixtures.film)
+
+    /// A film of one frame is a still, and says nothing about time.
+    ///
+    /// `keyTimes` for a one-frame cycle degenerates to a frame visible for all of it and hidden
+    /// for none — an `<animate>` that animates nothing. A still is the honest rendering, and it
+    /// is also what a caller asking for one frame meant.
+    [<Fact>]
+    let ``one frame is a still rather than an animation of one`` () =
+        let html = Html.filmAt 1 Fixtures.film
+
+        Assert.DoesNotContain("<animate", html)
+        Assert.Contains("<svg xmlns=\"http://www.w3.org/2000/svg\"", html)
+
+        // And a count below one is the same thing rather than an exception or an empty cell.
+        Assert.Equal(html, Html.filmAt 0 Fixtures.film)
+
+    /// The film is rendered at its own extent, not at `Html.defaultSize`.
+    ///
+    /// A film's layout was arranged once against its own surface and every frame's text was
+    /// measured for it, so re-sizing here would break the one thing M3 built — and it would do
+    /// it silently, because the picture still looks like a picture.
+    [<Fact>]
+    let ``a flipbook keeps the surface the film was arranged against`` () =
+        let html = Html.filmAt 4 Fixtures.film
+
+        Assert.Contains("width=\"240\" height=\"160\"", html)
+        Assert.DoesNotContain("width=\"720\"", html)
 
     /// Rules 1 and 2 from `Html.fs`'s header, as assertions rather than intentions.
     ///

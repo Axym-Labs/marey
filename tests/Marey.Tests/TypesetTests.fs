@@ -493,6 +493,44 @@ module ``the degrade`` =
         // Resolved once per process, so the second answer is the first one.
         Assert.Equal(line, Typeset.report ())
 
+    /// **The cache collapses repetition inside a call and does not span calls.**
+    ///
+    /// Both halves, because the header claimed the second one and it was not true: an earlier
+    /// draft said "an animation costs it once, because the cache is keyed on the source rather
+    /// than on the frame", and the guide repeated it. The cache is a local in `sceneWith`, so a
+    /// caller typesetting an animation frame by frame pays a figure's worth per frame. Found at
+    /// M3 phase 9 by writing the demo reel around the claim and timing it.
+    ///
+    /// Stated in engine runs rather than in milliseconds: the number of times `latex` was
+    /// started is the fact, and a wall clock on a loaded machine is not.
+    [<Fact>]
+    let ``the cache is per call, so repetition is free and a second call is not`` () =
+        withTex (fun () ->
+            // Four runs, one distinct source. Whatever the pass costs, it is one engine run:
+            // this is the facets case, and it is the half that was always true.
+            let one = run (Some "$x^2 + y^2$") "x2 + y2"
+
+            let repeated =
+                Group [| for i in 0..3 -> Text { one with At = { X = 0.2<nd>; Y = float i * 0.2<nd> } } |]
+
+            match Typeset.scene TexOptions.Default extent repeated with
+            | Typeset r ->
+                Assert.Equal(4, r.Typeset)
+                Assert.Equal(1, r.EngineRuns)
+            | outcome -> failwithf "the repeated scene did not typeset: %A" outcome
+
+            // The same source again, in a second call. A cache that spanned calls would report
+            // zero engine runs here; it reports one, because the second call has its own.
+            match Typeset.scene TexOptions.Default extent (Text one) with
+            | Typeset r ->
+                Assert.Equal(1, r.Typeset)
+
+                Assert.Equal(
+                    1,
+                    r.EngineRuns
+                )
+            | outcome -> failwithf "the second call did not typeset: %A" outcome)
+
 // ======================================================================================
 // THE PASS — what happens to a scene, with and without an engine behind it
 // ======================================================================================

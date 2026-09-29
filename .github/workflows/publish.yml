@@ -138,8 +138,13 @@ jobs:
             -p:Version=${{ steps.version.outputs.value }} \
             -p:ContinuousIntegrationBuild=true
 
+      # As in ci.yml, and it matters more here: this is the run that decides whether twelve
+      # packages go to nuget.org. A toolchain gate that skipped would publish on a green tick
+      # that never compiled a document, encoded a frame or typeset a formula.
       - name: Test
-        run: dotnet test Marey.slnx --configuration Release --no-build
+        env:
+          MAREY_REQUIRE_TOOLCHAIN: '1'
+        run: dotnet test Marey.slnx --configuration Release --no-build --logger "console;verbosity=normal"
 
       - name: Pack
         run: |
