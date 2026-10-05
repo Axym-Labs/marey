@@ -380,6 +380,22 @@ module Figure =
                     (describe i)
             | _ -> ()
 
+            // D98 — the one difference `Dim` cannot see. An angular velocity and a frequency are
+            // both s⁻¹ and differ by 2π, so a rad/s layer and a Hz layer on one axis plot one of
+            // them 6.28 times too high without a word.
+            let a0 = U.angleExponentOf s0.Symbol s0.Factors
+            let ai = U.angleExponentOf si.Symbol si.Factors
+
+            if si.Dim = s0.Dim && ai <> a0 then
+                failwithf
+                    "Marey: %s has %s %s axis in %s but %s has one in %s. Their dimensions agree, but one carries an angle and the other does not — an angular velocity and a frequency differ by 2π. They cannot share an axis."
+                    (describe 0)
+                    (if axis = "x" then "an" else "a")
+                    axis
+                    (UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none s0.Symbol s0.Factors s0.Dim s0.ToSI s0.OffsetSI)
+                    (describe i)
+                    (UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none si.Symbol si.Factors si.Dim si.ToSI si.OffsetSI)
+
             if si.Dim <> s0.Dim then
                 failwithf
                     "Marey: %s has %s %s axis in %s but %s has one in %s. Two physical dimensions cannot share an axis."

@@ -73,13 +73,27 @@ module Axes =
     ///
     /// Anything not in the table falls back to the axis's own name, `x` or `y`, which is what a
     /// plot of an unnamed compound quantity should say.
-    let defaultLabel (side: AxisSide) (d: Dim) =
+    ///
+    /// D98 — `angle` is the witness's power of angle (`U.angleExponentOf`), which `Dim` cannot
+    /// see. An angle is `θ`, an angular velocity `ω`, an angular acceleration `α`; any other
+    /// quantity carrying an angle falls back to the axis's name rather than borrowing the name of
+    /// the angle-free quantity with the same dimension — which is how `rad/s` was titled `f`.
+    let defaultLabelFor (side: AxisSide) (angle: int) (d: Dim) =
         let positional =
             match side with
             | AxisBottom
             | AxisTop -> "x"
             | AxisLeft
             | AxisRight -> "y"
+
+        if angle <> 0 then
+            match angle, d.L, d.M, d.T, d.I, d.Th, d.N, d.J with
+            | 1, 0, 0, 0, 0, 0, 0, 0 -> "θ"
+            | 1, 0, 0, -1, 0, 0, 0, 0 -> "ω"
+            | 1, 0, 0, -2, 0, 0, 0, 0 -> "α"
+            | 2, 0, 0, 0, 0, 0, 0, 0 -> "Ω"
+            | _ -> positional
+        else
 
         match d.L, d.M, d.T, d.I, d.Th, d.N, d.J with
         | 0, 0, 0, 0, 0, 0, 0 -> positional
@@ -108,6 +122,15 @@ module Axes =
         | -2, -1, 4, 2, 0, 0, 0 -> "C"
         | _ -> positional
 
+    /// The name a quantity gets from its dimension alone, for a witness that carries no angle.
+    let defaultLabel (side: AxisSide) (d: Dim) = defaultLabelFor side 0 d
+
+    /// The power of angle behind a packed scale (D98).
+    let angleOf (packed: PackedScale) =
+        packed.Accept
+            { new IScaleConsumer<int> with
+                member _.Apply<[<Measure>] 'u>(s: Scale<'u>) = U.angleExponentOf s.Unit.Symbol s.Unit.Factors }
+
     /// The `Dim` behind a packed scale, recovered through §2.3's rank-2 encoding.
     let dimOf (packed: PackedScale) =
         packed.Accept
@@ -130,7 +153,7 @@ module Axes =
         let name =
             match label with
             | Some l -> l
-            | None -> defaultLabel side (dimOf packed)
+            | None -> defaultLabelFor side (angleOf packed) (dimOf packed)
 
         Axis.ofPackedPinnedWith pin style UnitRegistry.si tickCount name packed
 

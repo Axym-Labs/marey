@@ -184,6 +184,24 @@ megavolt-per-metre axis reads `MV·m⁻¹`. A bare dimension is never factorised
 `J/K` is also the dimension of `N·m/K`, so only a supplied factorisation is read back. A registered
 name still wins, so `U.mul Derived.newton U.metre` is `J`.
 
+**Except where the composition carries an angle.** The radian is dimensionless in SI, so `rad/s`
+has the dimension of a hertz, and the registry would name it one. An angular velocity is not a
+frequency: they differ by 2π. So a factorisation that contains `rad` or `sr` is labelled as
+written, and the axis takes the angle's own quantity name:
+
+```fsharp
+let angularVelocity = U.div Derived.radian U.second
+printfn "angular velocity: %s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none angularVelocity)
+printfn "frequency:        %s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none Derived.hertz)
+```
+
+That is `rad·s⁻¹` and `Hz`. An axis in `rad·s⁻¹` is titled `ω`, one in `rad` `θ`, and one in
+`rad·s⁻²` `α`, and a layer in `rad/s` refuses to share an axis with a layer in `Hz`, as metres
+refuse joules. The angle is seen in the factors a witness was **composed** from, or in the symbol
+`rad` of `Derived.radian` itself. A witness declared by hand with a compound symbol,
+`U<rad/s>("rad/s", …)`, has no factors to read, so it renders and unifies as a plain s⁻¹: build
+angular units with `U.div` and `U.mul` from `Derived.radian`.
+
 Non-SI witnesses cover the units physics actually writes in: `electronvolt`, `angstrom`,
 `parsec`, `lightYear`, `dalton`, `atmosphere`, `bar`, `barn`, `calorie`, `gauss`, `litre`,
 `minute`, `hour`, `day`, `year`, `astronomicalUnit`, `degreeCelsius`, `degreeFahrenheit`.

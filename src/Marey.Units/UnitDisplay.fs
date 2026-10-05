@@ -223,8 +223,14 @@ module UnitDisplay =
     /// the same vector is `J/K` and `N·m/K`, and picking one is a guess. `factors` is not a
     /// guess: it is what the caller wrote. The registry still wins, so `mul newton metre`
     /// remains `J` rather than becoming `N·m`.
+    /// The registry's name for a dimension — unless the factorisation carries an angle, which
+    /// the dimension cannot see (D98). `rad·s⁻¹` and `Hz` share `s⁻¹`; naming the first by the
+    /// second is a factor of 2π said confidently.
+    let private canonicalFor (registry: UnitRegistry) (factors: (string * int) list) (dim: Dim) =
+        if U.angleExponentOf "" factors <> 0 then None else UnitRegistry.tryCanonical registry dim
+
     let private bodyOfWith style (registry: UnitRegistry) (factors: (string * int) list) (dim: Dim) =
-        match UnitRegistry.tryCanonical registry dim with
+        match canonicalFor registry factors dim with
         | Some us -> symText style us
         | None when not (List.isEmpty factors) -> expandedBodyWith (factorSpelling registry) style factors
         | None -> expandedBody style (Dim.exponents dim)
@@ -289,7 +295,7 @@ module UnitDisplay =
             wrapQty style (bodyOfWith style registry factors dim)
         else
             let target =
-                match UnitRegistry.tryCanonical registry dim with
+                match canonicalFor registry factors dim with
                 | Some us -> Some(p, us)
                 | None ->
                     match Dim.exponents dim with

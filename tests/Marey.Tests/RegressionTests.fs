@@ -734,3 +734,93 @@ module ``D41 a supplied factorisation is displayed`` =
                 erased.ToSI
                 erased.OffsetSI
         )
+
+// ======================================================================================
+// D98 — an angle survives the erasure that `Dim` cannot see it through
+// ======================================================================================
+
+/// Angle is dimensionless in SI, so `rad/s` and `Hz` share the dimension s⁻¹. Until D98 the
+/// renderer named `rad/s` by its dimension — `Hz` — the name table called the axis `f`, and
+/// `Figure.unify` let a rad/s layer and a Hz layer share an axis: an angular velocity and a
+/// frequency, a factor of 2π apart, plotted on one scale without a word. The witness had always
+/// carried the angle in its factors; nothing read them.
+module ``D98 an angle is not a frequency`` =
+
+    let private radPerSecond = U.div Derived.radian U.second
+    let private text (u: U<'u>) = UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none u
+
+    [<Fact>]
+    let ``rad/s renders as rad/s, and a hertz is still a hertz`` () =
+        Assert.Equal("rad·s⁻¹", text radPerSecond)
+        Assert.Equal("rad·s⁻²", text (U.div radPerSecond U.second))
+        Assert.Equal("Hz", text Derived.hertz)
+        Assert.Equal("Hz", text (U.recip U.second))
+        Assert.Equal("rad", text Derived.radian)
+
+    /// The erased path reads the same factors, so a reloaded figure labels itself the same (§15).
+    [<Fact>]
+    let ``the erased witness renders the angle too`` () =
+        let erased = Erase.scale (Scale.linear radPerSecond (0.0<rad / s>, 1.0<rad / s>))
+
+        Assert.Equal(
+            "rad·s⁻¹",
+            UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none erased.Symbol erased.Factors erased.Dim erased.ToSI erased.OffsetSI
+        )
+
+    [<Fact>]
+    let ``an angle, an angular velocity and an angular acceleration have their own names`` () =
+        let named (u: U<'u>) = Axes.defaultLabelFor AxisLeft (U.angleExponentOf u.Symbol u.Factors) u.Dim
+
+        Assert.Equal("θ", named Derived.radian)
+        Assert.Equal("ω", named radPerSecond)
+        Assert.Equal("α", named (U.div radPerSecond U.second))
+        Assert.Equal("f", named Derived.hertz)
+
+    [<Fact>]
+    let ``a phase-space axis is titled ω [rad·s⁻¹]`` () =
+        let fig = Chart.line Derived.radian radPerSecond [| 0.0<rad>; 1.0<rad> |] [| 0.0<rad / s>; 2.0<rad / s> |]
+        let scene = Chart.toScene (Chart.size 400.0 300.0) fig
+
+        let titles =
+            scene
+            |> Scene.fold
+                (fun acc n ->
+                    match n with
+                    | Text t -> t.Text :: acc
+                    | _ -> acc)
+                []
+
+        Assert.Contains("ω [rad·s⁻¹]", titles)
+        Assert.Contains("θ [rad]", titles)
+
+    [<Fact>]
+    let ``an angular velocity and a frequency cannot share an axis`` () =
+        let ts = [| 0.0<s>; 1.0<s> |]
+
+        let fig =
+            Chart.line U.second radPerSecond ts [| 0.0<rad / s>; 6.28<rad / s> |]
+            |> Chart.addLine U.second Derived.hertz ts [| 0.0<Hz>; 1.0<Hz> |]
+
+        let ex = Assert.ThrowsAny<exn>(fun () -> Figure.unify fig.Panels.[0] |> ignore)
+        Assert.Contains("2π", ex.Message)
+        Assert.Contains("rad·s⁻¹", ex.Message)
+        Assert.Contains("Hz", ex.Message)
+
+    /// Two angular velocities share an axis, as they always did.
+    [<Fact>]
+    let ``two angular velocities still share an axis`` () =
+        let ts = [| 0.0<s>; 1.0<s> |]
+
+        let fig =
+            Chart.line U.second radPerSecond ts [| 0.0<rad / s>; 6.28<rad / s> |]
+            |> Chart.addLine U.second radPerSecond ts [| 1.0<rad / s>; 2.0<rad / s> |]
+
+        Assert.Equal(2, (Figure.unify fig.Panels.[0]).Layers.Length)
+
+    /// The documented gap: a witness declared by hand with a compound symbol carries no factors,
+    /// and its symbol is not `rad`, so the angle is not seen. Pinned so the gap is a decision
+    /// rather than a surprise; compose angular units instead.
+    [<Fact>]
+    let ``a hand-declared compound angular witness is not recognised`` () =
+        let declared = U<rad / s>("rad/s", Dim.neg Dim.time, 1.0)
+        Assert.Equal(0, U.angleExponentOf declared.Symbol declared.Factors)

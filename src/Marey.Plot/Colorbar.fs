@@ -47,7 +47,7 @@ module Colorbar =
         if not (System.String.IsNullOrEmpty label) then
             label
         else
-            match Axes.defaultLabel AxisRight (Axes.dimOf packed) with
+            match Axes.defaultLabelFor AxisRight (Axes.angleOf packed) (Axes.dimOf packed) with
             | "y" -> ""
             | l -> l
 

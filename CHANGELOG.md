@@ -40,12 +40,22 @@ land in a minor release.
 
 ### Changed
 
+- **A layer in rad/s refuses to share an axis with a layer in Hz.** Angle is dimensionless in SI,
+  so the two have one dimension and `Figure.unify` let them share an axis, plotting an angular
+  velocity and a frequency, a factor of 2π apart, on one scale. It now raises, naming both units,
+  as it does for metres against joules. The angle is read from the witness's factors, so build
+  angular units by composition (`U.div Derived.radian U.second`). A witness declared by hand with
+  a compound symbol carries no factors and is not recognised; the guide says so.
 - **`GeomOf` gained a case, `GeomField`**, the geom a field layer is: a grid and what to draw of
   it, computed on the panel at compile time. A `match` over `Geom` that was exhaustive needs an
   arm for it.
 
 ### Fixed
 
+- **An axis in rad/s was titled `f [Hz]`.** The renderer named the unit by its dimension, s⁻¹,
+  and the dimension's conventional name is a frequency's. A unit whose factors carry an angle is
+  now written as composed (`rad·s⁻¹`), and the axis is named for the angle: `θ` for rad, `ω` for
+  rad/s, `α` for rad/s². `Hz` and `f` are unchanged for anything without an angle.
 - **`Marey.Tools.Tex`'s package readme still said an animation typesets once for the whole
   film.** That was corrected in the guide at 0.3.0 and missed here; the memo does not outlive one
   call.
