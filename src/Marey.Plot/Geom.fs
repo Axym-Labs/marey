@@ -547,6 +547,7 @@ module Geom =
         match mark with
         | FieldQuiver key -> FieldMarks.arrows mapPt measurer plotSize background stroke st.Font colourOf false key field
         | FieldDirections -> FieldMarks.arrows mapPt measurer plotSize background stroke st.Font colourOf true None field
+        | FieldStreamlines separation -> FieldMarks.streamlines mapPt plotSize stroke colourOf separation field
         | FieldHeatmap smooth -> FieldMarks.heatmap colourOf smooth field
         | FieldContours levels ->
             FieldMarks.contours
@@ -1276,5 +1277,6 @@ module Geom =
         // usually unnamed and so absent from the legend — its colour is the colorbar's to explain.
         | GeomField(_, FieldContours _)
         | GeomField(_, FieldQuiver _)
-        | GeomField(_, FieldDirections) -> LegendLine st.Dash
+        | GeomField(_, FieldDirections)
+        | GeomField(_, FieldStreamlines _) -> LegendLine st.Dash
         | GeomField _ -> LegendSwatch

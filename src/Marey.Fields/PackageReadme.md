@@ -64,6 +64,10 @@ because ∂ω̇/∂θ and ∂θ̇/∂ω are in different units and their differe
   means: `2 kV·m⁻¹`. `Field.directions` draws equal arrows for a phase space, where the two
   components share no unit and a length would mean nothing. Arrows follow the field on the
   panel, so they stay tangent to it on a log axis.
+- **Streamlines.** `Field.streamlines` draws them evenly spaced on the page, a separation in pixels
+  apart, so a phase portrait has its closed orbits around a centre and its separatrices through
+  a saddle with nothing configured. They are integrated on the panel, so they stay the field's
+  curves on a log axis. No randomness is involved, so the same field draws the same lines.
 
 ## Links
 

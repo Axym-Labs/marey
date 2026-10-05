@@ -30,6 +30,10 @@ land in a minor release.
   arrows by magnitude. `Field.directions` draws equal arrows for any vector grid, phase spaces
   included, where a magnitude has no unit. Every arrow is tangent to the field on the panel, a
   log axis included.
+  `Field.streamlines` draws evenly spaced streamlines 16 px apart (`streamlinesWith` states the
+  separation), integrated on the page so they are the field's own curves on a log axis or a
+  phase space, closed where they return to their start, with arrowheads downstream and no
+  randomness. `streamlinesBy` colours each line by the field's magnitude along it.
 - **`Chart.overlay`**, which draws one figure's layers over another's last panel: a heatmap
   under its contours, or any two figures over the same quantities.
 - **`Rng`, a specified pseudo-random generator, in `Marey.Core`.** SplitMix64, immutable,
@@ -52,6 +56,10 @@ land in a minor release.
 
 ### Fixed
 
+- **A Greek letter in a TikZ text run stopped `pdflatex`.** The escaper mapped µ and Ω and
+  nothing else of the Greek block, so an axis whose conventional name is Greek, a density's `ρ`
+  among them, was a hard "Unicode character" error. Greek letters are now set in math italic
+  (`\ensuremath{\theta}`), as a quantity symbol is; µ and Ω keep their upright unit forms.
 - **An axis in rad/s was titled `f [Hz]`.** The renderer named the unit by its dimension, s⁻¹,
   and the dimension's conventional name is a frequency's. A unit whose factors carry an angle is
   now written as composed (`rad·s⁻¹`), and the axis is named for the angle: `θ` for rad, `ω` for

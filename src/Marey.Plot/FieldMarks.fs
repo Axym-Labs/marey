@@ -38,6 +38,9 @@ type FieldMark =
     /// An arrow at every node, all one length: direction only. What a phase space gets, where
     /// the two components are in different units and a magnitude does not exist.
     | FieldDirections
+    /// D89 — evenly spaced streamlines, `separation` apart on the panel, with arrowheads along
+    /// them. The payload's `Values` colour each line by their mean along it.
+    | FieldStreamlines of separation: float<px>
 
 /// D87 — what one arrow length means: a round value of the magnitude and its label, prefix and
 /// unit included, both decided from the data when the layer is built. The arrow it is drawn with
@@ -624,4 +627,320 @@ module FieldMarks =
                 | _ -> Scene.empty
 
             Group(Array.append drawn [| keyNode |])
+        | _ -> Scene.empty
+
+    // ---- Streamlines (D89) --------------------------------------------------------------------
+    //
+    // **Integrated in pixels, along the unit direction.** Arc length on a phase space adds rad²
+    // to rad²/s², which is not a quantity, and on a log axis it is not a visual one either: the
+    // only length a set of streamlines can be evenly spaced in is a length on the page. So the
+    // integrator follows dX/ds = v̂(X), where v is the field's direction on the panel — the
+    // components `Geom.project` has already multiplied by the scales' derivatives, times the
+    // plot area's size — and s is arc length in pixels. Streamlines do not depend on how they are
+    // parameterised, so these are the field's own curves, on any axis.
+    //
+    // **Evenly spaced by Jobard and Lefer's method** ("Creating evenly-spaced streamlines of
+    // arbitrary density", 1997). A line is integrated both ways from a seed until it comes within
+    // `dTest = separation / 2` of a point of another line, leaves the grid, meets a missing value,
+    // reaches a fixed point, or turns back on itself. New seeds are proposed `separation` to
+    // either side of every finished line, and one is accepted only if nothing is closer than
+    // `separation`. Seeds are tried in a fixed order — never at random — because a film of a
+    // changing field whose lines are reseeded at random flickers.
+    //
+    // **A line that comes back to where it started is closed**, which is what a centre's orbits
+    // are. A line's own points near its start are exempt from the separation test for that
+    // reason; its own points near its head are exempt because they are where it just was.
+
+    /// The field's direction on the panel at a point in pixels, and its speed there; `ValueNone`
+    /// outside the grid or at a missing value.
+    let private velocityAt (p: Plane) (w: float) (h: float) (x: float) (y: float) =
+        let at (values: float[]) =
+            let saved = { p with V = values }
+            bilinearAt saved (x / w) (y / h)
+
+        let u = at p.U * w
+        let v = at p.W * h
+
+        if finite u && finite v then ValueSome(struct (u, v)) else ValueNone
+
+    /// The lines as polylines in pixels, each with whether it closed, in the order they were
+    /// found. Public for the tests; `streamlines` draws them.
+    let streamlinePolylines (plot: Extent<px>) (separation: float<px>) (f: FieldPayload<nd>) : (struct (float * float)[] * bool)[] =
+        match plane f with
+        | Some p when p.U.Length > 0 ->
+            let w, h = float plot.Width, float plot.Height
+            let dSep = max 2.0 (float separation)
+            let dTest = dSep / 2.0
+            let step = min 2.0 (dSep / 8.0)
+            let x0, x1 = p.X.[0] * w, p.X.[p.Nx - 1] * w
+            let y0, y1 = p.Y.[0] * h, p.Y.[p.Ny - 1] * h
+            let maxSteps = int (8.0 * (x1 - x0 + y1 - y0) / step)
+
+            let fastest =
+                Array.init p.U.Length (fun k -> sqrt ((p.U.[k] * w) ** 2.0 + (p.W.[k] * h) ** 2.0))
+                |> Array.filter finite
+                |> Array.fold max 0.0
+
+            let slowest = 1e-6 * fastest
+
+            let direction (x: float) (y: float) =
+                if x < x0 || x > x1 || y < y0 || y > y1 then
+                    ValueNone
+                else
+                    match velocityAt p w h x y with
+                    | ValueSome(struct (u, v)) ->
+                        let speed = sqrt (u * u + v * v)
+                        if speed > slowest then ValueSome(struct (u / speed, v / speed)) else ValueNone
+                    | ValueNone -> ValueNone
+
+            // Every accepted point, hashed on a dSep lattice, tagged with its line and its index
+            // along that line.
+            let cells = Dictionary<struct (int * int), ResizeArray<struct (float * float * int * int)>>()
+            let cellOf (x: float) (y: float) = struct (int (floor (x / dSep)), int (floor (y / dSep)))
+
+            let add (line: int) (index: int) (x: float) (y: float) =
+                let c = cellOf x y
+
+                let bucket =
+                    match cells.TryGetValue c with
+                    | true, b -> b
+                    | _ ->
+                        let b = ResizeArray()
+                        cells.[c] <- b
+                        b
+
+                bucket.Add(struct (x, y, line, index))
+
+            /// Whether anything other than `exempt` lies within `radius` of (x, y).
+            let crowded (x: float) (y: float) (radius: float) (exempt: int -> int -> bool) =
+                let struct (cx, cy) = cellOf x y
+                let r2 = radius * radius
+                let mutable hit = false
+
+                for i in cx - 1 .. cx + 1 do
+                    for j in cy - 1 .. cy + 1 do
+                        if not hit then
+                            match cells.TryGetValue(struct (i, j)) with
+                            | true, b ->
+                                for struct (px, py, line, index) in b do
+                                    if not hit && not (exempt line index) then
+                                        let dx, dy = px - x, py - y
+                                        if dx * dx + dy * dy < r2 then hit <- true
+                            | _ -> ()
+
+                hit
+
+            let rk4 (x: float) (y: float) (sign: float) =
+                match direction x y with
+                | ValueNone -> ValueNone
+                | ValueSome(struct (ax, ay)) ->
+                    let s = sign * step
+
+                    match direction (x + s / 2.0 * ax) (y + s / 2.0 * ay) with
+                    | ValueNone -> ValueNone
+                    | ValueSome(struct (bx, by)) ->
+                        match direction (x + s / 2.0 * bx) (y + s / 2.0 * by) with
+                        | ValueNone -> ValueNone
+                        | ValueSome(struct (cx, cy)) ->
+                            match direction (x + s * cx) (y + s * cy) with
+                            | ValueNone -> ValueNone
+                            | ValueSome(struct (dx, dy)) ->
+                                // A direction that reverses within one step is a singularity the
+                                // step straddles, not a curve to follow.
+                                if ax * bx + ay * by < 0.0 || bx * cx + by * cy < 0.0 || cx * dx + cy * dy < 0.0 then
+                                    ValueNone
+                                else
+                                    ValueSome(
+                                        struct (x + s / 6.0 * (ax + 2.0 * bx + 2.0 * cx + dx),
+                                                y + s / 6.0 * (ay + 2.0 * by + 2.0 * cy + dy))
+                                    )
+
+            let near = int (ceil (2.0 * dSep / step))
+
+            /// Trace from a seed in one direction. Indices run outward from the seed: forward
+            /// positive, backward negative. Returns the points (seed excluded) and whether the
+            /// line came back to the seed.
+            let trace (line: int) (sx: float) (sy: float) (sign: float) =
+                let pts = ResizeArray<struct (float * float)>()
+                let mutable x, y = sx, sy
+                let mutable go = true
+                let mutable closed = false
+                let mutable n = 0
+
+                while go && n < maxSteps do
+                    match rk4 x y sign with
+                    | ValueNone -> go <- false
+                    | ValueSome(struct (nx, ny)) ->
+                        n <- n + 1
+                        let index = if sign > 0.0 then n else -n
+
+                        let exempt (l: int) (i: int) =
+                            l = line && (abs (i - index) < near || abs i < near)
+
+                        if n > near && (nx - sx) ** 2.0 + (ny - sy) ** 2.0 < (1.5 * step) ** 2.0 then
+                            // Kept, so the ring's closing segment is under a step and a half
+                            // rather than spanning the gap from the point before.
+                            pts.Add(struct (nx, ny))
+                            closed <- true
+                            go <- false
+                        elif crowded nx ny dTest exempt then
+                            go <- false
+                        else
+                            pts.Add(struct (nx, ny))
+                            add line index nx ny
+                            x <- nx
+                            y <- ny
+
+                pts, closed
+
+            let lines = ResizeArray<struct (struct (float * float)[] * bool)>()
+            let queue = Queue<struct (float * float)[]>()
+
+            let tryLine (sx: float) (sy: float) =
+                if (direction sx sy).IsSome && not (crowded sx sy dSep (fun _ _ -> false)) then
+                    let id = lines.Count
+                    add id 0 sx sy
+                    let ahead, closed = trace id sx sy 1.0
+
+                    let pts =
+                        if closed then
+                            Array.append [| struct (sx, sy) |] (ahead.ToArray())
+                        else
+                            let behind, _ = trace id sx sy -1.0
+                            let back = behind.ToArray() |> Array.rev
+                            Array.concat [ back; [| struct (sx, sy) |]; ahead.ToArray() ]
+
+                    if pts.Length >= 2 then
+                        lines.Add(struct (pts, closed))
+                        queue.Enqueue pts
+
+            /// Seeds `dSep` to either side of a line, every half `dSep` along it.
+            let propose (pts: struct (float * float)[]) =
+                let every = max 1 (int (dSep / 2.0 / step))
+
+                for k in 0 .. every .. pts.Length - 2 do
+                    let struct (ax, ay) = pts.[k]
+                    let struct (bx, by) = pts.[k + 1]
+                    let dx, dy = bx - ax, by - ay
+                    let len = sqrt (dx * dx + dy * dy)
+
+                    if len > 0.0 then
+                        let nx, ny = -dy / len * dSep, dx / len * dSep
+                        tryLine (ax + nx) (ay + ny)
+                        tryLine (ax - nx) (ay - ny)
+
+            // The first seed is the grid's centre; then every line's neighbours; then, for
+            // regions no line reached, a lattice of candidates in row order.
+            let drain () =
+                while queue.Count > 0 do
+                    propose (queue.Dequeue())
+
+            tryLine ((x0 + x1) / 2.0) ((y0 + y1) / 2.0)
+            drain ()
+
+            let mutable gy = y0 + dSep / 2.0
+
+            while gy < y1 do
+                let mutable gx = x0 + dSep / 2.0
+
+                while gx < x1 do
+                    tryLine gx gy
+                    drain ()
+                    gx <- gx + dSep
+
+                gy <- gy + dSep
+
+            lines.ToArray() |> Array.map (fun (struct (pts, closed)) -> pts, closed)
+        | _ -> [||]
+
+    /// The streamlines, one `Path` per colour, with filled arrowheads along each line pointing
+    /// downstream: one at the middle of a short line, one every three separations along a long
+    /// one.
+    let streamlines
+        (mapPt: Vec2<nd> -> Vec2<nd>)
+        (plot: Extent<px>)
+        (stroke: Stroke)
+        (colourOf: float -> Color option)
+        (separation: float<px>)
+        (f: FieldPayload<nd>)
+        : Node =
+        match plane f with
+        | Some p when p.U.Length > 0 ->
+            let w, h = float plot.Width, float plot.Height
+            let toNd (x: float) (y: float) : Vec2<nd> = mapPt { X = x / w * 1.0<nd>; Y = y / h * 1.0<nd> }
+            let dSep = max 2.0 (float separation)
+            let head = 3.0 + 2.0 * float stroke.Width
+            let groups = Dictionary<Color, ResizeArray<PathSeg>>()
+            let heads = Dictionary<Color, ResizeArray<PathSeg>>()
+
+            let into (d: Dictionary<Color, ResizeArray<PathSeg>>) (c: Color) =
+                match d.TryGetValue c with
+                | true, g -> g
+                | _ ->
+                    let g = ResizeArray<PathSeg>()
+                    d.[c] <- g
+                    g
+
+            for pts, closed in streamlinePolylines plot separation f do
+                let mean =
+                    pts
+                    |> Array.map (fun (struct (x, y)) -> bilinearAt p (x / w) (y / h))
+                    |> Array.filter finite
+                    |> fun vs -> if vs.Length = 0 then nan else Array.average vs
+
+                match colourOf mean with
+                | None -> ()
+                | Some c ->
+                    let segs = into groups c
+                    let struct (sx, sy) = pts.[0]
+                    segs.Add(MoveTo(toNd sx sy))
+
+                    for k in 1 .. pts.Length - 1 do
+                        let struct (x, y) = pts.[k]
+                        segs.Add(LineTo(toNd x y))
+
+                    if closed then segs.Add ClosePath
+
+                    // Arc length along the line, for placing the heads.
+                    let arc = Array.zeroCreate pts.Length
+
+                    for k in 1 .. pts.Length - 1 do
+                        let struct (ax, ay) = pts.[k - 1]
+                        let struct (bx, by) = pts.[k]
+                        arc.[k] <- arc.[k - 1] + sqrt ((bx - ax) ** 2.0 + (by - ay) ** 2.0)
+
+                    let total = arc.[arc.Length - 1]
+
+                    if total > 2.0 * head then
+                        let spacing = 3.0 * dSep
+
+                        let marks =
+                            if total < 2.0 * spacing then [ total / 2.0 ]
+                            else [ spacing / 2.0 .. spacing .. total - spacing / 2.0 ]
+
+                        let hs = into heads c
+
+                        for m in marks do
+                            let k = arc |> Array.findIndex (fun a -> a >= m) |> max 1
+                            let struct (ax, ay) = pts.[k - 1]
+                            let struct (bx, by) = pts.[k]
+                            let len = sqrt ((bx - ax) ** 2.0 + (by - ay) ** 2.0)
+
+                            if len > 0.0 then
+                                let dx, dy = (bx - ax) / len, (by - ay) / len
+                                let tx, ty = ax + dx * head / 2.0, ay + dy * head / 2.0
+                                let baseX, baseY = tx - dx * head, ty - dy * head
+                                let nx, ny = -dy * head * 0.4, dx * head * 0.4
+
+                                hs.AddRange
+                                    [| MoveTo(toNd tx ty)
+                                       LineTo(toNd (baseX + nx) (baseY + ny))
+                                       LineTo(toNd (baseX - nx) (baseY - ny))
+                                       ClosePath |]
+
+            Group
+                [| for KeyValue(c, segs) in groups do
+                       yield Path(segs.ToArray(), Some { stroke with Paint = Solid c }, None, NonZero)
+                   for KeyValue(c, segs) in heads do
+                       yield Path(segs.ToArray(), None, Some(Solid c), NonZero) |]
         | _ -> Scene.empty

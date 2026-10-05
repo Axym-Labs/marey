@@ -645,3 +645,182 @@ module ``arrows`` =
         | TexToolchain.Unavailable -> Console.WriteLine("SKIPPED: " + TexToolchain.report ())
         | TexToolchain.Compiled -> ()
         | TexToolchain.Failed why -> failwithf "the quiver baseline does not compile:\n%s" why
+
+// ======================================================================================
+// Phase 4 — streamlines (D89). Gates 9 and 10.
+// ======================================================================================
+
+module ``streamlines`` =
+
+    let private plot: Extent<px> = { Width = 400.0<px>; Height = 250.0<px> }
+
+    /// A vector field as a projected payload over the unit panel, components already in `nd`.
+    /// Linear fields only below: bilinear interpolation reproduces them exactly, so what a test
+    /// measures is the integrator rather than the interpolation.
+    let private payload (n: int) (f: float -> float -> float * float) : FieldPayload<nd> =
+        let cs = Grid.linear 0.0 1.0 n
+
+        let uw =
+            [| for j in 0 .. n - 1 do
+                   for i in 0 .. n - 1 -> f cs.[i] cs.[j] |]
+
+        { Xs = cs |> Array.map (fun c -> c * 1.0<nd>)
+          Ys = cs |> Array.map (fun c -> c * 1.0<nd>)
+          Values = Array.create (n * n) 1.0
+          U = uw |> Array.map fst
+          W = uw |> Array.map snd }
+
+    /// A rotation about the panel's centre: every streamline is a closed orbit.
+    let private rotation = payload 11 (fun x y -> -(y - 0.5), x - 0.5)
+
+    let private lines = lazy (FieldMarks.streamlinePolylines plot 16.0<px> rotation)
+
+    /// **Gate 9.** Every chord of every line points along the field at its midpoint, to within
+    /// a thousandth of a radian — compared on the page, where the field's direction is
+    /// (u·W, w·H).
+    [<Fact>]
+    let ``every chord is tangent to the field`` () =
+        let ls = lines.Force()
+        Assert.True(ls.Length > 10, sprintf "only %d lines" ls.Length)
+
+        for pts, _ in ls do
+            for k in 1 .. pts.Length - 1 do
+                let struct (ax, ay) = pts.[k - 1]
+                let struct (bx, by) = pts.[k]
+                let mx, my = (ax + bx) / 2.0 / 400.0, (ay + by) / 2.0 / 250.0
+                let expected = atan2 ((mx - 0.5) * 250.0) (-(my - 0.5) * 400.0)
+                let actual = atan2 (by - ay) (bx - ax)
+                let diff = abs (atan2 (sin (expected - actual)) (cos (expected - actual)))
+                Assert.True(diff < 1e-3, sprintf "a chord at (%g, %g) is %g rad off the field" mx my diff)
+
+    /// **Gate 10.** No two points on different lines are closer than `dTest`, half the separation.
+    ///
+    /// Over fields whose lines **converge** — a sink and a saddle. A rotation's orbits are
+    /// concentric and never approach each other, so the separation test is never what stops one,
+    /// and the first version of this gate passed with that test halved.
+    [<Theory>]
+    [<InlineData("sink")>]
+    [<InlineData("saddle")>]
+    let ``no two lines come closer than half the separation`` (shape: string) =
+        let field =
+            match shape with
+            | "sink" -> payload 11 (fun x y -> -(x - 0.5), -(y - 0.5))
+            | _ -> payload 11 (fun x y -> x - 0.5, -(y - 0.5))
+
+        let ls = FieldMarks.streamlinePolylines plot 16.0<px> field
+        Assert.True(ls.Length > 10, sprintf "only %d lines" ls.Length)
+
+        let tagged =
+            ls |> Array.mapi (fun l (pts, _) -> pts |> Array.map (fun (struct (x, y)) -> l, x, y)) |> Array.concat
+
+        let mutable closest = infinity
+
+        for a in 0 .. tagged.Length - 1 do
+            let la, xa, ya = tagged.[a]
+
+            for b in a + 1 .. tagged.Length - 1 do
+                let lb, xb, yb = tagged.[b]
+
+                if la <> lb then
+                    closest <- min closest (sqrt ((xa - xb) ** 2.0 + (ya - yb) ** 2.0))
+
+        Assert.True(closest >= 8.0 * (1.0 - 1e-9), sprintf "two lines come within %g px" closest)
+
+    /// A centre's orbits close: a line that comes back to where it started is a ring, and its
+    /// last point is within a step and a half of its first.
+    [<Fact>]
+    let ``a centre's orbits are closed rings`` () =
+        let closed = lines.Force() |> Array.filter snd
+        Assert.True(closed.Length >= 3, sprintf "only %d closed orbits" closed.Length)
+
+        for pts, _ in closed do
+            let struct (ax, ay) = pts.[0]
+            let struct (bx, by) = pts.[pts.Length - 1]
+            // Closed when a step lands within 1.5 steps (3 px at this separation) of the seed.
+            Assert.True(sqrt ((ax - bx) ** 2.0 + (ay - by) ** 2.0) < 3.0, "an orbit's ends are not together")
+
+    /// No randomness anywhere: two runs give the same lines, point for point (gate 11's half).
+    [<Fact>]
+    let ``the same field gives the same lines`` () =
+        let again = FieldMarks.streamlinePolylines plot 16.0<px> rotation
+        Assert.Equal(lines.Force().Length, again.Length)
+
+        for (a, ca), (b, cb) in Array.zip (lines.Force()) again do
+            Assert.Equal(ca, cb)
+            Assert.True((a = b), "a line differs between two runs")
+
+    /// On a log axis the lines are still the field's: a radial field u = x, w = y is a fan of
+    /// straight lines through the origin in data space, and on a log-x panel each chord points
+    /// along the field's direction there, J·v.
+    [<Fact>]
+    let ``a streamline follows the field on a log axis`` () =
+        let g = VectorGrid.sample (Grid.log 1.0<m> 100.0<m> 9) (Grid.linear 1.0<m> 50.0<m> 8) (fun x y -> struct (x * 1.0<1 / s>, y * 1.0<1 / s>))
+        let fig = Field.streamlines U.metre U.metre g |> Chart.withXLog
+        let scene = Chart.toScene (Chart.size 480.0 300.0) fig
+        let sx, sy = Erase.seriesScales (Figure.unify fig.Panels.[0]).Layers.[0].Data
+
+        let slope (s: IScaleErased) (v: float) =
+            let h = 1e-6 * max 1.0 (abs v)
+            float (s.Project(v + h) - s.Project(v - h)) / (2.0 * h)
+
+        let rec strokes (n: Node) =
+            match n with
+            | Path(segs, Some _, None, _) -> [ segs ]
+            | Group ns -> ns |> Array.toList |> List.collect strokes
+            | Transform(_, c)
+            | Clip(_, c)
+            | Keyed(_, c)
+            | Annotated(_, c)
+            | Opacity(_, c) -> strokes c
+            | _ -> []
+
+        // The field layer's strokes only: the axes and gridlines are stroked paths too.
+        let layer =
+            match Scene.tryFindKey (Keys.layer (Keys.panel 0 0) 0) scene with
+            | Some n -> n
+            | None -> failwith "the field layer has no node"
+
+        let points =
+            strokes layer
+            |> List.collect (fun segs ->
+                segs
+                |> Array.toList
+                |> List.choose (function
+                    | MoveTo p -> Some(true, p)
+                    | LineTo p -> Some(false, p)
+                    | _ -> None))
+
+        let chords =
+            points |> List.pairwise |> List.choose (fun ((_, a), (start, b)) -> if start then None else Some(a, b))
+
+        Assert.True(chords.Length > 100, sprintf "only %d chords" chords.Length)
+
+        for a, b in chords do
+            let cx = sx.Invert((a.X + b.X) / 2.0)
+            let cy = sy.Invert((a.Y + b.Y) / 2.0)
+            let expected = atan2 (cy * slope sy cy) (cx * slope sx cx)
+            let actual = atan2 (float (b.Y - a.Y)) (float (b.X - a.X))
+            let diff = abs (atan2 (sin (expected - actual)) (cos (expected - actual)))
+            Assert.True(diff < 1e-3, sprintf "a chord at (%g, %g) is %g rad off the field" cx cy diff)
+
+    let private pendulum =
+        let flow: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s ^ 2> * sin (float th) * 1.0<rad>)
+        Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 53) (Grid.linear -9.0<rad / s> 9.0<rad / s> 37) flow
+
+    let private portrait =
+        Field.streamlinesWith 18.0<px> Derived.radian (U.div Derived.radian U.second) pendulum
+        |> Chart.withTitle "A pendulum's phase portrait"
+
+    [<Fact>]
+    let ``golden: a pendulum's phase portrait (svg)`` () =
+        Golden.check "figure-field-streamlines.svg" (Chart.render SvgBackend.render (Chart.size 480.0 300.0) portrait)
+
+    [<Fact>]
+    let ``golden: the same portrait (tikz)`` () =
+        let doc = Chart.render TikzBackend.render (Chart.size 480.0 300.0) portrait
+        Golden.check "figure-field-streamlines.tex" doc
+
+        match TexToolchain.compile "field-streamlines" (TikzBackend.standalone doc) with
+        | TexToolchain.Unavailable -> Console.WriteLine("SKIPPED: " + TexToolchain.report ())
+        | TexToolchain.Compiled -> ()
+        | TexToolchain.Failed why -> failwithf "the streamlines baseline does not compile:\n%s" why

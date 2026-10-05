@@ -249,7 +249,8 @@ module Field =
             | FieldQuiver _
             | FieldDirections -> paddedDomain nodes
             | FieldContours _
-            | FieldBands _ -> nodes.[0], nodes.[nodes.Length - 1]
+            | FieldBands _
+            | FieldStreamlines _ -> nodes.[0], nodes.[nodes.Length - 1]
 
         let s: Series<'x, 'y> =
             { Name = ""
@@ -435,3 +436,53 @@ module Field =
                     g.W }
 
         arrowLayerOf ux uy FieldDirections present g
+
+    // ---- Streamlines (D89) --------------------------------------------------------------------
+
+    /// The separation streamlines are drawn at when nobody states one, in pixels on the page.
+    [<Literal>]
+    let DefaultSeparation = 16.0
+
+    let private presentOf<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w> (g: VectorGrid<'x, 'y, 'u, 'w>) : ScalarGrid<'x, 'y, 1> =
+        { Xs = g.Xs
+          Ys = g.Ys
+          Values =
+            Array.map2
+                (fun (a: float<'u>) (b: float<'w>) -> if Grid.isMissing (float a) || Grid.isMissing (float b) then nan else 1.0)
+                g.U
+                g.W }
+
+    /// Evenly spaced streamlines `separation` apart on the page, with arrowheads pointing
+    /// downstream (D89). Any vector grid, a phase space included: a streamline is a curve, and
+    /// needs a direction, not a magnitude.
+    ///
+    /// The separation is in **pixels**, because evenly spaced is a visual property. The same
+    /// figure at a larger size therefore draws more lines, each the same distance apart.
+    let streamlinesWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
+        (separation: float<px>)
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (g: VectorGrid<'x, 'y, 'u, 'w>)
+        : Figure =
+        arrowLayerOf ux uy (FieldStreamlines separation) (presentOf g) g
+
+    /// `streamlinesWith` at `DefaultSeparation`.
+    let streamlines<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (g: VectorGrid<'x, 'y, 'u, 'w>)
+        : Figure =
+        streamlinesWith (DefaultSeparation * 1.0<px>) ux uy g
+
+    /// Streamlines coloured by the field's magnitude — each line by its mean along it — with a
+    /// colorbar in `'v`. Both components in one unit, for `quiver`'s reason.
+    let streamlinesBy<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (uv: U<'v>)
+        (g: VectorGrid<'x, 'y, 'v, 'v>)
+        : Figure =
+        let magnitude = VectorGrid.magnitude g
+
+        arrowLayerOf ux uy (FieldStreamlines(DefaultSeparation * 1.0<px>)) magnitude g
+        |> Chart.colorBy uv magnitude.Values
