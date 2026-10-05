@@ -1,5 +1,7 @@
 namespace Marey
 
+open System
+
 // ======================================================================================
 // D84 — §8.1'S FIELDS, AND THE ONE §8.1 COULD NOT TYPE.
 //
@@ -230,10 +232,12 @@ module Field =
     /// A field layer over the grid's nodes. Only a heatmap pads its axes: its edge nodes are the
     /// centres of whole cells, while a contour or a band ends exactly at the last node and padding
     /// would leave an empty margin inside the axes.
-    let private layerOf<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+    let private layerWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ux: U<'x>)
         (uy: U<'y>)
         (mark: FieldMark)
+        (u: float[])
+        (w: float[])
         (g: ScalarGrid<'x, 'y, 'v>)
         : Figure =
         let nx = g.Xs.Length
@@ -241,6 +245,9 @@ module Field =
         let domain (nodes: float<'u>[]) =
             match mark with
             | FieldHeatmap _ -> paddedDomain nodes
+            // Arrows are centred on their nodes and can reach half a pitch beyond the last one.
+            | FieldQuiver _
+            | FieldDirections -> paddedDomain nodes
             | FieldContours _
             | FieldBands _ -> nodes.[0], nodes.[nodes.Length - 1]
 
@@ -255,10 +262,20 @@ module Field =
             (GeomField(
                 { Xs = raw g.Xs
                   Ys = raw g.Ys
-                  Values = raw g.Values },
+                  Values = raw g.Values
+                  U = u
+                  W = w },
                 mark
             ))
             s
+
+    let private layerOf<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (mark: FieldMark)
+        (g: ScalarGrid<'x, 'y, 'v>)
+        : Figure =
+        layerWith ux uy mark [||] [||] g
 
     /// Contour levels for a value range: the nice numbers the range's own axis would tick at.
     let private levelsFor (target: int) (lo: float, hi: float) = Ticks.linear target (lo, hi)
@@ -334,3 +351,87 @@ module Field =
         let lo, hi = Ticks.expandToNice 8 (valueRange g)
         let levels = levelsFor 8 (lo, hi) |> Array.map LanguagePrimitives.FloatWithMeasure<'v>
         bandsWith Theme.initial.Sequential levels ux uy uv g
+
+    // ---- Arrows (D87) -----------------------------------------------------------------------
+
+    /// A vector layer: `Values` are what colours and sizes an arrow, `U` and `W` its components.
+    let private arrowLayerOf<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w, [<Measure>] 'v>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (mark: FieldMark)
+        (values: ScalarGrid<'x, 'y, 'v>)
+        (g: VectorGrid<'x, 'y, 'u, 'w>)
+        : Figure =
+        let fig = layerWith ux uy mark (raw g.U) (raw g.W) values
+        fig |> Chart.withStyle (fun st -> { st with Color = fig.Theme.Foreground; Width = st.Width * 0.8 })
+
+    /// The largest round number — 1, 2 or 5 times a power of ten — not above `largest`: the value
+    /// a quiver's key arrow stands for. It is a property of the data, not of the figure's size.
+    let private keyValue (largest: float) =
+        if not (largest > 0.0) || Double.IsInfinity largest then
+            0.0
+        else
+            let decade = 10.0 ** floor (log10 largest)
+            let mantissa = largest / decade
+            decade * (if mantissa >= 5.0 then 5.0 elif mantissa >= 2.0 then 2.0 else 1.0)
+
+    /// The key's label: the value under the prefix the value itself would be ticked in, and the
+    /// unit in the theme's plain-text style.
+    let private keyOf<[<Measure>] 'v> (uv: U<'v>) (value: float) : QuiverKey =
+        let prefix = Prefix.selectForUnit uv (value, value)
+        let shown = value / Prefix.factor prefix
+        let unitText = UnitDisplay.unitText Unicode UnitRegistry.si prefix uv
+
+        { Value = value
+          Label = (Ticks.formatGeneral shown + (if unitText = "" then "" else " " + unitText)).Trim() }
+
+    /// A quiver: an arrow at every node, its length the vector's magnitude through the quiver's
+    /// own scale, and a key in the plot area's corner saying what one length means — `2 m/s`,
+    /// set with the prefix the value would be ticked in (D87). Both components must be in one
+    /// unit, `'v`, because a length is a magnitude; a phase space has `directions` instead.
+    ///
+    /// Arrows are drawn at every node, so sample a quiver at the density it should be read at — a
+    /// coarser grid than a heatmap's.
+    let quiver<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (uv: U<'v>)
+        (g: VectorGrid<'x, 'y, 'v, 'v>)
+        : Figure =
+        let magnitude = VectorGrid.magnitude g
+
+        let key =
+            match ScalarGrid.range magnitude with
+            | Some(_, hi) when hi > 0.0<_> -> Some(keyOf uv (keyValue (float hi)))
+            | _ -> None
+
+        arrowLayerOf ux uy (FieldQuiver key) magnitude g
+
+    /// `quiver`, with each arrow also coloured by its magnitude along the theme's sequential
+    /// ramp, and a colorbar in `'v`.
+    let quiverBy<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (uv: U<'v>)
+        (g: VectorGrid<'x, 'y, 'v, 'v>)
+        : Figure =
+        quiver ux uy uv g |> Chart.colorBy uv (VectorGrid.magnitude g).Values
+
+    /// A direction field: an arrow at every node, all one length. Any vector grid, including a
+    /// phase space whose two components are in different units and so has no magnitude to draw.
+    let directions<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (g: VectorGrid<'x, 'y, 'u, 'w>)
+        : Figure =
+        // A node draws when both components are finite; the value only says so.
+        let present: ScalarGrid<'x, 'y, 1> =
+            { Xs = g.Xs
+              Ys = g.Ys
+              Values =
+                Array.map2
+                    (fun (a: float<'u>) (b: float<'w>) -> if Grid.isMissing (float a) || Grid.isMissing (float b) then nan else 1.0)
+                    g.U
+                    g.W }
+
+        arrowLayerOf ux uy FieldDirections present g

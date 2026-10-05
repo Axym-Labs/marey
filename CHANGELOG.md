@@ -24,6 +24,12 @@ land in a minor release.
   `bands`, with a colorbar in the field's unit. Contour levels are the nice numbers of the
   field's own range, saddles are resolved by the asymptotic decider, and bands are filled
   even-odd with their holes. Non-finite samples are kept, counted and not drawn.
+  `Field.quiver` draws arrows whose length is the magnitude through the quiver's own scale (its
+  longest arrow is 0.9 of the grid pitch), with a key in the plot area's corner saying what one
+  length means, as a round value with its prefix: `2 kV·m⁻¹`. `quiverBy` also colours the
+  arrows by magnitude. `Field.directions` draws equal arrows for any vector grid, phase spaces
+  included, where a magnitude has no unit. Every arrow is tangent to the field on the panel, a
+  log axis included.
 - **`Chart.overlay`**, which draws one figure's layers over another's last panel: a heatmap
   under its contours, or any two figures over the same quantities.
 - **`Rng`, a specified pseudo-random generator, in `Marey.Core`.** SplitMix64, immutable,

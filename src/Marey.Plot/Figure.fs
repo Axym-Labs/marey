@@ -869,7 +869,7 @@ module Figure =
                             // keeps §5.1's batching intact while the colour varies.
                             let body, counts =
                                 match geom with
-                                | GeomField(field, mark) when l.Channels.Length > 0 ->
+                                | GeomField(field, mark) ->
                                     // D86 / D91 — a field is drawn once, not once per colour
                                     // batch: its pixels and its contour levels are coloured
                                     // through the channel's own quantiser, the call the
@@ -893,7 +893,7 @@ module Figure =
                                                     Some(Color.withAlpha (col.A * l.Style.Opacity) col)
                                         | None -> fun v -> if System.Double.IsNaN v || System.Double.IsInfinity v then None else Some l.Style.Color
 
-                                    Geom.compileField p.Coord l.Style colourOf field mark, [||]
+                                    Geom.compileField p.Coord plotSize m theme.PanelBackground l.Style colourOf field mark, [||]
                                 | _ ->
                                     if l.Channels.Length = 0 then
                                         // No channels, no counts: an unchannelled layer's annotation is

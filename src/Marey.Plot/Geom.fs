@@ -470,10 +470,37 @@ module Geom =
                 smooth
             )
         | GeomField(f, mark) ->
+            // A vector's components become its direction on the panel: each times its scale's
+            // derivative at the node, by a central difference a thousandth of the node spacing
+            // wide. Linear axes make that a constant; a log axis makes it 1/x, which is what keeps
+            // an arrow tangent to the streamline through its node.
+            let slope (forward: float -> float<nd>) (nodes: float[]) =
+                nodes
+                |> Array.mapi (fun i c ->
+                    let near =
+                        [| if i > 0 then yield c - nodes.[i - 1]
+                           if i < nodes.Length - 1 then yield nodes.[i + 1] - c |]
+                        |> Array.min
+
+                    let hh = 1e-3 * near
+                    float (forward (c + hh) - forward (c - hh)) / (2.0 * hh))
+
+            let nx = f.Xs.Length
+
+            let u, w =
+                if f.U.Length = 0 then
+                    [||], [||]
+                else
+                    let sx = slope fx f.Xs
+                    let sy = slope fy f.Ys
+                    Array.init f.U.Length (fun k -> f.U.[k] * sx.[k % nx]), Array.init f.W.Length (fun k -> f.W.[k] * sy.[k / nx])
+
             GeomField(
                 { Xs = Array.map fx f.Xs
                   Ys = Array.map fy f.Ys
-                  Values = f.Values },
+                  Values = f.Values
+                  U = u
+                  W = w },
                 mark
             )
 
@@ -492,8 +519,15 @@ module Geom =
     /// layer's colour channel through its own quantiser, so the heatmap, its contours and its
     /// colorbar take every colour from the same call (D91, gate 7). Without a channel, every
     /// value is the layer's colour.
+    ///
+    /// `plotSize`, `measurer` and `background` are for the arrows (D87): the quiver's length
+    /// scale is chosen in pixels against the grid's pitch, and its key is measured and set on a
+    /// box of the panel's colour.
     let compileField
         (coord: Coord)
+        (plotSize: Extent<px>)
+        (measurer: ITextMeasurer)
+        (background: Color)
         (st: GeomStyle)
         (colourOf: float -> Color option)
         (field: FieldPayload<nd>)
@@ -501,7 +535,18 @@ module Geom =
         : Node =
         let mapPt (v: Vec2<nd>) = if Coord.isIdentity coord then v else coord.ToPanel v
 
+        let stroke =
+            { Paint = Solid(Color.withAlpha (st.Color.A * st.Opacity) st.Color)
+              Width = st.Width
+              Dash = st.Dash
+              DashOffset = 0.0<px>
+              Cap = st.Cap
+              Join = st.Join
+              MiterLimit = 4.0 }
+
         match mark with
+        | FieldQuiver key -> FieldMarks.arrows mapPt measurer plotSize background stroke st.Font colourOf false key field
+        | FieldDirections -> FieldMarks.arrows mapPt measurer plotSize background stroke st.Font colourOf true None field
         | FieldHeatmap smooth -> FieldMarks.heatmap colourOf smooth field
         | FieldContours levels ->
             FieldMarks.contours
@@ -1087,7 +1132,7 @@ module Geom =
                 // Without a channel to colour it, a field is drawn in the layer's own colour.
                 // `Figure.fs` routes a channelled field layer to `compileField` directly, so that
                 // it is drawn once rather than once per colour batch.
-                compileField coord st (fun v -> if finiteNum v then Some st.Color else None) field mark
+                compileField coord plotSize TextMeasure.approx Color.white st (fun v -> if finiteNum v then Some st.Color else None) field mark
 
             | GeomViolin(profiles, widthFraction) ->
                 let half = (defaultArg spacing (medianSpacing pts)) * widthFraction * 0.5
@@ -1229,5 +1274,7 @@ module Geom =
         | GeomImage _ -> LegendSwatch
         // Contour lines are lines; a heatmap and its bands are areas of colour. A field layer is
         // usually unnamed and so absent from the legend — its colour is the colorbar's to explain.
-        | GeomField(_, FieldContours _) -> LegendLine st.Dash
+        | GeomField(_, FieldContours _)
+        | GeomField(_, FieldQuiver _)
+        | GeomField(_, FieldDirections) -> LegendLine st.Dash
         | GeomField _ -> LegendSwatch

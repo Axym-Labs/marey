@@ -31,13 +31,34 @@ type FieldMark =
     | FieldContours of levels: float[]
     /// Filled bands between consecutive levels, each coloured at its midpoint value (D88).
     | FieldBands of levels: float[]
+    /// An arrow at every node, as long as the vector's magnitude through the quiver's own length
+    /// scale, with a key saying what one length means (D87). The payload's `Values` are the
+    /// magnitudes.
+    | FieldQuiver of key: QuiverKey option
+    /// An arrow at every node, all one length: direction only. What a phase space gets, where
+    /// the two components are in different units and a magnitude does not exist.
+    | FieldDirections
 
-/// A scalar grid with its measures spent: node coordinates in `'p` — data space on a layer,
-/// `nd` once projected — and values raw in the field's unit.
+/// D87 — what one arrow length means: a round value of the magnitude and its label, prefix and
+/// unit included, both decided from the data when the layer is built. The arrow it is drawn with
+/// is sized on the panel, so the label is the same at every figure size and the arrow is not.
+and QuiverKey =
+    { Value: float
+      Label: string }
+
+/// A grid with its measures spent: node coordinates in `'p` — data space on a layer, `nd` once
+/// projected — and values raw in the field's unit.
+///
+/// `U` and `W` are a vector field's components, empty for a scalar one. On a layer they are raw
+/// in the field's units; `Geom.project` multiplies each by its scale's derivative at the node, so
+/// on the panel they are the vector's direction in `nd` — the direction a streamline through the
+/// node is drawn in, on a linear axis or a log one.
 type FieldPayload<[<Measure>] 'p> =
     { Xs: float<'p>[]
       Ys: float<'p>[]
-      Values: float[] }
+      Values: float[]
+      U: float[]
+      W: float[] }
 
 [<RequireQualifiedAccess>]
 module FieldMarks =
@@ -50,7 +71,9 @@ module FieldMarks =
     type private Plane =
         { X: float[]
           Y: float[]
-          V: float[] }
+          V: float[]
+          U: float[]
+          W: float[] }
 
         member p.Nx = p.X.Length
         member p.Ny = p.Y.Length
@@ -73,10 +96,15 @@ module FieldMarks =
         if ix.Length < 2 || iy.Length < 2 || not (strictly xs ix) || not (strictly ys iy) then
             None
         else
+            let permute (a: float[]) =
+                if a.Length = 0 then [||] else [| for j in iy do for i in ix -> a.[j * nx + i] |]
+
             Some
                 { X = ix |> Array.map (fun i -> xs.[i])
                   Y = iy |> Array.map (fun j -> ys.[j])
-                  V = [| for j in iy do for i in ix -> f.Values.[j * nx + i] |] }
+                  V = permute f.Values
+                  U = permute f.U
+                  W = permute f.W }
 
     let private bilinearAt (p: Plane) (x: float) (y: float) =
         let locate (cs: float[]) (c: float) =
@@ -463,3 +491,137 @@ module FieldMarks =
 
                            if path.Length > 0 then
                                yield Path(path, None, Some(Solid(Color.withAlpha (c.A * opacity) c)), EvenOdd) |]
+
+    // ---- Arrows (D87) -----------------------------------------------------------------------
+    //
+    // An arrow is centred on its node and points along the vector's direction *on the panel*:
+    // the components arrive already multiplied by the scales' derivatives (`Geom.project`), and
+    // here by the plot area's size in pixels, so an arrow is tangent to the streamline through
+    // its node on any axis and any aspect ratio. Its length is the magnitude times the quiver's
+    // own scale — **not** the axes', which are in a different unit — and that scale is chosen on
+    // the panel so the longest arrow is 0.9 of the grid's pitch in pixels: long enough to read,
+    // and two neighbours pointing at each other do not touch.
+
+    /// The smallest spacing between neighbouring nodes along either axis, in pixels.
+    let private pitch (p: Plane) (plot: Extent<px>) =
+        let along (cs: float[]) (size: float) =
+            cs |> Array.pairwise |> Array.map (fun (a, b) -> (b - a) * size) |> Array.min
+
+        min (along p.X (float plot.Width)) (along p.Y (float plot.Height))
+
+    /// One arrow in pixels: shaft and head, `d` the unit direction.
+    let private arrow (cx: float) (cy: float) (dx: float) (dy: float) (length: float) (strokeWidth: float) =
+        let head = min (0.4 * length) (5.0 + 1.5 * strokeWidth)
+        let half = 0.45 * head
+        let tx, ty = cx - dx * length / 2.0, cy - dy * length / 2.0
+        let px, py = cx + dx * length / 2.0, cy + dy * length / 2.0
+        let bx, by = px - dx * head, py - dy * head
+        struct (tx, ty, bx, by, px, py, -dy * half, dx * half)
+
+    let private arrowSegs (toNd: float -> float -> Vec2<nd>) (struct (tx, ty, bx, by, px, py, nx, ny)) =
+        [| MoveTo(toNd tx ty)
+           LineTo(toNd bx by)
+           MoveTo(toNd px py)
+           LineTo(toNd (bx + nx) (by + ny))
+           LineTo(toNd (bx - nx) (by - ny))
+           ClosePath |]
+
+    /// The arrows, one `Path` per colour, and — for a quiver with a key — the key in the plot
+    /// area's top-right corner on a panel-coloured box, so it reads over the arrows beneath it.
+    let arrows
+        (mapPt: Vec2<nd> -> Vec2<nd>)
+        (measurer: ITextMeasurer)
+        (plot: Extent<px>)
+        (background: Color)
+        (stroke: Stroke)
+        (font: FontSpec)
+        (colourOf: float -> Color option)
+        (directionOnly: bool)
+        (key: QuiverKey option)
+        (f: FieldPayload<nd>)
+        : Node =
+        match plane f with
+        | Some p when p.U.Length > 0 ->
+            let w, h = float plot.Width, float plot.Height
+            let toNd (x: float) (y: float) : Vec2<nd> = mapPt { X = x / w * 1.0<nd>; Y = y / h * 1.0<nd> }
+            let span = pitch p plot
+
+            let largest =
+                p.V |> Array.fold (fun acc v -> if finite v && v > acc then v else acc) 0.0
+
+            // Pixels per unit of magnitude, or `None` when nothing has a length.
+            let perUnit = if directionOnly || largest <= 0.0 then None else Some(0.9 * span / largest)
+
+            let groups = Dictionary<Color, ResizeArray<PathSeg>>()
+
+            for j in 0 .. p.Ny - 1 do
+                for i in 0 .. p.Nx - 1 do
+                    let k = j * p.Nx + i
+                    let ux, uy = p.U.[k] * w, p.W.[k] * h
+                    let norm = sqrt (ux * ux + uy * uy)
+                    let v = p.V.[k]
+
+                    let length =
+                        match perUnit with
+                        | _ when directionOnly -> 0.7 * span
+                        | Some s when finite v -> v * s
+                        | _ -> 0.0
+
+                    if finite norm && norm > 0.0 && length >= 0.5 then
+                        match colourOf v with
+                        | Some c ->
+                            let segs =
+                                match groups.TryGetValue c with
+                                | true, g -> g
+                                | _ ->
+                                    let g = ResizeArray<PathSeg>()
+                                    groups.[c] <- g
+                                    g
+
+                            segs.AddRange(arrowSegs toNd (arrow (p.X.[i] * w) (p.Y.[j] * h) (ux / norm) (uy / norm) length (float stroke.Width)))
+                        | None -> ()
+
+            let drawn =
+                [| for KeyValue(c, segs) in groups do
+                       yield Path(segs.ToArray(), Some { stroke with Paint = Solid c }, Some(Solid c), NonZero) |]
+
+            let keyNode =
+                match key, perUnit with
+                | Some k, Some s when k.Value > 0.0 ->
+                    let length = k.Value * s
+                    let metrics = measurer.Measure font k.Label
+                    let pad, gap, margin = 5.0, 6.0, 6.0
+                    let textH = float (metrics.Ascent + metrics.Descent)
+                    let boxW = pad + float metrics.Advance + gap + length + pad
+                    let boxH = pad + max textH 8.0 + pad
+                    let x1, y1 = w - margin, h - margin
+                    let x0, y0 = x1 - boxW, y1 - boxH
+                    let cy = (y0 + y1) / 2.0
+                    let tailX = x1 - pad - length
+
+                    Annotated(
+                        { Role = RoleLegend
+                          Label = "quiver key"
+                          Data = [||] },
+                        Group
+                            [| Path(
+                                   [| MoveTo(toNd x0 y0); LineTo(toNd x1 y0); LineTo(toNd x1 y1); LineTo(toNd x0 y1); ClosePath |],
+                                   None,
+                                   Some(Solid(Color.withAlpha 0.85 background)),
+                                   NonZero
+                               )
+                               Path(arrowSegs toNd (arrow (tailX + length / 2.0) cy 1.0 0.0 length (float stroke.Width)), Some stroke, Some stroke.Paint, NonZero)
+                               Text
+                                   { Text = k.Label
+                                     Tex = None
+                                     At = toNd (tailX - gap) cy
+                                     Font = font
+                                     Paint = stroke.Paint
+                                     Anchor = AnchorEnd
+                                     Baseline = BaselineMiddle
+                                     Rotation = 0.0<rad> } |]
+                    )
+                | _ -> Scene.empty
+
+            Group(Array.append drawn [| keyNode |])
+        | _ -> Scene.empty

@@ -284,7 +284,9 @@ module ``sampling`` =
 let private onPanel (g: ScalarGrid<1, 1, 1>) : FieldPayload<nd> =
     { Xs = g.Xs |> Array.map (fun x -> x * 1.0<nd>)
       Ys = g.Ys |> Array.map (fun y -> y * 1.0<nd>)
-      Values = g.Values }
+      Values = g.Values
+      U = [||]
+      W = [||] }
 
 module ``contours`` =
 
@@ -467,3 +469,179 @@ module ``a field on a figure`` =
         | TexToolchain.Unavailable -> Console.WriteLine("SKIPPED: " + TexToolchain.report ())
         | TexToolchain.Compiled -> ()
         | TexToolchain.Failed why -> failwithf "the bands baseline does not compile:\n%s" why
+
+// ======================================================================================
+// Phase 3 — the quiver (D87). Gate 8.
+// ======================================================================================
+
+module ``arrows`` =
+
+    let rec private nodes (n: Node) : Node list =
+        n
+        :: (match n with
+            | Group ns -> ns |> Array.toList |> List.collect nodes
+            | Transform(_, c)
+            | Clip(_, c)
+            | Keyed(_, c)
+            | Opacity(_, c) -> nodes c
+            | Annotated(a, _) when a.Label = "quiver key" -> []
+            | Annotated(_, c) -> nodes c
+            | _ -> [])
+
+    let private keyOf (scene: Node) =
+        let rec go (n: Node) =
+            match n with
+            | Annotated(a, c) when a.Label = "quiver key" -> Some c
+            | Group ns -> ns |> Array.tryPick go
+            | Transform(_, c)
+            | Clip(_, c)
+            | Keyed(_, c)
+            | Opacity(_, c)
+            | Annotated(_, c) -> go c
+            | _ -> None
+
+        go scene
+
+    let private pt (seg: PathSeg) =
+        match seg with
+        | MoveTo p
+        | LineTo p -> p
+        | other -> failwithf "unexpected %A" other
+
+    /// Every arrow as (tail, tip), in panel `nd`. An arrow is six segments: the shaft's move and
+    /// line, then the head's move to the tip, two lines and a close.
+    let private arrowsIn (n: Node) =
+        [ for node in nodes n do
+              match node with
+              | Path(segs, Some _, Some _, NonZero) when segs.Length % 6 = 0 && segs.Length > 0 && (match segs.[5] with ClosePath -> true | _ -> false) ->
+                  for k in 0 .. segs.Length / 6 - 1 do
+                      yield pt segs.[6 * k], pt segs.[6 * k + 2]
+              | _ -> () ]
+
+    let private keyText (scene: Node) =
+        match keyOf scene with
+        | Some(Group parts) -> parts |> Array.pick (function Text t -> Some t.Text | _ -> None)
+        | _ -> failwith "no quiver key"
+
+    let private keyArrow (scene: Node) =
+        match keyOf scene with
+        | Some k -> arrowsIn k |> List.exactlyOne
+        | None -> failwith "no quiver key"
+
+    /// A uniform field of 3.7 kV/m along x: every arrow is the longest, horizontal.
+    let private uniform =
+        VectorGrid.sample (Grid.linear 0.0<m> 1.0<m> 6) (Grid.linear 0.0<m> 1.0<m> 5) (fun _ _ -> struct (3700.0<V / m>, 0.0<V / m>))
+
+    let private fieldUnit = U.div Derived.volt U.metre
+
+    /// **Gate 8.** The key says what one arrow length means, and it is true: its arrow is to the
+    /// longest arrow as its value is to the largest magnitude. The value is the largest 1, 2 or
+    /// 5 times a power of ten not above 3.7 kV/m — 2 kV/m — and the label carries the prefix.
+    [<Fact>]
+    let ``the key is true, and labelled in the field's unit`` () =
+        let scene = Chart.toScene (Chart.size 480.0 300.0) (Field.quiver U.metre U.metre fieldUnit uniform)
+        let longest = arrowsIn scene |> List.map (fun (a, b) -> float (b.X - a.X)) |> List.max
+        let key = keyArrow scene |> fun (a, b) -> float (b.X - a.X)
+
+        Assert.Equal(2.0 / 3.7, key / longest, 9)
+        Assert.Equal("2 kV·m⁻¹", keyText scene)
+
+    /// The label is a property of the data and the arrow a property of the panel: at two sizes
+    /// the label is the same and the ratio still holds.
+    [<Fact>]
+    let ``the key's label does not change with the figure's size`` () =
+        for w, h in [ 320.0, 200.0; 960.0, 700.0 ] do
+            let scene = Chart.toScene (Chart.size w h) (Field.quiver U.metre U.metre fieldUnit uniform)
+            let longest = arrowsIn scene |> List.map (fun (a, b) -> float (b.X - a.X)) |> List.max
+            let key = keyArrow scene |> fun (a, b) -> float (b.X - a.X)
+
+            Assert.Equal("2 kV·m⁻¹", keyText scene)
+            Assert.Equal(2.0 / 3.7, key / longest, 9)
+
+    /// An arrow is tangent to the field on the panel, a log axis included: its slope in `nd` is
+    /// the components' ratio times the ratio of the scales' derivatives at its node.
+    [<Fact>]
+    let ``an arrow points along the field on a log axis`` () =
+        let g = VectorGrid.sample (Grid.log 1.0<m> 100.0<m> 7) (Grid.linear 0.0<m> 50.0<m> 6) (fun x y -> struct (x * 1.0<1 / s>, (y + 10.0<m>) * 1.0<1 / s>))
+        let fig = Field.quiver U.metre U.metre (U.div U.metre U.second) g |> Chart.withXLog
+        let scene = Chart.toScene (Chart.size 480.0 300.0) fig
+        let sx, sy = Erase.seriesScales (Figure.unify fig.Panels.[0]).Layers.[0].Data
+
+        let slope (s: IScaleErased) (v: float) =
+            let h = 1e-6 * max 1.0 (abs v)
+            float (s.Project(v + h) - s.Project(v - h)) / (2.0 * h)
+
+        let arrows = arrowsIn scene
+        Assert.True(arrows.Length > 30, sprintf "only %d arrows were drawn" arrows.Length)
+
+        // The arrow is built in pixels and stored in `nd`, and the plot area's two pixel scales
+        // cancel out of its angle in `nd`, so the comparison needs neither. The bound is the
+        // central difference `Geom.project` takes the derivative by: a thousandth of the node
+        // spacing, so an error of order 1e-7 on a log axis. Stated as a distance (D82).
+        for tail, tip in arrows do
+            let cx = sx.Invert((tail.X + tip.X) / 2.0)
+            let cy = sy.Invert((tail.Y + tip.Y) / 2.0)
+            let expected = atan2 ((cy + 10.0) * slope sy cy) (cx * slope sx cx)
+            let actual = atan2 (float (tip.Y - tail.Y)) (float (tip.X - tail.X))
+            Assert.True(abs (expected - actual) < 1e-5, sprintf "an arrow at (%g, %g) points at %g rad, the field at %g" cx cy actual expected)
+
+    /// A direction field has no magnitude, so every arrow is one length and there is no key.
+    [<Fact>]
+    let ``a direction field's arrows are all one length, and it has no key`` () =
+        let pendulum: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s ^ 2> * sin (float th) * 1.0<rad>)
+        let flow = Field.sampleFlow (Grid.linear -3.0<rad> 3.0<rad> 7) (Grid.linear -4.0<rad / s> 4.0<rad / s> 6) pendulum
+        let scene = Chart.toScene (Chart.size 480.0 300.0) (Field.directions Derived.radian (U.div Derived.radian U.second) flow)
+
+        Assert.True((keyOf scene).IsNone, "a direction field drew a key")
+
+        // One length L in pixels on a plot area W × H means a·dx² + b·dy² = 1 for every arrow,
+        // with a = (W/L)² and b = (H/L)², in `nd`. Two arrows of different slope fix a and b;
+        // every other arrow has to agree. That needs neither the plot area's size nor L.
+        let d =
+            arrowsIn scene |> List.map (fun (t, p) -> float (p.X - t.X), float (p.Y - t.Y)) |> List.toArray
+
+        Assert.True(d.Length >= 40, sprintf "only %d arrows were drawn" d.Length)
+
+        let flat = d |> Array.maxBy (fun (x, y) -> abs x - abs y)
+        let steep = d |> Array.maxBy (fun (x, y) -> abs y - abs x)
+        let (x1, y1), (x2, y2) = flat, steep
+        let det = x1 * x1 * y2 * y2 - x2 * x2 * y1 * y1
+        let a = (y2 * y2 - y1 * y1) / det
+        let b = (x1 * x1 - x2 * x2) / det
+
+        for x, y in d do
+            Assert.True(abs (a * x * x + b * y * y - 1.0) < 1e-9, sprintf "an arrow (%g, %g) is not the common length" x y)
+
+    let private chargePair =
+        let xs = Grid.linear -1.8<m> 1.8<m> 10
+        let ys = Grid.linear -1.2<m> 1.2<m> 7
+
+        Field.sampleScalar xs ys (fun p ->
+            let d1 = Vec2.norm { X = p.X - 0.6<m>; Y = p.Y + 0.1<m> }
+            let d2 = Vec2.norm { X = p.X + 0.6<m>; Y = p.Y - 0.1<m> }
+            (log (float d2) - log (float d1)) * 1.0<V>)
+
+    let private eField =
+        let g = Field.grad chargePair
+        { g with U = Array.map (~-) g.U; W = Array.map (~-) g.W }
+
+    let private quiverFigure =
+        Field.quiverBy U.metre U.metre fieldUnit eField
+        |> Chart.withYLabel "y"
+        |> Chart.withTitle "The field of two line charges"
+
+    [<Fact>]
+    let ``golden: a quiver coloured by magnitude, with its key (svg)`` () =
+        Golden.check "figure-field-quiver.svg" (Chart.render SvgBackend.render (Chart.size 480.0 300.0) quiverFigure)
+
+    /// The key's label is plain Unicode — `V·m⁻¹` — so the TikZ baseline is also the check that
+    /// a text run carrying a middle dot and superscripts survives the engine.
+    [<Fact>]
+    let ``golden: the same quiver (tikz)`` () =
+        let doc = Chart.render TikzBackend.render (Chart.size 480.0 300.0) quiverFigure
+        Golden.check "figure-field-quiver.tex" doc
+
+        match TexToolchain.compile "field-quiver" (TikzBackend.standalone doc) with
+        | TexToolchain.Unavailable -> Console.WriteLine("SKIPPED: " + TexToolchain.report ())
+        | TexToolchain.Compiled -> ()
+        | TexToolchain.Failed why -> failwithf "the quiver baseline does not compile:\n%s" why

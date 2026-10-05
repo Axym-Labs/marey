@@ -59,6 +59,11 @@ because ∂ω̇/∂θ and ∂θ̇/∂ω are in different units and their differe
   other layer on a linear or a log axis. Contour levels are the nice numbers the field's own range
   would be ticked at. Saddle cells are resolved by the asymptotic decider, and bands are filled
   even-odd, holes included.
+- **Arrows.** `Field.quiver` sizes each arrow by its magnitude through the quiver's own scale,
+  because the arrows are in V/m and the axes in metres, and adds a key that says what one length
+  means: `2 kV·m⁻¹`. `Field.directions` draws equal arrows for a phase space, where the two
+  components share no unit and a length would mean nothing. Arrows follow the field on the
+  panel, so they stay tangent to it on a log axis.
 
 ## Links
 

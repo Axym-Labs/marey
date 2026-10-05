@@ -1181,7 +1181,9 @@ module ``a geom draws where its data is`` =
               GeomField(
                   { Xs = [| 4.0; 5.0; 6.0 |]
                     Ys = [| 4.0; 5.0; 6.0 |]
-                    Values = [| 0.0; 1.0; 2.0; 1.0; 2.0; 3.0; 2.0; 3.0; 4.0 |] },
+                    Values = [| 0.0; 1.0; 2.0; 1.0; 2.0; 3.0; 2.0; 3.0; 4.0 |]
+                    U = [||]
+                    W = [||] },
                   FieldContours [| 1.5; 2.5 |]
               ))
           "field heatmap",
@@ -1189,7 +1191,9 @@ module ``a geom draws where its data is`` =
               GeomField(
                   { Xs = [| 4.0; 5.0; 6.0 |]
                     Ys = [| 4.0; 5.0; 6.0 |]
-                    Values = [| 0.0; 1.0; 2.0; 1.0; 2.0; 3.0; 2.0; 3.0; 4.0 |] },
+                    Values = [| 0.0; 1.0; 2.0; 1.0; 2.0; 3.0; 2.0; 3.0; 4.0 |]
+                    U = [||]
+                    W = [||] },
                   FieldHeatmap false
               )) ]
 
