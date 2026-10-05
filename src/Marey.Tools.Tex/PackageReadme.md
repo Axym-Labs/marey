@@ -44,9 +44,10 @@ complaint, and every other formula on the figure still typesets.
 
 ## What it costs
 
-About 105 ms of `latex` and `dvisvgm` per distinct snippet, memoised on the source. An ordinary
-figure carries two — the axis titles — so it is a fifth of a second on an export path you opt
-into, and an animation pays it once for the whole film.
+About 105 ms of `latex` and `dvisvgm` per distinct snippet, memoised on the source within one
+call. An ordinary figure carries two — the axis titles — so it is a fifth of a second on an export
+path you opt into. The memo does not outlive the call, so typesetting a film frame by frame pays
+that on every frame; typeset the still you publish rather than every frame of the reel.
 
 The size is applied as a **scale**, not as a second engine run, so one formula at 9 pt and 18 pt
 costs one invocation. That is not what a TeX engine would do at 18 pt — real optical sizing picks

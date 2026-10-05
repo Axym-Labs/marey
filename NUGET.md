@@ -50,6 +50,7 @@ plot trials {
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX. |
 | `Marey.Backend.Skia` | PNG and vector PDF, with real text shaping. The only package with third-party dependencies. |
 | `Marey.Anim` | Animation as a pure function of time: a seekable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
+| `Marey.Fields` | Fields on dimensioned planes, phase spaces included: derivatives in the units the types work out, and heatmaps, contours and filled bands. |
 | `Marey.Tools.Video` | Encoding a rendered frame sequence to video with `ffmpeg`, resolved on `PATH` and reported. |
 | `Marey.Tools.Tex` | Mathematical typesetting: TeX source becomes vector outlines through `latex` and `dvisvgm`, so every backend draws it. Opt-in, and degrades to plain text. |
 | `Marey.Toolchain` | Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies. |

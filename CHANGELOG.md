@@ -3,10 +3,8 @@
 Notable changes to Marey. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-All twelve packages are versioned and released together, so a version number identifies the whole
-set rather than any one package. Four are new in this release: `Marey.Anim`, `Marey.Tools.Video`,
-`Marey.Tools.Tex`, and `Marey.Toolchain` — which ships only because the two tool packages depend
-on it, and a published package may not depend on an unpublished one.
+Every package is versioned and released together, so a version number identifies the whole set
+rather than any one package. Each release's notes say which packages it adds.
 
 **Pre-1.0, and versioned accordingly.** The API is still free to move. Breaking changes are
 listed under `Changed` or `Removed` with the reason and the replacement, and until 1.0 they may
@@ -16,11 +14,35 @@ land in a minor release.
 
 ### Added
 
+- **`Marey.Fields`, a thirteenth package: fields on dimensioned planes.** `ScalarGrid` and
+  `VectorGrid` on rectilinear nodes, sampled from a function (`Field.sampleScalar`, `sample`,
+  `sampleFlow`) or built from data, with `Grid.linear` and `Grid.log` for nodes even on either
+  kind of axis. `Field.grad`, `div`, `curl`, `laplacian` and `jacobian`, whose units the types
+  work out: the gradient of a potential in volts over metres is in V/m, and its divergence in
+  V/m². A `Flow` has a different unit on each axis, so a phase space is a domain: a pendulum's
+  divergence is in 1/s, and its curl does not compile. Drawn with `Field.heatmap`, `contours` and
+  `bands`, with a colorbar in the field's unit. Contour levels are the nice numbers of the
+  field's own range, saddles are resolved by the asymptotic decider, and bands are filled
+  even-odd with their holes. Non-finite samples are kept, counted and not drawn.
+- **`Chart.overlay`**, which draws one figure's layers over another's last panel: a heatmap
+  under its contours, or any two figures over the same quantities.
 - **`Rng`, a specified pseudo-random generator, in `Marey.Core`.** SplitMix64, immutable,
   seeded explicitly: `Rng.seeded`, `next`, `unit`, `below`, `units`. The library's first
   randomness, for line-integral convolution and bootstrap intervals to come, and specified rather
   than taken from `System.Random` so that a seed names the same sequence on every runtime,
   including Fable. Pinned against the published outputs for seed 0.
+
+### Changed
+
+- **`GeomOf` gained a case, `GeomField`**, the geom a field layer is: a grid and what to draw of
+  it, computed on the panel at compile time. A `match` over `Geom` that was exhaustive needs an
+  arm for it.
+
+### Fixed
+
+- **`Marey.Tools.Tex`'s package readme still said an animation typesets once for the whole
+  film.** That was corrected in the guide at 0.3.0 and missed here; the memo does not outlive one
+  call.
 
 ## [0.3.1] — 2026-10-05
 

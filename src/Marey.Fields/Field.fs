@@ -196,3 +196,141 @@ module Field =
           DuDy = dy u
           DwDx = dx w
           DwDy = dy w }
+
+    // ---- Drawing (D86, D88, D91) --------------------------------------------------------------
+    //
+    // A field layer is a `GeomField` over a series whose points are the grid's nodes: the axes
+    // cover the grid, `Figure.unify` checks its dimensions against every other layer's, and a
+    // colour channel over the node values gets its colorbar from the machinery a scatter's uses.
+    // The picture itself is computed on the panel at compile time (`FieldMarks`), so it follows
+    // whatever domain and scale the panel ends up with (D97).
+
+    let inline private raw (xs: float<'u>[]) = xs |> Array.map float
+
+    /// Half a node pitch beyond each end, so that the end rows of a heatmap are whole cells. A
+    /// grid even in log is padded by half a step in log, so the padding is even on a log axis.
+    let private paddedDomain<[<Measure>] 'u> (nodes: float<'u>[]) : float<'u> * float<'u> =
+        let cs = raw nodes
+        let n = cs.Length
+        let ratios = cs |> Array.pairwise |> Array.map (fun (a, b) -> b / a)
+
+        let geometric =
+            cs.[0] > 0.0
+            && ratios |> Array.forall (fun r -> abs (r - ratios.[0]) <= 1e-9 * ratios.[0])
+            && ratios.[0] > 1.0 + 1e-9
+
+        let lo, hi =
+            if geometric then
+                cs.[0] / sqrt ratios.[0], cs.[n - 1] * sqrt ratios.[0]
+            else
+                cs.[0] - (cs.[1] - cs.[0]) / 2.0, cs.[n - 1] + (cs.[n - 1] - cs.[n - 2]) / 2.0
+
+        LanguagePrimitives.FloatWithMeasure<'u> lo, LanguagePrimitives.FloatWithMeasure<'u> hi
+
+    /// A field layer over the grid's nodes. Only a heatmap pads its axes: its edge nodes are the
+    /// centres of whole cells, while a contour or a band ends exactly at the last node and padding
+    /// would leave an empty margin inside the axes.
+    let private layerOf<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (mark: FieldMark)
+        (g: ScalarGrid<'x, 'y, 'v>)
+        : Figure =
+        let nx = g.Xs.Length
+
+        let domain (nodes: float<'u>[]) =
+            match mark with
+            | FieldHeatmap _ -> paddedDomain nodes
+            | FieldContours _
+            | FieldBands _ -> nodes.[0], nodes.[nodes.Length - 1]
+
+        let s: Series<'x, 'y> =
+            { Name = ""
+              X = Array.init g.Values.Length (fun k -> g.Xs.[k % nx])
+              Y = Array.init g.Values.Length (fun k -> g.Ys.[k / nx])
+              XScale = Scale.linear ux (domain g.Xs)
+              YScale = Scale.linear uy (domain g.Ys) }
+
+        Chart.ofSeries
+            (GeomField(
+                { Xs = raw g.Xs
+                  Ys = raw g.Ys
+                  Values = raw g.Values },
+                mark
+            ))
+            s
+
+    /// Contour levels for a value range: the nice numbers the range's own axis would tick at.
+    let private levelsFor (target: int) (lo: float, hi: float) = Ticks.linear target (lo, hi)
+
+    let private valueRange<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v> (g: ScalarGrid<'x, 'y, 'v>) =
+        match ScalarGrid.range g with
+        | Some(lo, hi) when hi > lo -> float lo, float hi
+        | Some(lo, _) -> float lo - 0.5, float lo + 0.5
+        | None -> 0.0, 1.0
+
+    /// A scalar grid as an image coloured along `ramp`, with a colorbar in `'v` (D91). `smooth`
+    /// interpolates between nodes; otherwise every node is a flat cell.
+    let heatmapWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (ramp: Ramp)
+        (smooth: bool)
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (uv: U<'v>)
+        (g: ScalarGrid<'x, 'y, 'v>)
+        : Figure =
+        layerOf ux uy (FieldHeatmap smooth) g |> Chart.colorByWith ramp uv g.Values
+
+    /// `heatmapWith` along the theme's sequential ramp, interpolated between nodes.
+    let heatmap<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (uv: U<'v>)
+        (g: ScalarGrid<'x, 'y, 'v>)
+        : Figure =
+        heatmapWith Theme.initial.Sequential true ux uy uv g
+
+    /// Contour lines at stated levels, in the theme's foreground colour (D88).
+    let contoursAt<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (levels: float<'v>[])
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (g: ScalarGrid<'x, 'y, 'v>)
+        : Figure =
+        let fig = layerOf ux uy (FieldContours(raw levels)) g
+
+        fig |> Chart.withStyle (fun st -> { st with Color = fig.Theme.Foreground; Width = st.Width * 0.6 })
+
+    /// Contour lines at the nice numbers the field's own range would be ticked at — about eight
+    /// of them. A field in volts gets equipotentials at round numbers of volts.
+    let contours<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (g: ScalarGrid<'x, 'y, 'v>)
+        : Figure =
+        contoursAt (levelsFor 8 (valueRange g) |> Array.map LanguagePrimitives.FloatWithMeasure<'v>) ux uy g
+
+    /// Filled bands between stated levels, coloured along `ramp` with a colorbar in `'v` (D88).
+    let bandsWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (ramp: Ramp)
+        (levels: float<'v>[])
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (uv: U<'v>)
+        (g: ScalarGrid<'x, 'y, 'v>)
+        : Figure =
+        layerOf ux uy (FieldBands(raw levels)) g
+        |> Chart.withStyle (fun st -> { st with FillOpacity = 1.0 })
+        |> Chart.colorByWith ramp uv g.Values
+
+    /// Filled bands at nice levels widened to cover the field's whole range, along the theme's
+    /// sequential ramp.
+    let bands<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (uv: U<'v>)
+        (g: ScalarGrid<'x, 'y, 'v>)
+        : Figure =
+        let lo, hi = Ticks.expandToNice 8 (valueRange g)
+        let levels = levelsFor 8 (lo, hi) |> Array.map LanguagePrimitives.FloatWithMeasure<'v>
+        bandsWith Theme.initial.Sequential levels ux uy uv g

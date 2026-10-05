@@ -149,7 +149,8 @@ jobs:
       # exactly how this check broke once. The invariant worth asserting is the one that failed:
       # the nuspec must declare a readme, and the package must contain the file it declares.
       #
-      # The count is publish.yml's, and the two must move together. This one said 7 from M2 until
+      # The count is publish.yml's, and the two must move together; gate 15 in the test suite
+      # fails if either differs from the number of packable projects in Marey.slnx. This one said 7 from M2 until
       # M3's close: publish.yml was raised at every phase that added a package and this file at
       # none, and nothing noticed because a failing example stopped every run at the Test step
       # first. The same drift .github/tex-packages.txt was created to end, in a different list.
@@ -157,7 +158,7 @@ jobs:
         run: |
           set -e
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 12 ] || { echo "::error::expected 12 packages, packed $count"; exit 1; }
+          [ "$count" -eq 13 ] || { echo "::error::expected 13 packages, packed $count"; exit 1; }
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
             readme=$(grep -o '<readme>[^<]*</readme>' /tmp/nuspec.xml | sed 's:<readme>::;s:</readme>::')
@@ -166,7 +167,7 @@ jobs:
             unzip -l "$pkg" | grep -q "$readme" || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
             echo "  $(basename "$pkg"): $readme"
           done
-          echo "12 packages, each with an MIT expression and the readme it declares"
+          echo "13 packages, each with an MIT expression and the readme it declares"
 
       - uses: actions/upload-artifact@v4
         with:

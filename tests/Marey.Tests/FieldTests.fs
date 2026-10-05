@@ -274,3 +274,196 @@ module ``sampling`` =
 
         Assert.Throws<ArgumentException>(fun () -> ScalarGrid.create [| 0.0; 1.0 |] [| 0.0; 1.0 |] [| 1.0; 2.0; 3.0 |] |> ignore)
         |> ignore
+
+// ======================================================================================
+// Phase 2 — the heatmap, contours and bands (D86, D88, D91). Gates 5, 6 and 7.
+// ======================================================================================
+
+/// A grid as a field layer's projected payload, with the panel taken as the data itself — the
+/// geometry `FieldMarks` works in, without a figure around it.
+let private onPanel (g: ScalarGrid<1, 1, 1>) : FieldPayload<nd> =
+    { Xs = g.Xs |> Array.map (fun x -> x * 1.0<nd>)
+      Ys = g.Ys |> Array.map (fun y -> y * 1.0<nd>)
+      Values = g.Values }
+
+module ``contours`` =
+
+    /// **Gate 5, first half.** Every vertex is a crossing on a grid edge, interpolated along it,
+    /// so the bilinear field everything else reads is exactly the level there — on an uneven grid
+    /// and for a field that is not itself bilinear.
+    [<Property>]
+    let ``every vertex is on its level`` (seed: uint64) =
+        let xs = unevenAxis seed 9
+        let ys = unevenAxis (seed + 7UL) 8
+        let g = ScalarGrid.sample xs ys (fun x y -> x * x + 2.0 * y * y + x * y)
+        let level = 4.0
+
+        FieldMarks.isolines level (onPanel g)
+        |> Array.forall (fun (pts, _) ->
+            pts |> Array.forall (fun p -> abs (ScalarGrid.at g (float p.X) (float p.Y) - level) < 1e-9))
+
+    /// **Gate 5, the saddle.** One cell whose two high corners are joined if the cell's mean is
+    /// the judge and separated if the bilinear saddle value is: corners 10 and 0.05 above zero,
+    /// −1 and −1 below, mean 2.01, saddle −0.0415. The asymptotic decider separates them, so the
+    /// level-zero contour is two segments, each cutting off one high corner.
+    [<Fact>]
+    let ``a saddle is decided by the interpolant, not the mean`` () =
+        let g = ScalarGrid.create [| 0.0; 1.0 |] [| 0.0; 1.0 |] [| 10.0; -1.0; -1.0; 0.05 |]
+        let lines = FieldMarks.isolines 0.0 (onPanel g)
+
+        Assert.Equal(2, lines.Length)
+
+        let nearCorner (cx: float) (cy: float) (pts: Vec2<nd>[]) =
+            pts |> Array.forall (fun p -> abs (float p.X - cx) < 1.0 && abs (float p.Y - cy) < 1.0 && (float p.X = cx || float p.Y = cy))
+
+        Assert.True(lines |> Array.exists (fun (pts, _) -> nearCorner 0.0 0.0 pts), "no segment cuts off the (0,0) corner")
+        Assert.True(lines |> Array.exists (fun (pts, _) -> nearCorner 1.0 1.0 pts), "no segment cuts off the (1,1) corner")
+
+    /// **Gate 6.** A level set that is closed is one closed path: the circle r² = 1 is one ring,
+    /// not an arc per cell and not two halves that happen to meet.
+    [<Fact>]
+    let ``a closed level set is one closed ring`` () =
+        let xs = Grid.linear -2.0 2.0 21
+        let g = ScalarGrid.sample xs xs (fun x y -> x * x + y * y)
+
+        match FieldMarks.isolines 1.0 (onPanel g) with
+        | [| pts, closed |] ->
+            Assert.True(closed, "the ring is open")
+            Assert.True(pts.Length > 12, sprintf "the ring has only %d vertices" pts.Length)
+        | other -> failwithf "expected one ring, got %d polylines" other.Length
+
+    /// The orientation every band relies on: walking a contour, the region above its level is on
+    /// the left. On the circle r² = 1 with the inside low, the walk is clockwise.
+    [<Fact>]
+    let ``a contour has the region above it on its left`` () =
+        let xs = Grid.linear -2.0 2.0 21
+        let g = ScalarGrid.sample xs xs (fun x y -> x * x + y * y)
+        let pts, _ = (FieldMarks.isolines 1.0 (onPanel g)).[0]
+
+        let signedArea =
+            Array.append pts [| pts.[0] |]
+            |> Array.pairwise
+            |> Array.sumBy (fun (a, b) -> float a.X * float b.Y - float b.X * float a.Y)
+
+        Assert.True(signedArea < 0.0, "the ring around a minimum runs counter-clockwise, so the low side is on its left")
+
+    /// A missing node removes the cells around it from every contour, rather than a line being
+    /// drawn through a value nobody measured.
+    [<Fact>]
+    let ``no contour crosses a cell with a missing corner`` () =
+        let xs = Grid.linear -2.0 2.0 9
+        let g = ScalarGrid.sample xs xs (fun x y -> if x = 0.0 && y = 0.0 then nan else x)
+
+        for pts, _ in FieldMarks.isolines 0.25 (onPanel g) do
+            for p in pts do
+                Assert.False(abs (float p.X) < 0.5 && abs (float p.Y) < 0.5, sprintf "a vertex at (%f, %f) is in a cell with the missing node" (float p.X) (float p.Y))
+
+module ``a field on a figure`` =
+
+    let private extent = Chart.size 480.0 300.0
+
+    let rec private find (pick: Node -> 'a option) (n: Node) : 'a list =
+        let here = Option.toList (pick n)
+
+        let below =
+            match n with
+            | Group ns -> ns |> Array.toList |> List.collect (find pick)
+            | Transform(_, c)
+            | Clip(_, c)
+            | Keyed(_, c)
+            | Annotated(_, c)
+            | Opacity(_, c) -> find pick c
+            | _ -> []
+
+        here @ below
+
+    /// **Gate 7.** The heatmap's pixels and the bands' fills are coloured by one call — the colour
+    /// channel's own quantiser — so a band and a pixel holding its midpoint value are one colour.
+    /// f = x with nodes at the band midpoints 0.5, 1.5 and 2.5.
+    [<Fact>]
+    let ``a band and a pixel at its midpoint are one colour`` () =
+        let xs = [| 0.0<m>; 0.5<m>; 1.0<m>; 1.5<m>; 2.0<m>; 2.5<m>; 3.0<m> |]
+        let ys = Grid.linear 0.0<m> 1.0<m> 3
+        let g = ScalarGrid.sample xs ys (fun x _ -> float x * 1.0<K>)
+        let levels = [| 0.0<K>; 1.0<K>; 2.0<K>; 3.0<K> |]
+
+        let fig =
+            Field.heatmapWith Theme.initial.Sequential false U.metre U.metre U.kelvin g
+            |> Chart.overlay (Field.bandsWith Theme.initial.Sequential levels U.metre U.metre U.kelvin g)
+
+        let scene = Chart.toScene extent fig
+
+        let raster =
+            find (function Raster r -> Some r.Image | _ -> None) scene |> List.exactlyOne
+
+        let fills =
+            find (function Path(_, None, Some(Solid c), EvenOdd) -> Some c | _ -> None) scene
+
+        Assert.Equal(3, fills.Length)
+
+        let byte01 (c: float) = byte (System.Math.Round(c * 255.0))
+
+        for band, column in [ 0, 1; 1, 3; 2, 5 ] do
+            let k = column * 4
+            let pixel = raster.Rgba.[k .. k + 2]
+            let fill = fills.[band]
+
+            Assert.Equal<byte[]>(pixel, [| byte01 fill.R; byte01 fill.G; byte01 fill.B |])
+
+    /// D97 for the field: a heatmap beside a wider layer is drawn where its grid is, not stretched
+    /// over the panel. The image box covers the grid's half-padded extent, a fifth of the x axis.
+    [<Fact>]
+    let ``a field follows the panel's final scales`` () =
+        let xs = Grid.linear 0.0<m> 1.0<m> 5
+        let g = ScalarGrid.sample xs xs (fun x y -> float (x + y) * 1.0<K>)
+
+        let fig =
+            Field.heatmap U.metre U.metre U.kelvin g
+            |> Chart.addScatter U.metre U.metre [| 0.0<m>; 5.0<m> |] [| 0.0<m>; 1.0<m> |]
+
+        let box =
+            find (function Raster r -> Some r.Bounds | _ -> None) (Chart.toScene extent fig) |> List.exactlyOne
+
+        let width = float (box.X1 - box.X0)
+        Assert.InRange(width, 0.15, 0.30)
+
+    let private potential =
+        let xs = Grid.linear -2.0<m> 2.0<m> 13
+        let ys = Grid.linear -1.5<m> 1.5<m> 9
+
+        Field.sampleScalar xs ys (fun p ->
+            let d1 = Vec2.norm { X = p.X - 0.6<m>; Y = p.Y + 0.1<m> }
+            let d2 = Vec2.norm { X = p.X + 0.6<m>; Y = p.Y - 0.1<m> }
+            (log (float d2) - log (float d1)) * 1.0<V>)
+
+    /// Two line charges: their potential as a heatmap with its equipotentials. The SVG baseline
+    /// carries the 13 × 9 image inline, which is the size it is chosen at.
+    [<Fact>]
+    let ``golden: a potential, its heatmap and its equipotentials (svg)`` () =
+        let fig =
+            Field.heatmap U.metre U.metre Derived.volt potential
+            |> Chart.overlay (Field.contours U.metre U.metre potential)
+            |> Chart.withYLabel "y"
+            |> Chart.withTitle "Two line charges"
+
+        Golden.check "figure-field-heatmap.svg" (Chart.render SvgBackend.render extent fig)
+
+    /// The same potential in bands, which is vector all the way down, so its TikZ baseline needs
+    /// no sidecar and compiles with the other `.tex` baselines.
+    [<Fact>]
+    let ``golden: the same potential in bands (tikz)`` () =
+        let fig =
+            Field.bands U.metre U.metre Derived.volt potential
+            |> Chart.overlay (Field.contours U.metre U.metre potential)
+            |> Chart.withYLabel "y"
+            |> Chart.withTitle "Two line charges"
+
+        let doc = Chart.render TikzBackend.render extent fig
+        Golden.check "figure-field-bands.tex" doc
+
+        // Every band is an even-odd path with holes, which TikZ spells `even odd rule`; the
+        // engine is the authority on whether that spelling, and everything else, is valid.
+        match TexToolchain.compile "field-bands" (TikzBackend.standalone doc) with
+        | TexToolchain.Unavailable -> Console.WriteLine("SKIPPED: " + TexToolchain.report ())
+        | TexToolchain.Compiled -> ()
+        | TexToolchain.Failed why -> failwithf "the bands baseline does not compile:\n%s" why

@@ -1,0 +1,66 @@
+# Marey.Fields
+
+Fields for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed visualization
+system for F#. **The gradient of a potential in volts over metres is a field in V/m, and the type
+says so.**
+
+```fsharp
+#r "nuget: Marey.Fields"
+#r "nuget: Marey.Backend.Svg"
+
+open Marey
+
+// Two line charges: a potential in volts, sampled over metres.
+let phi (p: Vec2<m>) =
+    let d1 = Vec2.norm { X = p.X - 0.5<m>; Y = p.Y }
+    let d2 = Vec2.norm { X = p.X + 0.5<m>; Y = p.Y }
+    (log (float d2) - log (float d1)) * 1.0<V>
+
+let xs = Grid.linear -2.0<m> 2.0<m> 81
+let ys = Grid.linear -1.5<m> 1.5<m> 61
+let potential = Field.sampleScalar xs ys phi            // ScalarGrid<m, m, V>
+
+let e = Field.grad potential                             // VectorGrid<m, m, V/m, V/m>
+let rho = Field.div e                                    // ScalarGrid<m, m, V/m²>
+
+Field.heatmap U.metre U.metre Derived.volt potential
+|> Chart.overlay (Field.contours U.metre U.metre potential)
+|> Chart.render SvgBackend.render (Chart.size 640.0 420.0)
+```
+
+## A phase space is a domain
+
+A pendulum lives in (θ, ω): radians on one axis and radians per second on the other. A `Flow`
+has a separate unit on each axis, and its grid's components are the rates of change.
+
+```fsharp
+let pendulum: Flow<rad, rad/s, s> = fun th om -> struct (om, -9.81<1/s^2> * sin (float th) * 1.0<rad>)
+
+let flow = Field.sampleFlow (Grid.linear -3.0<rad> 3.0<rad> 61) (Grid.linear -6.0<rad/s> 6.0<rad/s> 61) pendulum
+let d: ScalarGrid<rad, rad/s, 1/s> = Field.div flow      // zero: phase-space area is conserved
+// Field.curl flow                                       // does not compile
+```
+
+The derived quantities say in their signatures which domains they exist on. `div` asks that ∂u/∂x
+and ∂w/∂y share a unit, which a spatial field and a flow both satisfy. `curl` and `laplacian` ask
+for one unit on both axes, so over a phase space they are compile errors. That is correct,
+because ∂ω̇/∂θ and ∂θ̇/∂ω are in different units and their difference does not exist.
+
+## What is in it
+
+- **Grids.** `ScalarGrid` and `VectorGrid` on rectilinear nodes, from data or sampled from a
+  function. `Grid.linear` and `Grid.log` space the nodes evenly on a linear or a log axis.
+  Bilinear reads do not extrapolate. A node that is not finite is kept, counted (`missing`) and
+  not drawn.
+- **Derivatives.** `grad`, `div`, `curl`, `laplacian` and `jacobian`, by three-point differences
+  that are exact for a quadratic on any rectilinear grid and second-order otherwise.
+- **Drawing.** `Field.heatmap`, `Field.contours` and `Field.bands`, with a colorbar in the field's
+  unit. The picture is computed once the panel's scales are final, so a field lines up with every
+  other layer on a linear or a log axis. Contour levels are the nice numbers the field's own range
+  would be ticked at. Saddle cells are resolved by the asymptotic decider, and bands are filled
+  even-odd, holes included.
+
+## Links
+
+- [The repository](https://github.com/Axym-Labs/marey)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
