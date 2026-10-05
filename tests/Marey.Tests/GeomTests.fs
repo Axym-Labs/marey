@@ -36,7 +36,7 @@ let private pt (x: float) (y: float) : Vec2<nd> = { X = x * 1.0<nd>; Y = y * 1.0
 
 let private nd (x: float) : float<nd> = x * 1.0<nd>
 
-let private compile (g: Geom) (pts: Vec2<nd>[]) =
+let private compile (g: GeomOf<nd>) (pts: Vec2<nd>[]) =
     Geom.compile Coord.cartesian surface style g pts
 
 /// Every point a node's **paths** pass through, in order. The cross-backend oracle is about
@@ -283,7 +283,7 @@ module ``ribbon`` =
 
     let private band =
         let s = unitSeries "" [| 0.0; 0.5; 1.0 |] [| 0.5; 0.5; 0.5 |]
-        Geom.ribbon s [| 0.2; 0.3; 0.1 |] [| 0.8; 0.9; 0.7 |]
+        Geom.ribbon s [| 0.2; 0.3; 0.1 |] [| 0.8; 0.9; 0.7 |] |> Geom.onSeries s
 
     [<Fact>]
     let ``the band is one closed subpath: the upper bound out, the lower bound back`` () =
@@ -307,7 +307,7 @@ module ``ribbon`` =
     [<Fact>]
     let ``a missing bound breaks the band`` () =
         let s = unitSeries "" [| 0.0; 0.25; 0.5; 0.75; 1.0 |] (Array.create 5 0.5)
-        let g = Geom.ribbon s [| 0.2; 0.2; nan; 0.2; 0.2 |] (Array.create 5 0.8)
+        let g = Geom.ribbon s [| 0.2; 0.2; nan; 0.2; 0.2 |] (Array.create 5 0.8) |> Geom.onSeries s
         let pts = Array.init 5 (fun i -> pt (float i / 4.0) 0.5)
 
         Assert.Equal(2, (subpaths (compile g pts)).Length)
@@ -322,7 +322,7 @@ module ``ribbon`` =
               XScale = Scale.linear U.second (0.0<s>, 1.0<s>)
               YScale = Scale.linear U.metre (0.0<m>, 8.0<m>) }
 
-        match Geom.ribbonAround s [| 1.0<m>; 2.0<m> |] with
+        match Geom.ribbonAround s [| 1.0<m>; 2.0<m> |] |> Geom.onSeries s with
         | GeomRibbon(low, high) ->
             Assert.Equal(1.0 / 8.0, float low.[0], 12)
             Assert.Equal(6.0 / 8.0, float high.[1], 12)
@@ -333,7 +333,7 @@ module ``rect and tile`` =
     [<Fact>]
     let ``a tile is a closed rectangle around its centre`` () =
         let s = unitSeries "" [| 0.5 |] [| 0.5 |]
-        let run = compile (Geom.tile 0.2 0.4 s) [| pt 0.5 0.5 |] |> subpaths |> List.exactlyOne
+        let run = compile (Geom.tile 0.2 0.4 s |> Geom.onSeries s) [| pt 0.5 0.5 |] |> subpaths |> List.exactlyOne
 
         Assert.Equal<float list>([ 0.4; 0.6; 0.6; 0.4 ], xs run)
         Assert.Equal<float list>([ 0.3; 0.3; 0.7; 0.7 ], ys run)
@@ -353,7 +353,7 @@ module ``rect and tile`` =
         let pts = [| pt (float (s.XScale.Forward 2.0)) 0.5; pt (float (s.XScale.Forward 20.0)) 0.5 |]
 
         let widths =
-            compile (Geom.tile 1.0 0.2 s) pts
+            compile (Geom.tile 1.0 0.2 s |> Geom.onSeries s) pts
             |> subpaths
             |> List.map (fun run ->
                 let vs = xs run
@@ -372,7 +372,7 @@ module ``rect and tile`` =
     let ``a tile is outlined in its own fill`` () =
         let s = unitSeries "" [| 0.5 |] [| 0.5 |]
 
-        match compile (Geom.tile 0.2 0.2 s) [| pt 0.5 0.5 |] with
+        match compile (Geom.tile 0.2 0.2 s |> Geom.onSeries s) [| pt 0.5 0.5 |] with
         | Path(_, Some stroke, Some fill, _) -> Assert.Equal(fill, stroke.Paint)
         | other -> failwithf "expected a stroked and filled Path, got %A" other
 
@@ -385,7 +385,7 @@ module ``rect and tile`` =
               XScale = Scale.linear U.second (0.0<s>, 4.0<s>)
               YScale = Scale.linear U.metre (0.0<m>, 10.0<m>) }
 
-        match Geom.rect s [| 1.0<s> |] [| 2.0<m> |] [| 3.0<s> |] [| 8.0<m> |] with
+        match Geom.rect s [| 1.0<s> |] [| 2.0<m> |] [| 3.0<s> |] [| 8.0<m> |] |> Geom.onSeries s with
         | GeomRect(x0, y0, x1, y1) ->
             Assert.Equal(0.25, float x0.[0], 12)
             Assert.Equal(0.2, float y0.[0], 12)
@@ -398,7 +398,7 @@ module ``segment`` =
     [<Fact>]
     let ``each segment is a move and a line`` () =
         let s = unitSeries "" [| 0.0; 0.5 |] [| 0.0; 0.0 |]
-        let g = Geom.segment s [| 0.5; 1.0 |] [| 1.0; 0.5 |]
+        let g = Geom.segment s [| 0.5; 1.0 |] [| 1.0; 0.5 |] |> Geom.onSeries s
         let runs = compile g [| pt 0.0 0.0; pt 0.5 0.0 |] |> subpaths
 
         Assert.Equal(2, runs.Length)
@@ -410,7 +410,7 @@ module ``segment`` =
     [<Fact>]
     let ``a segment with a non-finite end is not drawn`` () =
         let s = unitSeries "" [| 0.0; 0.5 |] [| 0.0; 0.0 |]
-        let g = Geom.segment s [| 0.5; nan |] [| 1.0; 0.5 |]
+        let g = Geom.segment s [| 0.5; nan |] [| 1.0; 0.5 |] |> Geom.onSeries s
 
         Assert.Equal(1, (subpaths (compile g [| pt 0.0 0.0; pt 0.5 0.0 |])).Length)
 
@@ -469,7 +469,7 @@ module ``boxplot`` =
 
     let private node =
         compile
-            (Geom.boxplot 0.6 series summaries)
+            (Geom.boxplot 0.6 series summaries |> Geom.onSeries series)
             [| pt (float (series.XScale.Forward 0.0)) 0.05
                pt (float (series.XScale.Forward 1.0)) 0.05 |]
 
@@ -530,7 +530,7 @@ module ``boxplot`` =
               XScale = Scale.ordinal [| "a" |]
               YScale = Scale.linear U.metre (0.0<m>, 10.0<m>) }
 
-        match Geom.boxplot 0.6 s [| Stat.summary U.metre [| 2.0<m>; 4.0<m>; 6.0<m> |] |] with
+        match Geom.boxplot 0.6 s [| Stat.summary U.metre [| 2.0<m>; 4.0<m>; 6.0<m> |] |] |> Geom.onSeries s with
         | GeomBox(spans, _) -> Assert.Equal(0.4, float spans.[0].Median, 12)
         | other -> failwithf "expected a GeomBox, got %A" other
 
@@ -564,7 +564,7 @@ module ``violin`` =
                pt (float (series.XScale.Forward 1.0)) 0.5 |]
 
         let widths =
-            compile g pts
+            compile (Geom.onSeries series g) pts
             |> subpaths
             |> List.map (fun run ->
                 let vs = xs run
@@ -580,6 +580,7 @@ module ``violin`` =
     let ``a violin is a closed, filled polygon per band`` () =
         let g =
             Geom.violin 0.8 series (Array.create 2 (Stat.densityWith U.one 0.3 32 [| -1.0; 0.0; 1.0 |]))
+            |> Geom.onSeries series
 
         let pts =
             [| pt (float (series.XScale.Forward 0.0)) 0.5
@@ -598,6 +599,7 @@ module ``violin`` =
     let ``a violin is symmetric about its band`` () =
         let g =
             Geom.violin 0.8 series (Array.create 2 (Stat.densityWith U.one 0.3 32 [| -1.0; 0.0; 1.0 |]))
+            |> Geom.onSeries series
 
         let centre = float (series.XScale.Forward 0.0)
         let run = compile g [| pt centre 0.5; pt centre 0.5 |] |> subpaths |> List.head
@@ -720,7 +722,7 @@ module ``a channel batch reads its own rows`` =
 
     let private second = [| 2; 3 |]
 
-    let private subset (g: Geom) =
+    let private subset (g: GeomOf<nd>) =
         Geom.compileSubset Coord.cartesian surface style g pts second
 
     [<Fact>]
@@ -867,7 +869,7 @@ module ``cross-backend geometry agreement`` =
     [<Fact>]
     let ``every phase 6 geom agrees across the backends`` () =
         for name, g in geoms do
-            agree name (compile g pts)
+            agree name (compile (Geom.onSeries series g) pts)
 
     /// A `GeomText` layer emits no path geometry, so it joins the gate through the one thing it
     /// does emit: the two backends must place the run at the same point on the page.
@@ -886,7 +888,7 @@ module ``cross-backend geometry agreement`` =
     [<Fact>]
     let ``every phase 6 geom renders deterministically`` () =
         for name, g in geoms do
-            let node = compile g pts
+            let node = compile (Geom.onSeries series g) pts
             Assert.True((SvgBackend.render surface node = SvgBackend.render surface node), name)
             Assert.True((TikzBackend.render surface node = TikzBackend.render surface node), name)
 
@@ -1136,3 +1138,83 @@ module ``area and bars from a block`` =
 
         Assert.Equal(layers.[0].Style.Color, layers.[1].Style.Color)
         Assert.Equal(0.5, layers.[0].Style.Opacity, 12)
+
+// ======================================================================================
+// D97 — a geom draws where its data is, whatever the panel's domain became after it was built
+// ======================================================================================
+
+/// **Gate 1 of `m4-plan.md`.** Ten of the fifteen geom cases carry arrays of their own — the span
+/// of an error bar, the corners of a tile, a box's quartiles, an area's baseline. Until D97 those
+/// arrays were projected into the panel **at construction**, against the series' scales as they
+/// were at that moment, while the layer's points were projected at compile time against the
+/// scales the panel ended up with. Anything that changed a domain in between — a second layer
+/// (`Figure.unify`), `Chart.withXDomain`, a switch to a log axis — moved the points and left the
+/// geom's own arrays where they were. A ±0.5 m error bar added to a 0–10 m line spanned 0–10 m.
+///
+/// The oracle is the same geom built against a series whose scales **already are** the final
+/// ones, put through the same operation. A geom that is projected when its points are draws
+/// identically either way; one projected at construction does not.
+module ``a geom draws where its data is`` =
+
+    let private extent = Chart.size 400.0 300.0
+    let private x = [| 4.0<m>; 5.0<m>; 6.0<m> |]
+    let private y = [| 4.5<m>; 5.0<m>; 5.5<m> |]
+
+    let private geoms: (string * (Series<m, m> -> Geom)) list =
+        let sample = [| 3.0<m>; 4.0<m>; 4.5<m>; 5.0<m>; 5.2<m>; 5.5<m>; 6.0<m>; 7.0<m> |]
+        let pixel = { Width = 1; Height = 1; Rgba = [| 255uy; 0uy; 0uy; 255uy |] }
+
+        [ "errorY", (fun s -> Geom.errorY s [| 0.5<m>; 0.5<m>; 0.5<m> |])
+          "errorX", (fun s -> Geom.errorX s [| 0.5<m>; 0.5<m>; 0.5<m> |])
+          "ribbon", (fun s -> Geom.ribbonAround s [| 0.5<m>; 0.5<m>; 0.5<m> |])
+          "tile", Geom.tile 0.4<m> 0.4<m>
+          "segment", (fun s -> Geom.segment s [| 4.5<m>; 5.5<m>; 6.5<m> |] [| 5.0<m>; 5.5<m>; 6.0<m> |])
+          "boxplot", (fun s -> Geom.boxplot 0.5 s (Array.create 3 (Stat.summary U.metre sample)))
+          "violin", (fun s -> Geom.violin 0.5 s (Array.create 3 (Stat.density U.metre sample)))
+          "image", (fun s -> Geom.image s pixel 4.2<m> 4.2<m> 5.8<m> 5.8<m> false)
+          "area", Geom.area
+          "bar", Geom.bar 0.5 ]
+
+    let private operations: (string * (Figure -> Figure)) list =
+        // Both domains reach below zero, so an area's and a bar's baseline — clamped to the panel
+        // edge while zero was outside the domain they were built against — has somewhere to move
+        // to. Without that, those two cases pass whether or not the baseline follows.
+        [ "a wider second layer", Chart.addScatter U.metre U.metre [| -2.0<m>; 10.0<m> |] [| -2.0<m>; 10.0<m> |]
+          "a stated domain", Chart.withXDomain -1.0 9.0 >> Chart.withYDomain -1.0 9.0
+          "a log axis", Chart.withXLog >> Chart.withYLog ]
+
+    let cases: System.Collections.Generic.IEnumerable<obj[]> =
+        [ for g, _ in geoms do
+              for o, _ in operations do
+                  yield [| box g; box o |] ]
+
+    let private svgOf (fig: Figure) =
+        SvgBackend.render extent (Chart.toScene extent fig)
+
+    [<Theory>]
+    [<MemberData(nameof cases)>]
+    let ``the geom's own arrays follow the panel's final scales`` (geom: string) (operation: string) =
+        let mk = geoms |> List.find (fun (n, _) -> n = geom) |> snd
+        let op = operations |> List.find (fun (n, _) -> n = operation) |> snd
+
+        let s = Chart.series "" U.metre U.metre x y
+        let actual = Chart.ofSeries (mk s) s |> op
+
+        // The scales the geom's layer ends up drawn against, read off the figure the way the
+        // compiler reads them: after `unify`.
+        let fx, fy = Erase.seriesScales (Figure.unify actual.Panels.[0]).Layers.[0].Data
+
+        let final (e: IScaleErased) =
+            Scale.ofKind e.Kind U.metre (LanguagePrimitives.FloatWithMeasure<m> (fst e.Domain), LanguagePrimitives.FloatWithMeasure<m> (snd e.Domain))
+
+        let s' = { s with XScale = final fx; YScale = final fy }
+        let expected = Chart.ofSeries (mk s') s' |> op
+
+        Assert.True(
+            svgOf expected = svgOf actual,
+            sprintf
+                "the %s geom under %s was drawn against the domain it was built with rather than the one \
+                 the panel ended up with (D97)"
+                geom
+                operation
+        )

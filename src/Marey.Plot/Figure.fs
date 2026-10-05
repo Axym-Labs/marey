@@ -844,6 +844,14 @@ module Figure =
                         p.Layers
                         |> Array.mapi (fun ordinal l ->
                             let pts = Erase.projectXY l.Data
+
+                            // D97 — the geom's own arrays through the same scales as `pts`, at
+                            // the same moment. Projected at construction they went stale as soon
+                            // as `unify` or a stated domain moved the panel out from under them.
+                            let geom =
+                                let sx, sy = Erase.seriesScales l.Data
+                                Geom.project sx.Project sy.Project l.Geom
+
                             let layerKey = Keys.layer panelKey ordinal
 
                             // D69 — the rows this layer was asked to name. `None` is the
@@ -864,7 +872,7 @@ module Figure =
                                     // No channels, no counts: an unchannelled layer's annotation is
                                     // exactly what it was before phase 2, so every baseline that
                                     // predates channels stays byte-identical.
-                                    Geom.compileFor address None p.Coord plotSize l.Style l.Geom pts, [||]
+                                    Geom.compileFor address None p.Coord plotSize l.Style geom pts, [||]
                                 else
                                     let (batches, unmapped) = Channel.split l.Channels pts.Length
 
@@ -877,7 +885,7 @@ module Figure =
                                                 p.Coord
                                                 plotSize
                                                 (b.Restyle l.Style)
-                                                l.Geom
+                                                geom
                                                 pts)
 
                                     // `unmapped` is reported rather than swallowed: a point whose
