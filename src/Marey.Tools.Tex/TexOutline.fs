@@ -241,7 +241,11 @@ module SvgPathData =
             i <- skipSeparators d i
 
             if i < d.Length then
-                if isCommand d.[i] then
+                // Whether this pass read a command letter, or is repeating the last one over more
+                // numbers. Only `Z` cares: it takes no numbers, so a repeat of it never advances.
+                let fresh = isCommand d.[i]
+
+                if fresh then
                     command <- d.[i]
                     i <- i + 1
                 elif Char.IsLetter d.[i] then
@@ -259,7 +263,12 @@ module SvgPathData =
                     // `Z` takes no arguments; everything else repeats until the next command
                     // letter, which is how `M` followed by three point pairs means one moveto
                     // and two linetos.
-                    if upper = 'Z' then
+                    if upper = 'Z' && not fresh then
+                        // A number after `Z`. Repeating `Z` over it would add a `ClosePath` and
+                        // leave `i` where it was, forever — `M0 0 Z 1` hung the process, filling
+                        // `out` until memory ran out.
+                        error <- Some(sprintf "a number at offset %d follows 'Z', which takes none" i)
+                    elif upper = 'Z' then
                         out.Add TexSeg.ClosePath
                         cx <- sx
                         cy <- sy

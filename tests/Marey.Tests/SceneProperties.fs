@@ -417,6 +417,16 @@ module GroupOpacity =
             Assert.Equal(0.25, mid)
         | _ -> failwith "Scene.opacity did not produce an Opacity node"
 
+    /// NaN fails both comparisons a clamp is made of, so it used to reach the IR untouched and
+    /// each backend invented its own answer — SVG wrote `opacity="NaN"`, Skia converted it to a
+    /// byte. A translucent value has a nearest legal opacity; NaN has none. Reported by review on
+    /// the 0.3.0 PR.
+    [<Fact>]
+    let ``Scene.opacity refuses NaN rather than passing it through`` () =
+        let leaf = square Color.black 0.0 1.0
+        let ex = Assert.Throws<System.ArgumentException>(fun () -> Scene.opacity nan leaf |> ignore)
+        Assert.Contains("NaN", ex.Message)
+
     /// **The trap an animation walks into.** A group fading in from zero must keep its shape at
     /// t = 0, or the node count changes between two frames that differ only in a float and the
     /// §5.2 diff sees the whole subtree appear from nowhere. `prune` drops what *cannot* draw;

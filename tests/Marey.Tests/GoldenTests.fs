@@ -597,7 +597,7 @@ module Scenes =
     let private geomStyle i =
         Geom.styleFor Theme.initial i |> Geom.withMarkerSize 5.0<px>
 
-    let private drawn i (g: Geom) (pts: Vec2<nd>[]) =
+    let private drawn i (g: GeomOf<nd>) (pts: Vec2<nd>[]) =
         Geom.compile Coord.cartesian Golden.surface (geomStyle i) g pts
 
     /// `ribbon`, `step`, `segment`, `tile` and `text` in one picture.
@@ -613,7 +613,7 @@ module Scenes =
             wave.Y |> Array.mapi (fun i v -> if i % 4 = 0 then sprintf "%.2f" v else "")
 
         Group
-            [| drawn 2 (Geom.ribbon wave low high) wavePts
+            [| drawn 2 (Geom.ribbon wave low high |> Geom.onSeries wave) wavePts
                drawn 0 (GeomStep StepAfter) wavePts
                // A tile grid along the bottom, at a size that tessellates exactly: nine tiles of
                // 1/9 filling the unit interval, so there is neither a seam nor an overlap and
@@ -630,10 +630,10 @@ module Scenes =
                         X = centres
                         Y = Array.create centres.Length 0.08 }
 
-                drawn 1 (Geom.tile (1.0 / 9.0) 0.09 strip) (centres |> Array.map (fun x -> pt x 0.08)))
+                drawn 1 (Geom.tile (1.0 / 9.0) 0.09 strip |> Geom.onSeries strip) (centres |> Array.map (fun x -> pt x 0.08)))
                // Each point joined to the one below it on the axis — the geom read for its
                // direction, so both ends have to be right and not only the start.
-               drawn 3 (Geom.segment wave wave.X (Array.create wave.X.Length 0.2)) wavePts
+               drawn 3 (Geom.segment wave wave.X (Array.create wave.X.Length 0.2) |> Geom.onSeries wave) wavePts
                drawn 0 (Geom.text labels) wavePts |]
 
     /// `boxplot` and `violin`, side by side over four evenly spaced bands.
@@ -671,8 +671,8 @@ module Scenes =
             |> Array.map (Stat.densityWith U.one 1.2 32)
 
         Group
-            [| drawn 0 (Geom.boxplot 0.6 bands summaries) bandPts.[..1]
-               drawn 1 (Geom.violin 0.8 bands densities) bandPts.[2..] |]
+            [| drawn 0 (Geom.boxplot 0.6 bands summaries |> Geom.onSeries bands) bandPts.[..1]
+               drawn 1 (Geom.violin 0.8 bands densities |> Geom.onSeries bands) bandPts.[2..] |]
 
     /// Base name, scene, and the surface it is rendered at.
     ///

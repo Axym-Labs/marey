@@ -358,7 +358,20 @@ module Typeset =
             // `-halt-on-error` is deliberately not passed: every error the engine finds makes one
             // actionable report rather than the first of several. `-interaction=nonstopmode`
             // stops it asking a question on a stdin nothing is reading.
-            match Toolchain.runArgs engine [ "-interaction=nonstopmode"; stem + ".tex" ] dir options.TimeoutMs with
+            //
+            // `--disable-write18` because the source is a public field, and a run set from data
+            // is a string this library did not write: on a TeX configured with
+            // `shell_escape = t`, `\immediate\write18{…}` in a formula ran the command. TeX Live's
+            // restricted default already refused anything off its list; this refuses everything,
+            // whatever the configuration says. The spelling both TeX Live and MiKTeX accept —
+            // `-no-shell-escape` is TeX Live's alone.
+            match
+                Toolchain.runArgs
+                    engine
+                    [ "-interaction=nonstopmode"; "--disable-write18"; stem + ".tex" ]
+                    dir
+                    options.TimeoutMs
+            with
             | ToolUnavailable why -> Error why
             | ToolTimedOut why -> Error why
             | ToolRan run ->

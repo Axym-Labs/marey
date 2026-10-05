@@ -40,19 +40,20 @@ type StepAlign =
     /// The riser is halfway between the two points.
     | StepMid
 
-/// One box of a box plot, in panel-local nd — the five-number summary after `Geom.boxplot`
-/// has spent the measures on it.
+/// One box of a box plot — the five-number summary after `Geom.boxplot` has spent the measures
+/// on it. In the series' data space on a `Geom`, and in panel-local nd once `Geom.project` has
+/// put it on a panel (D97).
 [<NoComparison>]
-type BoxSpan =
-    { Lower: float<nd>
-      Q1: float<nd>
-      Median: float<nd>
-      Q3: float<nd>
-      Upper: float<nd>
+type BoxSpan<[<Measure>] 'p> =
+    { Lower: float<'p>
+      Q1: float<'p>
+      Median: float<'p>
+      Q3: float<'p>
+      Upper: float<'p>
       /// Everything outside the whiskers, drawn as points. D52's rule, one geom down: a datum
       /// the box cannot describe is still drawn, because a box plot that quietly discards its
       /// tails is a summary of a sample nobody measured.
-      Outliers: float<nd>[] }
+      Outliers: float<'p>[] }
 
 /// One violin of a violin plot: sample positions on the panel's y axis, and the half-width of
 /// the profile at each of them.
@@ -62,54 +63,64 @@ type BoxSpan =
 /// a group of four hundred at exactly the same width, which erases the comparison the plot
 /// exists to make.
 [<NoComparison>]
-type ViolinProfile =
-    { At: float<nd>[]
+type ViolinProfile<[<Measure>] 'p> =
+    { At: float<'p>[]
       Width: float[] }
 
 /// M0's geoms (§16: "line/scatter/errorbar" by name), and M2 phase 6's.
 ///
-/// The numeric payloads are already in **panel-local `nd`**, because they were produced by the
-/// series' own scales at construction time by a *typed* constructor. That is what forces an
-/// error bar's magnitude to share the y axis's measure: `Geom.errorY` takes `float('uy)[]`
-/// against a `Series('ux,'uy)`, so handing it seconds for a metre axis is a compile error, and
-/// by the time the value reaches this DU the measure has done its job and gone.
+/// **`'p` is the space the numeric payloads live in**, and there are exactly two. A `Geom` —
+/// `GeomOf<1>`, what every constructor returns and every `Layer` holds — carries them in the
+/// series' **data space**, as plain numbers whose measure was spent by a *typed* constructor.
+/// That is what forces an error bar's magnitude to share the y axis's measure: `Geom.errorY`
+/// takes `float('uy)[]` against a `Series('ux,'uy)`, so handing it seconds for a metre axis is a
+/// compile error, and by the time the value reaches this DU the measure has done its job.
+/// `GeomOf<nd>` is the same geom put on a panel by `Geom.project`, and it is what the compiler
+/// draws.
+///
+/// **D97 — projected when the points are, not when the geom is built.** Until 0.3.1 the payloads
+/// went to `nd` at construction, through the series' scales as they were then, while the
+/// layer's points were projected at compile time through the scales the panel ended up with. A
+/// second layer (`Figure.unify`), `Chart.withXDomain` or a switch to a log axis moved the points
+/// and left the geom's own arrays behind: a ±0.5 m error bar added to a 0–10 m line spanned
+/// 0–10 m. Carrying data and projecting once, beside the points, leaves nothing to remember.
 [<NoComparison>]
-type Geom =
+type GeomOf<[<Measure>] 'p> =
     | GeomLine
     | GeomPoint
-    /// Filled between the data and a baseline, given in panel-local nd.
-    | GeomArea of baseline: float<nd>
+    /// Filled between the data and a baseline, in the series' data space; `Geom.project` clamps it into the panel.
+    | GeomArea of baseline: float<'p>
     /// Bars from a baseline, width as a fraction of the median x spacing.
-    | GeomBar of baseline: float<nd> * widthFraction: float
-    /// Vertical error bars: low and high y, per point, in panel-local nd.
-    | GeomErrorY of low: float<nd>[] * high: float<nd>[]
-    /// Horizontal error bars: low and high x, per point, in panel-local nd.
-    | GeomErrorX of low: float<nd>[] * high: float<nd>[]
+    | GeomBar of baseline: float<'p> * widthFraction: float
+    /// Vertical error bars: low and high y, per point.
+    | GeomErrorY of low: float<'p>[] * high: float<'p>[]
+    /// Horizontal error bars: low and high x, per point.
+    | GeomErrorX of low: float<'p>[] * high: float<'p>[]
     /// A staircase rather than a polyline: the same points, with the claim that nothing
     /// happened between them.
     | GeomStep of align: StepAlign
-    /// A filled band between two y values per point, in panel-local nd.
+    /// A filled band between two y values per point.
     ///
     /// The band and nothing else — no line through the middle of it, because a confidence
     /// band wants the fit drawn over it and a min/max band usually wants nothing. Two layers
     /// say that; a geom that decided for you cannot.
-    | GeomRibbon of low: float<nd>[] * high: float<nd>[]
-    /// Axis-aligned rectangles given by opposite corners, in panel-local nd.
+    | GeomRibbon of low: float<'p>[] * high: float<'p>[]
+    /// Axis-aligned rectangles given by opposite corners.
     ///
     /// `Geom.rect` builds them from data corners and `Geom.tile` from centres and one size,
     /// and both land here: a tile *is* a rectangle once the measures have been spent, and a
     /// second case would be a second branch in every consumer for no difference in what is
     /// drawn.
-    | GeomRect of x0: float<nd>[] * y0: float<nd>[] * x1: float<nd>[] * y1: float<nd>[]
-    /// A line from each point to a second point, in panel-local nd.
-    | GeomSegment of x1: float<nd>[] * y1: float<nd>[]
+    | GeomRect of x0: float<'p>[] * y0: float<'p>[] * x1: float<'p>[] * y1: float<'p>[]
+    /// A line from each point to a second point.
+    | GeomSegment of x1: float<'p>[] * y1: float<'p>[]
     /// A label per point, offset from it by a device-space vector.
     | GeomText of labels: string[] * anchor: TextAnchor * baseline: TextBaseline * offset: Vec2<px>
     /// Box-and-whisker summaries, one per point; width as a fraction of the median x spacing.
-    | GeomBox of spans: BoxSpan[] * widthFraction: float
+    | GeomBox of spans: BoxSpan<'p>[] * widthFraction: float
     /// Mirrored density profiles, one per point; width as a fraction of the median x spacing.
-    | GeomViolin of profiles: ViolinProfile[] * widthFraction: float
-    /// A user-supplied RGBA image filling a box, in panel-local nd (D64).
+    | GeomViolin of profiles: ViolinProfile<'p>[] * widthFraction: float
+    /// A user-supplied RGBA image filling a box (D64).
     ///
     /// The one geom in this file that does **not** bottom out in `Path`, `Markers` or `Text`:
     /// it is the only producer of §5's `Raster` node anywhere above the IR, and until M2.5
@@ -121,7 +132,10 @@ type Geom =
     /// renumbered it to. This one carries a whole image and one box — scalars, not arrays — so
     /// a batched subset draws the same image in the same place, which is correct rather than
     /// lucky. A channel over an image layer has nothing to say.
-    | GeomImage of image: Image * bounds: Rect<nd> * smooth: bool
+    | GeomImage of image: Image * bounds: Rect<'p> * smooth: bool
+
+/// A geom in the series' data space — what every constructor returns and every `Layer` holds.
+type Geom = GeomOf<1>
 
 /// §5.5 — **"error bars … are compiled into `Path`/`Text`/`Markers` by the layer above."**
 ///
@@ -189,19 +203,27 @@ module Geom =
 
     // ---- Typed constructors: the last place the measures are alive -----------------------
 
-    /// Where zero on this scale falls in panel space, clamped into the panel.
+    /// A baseline's position on the panel, clamped into it.
     ///
     /// An area filled to "the bottom of the panel" is a different chart from one filled to zero,
     /// and only the latter is honest about magnitudes. When zero is outside the domain the
-    /// clamp puts the baseline on the nearer edge, which is the conventional compromise.
-    let baselineOf (scale: Scale<'u>) : float<nd> =
-        let z = scale.Forward(LanguagePrimitives.FloatWithMeasure<'u> 0.0)
+    /// clamp puts the baseline on the nearer edge, which is the conventional compromise; a log
+    /// axis, where zero projects to minus infinity or NaN, gets the bottom edge.
+    let private clampBaseline (z: float<nd>) : float<nd> =
         let v = float z
 
         if System.Double.IsNaN v then 0.0<nd>
         elif v < 0.0 then 0.0<nd>
         elif v > 1.0 then 1.0<nd>
         else z
+
+    /// Where zero on this scale falls in panel space, clamped into the panel.
+    ///
+    /// Not what `area` and `bar` store any more: since D97 they store the data value zero and
+    /// `project` clamps it against the panel's final scale, because a baseline computed here is
+    /// computed against a domain the panel may yet widen past zero.
+    let baselineOf (scale: Scale<'u>) : float<nd> =
+        clampBaseline (scale.Forward(LanguagePrimitives.FloatWithMeasure<'u> 0.0))
 
     /// Symmetric error bars on y.
     ///
@@ -213,8 +235,8 @@ module Geom =
             invalidArg "err" (sprintf "Marey: series '%s' has %d y values and %d error values." s.Name s.Y.Length err.Length)
 
         GeomErrorY(
-            Array.init s.Y.Length (fun i -> s.YScale.Forward(s.Y.[i] - err.[i])),
-            Array.init s.Y.Length (fun i -> s.YScale.Forward(s.Y.[i] + err.[i]))
+            Array.init s.Y.Length (fun i -> float (s.Y.[i] - err.[i])),
+            Array.init s.Y.Length (fun i -> float (s.Y.[i] + err.[i]))
         )
 
     /// Asymmetric error bars on y, given as absolute low and high values in the y unit.
@@ -222,7 +244,7 @@ module Geom =
         if low.Length <> s.Y.Length || high.Length <> s.Y.Length then
             invalidArg "low" (sprintf "Marey: series '%s' has %d y values; low/high must match." s.Name s.Y.Length)
 
-        GeomErrorY(Array.map s.YScale.Forward low, Array.map s.YScale.Forward high)
+        GeomErrorY(Array.map float low, Array.map float high)
 
     /// Symmetric error bars on x. Same dimensional guarantee, other axis.
     let errorX (s: Series<'ux, 'uy>) (err: float<'ux>[]) : Geom =
@@ -230,22 +252,23 @@ module Geom =
             invalidArg "err" (sprintf "Marey: series '%s' has %d x values and %d error values." s.Name s.X.Length err.Length)
 
         GeomErrorX(
-            Array.init s.X.Length (fun i -> s.XScale.Forward(s.X.[i] - err.[i])),
-            Array.init s.X.Length (fun i -> s.XScale.Forward(s.X.[i] + err.[i]))
+            Array.init s.X.Length (fun i -> float (s.X.[i] - err.[i])),
+            Array.init s.X.Length (fun i -> float (s.X.[i] + err.[i]))
         )
 
-    let area (s: Series<'ux, 'uy>) : Geom = GeomArea(baselineOf s.YScale)
+    let area (_s: Series<'ux, 'uy>) : Geom = GeomArea 0.0
 
-    let bar (widthFraction: float) (s: Series<'ux, 'uy>) : Geom =
-        GeomBar(baselineOf s.YScale, max 0.05 (min 1.0 widthFraction))
+    let bar (widthFraction: float) (_s: Series<'ux, 'uy>) : Geom =
+        GeomBar(0.0, max 0.05 (min 1.0 widthFraction))
 
     // ---- Phase 6's typed constructors ----------------------------------------------------
     //
     // Same rule as the four above: the measures are spent here, where the caller wrote the
-    // code, and what reaches the DU is panel-local `nd`. Every one of these takes the series it
-    // will be drawn against, so the arrays it is handed are checked against that series' units
-    // by the compiler and projected by that series' own scales -- which is what makes a ribbon
-    // on a log axis asymmetric, correctly, and a tile on one the right size.
+    // code, and what reaches the DU is the data value with its measure stripped. Every one of
+    // these takes the series it will be drawn against, so the arrays it is handed are checked
+    // against that series' units by the compiler. They are projected by the scales the panel
+    // ends up with, beside the points (D97) -- which is what makes a ribbon on a log axis
+    // asymmetric, correctly, and a tile on one the right size.
 
     let private lengthCheck (s: Series<'ux, 'uy>) (field: string) (n: int) =
         if n <> s.X.Length then
@@ -260,7 +283,7 @@ module Geom =
     let ribbon (s: Series<'ux, 'uy>) (low: float<'uy>[]) (high: float<'uy>[]) : Geom =
         lengthCheck s "low" low.Length
         lengthCheck s "high" high.Length
-        GeomRibbon(Array.map s.YScale.Forward low, Array.map s.YScale.Forward high)
+        GeomRibbon(Array.map float low, Array.map float high)
 
     /// A band of `y +/- err`. The signature `errorY` has, and the same guarantee: an
     /// uncertainty in seconds around a displacement does not compile.
@@ -268,8 +291,8 @@ module Geom =
         lengthCheck s "err" err.Length
 
         GeomRibbon(
-            Array.init s.Y.Length (fun i -> s.YScale.Forward(s.Y.[i] - err.[i])),
-            Array.init s.Y.Length (fun i -> s.YScale.Forward(s.Y.[i] + err.[i]))
+            Array.init s.Y.Length (fun i -> float (s.Y.[i] - err.[i])),
+            Array.init s.Y.Length (fun i -> float (s.Y.[i] + err.[i]))
         )
 
     /// Rectangles from opposite corners, in the series' own units. Both measures are checked,
@@ -281,10 +304,10 @@ module Geom =
         lengthCheck s "y1" y1.Length
 
         GeomRect(
-            Array.map s.XScale.Forward x0,
-            Array.map s.YScale.Forward y0,
-            Array.map s.XScale.Forward x1,
-            Array.map s.YScale.Forward y1
+            Array.map float x0,
+            Array.map float y0,
+            Array.map float x1,
+            Array.map float y1
         )
 
     /// Tiles of one size in the data's own units, centred on the series' points -- the heatmap
@@ -300,10 +323,10 @@ module Geom =
         let hh = h * 0.5
 
         GeomRect(
-            s.X |> Array.map (fun x -> s.XScale.Forward(x - hw)),
-            s.Y |> Array.map (fun y -> s.YScale.Forward(y - hh)),
-            s.X |> Array.map (fun x -> s.XScale.Forward(x + hw)),
-            s.Y |> Array.map (fun y -> s.YScale.Forward(y + hh))
+            s.X |> Array.map (fun x -> float (x - hw)),
+            s.Y |> Array.map (fun y -> float (y - hh)),
+            s.X |> Array.map (fun x -> float (x + hw)),
+            s.Y |> Array.map (fun y -> float (y + hh))
         )
 
     /// An RGBA image filling a box given in the series' own units (D64).
@@ -315,13 +338,13 @@ module Geom =
     /// D57's correction applied before it can become a bug: on a log axis a size in data units
     /// is not a size on the panel, so an image placed by one corner and a width would be the
     /// right size only in the middle of the domain.
-    let image (s: Series<'ux, 'uy>) (img: Image) (x0: float<'ux>) (y0: float<'uy>) (x1: float<'ux>) (y1: float<'uy>) (smooth: bool) : Geom =
+    let image (_s: Series<'ux, 'uy>) (img: Image) (x0: float<'ux>) (y0: float<'uy>) (x1: float<'ux>) (y1: float<'uy>) (smooth: bool) : Geom =
         GeomImage(
             img,
-            { X0 = s.XScale.Forward x0
-              Y0 = s.YScale.Forward y0
-              X1 = s.XScale.Forward x1
-              Y1 = s.YScale.Forward y1 },
+            { X0 = float x0
+              Y0 = float y0
+              X1 = float x1
+              Y1 = float y1 },
             smooth
         )
 
@@ -329,7 +352,7 @@ module Geom =
     let segment (s: Series<'ux, 'uy>) (x2: float<'ux>[]) (y2: float<'uy>[]) : Geom =
         lengthCheck s "x2" x2.Length
         lengthCheck s "y2" y2.Length
-        GeomSegment(Array.map s.XScale.Forward x2, Array.map s.YScale.Forward y2)
+        GeomSegment(Array.map float x2, Array.map float y2)
 
     /// Labels at the series' points, set just above them.
     ///
@@ -337,12 +360,12 @@ module Geom =
     /// there is no measure to spend. Worth being explicit that this is not a hole in the
     /// pattern: everything else here exists to turn a measured value into `nd` with a scale, and
     /// a label has no value to turn.
-    let text (labels: string[]) : Geom =
+    let text (labels: string[]) : GeomOf<'p> =
         GeomText(labels, AnchorMiddle, BaselineAlphabetic, { X = 0.0<px>; Y = 7.0<px> })
 
     /// Labels with their placement stated. The offset is a **device** length, so a label sits
     /// the same distance off its mark on a tall panel and a wide one.
-    let textAt (anchor: TextAnchor) (baseline: TextBaseline) (offset: Vec2<px>) (labels: string[]) : Geom =
+    let textAt (anchor: TextAnchor) (baseline: TextBaseline) (offset: Vec2<px>) (labels: string[]) : GeomOf<'p> =
         GeomText(labels, anchor, baseline, offset)
 
     /// Box plots, one per point of the series, from summaries in the **y** unit.
@@ -356,12 +379,12 @@ module Geom =
         GeomBox(
             summaries
             |> Array.map (fun q ->
-                { Lower = s.YScale.Forward q.LowerWhisker
-                  Q1 = s.YScale.Forward q.Q1
-                  Median = s.YScale.Forward q.Median
-                  Q3 = s.YScale.Forward q.Q3
-                  Upper = s.YScale.Forward q.UpperWhisker
-                  Outliers = q.Outliers |> Array.map s.YScale.Forward }),
+                { Lower = float q.LowerWhisker
+                  Q1 = float q.Q1
+                  Median = float q.Median
+                  Q3 = float q.Q3
+                  Upper = float q.UpperWhisker
+                  Outliers = q.Outliers |> Array.map float }),
             max 0.05 (min 1.0 widthFraction)
         )
 
@@ -391,10 +414,64 @@ module Geom =
         GeomViolin(
             densities
             |> Array.map (fun d ->
-                { At = d.X |> Array.map s.YScale.Forward
+                { At = d.X |> Array.map float
                   Width = d.Y |> Array.map (fun v -> float v * inv) }),
             max 0.05 (min 1.0 widthFraction)
         )
+
+    // ---- Projection: D97 -----------------------------------------------------------------
+
+    /// Put a geom on a panel: every payload through the panel's **final** scales, the ones the
+    /// layer's points are projected through, at the same moment.
+    ///
+    /// `fx` and `fy` are the layer's erased `Project`s after `Figure.unify`. A baseline is
+    /// clamped into the panel here rather than at construction, because only now is it known
+    /// whether the domain reaches zero.
+    let project (fx: float -> float<nd>) (fy: float -> float<nd>) (geom: Geom) : GeomOf<nd> =
+        match geom with
+        | GeomLine -> GeomLine
+        | GeomPoint -> GeomPoint
+        | GeomArea baseline -> GeomArea(clampBaseline (fy baseline))
+        | GeomBar(baseline, w) -> GeomBar(clampBaseline (fy baseline), w)
+        | GeomErrorY(low, high) -> GeomErrorY(Array.map fy low, Array.map fy high)
+        | GeomErrorX(low, high) -> GeomErrorX(Array.map fx low, Array.map fx high)
+        | GeomStep align -> GeomStep align
+        | GeomRibbon(low, high) -> GeomRibbon(Array.map fy low, Array.map fy high)
+        | GeomRect(x0, y0, x1, y1) -> GeomRect(Array.map fx x0, Array.map fy y0, Array.map fx x1, Array.map fy y1)
+        | GeomSegment(x1, y1) -> GeomSegment(Array.map fx x1, Array.map fy y1)
+        | GeomText(labels, anchor, baseline, offset) -> GeomText(labels, anchor, baseline, offset)
+        | GeomBox(spans, w) ->
+            GeomBox(
+                spans
+                |> Array.map (fun b ->
+                    { Lower = fy b.Lower
+                      Q1 = fy b.Q1
+                      Median = fy b.Median
+                      Q3 = fy b.Q3
+                      Upper = fy b.Upper
+                      Outliers = Array.map fy b.Outliers }),
+                w
+            )
+        | GeomViolin(profiles, w) ->
+            GeomViolin(profiles |> Array.map (fun v -> { At = Array.map fy v.At; Width = v.Width }), w)
+        | GeomImage(img, r, smooth) ->
+            GeomImage(
+                img,
+                { X0 = fx r.X0
+                  Y0 = fy r.Y0
+                  X1 = fx r.X1
+                  Y1 = fy r.Y1 },
+                smooth
+            )
+
+    /// A geom put on the panel its **own** series' scales describe — what a figure would give it
+    /// if nothing else shared the panel. For drawing a geom outside a figure; inside one,
+    /// `Figure.fs` projects through the panel's final scales instead, which is the point of D97.
+    let onSeries (s: Series<'ux, 'uy>) (geom: Geom) : GeomOf<nd> =
+        project
+            (fun v -> s.XScale.Forward(LanguagePrimitives.FloatWithMeasure<'ux> v))
+            (fun v -> s.YScale.Forward(LanguagePrimitives.FloatWithMeasure<'uy> v))
+            geom
 
     // ---- Compilation ---------------------------------------------------------------------
 
@@ -477,7 +554,7 @@ module Geom =
         (coord: Coord)
         (plotSize: Extent<px>)
         (st: GeomStyle)
-        (geom: Geom)
+        (geom: GeomOf<nd>)
         (pts: Vec2<nd>[])
         : Node =
         if pts.Length = 0 then
@@ -1024,7 +1101,7 @@ module Geom =
         (coord: Coord)
         (plotSize: Extent<px>)
         (st: GeomStyle)
-        (geom: Geom)
+        (geom: GeomOf<nd>)
         (all: Vec2<nd>[])
         : Node =
         match indices with
@@ -1055,7 +1132,7 @@ module Geom =
             compileWith address spacing (Some ix) coord plotSize st geom (ix |> Array.map (fun i -> all.[i]))
 
     /// A whole layer, nothing addressed. The path every static figure takes.
-    let compile (coord: Coord) (plotSize: Extent<px>) (st: GeomStyle) (geom: Geom) (pts: Vec2<nd>[]) : Node =
+    let compile (coord: Coord) (plotSize: Extent<px>) (st: GeomStyle) (geom: GeomOf<nd>) (pts: Vec2<nd>[]) : Node =
         compileFor None None coord plotSize st geom pts
 
     /// D46 — **one channel batch of a layer**: the points named by `indices`, drawn with
@@ -1070,14 +1147,14 @@ module Geom =
         (coord: Coord)
         (plotSize: Extent<px>)
         (st: GeomStyle)
-        (geom: Geom)
+        (geom: GeomOf<nd>)
         (all: Vec2<nd>[])
         (indices: int[])
         : Node =
         compileFor None (Some indices) coord plotSize st geom all
 
     /// The legend swatch that matches a geom. Derived, never chosen separately.
-    let legendMark (geom: Geom) (st: GeomStyle) : LegendMark =
+    let legendMark (geom: GeomOf<'p>) (st: GeomStyle) : LegendMark =
         match geom with
         | GeomLine -> LegendLine st.Dash
         | GeomPoint -> LegendMarker st.Shape

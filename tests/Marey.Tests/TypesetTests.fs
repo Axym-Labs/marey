@@ -228,6 +228,20 @@ module ``svg path data`` =
         | Error why -> Assert.Contains("command", why)
         | Ok _ -> failwith "coordinates without a command were accepted"
 
+    /// `Z` takes no numbers, so a number after it is malformed. It used to be read as a repeat
+    /// of `Z`, which consumed nothing and repeated forever. Reported by review on the 0.3.0 PR;
+    /// run on a worker with a deadline so a regression fails this test instead of hanging the
+    /// suite.
+    [<Fact>]
+    let ``a number after Z is refused rather than looped over`` () =
+        let work = System.Threading.Tasks.Task.Run(fun () -> SvgPathData.parse "M0 0 Z 1")
+
+        Assert.True(work.Wait 5000, "parsing 'M0 0 Z 1' did not return")
+
+        match work.Result with
+        | Error why -> Assert.Contains("'Z'", why)
+        | Ok segs -> failwithf "parsed to %d segments" segs.Length
+
     [<Fact>]
     let ``a truncated command is refused rather than half-applied`` () =
         match SvgPathData.parse "M0 0 C1 1 2 2" with
@@ -477,6 +491,59 @@ module ``the degrade`` =
         // note says which, and either way there is a scene to draw.
         Assert.False(String.IsNullOrWhiteSpace note)
         Assert.NotNull(box drawn)
+
+    /// **A formula cannot run a shell command**, even on a machine whose TeX enables shell
+    /// escape. A formula reaches the engine through the public `TextRun.Tex` field, and a run
+    /// set from data — an axis title read from a file — is a string the library did not write.
+    /// TeX Live's default (restricted) already refuses `touch`; a distribution configured with
+    /// `shell_escape = t` did not, until the engine was started with `--disable-write18`.
+    /// Reported by review on the 0.3.0 PR.
+    ///
+    /// The engine handed to `sceneWith` is a wrapper that runs the real one with shell escape
+    /// switched on, and the control run shows the wrapper does exactly that — so the test cannot
+    /// pass because escape happened to be off.
+    [<Fact>]
+    let ``a formula cannot run a shell command, even where shell escape is enabled`` () =
+        withTex (fun () ->
+            if OperatingSystem.IsWindows() then
+                Console.WriteLine("SKIPPED: the escape gate's wrapper engine is a POSIX shell script")
+            else
+                let dir = IO.Directory.CreateTempSubdirectory("marey-escape").FullName
+
+                try
+                    let real = (Tools.latex.Force()).Path.Value
+                    let wrapper = IO.Path.Combine(dir, "latex-with-escape")
+                    IO.File.WriteAllText(wrapper, sprintf "#!/bin/sh\nshell_escape=t exec '%s' \"$@\"\n" real)
+                    IO.File.SetUnixFileMode(wrapper, IO.UnixFileMode.UserRead ||| IO.UnixFileMode.UserWrite ||| IO.UnixFileMode.UserExecute)
+
+                    let engine: ResolvedTool =
+                        { Name = "latex"
+                          Path = Some wrapper
+                          Install = "" }
+
+                    let escaped name =
+                        sprintf "\\immediate\\write18{touch %s}" (IO.Path.Combine(dir, name))
+
+                    // The control: the wrapper, run as a plain engine on a plain document,
+                    // does execute the command.
+                    IO.File.WriteAllText(
+                        IO.Path.Combine(dir, "control.tex"),
+                        "\\documentclass{article}\\begin{document}" + escaped "control" + "x\\end{document}"
+                    )
+
+                    match Toolchain.runArgs engine [ "-interaction=nonstopmode"; "control.tex" ] dir 60_000 with
+                    | ToolRan _ -> ()
+                    | other -> failwithf "the control run did not run: %A" other
+
+                    Assert.True(IO.File.Exists(IO.Path.Combine(dir, "control")), "the wrapper did not enable shell escape, so this gate proves nothing")
+
+                    // The gate: the same command inside a formula, through the library.
+                    let scene = Group [| Text(run (Some(escaped "formula" + "$x$")) "x") |]
+                    Typeset.sceneWith engine (Tools.dvisvgm.Force()) TexOptions.Default extent scene |> ignore
+
+                    Assert.False(IO.File.Exists(IO.Path.Combine(dir, "formula")), "a formula ran a shell command")
+                finally
+                    IO.Directory.Delete(dir, true))
 
     /// Present or absent, the probe says which and names both tools.
     [<Fact>]

@@ -844,6 +844,14 @@ module Figure =
                         p.Layers
                         |> Array.mapi (fun ordinal l ->
                             let pts = Erase.projectXY l.Data
+
+                            // D97 — the geom's own arrays through the same scales as `pts`, at
+                            // the same moment. Projected at construction they went stale as soon
+                            // as `unify` or a stated domain moved the panel out from under them.
+                            let geom =
+                                let sx, sy = Erase.seriesScales l.Data
+                                Geom.project sx.Project sy.Project l.Geom
+
                             let layerKey = Keys.layer panelKey ordinal
 
                             // D69 — the rows this layer was asked to name. `None` is the
@@ -864,7 +872,7 @@ module Figure =
                                     // No channels, no counts: an unchannelled layer's annotation is
                                     // exactly what it was before phase 2, so every baseline that
                                     // predates channels stays byte-identical.
-                                    Geom.compileFor address None p.Coord plotSize l.Style l.Geom pts, [||]
+                                    Geom.compileFor address None p.Coord plotSize l.Style geom pts, [||]
                                 else
                                     let (batches, unmapped) = Channel.split l.Channels pts.Length
 
@@ -877,7 +885,7 @@ module Figure =
                                                 p.Coord
                                                 plotSize
                                                 (b.Restyle l.Style)
-                                                l.Geom
+                                                geom
                                                 pts)
 
                                     // `unmapped` is reported rather than swallowed: a point whose
@@ -1107,13 +1115,22 @@ module Figure =
 
         let head = states |> Array.map headOf |> Array.max
 
-        // The frame the grid is taken from is the one with the most panels, so an animation that
-        // adds a panel mid-shot still has a region for it. Everything else about the grid — rows,
-        // columns, gaps, padding — is the theme's and does not vary with the data.
-        let widest =
-            states |> Array.maxBy (fun f -> (f.Panels.Length, max 1 f.Rows, max 1 f.Cols))
+        // The grid is the union of every state's: as many rows and columns as any state has,
+        // and a region for every panel position any state uses. It used to be taken from the
+        // one state with the most panels, which is the same thing until two states have the
+        // same count in different shapes — a 1×2 and a 2×1 — and then one of them lost a panel
+        // to a grid that had no region for it. Gaps, padding and the theme do not vary with the
+        // data, so the first state supplies them.
+        let template =
+            { states.[0] with
+                Rows = states |> Array.map (fun f -> max 1 f.Rows) |> Array.max
+                Cols = states |> Array.map (fun f -> max 1 f.Cols) |> Array.max
+                Panels =
+                    states
+                    |> Array.collect (fun f -> f.Panels)
+                    |> Array.distinctBy (fun p -> p.Row, p.Col) }
 
-        let outer = Layout.arrange m extent (outerGrid (Some head) widest)
+        let outer = Layout.arrange m extent (outerGrid (Some head) template)
 
         // Then every panel of every state, unioned by key. `Array.choose` rather than an
         // exception when a key is missing: a state that lacks a panel another state has

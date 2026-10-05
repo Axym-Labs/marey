@@ -442,7 +442,9 @@ module Charts =
         match fig.Panels.[0].Layers.[0].Geom with
         | GeomBar(baseline, width) ->
             Assert.Equal(1.0, width)
-            Assert.Equal(0.0<nd>, baseline)
+            // The data value zero (D97): where it lands on the panel is `Geom.project`'s business,
+            // against whatever domain the panel ends up with.
+            Assert.Equal(0.0, baseline)
         | g -> failwithf "expected bars, got %A" g
 
         let xs = xScaleOf fig

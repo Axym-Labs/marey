@@ -14,7 +14,50 @@ land in a minor release.
 
 ## [Unreleased]
 
-## [0.3.0] — 2026-09-29
+### Fixed
+
+- **A geom's own arrays now follow the panel's final scales.** Error bars, ribbons, tiles and
+  rectangles, segments, box plots, violins, an image's bounds, and the baselines of areas and bars
+  were projected onto the panel when the geom was built, against the series' scales as they were
+  then. A second layer with a wider domain, `Chart.withXDomain`/`withYDomain`, or a switch to a
+  log axis then moved the layer's points and left those arrays behind. `Chart.addErrorbar` of
+  ±0.5 m on a 0–10 m line drew a bar spanning 0–10 m, and a tile beside a wider scatter filled the
+  panel. Present since 0.2.0. Single-layer figures, and layers that happened to share a domain,
+  were always right, which is why no baseline moved with the fix.
+- **A shot over states with differently shaped grids keeps every panel.** `Chart.arrangeUnion`
+  took its outer grid from the one state with the most panels, so an animation between a 1×2
+  and a 2×1 figure arranged against one shape, and the other state's extra panel had no region
+  and was not drawn. The grid is now the union of every state's rows, columns and panel
+  positions.
+- **`SvgPathData.parse` no longer hangs on a number after `Z`.** `Z` takes no arguments, and a
+  number following it was read as another `Z` that consumed nothing, so `M0 0 Z 1` looped forever,
+  appending `ClosePath` until memory ran out. It is now refused by name, like every other
+  malformed path.
+- **`Scene.opacity nan` is refused.** NaN fails both comparisons the clamp is made of, so it
+  reached the IR unchanged and each backend handled it differently. It now raises
+  `ArgumentException`; every other value is still clamped into [0, 1].
+
+### Security
+
+- **A formula cannot run a shell command.** `Marey.Tools.Tex` starts `latex` with
+  `--disable-write18`. The formula is the public `TextRun.Tex` field and may come from data, and
+  on a TeX installation configured with `shell_escape = t`, `\immediate\write18{…}` in it ran
+  the command. TeX Live's and MiKTeX's restricted default already refused commands outside their
+  allow-list, so default installations were not affected.
+
+### Changed
+
+- **`Geom` carries data, and `GeomOf<nd>` is what gets drawn.** The union is now
+  `GeomOf<'p>`, generic over the space its numbers live in; `Geom` is `GeomOf<1>`, data values
+  with their measure spent by the typed constructor exactly as before. `Geom.project` puts one on
+  a panel through a pair of scales, and the figure compiler calls it with the panel's final scales
+  beside the points. `Geom.compile`, `compileFor` and `compileSubset` take a `GeomOf<nd>`; to draw
+  a geom outside a figure, `Geom.onSeries s` projects it through its own series' scales.
+  `BoxSpan` and `ViolinProfile` gained the same parameter. `Geom.text` and `Geom.textAt` carry no
+  numbers and are generic in it. A layer's area or bar baseline is now the data value zero, and
+  `Geom.project` clamps it into the panel.
+
+## [0.3.0] — 2026-10-05
 
 **M2.5 — *Raster*.** An eighth package, and the first output that is not text.
 
