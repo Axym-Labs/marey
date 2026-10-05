@@ -1,6 +1,6 @@
 # Marey.Html
 
-HTML renderings of [Marey](https://github.com/Jonathan-Schaefer-git/marey) values, for a notebook
+HTML renderings of [Marey](https://github.com/Axym-Labs/marey) values, for a notebook
 cell. Host-neutral, **zero dependencies**, `netstandard2.1`.
 
 This is also the convenient package to reference, because it sits at the top of the graph:
@@ -47,5 +47,5 @@ needs nothing installed:
 figure |> Chart.render SvgBackend.render (Chart.size 720.0 450.0)
 ```
 
-- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
-- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

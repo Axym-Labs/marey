@@ -8,7 +8,7 @@ name: Publish
 #
 # nuget.org -> your username -> Trusted Publishing -> add a policy:
 #
-#   Repository Owner   Jonathan-Schaefer-git
+#   Repository Owner   Axym-Labs
 #   Repository         marey
 #   Workflow File      publish.yml          <- filename only, no .github/workflows/ prefix
 #   Environment        (leave empty; see the note at the bottom of this file)

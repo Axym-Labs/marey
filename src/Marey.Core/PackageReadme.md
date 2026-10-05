@@ -1,6 +1,6 @@
 # Marey.Core
 
-The foundation of [Marey](https://github.com/Jonathan-Schaefer-git/marey), a dimensionally-typed
+The foundation of [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
 visualization system for F#. **Zero dependencies**, `netstandard2.1`.
 
 Take this package on its own for the types without the plotting: dimension vectors, unit
@@ -42,5 +42,5 @@ a dependency.
 [`Marey.Plot`](https://www.nuget.org/packages/Marey.Plot) and a backend, or
 [`Marey.Html`](https://www.nuget.org/packages/Marey.Html), which pulls in everything.
 
-- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
-- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

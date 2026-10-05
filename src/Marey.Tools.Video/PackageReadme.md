@@ -1,6 +1,6 @@
 # Marey.Tools.Video
 
-Video output for [Marey](https://github.com/Jonathan-Schaefer-git/marey), a dimensionally-typed
+Video output for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
 visualization system for F#. **The frame sequence is the product; the mux is a convenience over
 it.**
 
@@ -57,5 +57,5 @@ Depends on [`Marey.Plot`](https://www.nuget.org/packages/Marey.Plot) and
 [`Marey.Toolchain`](https://www.nuget.org/packages/Marey.Toolchain), and on nothing outside this
 repository.
 
-- [The guide, §19](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md#19-video)
-- [examples/video.fsx](https://github.com/Jonathan-Schaefer-git/marey/blob/main/examples/video.fsx)
+- [The guide, §19](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md#19-video)
+- [examples/video.fsx](https://github.com/Axym-Labs/marey/blob/main/examples/video.fsx)

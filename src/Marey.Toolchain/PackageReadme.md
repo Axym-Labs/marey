@@ -1,7 +1,7 @@
 # Marey.Toolchain
 
 External-program resolution and invocation for
-[Marey](https://github.com/Jonathan-Schaefer-git/marey), a dimensionally-typed visualization
+[Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed visualization
 system for F#. **A tool is resolved and *reported*, or it is absent and the absence names what to
 install.**
 
@@ -45,4 +45,4 @@ each; the module that reports their absence must not be a third thing to install
   exited" call for different behaviour at every call site, and collapsing them is how a gate goes
   quietly vacuous.
 
-- [The repository](https://github.com/Jonathan-Schaefer-git/marey)
+- [The repository](https://github.com/Axym-Labs/marey)

@@ -16,9 +16,9 @@
 
     <Authors>Marey contributors</Authors>
     <Product>Marey</Product>
-    <RepositoryUrl>https://github.com/Jonathan-Schaefer-git/marey</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Axym-Labs/marey</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://github.com/Jonathan-Schaefer-git/marey</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/Axym-Labs/marey</PackageProjectUrl>
 
     <!-- The gallery page for a package with no readme is a blank slab with a dependency list,
          which is most of what a first-time visitor ever sees. `NUGET.md` rather than the root

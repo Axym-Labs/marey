@@ -1,6 +1,6 @@
 # Marey.Plot
 
-The chart API of [Marey](https://github.com/Jonathan-Schaefer-git/marey), a dimensionally-typed
+The chart API of [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
 visualization system for F#. This is the package most people install.
 
 ```fsharp
@@ -85,5 +85,5 @@ Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core),
 [`Marey.Anim`](https://www.nuget.org/packages/Marey.Anim) — the last because the storyboard names
 an `Anim` and a `Figure` in one signature. It is 36 KB and has no dependencies of its own.
 
-- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
-- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

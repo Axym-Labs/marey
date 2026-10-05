@@ -1,6 +1,6 @@
 # Marey.Backend.Tikz
 
-The TikZ backend for [Marey](https://github.com/Jonathan-Schaefer-git/marey), a dimensionally-typed
+The TikZ backend for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
 visualization system for F#. Emits `tikzpicture` source for pasting into a LaTeX document. Pure F#,
 **zero dependencies**, `netstandard2.1`.
 
@@ -41,5 +41,5 @@ measured against the theme's font metrics while TeX sets the text in the documen
 
 Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else.
 
-- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
-- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

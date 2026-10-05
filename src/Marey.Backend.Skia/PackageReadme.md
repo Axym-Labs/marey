@@ -1,6 +1,6 @@
 # Marey.Backend.Skia
 
-The PNG and PDF backend for [Marey](https://github.com/Jonathan-Schaefer-git/marey), a
+The PNG and PDF backend for [Marey](https://github.com/Axym-Labs/marey), a
 dimensionally-typed visualization system for F#. `netstandard2.1`.
 
 ```fsharp
@@ -75,5 +75,5 @@ library is missing, the entry points raise a message naming the package to add r
 dependency on this package or on SkiaSharp, and a test asserts it against the built assembly
 graph.
 
-- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
-- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

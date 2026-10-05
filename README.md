@@ -1,6 +1,6 @@
 # Marey
 
-[![CI](https://github.com/Jonathan-Schaefer-git/marey/actions/workflows/ci.yml/badge.svg)](https://github.com/Jonathan-Schaefer-git/marey/actions/workflows/ci.yml)
+[![CI](https://github.com/Axym-Labs/marey/actions/workflows/ci.yml/badge.svg)](https://github.com/Axym-Labs/marey/actions/workflows/ci.yml)
 [![NuGet](https://img.shields.io/nuget/v/Marey.Plot.svg)](https://www.nuget.org/packages/Marey.Plot)
 
 A plotting library for F# where the compiler checks your units, and the axes label themselves.

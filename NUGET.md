@@ -58,6 +58,6 @@ plot trials {
 
 Pre-1.0, and versioned accordingly. The API is still free to move. MIT licensed.
 
-- [Repository](https://github.com/Jonathan-Schaefer-git/marey)
-- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
-- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)
+- [Repository](https://github.com/Axym-Labs/marey)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

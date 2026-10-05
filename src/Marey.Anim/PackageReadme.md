@@ -1,6 +1,6 @@
 # Marey.Anim
 
-Animation for [Marey](https://github.com/Jonathan-Schaefer-git/marey), a dimensionally-typed
+Animation for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
 visualization system for F#. **An animation is a pure function of time, not a mutation.**
 
 ```fsharp
@@ -60,5 +60,5 @@ mid-shot.
 Depends only on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core), and is
 Fable-compatible.
 
-- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
-- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)
