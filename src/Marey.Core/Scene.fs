@@ -293,7 +293,15 @@ module Scene =
     /// and three backends left to their own devices would invent three different answers to it
     /// — SVG clamps, Skia truncates a byte, TikZ passes it to a driver. One answer, at the
     /// constructor, is the only way the IR stays the thing all three agree about.
+    ///
+    /// **NaN is refused rather than clamped**, because it fails both comparisons a clamp is made
+    /// of and would otherwise reach the IR untouched. A translucent value has a nearest legal
+    /// opacity; NaN has none, which is `Anim`'s reason for validating a duration rather than
+    /// clamping one.
     let opacity (alpha: float) (n: Node) =
+        if System.Double.IsNaN alpha then
+            invalidArg "alpha" "Marey: an opacity of NaN has no nearest value in [0,1] to clamp to."
+
         Opacity((if alpha < 0.0 then 0.0
                  elif alpha > 1.0 then 1.0
                  else alpha),
