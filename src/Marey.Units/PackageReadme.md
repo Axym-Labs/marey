@@ -1,6 +1,6 @@
 # Marey.Units
 
-Unit witnesses and unit rendering for [Marey](https://github.com/Jonathan-Schaefer-git/marey), a
+Unit witnesses and unit rendering for [Marey](https://github.com/Axym-Labs/marey), a
 dimensionally-typed visualization system for F#.
 
 SI base units, 22 derived units and 18 common non-SI units, each as a witness carrying its symbol,
@@ -40,5 +40,5 @@ printfn "%s" (UnitDisplay.unitText Siunitx UnitRegistry.si Prefix.none composed)
 
 Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else.
 
-- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
-- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

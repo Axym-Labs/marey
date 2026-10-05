@@ -243,6 +243,155 @@ module Html =
     /// A scene at `defaultSize`.
     let node (n: Node) : string = nodeAt defaultSize n
 
+    // ---- Films -----------------------------------------------------------------------
+    //
+    // D83 — A FILM PLAYS IN THE CELL, AS A FLIPBOOK OF ITS OWN FRAMES.
+    //
+    // M3 made the library animate and gave it three ways to get the result out: a numbered
+    // directory, an `.mp4` and — with `Codec = None` — a `.gif`. All three end in a file, and
+    // two of them need ffmpeg. None of them is a notebook, which is where §6 says people first
+    // meet the library, so `Anim`, `Film`, `Story` and `Shot` all displayed as a record field
+    // table: the milestone's whole output, invisible in the one place it should have been
+    // easiest to see.
+    //
+    // **Why SMIL and not CSS.** Rule 1 of this file's header is absolute — no `<style>` block,
+    // ever, because a notebook output cell does not scope one: it leaks into the whole document,
+    // outlives the cell, and stacks up once per execution. CSS `@keyframes` is an at-rule and
+    // cannot be written as a `style=` attribute, so the obvious flipbook is the one thing this
+    // file may not do. `<animate>` is an SVG *element*: it lives inside the document fragment it
+    // animates, is carried by the same string, and cannot escape it. Rule 1 is what chose the
+    // mechanism, and it chose a better one.
+    //
+    // **Why not a GIF or an `<img>` of a video.** Both would put `Marey.Tools.Video` — and
+    // therefore ffmpeg — on the *display* path. A reader without ffmpeg would then get a still
+    // where a colleague gets motion, from the same notebook, with nothing saying so. That is the
+    // silent degradation D62 refused for a font and D75 refused for an encoder, in the one place
+    // where the reader cannot check. A flipbook needs no tool at all: `Marey.Html` already
+    // depends on `Marey.Backend.Svg`, and this adds no reference to anything.
+    //
+    // **Why the ids are prefixed.** SVG ids are scoped to the document, not to a nested `<svg>`,
+    // so N independently rendered frames in one outer document share one id space. Frame 5's
+    // `url(#qc)` would resolve to frame 0's clip path and its `<use xlink:href="#qm">` to frame
+    // 0's marker. That is invisible exactly while the frames agree — and `highlight` makes one
+    // mark bigger, so the reel is a scene where they do not. `SvgBackend.renderScoped` exists
+    // for this and for nothing else.
+    //
+    // **What this does not do: rewrite the SVG it embeds.** The frames are wrapped, never
+    // edited — each one goes inside a `<g>` that carries the `<animate>`, which is why the film
+    // renders at `Film.Extent` and takes no size argument. That is the header's last paragraph
+    // holding: a film wider than the cell scrolls, it does not shrink, because its text was
+    // measured at the size it was arranged for.
+
+    /// How many frames a film is sampled into when nobody says otherwise.
+    ///
+    /// **A budget, not a frame rate**, and it is the honest way round: the cost of a flipbook is
+    /// linear in frames at about 11 KB of SVG each, and what a notebook cannot afford is total
+    /// size rather than a low rate. 48 frames is roughly half a megabyte of markup — which gzip
+    /// takes to about 40 KB, because consecutive frames are nearly identical text.
+    ///
+    /// The consequence is stated rather than hidden: the effective frame rate is
+    /// `48 / duration`, so a 2 s film is smooth at 24 fps and a 5.5 s one is visibly stepped at
+    /// 8.7. Raise it with `filmAt` when the film is long and the cell can carry the bytes.
+    [<Literal>]
+    let FlipbookFrames = 48
+
+    /// A film, sampled into `frames` stills and played as a flipbook.
+    ///
+    /// Rendered at the film's own extent, because that is the surface its layout was arranged
+    /// against and every frame's text was measured for.
+    ///
+    /// `frames` has no default here on purpose — the same reason `Chart.arrangeUnion` has no
+    /// default sample count. It is a real trade against cell size and a caller should see the
+    /// number they are choosing; `film` is where the choice is written down.
+    let filmAt (frames: int) (film: Film) : string =
+        guarded "film" (fun () ->
+            let n = max 1 frames
+            let extent = film.Extent
+            let w = float extent.Width
+            let h = float extent.Height
+
+            // One frame is a still. Not a special case for tidiness: `keyTimes` for a
+            // single-frame cycle degenerates to `0;1`, which is a frame that is visible for the
+            // whole cycle and then hidden for none of it — an `<animate>` that animates nothing,
+            // emitted so a reader can wonder what it is for.
+            if n = 1 then
+                scroller (SvgBackend.render extent (film.Frames.At(0.0<s>)))
+            else
+
+            let duration = float film.Duration
+
+            // A film of zero length has no cycle to divide. It is a still of its only instant,
+            // and `dur="0s"` is what SMIL calls indefinite — which would freeze on frame 0 and
+            // look like a bug in the animation rather than a property of the film.
+            if duration <= 0.0 then
+                scroller (SvgBackend.render extent (film.Frames.At(0.0<s>)))
+            else
+
+            let sb = StringBuilder(n * 12_000)
+
+            sb
+                .Append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"")
+                .Append(num w)
+                .Append("\" height=\"")
+                .Append(num h)
+                .Append("\" viewBox=\"0 0 ")
+                .Append(num w)
+                .Append(" ")
+                .Append(num h)
+                .Append("\">\n")
+            |> ignore
+
+            for i in 0 .. n - 1 do
+                let node = film.Frames.At(float i / float n * film.Duration)
+
+                // `f0-`, `f1-`, … — a legal NCName start, and the only thing that keeps frame
+                // i's clip path, marker and `Keyed` names out of frame j's.
+                let svg = SvgBackend.renderScoped ("f" + intText i + "-") extent node
+
+                // Each frame is opaque for exactly its own slice of the cycle. `calcMode` is
+                // discrete because a frame is either shown or not — interpolating opacity would
+                // cross-fade every pair of neighbours, which is a different film.
+                //
+                // `keyTimes` for discrete need not end at 1; the last value is held to the end
+                // of the cycle, which is why the first and last frames take two stops and every
+                // frame between them takes three.
+                let t0 = Num.at 6 (float i / float n)
+                let t1 = Num.at 6 (float (i + 1) / float n)
+
+                let values, keyTimes =
+                    if i = 0 then "1;0", "0;" + t1
+                    elif i = n - 1 then "0;1", "0;" + t0
+                    else "0;1;0", "0;" + t0 + ";" + t1
+
+                sb
+                    .Append("<g opacity=\"0\"><animate attributeName=\"opacity\" values=\"")
+                    .Append(values)
+                    .Append("\" keyTimes=\"")
+                    .Append(keyTimes)
+                    .Append("\" calcMode=\"discrete\" dur=\"")
+                    .Append(Num.at 3 duration)
+                    .Append("s\" repeatCount=\"indefinite\"/>")
+                    .Append(svg)
+                    .Append("</g>\n")
+                |> ignore
+
+            sb.Append("</svg>\n") |> ignore
+
+            let caption =
+                sprintf
+                    "<div style=\"%s;font-family:%s;margin-top:4px\">%d frames · %ss · %s × %s px</div>"
+                    Muted
+                    Mono
+                    n
+                    (num duration)
+                    (num w)
+                    (num h)
+
+            "<div>" + scroller (sb.ToString()) + caption + "</div>")
+
+    /// A film at `FlipbookFrames`.
+    let film (f: Film) : string = filmAt FlipbookFrames f
+
     // ---- Colour ----------------------------------------------------------------------
 
     /// A colour: the chip, its hex, and its Oklch coordinates.
@@ -541,6 +690,7 @@ module Html =
     let canRenderForHost (value: obj) : bool =
         match value with
         | :? Figure
+        | :? Film
         | :? Node
         | :? Color
         | :? Ramp
@@ -591,6 +741,10 @@ module Html =
 
         match value with
         | :? Figure as f -> figureAt extent f
+        // Not `extent`: a film's layout was arranged once against its own surface, and every
+        // frame's text was measured for it. Re-sizing here would be the one thing the header
+        // says this file does not do, applied to the value least able to survive it.
+        | :? Film as f -> film f
         | :? Node as n -> nodeAt extent n
         | :? Color as c -> color c
         | :? Ramp as r -> ramp r

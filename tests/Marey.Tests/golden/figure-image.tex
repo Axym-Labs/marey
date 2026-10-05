@@ -1,0 +1,60 @@
+\begin{tikzpicture}[every node/.style={inner sep=0bp,outer sep=0bp}]
+  \definecolor{qcA}{rgb}{1,1,1}
+  \definecolor{qcB}{rgb}{0.078431,0.094118,0.121569}
+  \definecolor{qcC}{rgb}{0.905882,0.913725,0.929412}
+  \definecolor{qcD}{rgb}{0.223529,0.254902,0.301961}
+  \useasboundingbox (0bp,0bp) rectangle (360bp,225bp);
+  % marey-key: figure
+  \path[fill=qcA] (0bp,0bp) -- (360bp,0bp) -- (360bp,225bp) -- (0bp,225bp) -- cycle;
+  % marey-role: annotation -- Placed image
+  \node[anchor=north,text=qcB,font=\bfseries\fontsize{13}{15.6}\selectfont] at (180bp,214.5bp) {Placed image};
+  % marey-key: figure/panel-0-0
+  % marey-role: other:panel -- panel
+  % marey-data: row = 0
+  % marey-data: col = 0
+  % marey-data: layers = 1
+  % marey-data: x-tick-rule = all
+  % marey-data: y-tick-rule = all
+  % marey-role: decoration -- gridlines
+  % marey-data: lines = 5
+  \path[draw=qcC,line width=0.75bp] (35.254bp,38.575bp) -- (346.998bp,38.575bp) (35.254bp,71.572bp) -- (346.998bp,71.572bp) (35.254bp,104.569bp) -- (346.998bp,104.569bp) (35.254bp,137.566bp) -- (346.998bp,137.566bp) (35.254bp,170.563bp) -- (346.998bp,170.563bp);
+  \begin{scope}
+    \clip (35.254bp,38.575bp) -- (346.998bp,38.575bp) -- (346.998bp,170.563bp) -- (35.254bp,170.563bp) -- cycle;
+    % marey-key: figure/panel-0-0/layer-0
+    % marey-role: series -- series
+    % marey-data: series =
+    % marey-data: points = 2
+    % marey: raster requested nearest-neighbour; the PDF driver chooses the filter
+    \node[anchor=south west,inner sep=0bp,outer sep=0bp] at (35.254bp,38.575bp) {\includegraphics[width=311.744bp,height=131.987bp]{marey-raster-0.png}};
+  \end{scope}
+  % marey-role: axis -- t [s]
+  % marey-data: side = bottom
+  % marey-data: unit = s
+  % marey-data: prefix =
+  % marey-data: ticks = 7
+  % marey-data: tick-rule = all
+  \path[draw=qcD,line width=0.675bp] (35.254bp,38.575bp) -- (346.998bp,38.575bp);
+  \path[draw=qcD,line width=0.675bp] (35.254bp,38.575bp) -- (35.254bp,36.325bp) (87.211bp,38.575bp) -- (87.211bp,36.325bp) (139.169bp,38.575bp) -- (139.169bp,36.325bp) (191.126bp,38.575bp) -- (191.126bp,36.325bp) (243.083bp,38.575bp) -- (243.083bp,36.325bp) (295.041bp,38.575bp) -- (295.041bp,36.325bp) (346.998bp,38.575bp) -- (346.998bp,36.325bp);
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (35.254bp,33.325bp) {0};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (87.211bp,33.325bp) {1};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (139.169bp,33.325bp) {2};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (191.126bp,33.325bp) {3};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (243.083bp,33.325bp) {4};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (295.041bp,33.325bp) {5};
+  \node[anchor=north,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (346.998bp,33.325bp) {6};
+  \node[anchor=north,text=qcB,font=\fontsize{10}{12}\selectfont] at (191.126bp,19.75bp) {t [s]};
+  % marey-role: axis -- x [m]
+  % marey-data: side = left
+  % marey-data: unit = m
+  % marey-data: prefix =
+  % marey-data: ticks = 5
+  % marey-data: tick-rule = all
+  \path[draw=qcD,line width=0.675bp] (35.254bp,38.575bp) -- (35.254bp,170.563bp);
+  \path[draw=qcD,line width=0.675bp] (35.254bp,38.575bp) -- (33.004bp,38.575bp) (35.254bp,71.572bp) -- (33.004bp,71.572bp) (35.254bp,104.569bp) -- (33.004bp,104.569bp) (35.254bp,137.566bp) -- (33.004bp,137.566bp) (35.254bp,170.563bp) -- (33.004bp,170.563bp);
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (30.004bp,38.575bp) {0};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (30.004bp,71.572bp) {1};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (30.004bp,104.569bp) {2};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (30.004bp,137.566bp) {3};
+  \node[anchor=east,text=qcB,font=\fontsize{9}{10.8}\selectfont] at (30.004bp,170.563bp) {4};
+  \node[anchor=base,text=qcB,rotate=90,font=\fontsize{10}{12}\selectfont] at (19.75bp,104.569bp) {x [m]};
+\end{tikzpicture}

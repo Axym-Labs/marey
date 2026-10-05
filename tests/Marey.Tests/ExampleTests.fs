@@ -28,6 +28,7 @@ open System.Diagnostics
 open System.IO
 open System.Text
 open Xunit
+open Marey
 
 /// The assemblies an example may reference, in dependency order. They sit beside the test binary
 /// because the test project references all of them.
@@ -35,8 +36,21 @@ let private assemblies =
     [ "Marey.Core"
       "Marey.Units"
       "Marey.Plot"
+      "Marey.Anim"
       "Marey.Backend.Svg"
       "Marey.Backend.Tikz"
+      "Marey.Backend.Skia"
+      // See the note in `GuideTests`: F# needs SkiaSharp on hand to type-check a construction
+      // of `SkiaTextMeasurer`, and only this harness references the dlls directly rather than
+      // through the package that would bring it transitively.
+      "SkiaSharp"
+      "SkiaSharp.HarfBuzz"
+      "Marey.Toolchain"
+      "Marey.Tools.Video"
+      // Joined the list at M3 phase 9, with `reel.fsx` — the first example to typeset anything.
+      // Phase 8 shipped the package with no example using it, so the omission was invisible: a
+      // list of assemblies is only wrong once a script needs the missing one.
+      "Marey.Tools.Tex"
       "Marey.Html" ]
 
 let private exampleDir =
@@ -85,11 +99,13 @@ let ``the examples reference their packages`` () =
 [<Theory>]
 [<MemberData(nameof exampleNames)>]
 let ``the example compiles and runs`` (name: string) =
-    match TexToolchain.onPath "dotnet" with
+    let tool = Tools.dotnet.Force()
+
+    match tool.Path with
     | None ->
         // No SDK on PATH. Say so in the assertion message rather than passing silently.
-        Assert.True(true, "dotnet not found on PATH; the examples were not executed")
-    | Some dotnet ->
+        Assert.True(true, Toolchain.missing "the examples were not executed" tool)
+    | Some _ ->
         let source = Path.Combine(exampleDir.Force(), name)
         let binDir = Path.GetDirectoryName(Uri(typeof<Marey.Figure>.Assembly.Location).LocalPath)
 
@@ -129,21 +145,20 @@ let ``the example compiles and runs`` (name: string) =
         let scriptPath = Path.Combine(workDir, Path.GetFileNameWithoutExtension name + ".check.fsx")
         File.WriteAllText(scriptPath, script.ToString(), UTF8Encoding false)
 
-        let psi = ProcessStartInfo(dotnet, sprintf "fsi --nologo \"%s\"" scriptPath)
-        psi.RedirectStandardOutput <- true
-        psi.RedirectStandardError <- true
-        psi.UseShellExecute <- false
         // The examples write to the current directory, which is what makes them behave the way a
-        // reader expects when run by hand. Point that at the temp directory rather than the repo.
-        psi.WorkingDirectory <- workDir
+        // reader expects when run by hand. `workDir` rather than the repo, so they cannot write
+        // into the tree they were read from.
+        let run =
+            match Toolchain.run tool (sprintf "fsi --nologo \"%s\"" scriptPath) workDir 600_000 with
+            | ToolUnavailable why
+            | ToolTimedOut why -> failwith why
+            | ToolRan r -> r
 
-        use proc = Process.Start psi
-        let stdout = proc.StandardOutput.ReadToEnd()
-        let stderr = proc.StandardError.ReadToEnd()
-        proc.WaitForExit()
+        let stdout = run.Out
+        let stderr = run.Error
 
         Assert.True(
-            proc.ExitCode = 0,
+            run.ExitCode = 0,
             sprintf
                 "examples/%s does not run.\n\nThe checked script is at %s — it is the example with \
                  its `#r \"nuget: …\"` lines replaced, so fsi's line numbers are close to but not \
@@ -183,16 +198,29 @@ let ``the example compiles and runs`` (name: string) =
 
         // Every example writes at least one figure. This is the assertion that would catch a
         // rendering call quietly removed while the script still exits 0.
+        //
+        // `.png` and `.pdf` joined the list at M2.5: `shaped-text.fsx` writes nothing else, and
+        // a filter that still knew only about the two text formats would have failed it for
+        // being a raster example rather than for being wrong.
         let produced =
             Directory.GetFiles(workDir)
             |> Array.filter (fun f ->
                 let ext = Path.GetExtension f
-                ext = ".svg" || ext = ".tex")
+                // `.mp4` joined at M3 phase 6, for `video.fsx` — which also writes a poster
+                // frame, so the list would have caught it either way. It is here because a
+                // video is a figure this library now produces, and a checker that did not know
+                // that would fail the first example that only produces one.
+                // `.html` joined at M3 phase 10, for `reel.fsx`'s flipbook. It is here for the
+                // reason `.mp4` is: a film that plays in a browser is a figure this library now
+                // produces, and the first example that produces *only* one would otherwise fail
+                // for being a new kind of output rather than for being wrong. That is exactly
+                // how this list caught out `shaped-text.fsx` at M2.5.
+                ext = ".svg" || ext = ".tex" || ext = ".png" || ext = ".pdf" || ext = ".mp4" || ext = ".html")
 
         Assert.True(
             produced.Length > 0,
             sprintf
-                "examples/%s wrote no .svg or .tex into %s. Its stdout was:\n%s"
+                "examples/%s wrote no figure into %s. Its stdout was:\n%s"
                 name
                 workDir
                 stdout

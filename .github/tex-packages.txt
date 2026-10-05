@@ -1,4 +1,4 @@
-# The TeX and raster toolchain, installed identically by ci.yml and publish.yml.
+# The external toolchain, installed identically by ci.yml and publish.yml.
 #
 # One file rather than two inline lists, because they drifted once already: publish.yml was
 # still missing texlive-latex-extra after ci.yml gained it, which would have failed a release
@@ -11,7 +11,22 @@
 #   texlive-pictures           tikz/pgf
 #   texlive-science            siunitx (and, as a hard Depends, texlive-lang-greek -- 79 MB,
 #                              over half this list's download, unavoidable while we use siunitx)
-#   poppler-utils              pdftoppm, for the ink gate
+#   poppler-utils              pdftoppm, for the ink gate -- which reads the Skia PDF as well
+#                              as the compiled TeX since M2.5
+#   libfontconfig1             a hard runtime dependency of libSkiaSharp. Present on the hosted
+#   libfreetype6               image today and pulled in by TeX besides, so this is belt and
+#                              braces -- but a Skia backend that cannot load its native library
+#                              takes out every raster gate at once, and naming the dependency
+#                              costs nothing next to diagnosing it on a slimmer runner later.
+#   ffmpeg                     the muxer D75 shells out to, and ffprobe, which is in the same
+#                              package and is how the video gates read a container back. Without
+#                              it every gate in VideoTests that needs a binary skips itself and
+#                              says so -- which is right on a laptop and wrong here.
+#   dvisvgm                    turns the DVI that `latex` writes into vector paths (D79). Its
+#                              own package on Debian and Ubuntu, and NOT pulled in by any of the
+#                              texlive entries above -- which is the same omission the Skia
+#                              native assets made twice. `latex` itself comes from
+#                              texlive-latex-base, alongside the pdflatex the TeX gates use.
 #
 # Changing this file changes the apt cache key in both workflows, so a package added here is
 # fetched fresh once and then cached.
@@ -21,3 +36,7 @@ texlive-latex-recommended
 texlive-pictures
 texlive-science
 poppler-utils
+libfontconfig1
+libfreetype6
+ffmpeg
+dvisvgm

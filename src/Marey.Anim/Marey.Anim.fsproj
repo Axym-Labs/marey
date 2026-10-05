@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- §7: "Animation is a pure function of time, not a mutation." That is a statement about
+         values, and it needs nothing but `Marey.Core`: an `Anim<'a>` is generic in what it
+         animates, so this project never mentions a Figure, a Scene or a backend.
+
+         netstandard2.1 like every other library here, and this one *is* Fable-compatible and
+         should stay that way: a scrubbable timeline in a browser is the single most obvious
+         thing to build on this type, and it is exactly what Manim's mutable `Scene` cannot do.
+
+         NOTHING may be added to <PackageReference> in this file. The interpolation witness it
+         needs is Core's, and Core has no dependencies to inherit. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Marey.Anim</AssemblyName>
+    <RootNamespace>Marey</RootNamespace>
+    <Description>Animation as a pure function of time: a seekable, composable Anim&lt;'a&gt; with a verified algebra, the easing catalogue, and arc-length path morphing. Depends only on Marey.Core.</Description>
+    <PackageTags>fsharp visualization plotting animation easing tweening scientific</PackageTags>
+
+    <!-- **Published from phase 3, which is where the producer arrived.** D64's rule is that a
+         facility ships with a producer: a package nothing shipped can consume is a package a
+         reader is asked to install for nothing.
+
+         Until phase 3 this could tween a `float<m>` and ease it, and could not turn an
+         `Anim<Figure>` into a picture. `Chart.toSceneIn` and `Chart.arrangeUnion` are that
+         route and they landed with D72, so the trigger this comment named has fired — one
+         `Anim.atFraction` per frame, into an arrangement sized for the whole shot.
+
+         **The producer is in `Marey.Plot`, not here, and that is deliberate.** D72's plan
+         spelled it `Anim.arrangeUnion` and put it in this project; it cannot live here, because
+         it would have to name `Figure`, `Arrangement` and `ITextMeasurer` and this project
+         mentions none of them by design. Referencing `Marey.Plot` from here would break that;
+         referencing this from `Marey.Plot` would make every static-only consumer of the main
+         package carry an animation assembly. So the union takes a `float -> Figure` sampler,
+         lives where `Arrangement` lives, and the graph did not move.
+
+         The package-count literal in `.github/workflows/publish.yml` went 8 -> 9 in the same
+         commit as this flip. `Marey.Toolchain` is still `false` and flips at phase 6. -->
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Compile order is the layer order. `Ease` is a catalogue of `float -> float` and knows
+         nothing about `Anim`; `Anim.ease` takes any such function, so the dependency runs one
+         way and this order is the one that says so. `Morph` is last because it is the only file
+         here that knows what a `PathSeg` is, and because `Morph.anim` returns one. -->
+    <Compile Include="Ease.fs" />
+    <Compile Include="Anim.fs" />
+    <Compile Include="Morph.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
+  </ItemGroup>
+
+</Project>

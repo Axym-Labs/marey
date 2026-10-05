@@ -22,7 +22,9 @@ derived from the two unit witnesses — and plotting seconds against seconds on 
 compile error.
 
 Swapping the theme turns the same figure into `tikzpicture` source, typeset by the LaTeX
-document's own engine and fonts, with axis titles set by `siunitx`.
+document's own engine and fonts, with axis titles set by `siunitx`. Swapping the *renderer* turns
+it into a PNG or a vector PDF, through `Marey.Backend.Skia`, with text shaped by HarfBuzz rather
+than estimated.
 
 When the data is a table rather than two arrays, `plot` declares what each column means in one
 place — positional channels, colour, shape and size, a statistic, and small multiples:
@@ -43,14 +45,19 @@ plot trials {
 |---|---|
 | `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the scene IR. Zero dependencies. |
 | `Marey.Units` | SI, derived and non-SI unit witnesses; canonicalisation, prefix selection, and four rendering styles. |
-| `Marey.Plot` | `Chart` and the `plot` encoding block, twelve geoms, channels, statistics, facets, themes, colour-blind-safe palettes, layout. No backend reference. |
+| `Marey.Plot` | `Chart` and the `plot` encoding block, twelve geoms, channels, statistics, facets, themes, colour-blind-safe palettes, layout, the `scene` storyboard block, and the parallel frame writer. No backend reference. |
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, deterministic. |
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX. |
-| `Marey.Html` | HTML renderings for a notebook cell. Host-neutral. |
-| `Marey.Verso` | The Verso notebook extension. |
+| `Marey.Backend.Skia` | PNG and vector PDF, with real text shaping. The only package with third-party dependencies. |
+| `Marey.Anim` | Animation as a pure function of time: a seekable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
+| `Marey.Tools.Video` | Encoding a rendered frame sequence to video with `ffmpeg`, resolved on `PATH` and reported. |
+| `Marey.Tools.Tex` | Mathematical typesetting: TeX source becomes vector outlines through `latex` and `dvisvgm`, so every backend draws it. Opt-in, and degrades to plain text. |
+| `Marey.Toolchain` | Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies. |
+| `Marey.Html` | HTML renderings for a notebook cell, including a film as a playing flipbook. Host-neutral. |
+| `Marey.Verso` | The Verso notebook extension. A figure displays as a figure; a film plays. |
 
 Pre-1.0, and versioned accordingly. The API is still free to move. MIT licensed.
 
-- [Repository](https://github.com/Jonathan-Schaefer-git/marey)
-- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
-- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)
+- [Repository](https://github.com/Axym-Labs/marey)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

@@ -13,6 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Keys.fs" />
     <Compile Include="Palette.fs" />
     <Compile Include="Theme.fs" />
     <Compile Include="Layout.fs" />
@@ -25,11 +26,23 @@
     <Compile Include="Levels.fs" />
     <Compile Include="Chart.fs" />
     <Compile Include="Plot.fs" />
+    <Compile Include="Storyboard.fs" />
+    <!-- After Storyboard.fs: `Film.ofStory` names a `Story`, and `Frames` is what a storyboard
+         is finally *for*. D77. -->
+    <Compile Include="Frames.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
     <ProjectReference Include="..\Marey.Units\Marey.Units.fsproj" />
+    <!-- D69 — the storyboard CE names `Anim` and `Figure` in one signature, and there is no
+         third place for it to stand. D72 refused this edge for `arrangeUnion` and was right to:
+         a `float -> Figure` sampler made the dependency unnecessary there. It is necessary here,
+         and the direction is chosen by weight. Marey.Anim is 36 KB with zero dependencies, so a
+         static-only consumer of this package carries 10% more assembly and no new package
+         reference; the other direction would put 345 KB of plotting, plus Marey.Units, behind
+         `Anim.tween` for someone easing a colour. -->
+    <ProjectReference Include="..\Marey.Anim\Marey.Anim.fsproj" />
   </ItemGroup>
 
 </Project>

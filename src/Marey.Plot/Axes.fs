@@ -116,13 +116,26 @@ module Axes =
 
     /// Build the axis spec, with the quantity name defaulted from the dimension when the caller
     /// did not name it. The unit half is entirely `Marey.Units`' work.
-    let specOf (style: UnitStyle) (tickCount: int) (label: string option) (side: AxisSide) (packed: PackedScale) : AxisSpec =
+    /// D73 — the prefix may be decided elsewhere. The only caller that passes anything but
+    /// `None` is the one laying out a whole animation against a union domain; see
+    /// `Axis.ofScalePinnedWith` for why an animation needs it.
+    let specOfPinned
+        (pin: Prefix option)
+        (style: UnitStyle)
+        (tickCount: int)
+        (label: string option)
+        (side: AxisSide)
+        (packed: PackedScale)
+        : AxisSpec =
         let name =
             match label with
             | Some l -> l
             | None -> defaultLabel side (dimOf packed)
 
-        Axis.ofPackedWith style UnitRegistry.si tickCount name packed
+        Axis.ofPackedPinnedWith pin style UnitRegistry.si tickCount name packed
+
+    let specOf (style: UnitStyle) (tickCount: int) (label: string option) (side: AxisSide) (packed: PackedScale) : AxisSpec =
+        specOfPinned None style tickCount label side packed
 
     // ---- Tick-label collision avoidance -------------------------------------------------
 

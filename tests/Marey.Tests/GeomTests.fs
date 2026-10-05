@@ -57,6 +57,7 @@ let rec private pathPoints (n: Node) : Vec2<nd> list =
     | Group ns -> ns |> Array.toList |> List.collect pathPoints
     | Transform(_, c)
     | Clip(_, c)
+    | Opacity(_, c)
     | Keyed(_, c)
     | Annotated(_, c) -> pathPoints c
     | Text _
@@ -603,6 +604,107 @@ module ``violin`` =
         let vs = xs run
 
         Assert.Equal(centre - List.min vs, List.max vs - centre, 9)
+
+// ======================================================================================
+// M2.5 / D64 — THE IMAGE
+//
+// The only geom in the library that does not bottom out in `Path`, `Markers` or `Text`, and the
+// only producer of a `Raster` node anywhere above the IR. Until it existed, `renderWithAssets`
+// had no customer — which is D10's failure mode, and the reason D64 insists a sidecar API and
+// its producer ship together.
+// ======================================================================================
+
+module ``image`` =
+
+    let private img: Image =
+        { Width = 2
+          Height = 1
+          Rgba = [| 255uy; 0uy; 0uy; 255uy; 0uy; 0uy; 255uy; 255uy |] }
+
+    let private figure () =
+        Chart.image U.second U.metre img 1.0<s> 2.0<m> 5.0<s> 6.0<m> false
+
+    let private rasterOf (n: Node) =
+        n
+        |> Scene.fold
+            (fun acc node ->
+                match node with
+                | Raster r -> r :: acc
+                | _ -> acc)
+            []
+
+    /// §5.5's standing claim is that every geom compiles to `Path`, `Text` or `Markers`. This is
+    /// the one exception, and it is the exception `Raster` was added to the IR for — so the node
+    /// count stays nine and this geom is why the ninth case is not dead weight.
+    [<Fact>]
+    let ``an image compiles to a Raster node`` () =
+        let r = Assert.Single(rasterOf (Chart.toScene surface (figure ())))
+        Assert.Equal(2, r.Image.Width)
+        Assert.Equal(1, r.Image.Height)
+        Assert.False r.Smooth
+
+    /// The domain is the box and nothing more, on a tessellation's rule: an image partitions the
+    /// region it covers, so a margin past its edge draws part of that region as if the image did
+    /// not cover it.
+    [<Fact>]
+    let ``the axes fit the image exactly, unpadded`` () =
+        let fig = figure ()
+        let panel = fig.Panels.[0]
+
+        let sx, sy = Erase.seriesScales panel.Layers.[0].Data
+
+        Assert.Equal((1.0, 5.0), sx.Domain)
+        Assert.Equal((2.0, 6.0), sy.Domain)
+
+    /// The box is projected corner by corner, so it fills the panel it was told to fill. A
+    /// half-size converted once would be right only in the middle of a log axis — D57's
+    /// correction, applied here before it could become the same bug a third time.
+    [<Fact>]
+    let ``the raster box is the panel rectangle`` () =
+        let r = Assert.Single(rasterOf (Chart.toScene surface (figure ())))
+
+        // The image occupies the whole data range, and the data range is the whole panel.
+        Assert.Equal(0.0, float r.Bounds.X0, 6)
+        Assert.Equal(0.0, float r.Bounds.Y0, 6)
+        Assert.Equal(1.0, float r.Bounds.X1, 6)
+        Assert.Equal(1.0, float r.Bounds.Y1, 6)
+
+    /// Both backends draw it, by different routes, and neither is the other's fallback: SVG
+    /// inlines a `data:` URI because a self-contained file is what makes it the notebook and
+    /// golden format, and TikZ writes a sidecar because a `.tex` cannot carry bytes.
+    [<Fact>]
+    let ``svg inlines the pixels and tikz writes a sidecar`` () =
+        let fig = figure ()
+
+        let svg = Chart.render SvgBackend.render surface fig
+        Assert.Contains("data:image/png;base64,", svg)
+
+        let tex = Chart.render TikzBackend.renderWithAssets surface fig
+        Assert.Contains("\\includegraphics", tex.Document)
+        Assert.DoesNotContain("base64", tex.Document)
+        Assert.Single tex.Assets |> ignore
+
+    /// A wrong stride is a bug in the line above the call, not a figure to draw approximately.
+    /// The backends pad a short buffer with transparent black and say so in a comment, which is
+    /// right for a scene built by hand and wrong for a constructor that has the array in hand.
+    [<Fact>]
+    let ``a mis-sized pixel buffer is refused at the constructor`` () =
+        let short: Image = { Width = 4; Height = 4; Rgba = Array.zeroCreate 16 }
+
+        let ex =
+            Assert.Throws<System.ArgumentException>(fun () ->
+                Chart.image U.second U.metre short 0.0<s> 0.0<m> 1.0<s> 1.0<m> false |> ignore)
+
+        Assert.Contains("needs 64 bytes", ex.Message)
+        Assert.Contains("got 16", ex.Message)
+
+    [<Fact>]
+    let ``an image with no pixels is refused`` () =
+        let empty: Image = { Width = 0; Height = 3; Rgba = [||] }
+
+        Assert.Throws<System.ArgumentException>(fun () ->
+            Chart.image U.second U.metre empty 0.0<s> 0.0<m> 1.0<s> 1.0<m> false |> ignore)
+        |> ignore
 
 // ======================================================================================
 // THE ROW-INDEXING GATE

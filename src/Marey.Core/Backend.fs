@@ -17,6 +17,27 @@ type TextMetrics =
 /// §15 puts the stakes plainly: "Text and layout eat 40% of the effort. Everyone
 /// underestimates this." Having one seam here is what makes it possible to start with an
 /// approximation and swap in HarfBuzz at M2 without touching the layout code.
+///
+/// ### D77 — an implementation must be thread-safe, and one instance serves a whole render
+///
+/// This is a requirement on the implementer, not an observation about the implementations. A
+/// measurer is called from layout, and since M3 layout runs once per frame of an animation
+/// across `Array.Parallel.map`. `Measure` must therefore be safe to call from several threads
+/// at once. `ApproxTextMeasurer` is stateless and satisfies it for free; `SkiaTextMeasurer`
+/// caches native handles and satisfies it with a lock.
+///
+/// **And exactly one instance is shared across every frame of one render.** The alternative —
+/// a measurer per thread — is not a performance question, it is a correctness one: font
+/// resolution walks a family stack against whatever is installed (D62), so N independent
+/// resolutions are N chances for one frame of a video to be set in a different typeface from
+/// the frame before it. That is invisible in a single frame, invisible in review, and
+/// unfixable after the render. One measurer means one resolution and one `ResolvedFaces`
+/// report for the whole shot.
+///
+/// The cost of sharing is contention on whatever lock the implementation needs, and the answer
+/// is a cache rather than more measurers: `MemoTextMeasurer` in `Marey.Plot` memoises this
+/// method on `(FontSpec, string)`, which is enough because a shot is laid out once (D72) and
+/// every frame therefore asks about the same strings.
 type ITextMeasurer =
     abstract Measure: FontSpec -> string -> TextMetrics
 
@@ -39,6 +60,19 @@ type Capabilities =
       /// Can carry `Annotated` metadata into the output — `aria-label` on SVG, nothing on a
       /// raster target.
       Semantics: bool
+      /// D67 — can composite a subtree and fade the *result*: SVG's `opacity` on a `<g>`,
+      /// Skia's `SaveLayer` with an alpha paint. False for a backend that can only set alpha
+      /// per shape, which is a visibly different picture wherever the group's own shapes
+      /// overlap. `Degrade.forCaps` folds the node into paint alpha when this is false, which
+      /// is that different picture, chosen deliberately.
+      ///
+      /// **TikZ is the backend that cannot**, which is why this is a field and not a constant.
+      /// pgf's `opacity=` on a scope is *inherited by each path*, not composited over the
+      /// scope, so emitting it would be the degraded picture wearing the capability's name.
+      /// The pgf feature that does composite — `transparency group` — is documented as
+      /// requiring driver support, and this backend's contract is a `string` that has to
+      /// compile under a caller's own preamble and driver.
+      GroupOpacity: bool
       /// Largest batch the backend will take in one node; `None` for unlimited. The GPU
       /// backend has a real instance-buffer ceiling and the compiler must split at it.
       MaxBatch: int option }
@@ -50,12 +84,65 @@ type Capabilities =
 /// things — a string, a file, a GPU swapchain present — so the *result* is exposed by the
 /// concrete type (`SvgBackend.Result`) while the *protocol* stays uniform enough to hold a
 /// heterogeneous list of backends and drive them all from one scene.
+///
+/// ### D77 — the concurrency contract
+///
+/// **An `IBackend` is single-threaded. One instance per thread, and never two threads at
+/// once.** `Begin` / `Draw` / `Finish` is a state machine over a mutable surface, so this is
+/// what the interface has always meant; it was never written down, and M3 renders frames in
+/// parallel, so it is written down here where an implementer reads it. An instance may be
+/// *reused* serially — `Begin` starts a new document — and both built backends support that.
+///
+/// **What crosses threads is a renderer function**, `Extent<px> -> Node -> 'a`: the shape
+/// `SvgBackend.render` and `SkiaBackend.renderPng` already have, and the shape `Chart.render`
+/// and `Frames.render` consume. Such a function **must be safe to call concurrently**, and the
+/// way both built renderers achieve it is to construct their backend *inside* the call, so no
+/// instance is ever shared. A backend author adding a third renderer either does the same or
+/// says in its doc comment that it does not.
+///
+/// **`Measurer` is the exception, and it is deliberate.** An `ITextMeasurer` is required to be
+/// thread-safe (see above) precisely so that one of them can be shared by every frame of a
+/// render while the backends around it are not.
 type IBackend =
     abstract Caps: Capabilities
     abstract Measurer: ITextMeasurer
     abstract Begin: Extent<px> -> unit
     abstract Draw: Node -> unit
     abstract Finish: unit -> unit
+
+/// One file that a rendered document refers to but does not contain.
+///
+/// `Bytes` is compared structurally and that is O(bytes), for the same reason `Image` carries
+/// the warning it does (§5.2). Compare `Name` first if you are diffing.
+[<NoComparison>]
+type RenderedAsset =
+    { /// A file name, not a path. The backend that emitted it chose it; the caller decides
+      /// which directory it lands in, because a `.tex` and its sidecar have to agree on a
+      /// relative name and only the caller knows where the `.tex` is going.
+      Name: string
+      Bytes: byte[] }
+
+/// A document that does not stand alone: the text, plus the files it refers to.
+///
+/// **D64 — this ships with a producer.** `renderWithAssets` was named at M1 as "the M2 door"
+/// for TikZ's `Rasters = false`, and D10 records what happens to a facility with no caller:
+/// `Capabilities` was "a record nobody reads" until the TikZ backend needed it. So this type
+/// arrives in the same milestone as `Chart.image`, which is the thing that finally puts a
+/// `Raster` node into a scene — nothing above the IR produced one before M2.5, which is why
+/// `golden/figure-heatmap.svg` contains no raster and never did.
+///
+/// **Not a member of `IBackend`.** A backend that needs no sidecar does not implement this and
+/// is not made to: the SVG backend keeps inlining a `data:` URI, because a single
+/// self-contained file is the property that makes SVG the notebook and golden format. The
+/// asymmetry is deliberate and is stated here rather than discovered.
+///
+/// `Assets` is deterministic in **both** name and order. Two renders of one figure that
+/// produced `plot-0.png` and `plot-1.png` in swapped order would be a golden diff for no
+/// reason, so names are assigned in traversal order and the array is emitted in that order.
+[<NoComparison>]
+type RenderedDocument =
+    { Document: string
+      Assets: RenderedAsset[] }
 
 [<RequireQualifiedAccess>]
 module Capabilities =
@@ -78,6 +165,7 @@ module Capabilities =
           TextShaping = true
           RotatedText = true
           Semantics = true
+          GroupOpacity = true
           MaxBatch = None }
 
     /// The realistic starting point for a vector backend (SVG, TikZ, PDF): everything except
@@ -105,6 +193,69 @@ module Degrade =
             else
                 let mid = Interp.stops (stops |> Array.map (fun s -> s.Offset, s.Color)) 0.5
                 Solid mid
+
+    /// Multiply a constant into every alpha a subtree paints with — D67's approximation of
+    /// group opacity, for a target that cannot composite a subtree and fade the result.
+    ///
+    /// This is D11's `Color.A` route, applied to a whole group at once, and it is the
+    /// approximation `Node.Opacity` names: identical to true group opacity everywhere the
+    /// group's shapes do not overlap, and darker than it where they do, because each shape is
+    /// composited separately and an overlap is therefore painted twice.
+    ///
+    /// Rasters are included. Skipping them would be cheaper — it is the one case that copies a
+    /// buffer rather than rewriting a record — but a half-faded group containing a heatmap
+    /// whose heatmap does not fade is the *visible* kind of wrong, and the approximation is
+    /// only defensible while it is uniform.
+    /// **Public because a backend needs it directly.** `IBackend.Draw` can be driven with an
+    /// un-degraded scene, so a backend whose `GroupOpacity` is false still meets an `Opacity`
+    /// node and has to do something with it. Re-deriving this fold there would put a second
+    /// implementation of one approximation in the tree, and the TikZ backend's version would
+    /// be the subtly wrong one: pgf's scope `opacity=` is *inherited* by each path and is
+    /// therefore **overridden** by a path's own `fill opacity=`, so a subtree that already
+    /// carries alpha would come out unfaded exactly where it was already translucent.
+    let foldOpacity (a: float) (n: Node) : Node =
+        let a = if a < 0.0 then 0.0 elif a > 1.0 then 1.0 else a
+
+        if a >= 1.0 then
+            n
+        else
+            let colour (c: Color) = { c with A = c.A * a }
+
+            let paint (p: Paint) =
+                match p with
+                | Solid c -> Solid(colour c)
+                | LinearGradient(f, u, stops) ->
+                    LinearGradient(f, u, stops |> Array.map (fun s -> { s with Color = colour s.Color }))
+                | RadialGradient(centre, r, stops) ->
+                    RadialGradient(centre, r, stops |> Array.map (fun s -> { s with Color = colour s.Color }))
+
+            let stroke (s: Stroke) = { s with Paint = paint s.Paint }
+
+            n
+            |> Scene.transform (fun node ->
+                match node with
+                | Path(segs, st, fill, rule) -> Path(segs, Option.map stroke st, Option.map paint fill, rule)
+                | Text t -> Text { t with Paint = paint t.Paint }
+                | Markers b ->
+                    Markers
+                        { b with
+                            Fill = Option.map paint b.Fill
+                            Stroke = Option.map stroke b.Stroke }
+                | Raster r ->
+                    let src = r.Image.Rgba
+
+                    if isNull src then
+                        node
+                    else
+                        let dst = Array.copy src
+                        let mutable i = 3
+
+                        while i < dst.Length do
+                            dst.[i] <- byte (System.Math.Round(float dst.[i] * a))
+                            i <- i + 4
+
+                        Raster { r with Image = { r.Image with Rgba = dst } }
+                | other -> other)
 
     let private degradeStroke (caps: Capabilities) (s: Stroke) =
         let s =
@@ -148,6 +299,11 @@ module Degrade =
             | Raster _ when not caps.Rasters -> Scene.empty
 
             | Clip(_, child) when not caps.Clipping -> child
+
+            // D67. Note that this fires *bottom-up*, so nested opacities compose the way they
+            // read: an inner `Opacity(0.5, x)` is already folded into `x`'s paints by the time
+            // the enclosing `Opacity(0.4, _)` gets here, and the result carries 0.2.
+            | Opacity(a, child) when not caps.GroupOpacity -> foldOpacity a child
 
             | Annotated(_, child) when not caps.Semantics -> child
 

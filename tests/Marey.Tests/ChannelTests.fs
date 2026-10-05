@@ -695,24 +695,18 @@ module BlockTypeChecking =
 
     /// Compile one snippet and return fsi's exit code and its combined output.
     let private compileSnippet (name: string) (body: string) =
-        match TexToolchain.onPath "dotnet" with
-        | None -> None
-        | Some dotnet ->
+        let tool = Tools.dotnet.Force()
+
+        if not tool.IsAvailable then
+            None
+        else
             let scriptPath = Path.Combine(Path.GetTempPath(), sprintf "marey-block-%s.fsx" name)
             File.WriteAllText(scriptPath, preamble () + "\n" + rowTypes + "\n" + body + "\n", UTF8Encoding false)
 
-            let psi = ProcessStartInfo(dotnet, sprintf "fsi --nologo \"%s\"" scriptPath)
-            psi.RedirectStandardOutput <- true
-            psi.RedirectStandardError <- true
-            psi.UseShellExecute <- false
-            psi.WorkingDirectory <- Path.GetTempPath()
-
-            use proc = Process.Start psi
-            let stdout = proc.StandardOutput.ReadToEnd()
-            let stderr = proc.StandardError.ReadToEnd()
-            proc.WaitForExit()
-
-            Some(proc.ExitCode, scriptPath, stdout + "\n" + stderr)
+            match Toolchain.run tool (sprintf "fsi --nologo \"%s\"" scriptPath) (Path.GetTempPath()) 600_000 with
+            | ToolUnavailable _ -> None
+            | ToolTimedOut why -> failwith why
+            | ToolRan run -> Some(run.ExitCode, scriptPath, run.Out + "\n" + run.Error)
 
     /// The positive control: the same block, correct, must compile and run.
     [<Fact>]

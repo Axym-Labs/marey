@@ -16,9 +16,9 @@
 
     <Authors>Marey contributors</Authors>
     <Product>Marey</Product>
-    <RepositoryUrl>https://github.com/Jonathan-Schaefer-git/marey</RepositoryUrl>
+    <RepositoryUrl>https://github.com/Axym-Labs/marey</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://github.com/Jonathan-Schaefer-git/marey</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/Axym-Labs/marey</PackageProjectUrl>
 
     <!-- The gallery page for a package with no readme is a blank slab with a dependency list,
          which is most of what a first-time visitor ever sees. `NUGET.md` rather than the root
@@ -35,7 +35,7 @@
     <!-- MIT, decided deliberately: shorter than Apache-2.0, and what most of the F# ecosystem
          uses, so it composes with the packages a consumer already has. The trade accepted in
          exchange is that MIT carries no explicit patent grant. An SPDX expression rather than
-         `PackageLicenseFile`, because it needs no file packed into every one of the six
+         `PackageLicenseFile`, because it needs no file packed into every one of the
          packages and NuGet renders it as a link to the canonical text. -->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>

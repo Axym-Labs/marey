@@ -51,9 +51,9 @@ open Marey
 [<Literal>]
 let Tool = "pdftoppm"
 
-let toolPath: Lazy<string option> = lazy TexToolchain.onPath Tool
+let toolPath: Lazy<string option> = lazy (Tools.pdftoppm.Force()).Path
 
-let available = lazy (toolPath.Force() |> Option.isSome)
+let available = lazy (Tools.pdftoppm.Force()).IsAvailable
 
 /// The resolution to rasterise at, and it is not an arbitrary choice.
 ///
@@ -216,6 +216,28 @@ let coverageIn (r: Region) (g: Gray) : float =
 
 let coverage (g: Gray) : float = coverageIn whole g
 
+/// The mean grey level of a region, 0 black to 255 white (D64).
+///
+/// `coverageIn` answers "is there ink"; this answers "how dark", which is the question
+/// **orientation** needs. A flipped image has ink in exactly the same box and the same amount
+/// of it — only the light and dark halves have swapped — so a coverage differential cannot see
+/// the bug at all, and a mean level can.
+let meanLevelIn (r: Region) (g: Gray) : float =
+    let x0, y0, x1, y1 = pixelBounds r g
+    let mutable total = 0.0
+    let mutable n = 0
+
+    for y in y0 .. y1 - 1 do
+        let row = y * g.Width
+
+        for x in x0 .. x1 - 1 do
+            total <- total + float g.Pixels.[row + x]
+            n <- n + 1
+
+    if n = 0 then 255.0 else total / float n
+
+let meanLevel (g: Gray) (r: Region) : float = meanLevelIn r g
+
 // ======================================================================================
 // RASTERISING
 // ======================================================================================
@@ -227,63 +249,89 @@ let coverage (g: Gray) : float = coverageIn whole g
 /// would also risk dropping a sub-pixel hairline entirely, which is exactly the false "no ink"
 /// this gate must never report.
 let rasterise (dpi: float) (pdf: string) : Result<Gray, string> =
-    match toolPath.Force() with
-    | None -> Error(Tool + " not found on PATH")
-    | Some exe ->
+    let tool = Tools.pdftoppm.Force()
+
+    if not tool.IsAvailable then
+        Error(Toolchain.missing "the page was not rasterised" tool)
+    else
         let dir = Path.GetDirectoryName pdf
         let prefix = Path.Combine(dir, Path.GetFileNameWithoutExtension pdf + "-raster")
         let output = prefix + ".pgm"
 
-        let psi =
-            ProcessStartInfo(
-                FileName = exe,
-                // `-gray` for one byte per pixel, `-singlefile` so the output name is
-                // predictable rather than page-numbered. The resolution goes through the
-                // library's own invariant formatter — a comma decimal separator here would be
-                // read by the tool as a different number, or as none.
-                Arguments =
-                    String.Concat
-                        [| "-gray -singlefile -r "
-                           Num.at 4 dpi
-                           " \""
-                           pdf
-                           "\" \""
-                           prefix
-                           "\"" |],
-                WorkingDirectory = dir,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            )
+        // `-gray` for one byte per pixel, `-singlefile` so the output name is predictable rather
+        // than page-numbered. The resolution goes through the library's own invariant formatter —
+        // a comma decimal separator here would be read by the tool as a different number, or as
+        // none.
+        let arguments =
+            String.Concat
+                [| "-gray -singlefile -r "
+                   Num.at 4 dpi
+                   " \""
+                   pdf
+                   "\" \""
+                   prefix
+                   "\"" |]
 
-        use p = Process.Start psi
-        p.StandardOutput.ReadToEnd() |> ignore
-        let stderr = p.StandardError.ReadToEnd()
-
-        if not (p.WaitForExit 120_000) then
-            try
-                p.Kill()
-            with _ ->
-                ()
-
-            Error(Tool + " did not terminate within 120 s")
-        elif p.ExitCode <> 0 then
-            Error(sprintf "%s exited with code %d: %s" Tool p.ExitCode (stderr.Trim()))
-        elif not (File.Exists output) then
+        match Toolchain.run tool arguments dir 120_000 with
+        | ToolUnavailable why -> Error why
+        | ToolTimedOut why -> Error why
+        | ToolRan run when run.ExitCode <> 0 ->
+            Error(sprintf "%s exited with code %d: %s" Tool run.ExitCode (run.Error.Trim()))
+        | ToolRan _ when not (File.Exists output) ->
             Error(sprintf "%s reported success but wrote no %s" Tool (Path.GetFileName output))
-        else
-            parsePgm (File.ReadAllBytes output)
+        | ToolRan _ -> parsePgm (File.ReadAllBytes output)
 
 /// Compile a LaTeX document and rasterise the page it produces.
 ///
 /// Reuses `TexToolchain.compileWith`, so the engine is invoked with exactly the flags the compile
 /// gate uses and a broken document fails here with the engine's own error message. The
 /// rasterisation happens inside the compiler's temporary directory, before it is cleaned up.
-let ofDocument (name: string) (document: string) : TexToolchain.PdfResult<Gray> =
+let rec ofDocument (name: string) (document: string) : TexToolchain.PdfResult<Gray> =
+    ofRendered name { Document = document; Assets = [||] }
+
+/// `ofDocument` for a picture that refers to sidecar files (D64).
+///
+/// The assets are written beside the `.tex` before the engine runs, so a `\includegraphics`
+/// pointing at a file nobody wrote fails here as a TeX error rather than as a blank region
+/// nobody notices. That is the failure this gate is for: a valid document with no ink in it is
+/// exactly what `Raster.fs` was written about.
+and ofRendered (name: string) (rendered: RenderedDocument) : TexToolchain.PdfResult<Gray> =
     match toolPath.Force() with
-    | None -> TexToolchain.PdfUnavailable(Tool + " not found on PATH")
-    | Some _ -> TexToolchain.compileWith name document (rasterise Dpi)
+    | None -> TexToolchain.PdfUnavailable(Toolchain.missing "the ink gate did not run" (Tools.pdftoppm.Force()))
+    | Some _ -> TexToolchain.compileAssetsWith name rendered.Document rendered.Assets (rasterise Dpi)
+
+
+/// Rasterise a PDF a backend produced directly, with no TeX between.
+///
+/// The TikZ path exists because a `tikzpicture` is source that has to be *compiled* before there
+/// is anything to look at. `SkiaBackend.renderPdf` hands over a finished document, so the compile
+/// half drops out and only the pixel census is left — which is F2's promote-on-the-second-consumer
+/// rule applied to `rasterise`, rather than a second rasteriser.
+///
+/// **96 dpi is the same invariant, arrived at from the other end.** A Skia PDF's page is the
+/// requested `Extent<px>` converted at `SkiaOptions.Dpi`, so a 400 x 250 px figure is a
+/// 300 x 187.5 pt page; rasterising that at 96 dpi gives back exactly 400 x 250 pixels. A region
+/// can therefore be written in the numbers the layout used, and the grid is the SVG backend's
+/// coordinate space with y downward, exactly as for TikZ.
+let ofPdfBytes (name: string) (pdf: byte[]) : TexToolchain.PdfResult<Gray> =
+    match toolPath.Force() with
+    | None -> TexToolchain.PdfUnavailable(Toolchain.missing "the ink gate did not run" (Tools.pdftoppm.Force()))
+    | Some _ ->
+        let dir = Path.Combine(Path.GetTempPath(), "marey-pdf-" + Guid.NewGuid().ToString "N")
+        Directory.CreateDirectory dir |> ignore
+
+        try
+            let file = Path.Combine(dir, name + ".pdf")
+            File.WriteAllBytes(file, pdf)
+
+            match rasterise Dpi file with
+            | Ok g -> TexToolchain.PdfProduced g
+            | Error why -> TexToolchain.PdfFailed why
+        finally
+            try
+                Directory.Delete(dir, true)
+            with _ ->
+                ()
 
 // ======================================================================================
 // REPORTING

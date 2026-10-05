@@ -169,7 +169,8 @@ module CategoricalAxes =
           Geom = GeomPoint
           Style = Geom.styleFor Theme.initial i
           Channels = [||]
-          ShowInLegend = false }
+          ShowInLegend = false
+          Addressed = [||] }
 
     /// The whole point of D45, rendered: a bar per level, a named tick per band, and no
     /// configuration beyond the level set.
@@ -468,6 +469,7 @@ module LayoutInvariants =
 
             | Transform(a, child) -> collect (Affine.compose a ctm) child
             | Group ns -> ns |> Array.toList |> List.collect (collect ctm)
+            | Opacity(_, child)
             | Keyed(_, child)
             | Annotated(_, child) -> collect ctm child
             | Path _
@@ -584,6 +586,94 @@ module Determinism =
             Assert.DoesNotContain("1,5", german)
         finally
             System.Threading.Thread.CurrentThread.CurrentCulture <- previous
+
+// ======================================================================================
+// D60 — the output surface is the renderer's shape, not `string`
+//
+// Every function-shaped entry point named `string` in its signature until M2.5. That is a
+// claim about the *artifact* made by a function that only forwards it, and a raster backend
+// does not fit through it: a PNG has no UTF-8 encoding and a PDF's is a lie.
+//
+// These tests are the ones that would have caught the two ways the generalisation could go
+// wrong — inference silently pinning `render` to `string` at a call site, and `toFileBytes`
+// acquiring an encoding on the way to disk.
+// ======================================================================================
+
+module ByteShapedOutput =
+
+    open System.IO
+
+    /// A byte-producing renderer of the shape a raster backend has. It ignores the scene's
+    /// content on purpose: what is under test is the *path*, not a rasteriser.
+    let private byteRenderer (_: Extent<px>) (node: Node) : byte[] =
+        let count = node |> Scene.fold (fun acc _ -> acc + 1) 0
+        // A BOM's bytes, deliberately, followed by something that is not valid UTF-8. If the
+        // write path ever grows an encoding, one of the two halves will not survive it.
+        [| 0xEFuy; 0xBBuy; 0xBFuy; 0xFFuy; 0xFEuy; byte count |]
+
+    /// The generalisation itself. `render` returns what the renderer returns.
+    [<Fact>]
+    let ``render returns bytes for a byte-producing renderer`` () =
+        let bytes = baseFigure () |> Chart.render byteRenderer surface
+        Assert.NotEmpty bytes
+        Assert.Equal(0xEFuy, bytes.[0])
+
+    /// The inference risk D60 weighed against the general form, exercised rather than argued.
+    /// A generic `render` must still pin to `string` from `SvgBackend.render` alone, with no
+    /// annotation at the call site and no annotation on the binding — which is how every
+    /// example in the repository and every snippet in the guide calls it.
+    [<Fact>]
+    let ``render still infers string from the renderer alone`` () =
+        let svg = baseFigure () |> Chart.render SvgBackend.render surface
+        // `String.length` only compiles if `svg` was inferred as `string`, not left generic
+        // and not defaulted to `obj`.
+        Assert.True(String.length svg > 0)
+        Assert.StartsWith("<svg", svg)
+
+    /// Both entry points must reach the same artifact, or the byte path is a second
+    /// implementation of the render pipeline rather than a second exit from it.
+    [<Fact>]
+    let ``toFileBytes writes exactly what render produced`` () =
+        let fig = baseFigure ()
+        let path = Path.Combine(Path.GetTempPath(), "marey-d60-" + string (System.Guid.NewGuid()) + ".bin")
+
+        try
+            fig |> Chart.toFileBytes byteRenderer path surface
+            Assert.Equal<byte[]>(fig |> Chart.render byteRenderer surface, File.ReadAllBytes path)
+        finally
+            if File.Exists path then File.Delete path
+
+    /// The failure this rules out is the one that produces a file no decoder opens: a
+    /// three-byte BOM prepended to a PNG signature. `WriteAllBytes` has no encoding, and this
+    /// asserts that nothing on the way to it acquired one.
+    [<Fact>]
+    let ``toFileBytes adds no encoding preamble and alters no byte`` () =
+        let path = Path.Combine(Path.GetTempPath(), "marey-d60-raw-" + string (System.Guid.NewGuid()) + ".bin")
+
+        try
+            baseFigure () |> Chart.toFileBytes byteRenderer path surface
+            let onDisk = File.ReadAllBytes path
+            // 0xFF 0xFE is not valid UTF-8 in any position, so a round trip through any text
+            // encoding would have replaced it with U+FFFD's bytes rather than preserved it.
+            Assert.Equal<byte[]>([| 0xEFuy; 0xBBuy; 0xBFuy; 0xFFuy; 0xFEuy |], onDisk.[0..4])
+            Assert.Equal(6, onDisk.Length)
+        finally
+            if File.Exists path then File.Delete path
+
+    /// `toFile` is unchanged and stays string-typed, which is the other half of D60: the
+    /// existing path keeps its encoding guarantee (UTF-8, no BOM — these files are golden
+    /// masters) and does not become generic over something it has to branch on.
+    [<Fact>]
+    let ``toFile still writes UTF-8 without a byte-order mark`` () =
+        let path = Path.Combine(Path.GetTempPath(), "marey-d60-text-" + string (System.Guid.NewGuid()) + ".svg")
+
+        try
+            baseFigure () |> Chart.toFile SvgBackend.render path surface
+            let onDisk = File.ReadAllBytes path
+            Assert.NotEqual<byte[]>([| 0xEFuy; 0xBBuy; 0xBFuy |], onDisk.[0..2])
+            Assert.Equal('<', char onDisk.[0])
+        finally
+            if File.Exists path then File.Delete path
 
 // ======================================================================================
 // §9 — the colour system, which the design says is embarrassing to get wrong
@@ -1127,3 +1217,128 @@ module Channels =
 
         Assert.Contains("2 values", ex.Message)
         Assert.Contains("30 points", ex.Message)
+
+// ======================================================================================
+// §5.2 / D68 — THE PRODUCER NAMES WHAT IT DREW
+//
+// Before this milestone `Marey.Plot` produced exactly one `Keyed` node — the root — so the diff
+// §5.2 designed the IR around had a granularity of one, and D1's rejection of closure-valued
+// transforms was protecting a facility nothing used. These tests are the claim that the
+// granularity is now the layer.
+// ======================================================================================
+
+module Keying =
+
+    let private keysOf (n: Node) =
+        Scene.fold
+            (fun acc node ->
+                match node with
+                | Keyed(Key k, _) -> k :: acc
+                | _ -> acc)
+            []
+            n
+        |> List.rev
+
+    /// The scheme, spelled out once so nothing downstream has to guess at it. D69's storyboard
+    /// quotes `curve.[42]` as `figure/panel-0-0/layer-0/mark-42`, and this is where that string
+    /// is fixed — before the phase that constructs one exists, so it cannot invent a second
+    /// spelling.
+    [<Fact>]
+    let ``the four levels compose into a path`` () =
+        let panel = Keys.panel 0 1
+        let layer = Keys.layer panel 2
+
+        Assert.Equal(Key "figure", Keys.figure)
+        Assert.Equal(Key "figure/panel-0-1", panel)
+        Assert.Equal(Key "figure/panel-0-1/layer-2", layer)
+        Assert.Equal(Key "figure/panel-0-0/layer-0/mark-42", Keys.mark (Keys.layer (Keys.panel 0 0) 0) 42)
+
+    [<Fact>]
+    let ``a figure carries a key for its root, each panel and each layer`` () =
+        let fig =
+            Chart.line U.second U.metre fallT fallX
+            |> Chart.addScatter U.second U.metre fallT (Array.rev fallX)
+            |> Chart.beside (Chart.line U.second U.metre fallT fallX)
+
+        Assert.Equal<string list>(
+            [ "figure"
+              "figure/panel-0-0"
+              "figure/panel-0-0/layer-0"
+              "figure/panel-0-0/layer-1"
+              "figure/panel-0-1"
+              "figure/panel-0-1/layer-0" ],
+            keysOf (Chart.toScene surface fig)
+        )
+
+    /// **Ordinals, not names**, and this is the test that says why. Two layers of one panel may
+    /// carry the same `Name` — nothing forbids it and `Chart.withName` is optional — so a key
+    /// built from the name would collide, and `Scene.mapKey` would then fade both when asked to
+    /// fade one. The label still says "measured" twice, because that is `Annotated`'s job.
+    [<Fact>]
+    let ``two layers with the same name still get different keys`` () =
+        let fig =
+            Chart.line U.second U.metre fallT fallX
+            |> Chart.withName "measured"
+            |> Chart.addLine U.second U.metre fallT (Array.rev fallX)
+
+        let scene = Chart.toScene surface (fig |> Chart.withName "measured")
+
+        Assert.Equal<string list>(
+            [ "figure"; "figure/panel-0-0"; "figure/panel-0-0/layer-0"; "figure/panel-0-0/layer-1" ],
+            keysOf scene
+        )
+
+    /// The property M3 actually needs: a figure rebuilt from changed data keeps its keys, so two
+    /// frames of an animation are addressable by the same names and a diff can compare subtree
+    /// to subtree rather than figure to figure.
+    ///
+    /// **What this does not claim**, because no positional scheme can: identity across a *row
+    /// removal*. Drop row 3 and every later row's index shifts, so `mark-417` names a different
+    /// datum. Stable identity under an edit to the data needs an id supplied by the data, and
+    /// that is the differ's problem at M4. What M3 needs is stability under restyling,
+    /// re-theming and a change of values — which is what an animation does between frames.
+    [<Fact>]
+    let ``keys survive a restyle, a rename and a change of values`` () =
+        let before = Chart.toScene surface (Chart.line U.second U.metre fallT fallX)
+
+        let after =
+            Chart.line U.second U.metre fallT (fallX |> Array.map (fun x -> x * 0.5))
+            |> Chart.withName "renamed"
+            |> Chart.withTheme Theme.dark
+            |> Chart.toScene surface
+
+        Assert.Equal<string list>(keysOf before, keysOf after)
+
+        // And the keys address something different in each, which is what makes the equality
+        // above a statement about identity rather than about two identical scenes.
+        Assert.NotEqual(
+            Scene.tryFindKey (Keys.layer (Keys.panel 0 0) 0) before,
+            Scene.tryFindKey (Keys.layer (Keys.panel 0 0) 0) after
+        )
+
+    /// One layer of one panel, faded, and nothing else moved. This is the operation the whole
+    /// scheme exists to make possible, run against a real figure rather than a hand-built tree.
+    [<Fact>]
+    let ``one layer of one panel can be faded through its key`` () =
+        let fig =
+            Chart.line U.second U.metre fallT fallX
+            |> Chart.addScatter U.second U.metre fallT (Array.rev fallX)
+
+        let scene = Chart.toScene surface fig
+        let target = Keys.layer (Keys.panel 0 0) 1
+        let faded = Scene.mapKey target (Scene.opacity 0.25) scene
+
+        match Scene.tryFindKey target faded with
+        | Some(Opacity(a, inner)) ->
+            Assert.Equal(0.25, a)
+            Assert.Equal(Scene.tryFindKey target scene, Some inner)
+        | other -> failwithf "expected the second layer to be wrapped in an Opacity, got %A" other
+
+        // Exactly one node was added, and the first layer is the same object it was.
+        Assert.Equal(Scene.count scene + 1, Scene.count faded)
+
+        let untouched = Keys.layer (Keys.panel 0 0) 0
+
+        match Scene.tryFindKey untouched scene, Scene.tryFindKey untouched faded with
+        | Some a, Some b -> Assert.True(System.Object.ReferenceEquals(a, b), "the untouched layer was rebuilt")
+        | _ -> failwith "the untouched layer went missing"

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <!-- §13: "Marey.Tests — FsCheck laws + golden SVG snapshots."
@@ -31,7 +31,12 @@
     <Compile Include="GeometryProperties.fs" />
     <Compile Include="ColorProperties.fs" />
     <Compile Include="SceneProperties.fs" />
+    <Compile Include="AnimProperties.fs" />
+    <Compile Include="MorphProperties.fs" />
     <Compile Include="RegressionTests.fs" />
+    <!-- Before TexToolchain.fs: the external-tool registry every shelling gate reads. -->
+    <Compile Include="Tools.fs" />
+    <Compile Include="ToolchainTests.fs" />
     <Compile Include="TexToolchain.fs" />
     <Compile Include="Raster.fs" />
     <Compile Include="TikzWriterTests.fs" />
@@ -40,7 +45,20 @@
     <Compile Include="Golden.fs" />
     <Compile Include="GoldenTests.fs" />
     <Compile Include="TikzGoldenTests.fs" />
+    <Compile Include="SkiaTests.fs" />
     <Compile Include="PlotTests.fs" />
+    <Compile Include="ShotTests.fs" />
+    <Compile Include="StoryboardTests.fs" />
+    <!-- After StoryboardTests.fs and SkiaTests.fs: it renders a storyboard, and it reuses
+         `SkiaTests.withSkia` rather than probing for the native libraries a second time. -->
+    <Compile Include="FrameTests.fs" />
+    <!-- After FrameTests.fs: it encodes what that one writes, and it reuses `SkiaTests.withSkia`
+         for the one gate that goes end to end through a real film. -->
+    <Compile Include="VideoTests.fs" />
+    <!-- After VideoTests.fs, and beside it in kind: the second package that shells out, and the
+         second whose absence has to degrade rather than fail. It reuses `SkiaTests.withSkia` for
+         the one gate that rasterises a typeset formula to check there is ink in it. -->
+    <Compile Include="TypesetTests.fs" />
     <Compile Include="ChannelTests.fs" />
     <Compile Include="StatTests.fs" />
     <Compile Include="FacetTests.fs" />
@@ -48,14 +66,33 @@
     <Compile Include="NotebookTests.fs" />
     <Compile Include="GuideTests.fs" />
     <Compile Include="ExampleTests.fs" />
+    <!-- Last, and it has to be: the census reads `Tools`, both shipped packages' own `report ()`
+         and `SkiaTests.nativeAssets`, so it can only be written once every one of them exists.
+         It is also the file a release sweep reads first, which is a reason to put it at the end
+         of this list rather than the top: the order here is what compiles, not what matters. -->
+    <Compile Include="Verification.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Marey.Core\Marey.Core.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Units\Marey.Units.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Anim\Marey.Anim.fsproj" />
+    <!-- D66 — the Skia tests live here rather than in a `Marey.Tests.Skia` of their own.
+         A second test project is a second place for a gate to rot, and the precedent for
+         "the real enforcement is in CI, and a missing toolchain skips loudly" is already
+         set twice over by `TexToolchain.fs` and `Raster.fs`. This reference is also the
+         one that gate 6 has to watch: it must not put SkiaSharp on the transitive graph of
+         Core, Units, Plot, Svg or Tikz, and `SkiaTests` asserts exactly that. -->
+    <ProjectReference Include="..\..\src\Marey.Backend.Skia\Marey.Backend.Skia.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Backend.Tikz\Marey.Backend.Tikz.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Plot\Marey.Plot.fsproj" />
+    <!-- A ProjectReference rather than the package, like everything else here: the suite tests
+         the working tree. It is what `Tools.fs` and every shelling gate resolve their programs
+         through, and since M3 phase 6 it ships as a package of its own. -->
+    <ProjectReference Include="..\..\src\Marey.Toolchain\Marey.Toolchain.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Tools.Video\Marey.Tools.Video.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Tools.Tex\Marey.Tools.Tex.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Html\Marey.Html.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Verso\Marey.Verso.fsproj" />
   </ItemGroup>
@@ -80,7 +117,12 @@
          a reviewer reads in the PR diff; MAREY_UPDATE_GOLDEN writes back to it, not here. -->
     <None Include="golden\**\*.svg" Exclude="golden\**\*.actual.svg" CopyToOutputDirectory="PreserveNewest" />
     <None Include="golden\**\*.tex" Exclude="golden\**\*.actual.tex" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="golden\**\*.png" Exclude="golden\**\*.actual.png" CopyToOutputDirectory="PreserveNewest" />
     <None Include="README.md" CopyToOutputDirectory="PreserveNewest" />
+    <!-- D62's stated face. Copied beside the assembly for the same reason the baselines are:
+         the tests find it through the source tree when there is one and fall back to the build
+         output when the assembly has been moved away from its checkout. -->
+    <None Include="fonts\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

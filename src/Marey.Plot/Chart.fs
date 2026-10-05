@@ -86,7 +86,8 @@ module Chart =
           Geom = g
           Style = Geom.styleFor theme index
           Channels = [||]
-          ShowInLegend = not (System.String.IsNullOrEmpty name) }
+          ShowInLegend = not (System.String.IsNullOrEmpty name)
+          Addressed = [||] }
 
     // ---- Constructors ------------------------------------------------------------------------
 
@@ -150,7 +151,8 @@ module Chart =
         figureOf
             [| layerOf "" Theme.initial 0 bars packed
                { layerOf "" Theme.initial 0 GeomPoint packed with
-                   ShowInLegend = false } |]
+                   ShowInLegend = false
+                   Addressed = [||] } |]
 
     // ---- Phase 6's constructors ---------------------------------------------------------------
 
@@ -257,6 +259,62 @@ module Chart =
               YScale = Scale.linear uy (tileDomain y (h * 0.5)) }
 
         ofSeries (Geom.tile w h s) s
+
+    /// An RGBA image placed in data space — a micrograph under its scale bar, a map under a
+    /// track, a reference plate beside a measurement (D64).
+    ///
+    /// The box is given in the axes' own units, so the image lands where the data says it does
+    /// and the axes label themselves from the witnesses as they do for anything else. `smooth`
+    /// is bilinear interpolation: `false` is right for anything whose pixels are measurements,
+    /// where smoothing invents values that were never recorded.
+    ///
+    /// **This is the only thing in Marey that produces a `Raster`**, and until it existed
+    /// `renderWithAssets` had no customer — which is D10's failure mode, and the reason D64
+    /// insists the two ship together. `Chart.heatmap` is *tiles*, not a raster, and always was.
+    ///
+    /// Both backends draw it: SVG inlines a `data:` URI, and TikZ writes a sidecar `.png`
+    /// through `TikzBackend.renderToFileWithAssets`. `TikzBackend.render` returns a bare string
+    /// and so cannot carry the sidecar; it degrades the image away rather than emitting an
+    /// `\\includegraphics` of a file nobody wrote.
+    ///
+    /// The domain is the box, unpadded, on the same rule as a tessellation's: an image
+    /// partitions the region it covers, and a margin past its edge draws part of that region as
+    /// if the image did not cover it.
+    let image
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (img: Image)
+        (x0: float<'ux>)
+        (y0: float<'uy>)
+        (x1: float<'ux>)
+        (y1: float<'uy>)
+        (smooth: bool)
+        : Figure =
+        if img.Width <= 0 || img.Height <= 0 then
+            invalidArg "img" (sprintf "Marey: an image of %dx%d has no pixels to draw." img.Width img.Height)
+
+        let expected = int64 img.Width * int64 img.Height * 4L
+        let actual = if isNull img.Rgba then 0L else int64 img.Rgba.Length
+
+        // Checked here rather than left to the backends, which pad the missing rows with
+        // transparent black and say so in a comment. That is the right behaviour for a scene
+        // built by hand and the wrong one for a constructor: at this level the caller has the
+        // array in their hand and a wrong stride is a bug in the line above, not a figure to
+        // draw approximately.
+        if actual <> expected then
+            invalidArg "img" (sprintf "Marey: a %dx%d RGBA image needs %d bytes; got %d." img.Width img.Height expected actual)
+
+        // Two points, the box's opposite corners, so the axes fit the image exactly. They are
+        // also what any later layer's domain is unified against, which is what makes
+        // `Chart.image … |> Chart.addScatter …` land the points on the picture.
+        let s: Series<'ux, 'uy> =
+            { Name = ""
+              X = [| x0; x1 |]
+              Y = [| y0; y1 |]
+              XScale = Scale.linear ux (min x0 x1, max x0 x1)
+              YScale = Scale.linear uy (min y0 y1, max y0 y1) }
+
+        ofSeries (Geom.image s img x0 y0 x1 y1 smooth) s
 
     /// A line from each `(x0, y0)` to the matching `(x1, y1)` — a displacement, an edge of a
     /// graph, a before-and-after pair.
@@ -863,6 +921,21 @@ module Chart =
     let withMarker (s: MarkerShape) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withShape s l.Style }) fig
 
+    /// D69 — **give these rows nodes of their own**, by original row index.
+    ///
+    /// §5.1 batches a scatter's marks into one `Markers` node, so mark 42 has nothing a
+    /// rewrite can address. Naming it here splits that batch three ways — before it, itself
+    /// under `Keys.mark`, after it — and `Scene.mapKey (Keys.mark layer 42)` then reaches
+    /// exactly one mark. Two extra nodes, not N.
+    ///
+    /// The storyboard's `highlight` calls this for you; it is public because addressing a mark
+    /// is not an animation idea. Circling the outlier in a still figure wants the same node.
+    ///
+    /// Only a scatter (`GeomPoint`) can honour it — that is the geom whose marks are a batch.
+    /// Rows named on a layer that draws a `Path` are carried and never asked for.
+    let addressMarks (rows: int[]) (fig: Figure) : Figure =
+        mapLastLayer (fun l -> { l with Addressed = Array.distinct (Array.append l.Addressed rows) }) fig
+
     let withOpacity (o: float) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withOpacity o l.Style }) fig
 
@@ -895,7 +968,8 @@ module Chart =
                                 [| { last with
                                        Geom = Geom.text labels
                                        Channels = [||]
-                                       ShowInLegend = false } |] })
+                                       ShowInLegend = false
+                                       Addressed = [||] } |] })
             fig
 
     // ---- Non-positional channels (§9, D46, D49) -----------------------------------------------
@@ -1201,6 +1275,45 @@ module Chart =
 
     let toSceneWith (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Node = Figure.toScene m extent fig
 
+    // ---- Output, for something that moves — D72 ---------------------------------------------
+
+    /// The layout this figure would be drawn in. One shot, one sample.
+    ///
+    /// `Chart.arrangement` still hands out the outer grid on its own, which is the older and
+    /// narrower question; this is the whole layout, including each panel's gutters, and it is
+    /// what `toSceneIn` takes.
+    let arrangeFor (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Shot =
+        Figure.arrangeFor m extent fig
+
+    /// **D72 — lay out once for the whole shot, against the union of its sampled states.**
+    ///
+    /// The reason this exists rather than "just call `toScene` per frame": since D61 the plot
+    /// rectangle is what is left after the widest tick label has taken its room, so a domain
+    /// crossing `9.5 → 10.5` gains a digit on every label at once and the panel *breathes* while
+    /// the data is the thing supposed to be moving. Sizing against the union gives an arrangement
+    /// no frame can overflow, and tick labels still recompute per frame inside it.
+    ///
+    /// ```fsharp
+    /// let shot = Chart.arrangeUnion 32 TextMeasure.approx extent (fun u -> Anim.atFraction u anim)
+    /// let frame u = Chart.toSceneIn TextMeasure.approx shot (Anim.atFraction u anim)
+    /// ```
+    ///
+    /// `samples` is stated because the union is only as good as it: an animation with a spike
+    /// between two samples can still overflow. Thirty-two is D72's default and a good one.
+    let arrangeUnion (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (sample: float -> Figure) : Shot =
+        Figure.arrangeUnion samples m extent sample
+
+    /// **Draw a figure inside a layout that is already decided.** The frame renderer's entry
+    /// point, and the one function in this section that an animation calls per frame.
+    ///
+    /// No `Extent<px>`: the shot carries the surface it was arranged against, and a second one
+    /// beside it could only ever disagree.
+    let toSceneIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : Node = Figure.toSceneIn m shot fig
+
+    /// The outer grid `toScene` chose — the head row and the panel regions. For inspection.
+    let arrangement (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Arrangement =
+        Figure.arrangement m extent fig
+
     /// Drive any backend.
     ///
     /// This is the path that honours the backend contract in full: layout measures against the
@@ -1223,7 +1336,17 @@ module Chart =
     /// `Marey.Plot` takes no backend dependency, on purpose: §0's diagram has the DSLs above the
     /// IR and the backends below it, and a grammar package that references a renderer inverts
     /// that. Passing the renderer in costs one identifier and keeps the layering honest.
-    let render (renderer: Extent<px> -> Node -> string) (extent: Extent<px>) (fig: Figure) : string =
+    ///
+    /// **D60 — the return type is the renderer's, not `string`.** Every function-shaped entry
+    /// point named `string` until M2.5, which is a claim about the *artifact* smuggled into the
+    /// signature of a function that only forwards it. A PNG has no UTF-8 encoding and a PDF's is
+    /// a lie, so a raster backend does not fit through a `string`-typed hole. One type parameter
+    /// removes the claim without adding an entry point: `SvgBackend.render` still gives back a
+    /// `string`, and a byte-producing renderer gives back a `byte[]`.
+    ///
+    /// The `IBackend` protocol never had this problem — `Finish` returns `unit` and the artifact
+    /// is exposed by the concrete type — so `renderTo` needed no change and got none.
+    let render (renderer: Extent<px> -> Node -> 'a) (extent: Extent<px>) (fig: Figure) : 'a =
         renderer extent (toScene extent fig)
 
     /// One line to a file: `fig |> Chart.toFile SvgBackend.render "plot.svg" (Chart.size 800.0 500.0)`.
@@ -1244,3 +1367,16 @@ module Chart =
     /// than SVG-specific — the name was the only thing that said otherwise.
     let toSvg (renderer: Extent<px> -> Node -> string) (path: string) (extent: Extent<px>) (fig: Figure) : unit =
         toFile renderer path extent fig
+
+    /// `toFile` for a renderer that produces bytes: `fig |> Chart.toFileBytes SkiaBackend.renderPng
+    /// "plot.png" (Chart.size 800.0 500.0)`.
+    ///
+    /// This exists even though `render` is generic, because writing a `string` and writing a
+    /// `byte[]` are different calls whatever the renderer's return type is — `WriteAllText` has
+    /// an encoding and `WriteAllBytes` does not. Generalising `toFile` over the same `'a` would
+    /// mean branching on the runtime type inside it, which is worse than two names.
+    ///
+    /// Deliberately *not* encoding-aware: the bytes are written exactly as the renderer produced
+    /// them, because a PNG that gained a BOM would not open.
+    let toFileBytes (renderer: Extent<px> -> Node -> byte[]) (path: string) (extent: Extent<px>) (fig: Figure) : unit =
+        System.IO.File.WriteAllBytes(path, render renderer extent fig)

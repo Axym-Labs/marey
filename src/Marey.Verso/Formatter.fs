@@ -63,7 +63,7 @@ type MareyFormatter() =
         member _.Author = "Marey contributors"
 
         member _.Description =
-            "Renders Marey figures, scenes, colours, ramps, palettes, dimensions, unit witnesses and erased scales as inline HTML."
+            "Renders Marey figures, films, scenes, colours, ramps, palettes, dimensions, unit witnesses and erased scales as inline HTML. A film plays in the cell as a flipbook."
 
         member _.OnLoadedAsync(_context: IExtensionHostContext) = Task.CompletedTask
         member _.OnUnloadedAsync() = Task.CompletedTask

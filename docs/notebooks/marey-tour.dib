@@ -202,11 +202,44 @@ Erase.scale (Scale.log10 U.metre (1.0<m>, 1000.0<m>))
 
 #!markdown
 
-And the IR itself. Nine cases, with a census of how much of it there is:
+And the IR itself. Ten cases, with a census of how much of it there is:
 
 #!fsharp
 
 Chart.toScene (Chart.size 480.0 300.0) figure
+
+#!markdown
+
+## Motion
+
+A `Film` is an animation: a scene at every instant, and the one layout every frame is drawn
+inside. The cell **plays** it — sampled into stills, stacked in one SVG and cycled, with no
+encoder installed and nothing written to disk.
+
+The layout is computed once for the whole shot, which is why the panel holds still while the data
+moves under it.
+
+#!fsharp
+
+open Marey.Storyboard
+
+let ringdown =
+    let t = Array.init 60 (fun i -> float i * 0.1<s>)
+    let x = t |> Array.map (fun v -> 30.0e-3 * exp (-float v / 2.0) * cos (4.0 * float v) * 1.0<m>)
+    Chart.scatter U.second U.metre t x |> Chart.withTitle "A ringdown"
+
+let story =
+    scene {
+        let! trace = draw ringdown |> over 0.8<s>
+        do! trace |> zoomToY (-0.008, 0.008) |> over 1.2<s> |> ease Ease.cubicInOut
+    }
+
+Film.ofStory 32 (Chart.size 480.0 300.0) story
+
+#!markdown
+
+`Html.film` samples 48 frames by default — a budget rather than a frame rate, since each frame is
+about 11 KB of markup. `Html.filmAt` takes the count when a longer film needs a different trade.
 
 #!markdown
 

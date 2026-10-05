@@ -36,6 +36,7 @@ open System.IO
 open System.Text
 open System.Text.RegularExpressions
 open Xunit
+open Marey
 
 /// The assemblies the guide's examples need, in dependency order. They sit beside the test
 /// binary because the test project references all of them.
@@ -43,8 +44,21 @@ let private assemblies =
     [ "Marey.Core"
       "Marey.Units"
       "Marey.Plot"
+      "Marey.Anim"
       "Marey.Backend.Svg"
       "Marey.Backend.Tikz"
+      "Marey.Backend.Skia"
+      // Not Marey packages. `SkiaTextMeasurer` has an internal member whose signature mentions
+      // `SKFont` and `SKShaper`, and F# needs both defining assemblies on hand to type-check a
+      // construction of the type at all — so a script referencing only the Marey dlls fails
+      // with FS0074. A reader following the guide never sees this: `#r "nuget:
+      // Marey.Backend.Skia"` brings both transitively, and only this harness references the
+      // dlls directly.
+      "SkiaSharp"
+      "SkiaSharp.HarfBuzz"
+      "Marey.Toolchain"
+      "Marey.Tools.Video"
+      "Marey.Tools.Tex"
       "Marey.Html" ]
 
 let private guidePath =
@@ -60,27 +74,12 @@ let private blocks (markdown: string) =
     |> Seq.map (fun m -> m.Groups.[1].Value)
     |> Seq.toArray
 
-/// `dotnet` on PATH, or `None`. Mirrors `TexToolchain.onPath`: a gate that cannot run should say
-/// so rather than pass quietly.
-let private dotnetPath =
-    lazy
-        (let name = if Environment.OSVersion.Platform = PlatformID.Win32NT then "dotnet.exe" else "dotnet"
-
-         Environment.GetEnvironmentVariable "PATH"
-         |> Option.ofObj
-         |> Option.defaultValue ""
-         |> fun p -> p.Split(Path.PathSeparator)
-         |> Array.tryPick (fun dir ->
-             if String.IsNullOrWhiteSpace dir then
-                 None
-             else
-                 let candidate =
-                     try
-                         Path.Combine(dir.Trim(), name)
-                     with _ ->
-                         ""
-
-                 if candidate <> "" && File.Exists candidate then Some candidate else None))
+/// `dotnet` on PATH, or `None`.
+///
+/// This was a second copy of `TexToolchain.onPath` — its own doc comment said so — and it is now
+/// the shared registry entry. A gate that cannot run should say so rather than pass quietly, and
+/// saying so is `Toolchain`'s job in one wording rather than this file's in another.
+let private dotnetTool = Tools.dotnet
 
 [<Fact>]
 let ``the guide has examples, and they are the ones being checked`` () =
@@ -100,11 +99,13 @@ let ``the guide has examples, and they are the ones being checked`` () =
 
 [<Fact>]
 let ``every example in the guide compiles and runs`` () =
-    match dotnetPath.Force() with
+    let tool = dotnetTool.Force()
+
+    match tool.Path with
     | None ->
         // No SDK on PATH. Say so in the assertion message rather than passing silently.
-        Assert.True(true, "dotnet not found on PATH; the guide was not executed")
-    | Some dotnet ->
+        Assert.True(true, Toolchain.missing "the guide was not executed" tool)
+    | Some _ ->
         let markdown = File.ReadAllText(guidePath.Force(), Encoding.UTF8)
         let binDir = Path.GetDirectoryName(Uri(typeof<Marey.Figure>.Assembly.Location).LocalPath)
 
@@ -124,19 +125,17 @@ let ``every example in the guide compiles and runs`` () =
         let scriptPath = Path.Combine(Path.GetTempPath(), "marey-guide-check.fsx")
         File.WriteAllText(scriptPath, script.ToString(), UTF8Encoding false)
 
-        let psi = ProcessStartInfo(dotnet, sprintf "fsi --nologo \"%s\"" scriptPath)
-        psi.RedirectStandardOutput <- true
-        psi.RedirectStandardError <- true
-        psi.UseShellExecute <- false
-        psi.WorkingDirectory <- Path.GetTempPath()
+        let run =
+            match Toolchain.run tool (sprintf "fsi --nologo \"%s\"" scriptPath) (Path.GetTempPath()) 600_000 with
+            | ToolUnavailable why
+            | ToolTimedOut why -> failwith why
+            | ToolRan r -> r
 
-        use proc = Process.Start psi
-        let stdout = proc.StandardOutput.ReadToEnd()
-        let stderr = proc.StandardError.ReadToEnd()
-        proc.WaitForExit()
+        let stdout = run.Out
+        let stderr = run.Error
 
         Assert.True(
-            proc.ExitCode = 0,
+            run.ExitCode = 0,
             sprintf
                 "docs/guide.md does not run.\n\nThe concatenated script is at %s; its block \
                  boundaries are marked `// ---- guide.md block N ----`, and fsi reports line \

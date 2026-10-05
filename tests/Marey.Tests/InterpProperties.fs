@@ -222,3 +222,157 @@ module AffineTweening =
         let mid = AffineInterp.lerp 0.5 (deg 350.0) (deg 10.0)
         let angle = atan2 (float mid.M21) (float mid.M11) * 180.0 / System.Math.PI
         Assert.Equal(0.0, angle, 9)
+
+/// **D74 — `Affine` is the seventh overload of the witness, and the only one that is not
+/// componentwise.**
+///
+/// Two things are under test here and they are separable. The first is that the overload
+/// *resolves*: `Affine<'a,'b>` carries two measure variables, and the note this file's
+/// counterpart in `Marey.Core` used to carry said that keeping the witness single-variable kept
+/// SRTP resolution predictable. It does resolve, and the four call sites below say so through
+/// all three wrapper levels — `interp`, `Interp.between`, `Interp.stops` — which is where §12.2's
+/// restated-constraint tax would show up if it had been missed.
+///
+/// The second is the **degenerate geometry**, which is where a decomposed tween earns its keep
+/// and also where it has to be honest about what it cannot do. A reflection is not a rotation of
+/// an identity in the plane; no continuous path of invertible matrices connects them. So the
+/// tween passes through a collapsed frame, and the thing worth gating is that it collapses
+/// *predictably* rather than producing NaN and taking an entire animation with it.
+[<Properties(Arbitrary = [| typeof<MareyArbs> |], MaxTest = 400, Replay = Seed, QuietOnSuccess = true)>]
+module AffineWitness =
+
+    let private toAffine (Mat(a, b, c, d, dx, dy)) : Affine<nd, nd> =
+        { M11 = a
+          M12 = b
+          M21 = c
+          M22 = d
+          Dx = dx * 1.0<nd>
+          Dy = dy * 1.0<nd> }
+
+    let private rot (deg: float) = Affine.rotate<nd> (deg * System.Math.PI / 180.0 * 1.0<rad>)
+
+    let private finite (t: Affine<nd, nd>) =
+        Affine.toRaw t |> Array.forall (fun x -> not (System.Double.IsNaN x || System.Double.IsInfinity x))
+
+    /// The overload delegates and does not reimplement. Exact equality, because there is no
+    /// arithmetic between the two — the witness is one call.
+    [<Property>]
+    let ``the witness is the decomposed tween`` (InvertibleMat a) (InvertibleMat b) (UnitT t) =
+        interp (toAffine a) (toAffine b) t = AffineInterp.lerp t (toAffine a) (toAffine b)
+
+    /// §12.2: the constraint is restated at every wrapper level, so a new overload either
+    /// reaches all of them or none of them. `Interp.stops` is the deepest — it calls `interp`
+    /// from inside a `let inline` that is itself constrained — and it is the one that would fail
+    /// if a restatement had been skipped.
+    [<Fact>]
+    let ``the affine overload reaches every wrapper`` () =
+        let a = Affine.identity<nd>
+        let b = Affine.translate { X = 4.0<nd>; Y = 0.0<nd> }
+
+        Assert.Equal(2.0, float (interp a b 0.5).Dx, 12)
+        Assert.Equal(2.0, float (Interp.between a b 0.5).Dx, 12)
+        Assert.Equal(2.0, float (Interp.stops [| 0.0, a; 1.0, b |] 0.5).Dx, 12)
+
+    /// A transform whose first column is zero has no recoverable rotation, so `decompose` takes
+    /// its degenerate branch. Two things are pinned: it does not produce NaN, and it **is
+    /// lossy** — `M12` does not survive the round trip. The module's own comment says "preserve
+    /// what is left", and this is what is left.
+    ///
+    /// The loss is not a defect to fix. A matrix with a zero first column is rank-deficient: it
+    /// maps the whole plane onto a line, and there is no rotation-scale-shear factorisation of
+    /// that which also records the direction the collapsed axis came from.
+    [<Fact>]
+    let ``a zero first column decomposes without NaN, and drops the shear`` () =
+        let t: Affine<nd, nd> =
+            { M11 = 0.0
+              M12 = 3.0
+              M21 = 0.0
+              M22 = 2.0
+              Dx = 7.0<nd>
+              Dy = -1.0<nd> }
+
+        let d = AffineInterp.decompose t
+        let back = AffineInterp.recompose d
+
+        Assert.True(finite back)
+        Assert.Equal(0.0, float d.Rotation, 12)
+        Assert.Equal(7.0, float back.Dx, 12)
+        Assert.Equal(-1.0, float back.Dy, 12)
+        Assert.Equal(2.0, float back.M22, 12)
+
+        // The pin: 3.0 went in, 0.0 comes back.
+        Assert.Equal(0.0, float back.M12, 12)
+
+    /// Tweening *to* a collapsed transform stays finite the whole way, which is the property an
+    /// animation actually depends on: a panel that legitimately collapses to zero width during
+    /// layout must not poison every later frame with NaN.
+    [<Property>]
+    let ``a tween into a collapsed transform stays finite`` (UnitT t) =
+        let a = Affine.identity<nd>
+
+        let b: Affine<nd, nd> =
+            { M11 = 0.0
+              M12 = 0.0
+              M21 = 0.0
+              M22 = 0.0
+              Dx = 1.0<nd>
+              Dy = 1.0<nd> }
+
+        finite (interp a b t)
+
+    /// **A reflection cannot be rotated into an identity.** `SO(2)` is connected and the
+    /// orientation-reversing component is not attached to it, so any continuous tween between
+    /// `det > 0` and `det < 0` crosses `det = 0` — the shape flattens to a line and comes back
+    /// mirrored. That is the correct answer and it is a surprising one, so it is pinned rather
+    /// than filed: it is in the guide's list of imprecisions for the same reason.
+    [<Fact>]
+    let ``a reflection tweens through a collapse, not through a NaN`` () =
+        let a = Affine.identity<nd>
+        let b = Affine.scale 1.0 -1.0
+
+        Assert.Equal(0.0, float (Affine.determinant (interp a b 0.5)), 12)
+
+        for i in 0..20 do
+            let got = interp a b (float i / 20.0)
+            Assert.True(finite got, sprintf "not finite at t = %g" (float i / 20.0))
+
+        Assert.Equal(1.0, float (Affine.determinant (interp a b 0.0)), 12)
+        Assert.Equal(-1.0, float (Affine.determinant (interp a b 1.0)), 12)
+
+    /// Just short of a half-turn on either side. The componentwise tween's failure mode is
+    /// worst here and the decomposed one is unremarkable: the midpoint is a rotation of half the
+    /// angle, with a determinant of one rather than of nearly zero.
+    ///
+    /// The two 181° rows are the ones worth reading. **A rotation is an angle mod 2π, and a
+    /// matrix does not remember which way round it was written**: `rotate 181°` and
+    /// `rotate -179°` are the same six floats, so the tween takes the short way and passes
+    /// through -89.5°, not +90.5°. A caller who wants the long way round has asked for something
+    /// a target matrix cannot express, and needs two tweens or an explicit angle track.
+    [<Theory>]
+    [<InlineData(179.0, 89.5)>]
+    [<InlineData(181.0, -89.5)>]
+    [<InlineData(-179.0, -89.5)>]
+    [<InlineData(-181.0, 89.5)>]
+    let ``near a half-turn the midpoint is the shortest-arc rotation`` (deg: float, expected: float) =
+        let mid = interp (rot 0.0) (rot deg) 0.5
+
+        Assert.Equal(1.0, float (Affine.determinant mid), 9)
+
+        let angle = atan2 (float mid.M21) (float mid.M11) * 180.0 / System.Math.PI
+        Assert.Equal(expected, angle, 9)
+
+    /// **At exactly a half-turn the direction is genuinely undecided**, and the tie is broken by
+    /// the floating-point residue of `sin π` rather than by an argument. `Affine.rotate π` has
+    /// `M21 = 1.22e-16`, so `atan2` reports a hair under `+π` and the shortest arc goes
+    /// anticlockwise; `rotate -π` has `M21 = -1.22e-16` and it goes the other way.
+    ///
+    /// Pinned because it is deterministic and because a reader who sees a half-turn animate
+    /// anticlockwise deserves to find the reason written down rather than to go looking for a
+    /// bug. Any tie-break here would be equally arbitrary and would need the same note.
+    [<Fact>]
+    let ``a half-turn breaks its tie on the sign of sin pi`` () =
+        let forwards = interp (rot 0.0) (rot 180.0) 0.5
+        let backwards = interp (rot 0.0) (rot -180.0) 0.5
+
+        Assert.Equal(1.0, float forwards.M21, 9)
+        Assert.Equal(-1.0, float backwards.M21, 9)

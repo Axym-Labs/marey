@@ -1,6 +1,6 @@
 # Marey.Plot
 
-The chart API of [Marey](https://github.com/Jonathan-Schaefer-git/marey), a dimensionally-typed
+The chart API of [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
 visualization system for F#. This is the package most people install.
 
 ```fsharp
@@ -25,7 +25,8 @@ out — and plotting metres against metres on these axes is a compile error.
 ## What is in it
 
 - **`Chart`** — twelve geoms: `line`, `scatter`, `area`, `bar`, `errorbar`, `step`, `ribbon`,
-  `tile`, `rect`, `segment`, `text`, and box plots and violins by category. Most have an `add*`
+  `tile`, `rect`, `image`, `segment` and `text`, with box plots and violins by category under
+  `Chart.Category`. Most have an `add*`
   that layers onto the last panel, and `Chart.Plain` covers data that genuinely has no units.
 - **The `plot` encoding block** — for data that is a table rather than two arrays. Declares x, y,
   colour, shape and size in one place, with each dimensioned channel checked against its witness.
@@ -39,6 +40,32 @@ out — and plotting metres against metres on these axes is a compile error.
 - **Palettes** — Okabe–Ito, viridis, cividis, magma and an Oklab diverging ramp, with a
   colour-vision-deficiency and contrast validator that every shipped theme is checked against.
 - **A measure–arrange constraint layout**, and the axis and legend compilers.
+- **The `scene` storyboard block**, for a figure that moves:
+
+  ```fsharp
+  open Marey.Storyboard
+
+  let intro =
+      scene {
+          let! curve = draw measured |> over 1.2<s>
+          do! wait 0.5<s>
+          do! parallel' [ curve |> morphTo fitted |> over 2.0<s>
+                          curve |> zoomToX (0.0, 8.0) |> over 2.0<s> ]
+          do! highlight curve.[42]
+      }
+
+  let anim = animate 32 (Chart.size 640.0 400.0) intro
+  ```
+
+  `let!` binds a name for something on stage; `animate` lays the whole shot out **once**, against
+  the union of every state it sampled, so the panel holds still while the data moves. Seeking is
+  evaluation, so `anim.At 2.7<s>` is a direct call and frames render in any order, in parallel.
+- **The frame writer.** `Film.ofStory` pairs the scene animation with the layout it is drawn
+  inside, and `Frames.write` renders every frame over `Array.Parallel.map` and numbers them onto
+  disk as `frame-00000.png`. The concurrent and serial passes produce the same bytes in the same
+  order, and one memoised `ITextMeasurer` serves the whole film — because font resolution walks a
+  family stack against whatever is installed, and a measurer per thread is a chance for one frame
+  of a video to be set in a different typeface from the frame before it.
 - Per-layer styling that survives a theme change where it was set explicitly and is recoloured
   where it was not, which is what makes `withTheme` safe to apply last.
 
@@ -53,8 +80,10 @@ Install one:
 - [`Marey.Backend.Tikz`](https://www.nuget.org/packages/Marey.Backend.Tikz) — `tikzpicture`
   source for LaTeX, with `siunitx` units.
 
-Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and
-[`Marey.Units`](https://www.nuget.org/packages/Marey.Units).
+Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core),
+[`Marey.Units`](https://www.nuget.org/packages/Marey.Units) and
+[`Marey.Anim`](https://www.nuget.org/packages/Marey.Anim) — the last because the storyboard names
+an `Anim` and a `Figure` in one signature. It is 36 KB and has no dependencies of its own.
 
-- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
-- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

@@ -1,7 +1,7 @@
 # Marey.Verso
 
 The [Verso](https://github.com/DataficationSDK/Verso) notebook extension for
-[Marey](https://github.com/Jonathan-Schaefer-git/marey), a dimensionally-typed visualization system
+[Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed visualization system
 for F#.
 
 **This package is installed into the notebook host, not referenced from user code.** With it, a
@@ -17,8 +17,12 @@ Chart.line U.second U.metre t x
 |> Chart.withTitle "Free fall"
 ```
 
-Nine types render: `Figure`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`, `Dim`, `U<'u>`
-and `IScaleErased`.
+Ten types render: `Figure`, `Film`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`, `Dim`,
+`U<'u>` and `IScaleErased`.
+
+A `Film` **plays in the cell** — an animation built with `Marey.Anim` and the `scene { … }` block
+displays as a looping flipbook rather than as a record field table, with no encoder installed and
+no video file on disk.
 
 ## Installing
 
@@ -52,5 +56,5 @@ on one side and a `Figure` on the other would be two unequal types. The bridge i
 reflective, which leaves this package with exactly one dependency — `Verso.Abstractions` — and
 keeps it working across Marey versions.
 
-- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
-- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

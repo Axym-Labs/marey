@@ -40,8 +40,12 @@ without a notebook host installed.
 | `AffineProperties.fs` | Composition order, associativity, units, inversion — across three coordinate spaces. |
 | `GeometryProperties.fs` | `Rect` algebra, `mapRectBounds` under rotation, panel-subdivision invariants, text bounds. |
 | `ColorProperties.fs` | Oklab/Oklch round trips, `Color.mix`, `contrastRatio`, capability degradation. |
-| `SceneProperties.fs` | **D1** structural equality, `count`/`primitiveCount`, `prune`, and the nine-case guard. |
-| `RegressionTests.fs` | The regression pins: D2, D16, D17, D32 and D38, locked in. |
+| `SceneProperties.fs` | **D1** structural equality, `count`/`primitiveCount`, `prune`, and the ten-case guard. |
+| `AnimProperties.fs` | The animation algebra: `andThen` associativity and its two identities, `map2` as an applicative, `stretch` composition, a total seek, and the overshoot gate — per `Interp` instance, including the colour case where the answer is different. |
+| `MorphProperties.fs` | Path morphing: the endpoint law stated against `Morph.prepare`, arc-length sampling against vertex-index sampling, subpath pairing and padding, closure policy, overshoot, and totality over deliberately malformed paths. |
+| `RegressionTests.fs` | The regression pins: §12's six type-system findings, and D16, D17, D32, D38 and D41, locked in. |
+| `Tools.fs` | The registry of the three external programs the suite drives, resolved through `Marey.Toolchain`. |
+| `ToolchainTests.fs` | `Marey.Toolchain` itself, including the pipe-buffer deadlock gate — checked against a deliberately restored sequential implementation rather than assumed. |
 | `TexToolchain.fs` | Drives a real `pdflatex`. A deliberately-broken document is part of the suite, so that the gate is shown to be able to fail. |
 | `Raster.fs` | Compiles a document and counts pixels, via `pdftoppm -gray`. Measurement only, no assertions; renders a bitmap as ASCII for failure messages. |
 | `TikzWriterTests.fs` | The emitter primitives: `bp` dimensions, colour definitions, escaping, superscript runs, macro naming. |
@@ -51,7 +55,11 @@ without a notebook host installed.
 | `GoldenTests.fs` | The snapshot scenes, the determinism suite, and the backend contract. |
 | `TikzGoldenTests.fs` | The same scenes through the TikZ backend, plus the figure baselines both backends share. |
 | `GuideTests.fs` | Extracts every `fsharp` block from `docs/guide.md`, concatenates them into one script and runs it under `dotnet fsi`. |
+| `SkiaTests.fs` | The raster backend: byte determinism for PNG and PDF, the page extent, ink and orientation, the shaping gate, and the zero-dependency assertion over the built package graph. |
 | `PlotTests.fs` | `Marey.Plot`: self-labelling axes, layout invariants across four themes and four sizes, the 50 000-point batching claim, purity of the `with*` combinators, and palette validation. |
+| `ShotTests.fs` | D72/D73 — one arrangement for a whole animation. That the plot rectangle and the axis title are identical across every frame of a shot, each with its own positive control asserting that per-frame layout *does* move them, plus the union's componentwise rule. |
+| `StoryboardTests.fs` | D69 — the storyboard CE. What `let!` binds and what a step's duration defaults to, that `parallel'` inherits `Anim.map2`'s rule rather than restating it, and the `MarkerBatch` split: that addressing a mark still draws the same picture, and that the mark it names is the datum's **original row** rather than its position among the drawn marks. |
+| `FrameTests.fs` | D77 — rendering a film. That a frame rendered alone is the frame rendered in sequence and that the sequence rendered backwards is the same sequence; that a concurrent render is the serial one byte for byte, on both the SVG and the PNG backend; that the faces resolve in one order whichever pass renders; and the measurer cache, whose promise is stated exactly — in a serial render `Measurements` equals `Entries`, so no string is ever measured twice. |
 | `ChannelTests.fs` | The colour, shape and size channels; the legend and the colorbar they produce; the encoding block, including three `dotnet fsi` snippets that must *fail* to compile. |
 | `StatTests.fs` | The statistics, each against a closed form, and the measures that come out of them — a dimensionless count, a probability, a reciprocal-unit density, and a typed slope. |
 | `FacetTests.fs` | Small multiples: that every panel reports the same domains and the same plot rectangle, and that a faceted histogram bins every panel into one grid. |

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="480" height="300" viewBox="0 0 480 300">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M47.005 248.567L462.664 248.567L462.664 72.583L47.005 72.583Z"/></clipPath>
+  </defs>
+  <g id="figure">
+    <path d="M0 300L480 300L480 0L0 0Z" fill="#ffffff"/>
+    <g role="note" data-marey-role="annotation" aria-label="Placed image">
+      <text x="240" y="14" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="17.333" font-weight="600" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">Placed image</text>
+    </g>
+    <g id="figure_panel-0-0">
+      <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="1" data-x-tick-rule="all" data-y-tick-rule="all">
+        <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="5">
+          <path d="M47.005 248.567L462.664 248.567M47.005 204.571L462.664 204.571M47.005 160.575L462.664 160.575M47.005 116.579L462.664 116.579M47.005 72.583L462.664 72.583" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+        </g>
+        <g clip-path="url(#qc)">
+          <g id="figure_panel-0-0_layer-0">
+            <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="2">
+              <image x="0" y="0" width="1" height="1" transform="matrix(415.658667 0 0 175.983333 47.005333 72.583333)" preserveAspectRatio="none" image-rendering="pixelated" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAYAAACddGYaAAAAJUlEQVR4AQEaAOX/APrwPP/6jCj/5igo/wAoPJb/Hihu/w8URv+/mw0c0RrhSgAAAABJRU5ErkJggg=="/>
+            </g>
+          </g>
+        </g>
+        <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="bottom" data-unit="s" data-prefix="" data-ticks="7" data-tick-rule="all">
+          <path d="M47.005 248.567L462.664 248.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+          <path d="M47.005 248.567L47.005 251.567M116.282 248.567L116.282 251.567M185.558 248.567L185.558 251.567M254.835 248.567L254.835 251.567M324.111 248.567L324.111 251.567M393.388 248.567L393.388 251.567M462.664 248.567L462.664 251.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+          <text x="47.005" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+          <text x="116.282" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">1</text>
+          <text x="185.558" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
+          <text x="254.835" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">3</text>
+          <text x="324.111" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
+          <text x="393.388" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">5</text>
+          <text x="462.664" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">6</text>
+          <text x="254.835" y="273.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">t [s]</text>
+        </g>
+        <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="left" data-unit="m" data-prefix="" data-ticks="5" data-tick-rule="all">
+          <path d="M47.005 248.567L47.005 72.583" fill="none" stroke="#39414d" stroke-width="0.9"/>
+          <path d="M47.005 248.567L44.005 248.567M47.005 204.571L44.005 204.571M47.005 160.575L44.005 160.575M47.005 116.579L44.005 116.579M47.005 72.583L44.005 72.583" fill="none" stroke="#39414d" stroke-width="0.9"/>
+          <text x="40.005" y="248.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0</text>
+          <text x="40.005" y="204.571" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1</text>
+          <text x="40.005" y="160.575" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">2</text>
+          <text x="40.005" y="116.579" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">3</text>
+          <text x="40.005" y="72.583" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">4</text>
+          <text x="26.333" y="160.575" transform="rotate(-90 26.333 160.575)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">x [m]</text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

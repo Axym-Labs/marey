@@ -213,8 +213,9 @@ module ``the gate can fail`` =
 module ``the drawable cases draw`` =
 
     /// `Path`, `Text` and `Markers` are the three cases that put ink on a page by themselves;
-    /// `Group`, `Transform`, `Clip`, `Keyed` and `Annotated` can only wrap them, and `Raster` is
-    /// degraded away by this backend (`Capabilities.Rasters = false`), which is checked below.
+    /// `Group`, `Transform`, `Clip`, `Opacity`, `Keyed` and `Annotated` can only wrap them, and
+    /// `Raster` is degraded away by this backend (`Capabilities.Rasters = false`), which is
+    /// checked below.
     ///
     /// The `Path` here is a **0.4 px hairline**, which is 0.3 bp — comfortably under one device
     /// pixel at 96 dpi. It is the thinnest thing the library can be asked to draw, so if the

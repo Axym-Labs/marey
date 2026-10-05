@@ -1,6 +1,6 @@
 # Marey
 
-[![CI](https://github.com/Jonathan-Schaefer-git/marey/actions/workflows/ci.yml/badge.svg)](https://github.com/Jonathan-Schaefer-git/marey/actions/workflows/ci.yml)
+[![CI](https://github.com/Axym-Labs/marey/actions/workflows/ci.yml/badge.svg)](https://github.com/Axym-Labs/marey/actions/workflows/ci.yml)
 [![NuGet](https://img.shields.io/nuget/v/Marey.Plot.svg)](https://www.nuget.org/packages/Marey.Plot)
 
 A plotting library for F# where the compiler checks your units, and the axes label themselves.
@@ -36,7 +36,9 @@ dotnet add package Marey.Plot
 dotnet add package Marey.Backend.Svg
 ```
 
-`Marey.Html` sits at the top of the graph, so referencing it alone brings the rest.
+`Marey.Html` sits at the top of the graph, so referencing it alone brings the rest. For PNG and
+PDF, add `Marey.Backend.Skia` — the one package here with third-party dependencies, which is why
+it is a separate one.
 
 ## Units, end to end
 
@@ -119,19 +121,70 @@ values with no unit to carry a prefix are not rescaled, and the label is left to
 
 <img src="docs/images/co2-record.svg" alt="Atmospheric CO2 at Mauna Loa, annual means with uncertainties" width="640">
 
-The [`examples/`](examples/) directory has six worked figures, three of them on real committed
+The [`examples/`](examples/) directory has twelve worked scripts, three of them on real committed
 datasets.
+
+## A figure that moves
+
+An animation is a **pure function of time**, so seeking is evaluation: `anim.At 2.7<s>` is a
+direct call, frames come out in any order, and a render is `Array.Parallel.map` with no scheduler.
+The storyboard block writes the sequence:
+
+```fsharp
+open Marey.Storyboard
+
+let intro =
+    scene {
+        let! curve = draw measured |> over 1.2<s>
+        do! wait 0.5<s>
+        do! parallel' [ curve |> morphTo fitted   |> over 2.0<s> |> ease Ease.cubicInOut
+                        curve |> zoomToY (0.0, 0.045) |> over 2.0<s> |> ease Ease.cubicInOut ]
+        do! highlight curve.[peak]
+    }
+
+let anim = animate 32 (Chart.size 320.0 220.0) intro
+```
+
+<img src="docs/images/storyboard-filmstrip.svg" alt="Six frames of one storyboard: a ringdown drawn, morphed onto its envelope, zoomed, and one mark picked out" width="720">
+
+`let!` binds a **name** for something on stage, not the animation — which is what lets `curve` be
+referred to three more times. The whole shot is laid out **once**, against the union of every
+state sampled, so the panel holds still while the data moves rather than crawling sideways as the
+tick labels gain a digit. And `curve.[peak]` splits that scatter's single batched `Markers` node
+three ways, so one mark has something to highlight — two extra nodes rather than one per point,
+and only when something is named.
+
+Rendering it is a `map` over the frame times, on as many threads as there are:
+
+```fsharp
+let film = Film.ofStory 32 (Chart.size 320.0 220.0) intro
+
+film
+|> Frames.write FramePass.Concurrent SkiaBackend.renderPng (FrameTarget.into "out" ".png") 30.0
+```
+
+The two passes produce the same bytes in the same order, and a gate says so frame for frame on
+both backends. That holds because the contract is written down rather than assumed: an `IBackend`
+is single-threaded and what crosses threads is a renderer *function*, while an `ITextMeasurer`
+must be thread-safe and exactly one of them serves a whole film — not for speed, but because font
+resolution walks a family stack against whatever is installed, and a measurer per thread is a
+chance for one frame of a video to be set in a different typeface from the frame before it.
 
 ## What is in the box
 
 | Package | |
 |---|---|
-| `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the nine-case scene IR. Zero dependencies. |
+| `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the ten-case scene IR. Zero dependencies. |
 | `Marey.Units` | SI, 22 derived and 18 non-SI unit witnesses; canonicalisation, prefix selection, and Unicode/ASCII/LaTeX/siunitx rendering. |
-| `Marey.Plot` | `Chart` and the `plot` encoding block, twelve geoms, colour/shape/size channels, statistics, facets, six themes, colour-blind-safe palettes with a validator, constraint layout, and the axis and legend compilers. No backend reference. |
+| `Marey.Plot` | `Chart` and the `plot` encoding block, twelve geoms, colour/shape/size channels, statistics, facets, six themes, colour-blind-safe palettes with a validator, constraint layout, the axis and legend compilers, the `scene` storyboard block, and the parallel frame writer. No backend reference. |
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, byte-identical across renders. |
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX, with `siunitx` units and inherited fonts. |
-| `Marey.Html` | HTML renderings of nine Marey types for a notebook cell. Host-neutral. |
+| `Marey.Backend.Skia` | PNG and vector PDF, and real text shaping through HarfBuzz. The only package with third-party dependencies. |
+| `Marey.Anim` | Animation as a pure function of time: a seekable, composable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
+| `Marey.Tools.Video` | Encoding a rendered frame sequence to video by shelling out to `ffmpeg`, degrading to the numbered frames when it is absent. |
+| `Marey.Tools.Tex` | Mathematical typesetting: TeX source on a scene's text runs becomes vector outlines, through `latex` and `dvisvgm`, so every backend draws it. Degrades to plain text when TeX is absent. |
+| `Marey.Toolchain` | Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies. |
+| `Marey.Html` | HTML renderings of ten Marey types for a notebook cell, including a film as a playing flipbook. Host-neutral. |
 | `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension, so a bare `Figure` displays as a figure. |
 
 ## Notebooks
@@ -139,6 +192,10 @@ datasets.
 In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
 cell whose value is a `Figure` shows the figure — no `.Show()`, no save-then-open, no display call.
 Without the extension, render to SVG and the built-in formatter draws it, with nothing installed.
+
+**A `Film` plays.** An animation built with the `scene { … }` block displays as a looping flipbook
+in the cell — its frames stacked in one SVG and cycled with SMIL — so seeing what you just
+animated needs no encoder, no video file and no round trip through the filesystem.
 
 ## Building
 
@@ -148,20 +205,29 @@ dotnet test
 ```
 
 The suite is FsCheck property suites for the dimension group laws, all seven scale kinds, ticks,
-interpolation, colour and the scene IR; 35 golden baselines in SVG *and* `tikzpicture` source; a
-real `pdflatex` compile gate; a rasterised ink gate that checks the picture is not blank; and
-executable checks over every example in [the guide](docs/guide.md) and in [`examples/`](examples/).
+interpolation, colour and the scene IR; golden baselines in SVG *and* `tikzpicture` source; a real
+`pdflatex` compile gate; rasterised ink gates over the compiled TeX, the rendered PNG and the
+rendered PDF, checking the picture is not blank and is the right way up; an assertion over the
+built assembly graph that no package but `Marey.Backend.Skia` can see SkiaSharp; and executable
+checks over every example in [the guide](docs/guide.md) and in [`examples/`](examples/).
+
+Several of those gates shell out, and every one of them **passes when the program it needs is
+absent** — right on a laptop without a TeX installation, and worthless as evidence. So each run
+prints a census of all nine external dependencies and what became of them, and
+`MAREY_REQUIRE_TOOLCHAIN=1` turns an absent one into a failure. CI sets it.
 
 ## Documentation
 
 - **[The guide](docs/guide.md)** — everything the library does today, with a runnable example for
   each part. Every example in it is extracted and executed by the test suite.
-- **[Examples](examples/)** — six standalone scripts, also executed by the test suite.
+- **[Examples](examples/)** — twelve standalone scripts, also executed by the test suite.
+  [`reel.fsx`](examples/reel.fsx) is the demo reel: the whole library in one shot, ending in an
+  `.mp4`.
 - **[Why Marey is like this](docs/why.md)** — the case for a unit witness over a string label,
   what the other design decisions buy, what they cost, and when not to use the library.
 - **[Changelog](CHANGELOG.md)** — what changed in each release, and what is still known to be
   wrong.
-- **[Contributing](CONTRIBUTING.md)** — building, the golden baselines, and the three layering
+- **[Contributing](CONTRIBUTING.md)** — building, the golden baselines, and the four layering
   rules a change has to keep.
 
 ## Status

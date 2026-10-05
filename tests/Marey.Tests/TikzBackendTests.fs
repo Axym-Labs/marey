@@ -222,17 +222,75 @@ module ``D31 capabilities are honest`` =
 
     let private caps = (TikzBackend() :> IBackend).Caps
 
+    /// **`Rasters` inverted at M2.5, and it is the first capability in the project to go from
+    /// `false` to `true`.** D31 set it `false` because "an honest raster needs a sidecar .png and
+    /// `\\includegraphics`, which breaks the one-string-output contract", and named
+    /// `renderWithAssets` as the door. D64 built the door: `RenderedDocument` carries the
+    /// sidecar, so the reason expired rather than the judgement being wrong.
+    ///
+    /// `Gradients` did not follow it and will not. That `false` is about PGF shadings being
+    /// two-stop and axis-constrained, which no output shape fixes.
     [<Fact>]
-    let ``gradients and rasters are refused, clipping and dashes are not`` () =
+    let ``gradients are refused, rasters and clipping and dashes are not`` () =
         Assert.False caps.Gradients
         Assert.False caps.RadialGradients
-        Assert.False caps.Rasters
+        Assert.True caps.Rasters
         Assert.False caps.TextShaping
         Assert.True caps.Clipping
         Assert.True caps.Dashes
         Assert.True caps.RotatedText
         Assert.True caps.Semantics
+        Assert.False caps.GroupOpacity
         Assert.True caps.MaxBatch.IsNone
+
+    /// D67 — **the only `GroupOpacity = false` in the project**, and the reason the flag is a
+    /// capability rather than a constant.
+    ///
+    /// The obvious implementation is `\begin{scope}[opacity=0.5]`, and it is wrong twice. pgf
+    /// inherits `opacity` into each path rather than compositing the scope, so it is the
+    /// *approximation* wearing the capability's name; and a path's own `fill opacity=` — which
+    /// this backend emits for every colour carrying alpha — **overrides** the inherited value,
+    /// so a half-transparent series inside a fading group would come out at its original alpha.
+    /// The pgf feature that does composite is `transparency group`, which the manual gates on
+    /// driver support, and this backend hands a `string` to an unknown preamble and driver.
+    [<Fact>]
+    let ``a group opacity is folded into paint alpha rather than emitted as a scope`` () =
+        let group =
+            Scene.opacity
+                0.5
+                (Group
+                    [| Scene.rect None (Some(Solid accent)) { X0 = 0.1<nd>; Y0 = 0.1<nd>; X1 = 0.6<nd>; Y1 = 0.9<nd> }
+                       Scene.rect None (Some(Solid ink)) { X0 = 0.4<nd>; Y0 = 0.1<nd>; X1 = 0.9<nd>; Y1 = 0.9<nd> } |])
+
+        let out = render group
+
+        Assert.Equal(2, countOccurrences "fill opacity=0.5" out)
+
+        // No scope at all: the scene has no clip, so a `\begin{scope}` here could only be an
+        // attempt to carry the opacity as a scope option, which is the thing this is not.
+        Assert.Equal(0, countOccurrences "\\begin{scope}" out)
+        Assert.DoesNotContain("transparency group", out)
+
+    /// The same fold, reached the other way. `render` degrades before it draws, so the
+    /// backend's own `Opacity` branch is only met by a caller driving `IBackend` by hand — the
+    /// case `SkiaBackend`'s `Annotated` comment calls defensive rather than dead. It performs
+    /// the identical fold, and says so in a comment, because a reviewer of a `.tex` file should
+    /// be able to see that a group opacity was here.
+    [<Fact>]
+    let ``driving IBackend by hand with an undegraded scene folds it too`` () =
+        let backend = TikzBackend()
+        let b = backend :> IBackend
+
+        b.Begin surface
+
+        b.Draw(
+            Scene.opacity 0.5 (Scene.rect None (Some(Solid accent)) { X0 = 0.1<nd>; Y0 = 0.1<nd>; X1 = 0.9<nd>; Y1 = 0.9<nd> })
+        )
+
+        b.Finish()
+
+        Assert.Contains("marey-opacity: 0.5 -- folded into paint alpha", backend.Result)
+        Assert.Contains("fill opacity=0.5", backend.Result)
 
     /// D10 built `Degrade.forCaps` and nothing needed it until now. A gradient must arrive as the
     /// solid colour at its midpoint rather than as a missing fill or a crash.
@@ -269,14 +327,25 @@ module ``D31 capabilities are honest`` =
                   Bounds = { X0 = 0.0<nd>; Y0 = 0.0<nd>; X1 = 1.0<nd>; Y1 = 1.0<nd> }
                   Smooth = false }
 
-        // Degrade removes the node entirely, so the picture is well-formed and empty of content.
+        // D64. The backend advertises `Rasters = true`, but `render` promises a bare `string`
+        // and a string has nowhere to put a sidecar — so it degrades against its own reduced
+        // capabilities and the node goes away. Emitting the \includegraphics and dropping the bytes
+        // would produce a `.tex` that fails to compile with a missing-file error, which is the
+        // same class of wrong output as the gradient above, arriving in somebody else's build.
         let out = render raster
         Assert.DoesNotContain("includegraphics", out)
         Assert.Contains("\\end{tikzpicture}", out)
 
-    /// Driving `IBackend` by hand skips degradation, so the backend itself must still be total.
+        // The same scene through the asset-shaped door: drawn, and the bytes come back.
+        let rendered = TikzBackend.renderWithAssets surface raster
+        Assert.Contains("includegraphics", rendered.Document)
+        Assert.Single rendered.Assets |> ignore
+
+    /// Driving `IBackend` by hand skips degradation, so the backend sees the raster it advertises
+    /// it can draw — and D64 is what changed underneath this test. It read
+    /// `a raster reaching the backend undegraded leaves a visible comment` until M2.5.
     [<Fact>]
-    let ``a raster reaching the backend undegraded leaves a visible comment`` () =
+    let ``a raster reaching the backend is drawn, with its bytes on the side`` () =
         let backend = TikzBackend()
         let sink = backend :> IBackend
         sink.Begin surface
@@ -290,7 +359,19 @@ module ``D31 capabilities are honest`` =
 
         sink.Finish()
 
-        Assert.Contains("% marey: raster 4x3 skipped", backend.Result)
+        // This assertion used to read `Assert.Contains("% marey: raster 4x3 skipped", ...)`,
+        // and the inversion is the point of D64: the backend can now draw one.
+        Assert.Contains("\\includegraphics", backend.Result)
+        Assert.DoesNotContain("skipped", backend.Result)
+
+        // The half that would be easy to omit, and useless output if omitted: the document names
+        // a file, so a file has to exist. A `.tex` referring to a `.png` nobody wrote is a
+        // missing-file error in somebody else's build.
+        let asset = Assert.Single backend.Assets
+        Assert.Contains(asset.Name, backend.Result)
+        Assert.NotEmpty asset.Bytes
+        // PNG's signature, so this is an image rather than a plausible-looking blob.
+        Assert.Equal<byte[]>([| 0x89uy; 0x50uy; 0x4Euy; 0x47uy |], asset.Bytes.[0..3])
 
 // ======================================================================================
 // D33 — batched markers

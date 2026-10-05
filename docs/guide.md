@@ -27,10 +27,15 @@ The blocks form one continuous session, so bindings introduced early are still i
 12. [Statistics](#12-statistics)
 13. [The encoding block](#13-the-encoding-block)
 14. [Facets](#14-facets)
-15. [Output: SVG, TikZ, files](#15-output-svg-tikz-files)
-16. [Notebooks](#16-notebooks)
-17. [The scene IR](#17-the-scene-ir)
-18. [Escape hatches](#18-escape-hatches)
+15. [Output: SVG, TikZ, PNG, PDF](#15-output-svg-tikz-png-pdf)
+16. [Animation](#16-animation)
+17. [The storyboard](#17-the-storyboard)
+18. [Frames](#18-frames)
+19. [Video](#19-video)
+20. [Mathematical typesetting](#20-mathematical-typesetting)
+21. [Notebooks](#21-notebooks)
+22. [The scene IR](#22-the-scene-ir)
+23. [Escape hatches](#23-escape-hatches)
 
 ---
 
@@ -49,10 +54,14 @@ open Marey
 |---|---|
 | `Marey.Core` | The `Scene` IR, colour, scales and geometry, and nothing else. Zero dependencies. |
 | `Marey.Units` | SI + 22 derived + 18 non-SI unit witnesses, and self-labelling axes. |
-| `Marey.Plot` | `Chart`, the `plot` block, geoms, channels, statistics, facets, themes, palettes, layout. No backend reference — see §15. |
+| `Marey.Plot` | `Chart`, the `plot` block, geoms, channels, statistics, facets, themes, palettes, layout, and the storyboard block (§17). No backend reference — see §15. |
 | `Marey.Backend.Svg` | Rendering to SVG. |
 | `Marey.Backend.Tikz` | Rendering to `tikzpicture` source for LaTeX. |
-| `Marey.Html` | HTML renderings of nine Marey types, for a notebook cell. Host-neutral. |
+| `Marey.Backend.Skia` | Rendering to PNG or PDF, and real text shaping. The only one with third-party dependencies, and native ones at that — see §15. |
+| `Marey.Anim` | Animation as a pure function of time: `Anim<'a>`, the easing catalogue and path morphing. Depends on `Marey.Core` alone, and arrives with `Marey.Plot` — see §16. |
+| `Marey.Tools.Video` | Encoding a rendered frame sequence to video with `ffmpeg` — see §19. |
+| `Marey.Toolchain` | Resolving and running the external programs Marey drives but does not ship. Zero dependencies; arrives with `Marey.Tools.Video`. |
+| `Marey.Html` | HTML renderings of ten Marey types, for a notebook cell. Host-neutral. |
 | `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension. Installed *into the host*, not referenced from user code. |
 
 ---
@@ -746,7 +755,7 @@ let facetedHistogram =
 
 ---
 
-## 15. Output: SVG, TikZ, files
+## 15. Output: SVG, TikZ, PNG, PDF
 
 `Marey.Plot` does not reference a backend. A backend is a function passed in at render time, which
 is why the same figure goes to either without the figure knowing either exists.
@@ -790,16 +799,793 @@ printfn "deterministic: %b" (asSvg = (fall |> Chart.render SvgBackend.render (Ch
 ```
 
 Constructs TikZ cannot draw degrade visibly rather than silently: a gradient becomes its Oklab
-midpoint, and a raster becomes a comment naming what was skipped and at what size.
+midpoint. A raster becomes a comment naming what was skipped and at what size through
+`TikzBackend.render`, and is drawn for real through `TikzBackend.renderWithAssets`, which returns
+the document *and* the sidecar `.png` files it refers to.
+
+### PNG and PDF
+
+`Marey.Backend.Skia` is the third backend, and the first that produces **bytes** rather than a
+string. It is also the first that measures text properly, which is the subject of the next part.
+
+```fsharp
+let png = fall |> Chart.render SkiaBackend.renderPng (Chart.size 720.0 450.0)
+let pdf = fall |> Chart.render SkiaBackend.renderPdf (Chart.size 720.0 450.0)
+
+printfn "png magic: %b" (png.[1..3] = "PNG"B)
+printfn "pdf magic: %b" (pdf.[0..4] = "%PDF-"B)
+```
+
+To a file, `Chart.toFileBytes` is the byte-shaped sibling of `Chart.toSvg` — a separate name
+because writing text has an encoding and writing bytes does not, and a PNG that picked up a
+byte-order mark on the way to disk would not open.
+
+```fsharp
+fall
+|> Chart.toFileBytes SkiaBackend.renderPng (System.IO.Path.Combine(out, "fall.png")) (Chart.size 800.0 500.0)
+
+fall
+|> Chart.toFileBytes SkiaBackend.renderPdf (System.IO.Path.Combine(out, "fall.pdf")) (Chart.size 800.0 500.0)
+```
+
+The PDF is **vector**, despite coming out of the backend the design calls the raster one: paths
+stay paths and glyphs stay glyphs. Its page is the requested extent converted exactly — a
+400 × 250 px figure is a 300 × 187.5 pt page — and it carries no timestamp, so two renders of one
+figure are byte-identical.
+
+`SkiaOptions` is the knob: resolution, background colour, antialiasing, a font file, and the PDF's
+document information.
+
+```fsharp
+let opts =
+    { SkiaOptions.Default with
+        Background = Color.transparent
+        Pdf = { PdfMetadata.Default with Title = "free fall" } }
+
+let sprite = fall |> Chart.render (SkiaBackend.renderPngWith opts) (Chart.size 400.0 250.0)
+printfn "transparent sprite: %d bytes" sprite.Length
+```
+
+### Which font a PNG is drawn in, and why it matters
+
+SVG names a font family and lets whatever opens the file resolve it. TikZ ignores the name and
+inherits the document's face. Skia has to **pick one**, from what is installed on the machine
+doing the rendering — so the same figure is a slightly different PNG on your laptop and on
+someone else's.
+
+That is not hidden. A backend reports what it opened:
+
+```fsharp
+let backend = new SkiaBackend()
+fall |> Chart.renderTo backend (Chart.size 400.0 250.0)
+
+for face in backend.ResolvedFaces |> Array.distinctBy (fun f -> f.Family) do
+    printfn "asked for %s, drew with %s" (face.Requested.Split(',').[0]) face.Family
+```
+
+`Matched = None` on a reported face means every entry in the theme's stack missed and Skia's
+default was used — the figure looks like nothing the theme asked for, and it says so rather than
+leaving you to notice.
+
+For output that has to be identical on two machines, state a file and resolution is skipped
+entirely:
+
+```fsharp
+// let pinned = { SkiaOptions.Default with FontFile = Some "/path/to/Inter-Regular.ttf" }
+```
+
+### When one face is not enough
+
+A face holds the scripts it holds. Liberation Sans has no CJK, so `気温 (°C)` measured against it
+is two missing-glyph boxes and a unit — and a PNG of that axis title has two empty rectangles in
+it, where a browser opening the same figure as SVG would have walked the whole stack and found a
+face that has them.
+
+So the measurer splits a run by coverage: **per codepoint, the first face that has it**, which is
+the rule CSS font matching uses. Each piece is shaped in its own face and the advances are summed.
+Nothing above the backend knows this is happening — `ITextMeasurer` still answers a width — and a
+run one face covers, which is every run in a Latin figure, is one piece and exactly the number it
+always was.
+
+What is new is the report. `ResolvedFace` says which faces covered what, and which codepoints
+nothing covered:
+
+```fsharp
+let title = "気温 (°C)"
+
+let titleFont: FontSpec =
+    { Family = Theme.Sans
+      Size = 9.0<pt>
+      Weight = 400
+      Italic = false }
+
+let fallbackAware = new SkiaTextMeasurer()
+
+printfn "%s: %.2f px" title (float ((fallbackAware :> ITextMeasurer).Measure titleFont title).Advance)
+
+for face in fallbackAware.ResolvedFaces do
+    for used in face.Fallbacks do
+        printfn "  %s covered %d codepoint(s) %s does not have" used.Family used.Covered.Length face.Family
+
+    if face.Missing.Length > 0 then
+        let names = face.Missing |> Array.map (sprintf "U+%04X") |> String.concat ", "
+        printfn "  nothing on this machine covers %s -- drawn as .notdef" names
+```
+
+Run that on a machine with a CJK face installed and it names the face; run it on one without and
+it names the codepoints. Neither is silent, which is the point: a figure with boxes in it says so
+before you find them in the PNG.
+
+The machine is doing the choosing there, which is the previous section's problem again, one level
+down — so the same answer is available. A stated **list** pins the whole chain:
+
+```fsharp
+// let pinned =
+//     { SkiaOptions.Default with
+//         FontFiles = [ "/path/to/Inter-Regular.ttf"; "/path/to/NotoSansJP-Regular.ttf" ] }
+```
+
+`FontFiles` is the reproducible answer to a mixed-script figure: those faces, in that order, and a
+reported `.notdef` past the end of them, with the machine never consulted. `FontFile` remains the
+single-face answer and **does not fall back** — one face is the whole promise, and a codepoint it
+lacks is a box. Setting both is an error rather than a precedence rule.
+
+Two things the split costs, both small and both worth knowing. Kerning is not applied across a
+segment boundary — but boundaries fall where coverage fails, which is where the script changes,
+and no face kerns across a script change. And a run's vertical band is the **largest** of the
+faces it uses, so a CJK label is taller than the Latin label beside it. That is also what a
+browser does, and reserving only the Latin band would clip the ideographs.
+
+### Real text shaping
+
+`Marey.Core` ships an *approximate* measurer: a Helvetica advance-width table, no kerning, no
+ligatures, accurate to a few per cent. It exists because the core may not take a dependency, and
+both text backends advertise `TextShaping = false` honestly.
+
+The Skia backend advertises `true`, and it is the first thing in the project for which the flag
+means anything:
+
+```fsharp
+printfn "svg shapes text:  %b" (SvgBackend() :> IBackend).Caps.TextShaping
+printfn "skia shapes text: %b" (new SkiaBackend() :> IBackend).Caps.TextShaping
+```
+
+The consequence is worth stating plainly, because it looks like a bug the first time it is
+noticed: **two backends of this library place an axis title at different coordinates for the same
+figure**. Measured text is not estimated text. At 12 px, `AVATAR` is 48.01 px under the
+approximation and 44.51 px shaped in Arial — the kerning in `AV`, `VA`, `TA` and `AT` — and a real
+face reserves about a quarter more vertical room than Helvetica's ascent fraction estimates. Both
+reach layout, so the panel rectangle moves. The shaped number depends on the face, which is the
+previous section's point: run the snippet below and you will get whatever your machine resolved.
+
+Layout is a measure–arrange pass against `ITextMeasurer`, and `Chart.renderTo` uses the backend's
+own. That one seam is the whole mechanism — not a line of the layout code changed when the shaper
+arrived — and both measurers are ordinary values you can ask directly:
+
+```fsharp
+let spec: FontSpec =
+    { Family = Theme.Sans
+      Size = 9.0<pt>
+      Weight = 400
+      Italic = false }
+
+let shaper = new SkiaTextMeasurer() :> ITextMeasurer
+
+printfn "approximated: %.2f px" (float (TextMeasure.approx.Measure spec "AVATAR").Advance)
+printfn "shaped:       %.2f px" (float (shaper.Measure spec "AVATAR").Advance)
+```
 
 ---
 
-## 16. Notebooks
+## 16. Animation
+
+`Marey.Anim` holds one type, and its whole design is in the signature: **an animation is a pure
+function of time, not a mutation.**
+
+```fsharp
+#r "nuget: Marey.Anim"
+
+let animClimb = Anim.tween 2.0<s> 0.0<m> 100.0<m>
+
+printfn "at 1 s:      %.1f m" (float (animClimb |> Anim.at 1.0<s>))
+printfn "at 90%%:      %.1f m" (float (animClimb |> Anim.atFraction 0.9))
+printfn "past the end: %.1f m" (float (animClimb |> Anim.at 9.0<s>))
+```
+
+Nothing is stepped and nothing accumulates, so frame 900 costs what frame 1 costs and you can ask
+for them in any order. That is what a scrubbable timeline needs and what a mutable scene graph
+cannot give you.
+
+`tween` goes through the same `Interpolate` witness the rest of the library uses, so it tweens
+whatever Core can interpolate — a `float<'u>`, a `Vec2`, a `Rect`, a `Color` (through Oklab, so it
+does not pass through grey), and an affine transform.
+
+### Composing
+
+Six combinators, and the two that matter are parallel and sequential composition.
+
+```fsharp
+let animFade = Anim.tween 0.5<s> 0.0 1.0
+
+// Parallel: the duration is the **maximum**, and the shorter one holds its final value.
+let animBoth = Anim.map2 (fun x a -> x, a) animClimb animFade
+printfn "both, at 2 s: %A" (animBoth |> Anim.at 2.0<s>)
+
+// Sequential: the duration is the **sum**.
+let animTwice = Anim.andThen animClimb (Anim.tween 1.0<s> 100.0<m> 0.0<m>)
+printfn "up then down lasts %.1f s" (float (Anim.duration animTwice))
+```
+
+`Anim.stretch` scales a duration and `Anim.ease` reparameterises the clock. `Anim.pure'` is a
+constant of zero duration.
+
+### The clock clamps; the fraction does not
+
+`Anim.at` clamps its argument to `[0, duration]`, which is what makes the hold above well-defined
+and `andThen` total at every instant. The *normalised* clock is deliberately not clamped, and that
+is the entire easing catalogue:
+
+```fsharp
+let animBack = Anim.tween 1.0<s> 0.0 1.0 |> Anim.ease Ease.backOut
+
+printfn "backOut overshoots to %.3f" (animBack |> Anim.atFraction 0.35)
+printfn "and still lands on %.3f" (animBack |> Anim.atFraction 1.0)
+```
+
+Twenty-eight easings ship — quad, cubic, quart, sine, expo, circ, back, elastic and bounce, each
+in, out and in-out, plus linear. One caveat, because it is surprising rather than wrong: a
+**colour** overshoot is gamut-clamped on the way back to sRGB, and alpha is clamped
+unconditionally, so an eased `fadeIn` cannot overshoot its opacity.
+
+### Morphing a shape
+
+`Morph.paths` interpolates two paths through a common form: both are flattened to polylines and
+resampled by **arc length**, so a square becomes a triangle at a steady speed rather than racing
+along one edge and crawling down the next.
+
+```fsharp
+let animSquare =
+    [| MoveTo { X = 0.2<nd>; Y = 0.2<nd> }
+       LineTo { X = 0.8<nd>; Y = 0.2<nd> }
+       LineTo { X = 0.8<nd>; Y = 0.8<nd> }
+       LineTo { X = 0.2<nd>; Y = 0.8<nd> }
+       ClosePath |]
+
+let animTriangle =
+    [| MoveTo { X = 0.5<nd>; Y = 0.9<nd> }
+       LineTo { X = 0.9<nd>; Y = 0.1<nd> }
+       LineTo { X = 0.1<nd>; Y = 0.1<nd> }
+       ClosePath |]
+
+let animMorph = Morph.anim Morph.defaults 1.0<s> animSquare animTriangle
+printfn "the midpoint has %d segments" (Anim.atFraction 0.5 animMorph).Length
+```
+
+Two things about it look like bugs the first time you see them, and neither is one. Both are
+pinned by tests rather than argued away.
+
+<img src="images/morph-pairing.svg" alt="Two morphs: a square twisting into itself, and two discs swapping places" width="720">
+
+**Top row — a closed ring's start point is not rotated to match its partner.** Those are the same
+square twice, written from different corners; the morph pairs sample zero with sample zero, so it
+twists a quarter turn on the way rather than sitting still. **Bottom row — subpaths pair by
+index.** That is one picture written in two subpath orders: the ends agree that nothing moved, and
+in between the two discs cross through each other and trade size. Matching rings by rotation, or
+subpaths by proximity, are both real algorithms and neither is built.
+
+Three other things worth knowing: the output is always a **polyline**, so a morphed curve is a
+flattened one; `Morph.paths a b 0.0` is `a` *in the common form* rather than `a` itself, which is
+what `Morph.prepare` hands back and what the still frame before a morph should be drawn from; and
+`MorphOptions` states the sample count, the flattening resolution and what happens when an open
+path meets a closed one, rather than hiding them.
+
+### Animating a figure
+
+An `Anim<Figure>` is what you usually want, and rendering one has exactly one subtlety. Since the
+plot rectangle is what is **left over** after the widest tick label has taken its room, laying out
+each frame on its own makes the panel *breathe*: a y domain climbing past 100 gains a digit on
+every label at once, the gutter widens, and the axis crawls sideways while the data is the thing
+that was supposed to move. Freezing the first frame's layout has the opposite failure — a later
+frame's labels are wider than the gutters that were sized for frame zero.
+
+So lay out **once, against the union of the animation's sampled states**, and draw every frame
+inside an arrangement no frame can overflow:
+
+```fsharp
+let animGrow (u: float) =
+    let ts = Array.init 24 (fun i -> float i * 0.4<s>)
+    let xs = ts |> Array.map (fun t -> t / 1.0<s> * (1.0 + 40.0 * u) * 1.0<m>)
+    Chart.line U.second U.metre ts xs
+
+let animExtent = Chart.size 640.0 400.0
+let animShot = Chart.arrangeUnion 32 TextMeasure.approx animExtent animGrow
+
+let animFrame (u: float) = Chart.toSceneIn TextMeasure.approx animShot (animGrow u)
+
+let animPanels = [| 0.0; 0.5; 1.0 |] |> Array.map (animFrame >> Scene.count)
+printfn "every frame is the same scene shape: %b" (Array.distinct animPanels |> Array.length = 1)
+printfn "the shot was sized over %d samples" animShot.Samples
+```
+
+The same union pins the **unit prefix**, so a zoom crossing a decade cannot step `mm → µm`
+mid-shot and change the axis title while the data moves. Tick labels still recompute every frame;
+it is the rectangle and the prefix that are held.
+
+The sample count is stated rather than hidden because the union is only as good as it: an
+animation with a spike between two samples can still overflow. Thirty-two is a sound default, and
+`animShot.Samples` reports what was used. One accepted consequence: a still frame lifted out of an
+animation has slightly more gutter than the same `Figure` rendered on its own, because it is
+wearing the whole shot's clothes.
+
+`Marey.Anim` mentions no `Figure` and depends only on `Marey.Core`, which is why the sampler above
+is a plain `float -> Figure` rather than an `Anim<Figure>`: tweening a `float<m>` should not make
+you install the grammar. `fun u -> Anim.atFraction u anim` is the bridge.
+
+---
+
+## 17. The storyboard
+
+An animation is usually a *sequence*: something arrives, it changes, an axis zooms, one point is
+picked out. Written as a bare `float -> Figure` that means working out which step you are in and
+how far through it you are, by hand, every time. The storyboard block does that arithmetic.
+
+```fsharp
+open Marey.Storyboard
+
+let storyT = Array.init 12 (fun i -> float i * 1.0<s>)
+
+let storyRise =
+    Chart.scatter U.second U.metre storyT (storyT |> Array.map (fun t -> float t * 1.0<m>))
+
+let storyBend =
+    Chart.scatter U.second U.metre storyT (storyT |> Array.map (fun t -> float t * float t * 0.25<m>))
+
+let storyIntro =
+    scene {
+        let! curve = draw storyRise |> over 1.2<s>
+        do! wait 0.5<s>
+
+        do!
+            parallel'
+                [ curve |> morphTo storyBend |> over 2.0<s>
+                  curve |> zoomToX (0.0, 8.0) |> over 2.0<s> ]
+
+        do! highlight curve.[7] |> over 0.6<s>
+    }
+
+printfn "the storyboard runs for %g s" (float (Storyboard.duration storyIntro))
+```
+
+The block is a value. Nothing has been measured, nothing rendered, no time has passed.
+
+### What `let!` binds
+
+A **handle**: a name for something on stage, plus the duration it arrived over. Not the animation
+itself — `curve` is used three times after it is bound, every time to refer to something already
+drawn. A handle that *was* the animation would make `morphTo` composition rather than reference,
+and the storyboard would lose the ability to say "that thing, again".
+
+The duration is not decoration either. It is the default for every verb applied to that handle,
+so `do! highlight curve.[7]` with no `over` runs for as long as `curve` took to appear — a
+default that comes from your storyboard rather than from a constant inside the library.
+
+### The verbs
+
+| | |
+|---|---|
+| `draw fig` | put a figure on stage and reveal it. A zero-duration draw is a cut |
+| `over d` | how long the step takes |
+| `wait d` | hold |
+| `parallel' [ … ]` | run branches together from the same starting stage |
+| `morphTo fig` | interpolate what is on stage into another figure |
+| `zoomToX (lo, hi)`, `zoomToY` | animate an axis domain |
+| `highlight h.[i]` | grow one mark and ring it in the theme's foreground |
+| `fadeIn h` | fade a named subtree in |
+
+`parallel'` takes the duration of its **longest** branch, and the shorter ones hold their final
+state through the tail — which is `Anim.map2`'s rule from §16, inherited rather than restated.
+
+**`morphTo` interpolates the data, not the drawn geometry.** A `Figure` carries its own scales,
+so two figures are two coordinate systems; morphing one's paths into the other's would put half
+of the first figure's geometry on the second's axes, and the tick labels would be telling the
+truth about neither. Interpolating the series instead leaves a real `Figure` at every instant,
+whose domain, ticks and unit prefix all come from the numbers actually on screen. The two sides
+need not be the same length — both are resampled to the longer — and the units may differ, as
+long as the dimensions match: a series in kilometres morphs into one in metres by converting,
+not by reading the numbers across.
+
+### `curve.[7]`, and the node that had to exist for it
+
+A scatter of 100 000 points is **one** `Markers` node. That is the single biggest performance
+decision in the IR, and it is also why point 7 has nothing to highlight: there is no node with
+its name on it.
+
+Naming one splits that batch three ways — the marks before it, the mark itself under its own
+key, the marks after — which costs two extra nodes rather than a hundred thousand. Nothing is
+split until something is named, so every figure that highlights nothing is exactly the figure it
+was.
+
+The key is `Keys.mark`'s spelling, and the index is the datum's **original row**, not its
+position among the drawn marks. Those differ the moment a non-finite value earlier in the series
+goes undrawn, and a key built from the drawn position would quietly name a different point from
+there on.
+
+You do not need a storyboard to use it — `Chart.addressMarks` is the still version, which is
+what circling an outlier in a static figure wants:
+
+```fsharp
+let storyRinged = storyRise |> Chart.addressMarks [| 7 |]
+let storyRingedScene = Chart.toScene (Chart.size 640.0 400.0) storyRinged
+
+printfn
+    "mark 7 has a node of its own: %b"
+    (Scene.tryFindKey (Keys.mark (Keys.layer (Keys.panel 0 0) 0) 7) storyRingedScene).IsSome
+```
+
+Only a scatter can honour it. A line is one `Path`, so there is no node between its vertices to
+name, and asking for one raises rather than drawing nothing.
+
+### Rendering
+
+`animate` samples the storyboard, sizes one arrangement against the union of everything it saw
+(§16), and hands back an `Anim<Node>` you can seek:
+
+```fsharp
+let storyAnim = animate 32 (Chart.size 640.0 400.0) storyIntro
+
+let storyRect (n: Node) =
+    n
+    |> Scene.fold
+        (fun acc x ->
+            match x with
+            | Transform(a, _) -> a :: acc
+            | _ -> acc)
+        []
+
+let storyPlots =
+    [| 0.0; 0.25; 0.5; 0.75; 1.0 |]
+    |> Array.map (fun u -> storyRect (storyAnim.At(u * storyAnim.Duration)))
+    |> Array.distinct
+
+printfn "the panel holds still while the data moves: %b" (storyPlots.Length = 1)
+
+printfn
+    "the highlighted mark is addressed by the end: %b"
+    (Scene.tryFindKey (Keys.mark (Keys.layer (Keys.panel 0 0) 0) 7) (storyAnim.At storyAnim.Duration))
+        .IsSome
+```
+
+<img src="images/storyboard-filmstrip.svg" alt="Six frames of one storyboard: a ringdown fading in, morphing onto its envelope, and one mark picked out" width="720">
+
+Six frames of `examples/storyboard.fsx`, which writes exactly this. The panel rectangle is the
+same in all six — the layout was sized once — while the y tick labels run `-30 … 30` in the first
+three and `0 … 40` in the last three. That is the line D72 draws: the *rectangle* is frozen, its
+*contents* are not, because an animation whose numbers change and whose labels do not is not
+showing the numbers changing.
+
+`animateWith` takes a measurer, for the same reason `Chart.toSceneWith` does — a PNG or PDF
+render should be arranged with the backend's own shaping (§15).
+
+If the picture is not what you want out, `Storyboard.stages` gives the animation of `Stage`
+values themselves, each carrying the `Figure` on stage at that instant. That is the door to a
+still frame, a caption, or a different renderer entirely.
+
+---
+
+## 18. Frames
+
+`Anim.At` is a direct evaluation, so rendering an animation is one `map` over the frame times.
+There is no scheduler and no replay: frames come out in any order, on any number of threads, and
+a frame rendered on its own is the frame rendered in sequence.
+
+A **`Film`** is the pair a renderer needs — the scene at every instant, and the layout it was
+arranged inside:
+
+```fsharp
+open Marey.Storyboard
+
+let filmPoints =
+    let ts = Array.init 12 (fun i -> float i * 1.0<s>)
+    Chart.scatter U.second U.metre ts (ts |> Array.map (fun t -> float t * 2.0<m>))
+
+let filmStory =
+    scene {
+        let! filmCurve = draw filmPoints |> over 0.6<s>
+        do! filmCurve |> zoomToY (0.0, 40.0) |> over 1.0<s>
+    }
+
+let film = Film.ofStory 32 (Chart.size 320.0 220.0) filmStory
+
+printfn "%g s on a %g x %g surface" (float film.Duration) (float film.Extent.Width) (float film.Extent.Height)
+```
+
+The surface is not an argument anywhere below this line. `Film.Extent` is the extent the film's
+shot was arranged against, so a film cannot be rendered at a size its layout was not sized for —
+which is silent when it happens and looks like a picture in the corner of a page.
+
+`Frames.render` evaluates every frame and hands them back. `Frames.write` and `Frames.writeText`
+also put them on disk, numbered:
+
+```fsharp
+let frameDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "marey-guide-frames")
+
+let filmSeq =
+    film
+    |> Frames.writeText FramePass.Concurrent SvgBackend.render (FrameTarget.into frameDir ".svg") 24.0
+
+printfn "wrote %d frames as %s" filmSeq.Files.Length filmSeq.Pattern
+printfn "nothing left over from an earlier render: %b" (Array.isEmpty filmSeq.Stale)
+```
+
+`Pattern` is the `frame-%05d.svg` shape an encoder is pointed at, and `Stale` is every file
+matching it that *this* render did not write. That second one is not tidiness: a directory holding
+a previous, longer render still has frames past the end of this one, `ffmpeg -i frame-%05d.png`
+reads until the first gap, and the encode quietly gains a tail from a shot that no longer exists.
+The files are reported rather than deleted, because deleting a directory's contents is not a
+rendering function's decision to make.
+
+### The frame clock
+
+`Frames.times fps duration` is `round(duration * fps)` instants at `i / fps`. **The final instant
+is not a frame.** A frame occupies the interval that starts at its own time, so a 2 s film at
+30 fps is 60 frames ending at 1.9667 s; a sixty-first frame at `t = 2` would hold the final state
+for one frame longer than the film asked for, which is a visible stutter in a loop.
+
+```fsharp
+printfn "60 frames, last at %g s: %b" (float (Array.last (Frames.times 30.0 2.0<s>))) (Frames.count 30.0 2.0<s> = 60)
+```
+
+### Serial and concurrent are the same frames
+
+`FramePass.Concurrent` is `Array.Parallel.map` over the frame times; `FramePass.Serial` is
+`Array.map`. They produce the same bytes in the same order, and a gate asserts it on both the
+SVG and the PNG backend.
+
+Two rules make that true, and they are the contract in `Backend.fs` rather than a property of the
+backends that happen to be in the box:
+
+- **An `IBackend` is single-threaded.** `Begin`/`Draw`/`Finish` is a state machine over a mutable
+  surface. What crosses threads is a *renderer function*, `Extent<px> -> Node -> 'a`, and such a
+  function must be safe to call concurrently. `SvgBackend.render` and `SkiaBackend.renderPng`
+  both are, by constructing their backend inside the call.
+- **An `ITextMeasurer` must be thread-safe, and one of them serves the whole film.** Not for
+  speed: font resolution walks a family stack against whatever is installed (§15), so a measurer
+  per thread is a chance for one frame of a video to be set in a different typeface from the frame
+  before it — invisible in a single frame, invisible in review, and unfixable after the render.
+
+### One measurer, memoised
+
+Sharing one measurer means sharing whatever lock it needs, and layout asks it about every tick
+label, legend entry and axis title. `MemoTextMeasurer` answers that: it wraps any measurer and
+remembers `(FontSpec, string)`, so no string is ever measured twice and the hit path is a
+lock-free dictionary read.
+
+```fsharp
+let filmMemo = MemoTextMeasurer TextMeasure.approx
+let filmMeasured = Film.ofStoryWith 32 filmMemo (Chart.size 320.0 220.0) filmStory
+Frames.render FramePass.Concurrent SvgBackend.render 24.0 filmMeasured |> ignore
+
+printfn "%d distinct strings, %d measurements" filmMemo.Entries filmMemo.Measurements
+```
+
+Pass one of these when the measurer underneath costs something — which means whenever the film is
+rendered through Skia, where every measurement is a HarfBuzz shaping run behind a mutex.
+
+How much it saves is bounded by the *distinct strings in the shot*, not by the frames: the
+arrangement is frozen once (§17), tick labels are round numbers drawn from a small set, and
+quadrupling the frame rate on a two-decade zoom moved that count by one.
+
+---
+
+## 19. Video
+
+`Frames.write` leaves a numbered directory, and a numbered directory is already something: every
+editor imports one, every encoder reads one, and it is what a paper's supplementary material
+wants anyway. `Marey.Tools.Video` turns it into one file by running `ffmpeg`.
+
+```fsharp
+#r "nuget: Marey.Tools.Video"
+```
+
+**A subprocess rather than a binding, and licence is why.** `FFmpeg.AutoGen` links `libav*` into
+your process — LGPL at best, GPL as soon as the build carries x264 — which puts an audit on
+everyone who references your project. A subprocess boundary keeps ffmpeg's licence ffmpeg's
+problem. The managed wrappers shell out too, so what they cost is a dependency and what they buy
+is not writing one `ProcessStartInfo`.
+
+`ffmpeg` is looked for on `PATH`, once per process, and reported:
+
+```fsharp
+printfn "%s" (Video.report ())
+
+let vidDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "marey-guide-video")
+
+let vidSeq =
+    film
+    |> Frames.write FramePass.Concurrent SkiaBackend.renderPng (FrameTarget.into vidDir ".png") 25.0
+
+let vidOut = System.IO.Path.Combine(vidDir, "shot.mp4")
+
+match Video.mux MuxOptions.Default vidSeq vidOut with
+| MuxRan run when run.Succeeded -> printfn "encoded %d frames into %s" run.FrameCount run.Output
+| MuxUnavailable why -> printfn "%s" why
+| other -> printfn "%A" other
+```
+
+**A missing ffmpeg is an outcome, not an exception.** `MuxUnavailable` says what to install and
+says the frames are still on disk, because they are. That is the same choice §15 makes about a
+font it cannot find and the raster backend makes about a native library: degrade, and name what
+would fix it.
+
+### The command is a value
+
+`Video.args` is a pure function from the options and the sequence to the argument vector, so you
+can print it, diff it, or paste it into a shell:
+
+```fsharp
+printfn "ffmpeg %s" (String.concat " " (Video.args MuxOptions.Default vidSeq vidOut))
+```
+
+Two positions in that vector are load-bearing, and both are silent when wrong:
+
+- **`-framerate` comes before `-i`.** It is an *input* option — it says what rate the images
+  already are, and every one of them is kept. The same number after `-i` is an *output* option:
+  the images are read at the demuxer's default 25 fps and then resampled, which drops frames or
+  duplicates them. Twenty-four frames at 12 fps is twenty-four frames written correctly and
+  **thirteen** with the flag moved. At 24 fps both spellings happen to agree, which is exactly
+  why this is worth stating.
+- **`-fflags +bitexact` comes after `-i`**, so it reaches the muxer rather than the demuxer. It
+  is what stops the container carrying `encoder=Lavf63.1.101` — a stamp that does not vary
+  between two runs on one machine, and does vary between ffmpeg builds.
+
+### Read it back
+
+Exit status is a weak gate: an encoder that put thirteen of twenty-four frames in the file exits
+zero. `Video.inspect` decodes the result with `ffprobe` and says what is actually in it.
+
+```fsharp
+match Video.inspect vidOut with
+| Inspected info ->
+    printfn "%s, %d x %d, %d frames at %g fps" info.Codec info.Width info.Height info.FrameCount info.Fps
+    printfn "names no ffmpeg build: %b" (List.isEmpty info.BuildTags)
+| other -> printfn "%A" other
+```
+
+`Duration` is `FrameCount / Fps`, which is one frame period longer than the last frame's own
+time — §18's rule arriving in the container.
+
+### What it refuses, and why
+
+`Video.check` starts no process, so you can ask it before rendering an hour of frames:
+
+- **Leftover frames.** `FrameSequence.Stale` is every file matching the pattern this render did
+  not write, `-i frame-%05d.png` reads until the first gap, and the encode would quietly gain a
+  tail from a longer shot that no longer exists. Refused by default; `MuxOptions.AllowStale`
+  overrides it.
+- **Odd pixel dimensions.** `yuv420p` subsamples chroma and needs even width and height. The
+  size is read out of the first frame's own header rather than derived from the extent, because
+  the raster backend rounds an extent *up*: a 320.5 px figure is a 321 px bitmap, and 321 is the
+  number that decides. The default pixel format is `yuv420p` and not negotiable by accident —
+  H.264 from PNG otherwise encodes as `yuv444p`, which is a legal file that QuickTime, Safari
+  and PowerPoint all refuse to play, so the author sees it work and the audience sees nothing.
+
+---
+
+## 20. Mathematical typesetting
+
+A visualization library that cannot set `\frac{\partial \vec{E}}{\partial t}` is not much use for
+physics, and there is no good .NET answer to setting one. `Marey.Tools.Tex` takes the answer
+everybody actually uses: it runs TeX.
+
+**What comes back is geometry, and that is the whole point.** The package walks a scene, finds
+every text run that carries a TeX form, sets it with `latex`, converts it to vector outlines with
+`dvisvgm`, and replaces the run with a filled `Path`. After that there is nothing left for a
+backend to know — SVG, TikZ and Skia all draw the formula with the code they already had.
+
+```fsharp
+#r "nuget: Marey.Tools.Tex"
+
+printfn "%s" (Typeset.report ())
+```
+
+That prints where `latex` and `dvisvgm` were found, or the sentence naming what to install. It is
+worth printing, because the failure mode here is quiet: a figure that typeset and a figure that
+did not both render and both look reasonable.
+
+`TextRun.Tex` is the field it reads, and the axis compiler already fills it — `Chart.withUnitStyle
+Siunitx` puts `\qty{}{\metre\per\second\squared}` on the axis title. You can also put a formula
+there yourself:
+
+```fsharp
+let formulaFont: FontSpec =
+    { Family = Theme.Serif
+      Size = 18.0<pt>
+      Weight = 400
+      Italic = false }
+
+let formulaScene: Node =
+    Text
+        { Text = "dE/dt = curl B"                     // always set, and never optional
+          Tex = Some @"$\frac{\partial \vec{E}}{\partial t} = \nabla \times \vec{B}$"
+          At = { X = 0.5<nd>; Y = 0.5<nd> }
+          Font = formulaFont
+          Paint = Solid(Color.rgb 0.1 0.1 0.12)
+          Anchor = AnchorMiddle
+          Baseline = BaselineAlphabetic
+          Rotation = 0.0<rad> }
+
+let formulaExtent = Chart.size 420.0 120.0
+let drawn, note = Typeset.sceneOrPlain TexOptions.Default formulaExtent formulaScene
+printfn "%s" note
+```
+
+`sceneOrPlain` always hands back something to draw. On a machine with TeX that is the outlines; on
+one without it is the scene that went in, and `note` says which. **A missing TeX installation
+costs the typesetting and nothing else**, because `TextRun.Text` is always set — a run's plain
+form is not optional, which is exactly what makes this degradation possible.
+
+```fsharp
+printfn
+    "the formula is now %s"
+    (match drawn with
+     | Path _ -> "outlines"
+     | Text _ -> "still text, because there is no TeX on this machine"
+     | _ -> "something else")
+```
+
+### It fails one formula at a time
+
+A snippet TeX rejects does not take the figure with it. That run keeps its text, and
+`Typeset.scene` reports it by name with TeX's own complaint, while every other formula still
+typesets:
+
+```fsharp
+let broken: Node =
+    Text
+        { Text = "broken"
+          Tex = Some @"$\notacommand{x}$"
+          At = { X = 0.5<nd>; Y = 0.2<nd> }
+          Font = formulaFont
+          Paint = Solid(Color.rgb 0.1 0.1 0.12)
+          Anchor = AnchorMiddle
+          Baseline = BaselineAlphabetic
+          Rotation = 0.0<rad> }
+
+match Typeset.scene TexOptions.Default formulaExtent (Group [| formulaScene; broken |]) with
+| Typeset result -> printfn "typeset %d, failed %d, engine runs %d" result.Typeset result.Failed.Length result.EngineRuns
+| TypesetUnavailable why -> printfn "%s" why
+```
+
+This is why each snippet gets its own engine run rather than all of them sharing one document: one
+document is about four times faster on a figure with ten distinct labels, and one bad label in it
+costs you every label.
+
+### What it costs, and the one thing it approximates
+
+About 105 ms per **distinct** snippet, memoised on the source — so the same axis title on twelve
+facets is one run. An ordinary figure carries two, and pays about a fifth of a second.
+
+**The cache lives for one call, and a frame is a call.** It collapses repetition inside a scene,
+not across scenes, so typesetting an animation frame by frame pays that fifth of a second per
+frame rather than once for the film — 235 ms for the first frame and 1060 ms for five, measured.
+Typeset the still you are going to publish, not every frame of the reel.
+
+The font size is applied as a *scale* on the outline rather than as a second engine run, so one
+formula at 9 pt and at 18 pt costs one invocation between them. A TeX engine asked for 18 pt
+directly would pick a different optical design, with different stroke weights; the difference is
+not visible in a plot, and `TexOptions.BaseSize` is where the trade is written down.
+
+`TexOptions` also carries the preamble — `amsmath`, `textcomp` and `siunitx` by default — which is
+replaced rather than appended to, because a preamble is a document's own business.
+
+---
+
+## 21. Notebooks
 
 In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
 cell whose value is a `Figure` displays as a figure. No `.Show()`, no save-then-open, no display
-call. Nine types render: `Figure`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`, `Dim`,
-`U<'u>` and `IScaleErased`.
+call. Ten types render: `Figure`, `Film`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`,
+`Dim`, `U<'u>` and `IScaleErased`.
 
 Without the extension, render to SVG and Verso's built-in `SvgFormatter` — which claims any string
 beginning with `<svg` — draws it. That path needs nothing installed.
@@ -813,14 +1599,58 @@ printfn "fragment is a div: %b" (fragment.StartsWith "<div")
 printfn "swatch: %b" (Html.color Palette.vermillion |> String.length > 0)
 ```
 
+### A film plays in the cell
+
+A `Film` displays as a **flipbook**: its frames sampled into stills, stacked in one SVG, and
+cycled. It needs no encoder, writes no file, and plays wherever the notebook renders.
+
+```fsharp
+let flipbook = Html.film film
+
+printfn "the flipbook is one svg: %b" (flipbook.Contains "<svg")
+printfn "it animates without a stylesheet: %b" (flipbook.Contains "<animate" && not (flipbook.Contains "<style"))
+```
+
+That last line is the whole design. A `<style>` element in a notebook output cell **is not scoped
+to the cell** — it restyles the reader's entire document and stacks up once per execution — so CSS
+`@keyframes`, the obvious way to build a flipbook, is the one mechanism this may not use.
+`<animate>` is an SVG *element*: it travels inside the fragment it animates and cannot escape it.
+
+The frame count is the cost. Each frame is roughly 11 KB of markup, so `Html.film` samples
+`Html.FlipbookFrames` — 48 — which is about half a megabyte, or 40 KB once the notebook is
+compressed. That is a **budget, not a frame rate**: the effective rate is `48 / duration`, so a
+two-second film is smooth and a six-second one is visibly stepped. Say so explicitly when you want
+a different trade:
+
+```fsharp
+printfn "a coarse flipbook is smaller: %b" ((Html.filmAt 12 film).Length < (Html.filmAt 48 film).Length)
+```
+
+The film renders at **its own extent** — `Film.Extent`, the surface its layout was arranged
+against — and not at `Html.defaultSize`. Every frame's text was measured for that surface, and the
+whole of §17's "the panel does not breathe" is a claim about it, so there is no size argument to
+get wrong.
+
+Asking for a single frame gives a still rather than an animation of one:
+
+```fsharp
+printfn "one frame is a still: %b" (not ((Html.filmAt 1 film).Contains "<animate"))
+```
+
+**What this is not.** It is not a video and not a GIF. Both would put `Marey.Tools.Video`, and
+therefore ffmpeg, on the display path — so a reader without ffmpeg would see a still where a
+colleague sees motion, from the same notebook, with nothing saying so. Use
+[`Marey.Tools.Video`](#19-video) when you want a file to send someone; use this when you want to
+see what you just built.
+
 See [`notebooks/README.md`](notebooks/README.md) for installation and
 [`notebooks/marey-tour.dib`](notebooks/marey-tour.dib) for the tour.
 
 ---
 
-## 17. The scene IR
+## 22. The scene IR
 
-Everything above compiles to one closed nine-case `Scene` IR, and every backend consumes only that.
+Everything above compiles to one closed ten-case `Scene` IR, and every backend consumes only that.
 It is the level at which a figure that came out wrong can be inspected.
 
 ```fsharp
@@ -828,8 +1658,8 @@ let scene = Chart.toScene (Chart.size 480.0 300.0) fall
 printfn "nodes: %d   primitives: %d" (Scene.count scene) (Scene.primitiveCount scene)
 ```
 
-The nine cases are `Path`, `Text`, `Markers`, `Raster`, `Group`, `Transform`, `Clip`, `Keyed` and
-`Annotated`. The split between `count` and `primitiveCount` is the whole point of `Markers`: a
+The ten cases are `Path`, `Text`, `Markers`, `Raster`, `Group`, `Transform`, `Clip`, `Opacity`,
+`Keyed` and `Annotated`. The split between `count` and `primitiveCount` is the whole point of `Markers`: a
 scatter of any size is **one** node.
 
 ```fsharp
@@ -843,9 +1673,28 @@ printfn "20 000 points -> %d nodes, %d primitives" (Scene.count bigScene) (Scene
 ARIA roles, TikZ gets `% marey-key:` and `% marey-role:` comments — so a rendered figure can be
 diffed and read as text.
 
+The keys are hierarchical, and a figure assigns them: `figure`, then `figure/panel-0-0`, then
+`figure/panel-0-0/layer-0` for each layer of each panel. `Keys` spells them and `Scene.mapKey`
+rewrites one subtree by name, leaving every other subtree exactly as it was — which is what makes
+"fade this one series" a change to the path down to that series rather than to the figure.
+
+```fsharp
+let faded =
+    scene |> Scene.mapKey (Keys.layer (Keys.panel 0 0) 0) (Scene.opacity 0.25)
+
+printfn "found: %b   nodes: %d -> %d"
+    (Scene.tryFindKey (Keys.panel 0 0) scene |> Option.isSome)
+    (Scene.count scene)
+    (Scene.count faded)
+```
+
+`Scene.opacity` fades a **composited** subtree, which is not the same as setting alpha on each
+shape inside it: the two differ wherever the group's own shapes overlap, because per-shape alpha
+paints the overlap twice. For a single shape, `Color.A` is still the simpler tool.
+
 ---
 
-## 18. Escape hatches
+## 23. Escape hatches
 
 **Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so the scales are
 the caller's and everything downstream still works.
@@ -881,8 +1730,6 @@ For a stateful backend there is `IBackend` and `Chart.renderTo`, which is the pa
 
 ## What is not here yet
 
-What exists today is static plotting: everything this guide covers, from two arrays and a chart
-call up to the encoding block. Animation, fields and simulation, a raster backend with real text
-shaping, further backends, and native mathematical typesetting are all intended, and none of them
-exist yet. Among the geoms, the field ones — contour, quiver, streamline and hexbin — are the
-group still to come.
+Fields and simulation, further backends, an interactive canvas, and native mathematical
+typesetting are all intended, and none of them exist yet. Among the geoms, the field ones —
+contour, quiver, streamline and hexbin — are the group still to come.

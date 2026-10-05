@@ -7,10 +7,12 @@
 ///
 /// Three things this suite checks that the SVG one cannot:
 ///
-/// * **Degradation is visible as text.** `Capabilities.Gradients = false` and `Rasters = false`, so
-///   `gradients.tex` shows the Oklab-midpoint solid D10 promises — both ramps collapsing to the
-///   same colour, which is the cost stated plainly — and `raster.tex` shows an empty picture where
-///   two images were. D10's first real exercise, recorded in files a reviewer reads.
+/// * **Degradation is visible as text.** `Capabilities.Gradients = false`, so `gradients.tex`
+///   shows the Oklab-midpoint solid D10 promises — both ramps collapsing to the same colour,
+///   which is the cost stated plainly. `raster.tex` shows an empty picture where two images were
+///   for a different reason after D64: the capability is now `true`, but `TikzBackend.render`
+///   returns a `string` and degrades rasters away because a string cannot carry a sidecar. D10's
+///   first real exercise, recorded in files a reviewer reads.
 /// * **Every baseline compiles.** The SVG suite's oracle is `XDocument.Parse`; the only authority
 ///   on a `.tex` file is a TeX engine, so one runs over all thirteen.
 /// * **A figure has a baseline at all** — in either backend. See `Golden.figure`.
@@ -63,40 +65,59 @@ module Snapshots =
     [<Fact>]
     let ``keyed and annotated`` () = tikz "keyed-annotated"
 
-    /// `Rasters = false`, so the baseline is a **bare bounding box** — and that is worth being
-    /// precise about, because the emitter contains a branch that writes
-    /// `% marey: raster 2x2 skipped ...` and it never runs on this path.
+    /// The baseline is still a **bare bounding box**, and after D64 that is a statement about the
+    /// *entry point* rather than about TeX.
     ///
-    /// `Degrade.forCaps` replaces an unsupported `Raster` with `Scene.empty` before the backend
-    /// sees it, which is exactly the contract: a backend advertising `Rasters = false` never gets
-    /// handed one. The emitter's branch is still correct and still reachable — `IBackend.Draw` is
-    /// public and can be driven with an un-degraded scene — so it is defensive, not dead. Both
-    /// facts are pinned by the test below.
+    /// `TikzBackend.render` returns a `string`, and a string has nowhere to put a sidecar `.png`,
+    /// so it degrades with `Rasters = false` of its own and the node goes away — which is why
+    /// this baseline did not move when the capability flipped. The picture a *reader* of this
+    /// file sees is unchanged; what changed is that there is now a second door out of the
+    /// backend, and it draws the image.
     ///
-    /// The consequence for a user is real and accepted: an image in a TikZ figure disappears
-    /// without a trace in the document. Routing around `Degrade` to preserve a comment would make
-    /// Core's contract conditional on the backend, which is a worse trade for a `%` comment that
-    /// nobody reading the compiled PDF can see.
+    /// The consequence for a user of `render` is real and accepted, and it is the same one as
+    /// before: an image in a `.tex` produced this way disappears without a trace. The fix is to
+    /// call `renderWithAssets` or `renderToFileWithAssets`, which is what the test below pins.
     [<Fact>]
-    let ``rasters degraded away`` () = tikz "raster"
+    let ``rasters degraded away on the string-shaped path`` () = tikz "raster"
 
-    /// The two halves of the paragraph above, so neither can drift into a comment that is no
-    /// longer true. This is the second time a claim about this backend's output was written down
-    /// before being checked; the golden review caught it both times.
+    /// Both doors out of the backend, on one scene, so neither claim can drift into a comment
+    /// that is no longer true. This test read
+    /// `the raster skip comment is unreachable through render and reachable through Draw` until
+    /// M2.5 — the second half inverted, and the first half is why the baseline above is
+    /// byte-identical across the change.
     [<Fact>]
-    let ``the raster skip comment is unreachable through render and reachable through Draw`` () =
+    let ``a raster is absent through render and present through renderWithAssets`` () =
         let _, scene, extent = Scenes.all |> List.find (fun (n, _, _) -> n = "raster")
 
-        // Through the public entry point: degraded first, so no trace survives.
+        // Through the string-shaped entry point: degraded first, so no trace survives.
         Assert.DoesNotContain("raster", TikzBackend.render extent scene)
 
-        // Driven directly with the scene as authored: the branch fires.
-        let backend = TikzBackend()
-        let sink = backend :> IBackend
-        sink.Begin extent
-        sink.Draw scene
-        sink.Finish()
-        Assert.Contains("% marey: raster 2x2 skipped", backend.Result)
+        // Through the asset-shaped one: two images in the fixture, two sidecars, and the
+        // document refers to both by the names the backend chose.
+        let rendered = TikzBackend.renderWithAssets extent scene
+        Assert.Equal(2, rendered.Assets.Length)
+
+        for asset in rendered.Assets do
+            Assert.Contains("\\includegraphics[width=", rendered.Document)
+            Assert.Contains(asset.Name, rendered.Document)
+
+        // Deterministic in name *and* order (D64): the names are positions in traversal order,
+        // so a reordering would be visible here rather than in a golden diff months later.
+        Assert.Equal<string[]>([| "marey-raster-0.png"; "marey-raster-1.png" |], rendered.Assets |> Array.map (fun a -> a.Name))
+
+    /// The same figure twice. A sidecar whose bytes or whose name moved between renders would
+    /// make `renderToFileWithAssets` non-reproducible in a way no `.tex` diff would show.
+    [<Fact>]
+    let ``a rendered document and its assets are byte-identical across renders`` () =
+        let _, scene, extent = Scenes.all |> List.find (fun (n, _, _) -> n = "raster")
+        let a = TikzBackend.renderWithAssets extent scene
+        let b = TikzBackend.renderWithAssets extent scene
+
+        Assert.Equal(a.Document, b.Document)
+        Assert.Equal<string[]>(a.Assets |> Array.map (fun x -> x.Name), b.Assets |> Array.map (fun x -> x.Name))
+
+        for (x, y) in Array.zip a.Assets b.Assets do
+            Assert.Equal<byte[]>(x.Bytes, y.Bytes)
 
     [<Fact>]
     let ``groups and transforms`` () = tikz "groups-transforms"
@@ -112,7 +133,7 @@ module Snapshots =
     let ``a realistic axis composition`` () = tikz "axis-composition"
 
     [<Fact>]
-    let ``all nine Node cases`` () = tikz "all-nine-nodes"
+    let ``all ten Node cases`` () = tikz "all-ten-nodes"
 
     /// M2 phase 6, gate 5. The pair of this and `geoms-bands.svg` is the reviewable half of
     /// "cross-backend geometry agreement, extended to every new geom" — `GeomTests` asserts the
@@ -184,6 +205,72 @@ module Figures =
     [<Fact>]
     let ``a heatmap figure`` () =
         check "figure-heatmap.tex" (Chart.render TikzBackend.render figureSurface heatmapFigure)
+
+    /// **The golden pair D64 is really about: a `.tex` baseline and its sidecar `.png`.**
+    ///
+    /// Two files, checked together, because either alone is a document that cannot be drawn. The
+    /// `.tex` names a file; the `.png` is that file; and `renderToFileWithAssets` is what puts
+    /// them in one directory. A reviewer can read the first and open the second.
+    ///
+    /// The `.png` is a committed *binary* baseline, which §13 otherwise argues against, and the
+    /// reason it is admissible here is narrow: these bytes come from Marey's own zero-dependency
+    /// encoder over a hand-written pixel array, so nothing outside this repository can move
+    /// them. It is also the only place the encoder's actual output is checked — it has been in
+    /// the tree since M1 and every test of it until now went through a base64 `data:` URI.
+    [<Fact>]
+    let ``an image figure, and the sidecar it refers to`` () =
+        let rendered = Chart.render TikzBackend.renderWithAssets figureSurface imageFigure
+
+        check "figure-image.tex" rendered.Document
+
+        let asset = Assert.Single rendered.Assets
+        Assert.Contains(asset.Name, rendered.Document)
+        checkBytes "figure-image.png" asset.Bytes
+
+    /// Gate 6 meets gate 7 for the sidecar path: the pair is compiled by a real engine with the
+    /// `.png` written beside the `.tex`, and the page is looked at.
+    ///
+    /// Two ways this fails that no string test can see. `\\includegraphics` pointing at a file
+    /// nobody wrote is a TeX error, which the engine reports here. An image placed correctly but
+    /// drawn upside down is a valid document with ink in the right box — so the fixture's top
+    /// row is bright and its bottom row dark, and the test compares the two halves.
+    [<Fact>]
+    let ``the image pair compiles, and the image is the right way up`` () =
+        let rendered = Chart.render TikzBackend.renderWithAssets figureSurface imageFigure
+
+        let standalone =
+            { rendered with Document = TikzBackend.standalone rendered.Document }
+
+        match Raster.ofRendered "golden-figure-image" standalone with
+        | TexToolchain.PdfUnavailable _ -> System.Console.WriteLine("SKIPPED: " + Raster.report ())
+        | TexToolchain.PdfFailed why -> failwithf "the image pair did not compile:\n%s" why
+        | TexToolchain.PdfProduced page ->
+            // The panel, loosely — the image fills the data area, which is inside the axes.
+            let upper: Raster.Region =
+                { Left = 0.25
+                  Top = 0.15
+                  Right = 0.95
+                  Bottom = 0.40 }
+
+            let lower =
+                { upper with
+                    Top = 0.55
+                    Bottom = 0.80 }
+
+            let above = Raster.meanLevel page upper
+            let below = Raster.meanLevel page lower
+
+            // The image is bright on top and dark underneath, and a raster's y grows *downward*
+            // — so on a correctly oriented page the upper region is the lighter one. A y flip
+            // applied wrongly anywhere between `Chart.image` and `\\includegraphics` inverts
+            // this, and nothing else in the suite would notice.
+            Assert.True(
+                above > below + 20.0,
+                sprintf "the image is upside down or missing: upper mean %.1f, lower mean %.1f" above below
+            )
+
+            // And it is an image rather than an empty box: a blank page is uniformly 255.
+            Assert.True(below < 200.0, sprintf "no dark pixels where the image's dark half belongs (mean %.1f)" below)
 
     /// The milestone's headline as a committed artefact rather than a substring assertion:
     /// `Theme.tikz` alone turns the unit witnesses into siunitx markup. TeX-only, because

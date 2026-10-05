@@ -37,17 +37,22 @@ jobs:
           path: ~/apt-archives
           key: apt-tex-${{ runner.os }}-${{ hashFiles('.github/tex-packages.txt') }}
 
-      # Two of this suite's gates shell out, and both are written to report "not installed"
-      # rather than to fail -- which is right on a contributor's laptop and wrong here.
+      # Several of this suite's gates shell out, and every one of them is written to report
+      # "not installed" rather than to fail -- which is right on a contributor's laptop and
+      # wrong here.
       #
-      #   pdflatex   compiles all 16 golden .tex baselines. Without it, the single most
+      #   pdflatex   compiles every golden .tex baseline. Without it, the single most
       #              valuable test in the milestone does not run.
-      #   pdftoppm   rasterises the compiled PDF for the ink gate, which exists because D33
-      #              once produced a perfectly valid document containing no visible markers
-      #              while every other test passed.
+      #   pdftoppm   rasterises a PDF for the ink gate, which exists because D33 once produced
+      #              a perfectly valid document containing no visible markers while every other
+      #              test passed. Since M2.5 it reads the Skia backend's own PDF as well as the
+      #              one pdflatex produces.
+      #   ffmpeg     encodes a frame sequence (D75). Without it the whole of VideoTests'
+      #   ffprobe    encoding half skips, and ffprobe is what reads the container back --
+      #              which is the difference between gating a video and gating an exit code.
       #
       # The package list and the reason for each entry live in .github/tex-packages.txt.
-      - name: Install the TeX and raster toolchain
+      - name: Install the external toolchain
         run: |
           set -e
           pkgs=$(grep -vE '^[[:space:]]*(#|$)' .github/tex-packages.txt | tr '\n' ' ')
@@ -79,7 +84,7 @@ jobs:
       - name: Assert the gates can actually run
         run: |
           set -e
-          for tool in pdflatex pdftoppm; do
+          for tool in pdflatex pdftoppm ffmpeg ffprobe latex dvisvgm; do
             command -v "$tool" >/dev/null || { echo "::error::$tool missing; the gate that needs it would silently skip"; exit 1; }
             echo "$tool -> $(command -v "$tool")"
           done
@@ -114,7 +119,22 @@ jobs:
       - name: Build
         run: dotnet build Marey.slnx --configuration Release --no-restore
 
+      # MAREY_REQUIRE_TOOLCHAIN turns "the tool is not installed, so the gate did not run" from
+      # a printed skip into a failure. Right here and wrong on a contributor's laptop: the steps
+      # above install the toolchain on purpose, so a gate that skips on this runner means the
+      # install silently stopped working, and every one of those gates degrades rather than
+      # throwing -- a green run proving nothing.
+      #
+      # Not a duplicate of "Assert the gates can actually run" above, which asks a shell whether
+      # six binaries are on PATH. This asks the test host, in process, through the same Lazy the
+      # gates themselves read, and it covers the two things a shell cannot see: the SkiaSharp and
+      # HarfBuzz natives, which are not on PATH and take out every raster, PDF, frame and ink
+      # gate at once, and a PATH that differs between the shell and the runner. The census in
+      # Verification.fs prints all nine dependencies either way; this decides whether an absent
+      # one is fatal.
       - name: Test
+        env:
+          MAREY_REQUIRE_TOOLCHAIN: '1'
         run: dotnet test Marey.slnx --configuration Release --no-build --logger "console;verbosity=normal"
 
       # Packaging is part of what CI protects. It has broken on its own before -- a package
@@ -128,11 +148,16 @@ jobs:
       # hardcoded name goes stale the moment a project gains or loses its readme -- which is
       # exactly how this check broke once. The invariant worth asserting is the one that failed:
       # the nuspec must declare a readme, and the package must contain the file it declares.
+      #
+      # The count is publish.yml's, and the two must move together. This one said 7 from M2 until
+      # M3's close: publish.yml was raised at every phase that added a package and this file at
+      # none, and nothing noticed because a failing example stopped every run at the Test step
+      # first. The same drift .github/tex-packages.txt was created to end, in a different list.
       - name: Check every package carries its metadata
         run: |
           set -e
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 7 ] || { echo "::error::expected 7 packages, packed $count"; exit 1; }
+          [ "$count" -eq 12 ] || { echo "::error::expected 12 packages, packed $count"; exit 1; }
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
             readme=$(grep -o '<readme>[^<]*</readme>' /tmp/nuspec.xml | sed 's:<readme>::;s:</readme>::')
@@ -141,7 +166,7 @@ jobs:
             unzip -l "$pkg" | grep -q "$readme" || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
             echo "  $(basename "$pkg"): $readme"
           done
-          echo "7 packages, each with an MIT expression and the readme it declares"
+          echo "12 packages, each with an MIT expression and the readme it declares"
 
       - uses: actions/upload-artifact@v4
         with:

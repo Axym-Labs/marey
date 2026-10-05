@@ -471,16 +471,7 @@ type TikzBackend(?options: TikzOptions) =
 
         | Markers b -> drawMarkers ctm depth b
 
-        // D31: `Rasters = false`, so `Degrade.forCaps` normally removes these before they arrive.
-        // A visible comment rather than silence, in the spirit of the SVG backend's raster
-        // diagnostics: the reviewer of a golden diff sees why nothing was drawn.
-        | Raster r ->
-            sb.Append(
-                Tikz.comment
-                    (indent depth)
-                    (sprintf "marey: raster %dx%d skipped -- the TikZ backend cannot embed images" r.Image.Width r.Image.Height)
-            )
-            |> ignore
+        | Raster r -> drawRaster ctm depth r
 
         // A Group is §5's identity-carrying container and has no rendering effect, so it emits
         // nothing. Every scope in the output therefore carries meaning.
@@ -513,6 +504,26 @@ type TikzBackend(?options: TikzOptions) =
                 draw ctm (depth + 1) child
                 sb.Append(indent depth).Append("\\end{scope}\n") |> ignore
 
+        // D67 — this backend advertises `GroupOpacity = false`, so `Degrade.forCaps` normally
+        // folds the node away before the traversal sees it and this branch is for a caller
+        // driving `IBackend` by hand. It performs the identical fold rather than inventing a
+        // second answer.
+        //
+        // **Not `\begin{scope}[opacity=…]`**, which is the obvious thing and is wrong. pgf's
+        // `opacity` key is inherited by each path in the scope rather than composited over it,
+        // so it is the approximation and not the capability — and worse, it is *overridden* by
+        // a path's own `fill opacity=`, which this backend emits for every colour with alpha.
+        // A half-transparent series inside a fading group would come out at its original alpha.
+        // The pgf feature that does composite is `transparency group`, which the manual gates
+        // on driver support, and this backend promises a string that compiles under a caller's
+        // own preamble and driver.
+        | Opacity(a, child) ->
+            if opts.Comments then
+                sb.Append(Tikz.comment (indent depth) ("marey-opacity: " + Tikz.ratio a + " -- folded into paint alpha"))
+                |> ignore
+
+            draw ctm depth (Degrade.foldOpacity a child)
+
         // §5.2 — stable identity. There is no `id` attribute in TeX, so the key becomes a comment:
         // it survives into the output for a reviewer and for anyone diffing two pictures, which is
         // what the key is for at this stage.
@@ -537,6 +548,133 @@ type TikzBackend(?options: TikzOptions) =
                     sb.Append(Tikz.comment (indent depth) ("marey-data: " + k + " = " + v)) |> ignore
 
             draw ctm depth child
+
+    /// D64 — a raster becomes a sidecar `.png` and an `\includegraphics`.
+    ///
+    /// This is the paragraph of D31 that is superseded. `Rasters` was `false` at M1 on the
+    /// argument that "an honest raster needs a sidecar .png and `\includegraphics`, which breaks
+    /// the one-string-output contract" — which was true, and is what `renderWithAssets` and
+    /// `RenderedDocument` now exist to fix. The capability is a property of the *entry point*,
+    /// not of TeX: `renderWithAssets` can carry the sidecar and `render` cannot, so `render`
+    /// keeps degrading rasters away and says so where the reviewer of a golden diff sees it.
+    ///
+    /// **No y flip, and that is D29 again.** `Image` rows run top-first, and `\includegraphics`
+    /// places row 0 at the top of its box. TeX is y-up, so the top of the box is the larger
+    /// `nd` y and the rows land the right way up with nothing done. The SVG backend needs an
+    /// extra in-box flip for precisely the opposite reason — its root transform inverts y.
+    ///
+    /// Orientation is the one property no coordinate test can reach, because a flip applied
+    /// wrongly to *both* backends still satisfies a cross-backend comparison. It is checked by
+    /// pixel census against a deliberately asymmetric image instead.
+    and drawRaster (ctm: Affine<nd, pt>) (depth: int) (r: RasterNode) =
+        let img = r.Image
+        let expected = int64 img.Width * int64 img.Height * 4L
+        let actual = if isNull img.Rgba then 0L else int64 img.Rgba.Length
+
+        if img.Width <= 0 || img.Height <= 0 then
+            sb.Append(Tikz.comment (indent depth) (sprintf "marey: raster skipped, %dx%d has no pixels" img.Width img.Height))
+            |> ignore
+        else
+            if actual <> expected then
+                sb.Append(
+                    Tikz.comment
+                        (indent depth)
+                        (sprintf "marey: raster pixel buffer is %d bytes, expected %d; missing rows are transparent" actual expected)
+                )
+                |> ignore
+
+            // The four corners individually, for D57's reason in a different mark: under a
+            // non-uniform or reflecting transform the box's extent is not the transform of its
+            // extent, and converting one corner and one size gets the size wrong everywhere the
+            // map is not a pure translation.
+            let struct (ax, ay) = point ctm { X = r.Bounds.X0; Y = r.Bounds.Y0 }
+            let struct (bx, by) = point ctm { X = r.Bounds.X1; Y = r.Bounds.Y1 }
+            let struct (cx, cy) = point ctm { X = r.Bounds.X1; Y = r.Bounds.Y0 }
+
+            let xLo = min (min ax bx) cx
+            let yLo = min (min ay by) cy
+            let w = abs (bx - ax)
+            let h = abs (by - ay)
+
+            // A CTM that rotates or shears cannot be expressed as a node width and height.
+            // Marey's own transforms are translations and scales, so this is the general case
+            // arriving through a user-built `Transform`; `cm` is TikZ's arbitrary matrix and
+            // handles it, at the cost of coordinates a golden diff reads less easily. Detected
+            // rather than assumed away, because silently drawing an unrotated image would be
+            // the "silently producing wrong output" §5 exists to prevent.
+            let skewed = abs (float ctm.M12) > 1e-9 || abs (float ctm.M21) > 1e-9
+
+            // `\includegraphics` fills the box exactly; the destination is a box, not a
+            // suggestion, which matches the SVG backend's `preserveAspectRatio="none"`.
+            let graphic (bw: float) (bh: float) (name: string) =
+                String.Concat
+                    [| "{\\includegraphics[width="
+                       Tikz.dim bw
+                       ",height="
+                       Tikz.dim bh
+                       "]{"
+                       name
+                       "}}" |]
+
+            let name = doc.AddAsset(".png", Png.encode img.Width img.Height img.Rgba)
+
+            if not r.Smooth then
+                // TeX has no nearest-neighbour switch: `\includegraphics` hands the file to the
+                // driver and the driver picks the filter. Recorded in the output rather than
+                // silently lost, because "smoothing invents values that were never measured" is
+                // the reason the flag exists at all.
+                sb.Append(Tikz.comment (indent depth) "marey: raster requested nearest-neighbour; the PDF driver chooses the filter")
+                |> ignore
+
+            if skewed then
+                // `cm` is TikZ's arbitrary matrix, and `transform shape` is the half that is
+                // easy to leave out: without it the *position* of the node is transformed and
+                // its *contents* are not, so a rotated image lands in the right place drawn the
+                // wrong way round. Inside the scope the frame is `nd`, so the box is given in
+                // `nd` too and the matrix does the scaling — passing the `pt`-space size here
+                // would apply the transform twice.
+                sb
+                    .Append(indent depth)
+                    .Append("\\begin{scope}[cm={")
+                    .Append(Tikz.ratio (float ctm.M11))
+                    .Append(',')
+                    .Append(Tikz.ratio (float ctm.M12))
+                    .Append(',')
+                    .Append(Tikz.ratio (float ctm.M21))
+                    .Append(',')
+                    .Append(Tikz.ratio (float ctm.M22))
+                    .Append(',')
+                    .Append(Tikz.coord (float ctm.Dx) (float ctm.Dy))
+                    .Append("}]\n")
+                |> ignore
+
+                let x0 = min (float r.Bounds.X0) (float r.Bounds.X1)
+                let y0 = min (float r.Bounds.Y0) (float r.Bounds.Y1)
+                let wNd = abs (float r.Bounds.X1 - float r.Bounds.X0)
+                let hNd = abs (float r.Bounds.Y1 - float r.Bounds.Y0)
+
+                sb
+                    .Append(indent (depth + 1))
+                    .Append("\\node[anchor=south west,inner sep=0bp,outer sep=0bp,transform shape] at ")
+                    .Append(Tikz.coord x0 y0)
+                    .Append(' ')
+                    .Append(graphic wNd hNd name)
+                    .Append(";\n")
+                |> ignore
+
+                sb.Append(indent depth).Append("\\end{scope}\n") |> ignore
+            else
+                // `inner sep` is already 0bp picture-wide from the header, but a node carrying a
+                // graphic is the one place a stray `outer sep` would show up as a shifted image,
+                // so both are restated rather than inherited.
+                sb
+                    .Append(indent depth)
+                    .Append("\\node[anchor=south west,inner sep=0bp,outer sep=0bp] at ")
+                    .Append(Tikz.coord xLo yLo)
+                    .Append(' ')
+                    .Append(graphic w h name)
+                    .Append(";\n")
+                |> ignore
 
     and drawText (ctm: Affine<nd, pt>) (depth: int) (t: TextRun) =
         let content = Tikz.runContent t.Tex t.Text
@@ -650,6 +788,17 @@ type TikzBackend(?options: TikzOptions) =
     /// check emitted coordinates against the transform that produced them.
     member _.RootTransform: Affine<nd, pt> = root
 
+    /// The sidecar files this picture refers to, in traversal order (D64).
+    ///
+    /// Empty for every figure that contains no `Raster`, which is every figure Marey produced
+    /// before `Chart.image` — so a caller who never draws an image never learns this exists.
+    member _.Assets: RenderedAsset[] = doc.Assets
+
+    /// The picture and its sidecars together.
+    member this.Rendered: RenderedDocument =
+        { Document = this.Result
+          Assets = this.Assets }
+
     interface IBackend with
 
         /// D31. Every `false` here is a thing this backend genuinely cannot do, not a switch.
@@ -665,10 +814,18 @@ type TikzBackend(?options: TikzOptions) =
               RadialGradients = false
               Clipping = true
               Dashes = true
-              // An honest raster needs a sidecar .png and `\includegraphics`, which breaks the
-              // one-string-output contract and adds a graphicx requirement. Heatmaps are M2/M4
-              // work; `renderWithAssets` is the door.
-              Rasters = false
+              // D64 supersedes D31's paragraph here. `false` was correct while the only exit
+              // from this backend was a `string`: "an honest raster needs a sidecar .png and
+              // `\includegraphics`, which breaks the one-string-output contract". M2.5 opened
+              // the door D31 named — `renderWithAssets` returns a `RenderedDocument`, so the
+              // sidecar has somewhere to go and `graphicx` is in the preamble.
+              //
+              // The capability is genuine, but it belongs to the *entry point* rather than to
+              // TeX: `TikzBackend.render` still promises a bare `string`, so it degrades with
+              // `Rasters = false` of its own and leaves the skip comment behind. A caller
+              // driving `IBackend` by hand gets the sidecar-shaped output and reads
+              // `TikzBackend.Assets` beside `Result`, exactly as `Finish() : unit` intends.
+              Rasters = true
               // The whole point: shaping is delegated to TeX, which is better at it than we are.
               TextShaping = false
               RotatedText = true
@@ -676,6 +833,14 @@ type TikzBackend(?options: TikzOptions) =
               // `Degrade.forCaps` strips every `Annotated` node when this is false, which would
               // discard the structure the golden diff is there to review.
               Semantics = true
+              // D67, and the one `false` this flag has anywhere in the project — which is what
+              // makes it a capability rather than a speculative switch. pgf's scope `opacity=`
+              // is inherited per path, not composited over the scope, so it is the *degraded*
+              // picture; `transparency group` is the one that composites and the pgf manual
+              // gates it on driver support, which a `string` this backend hands to an unknown
+              // preamble cannot assume. `Degrade.forCaps` folds the node into paint alpha, and
+              // the two agree except where the group's own shapes overlap.
+              GroupOpacity = false
               // A text file has no instance-buffer ceiling, and §5.1's whole point is that one
               // batch stays one batch.
               MaxBatch = None }
@@ -734,9 +899,14 @@ module TikzBackend =
     /// `siunitx` is what makes `UnitStyle.Siunitx` axis titles typeset. `textcomp` has been part
     /// of the LaTeX kernel since 2020 and loading it is a no-op on a current distribution, but it
     /// is cheap insurance on an older one and it documents which macros the emitter relies on.
+    ///
+    /// `graphicx` is where `\includegraphics` comes from, and a raster is the only thing that
+    /// needs it (D64). It is loaded unconditionally rather than only when a picture contains an
+    /// image, because a preamble that changes with the figure is a preamble a host document
+    /// cannot be written against once.
     [<Literal>]
     let Preamble =
-        "\\usepackage{tikz}\n\\usepackage{textcomp}\n\\usepackage{siunitx}\n"
+        "\\usepackage{tikz}\n\\usepackage{graphicx}\n\\usepackage{textcomp}\n\\usepackage{siunitx}\n"
 
     /// Render a scene to a `tikzpicture` at the given surface size.
     ///
@@ -747,30 +917,58 @@ module TikzBackend =
     /// un-degraded scene to a backend advertising `Gradients = false`. Doing it here makes the
     /// renderer-function-shaped path safe by construction, and it is idempotent, so going
     /// through `Chart.renderTo` as well costs nothing.
-    let render (extent: Extent<px>) (node: Node) : string =
-        let backend = TikzBackend()
+    /// The capabilities of a *`string`-shaped* render, as opposed to the backend's own.
+    ///
+    /// D64. The backend advertises `Rasters = true` because it can now emit a raster — as an
+    /// `\includegraphics` plus a sidecar file. A function whose whole return value is a
+    /// `string` has nowhere to put the sidecar, so from its point of view the capability is
+    /// absent, and it degrades accordingly: the image is dropped and the skip comment says so
+    /// where the reviewer of a golden diff reads it.
+    ///
+    /// The alternative — emitting the `\includegraphics` and discarding the bytes —
+    /// produces a `.tex` that fails to compile with a missing-file error, which is the
+    /// "silently producing wrong output" §5 exists to prevent, arriving as somebody else's
+    /// build error.
+    let private documentOnlyCaps (caps: Capabilities) = { caps with Rasters = false }
+
+    let private renderInto (backend: TikzBackend) (caps: Capabilities) (extent: Extent<px>) (node: Node) =
         let sink = backend :> IBackend
-
-        let scene =
-            node |> Degrade.forCaps sink.Caps |> Degrade.splitBatches sink.Caps
-
+        let scene = node |> Degrade.forCaps caps |> Degrade.splitBatches caps
         sink.Begin extent
         sink.Draw scene
         sink.Finish()
+
+    let render (extent: Extent<px>) (node: Node) : string =
+        let backend = TikzBackend()
+        renderInto backend (documentOnlyCaps (backend :> IBackend).Caps) extent node
         backend.Result
 
     /// Render with explicit options.
     let renderWith (options: TikzOptions) (extent: Extent<px>) (node: Node) : string =
         let backend = TikzBackend(options)
-        let sink = backend :> IBackend
-
-        let scene =
-            node |> Degrade.forCaps sink.Caps |> Degrade.splitBatches sink.Caps
-
-        sink.Begin extent
-        sink.Draw scene
-        sink.Finish()
+        renderInto backend (documentOnlyCaps (backend :> IBackend).Caps) extent node
         backend.Result
+
+    /// Render a scene as a picture plus the sidecar files it refers to (D64).
+    ///
+    /// This is the door D31 named and did not build. A `Raster` becomes an
+    /// `\includegraphics` of a `.png` that comes back in `Assets`, so the caller writes
+    /// both and `pdflatex` finds the image next to the `.tex`. Host documents need
+    /// `graphicx`, which `Preamble` loads.
+    ///
+    /// `renderToFileWithAssets` is the one-call version and is what most callers want, because
+    /// the sidecar's name is relative to the `.tex` and getting the two into the same directory
+    /// is the only thing that can go wrong here.
+    let renderWithAssets (extent: Extent<px>) (node: Node) : RenderedDocument =
+        let backend = TikzBackend()
+        renderInto backend (backend :> IBackend).Caps extent node
+        backend.Rendered
+
+    /// `renderWithAssets` with explicit options.
+    let renderWithAssetsWith (options: TikzOptions) (extent: Extent<px>) (node: Node) : RenderedDocument =
+        let backend = TikzBackend(options)
+        renderInto backend (backend :> IBackend).Caps extent node
+        backend.Rendered
 
     /// Wrap a picture in a complete `standalone` document, ready to compile on its own.
     ///
@@ -793,3 +991,31 @@ module TikzBackend =
     /// masters (§13): a BOM appearing or disappearing would show up as a whole-file diff.
     let renderToFile (path: string) (extent: Extent<px>) (node: Node) : unit =
         IO.File.WriteAllText(path, render extent node, UTF8Encoding false)
+
+    /// Render a scene to a `.tex` file and write its sidecar images beside it (D64).
+    ///
+    /// The sidecars go in the **same directory as `path`**, because that is the only place
+    /// `\\includegraphics{marey-raster-0.png}` will look for them without the host
+    /// document setting `\graphicspath`. Their names come from the backend and are assigned in
+    /// traversal order, so two renders of one figure write the same files.
+    ///
+    /// Returns the asset file names actually written, relative to that directory, so a caller
+    /// packaging the figure knows what else to ship. An empty array means the figure had no
+    /// raster in it, which is every figure that does not call `Chart.image`.
+    let renderToFileWithAssets (path: string) (extent: Extent<px>) (node: Node) : string[] =
+        let rendered = renderWithAssets extent node
+        IO.File.WriteAllText(path, rendered.Document, UTF8Encoding false)
+
+        // `GetDirectoryName` is "" for a bare file name and null for a root, and both mean the
+        // current directory as far as `WriteAllText` above was concerned — so the sidecars have
+        // to agree with it rather than throw.
+        let dir =
+            match IO.Path.GetDirectoryName path with
+            | null
+            | "" -> "."
+            | d -> d
+
+        for asset in rendered.Assets do
+            IO.File.WriteAllBytes(IO.Path.Combine(dir, asset.Name), asset.Bytes)
+
+        rendered.Assets |> Array.map (fun a -> a.Name)

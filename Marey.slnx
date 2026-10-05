@@ -1,10 +1,15 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Marey.Anim/Marey.Anim.fsproj" />
+    <Project Path="src/Marey.Backend.Skia/Marey.Backend.Skia.fsproj" />
     <Project Path="src/Marey.Backend.Svg/Marey.Backend.Svg.fsproj" />
     <Project Path="src/Marey.Backend.Tikz/Marey.Backend.Tikz.fsproj" />
     <Project Path="src/Marey.Core/Marey.Core.fsproj" />
     <Project Path="src/Marey.Html/Marey.Html.fsproj" />
     <Project Path="src/Marey.Plot/Marey.Plot.fsproj" />
+    <Project Path="src/Marey.Toolchain/Marey.Toolchain.fsproj" />
+    <Project Path="src/Marey.Tools.Tex/Marey.Tools.Tex.fsproj" />
+    <Project Path="src/Marey.Tools.Video/Marey.Tools.Video.fsproj" />
     <Project Path="src/Marey.Units/Marey.Units.fsproj" />
     <Project Path="src/Marey.Verso/Marey.Verso.fsproj" />
   </Folder>

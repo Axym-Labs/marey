@@ -141,8 +141,24 @@ module Axis =
         | ScaleKind.Ordinal levels -> Scale.levelLabel levels
         | _ -> Ticks.format decimals
 
-    /// The full form: choose the registry, the style, the tick count and the label.
-    let ofScaleWith<[<Measure>] 'u>
+    /// The full form, with the prefix decided somewhere else — D73.
+    ///
+    /// `pin = None` is `ofScaleWith` exactly: the prefix comes from this scale's own domain.
+    /// `Some p` uses `p` instead, and everything downstream of the choice is unchanged — the
+    /// tick values are still rescaled to the prefix and the labels still formatted from the
+    /// rescaled values, because rescaling is not the part being pinned.
+    ///
+    /// **Only an animation needs this.** Which decade a prefix is chosen from is a property of
+    /// "the numbers" (D19), and across a shot the numbers are the union of every frame's domain
+    /// rather than the instantaneous one. Without the pin a zoom crossing a decade steps
+    /// `mm → µm` mid-shot: the axis *title* changes while the data is the thing supposed to be
+    /// moving, and `10⁻¹⁸·m²` can appear and disappear between two frames.
+    ///
+    /// It is deliberately not a `Prefix` with a "none means auto" convention, because
+    /// `Prefix.none` is a real prefix — an axis pinned to unprefixed metres is a thing a caller
+    /// may want, and it must not read as "choose for me".
+    let ofScalePinnedWith<[<Measure>] 'u>
+        (pin: Prefix option)
         (style: UnitStyle)
         (registry: UnitRegistry)
         (tickCount: int)
@@ -150,7 +166,12 @@ module Axis =
         (scale: Scale<'u>)
         : AxisSpec =
         let lo, hi = scale.Domain
-        let prefix = Prefix.selectForUnit scale.Unit (float lo, float hi)
+
+        let prefix =
+            match pin with
+            | Some p -> p
+            | None -> Prefix.selectForUnit scale.Unit (float lo, float hi)
+
         let factor = Prefix.factor prefix
 
         let raw = scale.TickHint tickCount
@@ -184,6 +205,16 @@ module Axis =
           Prefix = prefix
           Ticks = ticks }
 
+    /// The full form: choose the registry, the style, the tick count and the label.
+    let ofScaleWith<[<Measure>] 'u>
+        (style: UnitStyle)
+        (registry: UnitRegistry)
+        (tickCount: int)
+        (label: string)
+        (scale: Scale<'u>)
+        : AxisSpec =
+        ofScalePinnedWith None style registry tickCount label scale
+
     /// §9's payoff, in one call: `Axis.auto Unicode "x" xScale`.
     ///
     /// Registry is `UnitRegistry.si`, tick target is `DefaultTickCount`, prefix selection is
@@ -202,6 +233,41 @@ module Axis =
 
     let ofPacked (style: UnitStyle) (label: string) (packed: PackedScale) =
         ofPackedWith style UnitRegistry.si DefaultTickCount label packed
+
+    /// `ofPackedWith` with the prefix decided elsewhere — D73. See `ofScalePinnedWith`.
+    let ofPackedPinnedWith
+        (pin: Prefix option)
+        (style: UnitStyle)
+        (registry: UnitRegistry)
+        (tickCount: int)
+        (label: string)
+        (packed: PackedScale)
+        =
+        packed.Accept
+            { new IScaleConsumer<AxisSpec> with
+                member _.Apply<[<Measure>] 'u>(s: Scale<'u>) =
+                    ofScalePinnedWith pin style registry tickCount label s }
+
+    /// The domain a packed scale covers, as plain floats — the half of D73 that has to be
+    /// unioned across an animation's frames before a prefix can be chosen for all of them.
+    ///
+    /// Plain floats rather than `float<'u>` because the caller is comparing *several* frames'
+    /// domains, and the measure is the same on every one of them by construction: it is the
+    /// same axis of the same figure at a different time. The measure is recovered where it
+    /// matters, in `prefixForPacked`, which is the only thing that consumes this.
+    let domainOfPacked (packed: PackedScale) : float * float =
+        packed.Accept
+            { new IScaleConsumer<float * float> with
+                member _.Apply<[<Measure>] 'u>(s: Scale<'u>) =
+                    let lo, hi = s.Domain
+                    float lo, float hi }
+
+    /// The prefix this axis *would* choose if its numbers were `domain` rather than its own —
+    /// D73's other half. The unit comes from the scale, the range from the caller.
+    let prefixForPacked (domain: float * float) (packed: PackedScale) : Prefix =
+        packed.Accept
+            { new IScaleConsumer<Prefix> with
+                member _.Apply<[<Measure>] 'u>(s: Scale<'u>) = Prefix.selectForUnit s.Unit domain }
 
     /// The reloaded-figure path (§15).
     ///

@@ -109,6 +109,19 @@ type Geom =
     | GeomBox of spans: BoxSpan[] * widthFraction: float
     /// Mirrored density profiles, one per point; width as a fraction of the median x spacing.
     | GeomViolin of profiles: ViolinProfile[] * widthFraction: float
+    /// A user-supplied RGBA image filling a box, in panel-local nd (D64).
+    ///
+    /// The one geom in this file that does **not** bottom out in `Path`, `Markers` or `Text`:
+    /// it is the only producer of §5's `Raster` node anywhere above the IR, and until M2.5
+    /// there was none, which is why `renderWithAssets` had no customer and D31's "M2 door" had
+    /// nothing to walk through it.
+    ///
+    /// **D55 does not apply here, and the reason is worth stating.** Every other geom carrying
+    /// its own payload carries a per-*point* array and must be told which rows a channel batch
+    /// renumbered it to. This one carries a whole image and one box — scalars, not arrays — so
+    /// a batched subset draws the same image in the same place, which is correct rather than
+    /// lucky. A channel over an image layer has nothing to say.
+    | GeomImage of image: Image * bounds: Rect<nd> * smooth: bool
 
 /// §5.5 — **"error bars … are compiled into `Path`/`Text`/`Markers` by the layer above."**
 ///
@@ -293,6 +306,25 @@ module Geom =
             s.Y |> Array.map (fun y -> s.YScale.Forward(y + hh))
         )
 
+    /// An RGBA image filling a box given in the series' own units (D64).
+    ///
+    /// Both measures are checked, so the box cannot be given its width in the y unit — the same
+    /// guarantee `rect` makes, for the same reason and by the same route.
+    ///
+    /// The box is projected corner by corner rather than as an origin plus a size, which is
+    /// D57's correction applied before it can become a bug: on a log axis a size in data units
+    /// is not a size on the panel, so an image placed by one corner and a width would be the
+    /// right size only in the middle of the domain.
+    let image (s: Series<'ux, 'uy>) (img: Image) (x0: float<'ux>) (y0: float<'uy>) (x1: float<'ux>) (y1: float<'uy>) (smooth: bool) : Geom =
+        GeomImage(
+            img,
+            { X0 = s.XScale.Forward x0
+              Y0 = s.YScale.Forward y0
+              X1 = s.XScale.Forward x1
+              Y1 = s.YScale.Forward y1 },
+            smooth
+        )
+
     /// A line from each of the series' points to a second point, in the series' own units.
     let segment (s: Series<'ux, 'uy>) (x2: float<'ux>[]) (y2: float<'uy>[]) : Geom =
         lengthCheck s "x2" x2.Length
@@ -439,6 +471,7 @@ module Geom =
     /// point. Phase 2 introduced that hazard for `GeomErrorY` and `GeomErrorX`; phase 6 would
     /// have introduced it six more times.
     let rec private compileWith
+        (address: (Key * int[]) option)
         (spacing: float option)
         (sel: int[] option)
         (coord: Coord)
@@ -480,21 +513,59 @@ module Geom =
 
                     Path(segs, Some stroke, None, NonZero)
 
-            // §5.1 — "a 100 000-point scatter must be *one* IR node". One `Markers`, always.
+            // §5.1 — "a 100 000-point scatter must be *one* IR node". One `Markers`, always —
+            // unless a row was **addressed** (D69), and then it is three, which is the whole
+            // cost of being able to name a single mark.
             | GeomPoint ->
-                let ps = pts |> Array.filter finite
+                // The row travels beside the point because the filter below destroys the
+                // correspondence otherwise: a non-finite y in the middle of a series shifts
+                // every later mark's position within the batch by one, and a key built from
+                // that position names a different datum. Which is D55's defect, and D68 wrote
+                // the rule this obeys — a mark's key is its original row.
+                let kept =
+                    [| for i in 0 .. pts.Length - 1 do
+                           if finite pts.[i] then
+                               yield row i, (if Coord.isIdentity coord then pts.[i] else coord.ToPanel pts.[i]) |]
 
-                let ps = if Coord.isIdentity coord then ps else Array.map coord.ToPanel ps
-
-                if ps.Length = 0 then
-                    Scene.empty
-                else
+                let batch (points: Vec2<nd>[]) =
                     Markers
-                        { Points = ps
+                        { Points = points
                           Shape = st.Shape
                           Size = st.MarkerSize
                           Fill = Some(Solid(Color.withAlpha (st.Color.A * st.Opacity) st.Color))
                           Stroke = None }
+
+                if kept.Length = 0 then
+                    Scene.empty
+                else
+                    match address with
+                    | None -> batch (kept |> Array.map snd)
+                    | Some(_, rows) when rows.Length = 0 -> batch (kept |> Array.map snd)
+                    | Some(layerKey, rows) ->
+                        let wanted = Set.ofArray rows
+                        let out = ResizeArray<Node>()
+                        let run = ResizeArray<Vec2<nd>>()
+
+                        let flush () =
+                            if run.Count > 0 then
+                                out.Add(batch (run.ToArray()))
+                                run.Clear()
+
+                        for r, p in kept do
+                            if wanted.Contains r then
+                                flush ()
+                                out.Add(Keyed(Keys.mark layerKey r, batch [| p |]))
+                            else
+                                run.Add p
+
+                        flush ()
+
+                        // One addressed mark in the middle of a scatter is three nodes; one at
+                        // either end is two. **One node is one node**: a layer whose addressed
+                        // rows were all filtered out, or were never in the data, is the batch it
+                        // always was rather than a `Group` around it. Asking for a row that is
+                        // not drawn must not change the picture, and a wrapper is a change.
+                        if out.Count = 1 then out.[0] else Group(out.ToArray())
 
             | GeomArea baseline ->
                 let runs = runsOf pts
@@ -525,7 +596,7 @@ module Geom =
                 else
                     Group
                         [| Path(segs, None, Some(fillOf st), NonZero)
-                           compileWith spacing sel coord plotSize st GeomLine pts |]
+                           compileWith address spacing sel coord plotSize st GeomLine pts |]
 
             | GeomBar(baseline, widthFraction) ->
                 let half = (defaultArg spacing (medianSpacing pts)) * widthFraction * 0.5
@@ -858,6 +929,40 @@ module Geom =
                                 Fill = None
                                 Stroke = Some { stroke with Width = stroke.Width * 0.75 } } ]
 
+            | GeomImage(image, bounds, smooth) ->
+                // The only `Raster` this library produces above the IR (D64).
+                //
+                // **The pixels are not warped, and that is a limit rather than an oversight.**
+                // `RasterNode.Bounds` is an axis-aligned `Rect<nd>` by construction, so under a
+                // non-identity coordinate — a polar panel — the box's corners are mapped and
+                // their bounding box is used, and the image inside it is *not* resampled along
+                // the warp. Doing that honestly needs a resampler, which is a rasteriser inside
+                // a zero-dependency package, and D64 rules that out of this milestone by name.
+                // Under the identity coord, which is every Cartesian figure and so every figure
+                // `Chart.image` is for, this is exact.
+                let corners =
+                    [| { X = bounds.X0; Y = bounds.Y0 }
+                       { X = bounds.X1; Y = bounds.Y0 }
+                       { X = bounds.X1; Y = bounds.Y1 }
+                       { X = bounds.X0; Y = bounds.Y1 } |]
+                    |> Array.map mapPt
+
+                let box: Rect<nd> =
+                    { X0 = corners |> Array.map (fun p -> p.X) |> Array.min
+                      Y0 = corners |> Array.map (fun p -> p.Y) |> Array.min
+                      X1 = corners |> Array.map (fun p -> p.X) |> Array.max
+                      Y1 = corners |> Array.map (fun p -> p.Y) |> Array.max }
+
+                if image.Width <= 0 || image.Height <= 0 then
+                    // Both backends already say so in their output when handed one, so nothing
+                    // is gained by emitting a node whose only effect is a diagnostic comment.
+                    Scene.empty
+                else
+                    Raster
+                        { Image = image
+                          Bounds = box
+                          Smooth = smooth }
+
             | GeomViolin(profiles, widthFraction) ->
                 let half = (defaultArg spacing (medianSpacing pts)) * widthFraction * 0.5
 
@@ -894,14 +999,64 @@ module Geom =
                 else
                     Path(segs, Some { stroke with Width = stroke.Width * 0.75 }, Some(fillOf st), NonZero)
 
-    /// Compile a geom into the IR, in **panel-local nd**.
+    /// **The one compile**, with the two things a whole unaddressed layer does not have.
     ///
     /// `plotSize` is the plot area's device size, and it is here for exactly one reason: an error
     /// bar's cap is `px` wide (D12) while this function's output is about to be scaled by the
     /// panel transform. Dividing by the panel's own pixel size is what makes a 3 px cap 3 px
     /// wide after that scaling, on both a wide panel and a tall one.
+    ///
+    /// `indices` is D46's **channel batch**: the rows this call draws, out of `all`. `None`
+    /// draws the whole layer, which is not the same thing as `Some [| 0 .. n - 1 |]` — see the
+    /// spacing note below.
+    ///
+    /// `address` is D69's **named rows**, with the layer key their names hang from. Only
+    /// `GeomPoint` can honour it, because `Markers` is the only node in this file that batches
+    /// N data points into one; a `Path` is one shape, not a batch of marks, and splitting it in
+    /// three would change the joins between the pieces rather than name one of them.
+    ///
+    /// `compile` and `compileSubset` are this function with one or both of them absent. They
+    /// are two names for one body rather than two bodies, which is the shape D72 arrived at the
+    /// hard way in `Figure.fs`.
+    let compileFor
+        (address: (Key * int[]) option)
+        (indices: int[] option)
+        (coord: Coord)
+        (plotSize: Extent<px>)
+        (st: GeomStyle)
+        (geom: Geom)
+        (all: Vec2<nd>[])
+        : Node =
+        match indices with
+        | None -> compileWith address None None coord plotSize st geom all
+        | Some ix ->
+            // Only a bar reads the layer's rhythm, and reading it is a sort of every gap in the
+            // series. Computing it for a geom that will not look at it would put that sort inside
+            // the per-batch loop, which is 256 sorts of 100 000 gaps for one continuous colour
+            // channel — measured at 1.5 s against 4 ms.
+            let spacing =
+                match geom with
+                | GeomBar _
+                | GeomBox _
+                | GeomViolin _ -> Some(medianSpacing all)
+                | GeomLine
+                | GeomPoint
+                | GeomArea _
+                | GeomErrorY _
+                | GeomErrorX _
+                | GeomStep _
+                | GeomRibbon _
+                | GeomRect _
+                | GeomSegment _
+                | GeomText _
+                // An image occupies a stated box and has no rhythm to read.
+                | GeomImage _ -> None
+
+            compileWith address spacing (Some ix) coord plotSize st geom (ix |> Array.map (fun i -> all.[i]))
+
+    /// A whole layer, nothing addressed. The path every static figure takes.
     let compile (coord: Coord) (plotSize: Extent<px>) (st: GeomStyle) (geom: Geom) (pts: Vec2<nd>[]) : Node =
-        compileWith None None coord plotSize st geom pts
+        compileFor None None coord plotSize st geom pts
 
     /// D46 — **one channel batch of a layer**: the points named by `indices`, drawn with
     /// everything that belongs to the *layer* still taken from the layer.
@@ -919,27 +1074,7 @@ module Geom =
         (all: Vec2<nd>[])
         (indices: int[])
         : Node =
-        // Only a bar reads the layer's rhythm, and reading it is a sort of every gap in the
-        // series. Computing it for a geom that will not look at it would put that sort inside
-        // the per-batch loop, which is 256 sorts of 100 000 gaps for one continuous colour
-        // channel — measured at 1.5 s against 4 ms.
-        let spacing =
-            match geom with
-            | GeomBar _
-            | GeomBox _
-            | GeomViolin _ -> Some(medianSpacing all)
-            | GeomLine
-            | GeomPoint
-            | GeomArea _
-            | GeomErrorY _
-            | GeomErrorX _
-            | GeomStep _
-            | GeomRibbon _
-            | GeomRect _
-            | GeomSegment _
-            | GeomText _ -> None
-
-        compileWith spacing (Some indices) coord plotSize st geom (indices |> Array.map (fun i -> all.[i]))
+        compileFor None (Some indices) coord plotSize st geom all
 
     /// The legend swatch that matches a geom. Derived, never chosen separately.
     let legendMark (geom: Geom) (st: GeomStyle) : LegendMark =
@@ -959,3 +1094,8 @@ module Geom =
         | GeomText _ -> LegendSwatch
         | GeomErrorY _
         | GeomErrorX _ -> LegendLineMarker(st.Dash, st.Shape)
+        // An image carries no series colour, so a swatch of the layer's paint would name a
+        // colour that appears nowhere in what was drawn. `Chart.image` gives its layer no name,
+        // and an unnamed layer gets no legend entry, so this is reached only by a caller who
+        // named one deliberately — and a swatch is then the least wrong of the four marks.
+        | GeomImage _ -> LegendSwatch

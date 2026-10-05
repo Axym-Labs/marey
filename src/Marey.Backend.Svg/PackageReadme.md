@@ -1,6 +1,6 @@
 # Marey.Backend.Svg
 
-The SVG backend for [Marey](https://github.com/Jonathan-Schaefer-git/marey), a dimensionally-typed
+The SVG backend for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
 visualization system for F#. Pure F#, **zero dependencies**, `netstandard2.1`.
 
 ```fsharp
@@ -25,13 +25,14 @@ reviewed as a diff.
 
 ## Complete
 
-All nine cases of the scene IR: paths, polylines, batched markers, text, rectangles, gradients,
-clipping groups, images and transforms. Accessibility semantics are emitted alongside the geometry.
+All ten cases of the scene IR: paths, text, batched markers, rasters, groups, transforms, clips,
+group opacity, keys and semantic annotations — with polylines, rectangles and gradients falling out
+of `Path` and `Paint`. Accessibility semantics are emitted alongside the geometry.
 
 Because the output is a string starting with `<svg`, it renders in any notebook or viewer that
 knows what to do with one, without an extension installed.
 
 Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else.
 
-- [The guide](https://github.com/Jonathan-Schaefer-git/marey/blob/main/docs/guide.md)
-- [Examples](https://github.com/Jonathan-Schaefer-git/marey/tree/main/examples)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)
