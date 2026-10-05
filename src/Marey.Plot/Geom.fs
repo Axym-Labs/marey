@@ -133,6 +133,12 @@ type GeomOf<[<Measure>] 'p> =
     /// a batched subset draws the same image in the same place, which is correct rather than
     /// lucky. A channel over an image layer has nothing to say.
     | GeomImage of image: Image * bounds: Rect<'p> * smooth: bool
+    /// D86 — a field: a grid of values, drawn as a heatmap, contour lines or filled bands. The
+    /// one geom computed on the panel rather than from its points, because a raster's pixels and
+    /// a contour's vertices depend on where the panel's final scales put the nodes. The layer's
+    /// points are the nodes, so the axes cover the grid and a colour channel over the values
+    /// gets its colorbar exactly as a scatter's would.
+    | GeomField of field: FieldPayload<'p> * mark: FieldMark
 
 /// A geom in the series' data space — what every constructor returns and every `Layer` holds.
 type Geom = GeomOf<1>
@@ -463,6 +469,13 @@ module Geom =
                   Y1 = fy r.Y1 },
                 smooth
             )
+        | GeomField(f, mark) ->
+            GeomField(
+                { Xs = Array.map fx f.Xs
+                  Ys = Array.map fy f.Ys
+                  Values = f.Values },
+                mark
+            )
 
     /// A geom put on the panel its **own** series' scales describe — what a figure would give it
     /// if nothing else shared the panel. For drawing a geom outside a figure; inside one,
@@ -474,6 +487,36 @@ module Geom =
             geom
 
     // ---- Compilation ---------------------------------------------------------------------
+
+    /// D86 — draw a field layer, given the colour each value takes. `Figure.fs` passes the
+    /// layer's colour channel through its own quantiser, so the heatmap, its contours and its
+    /// colorbar take every colour from the same call (D91, gate 7). Without a channel, every
+    /// value is the layer's colour.
+    let compileField
+        (coord: Coord)
+        (st: GeomStyle)
+        (colourOf: float -> Color option)
+        (field: FieldPayload<nd>)
+        (mark: FieldMark)
+        : Node =
+        let mapPt (v: Vec2<nd>) = if Coord.isIdentity coord then v else coord.ToPanel v
+
+        match mark with
+        | FieldHeatmap smooth -> FieldMarks.heatmap colourOf smooth field
+        | FieldContours levels ->
+            FieldMarks.contours
+                mapPt
+                { Paint = Solid(Color.withAlpha (st.Color.A * st.Opacity) st.Color)
+                  Width = st.Width
+                  Dash = st.Dash
+                  DashOffset = 0.0<px>
+                  Cap = st.Cap
+                  Join = st.Join
+                  MiterLimit = 4.0 }
+                colourOf
+                levels
+                field
+        | FieldBands levels -> FieldMarks.bands mapPt st.FillOpacity colourOf levels field
 
     let private strokeOf (st: GeomStyle) =
         { Paint = Solid(Color.withAlpha (st.Color.A * st.Opacity) st.Color)
@@ -1040,6 +1083,12 @@ module Geom =
                           Bounds = box
                           Smooth = smooth }
 
+            | GeomField(field, mark) ->
+                // Without a channel to colour it, a field is drawn in the layer's own colour.
+                // `Figure.fs` routes a channelled field layer to `compileField` directly, so that
+                // it is drawn once rather than once per colour batch.
+                compileField coord st (fun v -> if finiteNum v then Some st.Color else None) field mark
+
             | GeomViolin(profiles, widthFraction) ->
                 let half = (defaultArg spacing (medianSpacing pts)) * widthFraction * 0.5
 
@@ -1126,8 +1175,10 @@ module Geom =
                 | GeomRect _
                 | GeomSegment _
                 | GeomText _
-                // An image occupies a stated box and has no rhythm to read.
-                | GeomImage _ -> None
+                // An image occupies a stated box and has no rhythm to read, and a field is drawn
+                // from its grid rather than from its points.
+                | GeomImage _
+                | GeomField _ -> None
 
             compileWith address spacing (Some ix) coord plotSize st geom (ix |> Array.map (fun i -> all.[i]))
 
@@ -1176,3 +1227,7 @@ module Geom =
         // and an unnamed layer gets no legend entry, so this is reached only by a caller who
         // named one deliberately — and a swatch is then the least wrong of the four marks.
         | GeomImage _ -> LegendSwatch
+        // Contour lines are lines; a heatmap and its bands are areas of colour. A field layer is
+        // usually unnamed and so absent from the legend — its colour is the colorbar's to explain.
+        | GeomField(_, FieldContours _) -> LegendLine st.Dash
+        | GeomField _ -> LegendSwatch

@@ -868,33 +868,60 @@ module Figure =
                             // it is at most 256 groups for any number of points, which is what
                             // keeps §5.1's batching intact while the colour varies.
                             let body, counts =
-                                if l.Channels.Length = 0 then
-                                    // No channels, no counts: an unchannelled layer's annotation is
-                                    // exactly what it was before phase 2, so every baseline that
-                                    // predates channels stays byte-identical.
-                                    Geom.compileFor address None p.Coord plotSize l.Style geom pts, [||]
-                                else
-                                    let (batches, unmapped) = Channel.split l.Channels pts.Length
+                                match geom with
+                                | GeomField(field, mark) when l.Channels.Length > 0 ->
+                                    // D86 / D91 — a field is drawn once, not once per colour
+                                    // batch: its pixels and its contour levels are coloured
+                                    // through the channel's own quantiser, the call the
+                                    // colorbar's strips are drawn with, so the three agree.
+                                    let colourOf =
+                                        match
+                                            l.Channels
+                                            |> Array.tryFind (fun c ->
+                                                match c.Map with
+                                                | ColorByValue _ -> true
+                                                | _ -> false)
+                                        with
+                                        | Some c ->
+                                            let bucket = Channel.bucketer c.Map
 
-                                    let nodes =
-                                        batches
-                                        |> Array.map (fun b ->
-                                            Geom.compileFor
-                                                address
-                                                (Some b.Indices)
-                                                p.Coord
-                                                plotSize
-                                                (b.Restyle l.Style)
-                                                geom
-                                                pts)
+                                            fun (v: float) ->
+                                                match bucket v with
+                                                | k when k < 0 -> None
+                                                | k ->
+                                                    let col = (Channel.restyle c.Map k l.Style).Color
+                                                    Some(Color.withAlpha (col.A * l.Style.Opacity) col)
+                                        | None -> fun v -> if System.Double.IsNaN v || System.Double.IsInfinity v then None else Some l.Style.Color
 
-                                    // `unmapped` is reported rather than swallowed: a point whose
-                                    // channel value was missing is not drawn (see
-                                    // `Channel.bucketer`), and a figure that contains fewer marks
-                                    // than it has rows should be able to say so.
-                                    Group nodes,
-                                    [| "batches", string nodes.Length
-                                       "unmapped", string unmapped |]
+                                    Geom.compileField p.Coord l.Style colourOf field mark, [||]
+                                | _ ->
+                                    if l.Channels.Length = 0 then
+                                        // No channels, no counts: an unchannelled layer's annotation is
+                                        // exactly what it was before phase 2, so every baseline that
+                                        // predates channels stays byte-identical.
+                                        Geom.compileFor address None p.Coord plotSize l.Style geom pts, [||]
+                                    else
+                                        let (batches, unmapped) = Channel.split l.Channels pts.Length
+
+                                        let nodes =
+                                            batches
+                                            |> Array.map (fun b ->
+                                                Geom.compileFor
+                                                    address
+                                                    (Some b.Indices)
+                                                    p.Coord
+                                                    plotSize
+                                                    (b.Restyle l.Style)
+                                                    geom
+                                                    pts)
+
+                                        // `unmapped` is reported rather than swallowed: a point whose
+                                        // channel value was missing is not drawn (see
+                                        // `Channel.bucketer`), and a figure that contains fewer marks
+                                        // than it has rows should be able to say so.
+                                        Group nodes,
+                                        [| "batches", string nodes.Length
+                                           "unmapped", string unmapped |]
 
                             // D68 — the layer's **ordinal**, not its name. `l.Name` is written
                             // into the `Annotated` node just below because that is where a

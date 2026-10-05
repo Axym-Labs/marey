@@ -374,6 +374,17 @@ module Chart =
                         Layers = Array.append p.Layers (mk p.Layers.Length) })
                 fig
 
+    /// Draw `top`'s layers over the last panel of `fig`, styles and channels as they were built.
+    ///
+    /// The general form of `addLine` and its siblings, for layers that were built by something
+    /// other than this module — a field's heatmap and its contours (`Marey.Fields`), or any two
+    /// figures over the same quantities. The panels' axes are unified at compile time and must
+    /// agree in dimension, exactly as for `addLine`.
+    let overlay (top: Figure) (fig: Figure) : Figure =
+        match Array.tryLast top.Panels with
+        | None -> fig
+        | Some p -> fig |> addLayers (fun _ -> p.Layers)
+
     /// Add a second (third, …) series to the last panel.
     ///
     /// The panel's axes are then shared: `Figure.unify` unions the domains at compile time and
