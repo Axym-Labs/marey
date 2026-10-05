@@ -24,6 +24,11 @@ land in a minor release.
   ±0.5 m on a 0–10 m line drew a bar spanning 0–10 m, and a tile beside a wider scatter filled the
   panel. Present since 0.2.0. Single-layer figures, and layers that happened to share a domain,
   were always right, which is why no baseline moved with the fix.
+- **A shot over states with differently shaped grids keeps every panel.** `Chart.arrangeUnion`
+  took its outer grid from the one state with the most panels, so an animation between a 1×2
+  and a 2×1 figure arranged against one shape, and the other state's extra panel had no region
+  and was not drawn. The grid is now the union of every state's rows, columns and panel
+  positions.
 
 ### Changed
 

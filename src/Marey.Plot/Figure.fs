@@ -1115,13 +1115,22 @@ module Figure =
 
         let head = states |> Array.map headOf |> Array.max
 
-        // The frame the grid is taken from is the one with the most panels, so an animation that
-        // adds a panel mid-shot still has a region for it. Everything else about the grid — rows,
-        // columns, gaps, padding — is the theme's and does not vary with the data.
-        let widest =
-            states |> Array.maxBy (fun f -> (f.Panels.Length, max 1 f.Rows, max 1 f.Cols))
+        // The grid is the union of every state's: as many rows and columns as any state has,
+        // and a region for every panel position any state uses. It used to be taken from the
+        // one state with the most panels, which is the same thing until two states have the
+        // same count in different shapes — a 1×2 and a 2×1 — and then one of them lost a panel
+        // to a grid that had no region for it. Gaps, padding and the theme do not vary with the
+        // data, so the first state supplies them.
+        let template =
+            { states.[0] with
+                Rows = states |> Array.map (fun f -> max 1 f.Rows) |> Array.max
+                Cols = states |> Array.map (fun f -> max 1 f.Cols) |> Array.max
+                Panels =
+                    states
+                    |> Array.collect (fun f -> f.Panels)
+                    |> Array.distinctBy (fun p -> p.Row, p.Col) }
 
-        let outer = Layout.arrange m extent (outerGrid (Some head) widest)
+        let outer = Layout.arrange m extent (outerGrid (Some head) template)
 
         // Then every panel of every state, unioned by key. `Array.choose` rather than an
         // exception when a key is missing: a state that lacks a panel another state has

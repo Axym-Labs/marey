@@ -318,3 +318,35 @@ module TheUnion =
         let two = Chart.beside (digits 0.0) (digits 1.0)
         let scene = Chart.toSceneIn measurer shot two
         Assert.True((transforms scene).Length >= 1, "the extra panel compiled")
+
+// ======================================================================================
+// A shot whose states disagree about the grid's shape
+// ======================================================================================
+
+/// The outer grid was taken from **one** state — the one with the most panels, ties broken by
+/// rows — so a shot over a 1×2 state and a 2×1 state took the 2×1 grid, and the 1×2 state's
+/// right-hand panel had no region in it. `toSceneIn` draws a panel with no region as nothing, so it
+/// vanished from every frame that had it. Reported by review on the 0.3.0 PR.
+module ``a shot whose states change the grid's shape`` =
+
+    let private side (u: float) =
+        if u < 0.5 then
+            ramp 1.0 |> Chart.beside (ramp 2.0)
+        else
+            ramp 1.0 |> Chart.above (ramp 2.0)
+
+    [<Fact>]
+    let ``every panel of every state has a region`` () =
+        let shot = Chart.arrangeUnion 2 measurer surface side
+
+        for key in [ "panel-0-0"; "panel-0-1"; "panel-1-0" ] do
+            Assert.True((Layout.tryFindPx key shot.Outer).IsSome, sprintf "%s has no region in the shot" key)
+
+    [<Fact>]
+    let ``both states draw every panel they have`` () =
+        let shot = Chart.arrangeUnion 2 measurer surface side
+        let besides = Chart.toSceneIn measurer shot (side 0.0)
+        let stacked = Chart.toSceneIn measurer shot (side 1.0)
+
+        Assert.True((Scene.tryFindKey (Keys.panel 0 1) besides).IsSome, "the side-by-side state's right panel was not drawn")
+        Assert.True((Scene.tryFindKey (Keys.panel 1 0) stacked).IsSome, "the stacked state's lower panel was not drawn")
