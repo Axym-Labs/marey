@@ -57,7 +57,7 @@ land in a minor release.
   numbers and are generic in it. A layer's area or bar baseline is now the data value zero, and
   `Geom.project` clamps it into the panel.
 
-## [0.3.0] — 2026-09-29
+## [0.3.0] — 2026-10-05
 
 **M2.5 — *Raster*.** An eighth package, and the first output that is not text.
 
