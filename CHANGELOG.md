@@ -14,6 +14,14 @@ land in a minor release.
 
 ## [Unreleased]
 
+### Added
+
+- **`Rng`, a specified pseudo-random generator, in `Marey.Core`.** SplitMix64, immutable,
+  seeded explicitly: `Rng.seeded`, `next`, `unit`, `below`, `units`. The library's first
+  randomness, for line-integral convolution and bootstrap intervals to come, and specified rather
+  than taken from `System.Random` so that a seed names the same sequence on every runtime,
+  including Fable. Pinned against the published outputs for seed 0.
+
 ## [0.3.1] — 2026-10-05
 
 ### Fixed
