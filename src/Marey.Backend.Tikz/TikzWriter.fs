@@ -175,6 +175,54 @@ module Tikz =
     /// `\textperiodcentered`, `\textdegree`, `\textohm` and `\textmu` come from `textcomp`,
     /// which has been part of the LaTeX kernel since 2020; `\AA` is plain LaTeX. All verified to
     /// compile.
+    /// Greek letters, as math-mode macros. **A quantity's conventional name is Greek as often as
+    /// not** — ρ for a density, θ, ω and α for an angle and its rates (D98) — and an axis titled
+    /// with one stopped `pdflatex` at "Unicode character θ (U+03B8)". Math mode because a
+    /// quantity symbol is set in italic, which is what `\theta` gives and what physics writes.
+    ///
+    /// µ and the capital omega are absent here on purpose: `unicodeMacro` maps them first, to the
+    /// upright `\textmu` and `\textohm` a unit wants. Capitals that look like Latin letters (Α, Β,
+    /// Ε, …) have no macro of their own in LaTeX and are not mapped.
+    let private greekMacro (c: char) : string option =
+        match c with
+        | 'α' -> Some "\\alpha"
+        | 'β' -> Some "\\beta"
+        | 'γ' -> Some "\\gamma"
+        | 'δ' -> Some "\\delta"
+        | 'ε' -> Some "\\varepsilon"
+        | 'ϵ' -> Some "\\epsilon"
+        | 'ζ' -> Some "\\zeta"
+        | 'η' -> Some "\\eta"
+        | 'θ' -> Some "\\theta"
+        | 'ϑ' -> Some "\\vartheta"
+        | 'ι' -> Some "\\iota"
+        | 'κ' -> Some "\\kappa"
+        | 'λ' -> Some "\\lambda"
+        | 'ν' -> Some "\\nu"
+        | 'ξ' -> Some "\\xi"
+        | 'π' -> Some "\\pi"
+        | 'ρ' -> Some "\\rho"
+        | 'σ' -> Some "\\sigma"
+        | 'ς' -> Some "\\varsigma"
+        | 'τ' -> Some "\\tau"
+        | 'υ' -> Some "\\upsilon"
+        | 'φ' -> Some "\\varphi"
+        | 'ϕ' -> Some "\\phi"
+        | 'χ' -> Some "\\chi"
+        | 'ψ' -> Some "\\psi"
+        | 'ω' -> Some "\\omega"
+        | 'Γ' -> Some "\\Gamma"
+        | 'Δ' -> Some "\\Delta"
+        | 'Θ' -> Some "\\Theta"
+        | 'Λ' -> Some "\\Lambda"
+        | 'Ξ' -> Some "\\Xi"
+        | 'Π' -> Some "\\Pi"
+        | 'Σ' -> Some "\\Sigma"
+        | 'Υ' -> Some "\\Upsilon"
+        | 'Φ' -> Some "\\Phi"
+        | 'Ψ' -> Some "\\Psi"
+        | _ -> None
+
     let private unicodeMacro (c: char) : string option =
         match c with
         | '·' -> Some "\\textperiodcentered{}" // · MIDDLE DOT — the unit separator
@@ -192,7 +240,7 @@ module Tikz =
         | ' ' -> Some "\\," // THIN SPACE
         | '–' -> Some "--" // – EN DASH
         | '—' -> Some "---" // — EM DASH
-        | _ -> None
+        | c -> greekMacro c |> Option.map (fun m -> "\\ensuremath{" + m + "}")
 
     /// Escape literal text so TeX typesets it as written.
     ///
