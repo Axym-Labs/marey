@@ -58,6 +58,10 @@ printfn "the two layouts differ:                %b" (shaped <> approximated)
 
 // ----------------------------------------------------------------------------------------
 // The numbers behind the difference.
+//
+// The approximation and the shaper differ for two reasons at once: the face this machine
+// opened need not have Helvetica's widths, and the shaper kerns. Measuring the same face a
+// third time, summing its advances without shaping, separates the two.
 // ----------------------------------------------------------------------------------------
 
 let spec: FontSpec =
@@ -66,28 +70,51 @@ let spec: FontSpec =
       Weight = 400
       Italic = false }
 
-let shaper = new SkiaTextMeasurer() :> ITextMeasurer
+let skia = new SkiaTextMeasurer()
+let shaper = skia :> ITextMeasurer
 
-let approxAdvance = float (TextMeasure.approx.Measure spec "AVATAR").Advance
-let shapedAdvance = float (shaper.Measure spec "AVATAR").Advance
+// The face the shaper resolved, opened again to be measured without it. Linear metrics, because
+// a default `SKFont` hints and rounds every advance to a whole pixel, which the shaper does not.
+let unshaped (text: string) =
+    let face = skia.Face spec
+
+    use typeface =
+        match face.File with
+        | Some file -> SkiaSharp.SKTypeface.FromFile file
+        | None -> SkiaSharp.SKTypeface.FromFamilyName face.Family
+
+    use font = new SkiaSharp.SKFont(typeface, 12.0f)
+    font.LinearMetrics <- true
+    float (font.MeasureText text)
+
+let measureAll (text: string) =
+    float (TextMeasure.approx.Measure spec text).Advance, unshaped text, float (shaper.Measure spec text).Advance
+
+let approxAdvance, unshapedAdvance, shapedAdvance = measureAll "AVATAR"
 
 printfn ""
-printfn "AVATAR at 12 px"
-printfn "  approximated: %6.2f px" approxAdvance
-printfn "  shaped:       %6.2f px" shapedAdvance
-printfn "  difference:   %6.2f px (%.1f%%)" (approxAdvance - shapedAdvance) ((approxAdvance - shapedAdvance) / approxAdvance * 100.0)
+printfn "AVATAR at 12 px, in %s" (skia.Face spec).Family
+printfn "  approximated (Helvetica's table): %6.2f px" approxAdvance
+printfn "  this face, unshaped:              %6.2f px" unshapedAdvance
+printfn "  this face, shaped:                %6.2f px" shapedAdvance
+printfn "  of which widths:                  %+6.2f px" (unshapedAdvance - approxAdvance)
+printfn "  of which kerning:                 %+6.2f px" (shapedAdvance - unshapedAdvance)
 
-// Narrower, because every one of those pairs kerns. Not a general law — for a string with
-// nothing to kern the two agree to within rounding, and which side of it they land on is
-// arbitrary, which is exactly what the digits below check.
-printfn "kerning made this string narrower:     %b" (shapedAdvance < approxAdvance)
+// Narrower, because every one of those pairs kerns. Compared within one face, so it holds
+// whatever face this machine opened. Against the approximation it holds only where the face has
+// Helvetica's widths — Arial and Liberation Sans do, and the "of which widths" line is then zero.
+printfn "kerning made this string narrower:     %b" (shapedAdvance < unshapedAdvance)
 
-// Digits have nothing to kern, so the two agree there — which is what makes the number above
-// attributable to kerning rather than to a disagreement about how wide a glyph is.
-let digitsApprox = float (TextMeasure.approx.Measure spec "0123456789").Advance
-let digitsShaped = float (shaper.Measure spec "0123456789").Advance
+// Digits have nothing to kern, so shaping leaves them at their summed width — which is what
+// makes the AVATAR number above attributable to kerning rather than to anything else the
+// shaper does.
+//
+// "Leaves them" to within the shaper's grid: SkiaSharp runs HarfBuzz at 512 units to the font
+// size, so each advance comes back rounded to 12/512 px, and is at most half that away from the
+// face's own value. Ten digits can drift by ten half-steps and no more.
+let _, digitsUnshaped, digitsShaped = measureAll "0123456789"
 
-printfn "digits agree within 5%%:                %b" (abs (digitsApprox - digitsShaped) / digitsApprox < 0.05)
+printfn "shaping left the digits alone:         %b" (abs (digitsShaped - digitsUnshaped) <= 10.0 * 12.0 / 1024.0)
 
 // ----------------------------------------------------------------------------------------
 // Which face this actually drew with.
