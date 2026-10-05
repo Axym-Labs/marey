@@ -29,6 +29,21 @@ land in a minor release.
   and a 2×1 figure arranged against one shape, and the other state's extra panel had no region
   and was not drawn. The grid is now the union of every state's rows, columns and panel
   positions.
+- **`SvgPathData.parse` no longer hangs on a number after `Z`.** `Z` takes no arguments, and a
+  number following it was read as another `Z` that consumed nothing, so `M0 0 Z 1` looped forever,
+  appending `ClosePath` until memory ran out. It is now refused by name, like every other
+  malformed path.
+- **`Scene.opacity nan` is refused.** NaN fails both comparisons the clamp is made of, so it
+  reached the IR unchanged and each backend handled it differently. It now raises
+  `ArgumentException`; every other value is still clamped into [0, 1].
+
+### Security
+
+- **A formula cannot run a shell command.** `Marey.Tools.Tex` starts `latex` with
+  `--disable-write18`. The formula is the public `TextRun.Tex` field and may come from data, and
+  on a TeX installation configured with `shell_escape = t`, `\immediate\write18{…}` in it ran
+  the command. TeX Live's and MiKTeX's restricted default already refused commands outside their
+  allow-list, so default installations were not affected.
 
 ### Changed
 
