@@ -34,11 +34,17 @@ land in a minor release.
   separation), integrated on the page so they are the field's own curves on a log axis or a
   phase space, closed where they return to their start, with arrowheads downstream and no
   randomness. `streamlinesBy` colours each line by the field's magnitude along it.
+  `Field.lic` draws a line-integral convolution: a noise texture smeared along the field's
+  streamlines, so the flow shows at every pixel. Any vector grid, phase spaces included.
+  `licBy` colours it by magnitude, with a colorbar. It is a raster at the plot area's resolution
+  times a stated oversample (`licWith`, with `Field.licDefaults`: a 20 px kernel, oversample 1,
+  seed 0). The noise comes from `Rng`, so a seed, a field and a plot size always give the same
+  image, and a different seed gives the same flow with different grain.
 - **`Chart.overlay`**, which draws one figure's layers over another's last panel: a heatmap
   under its contours, or any two figures over the same quantities.
 - **`Rng`, a specified pseudo-random generator, in `Marey.Core`.** SplitMix64, immutable,
   seeded explicitly: `Rng.seeded`, `next`, `unit`, `below`, `units`. The library's first
-  randomness, for line-integral convolution and bootstrap intervals to come, and specified rather
+  randomness, for line-integral convolution and bootstrap intervals, and specified rather
   than taken from `System.Random` so that a seed names the same sequence on every runtime,
   including Fable. Pinned against the published outputs for seed 0.
 

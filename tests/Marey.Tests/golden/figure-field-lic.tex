@@ -1,0 +1,55 @@
+\begin{tikzpicture}[every node/.style={inner sep=0bp,outer sep=0bp}]
+  \definecolor{qcA}{rgb}{1,1,1}
+  \definecolor{qcB}{rgb}{0.905882,0.913725,0.929412}
+  \definecolor{qcC}{rgb}{0.223529,0.254902,0.301961}
+  \definecolor{qcD}{rgb}{0.078431,0.094118,0.121569}
+  \useasboundingbox (0bp,0bp) rectangle (210bp,142.5bp);
+  % marey-key: figure
+  \path[fill=qcA] (0bp,0bp) -- (210bp,0bp) -- (210bp,142.5bp) -- (0bp,142.5bp) -- cycle;
+  % marey-key: figure/panel-0-0
+  % marey-role: other:panel -- panel
+  % marey-data: row = 0
+  % marey-data: col = 0
+  % marey-data: layers = 1
+  % marey-data: x-tick-rule = all
+  % marey-data: y-tick-rule = all
+  % marey-role: decoration -- gridlines
+  % marey-data: lines = 3
+  \path[draw=qcB,line width=0.75bp] (38.251bp,53.411bp) -- (195.5bp,53.411bp) (38.251bp,71.956bp) -- (195.5bp,71.956bp) (38.251bp,90.501bp) -- (195.5bp,90.501bp);
+  \begin{scope}
+    \clip (38.251bp,38.575bp) -- (195.5bp,38.575bp) -- (195.5bp,105.338bp) -- (38.251bp,105.338bp) -- cycle;
+    % marey-key: figure/panel-0-0/layer-0
+    % marey-role: series -- series
+    % marey-data: series =
+    % marey-data: points = 1961
+    \node[anchor=south west,inner sep=0bp,outer sep=0bp] at (38.251bp,38.575bp) {\includegraphics[width=157.249bp,height=66.763bp]{marey-raster-0.png}};
+  \end{scope}
+  % marey-role: axis -- θ [rad]
+  % marey-data: side = bottom
+  % marey-data: unit = rad
+  % marey-data: prefix =
+  % marey-data: ticks = 7
+  % marey-data: tick-rule = all
+  \path[draw=qcC,line width=0.675bp] (38.251bp,38.575bp) -- (195.499bp,38.575bp);
+  \path[draw=qcC,line width=0.675bp] (44.299bp,38.575bp) -- (44.299bp,36.325bp) (68.491bp,38.575bp) -- (68.491bp,36.325bp) (92.683bp,38.575bp) -- (92.683bp,36.325bp) (116.875bp,38.575bp) -- (116.875bp,36.325bp) (141.067bp,38.575bp) -- (141.067bp,36.325bp) (165.259bp,38.575bp) -- (165.259bp,36.325bp) (189.451bp,38.575bp) -- (189.451bp,36.325bp);
+  \node[anchor=north,text=qcD,font=\fontsize{9}{10.8}\selectfont] at (44.299bp,33.325bp) {-6};
+  \node[anchor=north,text=qcD,font=\fontsize{9}{10.8}\selectfont] at (68.491bp,33.325bp) {-4};
+  \node[anchor=north,text=qcD,font=\fontsize{9}{10.8}\selectfont] at (92.683bp,33.325bp) {-2};
+  \node[anchor=north,text=qcD,font=\fontsize{9}{10.8}\selectfont] at (116.875bp,33.325bp) {0};
+  \node[anchor=north,text=qcD,font=\fontsize{9}{10.8}\selectfont] at (141.067bp,33.325bp) {2};
+  \node[anchor=north,text=qcD,font=\fontsize{9}{10.8}\selectfont] at (165.259bp,33.325bp) {4};
+  \node[anchor=north,text=qcD,font=\fontsize{9}{10.8}\selectfont] at (189.451bp,33.325bp) {6};
+  \node[anchor=north,text=qcD,font=\fontsize{10}{12}\selectfont] at (116.875bp,19.75bp) {\ensuremath{\theta} [rad]};
+  % marey-role: axis -- ω [rad·s⁻¹]
+  % marey-data: side = left
+  % marey-data: unit = rad·s⁻¹
+  % marey-data: prefix =
+  % marey-data: ticks = 3
+  % marey-data: tick-rule = all
+  \path[draw=qcC,line width=0.675bp] (38.251bp,38.575bp) -- (38.251bp,105.338bp);
+  \path[draw=qcC,line width=0.675bp] (38.251bp,53.411bp) -- (36.001bp,53.411bp) (38.251bp,71.956bp) -- (36.001bp,71.956bp) (38.251bp,90.501bp) -- (36.001bp,90.501bp);
+  \node[anchor=east,text=qcD,font=\fontsize{9}{10.8}\selectfont] at (33.001bp,53.411bp) {-5};
+  \node[anchor=east,text=qcD,font=\fontsize{9}{10.8}\selectfont] at (33.001bp,71.956bp) {0};
+  \node[anchor=east,text=qcD,font=\fontsize{9}{10.8}\selectfont] at (33.001bp,90.501bp) {5};
+  \node[anchor=base,text=qcD,rotate=90,font=\fontsize{10}{12}\selectfont] at (19.75bp,71.956bp) {\ensuremath{\omega} [rad\textperiodcentered{}s\textsuperscript{-1}]};
+\end{tikzpicture}

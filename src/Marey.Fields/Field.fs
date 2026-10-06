@@ -250,7 +250,8 @@ module Field =
             | FieldDirections -> paddedDomain nodes
             | FieldContours _
             | FieldBands _
-            | FieldStreamlines _ -> nodes.[0], nodes.[nodes.Length - 1]
+            | FieldStreamlines _
+            | FieldLic _ -> nodes.[0], nodes.[nodes.Length - 1]
 
         let s: Series<'x, 'y> =
             { Name = ""
@@ -486,3 +487,84 @@ module Field =
 
         arrowLayerOf ux uy (FieldStreamlines(DefaultSeparation * 1.0<px>)) magnitude g
         |> Chart.colorBy uv magnitude.Values
+
+    // ---- Line-integral convolution (D90) ------------------------------------------------------
+
+    /// What `lic` computes with when nobody states otherwise: a 20 px kernel, one raster pixel per
+    /// page pixel, and seed 0.
+    let licDefaults: LicOptions =
+        { Length = 20.0<px>
+          Oversample = 1
+          Seed = 0UL }
+
+    let private licLayerOf<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w, [<Measure>] 'v>
+        (options: LicOptions)
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (values: ScalarGrid<'x, 'y, 'v>)
+        (g: VectorGrid<'x, 'y, 'u, 'w>)
+        : Figure =
+        if not (options.Length > 0.0<px>) || Double.IsInfinity(float options.Length) then
+            invalidArg "options" (sprintf "Marey: a LIC kernel must be a positive length on the page; got %g px." (float options.Length))
+
+        if options.Oversample < 1 || options.Oversample > 8 then
+            invalidArg "options" (sprintf "Marey: a LIC oversample is 1 to 8 raster pixels per page pixel; got %d." options.Oversample)
+
+        // White, so that without a colour channel the brightness is the whole picture: grey.
+        layerWith ux uy (FieldLic options) (raw g.U) (raw g.W) values
+        |> Chart.withStyle (fun st -> { st with Color = Color.white })
+
+    /// A line-integral convolution in grey: noise smeared along the field's streamlines, so the
+    /// texture is the flow at every pixel (D90). Any vector grid, a phase space included, because
+    /// it needs a direction and not a magnitude.
+    ///
+    /// **It is a raster at the plot area's resolution** times `options.Oversample`, on every
+    /// backend. SVG embeds it and TikZ writes it beside the document; neither can do better than
+    /// the pixels it was computed at, so a figure meant for print states an oversample of 2 or 3.
+    ///
+    /// **It is deterministic.** The noise comes from `Rng` seeded with `options.Seed`, so a seed,
+    /// a field and a plot size draw the same image every time, on every runtime. A different seed
+    /// draws the same flow in different grain.
+    ///
+    /// **It costs** 70 ms for a 480 × 300 figure, 0.3 s at 960 × 600 and 1.4 s at 1920 × 1200,
+    /// measured on one core of a Ryzen 9 9950X with the default 20 px kernel. The cost is close to
+    /// linear in the raster's pixel count, so it quadruples with each doubling of the
+    /// oversample.
+    let licWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
+        (options: LicOptions)
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (g: VectorGrid<'x, 'y, 'u, 'w>)
+        : Figure =
+        licLayerOf options ux uy (presentOf g) g
+
+    /// `licWith licDefaults`.
+    let lic<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (g: VectorGrid<'x, 'y, 'u, 'w>)
+        : Figure =
+        licWith licDefaults ux uy g
+
+    /// `licWith`, coloured by the field's magnitude along the theme's sequential ramp, with a
+    /// colorbar in `'v`. The texture darkens a pixel to no less than a fifth of its colour, so
+    /// the colorbar still reads in the darkest strokes. Both components in one unit, for
+    /// `quiver`'s reason.
+    let licByWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (options: LicOptions)
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (uv: U<'v>)
+        (g: VectorGrid<'x, 'y, 'v, 'v>)
+        : Figure =
+        let magnitude = VectorGrid.magnitude g
+        licLayerOf options ux uy magnitude g |> Chart.colorBy uv magnitude.Values
+
+    /// `licByWith licDefaults`.
+    let licBy<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+        (ux: U<'x>)
+        (uy: U<'y>)
+        (uv: U<'v>)
+        (g: VectorGrid<'x, 'y, 'v, 'v>)
+        : Figure =
+        licByWith licDefaults ux uy uv g

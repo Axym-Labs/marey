@@ -41,6 +41,20 @@ type FieldMark =
     /// D89 — evenly spaced streamlines, `separation` apart on the panel, with arrowheads along
     /// them. The payload's `Values` colour each line by their mean along it.
     | FieldStreamlines of separation: float<px>
+    /// D90 — line-integral convolution: a noise texture smeared along the field's streamlines,
+    /// rasterised at the plot area's resolution. Its brightness is the texture; its colour is the
+    /// payload's `Values` through the layer's colour.
+    | FieldLic of LicOptions
+
+/// D90 — what a line-integral convolution is computed with.
+and LicOptions =
+    { /// The convolution kernel's full length along a streamline, on the page. Longer reads as
+      /// smoother, more coherent strokes; shorter as grainier ones.
+      Length: float<px>
+      /// Raster pixels per page pixel along each axis: 1 for a screen, 2 or 3 for print.
+      Oversample: int
+      /// The noise texture's seed (D95). The same seed, field and plot size draw the same image.
+      Seed: uint64 }
 
 /// D87 — what one arrow length means: a round value of the magnitude and its label, prefix and
 /// unit included, both decided from the data when the layer is built. The arrow it is drawn with
@@ -109,7 +123,9 @@ module FieldMarks =
                   U = permute f.U
                   W = permute f.W }
 
-    let private bilinearAt (p: Plane) (x: float) (y: float) =
+    /// The bilinear interpolant of `values`, laid out as the plane's nodes are, at (x, y) in
+    /// `nd`; NaN outside the grid.
+    let private interpolate (p: Plane) (values: float[]) (x: float) (y: float) =
         let locate (cs: float[]) (c: float) =
             if c < cs.[0] || c > cs.[cs.Length - 1] then
                 ValueNone
@@ -125,10 +141,13 @@ module FieldMarks =
 
         match locate p.X x, locate p.Y y with
         | ValueSome(struct (i, fx)), ValueSome(struct (j, fy)) ->
-            let a = p.At i j + (p.At (i + 1) j - p.At i j) * fx
-            let b = p.At i (j + 1) + (p.At (i + 1) (j + 1) - p.At i (j + 1)) * fx
+            let at i j = values.[j * p.Nx + i]
+            let a = at i j + (at (i + 1) j - at i j) * fx
+            let b = at i (j + 1) + (at (i + 1) (j + 1) - at i (j + 1)) * fx
             a + (b - a) * fy
         | _ -> nan
+
+    let private bilinearAt (p: Plane) (x: float) (y: float) = interpolate p p.V x y
 
     // ---- The heatmap (D91) ----------------------------------------------------------------
 
@@ -654,12 +673,8 @@ module FieldMarks =
     /// The field's direction on the panel at a point in pixels, and its speed there; `ValueNone`
     /// outside the grid or at a missing value.
     let private velocityAt (p: Plane) (w: float) (h: float) (x: float) (y: float) =
-        let at (values: float[]) =
-            let saved = { p with V = values }
-            bilinearAt saved (x / w) (y / h)
-
-        let u = at p.U * w
-        let v = at p.W * h
+        let u = interpolate p p.U (x / w) (y / h) * w
+        let v = interpolate p p.W (x / w) (y / h) * h
 
         if finite u && finite v then ValueSome(struct (u, v)) else ValueNone
 
@@ -944,3 +959,215 @@ module FieldMarks =
                    for KeyValue(c, segs) in heads do
                        yield Path(segs.ToArray(), None, Some(Solid c), NonZero) |]
         | _ -> Scene.empty
+
+    // ---- Line-integral convolution (D90) ------------------------------------------------------
+    //
+    // **What it is.** Every pixel takes the mean of a white-noise texture along the streamline
+    // through it, `Length` pixels long on the page and centred on the pixel (Cabral and Leedom,
+    // 1993). Pixels on one streamline average nearly the same noise and come out nearly the same
+    // grey; pixels on neighbouring streamlines average independent noise and do not. The texture
+    // is the field's streamlines, at every pixel rather than at a chosen few.
+    //
+    // **Fast LIC** (Stalling and Hege, 1995). Computed pixel by pixel, a kernel `n` samples long
+    // costs `n` integration steps per pixel. Here a streamline is traced once, much longer than
+    // the kernel, and the kernel slides along it as a running sum, so every sample on it is a
+    // finished pixel for the cost of one step. Pixels are visited in row order and a pixel some
+    // earlier line already crossed is not a seed; the hits a pixel collects are averaged. The
+    // trace runs in raster pixels, half a pixel per step, by the same RK4 on the unit direction
+    // as the streamlines, with the same stopping rules: the grid's edge, a missing value, a fixed
+    // point, a direction that reverses within a step.
+    //
+    // **A truncated kernel is used only where the line really ends.** Near a trace's far end the
+    // window runs out because the trace was cut short, not because the streamline stops, and those
+    // samples are not deposited — another seed covers them with a whole window. Where the line
+    // stops at the edge or a fixed point, the window is what there is.
+    //
+    // **The noise is D95's generator**, one uniform draw per raster pixel in row order from the
+    // stated seed. Nothing else is random and nothing runs in parallel, so a seed, a field and a
+    // plot size name one image on every runtime: the arithmetic is +, ×, ÷ and √, which IEEE 754
+    // rounds the same everywhere.
+    //
+    // **Contrast.** A mean of many draws has a small spread around one half, so the texture is
+    // stretched: two standard deviations either side of its mean become black and white. The
+    // brightness then scales the colour from 0.2 to 1 of itself, so the darkest strokes still
+    // carry the colour a colorbar reads.
+
+    /// The image and the panel rectangle it covers, which is the grid's extent; `None` for a
+    /// payload with no vector components. Public for the tests; `lic` draws it.
+    let licImage (plot: Extent<px>) (colourOf: float -> Color option) (options: LicOptions) (f: FieldPayload<nd>) : (Image * Rect<nd>) option =
+        match plane f with
+        | Some p when p.U.Length > 0 ->
+            let gx0, gx1 = p.X.[0], p.X.[p.Nx - 1]
+            let gy0, gy1 = p.Y.[0], p.Y.[p.Ny - 1]
+            let os = float (max 1 options.Oversample)
+            let rw = max 1 (int (Math.Round((gx1 - gx0) * float plot.Width * os)))
+            let rh = max 1 (int (Math.Round((gy1 - gy0) * float plot.Height * os)))
+
+            // Raster coordinates to `nd`, and `nd` components to raster pixels per unit time.
+            let ndX (rx: float) = gx0 + rx / float rw * (gx1 - gx0)
+            let ndY (ry: float) = gy0 + ry / float rh * (gy1 - gy0)
+            let kx = float rw / (gx1 - gx0)
+            let ky = float rh / (gy1 - gy0)
+
+            let fastest =
+                Array.init p.U.Length (fun k -> sqrt ((p.U.[k] * kx) ** 2.0 + (p.W.[k] * ky) ** 2.0))
+                |> Array.filter finite
+                |> Array.fold max 0.0
+
+            let slowest = 1e-6 * fastest
+
+            let direction (rx: float) (ry: float) =
+                if rx < 0.0 || rx > float rw || ry < 0.0 || ry > float rh then
+                    ValueNone
+                else
+                    let x, y = ndX rx, ndY ry
+                    let u = interpolate p p.U x y * kx
+                    let v = interpolate p p.W x y * ky
+                    let speed = sqrt (u * u + v * v)
+
+                    if finite speed && speed > slowest then ValueSome(struct (u / speed, v / speed)) else ValueNone
+
+            let step = 0.5
+
+            let rk4 (x: float) (y: float) (sign: float) =
+                match direction x y with
+                | ValueNone -> ValueNone
+                | ValueSome(struct (ax, ay)) ->
+                    let s = sign * step
+
+                    match direction (x + s / 2.0 * ax) (y + s / 2.0 * ay) with
+                    | ValueNone -> ValueNone
+                    | ValueSome(struct (bx, by)) ->
+                        match direction (x + s / 2.0 * bx) (y + s / 2.0 * by) with
+                        | ValueNone -> ValueNone
+                        | ValueSome(struct (cx, cy)) ->
+                            match direction (x + s * cx) (y + s * cy) with
+                            | ValueNone -> ValueNone
+                            | ValueSome(struct (dx, dy)) ->
+                                if ax * bx + ay * by < 0.0 || bx * cx + by * cy < 0.0 || cx * dx + cy * dy < 0.0 then
+                                    ValueNone
+                                else
+                                    ValueSome(
+                                        struct (x + s / 6.0 * (ax + 2.0 * bx + 2.0 * cx + dx),
+                                                y + s / 6.0 * (ay + 2.0 * by + 2.0 * cy + dy))
+                                    )
+
+            let noise, _ = Rng.units (rw * rh) (Rng.seeded options.Seed)
+
+            let pixelOf (x: float) (y: float) =
+                let i = min (rw - 1) (max 0 (int (floor x)))
+                let j = min (rh - 1) (max 0 (int (floor y)))
+                j * rw + i
+
+            // Half the kernel, in samples; a trace runs this many times further each way, so
+            // all but the last `n` samples at a cut end are deposited.
+            let n = max 1 (int (Math.Round(float options.Length * os / 2.0 / step)))
+            let reach = 6 * n
+            let sum = Array.zeroCreate<float> (rw * rh)
+            let hits = Array.zeroCreate<int> (rw * rh)
+
+            // One side of a trace: the points after the seed, and whether the line ended there
+            // rather than being cut at `reach`.
+            let side (sx: float) (sy: float) (sign: float) =
+                let pts = ResizeArray<struct (float * float)>()
+                let mutable x, y = sx, sy
+                let mutable ended = false
+
+                while not ended && pts.Count < reach do
+                    match rk4 x y sign with
+                    | ValueSome(struct (nx, ny)) ->
+                        pts.Add(struct (nx, ny))
+                        x <- nx
+                        y <- ny
+                    | ValueNone -> ended <- true
+
+                pts, ended
+
+            for j in 0 .. rh - 1 do
+                for i in 0 .. rw - 1 do
+                    let k = j * rw + i
+                    let sx, sy = float i + 0.5, float j + 0.5
+
+                    if hits.[k] = 0 && (direction sx sy).IsSome then
+                        let ahead, aheadEnded = side sx sy 1.0
+                        let behind, behindEnded = side sx sy -1.0
+
+                        let line =
+                            Array.concat [ behind.ToArray() |> Array.rev; [| struct (sx, sy) |]; ahead.ToArray() ]
+
+                        let cells = line |> Array.map (fun (struct (x, y)) -> pixelOf x y)
+                        let prefix = Array.zeroCreate (cells.Length + 1)
+
+                        for m in 0 .. cells.Length - 1 do
+                            prefix.[m + 1] <- prefix.[m] + noise.[cells.[m]]
+
+                        let last = cells.Length - 1
+
+                        for m in 0 .. last do
+                            let lo = m - n
+                            let hi = m + n
+
+                            if (lo >= 0 || behindEnded) && (hi <= last || aheadEnded) then
+                                let a = max 0 lo
+                                let b = min last hi
+                                sum.[cells.[m]] <- sum.[cells.[m]] + (prefix.[b + 1] - prefix.[a]) / float (b - a + 1)
+                                hits.[cells.[m]] <- hits.[cells.[m]] + 1
+
+            // A pixel whose field is finite but which no line crossed — a fixed point, or a
+            // direction that reverses at its centre — keeps its own noise.
+            let intensity =
+                Array.init (rw * rh) (fun k ->
+                    if hits.[k] > 0 then sum.[k] / float hits.[k]
+                    else
+                        let x, y = ndX (float (k % rw) + 0.5), ndY (float (k / rw) + 0.5)
+                        if finite (interpolate p p.U x y) && finite (interpolate p p.W x y) then noise.[k] else nan)
+
+            let present = intensity |> Array.filter finite
+            let mean = if present.Length = 0 then 0.5 else Array.average present
+
+            let spread =
+                if present.Length = 0 then 0.0
+                else sqrt (present |> Array.averageBy (fun v -> (v - mean) * (v - mean)))
+
+            let rgba = Array.zeroCreate<byte> (rw * rh * 4)
+            let byte01 (c: float) = byte (Math.Round((max 0.0 (min 1.0 c)) * 255.0))
+
+            for j in 0 .. rh - 1 do
+                for i in 0 .. rw - 1 do
+                    let k = j * rw + i
+                    let t = intensity.[k]
+
+                    if finite t then
+                        let v = bilinearAt p (ndX (float i + 0.5)) (ndY (float j + 0.5))
+
+                        match (if finite v then colourOf v else None) with
+                        | Some c ->
+                            let stretched = if spread > 0.0 then 0.5 + (t - mean) / (4.0 * spread) else 0.5
+                            let b = 0.2 + 0.8 * max 0.0 (min 1.0 stretched)
+                            // Rows run top first and raster `y` is up.
+                            let o = (((rh - 1 - j) * rw) + i) * 4
+                            rgba.[o] <- byte01 (c.R * b)
+                            rgba.[o + 1] <- byte01 (c.G * b)
+                            rgba.[o + 2] <- byte01 (c.B * b)
+                            rgba.[o + 3] <- byte01 c.A
+                        | None -> ()
+
+            Some(
+                { Width = rw; Height = rh; Rgba = rgba },
+                { X0 = gx0 * 1.0<nd>
+                  Y0 = gy0 * 1.0<nd>
+                  X1 = gx1 * 1.0<nd>
+                  Y1 = gy1 * 1.0<nd> }
+            )
+        | _ -> None
+
+    /// The convolution as a `Raster` over the grid's extent, interpolated by the backend where it
+    /// does not land on whole device pixels.
+    let lic (plot: Extent<px>) (colourOf: float -> Color option) (options: LicOptions) (f: FieldPayload<nd>) : Node =
+        match licImage plot colourOf options f with
+        | Some(image, bounds) ->
+            Raster
+                { Image = image
+                  Bounds = bounds
+                  Smooth = true }
+        | None -> Scene.empty

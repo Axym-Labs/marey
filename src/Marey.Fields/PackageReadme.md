@@ -68,6 +68,10 @@ because ∂ω̇/∂θ and ∂θ̇/∂ω are in different units and their differe
   apart, so a phase portrait has its closed orbits around a centre and its separatrices through
   a saddle with nothing configured. They are integrated on the panel, so they stay the field's
   curves on a log axis. No randomness is involved, so the same field draws the same lines.
+- **Line-integral convolution.** `Field.lic` smears a noise texture along the streamlines, so the
+  flow shows at every pixel rather than along a chosen few lines. `licBy` colours it by
+  magnitude. It is a raster at the plot area's resolution, with an oversample for print. Its
+  noise is seeded, so a seed names one image.
 
 ## Links
 

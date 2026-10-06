@@ -824,3 +824,151 @@ module ``streamlines`` =
         | TexToolchain.Unavailable -> Console.WriteLine("SKIPPED: " + TexToolchain.report ())
         | TexToolchain.Compiled -> ()
         | TexToolchain.Failed why -> failwithf "the streamlines baseline does not compile:\n%s" why
+
+// ======================================================================================
+// Phase 5 — line-integral convolution (D90). Gate 11, and the PNG baseline.
+// ======================================================================================
+
+module ``line-integral convolution`` =
+
+    let private plot: Extent<px> = { Width = 200.0<px>; Height = 120.0<px> }
+
+    /// A uniform field over the unit panel, components already in `nd`.
+    let private uniform (u: float) (w: float) : FieldPayload<nd> =
+        let cs = Grid.linear 0.0 1.0 5
+
+        { Xs = cs |> Array.map (fun c -> c * 1.0<nd>)
+          Ys = cs |> Array.map (fun c -> c * 1.0<nd>)
+          Values = Array.create 25 1.0
+          U = Array.create 25 u
+          W = Array.create 25 w }
+
+    /// A rotation about the panel's centre, on a grid fine enough to curve.
+    let private rotation: FieldPayload<nd> =
+        let cs = Grid.linear 0.0 1.0 21
+
+        { Xs = cs |> Array.map (fun c -> c * 1.0<nd>)
+          Ys = cs |> Array.map (fun c -> c * 1.0<nd>)
+          Values = Array.create (21 * 21) 1.0
+          U = [| for j in 0..20 do for _ in 0..20 -> -(cs.[j] - 0.5) |]
+          W = [| for _ in 0..20 do for i in 0..20 -> cs.[i] - 0.5 |] }
+
+    let private white (v: float) = if Double.IsNaN v then None else Some Color.white
+
+    let private image (options: LicOptions) (f: FieldPayload<nd>) =
+        match FieldMarks.licImage plot white options f with
+        | Some(img, _) -> img
+        | None -> failwith "no image"
+
+    /// The red channel, as brightness, at raster column `i` and row `j` counted from the top.
+    let private bright (img: Image) (i: int) (j: int) = float img.Rgba.[(j * img.Width + i) * 4]
+
+    /// Mean absolute difference between neighbours one pixel apart along x and along y, over
+    /// the interior, clear of the kernel's reach from the edges.
+    let private roughness (img: Image) =
+        let mutable dx, dy, n = 0.0, 0.0, 0
+
+        for j in 25 .. img.Height - 26 do
+            for i in 25 .. img.Width - 26 do
+                dx <- dx + abs (bright img (i + 1) j - bright img i j)
+                dy <- dy + abs (bright img i (j + 1) - bright img i j)
+                n <- n + 1
+
+        dx / float n, dy / float n
+
+    /// The convolution runs **along** the field: in a horizontal flow neighbours along a row
+    /// average nearly the same noise and neighbours across rows do not, and in a vertical flow
+    /// the other way round. A transposed raster, swapped components or a kernel convolved across
+    /// the flow instead of along it all fail one of the two.
+    [<Theory>]
+    [<InlineData(true)>]
+    [<InlineData(false)>]
+    let ``the texture is smooth along the flow and rough across it`` (horizontal: bool) =
+        let img = image Field.licDefaults (if horizontal then uniform 1.0 0.0 else uniform 0.0 1.0)
+        let along, across = if horizontal then roughness img else (fun (a, b) -> b, a) (roughness img)
+        Assert.True(across > 10.0, sprintf "the texture has no grain across the flow (%g)" across)
+        Assert.True(along < 0.25 * across, sprintf "along the flow %g, across it %g" along across)
+
+    /// The raster is the plot area's pixels over the grid's extent, times the oversample.
+    [<Fact>]
+    let ``the raster is at the panel's resolution times the oversample`` () =
+        let one = image Field.licDefaults rotation
+        Assert.Equal((200, 120), (one.Width, one.Height))
+
+        let three = image { Field.licDefaults with Oversample = 3 } rotation
+        Assert.Equal((600, 360), (three.Width, three.Height))
+
+    /// **Gate 11.** A seed, a field and a plot size name one image: two renders are identical
+    /// byte for byte, so are four computed at once on the thread pool, and a different seed
+    /// draws a different one.
+    [<Fact>]
+    let ``the same seed draws the same image, and another seed does not`` () =
+        let first = image Field.licDefaults rotation
+        let again = image Field.licDefaults rotation
+        Assert.Equal<byte[]>(first.Rgba, again.Rgba)
+
+        let parallel' = Array.Parallel.init 4 (fun _ -> image Field.licDefaults rotation)
+
+        for img in parallel' do
+            Assert.Equal<byte[]>(first.Rgba, img.Rgba)
+
+        let other = image { Field.licDefaults with Seed = 1UL } rotation
+        Assert.False((first.Rgba = other.Rgba), "seed 1 drew seed 0's image")
+
+    /// A missing value is not drawn (D52): its pixels are transparent and the rest are opaque.
+    [<Fact>]
+    let ``a missing region is transparent`` () =
+        let f = uniform 1.0 0.0
+        // The left column of nodes is missing, so the left quarter of cells cannot be read.
+        let gone = Array.init 25 (fun k -> if k % 5 = 0 then nan else 1.0)
+        let img = image Field.licDefaults { f with U = Array.map2 (fun g u -> g * u) gone f.U }
+        let alpha i j = img.Rgba.[(j * img.Width + i) * 4 + 3]
+
+        Assert.Equal(0uy, alpha 10 60)
+        Assert.Equal(255uy, alpha 150 60)
+
+    /// The raster is the right way up: with the bottom row of nodes missing, the transparent
+    /// pixels are the image's last rows, because image rows run top first and `nd` is y-up.
+    [<Fact>]
+    let ``the raster is the right way up`` () =
+        let f = uniform 1.0 0.0
+        let gone = Array.init 25 (fun k -> if k < 5 then nan else 1.0)
+        let img = image Field.licDefaults { f with U = Array.map2 (fun g u -> g * u) gone f.U }
+        let alpha i j = img.Rgba.[(j * img.Width + i) * 4 + 3]
+
+        Assert.Equal(255uy, alpha 100 10)
+        Assert.Equal(0uy, alpha 100 (img.Height - 10))
+
+    [<Fact>]
+    let ``an oversample or a kernel that means nothing is refused`` () =
+        let g = VectorGrid.sample (Grid.linear 0.0<m> 1.0<m> 3) (Grid.linear 0.0<m> 1.0<m> 3) (fun _ _ -> struct (1.0<m / s>, 0.0<m / s>))
+
+        Assert.Throws<ArgumentException>(fun () -> Field.licWith { Field.licDefaults with Oversample = 0 } U.metre U.metre g |> ignore)
+        |> ignore
+
+        Assert.Throws<ArgumentException>(fun () -> Field.licWith { Field.licDefaults with Length = 0.0<px> } U.metre U.metre g |> ignore)
+        |> ignore
+
+    let private pendulum =
+        let flow: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s ^ 2> * sin (float th) * 1.0<rad>)
+        Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 53) (Grid.linear -9.0<rad / s> 9.0<rad / s> 37) flow
+
+    /// Small and untitled, because the sidecar is noise and the encoder stores it uncompressed.
+    let private portrait = Field.lic Derived.radian (U.div Derived.radian U.second) pendulum
+
+    /// **The PNG baseline.** The `.tex` and the sidecar it names, as D64's image pair is: the
+    /// bytes come from Marey's own encoder over pixels computed from a stated seed, so nothing
+    /// outside the repository can move them, and the pair is compiled by a real engine.
+    [<Fact>]
+    let ``golden: a pendulum's phase portrait by LIC (tikz and png)`` () =
+        let rendered = Chart.render TikzBackend.renderWithAssets (Chart.size 280.0 190.0) portrait
+        Golden.check "figure-field-lic.tex" rendered.Document
+
+        let asset = Assert.Single rendered.Assets
+        Assert.Contains(asset.Name, rendered.Document)
+        Golden.checkBytes "figure-field-lic.png" asset.Bytes
+
+        match TexToolchain.compileAssetsWith "field-lic" (TikzBackend.standalone rendered.Document) rendered.Assets (fun _ -> Ok()) with
+        | TexToolchain.PdfUnavailable _ -> Console.WriteLine("SKIPPED: " + TexToolchain.report ())
+        | TexToolchain.PdfProduced() -> ()
+        | TexToolchain.PdfFailed why -> failwithf "the LIC baseline does not compile:\n%s" why
