@@ -121,7 +121,7 @@ values with no unit to carry a prefix are not rescaled, and the label is left to
 
 <img src="docs/images/co2-record.svg" alt="Atmospheric CO2 at Mauna Loa, annual means with uncertainties" width="640">
 
-The [`examples/`](examples/) directory has thirteen worked scripts, three of them on real committed
+The [`examples/`](examples/) directory has fourteen worked scripts, three of them on real committed
 datasets.
 
 ## A figure that moves
@@ -221,7 +221,7 @@ prints a census of all nine external dependencies and what became of them, and
 
 - **[The guide](docs/guide.md)** — everything the library does today, with a runnable example for
   each part. Every example in it is extracted and executed by the test suite.
-- **[Examples](examples/)** — thirteen standalone scripts, also executed by the test suite.
+- **[Examples](examples/)** — fourteen standalone scripts, also executed by the test suite.
   [`reel.fsx`](examples/reel.fsx) is the demo reel: the whole library in one shot, ending in an
   `.mp4`.
 - **[Why Marey is like this](docs/why.md)** — the case for a unit witness over a string label,

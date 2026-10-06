@@ -51,6 +51,11 @@ land in a minor release.
   streamlines, nullclines and fixed points marked by kind in one figure.
 - **`examples/pendulum.fsx`**: a pendulum's phase portrait with and without friction, its fixed
   points classified, and Liouville's theorem checked on the grid.
+- **`Chart.withColorDomain`** states a continuous colour channel's domain rather than taking its
+  values' range, in any unit of the channel's dimension. For two figures that must share a colour
+  scale, and for a film.
+- **`examples/dipole.fsx`**: a rotating dipole's potential, equipotentials and field lines,
+  filmed and encoded to `.mp4`, with the colour scale held for the whole film.
 - **`Chart.overlay`**, which draws one figure's layers over another's last panel: a heatmap
   under its contours, or any two figures over the same quantities.
 - **`Rng`, a specified pseudo-random generator, in `Marey.Core`.** SplitMix64, immutable,
@@ -67,6 +72,12 @@ land in a minor release.
   as it does for metres against joules. The angle is read from the witness's factors, so build
   angular units by composition (`U.div Derived.radian U.second`). A witness declared by hand with
   a compound symbol carries no factors and is not recognised; the guide says so.
+- **A film holds its colour scale still.** An animated figure's continuous colour channels are
+  drawn against the union of their domains over the shot's sampled frames, as the panel's gutters
+  and prefixes already were, rather than against each frame's own range. A heatmap of a field
+  that grows tenfold used to look the same in every frame, and now reads as growing. A quiver's
+  arrows are scaled against the largest magnitude in the shot, for the same reason. `Shot` gained
+  `ColourDomains` and `QuiverKeys`, and `QuiverKey` gained `Largest`. A still is unchanged.
 - **`GeomOf` gained a case, `GeomField`**, the geom a field layer is: a grid and what to draw of
   it, computed on the panel at compile time. A `match` over `Geom` that was exhaustive needs an
   arm for it.

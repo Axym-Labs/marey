@@ -1150,3 +1150,138 @@ module ``phase portraits`` =
         | TexToolchain.Unavailable -> Console.WriteLine("SKIPPED: " + TexToolchain.report ())
         | TexToolchain.Compiled -> ()
         | TexToolchain.Failed why -> failwithf "the portrait baseline does not compile:\n%s" why
+
+// ======================================================================================
+// Phase 7 — a field in motion (D94). Gate 14.
+// ======================================================================================
+
+module ``a field in motion`` =
+
+    let private extent = Chart.size 480.0 300.0
+
+    /// A potential in volts that grows tenfold over one second: (1 + 9t)·xy.
+    let private growing (t: float<s>) =
+        Field.sampleScalar (Grid.linear -1.0<m> 1.0<m> 11) (Grid.linear -1.0<m> 1.0<m> 11) (fun p ->
+            (1.0 + 9.0 * float t) * float p.X * float p.Y * 1.0<V>)
+
+    let private heatmapFilm =
+        Anim.ofSeconds 1.0<s> (fun t -> Field.heatmap U.metre U.metre Derived.volt (growing t) |> Chart.withTitle "growing")
+        |> Film.ofFigures 8 extent
+
+    let private quiverFilm =
+        Anim.ofSeconds 1.0<s> (fun t -> Field.quiver U.metre U.metre (U.div Derived.volt U.metre) (Field.grad (growing t)))
+        |> Film.ofFigures 8 extent
+
+    let private frames (film: Film) = Frames.times 10.0 film.Duration |> Array.map film.Frames.At
+
+    let rec private collect (pick: Node -> 'a option) (n: Node) : 'a list =
+        let here = pick n |> Option.toList
+
+        let below =
+            match n with
+            | Group ns -> ns |> Array.toList |> List.collect (collect pick)
+            | Transform(_, c)
+            | Clip(_, c)
+            | Keyed(_, c)
+            | Annotated(_, c)
+            | Opacity(_, c) -> collect pick c
+            | _ -> []
+
+        here @ below
+
+    let private texts = collect (function Text t -> Some t.Text | _ -> None)
+    let private clips = collect (function Clip(segs, _) -> Some segs | _ -> None)
+    let private rasters = collect (function Raster r -> Some r | _ -> None)
+
+    /// **Gate 14.** Every frame has the same plot rectangle and the same words — tick labels,
+    /// colorbar labels and all — so neither the panel nor the colour scale moves while the field
+    /// grows.
+    [<Fact>]
+    let ``the plot rectangle and the colour scale are the same in every frame`` () =
+        let fs = frames heatmapFilm
+        Assert.True(fs.Length >= 10)
+
+        for f in fs do
+            Assert.Equal<string list>(texts fs.[0], texts f)
+            Assert.True((clips fs.[0] = clips f), "the plot area moved between frames")
+
+        // The union over the samples, which include t = 1 s: ±10 V.
+        Assert.Equal((-10.0, 10.0), heatmapFilm.Shot.ColourDomains |> Array.exactlyOne |> snd |> fun (a, b) -> Math.Round(a, 9), Math.Round(b, 9))
+
+    /// And the field is seen to grow: a corner pixel is pale at the start and saturated at the
+    /// end. Renormalised per frame, the two images would be the same.
+    [<Fact>]
+    let ``a growing field is drawn growing`` () =
+        let fs = frames heatmapFilm
+        let first = rasters fs.[0] |> List.exactlyOne
+        let last = rasters fs.[fs.Length - 1] |> List.exactlyOne
+        Assert.False((first.Image.Rgba = last.Image.Rgba), "the first and last frames draw the same image")
+
+        // The top-right node, at +1 V·(1 + 9t): the ramp's middle-upper part early, its end late.
+        let corner (r: RasterNode) = r.Image.Rgba.[(r.Image.Width - 1) * 4 .. (r.Image.Width - 1) * 4 + 2]
+        Assert.NotEqual<byte[]>(corner first, corner last)
+
+    /// The quiver's arrows grow with the field — tenfold, as it does — under one key in every
+    /// frame. Each frame used to set its longest arrow to 0.9 of the pitch.
+    [<Fact>]
+    let ``a growing field's arrows grow, under one key`` () =
+        let fs = frames quiverFilm
+
+        // Tail to tip of every arrow: six segments each, batched by colour into one path. The
+        // key is skipped — it is the one arrow that must not change.
+        let rec arrowLengths (n: Node) : float list =
+            match n with
+            | Annotated(a, _) when a.Label = "quiver key" -> []
+            | Path(segs, Some _, Some _, _) ->
+                [ for k in 0..6 .. segs.Length - 6 do
+                      match segs.[k], segs.[k + 2] with
+                      | MoveTo a, MoveTo b -> yield sqrt (float ((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y)))
+                      | _ -> () ]
+            | Group ns -> ns |> Array.toList |> List.collect arrowLengths
+            | Transform(_, c)
+            | Clip(_, c)
+            | Keyed(_, c)
+            | Annotated(_, c)
+            | Opacity(_, c) -> arrowLengths c
+            | _ -> []
+
+        let longest (n: Node) = arrowLengths n |> List.max
+
+        // The key the shot pinned is the largest frame's: |∇(10xy)| at a corner, 10√2 V/m.
+        let _, key = quiverFilm.Shot.QuiverKeys |> Array.exactlyOne
+        Assert.True(abs (key.Largest - 10.0 * sqrt 2.0) < 1e-9, sprintf "pinned against %g" key.Largest)
+
+        // The first frame is t = 0, field ×1; the last is t = 0.9, field ×9.1.
+        let ratio = longest fs.[fs.Length - 1] / longest fs.[0]
+        Assert.True(abs (ratio - 9.1) < 0.05, sprintf "the longest arrow grew by %g, not 9.1" ratio)
+
+        for f in fs do
+            Assert.Equal<string list>(texts fs.[0], texts f)
+
+    /// A stated domain wins over the union, for a film as for a still.
+    [<Fact>]
+    let ``a stated colour domain is the domain`` () =
+        let film =
+            Anim.ofSeconds 1.0<s> (fun t ->
+                Field.heatmap U.metre U.metre Derived.volt (growing t) |> Chart.withColorDomain Derived.volt -20.0<V> 20.0<V>)
+            |> Film.ofFigures 8 extent
+
+        Assert.Equal((-20.0, 20.0), film.Shot.ColourDomains |> Array.exactlyOne |> snd)
+
+    [<Fact>]
+    let ``a colour domain in another unit is converted, and in another dimension refused`` () =
+        let fig = Field.heatmap U.metre U.metre Derived.volt (growing 0.0<s>)
+        let mv = U.scaled "mV" 1e-3 Derived.volt
+        let shot = Chart.arrangeFor TextMeasure.approx extent (fig |> Chart.withColorDomain mv -500.0<V> 500.0<V>)
+        ignore shot
+
+        let channelDomain (f: Figure) =
+            f.Panels.[0].Layers.[0].Channels.[0].Map
+            |> function
+                | ColorByValue(scale, _) -> Axis.domainOfPacked scale
+                | _ -> failwith "no colour channel"
+
+        let lo, hi = channelDomain (fig |> Chart.withColorDomain mv -500.0<V> 500.0<V>)
+        Assert.True(abs (lo + 0.5) < 1e-12 && abs (hi - 0.5) < 1e-12, sprintf "(%g, %g)" lo hi)
+
+        Assert.Throws<ArgumentException>(fun () -> fig |> Chart.withColorDomain U.metre 0.0<m> 1.0<m> |> ignore) |> ignore

@@ -193,7 +193,17 @@ type Shot =
       /// How many states the union was taken over. **Reported rather than assumed, per D72:**
       /// the union is only as good as its samples, and an animation with a spike between two of
       /// them can still overflow. A single figure's own shot reports 1.
-      Samples: int }
+      Samples: int
+      /// D94 — every continuous colour channel's domain, unioned over the sampled states and
+      /// keyed `panel-0-0/layer/channel`. A frame draws its colours and its colorbar against
+      /// this rather than against its own range, so a growing field reads as growing rather than
+      /// being renormalised every frame. Empty for a still. A value outside it, between two
+      /// samples, takes the ramp's end colour.
+      ColourDomains: (string * (float * float))[]
+      /// D94 — every quiver layer's key, the one with the largest magnitude among the sampled
+      /// states, keyed `panel-0-0/layer`. The arrows are scaled against it in every frame, for
+      /// the colour domain's reason. Empty for a still.
+      QuiverKeys: (string * QuiverKey)[] }
 
 /// **The compiler.** A `Figure` in, a `Node` out, nothing in between that a backend can see.
 ///
@@ -1077,6 +1087,93 @@ module Figure =
         |> Layout.withGaps theme.PanelGap theme.PanelGap
         |> Layout.withPadding theme.FigurePadding
 
+    // ---- D94: what a shot pins besides the gutters -------------------------------------------
+    //
+    // A frame normalises two things to its own data: a continuous colour channel's domain is the
+    // range of its values, and a quiver's length scale is set against its largest magnitude.
+    // Across a film both renormalise every frame, so a field that grows tenfold looks the same
+    // throughout. D72 already builds every sampled state, so the union of their domains, and the
+    // largest of their quiver magnitudes, cost nothing more to take, and they are pinned here in
+    // the way D73 pins a prefix.
+
+    let private channelKey (panel: string) (layer: int) (channel: int) = sprintf "%s/%d/%d" panel layer channel
+    let private layerKey (panel: string) (layer: int) = sprintf "%s/%d" panel layer
+    let private panelKey (p: Panel) = sprintf "panel-%d-%d" p.Row p.Col
+
+    let private colourDomainsOf (states: Figure[]) : (string * (float * float))[] =
+        let finite (v: float) = not (System.Double.IsNaN v || System.Double.IsInfinity v)
+
+        states
+        |> Array.collect (fun fig ->
+            fig.Panels
+            |> Array.collect (fun p ->
+                p.Layers
+                |> Array.mapi (fun i l ->
+                    l.Channels
+                    |> Array.mapi (fun j c ->
+                        match c.Map with
+                        | ColorByValue(scale, _) ->
+                            let lo, hi = Axis.domainOfPacked scale
+                            if finite lo && finite hi then Some(channelKey (panelKey p) i j, (lo, hi)) else None
+                        | _ -> None)
+                    |> Array.choose id)
+                |> Array.concat))
+        |> Array.groupBy fst
+        |> Array.map (fun (key, entries) ->
+            let domains = entries |> Array.map snd
+            let lo = domains |> Array.map (fun (a, b) -> min a b) |> Array.min
+            let hi = domains |> Array.map (fun (a, b) -> max a b) |> Array.max
+            // A reversed colour scale stays reversed.
+            let a0, b0 = domains.[0]
+            key, (if a0 <= b0 then (lo, hi) else (hi, lo)))
+
+    let private quiverKeysOf (states: Figure[]) : (string * QuiverKey)[] =
+        states
+        |> Array.collect (fun fig ->
+            fig.Panels
+            |> Array.collect (fun p ->
+                p.Layers
+                |> Array.mapi (fun i l ->
+                    match l.Geom with
+                    | GeomField(_, FieldQuiver(Some k)) -> Some(layerKey (panelKey p) i, k)
+                    | _ -> None)
+                |> Array.choose id))
+        |> Array.groupBy fst
+        |> Array.map (fun (key, entries) -> key, entries |> Array.map snd |> Array.maxBy (fun k -> k.Largest))
+
+    /// The same scale kind and unit over another raw domain.
+    let private rescale (scale: PackedScale) (lo: float, hi: float) : PackedScale =
+        scale.Accept
+            { new IScaleConsumer<PackedScale> with
+                member _.Apply<[<Measure>] 'u>(s: Scale<'u>) =
+                    Erase.packScale (
+                        Scale.ofKind s.Kind s.Unit (LanguagePrimitives.FloatWithMeasure<'u> lo, LanguagePrimitives.FloatWithMeasure<'u> hi)
+                    ) }
+
+    /// A panel with the shot's colour domains and quiver keys put into its layers.
+    let private pinned (domains: (string * (float * float))[]) (keys: (string * QuiverKey)[]) (p: Panel) : Panel =
+        if domains.Length = 0 && keys.Length = 0 then
+            p
+        else
+            let pk = panelKey p
+            let find (k: string) (table: (string * 'a)[]) = table |> Array.tryPick (fun (k', v) -> if k' = k then Some v else None)
+
+            { p with
+                Layers =
+                    p.Layers
+                    |> Array.mapi (fun i l ->
+                        { l with
+                            Channels =
+                                l.Channels
+                                |> Array.mapi (fun j c ->
+                                    match c.Map, find (channelKey pk i j) domains with
+                                    | ColorByValue(scale, ramp), Some d -> { c with Map = ColorByValue(rescale scale d, ramp) }
+                                    | _ -> c)
+                            Geom =
+                                match l.Geom, find (layerKey pk i) keys with
+                                | GeomField(f, FieldQuiver _), Some k -> GeomField(f, FieldQuiver(Some k))
+                                | g, _ -> g }) }
+
     /// **`Figure -> Shot`.** The layout this figure would be drawn in, measured and nothing more.
     ///
     /// This is D72's cheap half and it is public API on the type every example in the repository
@@ -1099,7 +1196,9 @@ module Figure =
 
         { Outer = outer
           Panels = panels
-          Samples = 1 }
+          Samples = 1
+          ColourDomains = [||]
+          QuiverKeys = [||] }
 
     /// **D72 — one arrangement for the whole shot.** Sample the animation, arrange each state,
     /// and take the union: the arrangement no frame can overflow.
@@ -1137,7 +1236,14 @@ module Figure =
             else
                 Array.init samples (fun i -> float i / float (samples - 1))
 
-        let states = times |> Array.map sample
+        // D94 — the colour domains and quiver keys first, and every state measured with them in
+        // place: the union domain's colorbar labels can be wider than any one state's.
+        let raw = times |> Array.map sample
+        let colourDomains = colourDomainsOf raw
+        let quiverKeys = quiverKeysOf raw
+
+        let states =
+            raw |> Array.map (fun f -> { f with Panels = f.Panels |> Array.map (pinned colourDomains quiverKeys) })
 
         // The outer grid first, because a panel cannot be measured until it knows its region and
         // the region depends on how tall the head row is.
@@ -1229,7 +1335,9 @@ module Figure =
 
         { Outer = outer
           Panels = panels
-          Samples = samples }
+          Samples = samples
+          ColourDomains = colourDomains
+          QuiverKeys = quiverKeys }
 
     /// **`Shot -> Figure -> Node`.** Draw this figure inside a layout that has already been
     /// decided — the frame renderer's entry point.
@@ -1297,7 +1405,7 @@ module Figure =
                 | None -> Scene.empty
                 | Some region ->
                     let frozen = shot.Panels |> Array.tryPick (fun (k, l) -> if k = key then Some l else None)
-                    let _, draw = compilePanel m theme extent region frozen (unify p)
+                    let _, draw = compilePanel m theme extent region frozen (unify (pinned shot.ColourDomains shot.QuiverKeys p))
                     draw ())
 
         Scene.prune (

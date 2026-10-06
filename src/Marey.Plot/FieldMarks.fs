@@ -57,11 +57,17 @@ and LicOptions =
       Seed: uint64 }
 
 /// D87 — what one arrow length means: a round value of the magnitude and its label, prefix and
-/// unit included, both decided from the data when the layer is built. The arrow it is drawn with
+/// unit included, both decided from the data when the layer is built, and the magnitude the
+/// length scale is set against. The arrow it is drawn with
 /// is sized on the panel, so the label is the same at every figure size and the arrow is not.
 and QuiverKey =
     { Value: float
-      Label: string }
+      Label: string
+      /// The magnitude the length scale is set against: the longest arrow is 0.9 of the grid's
+      /// pitch at this magnitude. The layer's own largest when it is built; across a film, the
+      /// largest of every sampled frame's, so the arrows grow and shrink with the field rather
+      /// than being renormalised each frame (D94).
+      Largest: float }
 
 /// A grid with its measures spent: node coordinates in `'p` — data space on a layer, `nd` once
 /// projected — and values raw in the field's unit.
@@ -569,7 +575,9 @@ module FieldMarks =
             let span = pitch p plot
 
             let largest =
-                p.V |> Array.fold (fun acc v -> if finite v && v > acc then v else acc) 0.0
+                match key with
+                | Some k when k.Largest > 0.0 -> k.Largest
+                | _ -> p.V |> Array.fold (fun acc v -> if finite v && v > acc then v else acc) 0.0
 
             // Pixels per unit of magnitude, or `None` when nothing has a length.
             let perUnit = if directionOnly || largest <= 0.0 then None else Some(0.9 * span / largest)

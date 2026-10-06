@@ -1078,6 +1078,43 @@ module Chart =
                             | _ -> c) })
             fig
 
+    /// **State a continuous colour channel's domain** rather than taking its values' range: the
+    /// most recent layer's colour scale runs from `lo` to `hi`, in `u`, and a value beyond either
+    /// end takes the ramp's end colour.
+    ///
+    /// For two figures that must share a colour scale, and for a film whose colours should mean
+    /// a stated range rather than the union of its sampled frames (D94). `u` need not be the
+    /// channel's own unit, only of its dimension: the ends are converted. A different dimension,
+    /// or an angle against no angle (D98), raises, as `Figure.unify` does for an axis.
+    let withColorDomain (u: U<'u>) (lo: float<'u>) (hi: float<'u>) (fig: Figure) : Figure =
+        let angle = U.angleExponentOf u.Symbol u.Factors
+
+        let rescale (scale: PackedScale) =
+            scale.Accept
+                { new IScaleConsumer<PackedScale> with
+                    member _.Apply<[<Measure>] 'c>(s: Scale<'c>) =
+                        if s.Unit.Dim <> u.Dim || U.angleExponentOf s.Unit.Symbol s.Unit.Factors <> angle then
+                            invalidArg
+                                "u"
+                                (sprintf
+                                    "Marey: a colour domain in %s cannot apply to a colour channel in %s."
+                                    (UnitDisplay.renderExpanded Unicode u.Dim)
+                                    (UnitDisplay.renderExpanded Unicode s.Unit.Dim))
+
+                        let into (v: float<'u>) = U.ofSI s.Unit (U.toSI u v)
+                        Erase.packScale (Scale.ofKind s.Kind s.Unit (into lo, into hi)) }
+
+        mapLastLayer
+            (fun l ->
+                { l with
+                    Channels =
+                        l.Channels
+                        |> Array.map (fun c ->
+                            match c.Map with
+                            | ColorByValue(scale, ramp) -> { c with Map = ColorByValue(rescale scale, ramp) }
+                            | _ -> c) })
+            fig
+
     /// **Size by a quantity**, between two device diameters.
     ///
     /// Interpolated in area rather than in diameter, because area is what the eye reads off a

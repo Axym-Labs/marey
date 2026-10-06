@@ -379,13 +379,15 @@ module Field =
 
     /// The key's label: the value under the prefix the value itself would be ticked in, and the
     /// unit in the theme's plain-text style.
-    let private keyOf<[<Measure>] 'v> (uv: U<'v>) (value: float) : QuiverKey =
+    let private keyOf<[<Measure>] 'v> (uv: U<'v>) (largest: float) : QuiverKey =
+        let value = keyValue largest
         let prefix = Prefix.selectForUnit uv (value, value)
         let shown = value / Prefix.factor prefix
         let unitText = UnitDisplay.unitText Unicode UnitRegistry.si prefix uv
 
         { Value = value
-          Label = (Ticks.formatGeneral shown + (if unitText = "" then "" else " " + unitText)).Trim() }
+          Label = (Ticks.formatGeneral shown + (if unitText = "" then "" else " " + unitText)).Trim()
+          Largest = largest }
 
     /// A quiver: an arrow at every node, its length the vector's magnitude through the quiver's
     /// own scale, and a key in the plot area's corner saying what one length means — `2 m/s`,
@@ -404,7 +406,7 @@ module Field =
 
         let key =
             match ScalarGrid.range magnitude with
-            | Some(_, hi) when hi > 0.0<_> -> Some(keyOf uv (keyValue (float hi)))
+            | Some(_, hi) when hi > 0.0<_> -> Some(keyOf uv (float hi))
             | _ -> None
 
         arrowLayerOf ux uy (FieldQuiver key) magnitude g

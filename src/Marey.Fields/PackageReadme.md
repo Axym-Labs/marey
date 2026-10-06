@@ -76,6 +76,9 @@ because ∂ω̇/∂θ and ∂θ̇/∂ω are in different units and their differe
   by its linearisation: saddle, node, focus or centre, with eigenvalues in `1/'t`.
   `FixedPoint.describe` prints one: `saddle at (3.1416 rad, 0 rad·s⁻¹), λ = 3.1266, -3.1266 s⁻¹`.
   `Phase.portrait` draws the streamlines, the nullclines and the fixed points together.
+- **Fields in motion.** A field that changes with time is an `Anim<Figure>` like any other, and
+  `Film.ofFigures` renders it. The colour scale and a quiver's arrow scale are held for the whole
+  film, so a growing field is drawn growing. `Chart.withColorDomain` states the range instead.
 
 ## Links
 
