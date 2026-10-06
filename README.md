@@ -121,7 +121,7 @@ values with no unit to carry a prefix are not rescaled, and the label is left to
 
 <img src="docs/images/co2-record.svg" alt="Atmospheric CO2 at Mauna Loa, annual means with uncertainties" width="640">
 
-The [`examples/`](examples/) directory has fourteen worked scripts, three of them on real committed
+The [`examples/`](examples/) directory has fifteen worked scripts, three of them on real committed
 datasets.
 
 ## A figure that moves
@@ -176,12 +176,12 @@ chance for one frame of a video to be set in a different typeface from the frame
 |---|---|
 | `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the ten-case scene IR. Zero dependencies. |
 | `Marey.Units` | SI, 22 derived and 18 non-SI unit witnesses; canonicalisation, prefix selection, and Unicode/ASCII/LaTeX/siunitx rendering. |
-| `Marey.Plot` | `Chart` and the `plot` encoding block, twelve geoms, colour/shape/size channels, statistics, facets, six themes, colour-blind-safe palettes with a validator, constraint layout, the axis and legend compilers, the `scene` storyboard block, and the parallel frame writer. No backend reference. |
+| `Marey.Plot` | `Chart` and the `plot` encoding block, thirteen geoms (hexbin the newest), colour/shape/size channels, statistics (loess and seeded bootstrap intervals among them), facets, six themes, colour-blind-safe palettes with a validator, constraint layout, the axis and legend compilers, the `scene` storyboard block, and the parallel frame writer. No backend reference. |
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, byte-identical across renders. |
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX, with `siunitx` units and inherited fonts. |
 | `Marey.Backend.Skia` | PNG and vector PDF, and real text shaping through HarfBuzz. The only package with third-party dependencies. |
 | `Marey.Anim` | Animation as a pure function of time: a seekable, composable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
-| `Marey.Fields` | Scalar and vector fields on dimensioned planes, phase spaces included: grids, gradient, divergence, curl and the Jacobian in the units the types work out, and heatmaps, contours and filled bands. |
+| `Marey.Fields` | Scalar and vector fields on dimensioned planes, phase spaces included: grids, gradient, divergence, curl and the Jacobian in the units the types work out; heatmaps, contours, filled bands, quivers with a key, evenly spaced streamlines and line-integral convolution; phase portraits with fixed points classified and eigenvalues in `1/'t`. |
 | `Marey.Tools.Video` | Encoding a rendered frame sequence to video by shelling out to `ffmpeg`, degrading to the numbered frames when it is absent. |
 | `Marey.Tools.Tex` | Mathematical typesetting: TeX source on a scene's text runs becomes vector outlines, through `latex` and `dvisvgm`, so every backend draws it. Degrades to plain text when TeX is absent. |
 | `Marey.Toolchain` | Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies. |
@@ -221,7 +221,7 @@ prints a census of all nine external dependencies and what became of them, and
 
 - **[The guide](docs/guide.md)** — everything the library does today, with a runnable example for
   each part. Every example in it is extracted and executed by the test suite.
-- **[Examples](examples/)** — fourteen standalone scripts, also executed by the test suite.
+- **[Examples](examples/)** — fifteen standalone scripts, also executed by the test suite.
   [`reel.fsx`](examples/reel.fsx) is the demo reel: the whole library in one shot, ending in an
   `.mp4`.
 - **[Why Marey is like this](docs/why.md)** — the case for a unit witness over a string label,

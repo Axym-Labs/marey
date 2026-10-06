@@ -14,73 +14,69 @@ land in a minor release.
 
 ### Added
 
-- **`Marey.Fields`, a thirteenth package: fields on dimensioned planes.** `ScalarGrid` and
-  `VectorGrid` on rectilinear nodes, sampled from a function (`Field.sampleScalar`, `sample`,
-  `sampleFlow`) or built from data, with `Grid.linear` and `Grid.log` for nodes even on either
-  kind of axis. `Field.grad`, `div`, `curl`, `laplacian` and `jacobian`, whose units the types
-  work out: the gradient of a potential in volts over metres is in V/m, and its divergence in
-  V/m². A `Flow` has a different unit on each axis, so a phase space is a domain: a pendulum's
-  divergence is in 1/s, and its curl does not compile. Drawn with `Field.heatmap`, `contours` and
-  `bands`, with a colorbar in the field's unit. Contour levels are the nice numbers of the
-  field's own range, saddles are resolved by the asymptotic decider, and bands are filled
-  even-odd with their holes. Non-finite samples are kept, counted and not drawn.
-  `Field.quiver` draws arrows whose length is the magnitude through the quiver's own scale (its
-  longest arrow is 0.9 of the grid pitch), with a key in the plot area's corner saying what one
-  length means, as a round value with its prefix: `2 kV·m⁻¹`. `quiverBy` also colours the
-  arrows by magnitude. `Field.directions` draws equal arrows for any vector grid, phase spaces
-  included, where a magnitude has no unit. Every arrow is tangent to the field on the panel, a
-  log axis included.
-  `Field.streamlines` draws evenly spaced streamlines 16 px apart (`streamlinesWith` states the
-  separation), integrated on the page so they are the field's own curves on a log axis or a
-  phase space, closed where they return to their start, with arrowheads downstream and no
-  randomness. `streamlinesBy` colours each line by the field's magnitude along it.
-  `Field.lic` draws a line-integral convolution: a noise texture smeared along the field's
-  streamlines, so the flow shows at every pixel. Any vector grid, phase spaces included.
-  `licBy` colours it by magnitude, with a colorbar. It is a raster at the plot area's resolution
-  times a stated oversample (`licWith`, with `Field.licDefaults`: a 20 px kernel, oversample 1,
-  seed 0). The noise comes from `Rng`, so a seed, a field and a plot size always give the same
-  image, and a different seed gives the same flow with different grain.
-  `Phase.fixedPoints` finds a flow's fixed points as the zeros of the grid's interpolant, where
-  its nullclines cross, and classifies each by its linearisation's trace and determinant: saddle,
-  stable or unstable node or focus, centre, or degenerate. The eigenvalues are in `1/'t`, so a
-  pendulum's are in s⁻¹. A centre is called one when the eigenvalues' real part is under 10⁻³ of
-  their imaginary part (`fixedPointsWith` states another tolerance), because linearisation cannot
-  tell a centre from a weak focus. `FixedPoint.describe` prints one as
-  `centre (linear) at (0 rad, 0 rad·s⁻¹), λ = ±3.128i s⁻¹`. `Phase.nullclines` draws the zero
-  contours of both components, named `dθ/dt = 0` after the axes, and `Phase.portrait` draws
-  streamlines, nullclines and fixed points marked by kind in one figure.
-- **`examples/pendulum.fsx`**: a pendulum's phase portrait with and without friction, its fixed
-  points classified, and Liouville's theorem checked on the grid.
+- **`Marey.Fields`, a thirteenth package: fields on dimensioned planes.** The guide's new §15
+  walks through it.
+  - **Grids.** `ScalarGrid` and `VectorGrid` on rectilinear nodes, sampled from a function
+    (`Field.sampleScalar`, `sample`, `sampleFlow`) or built from data, with `Grid.linear` and
+    `Grid.log` for nodes even on either kind of axis. Non-finite samples are kept, counted and
+    never drawn.
+  - **Derivatives in the units the types work out.** `Field.grad`, `div`, `curl`, `laplacian`
+    and `jacobian`: the gradient of a potential in volts over metres is in V/m, and its
+    divergence in V/m². A `Flow` has a different unit on each axis, so a phase space is a
+    domain: a pendulum's divergence is in 1/s, and its curl does not compile.
+  - **Scalar marks.** `Field.heatmap`, `contours` and `bands`, with a colorbar in the field's
+    unit. Contour levels are the nice numbers of the field's own range, saddles are resolved by
+    the asymptotic decider, and bands are filled even-odd with their holes.
+  - **Arrows.** `Field.quiver` sizes each arrow by its magnitude through the quiver's own scale,
+    with a key in the plot area's corner saying what one length means (`2 kV·m⁻¹`); `quiverBy`
+    also colours by magnitude. `Field.directions` draws equal arrows for any vector grid, phase
+    spaces included.
+  - **Streamlines.** `Field.streamlines` draws evenly spaced lines 16 px apart (`streamlinesWith`
+    states the separation), integrated on the page so they follow the field on a log axis or a
+    phase space, closed where they return to their start, with no randomness. `streamlinesBy`
+    colours each line by the field's magnitude.
+  - **Line-integral convolution.** `Field.lic` smears a noise texture along the streamlines, so
+    the flow shows at every pixel; `licBy` colours it by magnitude. A raster at the plot area's
+    resolution times a stated oversample (`licWith`, `Field.licDefaults`), seeded from `Rng`, so
+    a seed, a field and a plot size always give the same image. About 70 ms for a 480 × 300
+    figure.
+  - **Phase portraits.** `Phase.fixedPoints` finds a flow's fixed points where its nullclines
+    cross and classifies each by its linearisation: saddle, stable or unstable node or focus,
+    centre, or degenerate, with eigenvalues in `1/'t`. A centre is called one when the real part
+    is under 10⁻³ of the imaginary (`fixedPointsWith` states another tolerance), because
+    linearisation cannot tell a centre from a weak focus. `FixedPoint.describe` prints
+    `centre (linear) at (0 rad, 0 rad·s⁻¹), λ = ±3.128i s⁻¹`. `Phase.nullclines` and
+    `Phase.portrait` draw them.
 - **`Stat.hexbin` and `Chart.hexbin`**: scattered points counted into hexagons, as a density in
-  `1/('x·'y)` that integrates to one. Positions in metres give a colorbar in m⁻². `hexbinWith`
-  states the hexagons across, and `Stat.hexbinIn` the lattice itself. The rows are spaced so
-  the hexagons are regular on a plot area 1.6 times as wide as it is tall (`Stat.HexAspect`).
-- **`Stat.loess` and `Chart.addLoess`**: a local regression smooth, with R's defaults (span 0.75,
-  a local quadratic, tricube weights, no robustness iterations), typed in the data's own units.
-  `loessWith` states the span and the number of points, and `loessIn` where to evaluate and the
-  degree.
+  `1/('x·'y)` that integrates to one; positions in metres give a colorbar in m⁻². `hexbinWith`
+  states the hexagons across and `Stat.hexbinIn` the lattice. The rows are spaced so the hexagons
+  are regular on a plot area 1.6 times as wide as it is tall (`Stat.HexAspect`).
+- **`Stat.loess` and `Chart.addLoess`**: a local regression smooth with R's defaults (span 0.75, a
+  local quadratic, tricube weights, no robustness iterations), in the data's own units.
+  `loessWith` states the span and the points, `loessIn` where to evaluate and the degree.
 - **`Stat.bootstrap` and `Stat.bootstrapPairs`**: percentile bootstrap confidence intervals for
   any statistic of a sample or of (x, y) pairs, in the statistic's own unit, so a slope's interval
-  is in m/s. Reproducible from the seed the caller passes and the result carries: the resamples
-  come from `Rng`, so a seed names one interval on every runtime. `bootstrapWith` and
-  `bootstrapPairsWith` state the resamples and the level (defaults 2000 and 95%).
+  is in m/s. The seed is an argument and the result carries it; resamples come from `Rng`, so a
+  seed names one interval on every runtime. `bootstrapWith` and `bootstrapPairsWith` state the
+  resamples and the level (defaults 2000 and 95%).
+- **`Rng`, a specified pseudo-random generator, in `Marey.Core`.** SplitMix64, immutable, seeded
+  explicitly: `Rng.seeded`, `next`, `unit`, `below`, `units`. Specified rather than taken from
+  `System.Random`, so that a seed names the same sequence on every runtime, Fable included.
+  Pinned against the published outputs for seed 0.
 - **`TexCache` and `Typeset.sceneCached`**: typeset outlines that outlive one call, for a film.
   Pass one cache to every frame's pass and only the first frame runs `latex`: five frames with two
   formulas take 217 ms instead of 1082 ms. Keyed on the source, the preamble, the class options,
   the base size and the tools, so callers with different preambles never share an outline, and
   safe across threads. `Typeset.scene` keeps its per-call cache.
 - **`Chart.withColorDomain`** states a continuous colour channel's domain rather than taking its
-  values' range, in any unit of the channel's dimension. For two figures that must share a colour
+  values' range, in any unit of the channel's dimension: for two figures that must share a colour
   scale, and for a film.
-- **`examples/dipole.fsx`**: a rotating dipole's potential, equipotentials and field lines,
-  filmed and encoded to `.mp4`, with the colour scale held for the whole film.
-- **`Chart.overlay`**, which draws one figure's layers over another's last panel: a heatmap
-  under its contours, or any two figures over the same quantities.
-- **`Rng`, a specified pseudo-random generator, in `Marey.Core`.** SplitMix64, immutable,
-  seeded explicitly: `Rng.seeded`, `next`, `unit`, `below`, `units`. The library's first
-  randomness, for line-integral convolution and bootstrap intervals, and specified rather
-  than taken from `System.Random` so that a seed names the same sequence on every runtime,
-  including Fable. Pinned against the published outputs for seed 0.
+- **`Chart.overlay`** draws one figure's layers over another's last panel: a heatmap under its
+  contours, or any two figures over the same quantities.
+- **Three examples.** `fields.fsx` draws two line charges every way the package draws a field
+  and checks Gauss's law on the grid. `pendulum.fsx` is a phase portrait with and without
+  friction, its fixed points classified, with Liouville's theorem checked. `dipole.fsx` films a
+  rotating dipole and encodes it to `.mp4` with the colour scale held for the whole film.
 
 ### Changed
 
@@ -112,8 +108,9 @@ land in a minor release.
   now written as composed (`rad·s⁻¹`), and the axis is named for the angle: `θ` for rad, `ω` for
   rad/s, `α` for rad/s². `Hz` and `f` are unchanged for anything without an angle.
 - **`Marey.Tools.Tex`'s package readme still said an animation typesets once for the whole
-  film.** That was corrected in the guide at 0.3.0 and missed here; the memo does not outlive one
-  call.
+  film**, which was not true of `Typeset.scene`, whose cache lives for one call. The guide was
+  corrected at 0.3.0 and the readme was missed. Both now say how a film typesets once:
+  `TexCache`, above.
 
 ## [0.3.1] — 2026-10-05
 

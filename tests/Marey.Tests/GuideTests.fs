@@ -59,7 +59,9 @@ let private assemblies =
       "Marey.Toolchain"
       "Marey.Tools.Video"
       "Marey.Tools.Tex"
-      "Marey.Html" ]
+      "Marey.Html"
+      // M4 phase 9, with the fields chapter.
+      "Marey.Fields" ]
 
 let private guidePath =
     lazy (Path.Combine(Golden.repoRoot.Force(), "docs", "guide.md"))

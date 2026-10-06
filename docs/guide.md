@@ -27,15 +27,16 @@ The blocks form one continuous session, so bindings introduced early are still i
 12. [Statistics](#12-statistics)
 13. [The encoding block](#13-the-encoding-block)
 14. [Facets](#14-facets)
-15. [Output: SVG, TikZ, PNG, PDF](#15-output-svg-tikz-png-pdf)
-16. [Animation](#16-animation)
-17. [The storyboard](#17-the-storyboard)
-18. [Frames](#18-frames)
-19. [Video](#19-video)
-20. [Mathematical typesetting](#20-mathematical-typesetting)
-21. [Notebooks](#21-notebooks)
-22. [The scene IR](#22-the-scene-ir)
-23. [Escape hatches](#23-escape-hatches)
+15. [Fields](#15-fields)
+16. [Output: SVG, TikZ, PNG, PDF](#16-output-svg-tikz-png-pdf)
+17. [Animation](#17-animation)
+18. [The storyboard](#18-the-storyboard)
+19. [Frames](#19-frames)
+20. [Video](#20-video)
+21. [Mathematical typesetting](#21-mathematical-typesetting)
+22. [Notebooks](#22-notebooks)
+23. [The scene IR](#23-the-scene-ir)
+24. [Escape hatches](#24-escape-hatches)
 
 ---
 
@@ -54,12 +55,14 @@ open Marey
 |---|---|
 | `Marey.Core` | The `Scene` IR, colour, scales and geometry, and nothing else. Zero dependencies. |
 | `Marey.Units` | SI + 22 derived + 18 non-SI unit witnesses, and self-labelling axes. |
-| `Marey.Plot` | `Chart`, the `plot` block, geoms, channels, statistics, facets, themes, palettes, layout, and the storyboard block (§17). No backend reference — see §15. |
+| `Marey.Plot` | `Chart`, the `plot` block, geoms, channels, statistics, facets, themes, palettes, layout, and the storyboard block (§18). No backend reference — see §16. |
 | `Marey.Backend.Svg` | Rendering to SVG. |
 | `Marey.Backend.Tikz` | Rendering to `tikzpicture` source for LaTeX. |
-| `Marey.Backend.Skia` | Rendering to PNG or PDF, and real text shaping. The only one with third-party dependencies, and native ones at that — see §15. |
-| `Marey.Anim` | Animation as a pure function of time: `Anim<'a>`, the easing catalogue and path morphing. Depends on `Marey.Core` alone, and arrives with `Marey.Plot` — see §16. |
-| `Marey.Tools.Video` | Encoding a rendered frame sequence to video with `ffmpeg` — see §19. |
+| `Marey.Backend.Skia` | Rendering to PNG or PDF, and real text shaping. The only one with third-party dependencies, and native ones at that — see §16. |
+| `Marey.Anim` | Animation as a pure function of time: `Anim<'a>`, the easing catalogue and path morphing. Depends on `Marey.Core` alone, and arrives with `Marey.Plot` — see §17. |
+| `Marey.Tools.Video` | Encoding a rendered frame sequence to video with `ffmpeg` — see §20. |
+| `Marey.Fields` | Scalar and vector fields on dimensioned planes, their derivatives, phase portraits, and the field geoms: heatmap, contours, bands, quiver, streamlines, LIC — see §15. |
+| `Marey.Tools.Tex` | Typesetting TeX in a figure as filled outlines, by shelling out to `latex` and `dvisvgm` — see §21. |
 | `Marey.Toolchain` | Resolving and running the external programs Marey drives but does not ship. Zero dependencies; arrives with `Marey.Tools.Video`. |
 | `Marey.Html` | HTML renderings of ten Marey types, for a notebook cell. Host-neutral. |
 | `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension. Installed *into the host*, not referenced from user code. |
@@ -654,6 +657,42 @@ and the outliers past them — entirely in the sample's own unit. `Stat.quantile
 `Stat.groupBy` are the small ones. Every stat drops non-finite input and reports how many values
 it dropped.
 
+A **loess** smooth is a layer too, with R's defaults: a local quadratic over the nearest 75% of the
+points, tricube-weighted. `Stat.loess` returns the curve in the data's units, and `loessWith` and
+`loessIn` state the span, the points and the degree.
+
+```fsharp
+let smoothTrend =
+    Chart.scatter U.second U.metre t x
+    |> Chart.addLoess U.second U.metre t x
+```
+
+A **bootstrap** gives a confidence interval for any statistic, in the statistic's unit. The seed
+is an argument, and the interval carries it, because an interval that changes between two runs
+of one script cannot be cited. Resampling draws from `Rng`, a specified generator, so a seed names
+the same interval on every runtime.
+
+```fsharp
+let slopeOf (ts: float<s>[]) (xs: float<m>[]) = (Stat.regression U.second U.metre ts xs).Slope
+let slopeInterval = Stat.bootstrapPairs 2026UL slopeOf t x
+
+// The interval of a slope in m/s is in m/s.
+let slowest: float<m/s> = slopeInterval.Lo
+printfn "slope %.3f m/s, 95%% in [%.3f, %.3f], seed %d"
+    (float slopeInterval.Estimate) (float slopeInterval.Lo) (float slopeInterval.Hi) slopeInterval.Seed
+```
+
+A **hexbin** counts scattered points into hexagons and reports a density in `1/('x·'y)`, which
+is `density`'s result in two dimensions: positions in metres against times in seconds give a
+colorbar in m⁻¹·s⁻¹.
+
+```fsharp
+let cloud = Chart.hexbin U.second U.metre t x
+```
+
+The hexagons are laid out before any panel exists, so they are regular on a plot area 1.6 times
+as wide as it is tall. `Stat.hexbinIn` states the lattice instead.
+
 ---
 
 ## 13. The encoding block
@@ -773,7 +812,168 @@ let facetedHistogram =
 
 ---
 
-## 15. Output: SVG, TikZ, PNG, PDF
+## 15. Fields
+
+`Marey.Fields` draws quantities defined over a plane: a potential, an electric field, the flow of
+a dynamical system. A field arrives as a function or as gridded data, and either way it is used as
+a **grid**: a function is sampled once, at a resolution you state, and every mark reads the grid.
+
+```fsharp
+#r "nuget: Marey.Fields"
+
+// Two line charges, +1 at (0.6, −0.1) m and −1 at (−0.6, 0.1) m: a potential in volts.
+let dipolePotential (p: Vec2<m>) =
+    let plus = Vec2.norm { X = p.X - 0.6<m>; Y = p.Y + 0.1<m> }
+    let minus = Vec2.norm { X = p.X + 0.6<m>; Y = p.Y - 0.1<m> }
+    (log (float minus) - log (float plus)) * 1.0<V>
+
+let fieldXs = Grid.linear -1.8<m> 1.8<m> 72
+let fieldYs = Grid.linear -1.2<m> 1.2<m> 48
+let phi = Field.sampleScalar fieldXs fieldYs dipolePotential
+```
+
+`Grid.linear` and `Grid.log` space nodes evenly on a linear or a log axis; `ScalarGrid.create` and
+`VectorGrid.create` take data that is already gridded. A sample that is not finite (the potential
+at a charge) is kept, counted by `ScalarGrid.missing`, and never drawn.
+
+### Derivatives, and the units they come out in
+
+`grad`, `div`, `curl`, `laplacian` and `jacobian` are three-point differences on the grid, exact
+for a quadratic and second-order otherwise. Their units are the types':
+
+```fsharp
+let efield =
+    let g = Field.grad phi
+    { g with U = Array.map (~-) g.U; W = Array.map (~-) g.W }
+
+// The gradient of a potential in volts over metres is in V/m, and its divergence in V/m².
+let charge: ScalarGrid<m, m, V/m^2> = Field.div efield
+```
+
+### Drawing a scalar field
+
+A heatmap, its contours and filled bands, each with a colorbar in the field's unit. `Chart.overlay`
+puts one figure's layers over another's panel:
+
+```fsharp
+let equipotentials =
+    Field.heatmap U.metre U.metre Derived.volt phi
+    |> Chart.overlay (Field.contoursAt [| -1.0<V>; -0.5<V>; 0.0<V>; 0.5<V>; 1.0<V> |] U.metre U.metre phi)
+    |> Chart.withYLabel "y"
+
+let banded = Field.bands U.metre U.metre Derived.volt phi
+```
+
+Every field mark is computed when the figure is compiled, against the panel's final scales, so a
+heatmap lines up with its contours and with any other layer on the panel, on a log axis as well
+as a linear one. Contour levels default to the nice numbers the field's own range would be ticked
+at (`Field.contours`). Saddle cells are resolved by the asymptotic decider, and bands are filled
+even-odd, so holes stay holes.
+
+### Drawing a vector field
+
+```fsharp
+let coarse = Field.sample (Grid.linear -1.8<m> 1.8<m> 19) (Grid.linear -1.2<m> 1.2<m> 13) (fun p ->
+    let d = 1e-4<m>
+    let ex = (dipolePotential { p with X = p.X - d } - dipolePotential { p with X = p.X + d }) / (2.0 * d)
+    let ey = (dipolePotential { p with Y = p.Y - d } - dipolePotential { p with Y = p.Y + d }) / (2.0 * d)
+    { X = ex; Y = ey })
+
+let arrows = Field.quiverBy U.metre U.metre fieldUnit coarse
+let lines = Field.streamlines U.metre U.metre efield
+let texture = Field.licBy U.metre U.metre fieldUnit efield
+```
+
+- **`quiver`** draws an arrow per node, its length the magnitude through the quiver's own scale,
+  because the arrows are in V/m and the axes in metres. A key in the corner says what one length
+  means, as a round value with its prefix. `quiverBy` also colours by magnitude. Sample a quiver
+  coarser than a heatmap.
+- **`streamlines`** are evenly spaced on the page, 16 px apart by default (`streamlinesWith`),
+  integrated on the panel so they follow the field on a log axis, with arrowheads downstream.
+  There is no randomness, so the same field draws the same lines. A larger figure draws more
+  lines, the same distance apart.
+- **`lic`** is a line-integral convolution: noise smeared along the streamlines, so the flow shows
+  at every pixel. It is a raster at the plot area's resolution (`licWith` states an oversample
+  for print), and its noise is seeded, so a seed, a field and a plot size always give one image.
+  It costs about 70 ms for a 480 × 300 figure.
+
+### A phase space
+
+A pendulum's state is an angle and an angular velocity, two units, so `Field2` with one unit on
+both axes cannot hold it. A `Flow` can:
+
+```fsharp
+let swing: Flow<rad, rad/s, s> = fun th om -> struct (om, -9.81<1/s^2> * sin (float th) * 1.0<rad>)
+let phaseGrid = Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 105) (Grid.linear -9.0<rad/s> 9.0<rad/s> 73) swing
+
+// Phase-space area is conserved: the divergence is zero, in 1/s.
+let liouville: ScalarGrid<rad, rad/s, 1/s> = Field.div phaseGrid
+```
+
+`curl` and `laplacian` need one unit on both axes, so over a phase space they do not compile, and
+that is correct: ∂ω̇/∂θ and ∂θ̇/∂ω are in different units and their difference does not exist.
+
+```fsharp-error
+let nonsense = Field.curl phaseGrid
+```
+
+`Phase.fixedPoints` finds where the flow vanishes and classifies each point by its linearisation:
+saddle, stable or unstable node or focus, centre, or degenerate. The eigenvalues are in `1/'t`:
+
+```fsharp
+let omegaUnit = U.div Derived.radian U.second
+
+for p in Phase.fixedPoints phaseGrid do
+    printfn "%s" (FixedPoint.describe Derived.radian omegaUnit U.second p)
+
+let portrait = Phase.portrait Derived.radian omegaUnit phaseGrid
+```
+
+That prints a centre at 0 and ±2π and a saddle at ±π, the eigenvalues ±3.13i s⁻¹ and ±3.13 s⁻¹.
+They are written in s⁻¹ rather than Hz because an eigenvalue is a rate. `Phase.portrait` draws
+streamlines, both nullclines (named `dθ/dt = 0` and `dω/dt = 0` after the axes) and the fixed
+points, marked by kind.
+
+**A centre is a judgement.** Linearisation gives a centre purely imaginary eigenvalues and a weak
+focus nearly imaginary ones, and only the nonlinear terms tell them apart. A point is called
+`centre (linear)` when the real part is under a thousandth of the imaginary part;
+`Phase.fixedPointsWith` states another tolerance.
+
+### A field in motion
+
+A field that changes with time is an `Anim<Figure>` whose frames are built from each instant's
+grid, and it renders like any other animation (§17–§19):
+
+```fsharp
+let growing (time: float<s>) =
+    Field.sampleScalar fieldXs fieldYs (fun p -> (1.0 + float time) * dipolePotential p)
+
+let growingFilm =
+    Anim.ofSeconds 2.0<s> (fun time -> Field.heatmap U.metre U.metre Derived.volt (growing time))
+    |> Film.ofFigures 16 (Chart.size 480.0 300.0)
+```
+
+**The colour scale holds still for the whole film.** Each continuous colour channel is drawn
+against the union of its range over the film's sampled frames, not against the frame's own range,
+so a field that grows reads as growing, not as the same picture renormalised. A quiver's arrow
+scale is held the same way. `Chart.withColorDomain` states a range instead. It is the right
+choice when a few nodes near a singularity would otherwise set the range, as they do for the
+potential above:
+
+```fsharp
+let stated =
+    Field.heatmap U.metre U.metre Derived.volt phi
+    |> Chart.withColorDomain Derived.volt -2.0<V> 2.0<V>
+```
+
+Streamlines are recomputed from each frame's field, and their seeds follow the field, so a film of
+a rotating field redraws a different set of lines every frame. Contours from `Field.contours`
+choose their levels per frame, so state them with `contoursAt` in a film.
+`examples/dipole.fsx` is a rotating dipole, filmed and encoded.
+
+---
+
+## 16. Output: SVG, TikZ, PNG, PDF
 
 `Marey.Plot` does not reference a backend. A backend is a function passed in at render time, which
 is why the same figure goes to either without the figure knowing either exists.
@@ -995,7 +1195,7 @@ printfn "shaped:       %.2f px" (float (shaper.Measure spec "AVATAR").Advance)
 
 ---
 
-## 16. Animation
+## 17. Animation
 
 `Marey.Anim` holds one type, and its whole design is in the signature: **an animation is a pure
 function of time, not a mutation.**
@@ -1141,7 +1341,7 @@ you install the grammar. `fun u -> Anim.atFraction u anim` is the bridge.
 
 ---
 
-## 17. The storyboard
+## 18. The storyboard
 
 An animation is usually a *sequence*: something arrives, it changes, an axis zooms, one point is
 picked out. Written as a bare `float -> Figure` that means working out which step you are in and
@@ -1201,7 +1401,7 @@ default that comes from your storyboard rather than from a constant inside the l
 | `fadeIn h` | fade a named subtree in |
 
 `parallel'` takes the duration of its **longest** branch, and the shorter ones hold their final
-state through the tail — which is `Anim.map2`'s rule from §16, inherited rather than restated.
+state through the tail — which is `Anim.map2`'s rule from §17, inherited rather than restated.
 
 **`morphTo` interpolates the data, not the drawn geometry.** A `Figure` carries its own scales,
 so two figures are two coordinate systems; morphing one's paths into the other's would put half
@@ -1246,7 +1446,7 @@ name, and asking for one raises rather than drawing nothing.
 ### Rendering
 
 `animate` samples the storyboard, sizes one arrangement against the union of everything it saw
-(§16), and hands back an `Anim<Node>` you can seek:
+(§17), and hands back an `Anim<Node>` you can seek:
 
 ```fsharp
 let storyAnim = animate 32 (Chart.size 640.0 400.0) storyIntro
@@ -1282,7 +1482,7 @@ three and `0 … 40` in the last three. That is the line D72 draws: the *rectang
 showing the numbers changing.
 
 `animateWith` takes a measurer, for the same reason `Chart.toSceneWith` does — a PNG or PDF
-render should be arranged with the backend's own shaping (§15).
+render should be arranged with the backend's own shaping (§16).
 
 If the picture is not what you want out, `Storyboard.stages` gives the animation of `Stage`
 values themselves, each carrying the `Figure` on stage at that instant. That is the door to a
@@ -1290,7 +1490,7 @@ still frame, a caption, or a different renderer entirely.
 
 ---
 
-## 18. Frames
+## 19. Frames
 
 `Anim.At` is a direct evaluation, so rendering an animation is one `map` over the frame times.
 There is no scheduler and no replay: frames come out in any order, on any number of threads, and
@@ -1367,7 +1567,7 @@ backends that happen to be in the box:
   function must be safe to call concurrently. `SvgBackend.render` and `SkiaBackend.renderPng`
   both are, by constructing their backend inside the call.
 - **An `ITextMeasurer` must be thread-safe, and one of them serves the whole film.** Not for
-  speed: font resolution walks a family stack against whatever is installed (§15), so a measurer
+  speed: font resolution walks a family stack against whatever is installed (§16), so a measurer
   per thread is a chance for one frame of a video to be set in a different typeface from the frame
   before it — invisible in a single frame, invisible in review, and unfixable after the render.
 
@@ -1390,12 +1590,12 @@ Pass one of these when the measurer underneath costs something — which means w
 rendered through Skia, where every measurement is a HarfBuzz shaping run behind a mutex.
 
 How much it saves is bounded by the *distinct strings in the shot*, not by the frames: the
-arrangement is frozen once (§17), tick labels are round numbers drawn from a small set, and
+arrangement is frozen once (§18), tick labels are round numbers drawn from a small set, and
 quadrupling the frame rate on a two-decade zoom moved that count by one.
 
 ---
 
-## 19. Video
+## 20. Video
 
 `Frames.write` leaves a numbered directory, and a numbered directory is already something: every
 editor imports one, every encoder reads one, and it is what a paper's supplementary material
@@ -1431,7 +1631,7 @@ match Video.mux MuxOptions.Default vidSeq vidOut with
 ```
 
 **A missing ffmpeg is an outcome, not an exception.** `MuxUnavailable` says what to install and
-says the frames are still on disk, because they are. That is the same choice §15 makes about a
+says the frames are still on disk, because they are. That is the same choice §16 makes about a
 font it cannot find and the raster backend makes about a native library: degrade, and name what
 would fix it.
 
@@ -1470,7 +1670,7 @@ match Video.inspect vidOut with
 ```
 
 `Duration` is `FrameCount / Fps`, which is one frame period longer than the last frame's own
-time — §18's rule arriving in the container.
+time — §19's rule arriving in the container.
 
 ### What it refuses, and why
 
@@ -1489,7 +1689,7 @@ time — §18's rule arriving in the container.
 
 ---
 
-## 20. Mathematical typesetting
+## 21. Mathematical typesetting
 
 A visualization library that cannot set `\frac{\partial \vec{E}}{\partial t}` is not much use for
 physics, and there is no good .NET answer to setting one. `Marey.Tools.Tex` takes the answer
@@ -1600,7 +1800,7 @@ replaced rather than appended to, because a preamble is a document's own busines
 
 ---
 
-## 21. Notebooks
+## 22. Notebooks
 
 In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
 cell whose value is a `Figure` displays as a figure. No `.Show()`, no save-then-open, no display
@@ -1648,7 +1848,7 @@ printfn "a coarse flipbook is smaller: %b" ((Html.filmAt 12 film).Length < (Html
 
 The film renders at **its own extent** — `Film.Extent`, the surface its layout was arranged
 against — and not at `Html.defaultSize`. Every frame's text was measured for that surface, and the
-whole of §17's "the panel does not breathe" is a claim about it, so there is no size argument to
+whole of §18's "the panel does not breathe" is a claim about it, so there is no size argument to
 get wrong.
 
 Asking for a single frame gives a still rather than an animation of one:
@@ -1668,7 +1868,7 @@ See [`notebooks/README.md`](notebooks/README.md) for installation and
 
 ---
 
-## 22. The scene IR
+## 23. The scene IR
 
 Everything above compiles to one closed ten-case `Scene` IR, and every backend consumes only that.
 It is the level at which a figure that came out wrong can be inspected.
@@ -1714,7 +1914,7 @@ paints the overlap twice. For a single shape, `Color.A` is still the simpler too
 
 ---
 
-## 23. Escape hatches
+## 24. Escape hatches
 
 **Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so the scales are
 the caller's and everything downstream still works.
@@ -1750,6 +1950,6 @@ For a stateful backend there is `IBackend` and `Chart.renderTo`, which is the pa
 
 ## What is not here yet
 
-Fields and simulation, further backends, an interactive canvas, and native mathematical
-typesetting are all intended, and none of them exist yet. Among the geoms, the field ones —
-contour, quiver, streamline and hexbin — are the group still to come.
+Simulation (integrating a system over physical time: trajectories, pathlines, particles), further
+backends (a browser canvas and a GPU one), an interactive canvas with signals, and typesetting
+without a TeX installation are all intended, and none of them exist yet.
