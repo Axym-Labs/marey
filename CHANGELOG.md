@@ -55,6 +55,10 @@ land in a minor release.
   `1/('x·'y)` that integrates to one. Positions in metres give a colorbar in m⁻². `hexbinWith`
   states the hexagons across, and `Stat.hexbinIn` the lattice itself. The rows are spaced so
   the hexagons are regular on a plot area 1.6 times as wide as it is tall (`Stat.HexAspect`).
+- **`Stat.loess` and `Chart.addLoess`**: a local regression smooth, with R's defaults (span 0.75,
+  a local quadratic, tricube weights, no robustness iterations), typed in the data's own units.
+  `loessWith` states the span and the number of points, and `loessIn` where to evaluate and the
+  degree.
 - **`Chart.withColorDomain`** states a continuous colour channel's domain rather than taking its
   values' range, in any unit of the channel's dimension. For two figures that must share a colour
   scale, and for a film.

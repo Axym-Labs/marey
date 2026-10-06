@@ -602,6 +602,21 @@ module Chart =
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomLine (Erase.packSeries (series "" ux uy fx fy)) |])
 
+    /// Add a loess smooth of y against x to the last panel: R's defaults, span 0.75 and a local
+    /// quadratic, at 80 points over the data's range. `Stat.loess` returns the curve itself.
+    let addLoess (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+        let l = Stat.loess ux uy x y
+
+        fig
+        |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomLine (Erase.packSeries (series "" ux uy l.X l.Y)) |])
+
+    /// `addLoess` with a stated span: the fraction of the points each local fit uses.
+    let addLoessWith (span: float) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+        let l = Stat.loessWith ux uy span Stat.DefaultLoessPoints x y
+
+        fig
+        |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomLine (Erase.packSeries (series "" ux uy l.X l.Y)) |])
+
     // ---- Dimensionless ------------------------------------------------------------------------
 
     /// Pure maths, where the quantity genuinely has no dimension: `sin x`, a ratio, a

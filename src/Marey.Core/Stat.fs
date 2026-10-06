@@ -820,3 +820,183 @@ module Stat =
     /// `hexbinWith DefaultHexagons`.
     let hexbin (ux: U<'ux>) (uy: U<'uy>) (xs: float<'ux>[]) (ys: float<'uy>[]) : Hexbin<'ux, 'uy> =
         hexbinWith ux uy DefaultHexagons xs ys
+
+    // ======================================================================================
+    // loess — M2's deferred tail, a local regression
+    // ======================================================================================
+
+    /// A loess curve: the smooth evaluated at `X`, in the data's own units.
+    type Loess<[<Measure>] 'ux, [<Measure>] 'uy> =
+        { XUnit: U<'ux>
+          YUnit: U<'uy>
+          X: float<'ux>[]
+          Y: float<'uy>[]
+          /// The fraction of the points each local fit uses.
+          Span: float
+          /// The local polynomial's degree, 1 or 2.
+          Degree: int
+          N: int
+          Dropped: int }
+
+    /// The span when nobody states one: R's and Cleveland's default.
+    [<Literal>]
+    let DefaultSpan = 0.75
+
+    /// The points a curve is evaluated at when nobody states them.
+    [<Literal>]
+    let DefaultLoessPoints = 80
+
+    /// Solve a small dense system by Gaussian elimination with partial pivoting; `None` when it
+    /// is singular to working precision.
+    let private solve (a: float[,]) (b: float[]) : float[] option =
+        let n = b.Length
+        let m = Array2D.copy a
+        let v = Array.copy b
+        let scale = Seq.max (seq { for i in 0 .. n - 1 do for j in 0 .. n - 1 -> abs m.[i, j] })
+        let mutable ok = scale > 0.0
+
+        for col in 0 .. n - 1 do
+            if ok then
+                let pivot = [ col .. n - 1 ] |> List.maxBy (fun r -> abs m.[r, col])
+
+                if abs m.[pivot, col] <= 1e-12 * scale then
+                    ok <- false
+                else
+                    if pivot <> col then
+                        for j in 0 .. n - 1 do
+                            let t = m.[col, j]
+                            m.[col, j] <- m.[pivot, j]
+                            m.[pivot, j] <- t
+
+                        let t = v.[col]
+                        v.[col] <- v.[pivot]
+                        v.[pivot] <- t
+
+                    for r in col + 1 .. n - 1 do
+                        let f = m.[r, col] / m.[col, col]
+
+                        for j in col .. n - 1 do
+                            m.[r, j] <- m.[r, j] - f * m.[col, j]
+
+                        v.[r] <- v.[r] - f * v.[col]
+
+        if not ok then
+            None
+        else
+            let x = Array.zeroCreate n
+
+            for i in n - 1 .. -1 .. 0 do
+                let mutable acc = v.[i]
+
+                for j in i + 1 .. n - 1 do
+                    acc <- acc - m.[i, j] * x.[j]
+
+                x.[i] <- acc / m.[i, i]
+
+            Some x
+
+    /// One local fit at `x0`: the `q = ⌊span·n⌋` nearest points (at least one more than the
+    /// degree), weighted by the tricube of their
+    /// distance over the q-th nearest distance (scaled up by `span` beyond 1, as R does), and a
+    /// weighted polynomial of `degree` in `(x − x0)`. Its value at `x0` is the smooth. A
+    /// neighbourhood too degenerate for the degree — fewer distinct x than coefficients — is
+    /// fitted at the next degree down.
+    let private loessAt (span: float) (degree: int) (xs: float[]) (ys: float[]) (x0: float) =
+        let n = xs.Length
+        let q = min n (max (degree + 1) (int (floor (span * float n + 1e-5))))
+        let d = xs |> Array.map (fun x -> abs (x - x0))
+        let sorted = Array.sort d
+        let h = sorted.[q - 1] * (if span > 1.0 then span else 1.0)
+
+        if h = 0.0 then
+            // Every neighbour sits on x0.
+            let near = Array.init n id |> Array.filter (fun i -> d.[i] = 0.0)
+            near |> Array.averageBy (fun i -> ys.[i])
+        else
+            let w =
+                d |> Array.map (fun di -> let r = di / h in if r < 1.0 then (let c = 1.0 - r * r * r in c * c * c) else 0.0)
+
+            let rec fit (deg: int) =
+                let k = deg + 1
+                let a = Array2D.zeroCreate k k
+                let b = Array.zeroCreate k
+
+                for i in 0 .. n - 1 do
+                    if w.[i] > 0.0 then
+                        // Centred and scaled by h, so the system is well conditioned at any scale.
+                        let t = (xs.[i] - x0) / h
+                        let pw = Array.init (2 * k - 1) (fun p -> pown t p)
+
+                        for r in 0 .. k - 1 do
+                            b.[r] <- b.[r] + w.[i] * pw.[r] * ys.[i]
+
+                            for c in 0 .. k - 1 do
+                                a.[r, c] <- a.[r, c] + w.[i] * pw.[r + c]
+
+                match solve a b with
+                | Some coef -> coef.[0]
+                | None when deg > 0 -> fit (deg - 1)
+                | None -> nan
+
+            fit degree
+
+    /// **Loess** (Cleveland, 1979; Cleveland and Devlin, 1988): at each evaluation point, a
+    /// polynomial of `degree` fitted by weighted least squares to the nearest `span` of the
+    /// points, tricube-weighted by distance. The defaults, degree 2 and span 0.75, are R's
+    /// `loess`, and so is the Gaussian family: no robustness iterations, so an outlier pulls the
+    /// curve as it would pull a least-squares fit. It has not been compared with R's output.
+    ///
+    /// A local fit of degree d reproduces any polynomial of degree d exactly, which is what the
+    /// tests hold it to. `at` lists where to evaluate; non-finite pairs are dropped and counted.
+    let loessIn
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (span: float)
+        (degree: int)
+        (at: float<'ux>[])
+        (xs: float<'ux>[])
+        (ys: float<'uy>[])
+        : Loess<'ux, 'uy> =
+        if xs.Length <> ys.Length then
+            invalidArg "ys" (sprintf "Marey: a loess needs matching arrays — %d x values and %d y values." xs.Length ys.Length)
+
+        if not (span > 0.0) || Double.IsInfinity span then
+            invalidArg "span" (sprintf "Marey: a loess span is a positive fraction of the points, not %g." span)
+
+        if degree <> 1 && degree <> 2 then
+            invalidArg "degree" (sprintf "Marey: a loess fits a local line or a local quadratic, degree 1 or 2, not %d." degree)
+
+        let pairs =
+            Array.init xs.Length (fun i -> float xs.[i], float ys.[i])
+            |> Array.filter (fun (a, b) -> isFinite a && isFinite b)
+
+        if pairs.Length < degree + 1 then
+            failwithf "Marey: a loess of degree %d needs at least %d finite (x, y) pairs; this one has %d." degree (degree + 1) pairs.Length
+
+        let px = pairs |> Array.map fst
+        let py = pairs |> Array.map snd
+
+        { XUnit = ux
+          YUnit = uy
+          X = Array.copy at
+          Y = at |> Array.map (fun x -> tag<'uy> (loessAt span degree px py (float x)))
+          Span = span
+          Degree = degree
+          N = pairs.Length
+          Dropped = xs.Length - pairs.Length }
+
+    /// `loessIn` at `points` evenly spaced over the data's x range.
+    let loessWith (ux: U<'ux>) (uy: U<'uy>) (span: float) (points: int) (xs: float<'ux>[]) (ys: float<'uy>[]) : Loess<'ux, 'uy> =
+        let kept, _ = finiteOf xs
+
+        let at =
+            match Scale.domainOf kept with
+            | Some(lo, hi) when points > 1 -> Array.init points (fun i -> lo + (hi - lo) * (float i / float (points - 1)))
+            | Some(lo, _) -> [| lo |]
+            | None -> [||]
+
+        loessIn ux uy span 2 at xs ys
+
+    /// `loessWith` at the default span, 0.75, and 80 points.
+    let loess (ux: U<'ux>) (uy: U<'uy>) (xs: float<'ux>[]) (ys: float<'uy>[]) : Loess<'ux, 'uy> =
+        loessWith ux uy DefaultSpan DefaultLoessPoints xs ys
