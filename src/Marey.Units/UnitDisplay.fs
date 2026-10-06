@@ -410,6 +410,20 @@ module UnitDisplay =
     let unitText<[<Measure>] 'u> (style: UnitStyle) (registry: UnitRegistry) (p: Prefix) (u: U<'u>) =
         unitTextErasedWith style registry p u.Symbol u.Factors u.Dim u.ToSI u.OffsetSI
 
+    /// `quantity` under a prefix the caller has already chosen. A control chooses it once from
+    /// its range, so its label does not jump from `950 V` to `1.05 kV` in the middle of a drag.
+    let quantityIn<[<Measure>] 'u>
+        (style: UnitStyle)
+        (registry: UnitRegistry)
+        (prefix: Prefix)
+        (number: float -> string)
+        (u: U<'u>)
+        (v: float<'u>)
+        : string =
+        let text = unitText style registry prefix u
+        let shown = number (float v / Prefix.factor prefix)
+        if text = "" then shown else shown + " " + text
+
     /// A value and its unit as one string: `2 kV·m⁻¹`, `300 K`, `0 rad`.
     ///
     /// The one place a single quantity is written for a reader. The quiver key (D87) and
@@ -430,6 +444,4 @@ module UnitDisplay =
         : string =
         let x = float v
         let prefix = if prefixed then Prefix.selectForUnit u (x, x) else Prefix.none
-        let text = unitText style registry prefix u
-        let shown = number (x / Prefix.factor prefix)
-        if text = "" then shown else shown + " " + text
+        quantityIn style registry prefix number u v

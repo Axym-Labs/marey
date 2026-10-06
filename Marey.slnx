@@ -7,6 +7,7 @@
     <Project Path="src/Marey.Core/Marey.Core.fsproj" />
     <Project Path="src/Marey.Fields/Marey.Fields.fsproj" />
     <Project Path="src/Marey.Html/Marey.Html.fsproj" />
+    <Project Path="src/Marey.Interact/Marey.Interact.fsproj" />
     <Project Path="src/Marey.Plot/Marey.Plot.fsproj" />
     <Project Path="src/Marey.Toolchain/Marey.Toolchain.fsproj" />
     <Project Path="src/Marey.Tools.Tex/Marey.Tools.Tex.fsproj" />
