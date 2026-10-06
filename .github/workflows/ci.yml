@@ -158,7 +158,7 @@ jobs:
         run: |
           set -e
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 13 ] || { echo "::error::expected 13 packages, packed $count"; exit 1; }
+          [ "$count" -eq 14 ] || { echo "::error::expected 14 packages, packed $count"; exit 1; }
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
             readme=$(grep -o '<readme>[^<]*</readme>' /tmp/nuspec.xml | sed 's:<readme>::;s:</readme>::')
@@ -167,7 +167,7 @@ jobs:
             unzip -l "$pkg" | grep -q "$readme" || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
             echo "  $(basename "$pkg"): $readme"
           done
-          echo "13 packages, each with an MIT expression and the readme it declares"
+          echo "14 packages, each with an MIT expression and the readme it declares"
 
       - uses: actions/upload-artifact@v4
         with:

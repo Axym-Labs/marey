@@ -43,6 +43,7 @@
     <ProjectReference Include="..\Marey.Units\Marey.Units.fsproj" />
     <ProjectReference Include="..\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />
     <ProjectReference Include="..\Marey.Plot\Marey.Plot.fsproj" />
+    <ProjectReference Include="..\Marey.Interact\Marey.Interact.fsproj" />
   </ItemGroup>
 
 </Project>

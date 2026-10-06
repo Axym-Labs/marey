@@ -17,11 +17,12 @@
     <Description>Interaction for Marey: typed controls (a slider over kelvin hands the view kelvin, and labels itself in them), composed into a live figure by an applicative block, and stepped by a pure function a notebook host drives.</Description>
     <PackageTags>fsharp visualization plotting interactive widgets notebook units-of-measure</PackageTags>
 
-    <!-- **Not packable until M4.5 phase 2**, D64's rule as `Marey.Anim` and `Marey.Fields`
-         applied it: a package ships with a producer. Phase 1 can step a figure and not draw a
-         control; phase 2's widget document is the first picture. Both workflows' package counts
-         go 13 -> 14 in that commit, and gate 15 holds them to the number of packable projects. -->
-    <IsPackable>false</IsPackable>
+    <!-- **Published from M4.5 phase 2**, D64's rule as `Marey.Anim` and `Marey.Fields` applied
+         it: a package ships with a producer. Phase 1 could step a figure and not draw a control;
+         phase 2's widget document (`Html.widget`) is the first picture. Both workflows' package
+         counts went 13 -> 14 in the same commit, and gate 15 holds them to the number of
+         packable projects. -->
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

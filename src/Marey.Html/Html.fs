@@ -683,6 +683,156 @@ module Html =
     // dependency on Marey at all**. It is a bridge, not an integration, and it keeps working
     // across Marey versions as long as these two signatures hold.
     // ======================================================================================
+    // M4.5 — A LIVE FIGURE'S DOCUMENT (D100, D106)
+    //
+    // Not a fragment: a whole page, which a host draws in a frame of its own (Verso's
+    // `text/x-verso-widget`). Rule 1 therefore does not bind inside it — a `<style>` in a framed
+    // document styles that document and nothing else — and the page uses one. Rules 2 to 4 still
+    // hold. Rule 2 has a better answer here than in a fragment, because the host passes its theme
+    // into the frame as custom properties: foreground and background are taken together from the
+    // host, and fall back to pinning nothing.
+    //
+    // **The script formats no number.** Every label it shows arrives from the kernel, written by
+    // `UnitDisplay.quantityIn`; the script reads an input's value, posts it, and swaps in what
+    // comes back. That keeps one formatter in one language until the Fable backend can make it
+    // two languages and still one formatter (D105).
+    //
+    // **Well-formed XML as well as HTML**, so the oracle `NotebookTests` holds every fragment to
+    // holds this page too: self-closed inputs, valued boolean attributes, and the script in a
+    // CDATA section, because `&&` is an error in XML and ordinary in JavaScript.
+    //
+    // **The controls are written from the state**, not from their initial values. A snapshot
+    // taken after the reader moved a slider is a document of that state, and its slider has to
+    // be where the figure says it is. The phase 0 spike shipped a 3.7 Hz figure under a slider
+    // at 1 Hz, which is the bug this sentence is about.
+    // ======================================================================================
+
+    /// A number for an attribute a browser parses rather than a person reads: round-trip
+    /// exact, invariant. A slider over nanometres has a step of 1E-10, which `Num.at` would round
+    /// to zero, and an HTML number may carry an exponent.
+    let private exact (v: float) = v.ToString("R", System.Globalization.CultureInfo.InvariantCulture)
+
+    let private controlHtml (enabled: bool) (i: int) (c: ControlSpec) (v: float) =
+        let disabled = if enabled then "" else " disabled=\"disabled\""
+
+        let input =
+            match c.Kind with
+            | Slider(lo, hi, step) ->
+                sprintf
+                    "<input type=\"range\" data-i=\"%d\" min=\"%s\" max=\"%s\" step=\"%s\" value=\"%s\"%s/>"
+                    i (exact lo) (exact hi) (exact step) (exact v) disabled
+            | Select options ->
+                let chosen = int (System.Math.Round v)
+
+                let opts =
+                    options
+                    |> Array.mapi (fun k o ->
+                        sprintf "<option value=\"%d\"%s>%s</option>" k (if k = chosen then " selected=\"selected\"" else "") (text o))
+                    |> String.concat ""
+
+                sprintf "<select data-i=\"%d\"%s>%s</select>" i disabled opts
+            | Checkbox -> sprintf "<input type=\"checkbox\" data-i=\"%d\"%s%s/>" i (if v <> 0.0 then " checked=\"checked\"" else "") disabled
+
+        sprintf "<label><span>%s</span>%s<output id=\"v%d\">%s</output></label>" (text c.Label) input i (text (c.Show v))
+
+    /// The page's style. Scoped by being inside its own document.
+    let private widgetStyle =
+        String.concat
+            ""
+            [ "html,body{margin:0;padding:0}"
+              "body{color:var(--verso-cell-output-foreground,inherit);background:var(--verso-cell-output-background,transparent);"
+              "font-family:var(--verso-ui-font-family,system-ui,sans-serif);font-size:var(--verso-ui-font-size,14px)}"
+              "#controls{" + Row + ";margin:0 0 6px}"
+              "#controls label{display:inline-flex;gap:6px;align-items:center}"
+              "#controls output{font-variant-numeric:tabular-nums;min-width:5em}"
+              "#fig{max-width:100%;overflow-x:auto}"
+              "#status{" + Muted + "}" ]
+
+    /// The view's half of the protocol. It measures the frame and says how wide it is, reports
+    /// itself ready, posts a control's value whenever it moves with one request in flight and
+    /// the newest value of each control waiting behind it, swaps in whatever the kernel sends,
+    /// and disables the controls when the channel closes. With no channel it disables them at
+    /// once and does nothing else.
+    let private widgetScript (aspect: float) =
+        String.concat
+            "\n"
+            [ "<script>//<![CDATA["
+              "(function () {"
+              "  var ch = window.versoChannel;"
+              "  var fig = document.getElementById('fig');"
+              "  var status = document.getElementById('status');"
+              "  var inputs = Array.prototype.slice.call(document.querySelectorAll('[data-i]'));"
+              "  function disable(why) {"
+              "    inputs.forEach(function (el) { el.disabled = true; });"
+              "    if (why) { status.textContent = why; }"
+              "  }"
+              "  if (!ch) { disable(null); return; }"
+              "  var busy = false, waiting = {}, order = [];"
+              "  function flush() {"
+              "    if (busy || order.length === 0) { return; }"
+              "    var key = order.shift(), m = waiting[key];"
+              "    delete waiting[key];"
+              "    busy = ch.post(m.type, m.payload);"
+              "  }"
+              "  function send(key, type, payload) {"
+              "    if (!(key in waiting)) { order.push(key); }"
+              "    waiting[key] = { type: type, payload: payload };"
+              "    flush();"
+              "  }"
+              "  function valueOf(el) { return el.type === 'checkbox' ? (el.checked ? 1 : 0) : Number(el.value); }"
+              "  inputs.forEach(function (el) {"
+              "    var i = Number(el.getAttribute('data-i'));"
+              "    el.addEventListener(el.type === 'range' ? 'input' : 'change', function () {"
+              "      send('c' + i, 'set', [i, valueOf(el)]);"
+              "    });"
+              "  });"
+              "  window.addEventListener('verso:channelmessage', function (e) {"
+              "    var d = e.detail || {}, p = d.payload || {};"
+              "    if (d.type !== 'render') { return; }"
+              "    if (typeof p.svg === 'string') { fig.innerHTML = p.svg; }"
+              "    (p.shown || []).forEach(function (s, i) {"
+              "      var o = document.getElementById('v' + i);"
+              "      if (o) { o.textContent = s; }"
+              "    });"
+              "    busy = false;"
+              "    flush();"
+              "  });"
+              "  window.addEventListener('verso:channelclosed', function (e) {"
+              "    disable((e.detail && e.detail.reason) || 'closed');"
+              "  });"
+              "  ch.ready('1.0');"
+              "  var w = Math.round(fig.clientWidth || document.documentElement.clientWidth || 0);"
+              sprintf "  if (w > 0) { send('size', 'size', [w, Math.round(w * %s)]); }" (exact aspect)
+              "})();"
+              "//]]></script>" ]
+
+    /// A live figure's SVG at a state, drawn in the state's arrangement. What a host sends back
+    /// after each step; the document embeds the same thing.
+    let widgetFigure (live: Live) (state: LiveState) : string =
+        guarded "live figure" (fun () -> SvgBackend.render state.Shot.Outer.Extent (Live.scene live state))
+
+    /// **A live figure as a whole page**: its controls, written from `state`, the figure at that
+    /// state, and the view's script. `live = false` is the static form, for a host with nothing
+    /// to talk back to and for a snapshot: the same page with the controls disabled and a line
+    /// saying so.
+    let widget (live: Live) (state: LiveState) (isLive: bool) : string =
+        let controls =
+            Array.mapi2 (controlHtml isLive) live.Controls state.Values
+            |> String.concat ""
+
+        let aspect = float state.Size.Height / float state.Size.Width
+
+        String.concat
+            ""
+            [ "<!DOCTYPE html><html><head><meta charset=\"utf-8\"/>"
+              "<style>" + widgetStyle + "</style></head><body>"
+              "<div id=\"controls\">" + controls + "</div>"
+              "<div id=\"fig\">" + widgetFigure live state + "</div>"
+              "<div id=\"status\">" + (if isLive then "" else "Static: run the cell to move the controls.") + "</div>"
+              widgetScript aspect
+              "</body></html>" ]
+
+    // ======================================================================================
 
     /// Every type this module can display. The match a host uses to decide whether to claim a
     /// value, kept separate from `renderForHost` so the decision costs a type test rather than a

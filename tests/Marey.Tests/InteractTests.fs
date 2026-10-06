@@ -259,3 +259,146 @@ module ``anim stays put`` =
         let fsproj = File.ReadAllText(Path.Combine(Golden.repoRoot.Force(), "src", "Marey.Anim", "Marey.Anim.fsproj"))
         Assert.DoesNotContain("Marey.Interact", fsproj)
         Assert.DoesNotContain("Marey.Interact", typeof<Anim<float>>.Assembly.GetReferencedAssemblies() |> Array.map (fun a -> a.Name) |> String.concat ";")
+
+// ======================================================================================
+// Gate 4 — the document is well-formed, and formats nothing
+// ======================================================================================
+
+module ``the widget document`` =
+
+    open System.Xml.Linq
+
+    let private at (msgs: LiveMsg list) =
+        let l = live ()
+        l, msgs |> List.fold (Live.step l) (Live.init l)
+
+    /// **Gate 4.** Both forms parse as XML, the oracle every fragment `Marey.Html` writes is held to.
+    [<Fact>]
+    let ``both forms parse`` () =
+        let l, s = at []
+
+        for isLive in [ true; false ] do
+            XDocument.Parse(Html.widget l s isLive) |> ignore
+
+    /// No number is formatted in the browser: every label arrives written by the kernel.
+    [<Fact>]
+    let ``the script formats no number`` () =
+        let l, s = at []
+        let doc = Html.widget l s true
+
+        for formatter in [ "toFixed"; "toPrecision"; "toLocaleString"; "Intl."; "toExponential" ] do
+            Assert.DoesNotContain(formatter, doc)
+
+    /// The static form disables every control, says so, and touches the channel only behind
+    /// the check that it exists.
+    [<Fact>]
+    let ``the static form is disabled and guarded`` () =
+        let l, s = at []
+        let doc = Html.widget l s false
+        let disabled = doc.Split([| "disabled=\"disabled\"" |], StringSplitOptions.None).Length - 1
+        Assert.Equal(l.Controls.Length, disabled)
+        Assert.Contains("Static", doc)
+        Assert.Contains("if (!ch) { disable(null); return; }", doc)
+        Assert.True(doc.IndexOf "if (!ch)" < doc.IndexOf "ch.post", "the guard precedes the first use")
+
+    /// The controls are written from the state, so a snapshot's slider is where its figure says.
+    /// The phase 0 spike drew a 3.7 Hz figure under a slider at 1 Hz.
+    [<Fact>]
+    let ``the controls are written from the state`` () =
+        let l, s = at [ Set(0, 3.7); Set(1, 1.0) ]
+        let doc = Html.widget l s false
+        Assert.Contains("value=\"3.7\"", doc)
+        Assert.Contains("<output id=\"v0\">3.7 Hz</output>", doc)
+        Assert.Contains("checked=\"checked\"", doc)
+        Assert.Contains(Html.widgetFigure l s, doc)
+
+    /// A label is text, not markup.
+    [<Fact>]
+    let ``a label is escaped`` () =
+        let l =
+            interact {
+                let! on = Control.checkbox "<b>&amp" true
+                return wave 1.0<1 / s> on
+            }
+
+        let doc = Html.widget l (Live.init l) true
+        Assert.DoesNotContain("<b>&amp", doc)
+        XDocument.Parse doc |> ignore
+
+    /// The view announces its width at the state's aspect, so the kernel lays out for the frame
+    /// it is drawn in; a resize re-arranges, and a nonsense size is ignored.
+    [<Fact>]
+    let ``a size re-arranges, and a nonsense one is ignored`` () =
+        let l, s = at []
+        let wide = Live.step l s (Resize(960.0, 600.0))
+        Assert.Equal(960.0, float wide.Shot.Outer.Extent.Width)
+        Assert.Same(s, Live.step l s (Resize(nan, 400.0)))
+        Assert.Same(s, Live.step l s (Resize(-5.0, 400.0)))
+        Assert.Contains("[w, Math.round(w * 0.625)]", Html.widget l s true)
+
+// ======================================================================================
+// Gate 5 — a widget does not breathe
+// ======================================================================================
+
+module ``a widget does not breathe`` =
+
+    /// A line whose peak gains a digit across the slider (`ShotTests`' fixture, as a control).
+    let private ramp (top: float) =
+        let xs = Array.init 24 (fun i -> float i / 23.0 * 10.0<s>)
+        Chart.line U.second U.metre xs (xs |> Array.map (fun t -> t / 10.0<s> * top * 1.0<m>))
+
+    let private digits =
+        interact {
+            let! top = Control.sliderBy U.one "top" 9.0 110.0 1.0 9.0
+            return ramp top
+        }
+
+    /// Its peak is at the slider's middle, so the extremes cannot see it: the union over them
+    /// is too narrow for the middle state, and only the overflow path can save it.
+    let private hump =
+        interact {
+            let! u = Control.sliderBy U.one "u" 0.0 1.0 0.01 0.0
+            return ramp (9.0 + 4000.0 * u * (1.0 - u))
+        }
+
+    let private transforms (node: Node) =
+        node |> Scene.fold (fun acc n -> match n with Transform(a, _) -> a :: acc | _ -> acc) []
+
+    let private sceneAt (l: Live) (s: LiveState) (v: float) =
+        let s' = Live.step l s (Set(0, v))
+        s', Live.scene l s'
+
+    /// The positive control: laid out per state, the fixture moves the panel.
+    [<Fact>]
+    let ``laid out per state, the fixture moves the panel`` () =
+        let perState = [ 9.0; 60.0; 110.0 ] |> List.map (fun top -> transforms (Chart.toScene Live.DefaultSize (ramp top)))
+        Assert.True((List.distinct perState).Length > 1, "the fixture must move the panel, or the gate is vacuous")
+
+    /// **Gate 5.** Inside the widget the plot rectangle is the same at every state the slider
+    /// can reach, and nothing re-arranged to make it so.
+    [<Fact>]
+    let ``the plot rectangle is the same at every state`` () =
+        let s0 = Live.init digits
+
+        let rects =
+            [ 9.0; 10.0; 50.0; 99.0; 100.0; 110.0 ]
+            |> List.map (fun v -> let s, n = sceneAt digits s0 v in s.Grown.Length, transforms n)
+
+        Assert.All(rects, fun (grown, _) -> Assert.Equal(0, grown))
+        Assert.Single(rects |> List.map snd |> List.distinct) |> ignore
+
+    /// D106's second half. A state the extremes did not foresee does not fit, is not drawn
+    /// clipped, and is counted; the grown arrangement then holds it and the extremes alike.
+    [<Fact>]
+    let ``a state that overflows is counted, and grows the arrangement`` () =
+        let s0 = Live.init hump
+        Assert.False(Chart.fitsIn TextMeasure.approx s0.Shot (Live.view hump (Live.step hump s0 (Set(0, 0.5)) |> fun s -> { s0 with Values = s.Values })))
+
+        let grown = Live.step hump s0 (Set(0, 0.5))
+        Assert.Equal(1, grown.Grown.Length)
+        Assert.NotEqual<Affine<nd, nd> list>(transforms (Live.scene hump s0), transforms (Live.scene hump grown))
+
+        for v in [ 0.0; 0.25; 0.5; 1.0 ] do
+            let s = Live.step hump grown (Set(0, v))
+            Assert.Equal(1, s.Grown.Length)
+            Assert.True(Chart.fitsIn TextMeasure.approx s.Shot (Live.view hump s), sprintf "u = %g fits the grown arrangement" v)
