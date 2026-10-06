@@ -937,3 +937,79 @@ module ``loess`` =
 
         for k in 0 .. at.Length - 1 do
             Assert.True(close 1e-9 (float l.Y.[k]) (expected at.[k]), sprintf "at %g: %g, not %g" at.[k] (float l.Y.[k]) (expected at.[k]))
+
+// ======================================================================================
+// M4 phase 8 — bootstrap intervals (D95's second consumer)
+// ======================================================================================
+
+module ``bootstrap`` =
+
+    /// n normal draws in metres, mean 5 m and spread 2 m, from a seed, by Box–Muller.
+    let private normal (seed: uint64) (n: int) =
+        let us, _ = Rng.units (2 * n) (Rng.seeded seed)
+        Array.init n (fun i -> (5.0 + 2.0 * sqrt (-2.0 * log (1.0 - us.[2 * i])) * cos (2.0 * System.Math.PI * us.[2 * i + 1])) * 1.0<m>)
+
+    let private mean (xs: float<m>[]) = Array.average xs
+    let private sample = normal 1UL 40
+
+    /// **Gate 11, the bootstrap's half.** A seed names one interval: two calls agree, so do four
+    /// at once on the thread pool, and another seed gives another interval.
+    [<Fact>]
+    let ``the same seed gives the same interval, and another seed does not`` () =
+        let a = Stat.bootstrap 42UL mean sample
+        let b = Stat.bootstrap 42UL mean sample
+        Assert.Equal(a, b)
+
+        for c in Array.Parallel.init 4 (fun _ -> Stat.bootstrap 42UL mean sample) do
+            Assert.Equal(a, c)
+
+        let d = Stat.bootstrap 43UL mean sample
+        Assert.True(d.Lo <> a.Lo || d.Hi <> a.Hi, "seed 43 gave seed 42's interval")
+        Assert.Equal(42UL, a.Seed)
+
+    /// It covers what it claims: over 300 independent samples, a 90% interval for the mean
+    /// contains the true mean about 90% of the time. The percentile interval runs slightly narrow
+    /// at n = 40, so the band is 84–95%; three binomial standard deviations either side is 85–95%.
+    [<Fact>]
+    let ``a 90% interval covers the mean about 90% of the time`` () =
+        let trials = 300
+
+        let hits =
+            Array.init trials (fun t ->
+                let i = Stat.bootstrapWith (uint64 (1000 + t)) 400 0.90 mean (normal (uint64 (5000 + t)) 40)
+                i.Lo <= 5.0<m> && 5.0<m> <= i.Hi)
+            |> Array.filter id
+            |> Array.length
+
+        let coverage = float hits / float trials
+        Assert.True(coverage >= 0.84 && coverage <= 0.95, sprintf "coverage %g" coverage)
+
+    /// And it is as wide as theory says: for a mean, about 2 · 1.96 · s/√n at 95%.
+    [<Fact>]
+    let ``a 95% interval for a mean is as wide as the normal theory says`` () =
+        let i = Stat.bootstrap 7UL mean sample
+        let s = sqrt ((sample |> Array.sumBy (fun x -> float ((x - mean sample) * (x - mean sample)))) / 39.0)
+        let theory = 2.0 * 1.96 * s / sqrt 40.0
+        let width = float (i.Hi - i.Lo)
+        Assert.True(abs (width / theory - 1.0) < 0.15, sprintf "width %g against %g" width theory)
+        Assert.Equal(mean sample, i.Estimate)
+        Assert.True(i.Lo < i.Estimate && i.Estimate < i.Hi)
+
+    /// The unit survives: a pairs bootstrap of a regression slope of metres against seconds is
+    /// an interval in m/s, by type.
+    [<Fact>]
+    let ``a slope's interval is in metres per second`` () =
+        let ts = Array.init 30 (fun i -> float i * 0.5<s>)
+        let noise, _ = Rng.units 30 (Rng.seeded 9UL)
+        let xs = Array.map2 (fun t e -> 1.5<m / s> * t + (e - 0.5) * 1.0<m>) ts noise
+        let slope (t: float<s>[]) (x: float<m>[]) = (Stat.regression U.second U.metre t x).Slope
+        let i = Stat.bootstrapPairs 3UL slope ts xs
+        let lo: float<m / s> = i.Lo
+        Assert.True(lo < 1.5<m / s> && 1.5<m / s> < i.Hi, sprintf "[%g, %g]" (float i.Lo) (float i.Hi))
+
+    [<Fact>]
+    let ``non-finite values are dropped before resampling, and nonsense refused`` () =
+        let i = Stat.bootstrap 1UL mean (Array.append sample [| nan * 1.0<m> |])
+        Assert.Equal(mean sample, i.Estimate)
+        Assert.Throws<System.ArgumentException>(fun () -> Stat.bootstrapWith 1UL 0 0.95 mean sample |> ignore) |> ignore
+        Assert.Throws<System.ArgumentException>(fun () -> Stat.bootstrapWith 1UL 100 1.0 mean sample |> ignore) |> ignore

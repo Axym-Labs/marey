@@ -1000,3 +1000,126 @@ module Stat =
     /// `loessWith` at the default span, 0.75, and 80 points.
     let loess (ux: U<'ux>) (uy: U<'uy>) (xs: float<'ux>[]) (ys: float<'uy>[]) : Loess<'ux, 'uy> =
         loessWith ux uy DefaultSpan DefaultLoessPoints xs ys
+
+    // ======================================================================================
+    // bootstrap — M2's deferred tail, and D95's second consumer of randomness
+    // ======================================================================================
+
+    /// A bootstrap confidence interval for a statistic, in the statistic's own unit.
+    type Interval<[<Measure>] 'v> =
+        { /// The statistic of the sample itself.
+          Estimate: float<'v>
+          Lo: float<'v>
+          Hi: float<'v>
+          /// The confidence level, 0.95 for a 95% interval.
+          Level: float
+          /// Resamples whose statistic was finite, and how many were not.
+          Resamples: int
+          Dropped: int
+          /// The seed, so the interval can be cited and reproduced.
+          Seed: uint64 }
+
+    /// Resamples when nobody states how many.
+    [<Literal>]
+    let DefaultResamples = 2000
+
+    /// The percentile interval over `count` replicate statistics, each computed from a resample
+    /// of `n` indices drawn with replacement from `rng`, in order.
+    let private percentile
+        (seed: uint64)
+        (count: int)
+        (level: float)
+        (n: int)
+        (estimate: float<'v>)
+        (replicate: int[] -> float<'v>)
+        : Interval<'v> =
+        if count < 1 then
+            invalidArg "resamples" (sprintf "Marey: a bootstrap needs at least one resample, not %d." count)
+
+        if not (level > 0.0 && level < 1.0) then
+            invalidArg "level" (sprintf "Marey: a confidence level is strictly between 0 and 1, not %g." level)
+
+        if n < 1 then
+            failwith "Marey: a bootstrap needs at least one finite value to resample."
+
+        let mutable rng = Rng.seeded seed
+        let stats = Array.zeroCreate count
+
+        for b in 0 .. count - 1 do
+            let idx = Array.zeroCreate n
+
+            for i in 0 .. n - 1 do
+                let struct (k, r') = Rng.below n rng
+                idx.[i] <- k
+                rng <- r'
+
+            stats.[b] <- replicate idx
+
+        let kept = stats |> Array.filter (fun v -> isFinite (float v)) |> Array.sort
+
+        if kept.Length = 0 then
+            failwith "Marey: no bootstrap resample gave a finite statistic."
+
+        let tail = (1.0 - level) / 2.0
+
+        { Estimate = estimate
+          Lo = quantileSorted tail kept
+          Hi = quantileSorted (1.0 - tail) kept
+          Level = level
+          Resamples = kept.Length
+          Dropped = count - kept.Length
+          Seed = seed }
+
+    /// **A percentile bootstrap interval** for any statistic of one sample: resample the finite
+    /// values with replacement `resamples` times, compute the statistic of each, and take the
+    /// central `level` of them. The statistic keeps its unit, so an interval for a mean of
+    /// metres is in metres and one for a variance in m².
+    ///
+    /// **Reproducible from `seed`**, which the result carries: the resamples are drawn from
+    /// `Rng`, in order, so a seed names one interval on every runtime. A resample whose statistic
+    /// is not finite is dropped and counted.
+    ///
+    /// The percentile interval is the plain one. It is first-order accurate and runs a little
+    /// narrow for small samples; it is not BCa.
+    let bootstrapWith
+        (seed: uint64)
+        (resamples: int)
+        (level: float)
+        (statistic: float<'u>[] -> float<'v>)
+        (xs: float<'u>[])
+        : Interval<'v> =
+        let kept, _ = finiteOf xs
+        percentile seed resamples level kept.Length (statistic kept) (fun idx -> statistic (idx |> Array.map (fun i -> kept.[i])))
+
+    /// `bootstrapWith` at 2000 resamples and 95%.
+    let bootstrap (seed: uint64) (statistic: float<'u>[] -> float<'v>) (xs: float<'u>[]) : Interval<'v> =
+        bootstrapWith seed DefaultResamples 0.95 statistic xs
+
+    /// The pairs bootstrap: a statistic of (x, y) pairs, resampled together — a regression slope
+    /// in m/s, a correlation. Pairs with a non-finite coordinate are dropped first.
+    let bootstrapPairsWith
+        (seed: uint64)
+        (resamples: int)
+        (level: float)
+        (statistic: float<'ux>[] -> float<'uy>[] -> float<'v>)
+        (xs: float<'ux>[])
+        (ys: float<'uy>[])
+        : Interval<'v> =
+        if xs.Length <> ys.Length then
+            invalidArg "ys" (sprintf "Marey: a pairs bootstrap needs matching arrays — %d x values and %d y values." xs.Length ys.Length)
+
+        let keep = Array.init xs.Length id |> Array.filter (fun i -> isFinite (float xs.[i]) && isFinite (float ys.[i]))
+        let px = keep |> Array.map (fun i -> xs.[i])
+        let py = keep |> Array.map (fun i -> ys.[i])
+
+        percentile seed resamples level keep.Length (statistic px py) (fun idx ->
+            statistic (idx |> Array.map (fun i -> px.[i])) (idx |> Array.map (fun i -> py.[i])))
+
+    /// `bootstrapPairsWith` at 2000 resamples and 95%.
+    let bootstrapPairs
+        (seed: uint64)
+        (statistic: float<'ux>[] -> float<'uy>[] -> float<'v>)
+        (xs: float<'ux>[])
+        (ys: float<'uy>[])
+        : Interval<'v> =
+        bootstrapPairsWith seed DefaultResamples 0.95 statistic xs ys

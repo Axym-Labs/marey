@@ -59,6 +59,11 @@ land in a minor release.
   a local quadratic, tricube weights, no robustness iterations), typed in the data's own units.
   `loessWith` states the span and the number of points, and `loessIn` where to evaluate and the
   degree.
+- **`Stat.bootstrap` and `Stat.bootstrapPairs`**: percentile bootstrap confidence intervals for
+  any statistic of a sample or of (x, y) pairs, in the statistic's own unit, so a slope's interval
+  is in m/s. Reproducible from the seed the caller passes and the result carries: the resamples
+  come from `Rng`, so a seed names one interval on every runtime. `bootstrapWith` and
+  `bootstrapPairsWith` state the resamples and the level (defaults 2000 and 95%).
 - **`Chart.withColorDomain`** states a continuous colour channel's domain rather than taking its
   values' range, in any unit of the channel's dimension. For two figures that must share a colour
   scale, and for a film.
