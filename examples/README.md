@@ -1,6 +1,6 @@
 # Examples
 
-Twelve standalone scripts. Start with [`reel.fsx`](reel.fsx) if you want to see what the library
+Thirteen standalone scripts. Start with [`reel.fsx`](reel.fsx) if you want to see what the library
 does before reading how; start with [`free-fall.fsx`](free-fall.fsx) if you would rather read the
 smallest complete thing first.
 
@@ -26,6 +26,7 @@ resolve from nuget.org, so nothing needs to be built first.
 | [`frames.fsx`](frames.fsx) | Rendering an animation: one `map` over the frame times. Checks the three things that follow from an animation being a pure function of time — a frame rendered alone is the frame rendered in sequence, a concurrent render is the serial one, and the measuring is bounded by the distinct strings in the shot rather than by the frames. |
 | [`warming-rate.fsx`](warming-rate.fsx) | The encoding block on a real table: x, y and a colour declared in one place, a fitted trend, and the same record faceted into one panel per era. The fitted slope is a `float<K/yr>` — a warming rate, typed as one. |
 | [`video.fsx`](video.fsx) | From a storyboard to an `.mp4`, by shelling out to `ffmpeg`. The frame sequence is the product and the mux is a convenience over it, so a machine with no encoder still writes every frame and says so. Reads the container back rather than trusting the exit code. |
+| [`pendulum.fsx`](pendulum.fsx) | A phase space with a different unit on each axis, radians and radians per second. The fixed points are found and classified, with eigenvalues in s⁻¹: centres hanging down, saddles standing up, stable foci once there is friction. Also checks Liouville's theorem on the grid: the flow's divergence is zero, then minus the friction. |
 | [`reel.fsx`](reel.fsx) | **The demo reel.** The whole library in one shot: unit witnesses, a storyboard that is a value, one arrangement for the whole shot so the panel holds still, a mark addressed by its row, TeX-set axis titles on the poster, a flipbook that plays in a browser with no encoder installed, and an `.mp4` at the end. Written for somebody who has read none of the rest. |
 
 ## The data

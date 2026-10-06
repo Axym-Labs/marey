@@ -25,6 +25,7 @@
   <ItemGroup>
     <Compile Include="Grid.fs" />
     <Compile Include="Field.fs" />
+    <Compile Include="Phase.fs" />
   </ItemGroup>
 
   <ItemGroup>

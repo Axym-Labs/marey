@@ -972,3 +972,181 @@ module ``line-integral convolution`` =
         | TexToolchain.PdfUnavailable _ -> Console.WriteLine("SKIPPED: " + TexToolchain.report ())
         | TexToolchain.PdfProduced() -> ()
         | TexToolchain.PdfFailed why -> failwithf "the LIC baseline does not compile:\n%s" why
+
+// ======================================================================================
+// Phase 6 — phase portraits (D92, second half). Gate 13.
+// ======================================================================================
+
+module ``phase portraits`` =
+
+    /// A linear flow ẋ = A (x − x₀) over [−1, 1]² in metres, per second.
+    let private linear (n: int) (x0: float, y0: float) (a: float, b: float, c: float, d: float) =
+        let flow: Flow<m, m, s> =
+            fun x y ->
+                let dx, dy = float x - x0, float y - y0
+                struct ((a * dx + b * dy) * 1.0<m / s>, (c * dx + d * dy) * 1.0<m / s>)
+
+        Field.sampleFlow (Grid.linear -1.0<m> 1.0<m> n) (Grid.linear -1.0<m> 1.0<m> n) flow
+
+    let private systems =
+        [ "saddle", (1.0, 0.0, 0.0, -2.0), FixedPointKind.Saddle
+          "stable node", (-1.0, 0.0, 0.0, -3.0), FixedPointKind.Node true
+          "unstable node", (2.0, 1.0, 0.0, 1.0), FixedPointKind.Node false
+          "stable focus", (-0.5, -2.0, 2.0, -0.5), FixedPointKind.Focus true
+          "unstable focus", (0.5, 2.0, -2.0, 0.5), FixedPointKind.Focus false
+          "centre (linear)", (0.0, 1.0, -4.0, 0.0), FixedPointKind.Centre ]
+
+    let systemCases: obj[] seq =
+        seq {
+            for name, _, _ in systems do
+                yield [| box name; box true |]
+                yield [| box name; box false |]
+        }
+
+    /// **Gate 13, the canonical linear systems.** Each is found exactly once, where it is, of
+    /// its kind, with its eigenvalues — with the fixed point on a grid node (shared by four cells,
+    /// so found four times and merged) and in the middle of a cell. A linear field is exact
+    /// under both the interpolation and the differences, so the tolerances are rounding.
+    [<Theory>]
+    [<MemberData(nameof systemCases)>]
+    let ``a linear system's fixed point is found once, located, and classified`` (name: string) (onNode: bool) =
+        let _, (a, b, c, d), kind = systems |> List.find (fun (n, _, _) -> n = name)
+        let x0, y0 = if onNode then 0.0, 0.0 else 0.3, -0.2
+        let points = Phase.fixedPoints (linear 21 (x0, y0) (a, b, c, d))
+
+        let p = Assert.Single points
+        Assert.Equal(kind, p.Kind)
+        Assert.Equal(name, FixedPoint.kindName p.Kind)
+        Assert.True(abs (float p.X - x0) < 1e-9 && abs (float p.Y - y0) < 1e-9, sprintf "found at (%g, %g)" (float p.X) (float p.Y))
+
+        // The eigenvalues, against the closed form for a 2 × 2 matrix, in 1/s — by type.
+        let tr, det = a + d, a * d - b * c
+        let disc = tr * tr - 4.0 * det
+        let l1, l2 = p.Eigenvalues
+        let re1: float<1 / s> = l1.Re
+        let im1: float<1 / s> = l1.Im
+
+        if disc >= 0.0 then
+            Assert.True(abs (float re1 - (tr + sqrt disc) / 2.0) < 1e-9 && abs (float l2.Re - (tr - sqrt disc) / 2.0) < 1e-9)
+            Assert.Equal(0.0, float im1)
+        else
+            Assert.True(abs (float re1 - tr / 2.0) < 1e-9 && abs (float im1 - sqrt -disc / 2.0) < 1e-9)
+            Assert.True(abs (float l2.Im + sqrt -disc / 2.0) < 1e-9)
+
+    let private pendulum (n: int) =
+        let flow: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s ^ 2> * sin (float th) * 1.0<rad>)
+        Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> n) (Grid.linear -9.0<rad / s> 9.0<rad / s> (n * 37 / 53)) flow
+
+    let private omega = sqrt 9.81
+
+    /// **Gate 13, the pendulum.** Centres at 0 and ±2π, saddles at ±π, on (rad, rad/s) — a phase
+    /// space whose Jacobian has four entries in four units — with eigenvalues ±i√g/L at a centre
+    /// and ±√g/L at a saddle, in 1/s.
+    [<Fact>]
+    let ``a pendulum has centres at 0 and 2π and saddles at π`` () =
+        let points = Phase.fixedPoints (pendulum 53)
+
+        let expected =
+            [ -2.0 * Math.PI, FixedPointKind.Centre
+              -Math.PI, FixedPointKind.Saddle
+              0.0, FixedPointKind.Centre
+              Math.PI, FixedPointKind.Saddle
+              2.0 * Math.PI, FixedPointKind.Centre ]
+
+        Assert.Equal(expected.Length, points.Length)
+
+        for (x, kind), p in List.zip expected (Array.toList points) do
+            Assert.Equal(kind, p.Kind)
+            // The interpolant's root, O(h²) from the function's at a pitch of 0.25 rad.
+            Assert.True(abs (float p.X - x) < 1e-3, sprintf "a %A at %g, not %g" kind (float p.X) x)
+            Assert.True(abs (float p.Y) < 1e-9)
+
+            let l1, l2 = p.Eigenvalues
+            let rate: float<1 / s> = if kind = FixedPointKind.Centre then l1.Im else l1.Re
+            // Central differences of sin over a 0.25 rad pitch: sin(h)/h under the root, 0.5% low.
+            Assert.True(abs (float rate - omega) < 0.01 * omega, sprintf "%A: %g, not %g" kind (float rate) omega)
+            Assert.True(abs (float l1.Re + float l2.Re - float p.Trace) < 1e-9)
+
+    /// The eigenvalues converge as O(h²): halving the pitch quarters the error.
+    [<Fact>]
+    let ``the eigenvalues converge at second order`` () =
+        let error n =
+            let centre = Phase.fixedPoints (pendulum n) |> Array.find (fun p -> abs (float p.X) < 0.1)
+            abs (float (fst centre.Eigenvalues).Im - omega)
+
+        let ratio = error 53 / error 105
+        Assert.True(ratio > 3.5 && ratio < 4.5, sprintf "the error fell by %g, not 4" ratio)
+
+    /// A fixed point is a zero of the interpolant every mark draws, so it sits exactly where the
+    /// drawn nullclines cross.
+    [<Fact>]
+    let ``a fixed point is a zero of the interpolant`` () =
+        let g = pendulum 53
+
+        for p in Phase.fixedPoints g do
+            let struct (u, w) = VectorGrid.at g p.X p.Y
+            Assert.True(abs (float u) < 1e-9 && abs (float w) < 1e-9, sprintf "(%g, %g) at %g" (float u) (float w) (float p.X))
+
+    /// A bilinear pair can have two roots in one cell, so Newton is started from five points.
+    /// Here u = xy − 0.1 and w = x − y on a single cell: zeros at ±(√0.1, √0.1), a saddle and a
+    /// stable focus, and from the cell's centre, where both partials of u vanish, Newton cannot
+    /// start at all.
+    [<Fact>]
+    let ``two fixed points in one cell are both found`` () =
+        let flow: Flow<m, m, s> =
+            fun x y -> struct ((float x * float y - 0.1) * 1.0<m / s>, (float x - float y) * 1.0<m / s>)
+
+        let g = Field.sampleFlow (Grid.linear -1.0<m> 1.0<m> 2) (Grid.linear -1.0<m> 1.0<m> 2) flow
+        let points = Phase.fixedPoints g
+        let r = sqrt 0.1
+
+        Assert.Equal(2, points.Length)
+        Assert.True(abs (float points.[0].X + r) < 1e-9 && abs (float points.[1].X - r) < 1e-9)
+        Assert.Equal(FixedPointKind.Focus true, points.[0].Kind)
+        Assert.Equal(FixedPointKind.Saddle, points.[1].Kind)
+
+    /// A centre is a judgement. A focus whose real part is a ten-thousandth of its imaginary part
+    /// is a centre at the default tolerance, and a focus at a tighter one.
+    [<Fact>]
+    let ``a weak focus is a centre at the default tolerance and not at a tighter one`` () =
+        let g = linear 21 (0.3, -0.2) (-2e-4, 2.0, -2.0, -2e-4)
+        Assert.Equal(FixedPointKind.Centre, (Assert.Single(Phase.fixedPoints g)).Kind)
+        Assert.Equal(FixedPointKind.Focus true, (Assert.Single(Phase.fixedPointsWith 1e-5 g)).Kind)
+
+    /// A zero eigenvalue decides nothing: ẋ = x², ẏ = −y has a fixed point the linearisation
+    /// cannot classify.
+    [<Fact>]
+    let ``a zero eigenvalue is degenerate`` () =
+        let flow: Flow<m, m, s> = fun x y -> struct (float x * float x * 1.0<m / s>, -float y * 1.0<m / s>)
+        let g = Field.sampleFlow (Grid.linear -1.0<m> 1.0<m> 21) (Grid.linear -1.0<m> 1.0<m> 21) flow
+        Assert.Equal(FixedPointKind.Degenerate, (Assert.Single(Phase.fixedPoints g)).Kind)
+
+    /// The description prints the eigenvalues in base units: s⁻¹, never `Hz`, which is what the
+    /// registry would call it and what an eigenvalue is not (D98).
+    [<Fact>]
+    let ``a fixed point describes itself, its eigenvalues in s⁻¹`` () =
+        let centre = Phase.fixedPoints (pendulum 53) |> Array.find (fun p -> abs (float p.X) < 0.1)
+        let text = FixedPoint.describe Derived.radian (U.div Derived.radian U.second) U.second centre
+        Assert.StartsWith("centre (linear) at (0 rad, 0 rad·s⁻¹), λ = ±3.11", text)
+        Assert.EndsWith("i s⁻¹", text)
+        Assert.DoesNotContain("Hz", text)
+
+    let private portrait =
+        Phase.portraitWith 18.0<px> Derived.radian (U.div Derived.radian U.second) (pendulum 53)
+        |> Chart.withTitle "A pendulum's phase portrait"
+
+    [<Fact>]
+    let ``golden: a phase portrait with nullclines and fixed points (svg)`` () =
+        Golden.check "figure-field-portrait.svg" (Chart.render SvgBackend.render (Chart.size 480.0 300.0) portrait)
+
+    /// The legend carries `dθ/dt = 0` and `dω/dt = 0`, Greek in a text run, so the TikZ baseline is
+    /// compiled.
+    [<Fact>]
+    let ``golden: the same portrait (tikz)`` () =
+        let doc = Chart.render TikzBackend.render (Chart.size 480.0 300.0) portrait
+        Golden.check "figure-field-portrait.tex" doc
+
+        match TexToolchain.compile "field-portrait" (TikzBackend.standalone doc) with
+        | TexToolchain.Unavailable -> Console.WriteLine("SKIPPED: " + TexToolchain.report ())
+        | TexToolchain.Compiled -> ()
+        | TexToolchain.Failed why -> failwithf "the portrait baseline does not compile:\n%s" why

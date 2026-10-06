@@ -40,6 +40,17 @@ land in a minor release.
   times a stated oversample (`licWith`, with `Field.licDefaults`: a 20 px kernel, oversample 1,
   seed 0). The noise comes from `Rng`, so a seed, a field and a plot size always give the same
   image, and a different seed gives the same flow with different grain.
+  `Phase.fixedPoints` finds a flow's fixed points as the zeros of the grid's interpolant, where
+  its nullclines cross, and classifies each by its linearisation's trace and determinant: saddle,
+  stable or unstable node or focus, centre, or degenerate. The eigenvalues are in `1/'t`, so a
+  pendulum's are in s⁻¹. A centre is called one when the eigenvalues' real part is under 10⁻³ of
+  their imaginary part (`fixedPointsWith` states another tolerance), because linearisation cannot
+  tell a centre from a weak focus. `FixedPoint.describe` prints one as
+  `centre (linear) at (0 rad, 0 rad·s⁻¹), λ = ±3.128i s⁻¹`. `Phase.nullclines` draws the zero
+  contours of both components, named `dθ/dt = 0` after the axes, and `Phase.portrait` draws
+  streamlines, nullclines and fixed points marked by kind in one figure.
+- **`examples/pendulum.fsx`**: a pendulum's phase portrait with and without friction, its fixed
+  points classified, and Liouville's theorem checked on the grid.
 - **`Chart.overlay`**, which draws one figure's layers over another's last panel: a heatmap
   under its contours, or any two figures over the same quantities.
 - **`Rng`, a specified pseudo-random generator, in `Marey.Core`.** SplitMix64, immutable,

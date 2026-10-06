@@ -72,6 +72,10 @@ because ∂ω̇/∂θ and ∂θ̇/∂ω are in different units and their differe
   flow shows at every pixel rather than along a chosen few lines. `licBy` colours it by
   magnitude. It is a raster at the plot area's resolution, with an oversample for print. Its
   noise is seeded, so a seed names one image.
+- **Phase portraits.** `Phase.fixedPoints` finds where a flow vanishes and classifies each point
+  by its linearisation: saddle, node, focus or centre, with eigenvalues in `1/'t`.
+  `FixedPoint.describe` prints one: `saddle at (3.1416 rad, 0 rad·s⁻¹), λ = 3.1266, -3.1266 s⁻¹`.
+  `Phase.portrait` draws the streamlines, the nullclines and the fixed points together.
 
 ## Links
 

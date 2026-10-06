@@ -51,7 +51,10 @@ let private assemblies =
       // Phase 8 shipped the package with no example using it, so the omission was invisible: a
       // list of assemblies is only wrong once a script needs the missing one.
       "Marey.Tools.Tex"
-      "Marey.Html" ]
+      "Marey.Html"
+      // Joined at M4 phase 6, with `pendulum.fsx` — the same omission as `Marey.Tools.Tex`'s:
+      // phases 1–5 shipped `Marey.Fields` with no example, so nothing needed it here.
+      "Marey.Fields" ]
 
 let private exampleDir =
     lazy (Path.Combine(Golden.repoRoot.Force(), "examples"))
