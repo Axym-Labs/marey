@@ -64,6 +64,11 @@ land in a minor release.
   is in m/s. Reproducible from the seed the caller passes and the result carries: the resamples
   come from `Rng`, so a seed names one interval on every runtime. `bootstrapWith` and
   `bootstrapPairsWith` state the resamples and the level (defaults 2000 and 95%).
+- **`TexCache` and `Typeset.sceneCached`**: typeset outlines that outlive one call, for a film.
+  Pass one cache to every frame's pass and only the first frame runs `latex`: five frames with two
+  formulas take 217 ms instead of 1082 ms. Keyed on the source, the preamble, the class options,
+  the base size and the tools, so callers with different preambles never share an outline, and
+  safe across threads. `Typeset.scene` keeps its per-call cache.
 - **`Chart.withColorDomain`** states a continuous colour channel's domain rather than taking its
   values' range, in any unit of the channel's dimension. For two figures that must share a colour
   scale, and for a film.

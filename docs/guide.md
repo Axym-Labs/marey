@@ -1583,10 +1583,12 @@ costs you every label.
 About 105 ms per **distinct** snippet, memoised on the source — so the same axis title on twelve
 facets is one run. An ordinary figure carries two, and pays about a fifth of a second.
 
-**The cache lives for one call, and a frame is a call.** It collapses repetition inside a scene,
-not across scenes, so typesetting an animation frame by frame pays that fifth of a second per
-frame rather than once for the film — 235 ms for the first frame and 1060 ms for five, measured.
-Typeset the still you are going to publish, not every frame of the reel.
+**The cache lives for one call unless you hold one.** `Typeset.scene` collapses repetition inside
+a scene, not across scenes, so typesetting an animation frame by frame with it pays that fifth of
+a second per frame: 1082 ms for five frames, measured. For a film, create one `TexCache` and pass
+it to `Typeset.sceneCached` in every frame's renderer. The first frame typesets and the rest
+reuse it: 217 ms for the same five frames. The cache is keyed on everything that shapes an
+outline, the preamble and the tools included, and it is safe across the threads frames render on.
 
 The font size is applied as a *scale* on the outline rather than as a second engine run, so one
 formula at 9 pt and at 18 pt costs one invocation between them. A TeX engine asked for 18 pt

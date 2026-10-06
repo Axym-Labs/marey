@@ -598,6 +598,67 @@ module ``the degrade`` =
                 )
             | outcome -> failwithf "the second call did not typeset: %A" outcome)
 
+    /// **D96 — a cache the caller holds does span calls.** The second call through it runs no
+    /// engine, and its scene is the one an uncached call draws.
+    [<Fact>]
+    let ``a held cache spans calls, and draws what an uncached call draws`` () =
+        withTex (fun () ->
+            let cache = TexCache()
+            let scene = Text(run (Some "$\\nabla\\cdot E$") "div E")
+
+            let first, second =
+                match Typeset.sceneCached cache TexOptions.Default extent scene, Typeset.sceneCached cache TexOptions.Default extent scene with
+                | Typeset a, Typeset b -> a, b
+                | a, b -> failwithf "did not typeset: %A / %A" a b
+
+            Assert.Equal(1, first.EngineRuns)
+            Assert.Equal(0, second.EngineRuns)
+            Assert.Equal(1, second.Typeset)
+            Assert.Equal(1, cache.EngineRuns)
+
+            match Typeset.scene TexOptions.Default extent scene with
+            | Typeset fresh -> Assert.True((fresh.Scene = second.Scene), "the cached outline differs from a fresh one")
+            | other -> failwithf "%A" other)
+
+    /// Two preambles through one cache are two entries: what the per-call design existed to
+    /// prevent — callers with different preambles silently sharing outlines — cannot happen.
+    [<Fact>]
+    let ``a different preamble is a different entry`` () =
+        withTex (fun () ->
+            let cache = TexCache()
+            let scene = Text(run (Some "$x$") "x")
+            let other = { TexOptions.Default with Preamble = TexOptions.Default.Preamble + "\\usepackage{bm}\n" }
+
+            for options in [ TexOptions.Default; other; TexOptions.Default ] do
+                match Typeset.sceneCached cache options extent scene with
+                | Typeset _ -> ()
+                | outcome -> failwithf "%A" outcome
+
+            Assert.Equal(2, cache.EngineRuns)
+            Assert.Equal(2, cache.Entries))
+
+    /// Frames render concurrently. Eight frames carrying the same two formulas, typeset at once
+    /// through one cache, run the engine exactly twice — not once per frame, and not twice per
+    /// race.
+    [<Fact>]
+    let ``concurrent frames through one cache run each formula once`` () =
+        withTex (fun () ->
+            let cache = TexCache()
+
+            let frame (i: int) =
+                Group
+                    [| Text { run (Some "$\\omega$") "w" with At = { X = 0.1<nd>; Y = float i * 0.1<nd> } }
+                       Text(run (Some "$\\theta$") "t") |]
+
+            let runs =
+                Array.Parallel.init 8 (fun i ->
+                    match Typeset.sceneCached cache TexOptions.Default extent (frame i) with
+                    | Typeset r -> r.EngineRuns
+                    | outcome -> failwithf "%A" outcome)
+
+            Assert.Equal(2, cache.EngineRuns)
+            Assert.Equal(2, Array.sum runs))
+
 // ======================================================================================
 // THE PASS — what happens to a scene, with and without an engine behind it
 // ======================================================================================

@@ -1,6 +1,7 @@
 namespace Marey
 
 open System
+open System.Collections.Concurrent
 open System.Collections.Generic
 open System.Globalization
 open System.IO
@@ -72,9 +73,14 @@ open System.Text.RegularExpressions
 // frame and 1060 ms for five. An earlier draft of this header claimed the opposite and the guide
 // repeated it; `TypesetTests` now pins the real number so the claim cannot drift back.
 //
-// There is deliberately no film-level entry point yet. One would be a small function and a real
-// decision — what a shared cache is keyed on once it outlives a call — and the close of a
-// milestone is the wrong place to take it.
+// **D96 — a cache that outlives a call, when the caller holds one.** `TexCache` is a value, not
+// a global: a film creates one and passes it to every frame's pass (`sceneCached`), and the first
+// frame pays for the figure's formulas while the rest pay nothing. It is keyed on everything that
+// changes an outline — the source, the preamble, the class options, the base size, and the two
+// tools' paths — so two callers with different preambles holding one cache still get their own
+// outlines, which is the hazard the per-call design existed to avoid. The extent and the
+// resolution are not in the key, because they act at placement. Frames render concurrently, so
+// it is safe to share across threads, and a source two frames ask for at once is run once.
 //
 // **Batching every snippet into one multi-page document was tried and rejected.** It is roughly
 // four times faster on a figure with ten distinct labels, and it fails badly: one snippet TeX
@@ -178,6 +184,63 @@ type TypesetResult =
       /// Elements whose own colour was not honoured, summed over the runs. See
       /// `TexOutline.Recoloured`.
       Recoloured: int }
+
+/// What an outline depends on: the snippet, and every option and tool that shapes it (D96).
+/// The extent and the resolution are absent on purpose — they act when an outline is placed.
+[<Struct; CustomEquality; NoComparison>]
+type internal TexCacheKey =
+    { Source: string
+      Preamble: string
+      ClassOptions: string
+      BaseSize: float
+      Engine: string
+      Dvisvgm: string }
+
+    override k.Equals(o: obj) =
+        match o with
+        | :? TexCacheKey as other ->
+            k.Source = other.Source
+            && k.Preamble = other.Preamble
+            && k.ClassOptions = other.ClassOptions
+            && k.BaseSize = other.BaseSize
+            && k.Engine = other.Engine
+            && k.Dvisvgm = other.Dvisvgm
+        | _ -> false
+
+    override k.GetHashCode() =
+        HashCode.Combine(k.Source, k.Preamble, k.ClassOptions, k.BaseSize, k.Engine, k.Dvisvgm)
+
+/// **D96 — typeset outlines that outlive one call**, for a film whose every frame carries the
+/// same formulas. Hold one, pass it to `Typeset.sceneCached` for each frame, and only the first
+/// frame runs the engine.
+///
+/// A value rather than global state: nothing is shared that the caller did not share. Safe across
+/// threads, and a source two frames ask for at once is typeset once. A snippet that failed is
+/// remembered as failed, so a film does not retry, and stall on, the same bad formula every
+/// frame. Entries are never evicted; a cache lives as long as the caller keeps it.
+[<Sealed>]
+type TexCache() =
+    let entries = ConcurrentDictionary<TexCacheKey, Lazy<Result<TexOutline, string>>>()
+    let mutable runs = 0
+
+    /// Engine runs this cache has caused, over its whole life.
+    member _.EngineRuns: int = Threading.Volatile.Read &runs
+
+    /// Distinct snippets held.
+    member _.Entries: int = entries.Count
+
+    /// The outline for a key, and whether this call ran the engine for it.
+    member internal _.Resolve (key: TexCacheKey) (typeset: unit -> Result<TexOutline, string>) : Result<TexOutline, string> * bool =
+        let mine =
+            Lazy<Result<TexOutline, string>>(
+                (fun () ->
+                    Threading.Interlocked.Increment &runs |> ignore
+                    typeset ()),
+                Threading.LazyThreadSafetyMode.ExecutionAndPublication
+            )
+
+        let held = entries.GetOrAdd(key, mine)
+        held.Value, obj.ReferenceEquals(held, mine)
 
 /// What happened when a scene was asked to typeset.
 ///
@@ -525,9 +588,10 @@ module Typeset =
     ///
     /// **The tools are arguments so that "no TeX installed" is reachable from a machine that has
     /// it.** `Typeset.scene` is this with the process's own; see the note there.
-    let sceneWith
+    let sceneWithCache
         (engine: ResolvedTool)
         (dvisvgm: ResolvedTool)
+        (cache: TexCache)
         (options: TexOptions)
         (extent: Extent<px>)
         (node: Node)
@@ -546,21 +610,26 @@ module Typeset =
             )
         else
 
-        // Keyed on the source alone. The size is a scale applied at placement, so one engine run
-        // serves every size the same formula appears at; the preamble cannot vary within a call.
-        let cache = Dictionary<string, Result<TexOutline, string>>()
+        // Keyed on the source and everything that shapes an outline (D96). The size is a scale
+        // applied at placement, so one engine run serves every size the same formula appears at.
+        let mutable engineRuns = 0
         let mutable typeset = 0
         let mutable plain = 0
         let mutable recoloured = 0
         let failures = ResizeArray<TexFailure>()
 
         let outlineFor (source: string) =
-            match cache.TryGetValue source with
-            | true, hit -> hit
-            | _ ->
-                let result = runOnce engine dvisvgm options source
-                cache.[source] <- result
-                result
+            let key =
+                { Source = source
+                  Preamble = options.Preamble
+                  ClassOptions = options.ClassOptions
+                  BaseSize = float options.BaseSize
+                  Engine = defaultArg engine.Path ""
+                  Dvisvgm = defaultArg dvisvgm.Path "" }
+
+            let result, ran = cache.Resolve key (fun () -> runOnce engine dvisvgm options source)
+            if ran then engineRuns <- engineRuns + 1
+            result
 
         // Returns the node **by reference** when nothing beneath it changed, so a pass that
         // replaces two axis titles allocates two paths rather than a copy of the figure.
@@ -623,8 +692,19 @@ module Typeset =
               Typeset = typeset
               Plain = plain
               Failed = List.ofSeq failures
-              EngineRuns = cache.Count
+              EngineRuns = engineRuns
               Recoloured = recoloured }
+
+    /// `sceneWithCache` with a cache of its own: repetition within the call is collapsed, and
+    /// nothing outlives it.
+    let sceneWith
+        (engine: ResolvedTool)
+        (dvisvgm: ResolvedTool)
+        (options: TexOptions)
+        (extent: Extent<px>)
+        (node: Node)
+        : TypesetOutcome =
+        sceneWithCache engine dvisvgm (TexCache()) options extent node
 
     /// Typeset every run in a scene that carries a `Tex` form.
     ///
@@ -636,6 +716,13 @@ module Typeset =
     let scene (options: TexOptions) (extent: Extent<px>) (node: Node) : TypesetOutcome =
         let tools = toolchain ()
         sceneWith tools.Engine tools.Dvisvgm options extent node
+
+    /// D96 — `scene` through a cache the caller holds, so a film's frames after the first run
+    /// no engine for the formulas the first one typeset. `EngineRuns` counts the runs this call
+    /// caused; `TexCache.EngineRuns` counts them all.
+    let sceneCached (cache: TexCache) (options: TexOptions) (extent: Extent<px>) (node: Node) : TypesetOutcome =
+        let tools = toolchain ()
+        sceneWithCache tools.Engine tools.Dvisvgm cache options extent node
 
     /// The scene to draw, whatever happened, and a line saying what happened.
     ///
