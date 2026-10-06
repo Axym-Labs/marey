@@ -111,6 +111,12 @@ land in a minor release.
   film**, which was not true of `Typeset.scene`, whose cache lives for one call. The guide was
   corrected at 0.3.0 and the readme was missed. Both now say how a film typesets once:
   `TexCache`, above.
+- **An animation's early frames could overflow their own layout.** `Chart.arrangeUnion` pins one
+  SI prefix for a whole shot, from the union of its states' domains, but measured each state
+  under the prefix that state would choose alone. In a zoom that crosses a decade, the early
+  frames were measured as `0 2 4 6 8` and drawn as `0.002 … 0.008`, in a gutter sized for the
+  shorter labels. The prefixes are now chosen first and every state is measured under them.
+  `Chart.fitsIn` reports whether a figure fits a shot, and every state of a shot now does.
 
 ## [0.3.1] — 2026-10-05
 
