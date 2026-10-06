@@ -112,6 +112,10 @@ type GeomOf<[<Measure>] 'p> =
     /// second case would be a second branch in every consumer for no difference in what is
     /// drawn.
     | GeomRect of x0: float<'p>[] * y0: float<'p>[] * x1: float<'p>[] * y1: float<'p>[]
+    /// D93 — a closed polygon per point, its vertices in data space and projected one by one,
+    /// so a hexagon's edges are straight on the panel whatever the axes. Filled and edged in the
+    /// fill's own paint, as a tile is, because polygons that tessellate must not draw a grid.
+    | GeomPolygon of xs: float<'p>[][] * ys: float<'p>[][]
     /// A line from each point to a second point.
     | GeomSegment of x1: float<'p>[] * y1: float<'p>[]
     /// A label per point, offset from it by a device-space vector.
@@ -444,6 +448,7 @@ module Geom =
         | GeomStep align -> GeomStep align
         | GeomRibbon(low, high) -> GeomRibbon(Array.map fy low, Array.map fy high)
         | GeomRect(x0, y0, x1, y1) -> GeomRect(Array.map fx x0, Array.map fy y0, Array.map fx x1, Array.map fy y1)
+        | GeomPolygon(xs, ys) -> GeomPolygon(Array.map (Array.map fx) xs, Array.map (Array.map fy) ys)
         | GeomSegment(x1, y1) -> GeomSegment(Array.map fx x1, Array.map fy y1)
         | GeomText(labels, anchor, baseline, offset) -> GeomText(labels, anchor, baseline, offset)
         | GeomBox(spans, w) ->
@@ -976,6 +981,36 @@ module Geom =
                         NonZero
                     )
 
+            | GeomPolygon(xs, ys) ->
+                let segs =
+                    [| for i in 0 .. pts.Length - 1 do
+                           let k = row i
+
+                           if k < xs.Length && k < ys.Length && xs.[k].Length = ys.[k].Length && xs.[k].Length >= 3 then
+                               let corners = Array.map2 at xs.[k] ys.[k]
+
+                               if Array.forall finite corners then
+                                   yield MoveTo(mapPt corners.[0])
+
+                                   for c in 1 .. corners.Length - 1 do
+                                       yield LineTo(mapPt corners.[c])
+
+                                   yield ClosePath |]
+
+                if segs.Length = 0 then
+                    Scene.empty
+                else
+                    // The fill's paint on the edge too, for `GeomRect`'s reason.
+                    Path(
+                        segs,
+                        Some
+                            { stroke with
+                                Paint = fillOf st
+                                Width = stroke.Width * 0.5 },
+                        Some(fillOf st),
+                        NonZero
+                    )
+
             | GeomSegment(x1s, y1s) ->
                 let segs =
                     [| for i in 0 .. pts.Length - 1 do
@@ -1220,6 +1255,7 @@ module Geom =
                 | GeomStep _
                 | GeomRibbon _
                 | GeomRect _
+                | GeomPolygon _
                 | GeomSegment _
                 | GeomText _
                 // An image occupies a stated box and has no rhythm to read, and a field is drawn
@@ -1262,6 +1298,7 @@ module Geom =
         | GeomBar _
         | GeomRibbon _
         | GeomRect _
+        | GeomPolygon _
         | GeomBox _
         | GeomViolin _ -> LegendSwatch
         // A text layer's mark is its colour and nothing else: the labels *are* the data, so a

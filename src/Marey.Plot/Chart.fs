@@ -1141,6 +1141,52 @@ module Chart =
         : Figure =
         tile ux uy (pitch x) (pitch y) x y |> colorBy uz z
 
+    /// D93 — **a hexbin**, drawn: one hexagon per occupied cell, coloured by its density along
+    /// the theme's sequential ramp, with a colorbar in `1/('ux·'uy)`. Positions in metres give
+    /// a bar in m⁻². The hexagons are polygons in data space, projected vertex by vertex, so they
+    /// stay where their points are on a log axis.
+    let ofHexbin (h: Stat.Hexbin<'ux, 'uy>) : Figure =
+        let w = float h.Width / 2.0
+        let r = float h.RowSpacing
+
+        let corners (cx: float) (cy: float) =
+            [| cx, cy + 2.0 * r / 3.0
+               cx - w, cy + r / 3.0
+               cx - w, cy - r / 3.0
+               cx, cy - 2.0 * r / 3.0
+               cx + w, cy - r / 3.0
+               cx + w, cy + r / 3.0 |]
+
+        let hexes = Array.map2 (fun (x: float<'ux>) (y: float<'uy>) -> corners (float x) (float y)) h.X h.Y
+        let xs = hexes |> Array.map (Array.map fst)
+        let ys = hexes |> Array.map (Array.map snd)
+
+        let domain (cs: float[][]) (fallback: float * float) =
+            let all = Array.concat cs
+            if all.Length = 0 then fallback else Array.min all, Array.max all
+
+        let x0, x1 = domain xs (0.0, 1.0)
+        let y0, y1 = domain ys (0.0, 1.0)
+
+        let s: Series<'ux, 'uy> =
+            { Name = ""
+              X = h.X
+              Y = h.Y
+              XScale = Scale.linear h.XUnit (tag<'ux> x0, tag<'ux> x1)
+              YScale = Scale.linear h.YUnit (tag<'uy> y0, tag<'uy> y1) }
+
+        ofSeries (GeomPolygon(xs, ys)) s
+        |> withStyle (fun st -> { st with FillOpacity = 1.0 })
+        |> colorBy h.DensityUnit h.Density
+
+    /// `ofHexbin` over `Stat.hexbinWith across`.
+    let hexbinWith (ux: U<'ux>) (uy: U<'uy>) (across: int) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+        ofHexbin (Stat.hexbinWith ux uy across x y)
+
+    /// `ofHexbin` over `Stat.hexbin`: 24 hexagons across.
+    let hexbin (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+        ofHexbin (Stat.hexbin ux uy x y)
+
     let sizeByWith (smallest: float<px>) (largest: float<px>) (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
         let domain =
             match Scale.domainOf values with

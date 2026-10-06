@@ -690,3 +690,133 @@ module Stat =
 
     let interceptQuantity (f: Fit<'ux, 'uy>) : PackedQuantity =
         Erase.packQuantity f.InterceptUnit f.Intercept
+
+    // ======================================================================================
+    // hexbin — D93, a two-dimensional density
+    // ======================================================================================
+
+    /// Scattered points counted into a hexagonal lattice, and the count as a **density in
+    /// `1/('ux·'uy)`**: `density`'s result in two dimensions. Each cell's density is its count
+    /// over `N` times the cell's area, so it integrates to 1 over the plane, and a hexbin of
+    /// positions in metres is in m⁻².
+    ///
+    /// Only cells holding at least one point are listed.
+    type Hexbin<[<Measure>] 'ux, [<Measure>] 'uy> =
+        { XUnit: U<'ux>
+          YUnit: U<'uy>
+          /// Cell centres.
+          X: float<'ux>[]
+          Y: float<'uy>[]
+          Counts: int[]
+          Density: float<1 / ('ux * 'uy)>[]
+          /// The witness for `Density`.
+          DensityUnit: U<1 / ('ux * 'uy)>
+          /// Centre-to-centre spacing along a row, which is a hexagon's width flat to flat.
+          Width: float<'ux>
+          /// Spacing between rows; alternate rows are offset by half a width. A hexagon spans
+          /// 4/3 of it vertically, and its area is `Width · RowSpacing`.
+          RowSpacing: float<'uy>
+          N: int
+          Dropped: int }
+
+    /// A hexagon is regular on a plot area this much wider than it is tall: the default figure's
+    /// proportions, roughly. A lattice is chosen before any panel exists, so it has to assume one.
+    [<Literal>]
+    let HexAspect = 1.6
+
+    /// Count into a lattice of stated `width` and `rowSpacing`, its first row's first centre at
+    /// `origin`. A point belongs to the nearest centre in the metric that makes the hexagons
+    /// regular, which is the hexagon it lies in.
+    let hexbinIn
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (width: float<'ux>)
+        (rowSpacing: float<'uy>)
+        (origin: float<'ux> * float<'uy>)
+        (xs: float<'ux>[])
+        (ys: float<'uy>[])
+        : Hexbin<'ux, 'uy> =
+        if xs.Length <> ys.Length then
+            invalidArg "ys" (sprintf "Marey: a hexbin needs matching arrays — %d x values and %d y values." xs.Length ys.Length)
+
+        if not (float width > 0.0 && isFinite (float width)) || not (float rowSpacing > 0.0 && isFinite (float rowSpacing)) then
+            invalidArg "width" "Marey: a hexagon's width and row spacing must be positive and finite."
+
+        let ox, oy = float (fst origin), float (snd origin)
+        let w, r = float width, float rowSpacing
+        let rowHeight = sqrt 3.0 / 2.0
+
+        let pairs =
+            Array.init xs.Length (fun i -> float xs.[i], float ys.[i])
+            |> Array.filter (fun (a, b) -> isFinite a && isFinite b)
+
+        // In lattice units (u along a row, v across rows, scaled so that rows are √3/2 apart),
+        // the cells are regular hexagons and the nearest centre is the cell.
+        let cellOf (x: float, y: float) =
+            let u = (x - ox) / w
+            let v = (y - oy) / r * rowHeight
+            let j0 = int (floor (v / rowHeight))
+
+            [ j0; j0 + 1 ]
+            |> List.map (fun j ->
+                let shift = if j % 2 <> 0 then 0.5 else 0.0
+                let i = int (Math.Round(u - shift, MidpointRounding.AwayFromZero))
+                let du = u - (float i + shift)
+                let dv = v - float j * rowHeight
+                (i, j), du * du + dv * dv)
+            |> List.minBy snd
+            |> fst
+
+        let counts = System.Collections.Generic.Dictionary<int * int, int>(HashIdentity.Structural)
+
+        for p in pairs do
+            let c = cellOf p
+
+            match counts.TryGetValue c with
+            | true, n -> counts.[c] <- n + 1
+            | _ -> counts.[c] <- 1
+
+        // Row order, then along the row: a function of the data, never of the dictionary.
+        let cells = counts |> Seq.map (fun kv -> kv.Key, kv.Value) |> Seq.sortBy (fun ((i, j), _) -> j, i) |> Seq.toArray
+        let n = pairs.Length
+        let area = w * r
+
+        { XUnit = ux
+          YUnit = uy
+          X = cells |> Array.map (fun ((i, j), _) -> tag<'ux> (ox + (float i + (if j % 2 <> 0 then 0.5 else 0.0)) * w))
+          Y = cells |> Array.map (fun ((_, j), _) -> tag<'uy> (oy + float j * r))
+          Counts = cells |> Array.map snd
+          Density = cells |> Array.map (fun (_, c) -> LanguagePrimitives.FloatWithMeasure<1 / ('ux * 'uy)>(float c / (float n * area)))
+          DensityUnit = U.recip (U.mul ux uy)
+          Width = width
+          RowSpacing = rowSpacing
+          N = n
+          Dropped = xs.Length - n }
+
+    /// `hexbinIn` with `across` hexagons spanning the x range, rows spaced so the hexagons are
+    /// regular on a plot area `HexAspect` times as wide as it is tall, and the lattice starting
+    /// at the data's lower-left corner.
+    let hexbinWith (ux: U<'ux>) (uy: U<'uy>) (across: int) (xs: float<'ux>[]) (ys: float<'uy>[]) : Hexbin<'ux, 'uy> =
+        if across < 1 then
+            invalidArg "across" (sprintf "Marey: a hexbin needs at least one hexagon across, not %d." across)
+
+        let finiteX, _ = finiteOf xs
+        let finiteY, _ = finiteOf ys
+
+        match Scale.domainOf finiteX, Scale.domainOf finiteY with
+        | Some(x0, x1), Some(y0, y1) ->
+            let xr = float (x1 - x0)
+            let yr = float (y1 - y0)
+            let w = if xr > 0.0 then xr / float across else 1.0
+            let yrEff = if yr > 0.0 then yr else (if xr > 0.0 then xr else 1.0)
+            let r = sqrt 3.0 / 2.0 * w * HexAspect * yrEff / (if xr > 0.0 then xr else 1.0)
+            hexbinIn ux uy (tag<'ux> w) (tag<'uy> r) (x0, y0) xs ys
+        | _ -> hexbinIn ux uy (tag<'ux> 1.0) (tag<'uy> 1.0) (tag<'ux> 0.0, tag<'uy> 0.0) xs ys
+
+    /// The hexagons across a hexbin when nobody states it.
+    [<Literal>]
+    let DefaultHexagons = 24
+
+    /// `hexbinWith DefaultHexagons`.
+    let hexbin (ux: U<'ux>) (uy: U<'uy>) (xs: float<'ux>[]) (ys: float<'uy>[]) : Hexbin<'ux, 'uy> =
+        hexbinWith ux uy DefaultHexagons xs ys

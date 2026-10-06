@@ -51,6 +51,10 @@ land in a minor release.
   streamlines, nullclines and fixed points marked by kind in one figure.
 - **`examples/pendulum.fsx`**: a pendulum's phase portrait with and without friction, its fixed
   points classified, and Liouville's theorem checked on the grid.
+- **`Stat.hexbin` and `Chart.hexbin`**: scattered points counted into hexagons, as a density in
+  `1/('x·'y)` that integrates to one. Positions in metres give a colorbar in m⁻². `hexbinWith`
+  states the hexagons across, and `Stat.hexbinIn` the lattice itself. The rows are spaced so
+  the hexagons are regular on a plot area 1.6 times as wide as it is tall (`Stat.HexAspect`).
 - **`Chart.withColorDomain`** states a continuous colour channel's domain rather than taking its
   values' range, in any unit of the channel's dimension. For two figures that must share a colour
   scale, and for a film.
@@ -78,9 +82,10 @@ land in a minor release.
   that grows tenfold used to look the same in every frame, and now reads as growing. A quiver's
   arrows are scaled against the largest magnitude in the shot, for the same reason. `Shot` gained
   `ColourDomains` and `QuiverKeys`, and `QuiverKey` gained `Largest`. A still is unchanged.
-- **`GeomOf` gained a case, `GeomField`**, the geom a field layer is: a grid and what to draw of
-  it, computed on the panel at compile time. A `match` over `Geom` that was exhaustive needs an
-  arm for it.
+- **`GeomOf` gained two cases.** `GeomField` is the geom a field layer is: a grid and what to
+  draw of it, computed on the panel at compile time. `GeomPolygon` is a closed polygon per point,
+  its vertices in data space, as a hexbin's hexagons are. A `match` over `Geom` that was
+  exhaustive needs an arm for each.
 
 ### Fixed
 

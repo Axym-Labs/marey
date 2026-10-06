@@ -725,3 +725,109 @@ module Block =
         let a = Chart.render SvgBackend.render Chart.defaultSize (build ())
         let b = Chart.render SvgBackend.render Chart.defaultSize (build ())
         Assert.Equal(a, b)
+
+// ======================================================================================
+// M4 phase 8 — hexbin (D93)
+// ======================================================================================
+
+module ``hexbin`` =
+
+    /// A seeded two-dimensional normal sample, by Box–Muller over `Rng`: x in metres with a
+    /// spread of 2 m, y in seconds with a spread of 0.5 s.
+    let private sample (n: int) =
+        let us, _ = Rng.units (2 * n) (Rng.seeded 7UL)
+
+        Array.init n (fun i ->
+            let a, b = us.[2 * i], us.[2 * i + 1]
+            let r = sqrt (-2.0 * log (1.0 - a))
+            r * cos (2.0 * System.Math.PI * b) * 2.0<m>, r * sin (2.0 * System.Math.PI * b) * 0.5<s>)
+        |> Array.unzip
+
+    let private xs, ys = sample 2000
+    let private h = Stat.hexbin U.metre U.second xs ys
+
+    /// Ray casting, independent of how the stat assigned anything.
+    let private inside (px: float) (py: float) (poly: (float * float)[]) =
+        let mutable odd = false
+        let n = poly.Length
+
+        for k in 0 .. n - 1 do
+            let x1, y1 = poly.[k]
+            let x2, y2 = poly.[(k + 1) % n]
+
+            if (y1 > py) <> (y2 > py) && px < x1 + (py - y1) * (x2 - x1) / (y2 - y1) then
+                odd <- not odd
+
+        odd
+
+    /// **Each point lies in the hexagon the figure draws for its cell.** The drawn polygons come
+    /// from `Chart.ofHexbin`'s layer, so the assignment and the geometry are checked against
+    /// each other, not against a second copy of the same arithmetic.
+    [<Fact>]
+    let ``every point is inside the hexagon drawn for its cell`` () =
+        let polygons =
+            match (Chart.ofHexbin h).Panels.[0].Layers.[0].Geom with
+            | GeomPolygon(px, py) -> Array.map2 Array.zip px py
+            | g -> failwithf "a hexbin is drawn as %A" g
+
+        Assert.Equal(h.X.Length, polygons.Length)
+
+        let cellOf (x: float) (y: float) =
+            polygons |> Array.tryFindIndex (inside x y)
+
+        for i in 0 .. xs.Length - 1 do
+            match cellOf (float xs.[i]) (float ys.[i]) with
+            | None -> failwithf "(%g, %g) is in no drawn hexagon" (float xs.[i]) (float ys.[i])
+            | Some _ -> ()
+
+        // And the counts are the drawn hexagons' point counts.
+        let counted = Array.zeroCreate polygons.Length
+
+        for i in 0 .. xs.Length - 1 do
+            match cellOf (float xs.[i]) (float ys.[i]) with
+            | Some c -> counted.[c] <- counted.[c] + 1
+            | None -> ()
+
+        Assert.Equal<int[]>(h.Counts, counted)
+
+    /// The density is a probability density in 1/(m·s): its integral over the cells is 1.
+    [<Fact>]
+    let ``the density integrates to one, in 1/(x·y)`` () =
+        let area = h.Width * h.RowSpacing
+        let total: float = h.Density |> Array.sumBy (fun d -> d * area)
+        Assert.True(abs (total - 1.0) < 1e-12, sprintf "∫ = %g" total)
+        Assert.Equal(2000, h.Counts |> Array.sum)
+
+        let d: float<1 / (m * s)> = h.Density.[0]
+        Assert.True(d > 0.0<_>)
+        Assert.Equal("m⁻¹·s⁻¹", UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none h.DensityUnit)
+
+    /// A uniform sample has a flat density, equal to one over the region's area.
+    [<Fact>]
+    let ``a uniform sample has the density of its region`` () =
+        let n = 120
+        let gx = [| for _ in 0 .. n - 1 do for i in 0 .. n - 1 -> (float i + 0.5) / float n * 4.0<m> |]
+        let gy = [| for j in 0 .. n - 1 do for _ in 0 .. n - 1 -> (float j + 0.5) / float n * 2.0<m> |]
+        let u = Stat.hexbinWith U.metre U.metre 8 gx gy
+
+        // Interior cells only: a cell on the boundary is partly outside the region.
+        let interior =
+            Array.init u.X.Length id
+            |> Array.filter (fun k ->
+                u.X.[k] > u.Width && u.X.[k] < 4.0<m> - u.Width && u.Y.[k] > u.RowSpacing && u.Y.[k] < 2.0<m> - u.RowSpacing)
+
+        Assert.True(interior.Length > 10)
+
+        for k in interior do
+            Assert.True(abs (float u.Density.[k] - 1.0 / 8.0) < 0.1 / 8.0, sprintf "%g at (%g, %g)" (float u.Density.[k]) (float u.X.[k]) (float u.Y.[k]))
+
+    [<Fact>]
+    let ``non-finite points are dropped and counted`` () =
+        let g = Stat.hexbin U.metre U.second (Array.append xs [| nan * 1.0<m> |]) (Array.append ys [| 0.0<s> |])
+        Assert.Equal(1, g.Dropped)
+        Assert.Equal(2000, g.N)
+
+    [<Fact>]
+    let ``golden: a hexbin with a colorbar in m⁻¹·s⁻¹ (svg)`` () =
+        let fig = Chart.ofHexbin h |> Chart.withTitle "A two-dimensional normal sample"
+        Golden.check "figure-hexbin.svg" (Chart.render SvgBackend.render (Chart.size 480.0 300.0) fig)
