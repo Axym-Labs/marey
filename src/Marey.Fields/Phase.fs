@@ -100,8 +100,7 @@ module FixedPoint =
         (p: FixedPoint<'x, 'y, 't>)
         : string =
         let coord (u: U<'u>) (v: float<'u>) =
-            let text = UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none u
-            if text = "" then number (float v) else number (float v) + " " + text
+            UnitDisplay.quantity Unicode UnitRegistry.si false number u v
 
         let rate = U.recip ut
         let si (v: float<1 / 't>) = U.toSI rate v

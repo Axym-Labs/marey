@@ -409,3 +409,27 @@ module UnitDisplay =
 
     let unitText<[<Measure>] 'u> (style: UnitStyle) (registry: UnitRegistry) (p: Prefix) (u: U<'u>) =
         unitTextErasedWith style registry p u.Symbol u.Factors u.Dim u.ToSI u.OffsetSI
+
+    /// A value and its unit as one string: `2 kV·m⁻¹`, `300 K`, `0 rad`.
+    ///
+    /// The one place a single quantity is written for a reader. The quiver key (D87) and
+    /// `FixedPoint.describe` (D92) each had a private copy, and the two already disagreed on the
+    /// prefix; a control's label would have made a third. What the callers legitimately differ in
+    /// is an argument here rather than a reason to copy it: `prefixed` chooses the prefix the value
+    /// would be ticked in (`Prefix.selectForUnit`) or none, and `number` writes the scaled value,
+    /// because a key wants the shortest exact form and a description wants four places.
+    ///
+    /// A dimensionless value with no symbol is the number alone, with no trailing space.
+    let quantity<[<Measure>] 'u>
+        (style: UnitStyle)
+        (registry: UnitRegistry)
+        (prefixed: bool)
+        (number: float -> string)
+        (u: U<'u>)
+        (v: float<'u>)
+        : string =
+        let x = float v
+        let prefix = if prefixed then Prefix.selectForUnit u (x, x) else Prefix.none
+        let text = unitText style registry prefix u
+        let shown = number (x / Prefix.factor prefix)
+        if text = "" then shown else shown + " " + text

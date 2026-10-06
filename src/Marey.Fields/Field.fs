@@ -381,12 +381,9 @@ module Field =
     /// unit in the theme's plain-text style.
     let private keyOf<[<Measure>] 'v> (uv: U<'v>) (largest: float) : QuiverKey =
         let value = keyValue largest
-        let prefix = Prefix.selectForUnit uv (value, value)
-        let shown = value / Prefix.factor prefix
-        let unitText = UnitDisplay.unitText Unicode UnitRegistry.si prefix uv
 
         { Value = value
-          Label = (Ticks.formatGeneral shown + (if unitText = "" then "" else " " + unitText)).Trim()
+          Label = UnitDisplay.quantity Unicode UnitRegistry.si true Ticks.formatGeneral uv (LanguagePrimitives.FloatWithMeasure value)
           Largest = largest }
 
     /// A quiver: an arrow at every node, its length the vector's magnitude through the quiver's

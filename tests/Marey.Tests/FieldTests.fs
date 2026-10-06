@@ -558,6 +558,17 @@ module ``arrows`` =
             Assert.Equal("2 kV·m⁻¹", keyText scene)
             Assert.Equal(2.0 / 3.7, key / longest, 9)
 
+    /// **M4.5 gate 1.** One quantity formatter. The key's label is `UnitDisplay.quantity`'s,
+    /// which a control's label also uses, so the two cannot drift; and the same function without
+    /// the prefix is `FixedPoint.describe`'s form.
+    [<Fact>]
+    let ``the key's label is the one quantity formatter's`` () =
+        let scene = Chart.toScene (Chart.size 480.0 300.0) (Field.quiver U.metre U.metre fieldUnit uniform)
+        let quantity prefixed = UnitDisplay.quantity Unicode UnitRegistry.si prefixed Ticks.formatGeneral fieldUnit
+
+        Assert.Equal(quantity true 2000.0<_>, keyText scene)
+        Assert.Equal("2000 V·m⁻¹", quantity false 2000.0<_>)
+
     /// An arrow is tangent to the field on the panel, a log axis included: its slope in `nd` is
     /// the components' ratio times the ratio of the scales' derivatives at its node.
     [<Fact>]
