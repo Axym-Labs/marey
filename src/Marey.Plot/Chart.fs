@@ -1412,6 +1412,16 @@ module Chart =
     let arrangeUnion (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (sample: float -> Figure) : Shot =
         Figure.arrangeUnion samples m extent sample
 
+    /// **D106 — one layout over states a caller lists**: `arrangeUnion` without the clock. A
+    /// widget passes the states its controls reach at their extremes.
+    let arrangeOver (m: ITextMeasurer) (extent: Extent<px>) (states: Figure[]) : Shot =
+        Figure.arrangeOver m extent states
+
+    /// **D106 — whether this figure's labels fit a layout already decided**, planned exactly as
+    /// `toSceneIn` would plan them. A state that does not fit is drawn in a new arrangement, and
+    /// the widget counts it.
+    let fitsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : bool = Figure.fitsIn m shot fig
+
     /// **Draw a figure inside a layout that is already decided.** The frame renderer's entry
     /// point, and the one function in this section that an animation calls per frame.
     ///

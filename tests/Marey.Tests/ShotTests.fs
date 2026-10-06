@@ -163,6 +163,17 @@ module PanelDoesNotBreathe =
         let inShot = transforms (Chart.toSceneIn measurer shot (digits 0.0))
         Assert.NotEqual<Affine<nd, nd> list>(alone, inShot)
 
+    /// **D108.** Every state of the shot fits the shot. A decade-crossing zoom pins one prefix
+    /// for the whole shot, so its early frames are drawn as `0.002 … 0.008` rather than the
+    /// `0 2 4 6 8` they would show alone; the union has to have measured them that way, or the
+    /// rectangle holds still and the labels do not fit in it. Found by M4.5's `fitsIn`.
+    [<Fact>]
+    let ``every state fits the shot it was measured for`` () =
+        let shot = Chart.arrangeUnion 32 measurer surface decades
+
+        for u in frames do
+            Assert.True(Chart.fitsIn measurer shot (decades u), sprintf "the frame at u = %g overflows its own shot" u)
+
 // ======================================================================================
 // Gate 9 — the prefix does not step
 // ======================================================================================

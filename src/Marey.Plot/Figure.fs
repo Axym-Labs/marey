@@ -649,10 +649,11 @@ module Figure =
         (extent: Extent<px>)
         (region: Rect<px>)
         (frozen: PanelLayout option)
+        (pins: Prefix option * Prefix option)
         (p: Panel)
-        : PanelLayout * (unit -> Node) =
+        : PanelLayout * (unit -> PanelLayout) * (unit -> Node) =
         if p.Layers.Length = 0 then
-            PanelLayout.empty, (fun () -> Scene.empty)
+            PanelLayout.empty, (fun () -> PanelLayout.empty), (fun () -> Scene.empty)
         else
             // D68 — this panel's name, from the grid position it already writes into the
             // `Annotated` node at the end of this function. `Keyed` says *which* panel; the
@@ -671,8 +672,12 @@ module Figure =
             // pins nothing and chooses per figure, which is what it has always done; an
             // animation pins both axes against the union of every frame's domain, so the axis
             // *title* cannot step from `mm` to `µm` halfway through a zoom.
-            let pinX = frozen |> Option.bind (fun f -> f.XPrefix)
-            let pinY = frozen |> Option.bind (fun f -> f.YPrefix)
+            //
+            // `pins` is the same choice for a panel being *measured* rather than drawn: the union
+            // measures every state under the prefix it will be drawn in, or a state whose own
+            // prefix differs is measured with labels it never shows (D108).
+            let pinX = match frozen with Some f -> f.XPrefix | None -> fst pins
+            let pinY = match frozen with Some f -> f.YPrefix | None -> snd pins
 
             let xSpec =
                 Axes.specOfPinned pinX (unitStyle p.XAxis) p.XAxis.TickCount p.XAxis.Label AxisBottom xPacked
@@ -1040,7 +1045,18 @@ module Figure =
                     )
                 )
 
-            layout, draw
+            // D106 — what this panel's own labels need inside the rectangle it was given. With
+            // no frozen layout that is the layout. With one, it is the gutters the tick plan made
+            // at the frozen probe asks for, under the frozen prefixes: the question a widget asks
+            // of a state nobody sampled. Lazy, because drawing never needs it.
+            let needed () =
+                match frozen with
+                | None -> layout
+                | Some f ->
+                    let (xPlan, yPlan, barPlan) = plan f.Probe.Width f.Probe.Height
+                    gutters xPlan yPlan barPlan f.Probe
+
+            layout, needed, draw
 
     /// The figure's own outer grid: one content row for the head, then one row of tracks per
     /// panel row. Split out of `toScene` by D72 so that `arrangeFor` and the renderer cannot be
@@ -1191,7 +1207,7 @@ module Figure =
                 match Layout.tryFindPx key outer with
                 | None -> None
                 | Some region ->
-                    let layout, _ = compilePanel m fig.Theme extent region None (unify p)
+                    let layout, _, _ = compilePanel m fig.Theme extent region None (None, None) (unify p)
                     Some(key, layout))
 
         { Outer = outer
@@ -1199,6 +1215,128 @@ module Figure =
           Samples = 1
           ColourDomains = [||]
           QuiverKeys = [||] }
+
+    /// The head row's height: the title and the subtitle, each with its gap, or nothing.
+    let private headHeight (m: ITextMeasurer) (fig: Figure) =
+        let a =
+            if isEmpty fig.Title then
+                0.0<px>
+            else
+                Rect.height (textBox m fig.Theme.TitleFont fig.Title) + fig.Theme.TitleGap
+
+        let b =
+            if isEmpty fig.Subtitle then
+                0.0<px>
+            else
+                Rect.height (textBox m fig.Theme.SubtitleFont fig.Subtitle) + fig.Theme.TitleGap
+
+        a + b
+
+    /// **D106 — one arrangement over states a caller lists.** `arrangeUnion` is this over samples
+    /// of time; a widget calls it over the states its controls can reach (their extremes), which
+    /// it knows without running anything, because the controls are known before the view runs.
+    ///
+    /// Everything `arrangeUnion` says about the union holds: componentwise, the prefixes pinned
+    /// from the union domain, the colour domains and quiver keys (D94) held across the states.
+    /// `Samples` reports how many states there were.
+    let arrangeOver (m: ITextMeasurer) (extent: Extent<px>) (raw: Figure[]) : Shot =
+        if raw.Length = 0 then
+            invalidArg "raw" "Marey: a shot needs at least one state."
+
+        let colourDomains = colourDomainsOf raw
+        let quiverKeys = quiverKeysOf raw
+
+        let states =
+            raw |> Array.map (fun f -> { f with Panels = f.Panels |> Array.map (pinned colourDomains quiverKeys) })
+
+        // The outer grid first, because a panel cannot be measured until it knows its region and
+        // the region depends on how tall the head row is.
+        let headOf = headHeight m
+
+        let head = states |> Array.map headOf |> Array.max
+
+        // The grid is the union of every state's: as many rows and columns as any state has,
+        // and a region for every panel position any state uses. It used to be taken from the
+        // one state with the most panels, which is the same thing until two states have the
+        // same count in different shapes — a 1×2 and a 2×1 — and then one of them lost a panel
+        // to a grid that had no region for it. Gaps, padding and the theme do not vary with the
+        // data, so the first state supplies them.
+        let template =
+            { states.[0] with
+                Rows = states |> Array.map (fun f -> max 1 f.Rows) |> Array.max
+                Cols = states |> Array.map (fun f -> max 1 f.Cols) |> Array.max
+                Panels =
+                    states
+                    |> Array.collect (fun f -> f.Panels)
+                    |> Array.distinctBy (fun p -> p.Row, p.Col) }
+
+        let outer = Layout.arrange m extent (outerGrid (Some head) template)
+
+        // Then every panel of every state, unioned by key. `Array.choose` rather than an
+        // exception when a key is missing: a state that lacks a panel another state has
+        // contributes nothing to that panel's union, which is the right answer — an absent panel
+        // needs no gutters.
+        let entries =
+            states
+            |> Array.collect (fun fig ->
+                fig.Panels
+                |> Array.choose (fun p ->
+                    let key = sprintf "panel-%d-%d" p.Row p.Col
+
+                    Layout.tryFindPx key outer
+                    |> Option.map (fun region -> key, (fig, region, unify p))))
+
+        // D73 — the prefix, chosen once from the union of every frame's domain rather than per
+        // frame from its own. This is the same mechanism as the gutters and not a second one:
+        // which decade a prefix comes from is a property of "the numbers" (D19), and across a
+        // shot the numbers are all of them.
+        //
+        // **Chosen before anything is measured** — D108, M4.5's correction to it. Each state
+        // used to be measured under its own prefix and drawn under the pinned one, so a state
+        // from the low end of a decade-crossing zoom was measured as `0 2 4 6 8` and drawn as
+        // `0.002 … 0.008`, in a gutter sized for the shorter labels. The rectangle held still,
+        // which is what gate 8 checked, and the labels did not fit in it, which nothing checked.
+        // `fitsIn` asked that question for a widget and found it.
+        //
+        // A layerless panel has no numbers and therefore no prefix to pin. `toScene` draws one
+        // as `Scene.empty`, so it is a case that exists and has to be answered rather than
+        // indexed into.
+        let pins =
+            entries
+            |> Array.groupBy fst
+            |> Array.map (fun (key, es) ->
+                let drawn = es |> Array.map (fun (_, (_, _, u)) -> u) |> Array.filter (fun p -> p.Layers.Length > 0)
+
+                let pinFor (packedOf: Panel -> PackedScale) =
+                    if drawn.Length = 0 then
+                        None
+                    else
+                        let domains = drawn |> Array.map (packedOf >> Axis.domainOfPacked)
+                        let lo = domains |> Array.map fst |> Array.min
+                        let hi = domains |> Array.map snd |> Array.max
+                        Some(Axis.prefixForPacked (lo, hi) (packedOf drawn.[0]))
+
+                key,
+                (pinFor (fun p -> fst (packedScales p.Layers.[0].Data)),
+                 pinFor (fun p -> snd (packedScales p.Layers.[0].Data))))
+            |> dict
+
+        let panels =
+            entries
+            |> Array.map (fun (key, (fig, region, unified)) ->
+                let layout, _, _ = compilePanel m fig.Theme extent region None pins.[key] unified
+                key, layout)
+            |> Array.groupBy fst
+            |> Array.map (fun (key, measured) ->
+                let merged = measured |> Array.map snd |> Array.reduce PanelLayout.union
+                let pinX, pinY = pins.[key]
+                key, { merged with XPrefix = pinX; YPrefix = pinY })
+
+        { Outer = outer
+          Panels = panels
+          Samples = raw.Length
+          ColourDomains = colourDomains
+          QuiverKeys = quiverKeys }
 
     /// **D72 — one arrangement for the whole shot.** Sample the animation, arrange each state,
     /// and take the union: the arrangement no frame can overflow.
@@ -1238,106 +1376,52 @@ module Figure =
 
         // D94 — the colour domains and quiver keys first, and every state measured with them in
         // place: the union domain's colorbar labels can be wider than any one state's.
-        let raw = times |> Array.map sample
-        let colourDomains = colourDomainsOf raw
-        let quiverKeys = quiverKeysOf raw
+        arrangeOver m extent (times |> Array.map sample)
 
-        let states =
-            raw |> Array.map (fun f -> { f with Panels = f.Panels |> Array.map (pinned colourDomains quiverKeys) })
+    /// **D106 — does a state fit a layout that is already decided?** A widget lays out once over
+    /// the states its controls can reach at their extremes, and the reader can still choose one
+    /// between them whose labels are wider, or zoom to a domain no extreme had. This is the
+    /// question it asks of each new state, before drawing it in the old rectangle.
+    ///
+    /// Exact rather than estimated: each panel is planned the way `toSceneIn` will plan it, at the
+    /// frozen probe, under the frozen prefixes and colour domains, and the gutters that plan needs
+    /// are compared with the frozen ones. A panel at a grid position the shot has no region for
+    /// does not fit; a panel with no layers needs nothing.
+    let fitsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : bool =
+        let extent = shot.Outer.Extent
+        let within (a: float<px>) (b: float<px>) = a <= b + 1e-9<px>
 
-        // The outer grid first, because a panel cannot be measured until it knows its region and
-        // the region depends on how tall the head row is.
-        let headOf (fig: Figure) =
-            let a =
-                if isEmpty fig.Title then
-                    0.0<px>
-                else
-                    Rect.height (textBox m fig.Theme.TitleFont fig.Title) + fig.Theme.TitleGap
+        let headRoom =
+            match Layout.tryFindPx "head" shot.Outer with
+            | Some r -> Rect.height r
+            | None -> 0.0<px>
 
-            let b =
-                if isEmpty fig.Subtitle then
-                    0.0<px>
-                else
-                    Rect.height (textBox m fig.Theme.SubtitleFont fig.Subtitle) + fig.Theme.TitleGap
+        let panelFits (p: Panel) =
+            if p.Layers.Length = 0 then
+                true
+            else
+                let key = sprintf "panel-%d-%d" p.Row p.Col
+                let frozen = shot.Panels |> Array.tryPick (fun (k, l) -> if k = key then Some l else None)
 
-            a + b
+                match Layout.tryFindPx key shot.Outer, frozen with
+                | Some region, Some f ->
+                    let _, needed, _ =
+                        compilePanel m fig.Theme extent region (Some f) (None, None) (unify (pinned shot.ColourDomains shot.QuiverKeys p))
 
-        let head = states |> Array.map headOf |> Array.max
+                    let n = needed ()
 
-        // The grid is the union of every state's: as many rows and columns as any state has,
-        // and a region for every panel position any state uses. It used to be taken from the
-        // one state with the most panels, which is the same thing until two states have the
-        // same count in different shapes — a 1×2 and a 2×1 — and then one of them lost a panel
-        // to a grid that had no region for it. Gaps, padding and the theme do not vary with the
-        // data, so the first state supplies them.
-        let template =
-            { states.[0] with
-                Rows = states |> Array.map (fun f -> max 1 f.Rows) |> Array.max
-                Cols = states |> Array.map (fun f -> max 1 f.Cols) |> Array.max
-                Panels =
-                    states
-                    |> Array.collect (fun f -> f.Panels)
-                    |> Array.distinctBy (fun p -> p.Row, p.Col) }
+                    within n.TitleH f.TitleH
+                    && within n.TopPad f.TopPad
+                    && within n.XTicksH f.XTicksH
+                    && within n.XTitleH f.XTitleH
+                    && within n.YTitleW f.YTitleW
+                    && within n.YTicksW f.YTicksW
+                    && within n.RightPad f.RightPad
+                    && within n.BarGap f.BarGap
+                    && within n.BarW f.BarW
+                | _ -> false
 
-        let outer = Layout.arrange m extent (outerGrid (Some head) template)
-
-        // Then every panel of every state, unioned by key. `Array.choose` rather than an
-        // exception when a key is missing: a state that lacks a panel another state has
-        // contributes nothing to that panel's union, which is the right answer — an absent panel
-        // needs no gutters.
-        let measured =
-            states
-            |> Array.collect (fun fig ->
-                fig.Panels
-                |> Array.choose (fun p ->
-                    let key = sprintf "panel-%d-%d" p.Row p.Col
-
-                    match Layout.tryFindPx key outer with
-                    | None -> None
-                    | Some region ->
-                        let unified = unify p
-                        let layout, _ = compilePanel m fig.Theme extent region None unified
-                        Some(key, (layout, unified))))
-
-        let panels =
-            measured
-            |> Array.groupBy fst
-            |> Array.map (fun (key, entries) ->
-                let layouts = entries |> Array.map (fun (_, (l, _)) -> l)
-                let unified = entries |> Array.map (fun (_, (_, u)) -> u)
-                let merged = layouts |> Array.reduce PanelLayout.union
-
-                // D73 — the prefix, chosen once from the union of every frame's domain rather
-                // than per frame from its own. This is the same mechanism as the gutters and not
-                // a second one: which decade a prefix comes from is a property of "the numbers"
-                // (D19), and across a shot the numbers are all of them.
-                //
-                // A layerless panel has no numbers and therefore no prefix to pin. `toScene`
-                // draws one as `Scene.empty`, so it is a case that exists and has to be answered
-                // rather than indexed into.
-                let drawn = unified |> Array.filter (fun p -> p.Layers.Length > 0)
-
-                let pinFor (packedOf: Panel -> PackedScale) =
-                    if drawn.Length = 0 then
-                        None
-                    else
-                        let domains = drawn |> Array.map (packedOf >> Axis.domainOfPacked)
-                        let lo = domains |> Array.map fst |> Array.min
-                        let hi = domains |> Array.map snd |> Array.max
-                        Some(Axis.prefixForPacked (lo, hi) (packedOf drawn.[0]))
-
-                let layout =
-                    { merged with
-                        XPrefix = pinFor (fun p -> fst (packedScales p.Layers.[0].Data))
-                        YPrefix = pinFor (fun p -> snd (packedScales p.Layers.[0].Data)) }
-
-                key, layout)
-
-        { Outer = outer
-          Panels = panels
-          Samples = samples
-          ColourDomains = colourDomains
-          QuiverKeys = quiverKeys }
+        within (headHeight m fig) headRoom && Array.forall panelFits fig.Panels
 
     /// **`Shot -> Figure -> Node`.** Draw this figure inside a layout that has already been
     /// decided — the frame renderer's entry point.
@@ -1405,7 +1489,7 @@ module Figure =
                 | None -> Scene.empty
                 | Some region ->
                     let frozen = shot.Panels |> Array.tryPick (fun (k, l) -> if k = key then Some l else None)
-                    let _, draw = compilePanel m theme extent region frozen (unify (pinned shot.ColourDomains shot.QuiverKeys p))
+                    let _, _, draw = compilePanel m theme extent region frozen (None, None) (unify (pinned shot.ColourDomains shot.QuiverKeys p))
                     draw ())
 
         Scene.prune (
