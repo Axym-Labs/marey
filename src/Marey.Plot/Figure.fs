@@ -31,7 +31,14 @@ type Layer =
       ///
       /// Empty is the overwhelmingly common case, takes the unsplit path exactly, and is what
       /// every figure in the library that does not name a mark carries.
-      Addressed: int[] }
+      Addressed: int[]
+
+      /// D104 — **the data's own names for its rows**, one per row and unique, or empty for none.
+      ///
+      /// A mark is then keyed `Keys.datum` rather than `Keys.mark`, so it keeps its name when an
+      /// earlier row is removed, and a morph pairs it with the datum of the same name rather than
+      /// with whatever sits at the same row. Empty is the common case and keeps the ordinals.
+      RowKeys: string[] }
 
 /// Per-axis configuration. Every field has a defensible default, which is what "no
 /// configuration" in §9 has to mean in practice.
@@ -280,6 +287,11 @@ module PanelView =
 ///    gutters. Same solver, twice, which is the entire argument for having a solver.
 [<RequireQualifiedAccess>]
 module Figure =
+
+    /// The key a layer's mark carries: by the data's own key when the layer has them (D104),
+    /// by its original row otherwise (D68). `row` is always the original row.
+    let markKey (l: Layer) (layerKey: Key) (row: int) : Key =
+        if l.RowKeys.Length = 0 then Keys.mark layerKey row else Keys.datum layerKey l.RowKeys.[row]
 
     let private isEmpty (s: string) = System.String.IsNullOrEmpty s
 
@@ -952,7 +964,7 @@ module Figure =
                                 if l.Addressed.Length = 0 then
                                     None
                                 else
-                                    Some(layerKey, l.Addressed)
+                                    Some(markKey l layerKey, l.Addressed)
 
                             // D46 — **one batch per bucket, not one per point.** With no channels
                             // this is `Geom.compile`'s own path; with a continuous colour channel

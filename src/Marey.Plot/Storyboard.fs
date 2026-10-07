@@ -93,6 +93,13 @@ module Stage =
     let empty: Stage = { Figure = None; Edits = [||] }
 
 
+/// Which mark a handle names: a row of the layer, or — when the data supplied keys (D104) — the
+/// datum with that key, wherever it sits.
+[<RequireQualifiedAccess>]
+type MarkRef =
+    | Row of int
+    | Datum of string
+
 /// D69 — a name for something on stage, and the duration it arrived over.
 [<NoComparison>]
 type Handle =
@@ -107,9 +114,14 @@ type Handle =
       /// in — a figure with two scatters has two mark 42s and this refuses to guess.
       MarkLayer: Key option
 
-      /// The layer and row this handle names, when it names one **mark** rather than a
+      /// The layer and mark this handle names, when it names one **mark** rather than a
       /// subtree. What `highlight` needs, and what tells `curve.[42]` apart from `curve`.
-      Row: (Key * int) option }
+      Mark: (Key * MarkRef) option
+
+      /// D104 — the keys of `MarkLayer`'s rows when it was drawn, or empty when its data
+      /// supplied none. With keys, `curve.[42]` names the datum that was row 42, and keeps
+      /// naming it after a morph has moved it.
+      MarkKeys: string[] }
 
     /// **`curve.[42]`** — D69's most quotable line, and the one §5.1 made structurally
     /// impossible. It resolves to `Keys.mark`'s spelling of row 42 of the layer this handle
@@ -122,14 +134,35 @@ type Handle =
     member this.Item
         with get (row: int): Handle =
             match this.MarkLayer with
+            | Some _ when this.MarkKeys.Length > 0 ->
+                if row < 0 || row >= this.MarkKeys.Length then
+                    invalidArg "row" (sprintf "Marey: the scatter drawn has %d rows; there is no row %d." this.MarkKeys.Length row)
+
+                this.[this.MarkKeys.[row]]
             | Some layer ->
-                { Key = Keys.mark layer row
-                  Introduced = this.Introduced
-                  MarkLayer = Some layer
-                  Row = Some(layer, row) }
+                { this with
+                    Key = Keys.mark layer row
+                    Mark = Some(layer, MarkRef.Row row) }
             | None ->
                 invalidOp
                     "Marey: this handle does not name a single scatter, so mark 42 is ambiguous. Only a layer drawn with GeomPoint has addressable marks."
+
+    /// **`curve.["Bern"]`** — D104: the mark whose datum has this key. It names the datum rather
+    /// than a row, so it stays on the same station when an earlier one is filtered out. Needs a
+    /// scatter whose data supplied keys (`Chart.withKeys`, or `key` in the encoding block).
+    member this.Item
+        with get (key: string): Handle =
+            match this.MarkLayer with
+            | Some layer when this.MarkKeys.Length > 0 ->
+                { this with
+                    Key = Keys.datum layer key
+                    Mark = Some(layer, MarkRef.Datum key) }
+            | Some _ ->
+                invalidOp
+                    "Marey: this scatter's rows have no keys, so a mark cannot be named by one. Give them keys with `Chart.withKeys` or `key` in the encoding block, or name the row: `curve.[42]`."
+            | None ->
+                invalidOp
+                    "Marey: this handle does not name a single scatter, so a mark is ambiguous. Only a layer drawn with GeomPoint has addressable marks."
 
 
 /// D69 — the CE's value. A function from the stage a story starts on to whatever it binds and
@@ -245,12 +278,12 @@ module Storyboard =
 
     // ---- Reading the stage -----------------------------------------------------------------
 
-    let private markLayerOf (fig: Figure) : Key option =
+    let private markLayerOf (fig: Figure) : (Key * string[]) option =
         let candidates =
             [| for p in fig.Panels do
                    for i in 0 .. p.Layers.Length - 1 do
                        match p.Layers.[i].Geom with
-                       | GeomPoint -> yield Keys.layer (Keys.panel p.Row p.Col) i
+                       | GeomPoint -> yield Keys.layer (Keys.panel p.Row p.Col) i, p.Layers.[i].RowKeys
                        | _ -> () |]
 
         if candidates.Length = 1 then Some candidates.[0] else None
@@ -305,10 +338,13 @@ module Storyboard =
           Build =
             fun d ->
                 Story(fun _ ->
+                    let marks = markLayerOf fig
+
                     { Key = Keys.figure
                       Introduced = d
-                      MarkLayer = markLayerOf fig
-                      Row = None },
+                      MarkLayer = marks |> Option.map fst
+                      Mark = None
+                      MarkKeys = marks |> Option.map snd |> Option.defaultValue [||] },
 
                     Anim.ofFraction d (fun u ->
                         fun _ ->
@@ -337,6 +373,154 @@ module Storyboard =
                             else
                                 s)) }
 
+    /// D104 — a source channel value as another map reads it. A level is matched by name,
+    /// because the two figures numbered their levels separately (D45); a level the map does not
+    /// have is NaN, which is not drawn and is counted, as any unmapped value is. A value map's
+    /// numbers are raw in the channel's unit and pass through.
+    let private translateChannel (src: ChannelMap) (dst: ChannelMap) (v: float) : float =
+        let byName (levels: string[]) (levels': string[]) =
+            let i = int v
+
+            if float i = v && i >= 0 && i < levels.Length then
+                match System.Array.IndexOf(levels', levels.[i]) with
+                | -1 -> nan
+                | j -> float j
+            else
+                nan
+
+        match src, dst with
+        | ColorByLevel(levels, _), ColorByLevel(levels', _)
+        | ShapeByLevel(levels, _), ShapeByLevel(levels', _) -> byName levels levels'
+        | _ -> v
+
+    let private sameKind (a: ChannelMap) (b: ChannelMap) =
+        match a, b with
+        | ColorByLevel _, ColorByLevel _
+        | ShapeByLevel _, ShapeByLevel _
+        | ColorByValue _, ColorByValue _
+        | SizeByValue _, SizeByValue _ -> true
+        | _ -> false
+
+    /// **D104 — a scatter morphed by key.** Each of the target's rows, in the target's order,
+    /// paired with the source row of the same key or with nothing; then the source rows whose
+    /// key the target does not have. Returned as the pairing for `Erase.tweenRows`, the keys in
+    /// that order, and how many of them are the target's.
+    ///
+    /// `None` unless both layers are scatters with keys and their channels line up kind for kind:
+    /// only a scatter has a node per mark to fade (D69), and a channel of another kind has no
+    /// value to carry a row across in. The morph then pairs by index, as it always did.
+    let private pairByKey (src: Layer) (dst: Layer) : (struct (int * int)[] * string[] * int) option =
+        let scatter (l: Layer) =
+            match l.Geom with
+            | GeomPoint -> l.RowKeys.Length > 0
+            | _ -> false
+
+        let channelsAlign =
+            src.Channels.Length = dst.Channels.Length
+            && Array.forall2 (fun (a: Channel) (b: Channel) -> sameKind a.Map b.Map) src.Channels dst.Channels
+
+        if not (scatter src && scatter dst && channelsAlign) then
+            None
+        else
+            let srcRow =
+                src.RowKeys |> Array.mapi (fun i k -> k, i) |> dict
+
+            let inDst = System.Collections.Generic.HashSet<string>(dst.RowKeys)
+
+            let rows =
+                Array.append
+                    (dst.RowKeys
+                     |> Array.mapi (fun j k ->
+                         match srcRow.TryGetValue k with
+                         | true, i -> struct (i, j)
+                         | _ -> struct (-1, j)))
+                    [| for i in 0 .. src.RowKeys.Length - 1 do
+                           if not (inDst.Contains src.RowKeys.[i]) then
+                               yield struct (i, -1) |]
+
+            let keys =
+                rows
+                |> Array.map (fun (struct (i, j)) -> if j >= 0 then dst.RowKeys.[j] else src.RowKeys.[i])
+
+            Some(rows, keys, dst.RowKeys.Length)
+
+    /// One frame of a keyed morph: the layer, and the fades its entering and leaving marks need.
+    let private morphByKey
+        (lk: Key)
+        (src: Layer)
+        (dst: Layer)
+        (rows: struct (int * int)[], keys: string[], kept: int)
+        (u: float)
+        : Layer * (Key * (Node -> Node))[] =
+        // Past the end the leaving marks have faded out; drop them, and the layer is the target's
+        // rows in the target's order.
+        let final = u >= 1.0
+        let rows, keys = if final then Array.sub rows 0 kept, Array.sub keys 0 kept else rows, keys
+
+        // While a level is leaving, the map holds it too: the target's levels, then the source's
+        // that the target does not have, in the source's colours or shapes. A station filtered
+        // out with its whole region then fades in its own colour instead of vanishing. At the
+        // end the map is the target's.
+        let during (cs: ChannelMap) (cd: ChannelMap) =
+            let extra (levels: string[]) (levels': string[]) =
+                [| for i in 0 .. levels.Length - 1 do
+                       if not (Array.contains levels.[i] levels') then
+                           yield i |]
+
+            match cs, cd with
+            | ColorByLevel(levels, colors), ColorByLevel(levels', colors') ->
+                let add = extra levels levels'
+                ColorByLevel(Array.append levels' (add |> Array.map (fun i -> levels.[i])), Array.append colors' (add |> Array.map (fun i -> colors.[i])))
+            | ShapeByLevel(levels, shapes), ShapeByLevel(levels', shapes') ->
+                let add = extra levels levels'
+                ShapeByLevel(Array.append levels' (add |> Array.map (fun i -> levels.[i])), Array.append shapes' (add |> Array.map (fun i -> shapes.[i])))
+            | _ -> cd
+
+        let channels =
+            Array.map2
+                (fun (cs: Channel) (cd: Channel) ->
+                    let map = if final then cd.Map else during cs.Map cd.Map
+
+                    { cd with
+                        Map = map
+                        Values =
+                            rows
+                            |> Array.map (fun (struct (i, j)) ->
+                                if j >= 0 then cd.Values.[j] else translateChannel cs.Map map cs.Values.[i]) })
+                src.Channels
+                dst.Channels
+
+        let entering = [| for r in 0 .. rows.Length - 1 do match rows.[r] with struct (-1, _) -> yield r | _ -> () |]
+        let leaving = [| kept .. rows.Length - 1 |]
+
+        // A mark the source had addressed — a highlight — follows its key to its new row.
+        let carried =
+            src.Addressed
+            |> Array.choose (fun r ->
+                if r < src.RowKeys.Length then
+                    match System.Array.IndexOf(keys, src.RowKeys.[r]) with
+                    | -1 -> None
+                    | i -> Some i
+                else
+                    None)
+
+        let layer =
+            { src with
+                Data = Erase.tweenRows rows src.Data dst.Data u
+                RowKeys = keys
+                Channels = channels
+                Addressed = Array.distinct (Array.concat [ carried; (if final then [||] else entering); (if final then [||] else leaving) ]) }
+
+        let fades =
+            if final then
+                [||]
+            else
+                Array.append
+                    (entering |> Array.map (fun r -> Keys.datum lk keys.[r], Scene.opacity u))
+                    (leaving |> Array.map (fun r -> Keys.datum lk keys.[r], Scene.opacity (1.0 - u)))
+
+        layer, fades
+
     /// **Morph what is on stage into another figure**, by interpolating the data underneath it.
     ///
     /// The handle's key chooses the scope: a figure handle morphs every layer, a panel handle
@@ -348,6 +532,13 @@ module Storyboard =
     /// of the two by index fraction. They *do* need matching dimensions, and the units may
     /// differ: `Erase.tweenSeries` converts through SI, so morphing kilometres into metres is a
     /// morph and not a factor of a thousand.
+    ///
+    /// **D104 — a scatter whose rows have keys on both sides is paired by key**, not by index. A
+    /// datum moves to where the datum of the same name is going; one only the target has fades
+    /// in where it is going, and one only the source has fades out where it was. That is what
+    /// makes a filter animate truthfully: a station that was dropped leaves, and nothing slides
+    /// into its place. The layer ends as the target's rows, in the target's order, with the
+    /// target's channels. Every other layer pairs by index.
     let morphTo (target: Figure) (h: Handle) : Step<unit> =
         { Default = h.Introduced
           Build =
@@ -362,14 +553,33 @@ module Storyboard =
                             // read from where the step started. A morph running in `parallel'`
                             // beside a zoom must not discard the zoom, and a morph whose source
                             // was re-read every frame would chase its own output.
+                            let fades = ResizeArray()
+
                             let blended =
                                 onStage "morphTo" s
                                 |> overLayers h.Key (fun lk l ->
                                     match counterpart from lk, counterpart target lk with
-                                    | Some src, Some dst -> { l with Data = Erase.tweenSeries src.Data dst.Data u }
+                                    | Some src, Some dst ->
+                                        match pairByKey src dst with
+                                        | Some pairing ->
+                                            let layer, fs = morphByKey lk src dst pairing u
+                                            fades.AddRange fs
+                                            { layer with Style = l.Style; Name = l.Name; ShowInLegend = l.ShowInLegend }
+                                        | None ->
+                                            let data = Erase.tweenSeries src.Data dst.Data u
+
+                                            // Resampled to another length, the rows have no names
+                                            // left to keep: index pairing does not know which is
+                                            // which.
+                                            { l with
+                                                Data = data
+                                                RowKeys =
+                                                    if Erase.seriesLength data = l.RowKeys.Length then l.RowKeys else [||] }
                                     | _ -> l)
 
-                            { s with Figure = Some blended })) }
+                            { s with
+                                Figure = Some blended
+                                Edits = Array.append s.Edits (fades.ToArray()) })) }
 
     /// **Zoom an axis**, by animating its domain. §7.2's `zoomTo`, with the axis in the name
     /// because that is how M2 spells the still version (`Chart.withXDomain`).
@@ -450,13 +660,32 @@ module Storyboard =
           Build =
             fun d ->
                 Story(fun s0 ->
-                    let layerKey, row =
-                        match h.Row with
-                        | Some lr -> lr
+                    let layerKey, mark =
+                        match h.Mark with
+                        | Some lm -> lm
                         | None ->
                             invalidOp "Marey: highlight names one mark. Write `curve.[42]`, not `curve`."
 
                     let theme = (onStage "highlight" s0).Theme
+
+                    // D104 — a datum is found by its key on the stage as it stands, so a highlight
+                    // after a morph lands on the same datum at its new row. One that is not on
+                    // stage when the step starts is refused, by name, rather than ringing nothing.
+                    match mark with
+                    | MarkRef.Datum k when
+                        layersIn layerKey (onStage "highlight" s0)
+                        |> Array.forall (fun (_, l) -> not (Array.contains k l.RowKeys))
+                        ->
+                        invalidOp (sprintf "Marey: highlight names the datum \"%s\", and the scatter on stage has no row with that key." k)
+                    | _ -> ()
+
+                    let rowIn (l: Layer) =
+                        match mark with
+                        | MarkRef.Row r -> Some r
+                        | MarkRef.Datum k ->
+                            match System.Array.IndexOf(l.RowKeys, k) with
+                            | -1 -> None
+                            | r -> Some r
 
                     (),
                     Anim.ofFraction d (fun u ->
@@ -465,10 +694,10 @@ module Storyboard =
                                 s.Figure
                                 |> Option.map (
                                     overLayers layerKey (fun lk l ->
-                                        if lk = layerKey && not (Array.contains row l.Addressed) then
+                                        match rowIn l with
+                                        | Some row when lk = layerKey && not (Array.contains row l.Addressed) ->
                                             { l with Addressed = Array.append l.Addressed [| row |] }
-                                        else
-                                            l)
+                                        | _ -> l)
                                 )
 
                             { Figure = addressed

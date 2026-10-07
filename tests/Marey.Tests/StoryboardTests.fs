@@ -580,7 +580,8 @@ module TheVerbs =
             { Key = Keys.figure
               Introduced = 1.0<s>
               MarkLayer = None
-              Row = None }
+              Mark = None
+              MarkKeys = [||] }
 
         let bad =
             scene {

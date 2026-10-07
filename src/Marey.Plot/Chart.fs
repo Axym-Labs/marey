@@ -87,7 +87,8 @@ module Chart =
           Style = Geom.styleFor theme index
           Channels = [||]
           ShowInLegend = not (System.String.IsNullOrEmpty name)
-          Addressed = [||] }
+          Addressed = [||]
+          RowKeys = [||] }
 
     // ---- Constructors ------------------------------------------------------------------------
 
@@ -152,7 +153,8 @@ module Chart =
             [| layerOf "" Theme.initial 0 bars packed
                { layerOf "" Theme.initial 0 GeomPoint packed with
                    ShowInLegend = false
-                   Addressed = [||] } |]
+                   Addressed = [||]
+                   RowKeys = [||] } |]
 
     // ---- Phase 6's constructors ---------------------------------------------------------------
 
@@ -961,6 +963,19 @@ module Chart =
     /// Rows named on a layer that draws a `Path` are carried and never asked for.
     let addressMarks (rows: int[]) (fig: Figure) : Figure =
         mapLastLayer (fun l -> { l with Addressed = Array.distinct (Array.append l.Addressed rows) }) fig
+
+    /// **D104 — name the rows of the most recently added series**, one key per row. Its marks
+    /// are then keyed by these rather than by row: drop row 3 and every later mark keeps its
+    /// name, and a storyboard's `morphTo` pairs each datum with the one of the same name. Keys
+    /// must be unique; a duplicate is refused here, with the duplicated keys and their rows.
+    ///
+    /// `plot { key (fun r -> r.Station) }` is the same thing in the encoding block.
+    let withKeys (keys: string[]) (fig: Figure) : Figure =
+        mapLastLayer
+            (fun l ->
+                Keys.validate (Erase.seriesLength l.Data) keys
+                { l with RowKeys = Array.copy keys })
+            fig
 
     let withOpacity (o: float) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withOpacity o l.Style }) fig

@@ -170,7 +170,8 @@ module CategoricalAxes =
           Style = Geom.styleFor Theme.initial i
           Channels = [||]
           ShowInLegend = false
-          Addressed = [||] }
+          Addressed = [||]
+          RowKeys = [||] }
 
     /// The whole point of D45, rendered: a bar per level, a named tick per band, and no
     /// configuration beyond the level set.

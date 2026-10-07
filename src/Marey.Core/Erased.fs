@@ -325,22 +325,16 @@ module Erase =
                 let f = pos - float j
                 xs.[j] + (xs.[j + 1] - xs.[j]) * f)
 
-    /// **Interpolate one packed series into another**, D69's `morphTo` one layer down.
-    ///
-    /// The result wears `a`'s name, `a`'s units and `a`'s scale kinds, and holds
-    /// `max (length a) (length b)` points: both sides are resampled to the longer of the two by
-    /// index fraction and then interpolated pointwise, domains included.
-    ///
-    /// **`b`'s numbers are converted into `a`'s unit through SI**, not read as if they were
-    /// already in it. Morphing a series in kilometres into one in metres is a legal thing to
-    /// ask for and reading the numbers across would be wrong by a factor of a thousand — the
-    /// same hazard `U.convert` exists for, in the one place where neither measure is nameable.
-    /// The dimensions must match, and that is the only check there is to make: this is the
-    /// runtime edge of the type system, exactly like `U.convert`.
-    ///
-    /// `t` is **not** clamped (D71): an easing that overshoots reaches here and extrapolates,
-    /// which is what makes `Ease.backOut` visible on a morph.
-    let tweenSeries (a: PackedSeries) (b: PackedSeries) (t: float) : PackedSeries =
+    /// The one interpolation behind `tweenSeries` and `tweenRows`: `b` converted into `a`'s
+    /// units, `align` lining the two up point for point, and both interpolated, domains
+    /// included. `align` receives `a`'s numbers and `b`'s already converted, and returns four
+    /// arrays of one length.
+    let private tweenAligned
+        (align: float[] * float[] * float[] * float[] -> float[] * float[] * float[] * float[])
+        (a: PackedSeries)
+        (b: PackedSeries)
+        (t: float)
+        : PackedSeries =
         let bx, by = seriesScales b
         let bxs, bys = seriesValues b
 
@@ -369,12 +363,10 @@ module Erase =
                     let intoX (v: float) = float (U.ofSI s.XScale.Unit (v * bx.ToSI + bx.OffsetSI))
                     let intoY (v: float) = float (U.ofSI s.YScale.Unit (v * by.ToSI + by.OffsetSI))
 
-                    let n = max s.X.Length bxs.Length
+                    let ax, ay, px, py =
+                        align (s.X |> Array.map float, s.Y |> Array.map float, bxs |> Array.map intoX, bys |> Array.map intoY)
 
-                    let ax = resampleTo n (s.X |> Array.map float)
-                    let ay = resampleTo n (s.Y |> Array.map float)
-                    let px = resampleTo n (bxs |> Array.map intoX)
-                    let py = resampleTo n (bys |> Array.map intoY)
+                    let n = ax.Length
 
                     let inline mix (u: float) (v: float) = u + (v - u) * t
 
@@ -401,3 +393,55 @@ module Erase =
                           Y = Array.init n (fun i -> LanguagePrimitives.FloatWithMeasure<'uy>(mix ay.[i] py.[i]))
                           XScale = xScale
                           YScale = yScale } }
+
+    /// **Interpolate one packed series into another**, D69's `morphTo` one layer down.
+    ///
+    /// The result wears `a`'s name, `a`'s units and `a`'s scale kinds, and holds
+    /// `max (length a) (length b)` points: both sides are resampled to the longer of the two by
+    /// index fraction and then interpolated pointwise, domains included.
+    ///
+    /// **`b`'s numbers are converted into `a`'s unit through SI**, not read as if they were
+    /// already in it. Morphing a series in kilometres into one in metres is a legal thing to
+    /// ask for and reading the numbers across would be wrong by a factor of a thousand — the
+    /// same hazard `U.convert` exists for, in the one place where neither measure is nameable.
+    /// The dimensions must match, and that is the only check there is to make: this is the
+    /// runtime edge of the type system, exactly like `U.convert`.
+    ///
+    /// `t` is **not** clamped (D71): an easing that overshoots reaches here and extrapolates,
+    /// which is what makes `Ease.backOut` visible on a morph.
+    let tweenSeries (a: PackedSeries) (b: PackedSeries) (t: float) : PackedSeries =
+        tweenAligned
+            (fun (ax, ay, bx, by) ->
+                let n = max ax.Length bx.Length
+                resampleTo n ax, resampleTo n ay, resampleTo n bx, resampleTo n by)
+            a
+            b
+            t
+
+    /// **D104 — interpolate row by row, as the caller pairs them.** Each entry of `rows` is a
+    /// row of `a` and a row of `b`, either of which may be `-1`: a row of `a` alone holds
+    /// still where it is, and a row of `b` alone holds still where it is going. The result has
+    /// one point per entry, in that order, and is otherwise `tweenSeries`: `a`'s name and units,
+    /// `b` converted through SI, the domains interpolated, `t` not clamped.
+    ///
+    /// A pairing by key is the caller's: this knows rows, not names.
+    let tweenRows (rows: struct (int * int)[]) (a: PackedSeries) (b: PackedSeries) (t: float) : PackedSeries =
+        tweenAligned
+            (fun (ax, ay, bx, by) ->
+                let pick (own: float[]) (other: float[]) (i: int) (j: int) = if i >= 0 then own.[i] else other.[j]
+
+                let side (xs: float[]) (ys: float[]) (xs': float[]) (ys': float[]) (first: bool) =
+                    rows
+                    |> Array.map (fun (struct (i, j)) -> if first then pick xs xs' i j else pick xs' xs j i),
+                    rows
+                    |> Array.map (fun (struct (i, j)) -> if first then pick ys ys' i j else pick ys' ys j i)
+
+                if rows |> Array.exists (fun (struct (i, j)) -> (i < 0 && j < 0) || i >= ax.Length || j >= bx.Length) then
+                    invalidArg "rows" "Marey: every paired row names a row of one side or both, and no row past the end."
+
+                let ax', ay' = side ax ay bx by true
+                let bx', by' = side ax ay bx by false
+                ax', ay', bx', by')
+            a
+            b
+            t

@@ -643,7 +643,7 @@ module Geom =
     /// point. Phase 2 introduced that hazard for `GeomErrorY` and `GeomErrorX`; phase 6 would
     /// have introduced it six more times.
     let rec private compileWith
-        (address: (Key * int[]) option)
+        (address: ((int -> Key) * int[]) option)
         (spacing: float option)
         (sel: int[] option)
         (coord: Coord)
@@ -713,7 +713,7 @@ module Geom =
                     match address with
                     | None -> batch (kept |> Array.map snd)
                     | Some(_, rows) when rows.Length = 0 -> batch (kept |> Array.map snd)
-                    | Some(layerKey, rows) ->
+                    | Some(markKey, rows) ->
                         let wanted = Set.ofArray rows
                         let out = ResizeArray<Node>()
                         let run = ResizeArray<Vec2<nd>>()
@@ -726,7 +726,7 @@ module Geom =
                         for r, p in kept do
                             if wanted.Contains r then
                                 flush ()
-                                out.Add(Keyed(Keys.mark layerKey r, batch [| p |]))
+                                out.Add(Keyed(markKey r, batch [| p |]))
                             else
                                 run.Add p
 
@@ -1218,7 +1218,8 @@ module Geom =
     /// draws the whole layer, which is not the same thing as `Some [| 0 .. n - 1 |]` — see the
     /// spacing note below.
     ///
-    /// `address` is D69's **named rows**, with the layer key their names hang from. Only
+    /// `address` is D69's **named rows**, with the key each one's node carries: `Keys.mark` by
+    /// row, or `Keys.datum` when the data supplied keys (D104). Only
     /// `GeomPoint` can honour it, because `Markers` is the only node in this file that batches
     /// N data points into one; a `Path` is one shape, not a batch of marks, and splitting it in
     /// three would change the joins between the pieces rather than name one of them.
@@ -1227,7 +1228,7 @@ module Geom =
     /// are two names for one body rather than two bodies, which is the shape D72 arrived at the
     /// hard way in `Figure.fs`.
     let compileFor
-        (address: (Key * int[]) option)
+        (address: ((int -> Key) * int[]) option)
         (indices: int[] option)
         (coord: Coord)
         (plotSize: Extent<px>)
