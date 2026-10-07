@@ -186,8 +186,11 @@ type MarkerBatch =
 /// Raw RGBA8 pixels, row-major, top row first.
 ///
 /// Note that structural equality on this is O(pixels), which makes a `Raster` an expensive
-/// thing to diff (§5.2). Wrap large images in a `Keyed` node so the diff can compare keys
-/// first and never look at the bytes.
+/// thing to diff (§5.2). A key does not help: two rasters under the same key are not therefore
+/// the same raster, and `Scene.diff` compares what is under a key. Only **reference** equality
+/// lets a diff skip the bytes, so a producer that wants an unchanged raster skipped has to hand
+/// back the same array, which `mapKey`'s sharing does and a field recomputed for a new state
+/// does not.
 [<NoComparison>]
 type Image =
     { Width: int
@@ -262,6 +265,16 @@ type Node =
     | Opacity of alpha: float * Node
     | Keyed of Key * Node
     | Annotated of Semantics * Node
+
+/// §5.2 / D103 — what changed between two scenes, as replacements at the keys that hold them.
+[<NoComparison>]
+type Patch =
+    /// Put each node under its key, in place of what is there now: the **child** of the
+    /// `Keyed` node, as `Scene.mapKey` takes it. Empty when the two scenes draw the same thing.
+    | Replace of (Key * Node)[]
+    /// A change no key encloses, or one a key cannot address unambiguously. Only the whole
+    /// new scene describes it.
+    | Whole of Node
 
 [<RequireQualifiedAccess>]
 module Stroke =
@@ -461,6 +474,81 @@ module Scene =
             | leaf -> leaf
 
         go n
+
+    /// **§5.2 / D103 — the diff.** Walk both scenes together, and answer with the smallest
+    /// set of keyed subtrees whose replacement turns `before` into `after`.
+    ///
+    /// - A **reference-equal** pair is skipped without looking inside. That is what makes a
+    ///   rewrite through `mapKey` cost the path to the key rather than the scene.
+    /// - A `Keyed` pair with the same key is recursed into, and so is every container whose own
+    ///   fields agree (`Group` of the same length, `Transform`, `Clip`, `Opacity`, `Annotated`).
+    /// - Anything else is compared structurally, and a difference replaces the **nearest
+    ///   enclosing key** whole. Replacements found deeper inside that key are subsumed by it.
+    ///
+    /// A difference with no key above it is `Whole`. So is a replacement whose key does not
+    /// occur exactly once in each scene, because `mapKey` rewrites every node carrying a key
+    /// and an id addresses one element.
+    ///
+    /// A scene rebuilt from data shares no references with the last one, so the walk falls back
+    /// to structural equality: O(scene), float arrays compared element by element. Gate 9 of
+    /// M4.5 states what that costs rather than assuming it.
+    let diff (before: Node) (after: Node) : Patch =
+        let same (a: Node) (b: Node) = System.Object.ReferenceEquals(a, b)
+
+        // `(replacements, dirty)`: the keyed replacements found below, and whether a difference
+        // was found that no key below encloses — which the nearest key above has to absorb.
+        let rec walk (a: Node) (b: Node) : (Key * Node) list * bool =
+            if same a b then
+                [], false
+            else
+                match a, b with
+                | Keyed(ka, ca), Keyed(kb, cb) when ka = kb ->
+                    match walk ca cb with
+                    | _, true -> [ kb, cb ], false
+                    | reps, false -> reps, false
+                | Group xs, Group ys when xs.Length = ys.Length ->
+                    let mutable reps = []
+                    let mutable dirty = false
+                    let mutable i = 0
+
+                    while not dirty && i < xs.Length do
+                        let r, d = walk xs.[i] ys.[i]
+                        reps <- r @ reps
+                        dirty <- d
+                        i <- i + 1
+
+                    (if dirty then [] else reps), dirty
+                | Transform(ta, ca), Transform(tb, cb) when ta = tb -> walk ca cb
+                | Clip(pa, ca), Clip(pb, cb) when pa = pb -> walk ca cb
+                | Opacity(oa, ca), Opacity(ob, cb) when oa = ob -> walk ca cb
+                | Annotated(sa, ca), Annotated(sb, cb) when sa = sb -> walk ca cb
+                | _ -> [], a <> b
+
+        match walk before after with
+        | _, true -> Whole after
+        | reps, false ->
+            let reps = List.rev reps |> Array.ofList
+
+            let occurrences (k: Key) (n: Node) =
+                fold
+                    (fun acc node ->
+                        match node with
+                        | Keyed(k', _) when k' = k -> acc + 1
+                        | _ -> acc)
+                    0
+                    n
+
+            if reps |> Array.forall (fun (k, _) -> occurrences k before = 1 && occurrences k after = 1) then
+                Replace reps
+            else
+                Whole after
+
+    /// A patch applied to the scene it was taken against. `apply (diff a b) a` draws what `b`
+    /// draws, and is `b` structurally.
+    let apply (patch: Patch) (before: Node) : Node =
+        match patch with
+        | Whole n -> n
+        | Replace reps -> reps |> Array.fold (fun n (k, child) -> mapKey k (fun _ -> child) n) before
 
     /// Total number of nodes. A cheap sanity check in tests, and the denominator when
     /// arguing that §5.2's diff is actually O(changed).
