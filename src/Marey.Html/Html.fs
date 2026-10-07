@@ -849,7 +849,8 @@ module Html =
         | :? Dim
         // Erased measures make this one type test cover every unit witness there will ever be.
         | :? U<1>
-        | :? IScaleErased -> true
+        | :? IScaleErased
+        | :? Live -> true
         | _ -> false
 
     /// The size to compile a figure at, given what the host says is available.
@@ -903,4 +904,63 @@ module Html =
         | :? Dim as d -> dim d
         | :? U<1> as u -> witness u
         | :? IScaleErased as sc -> scale sc
+        // A host that can only take a fragment gets the figure at the controls' initial values,
+        // in the widget's own arrangement. A host with a frame for a page uses `liveDocumentForHost`.
+        | :? Live as l -> guarded "live figure" (fun () -> scroller (widgetFigure l (Live.init l)))
         | _ -> ""
+
+    // ---- The live half of the bridge (M4.5, D100) ------------------------------------------
+    //
+    // Four more functions the extension reaches by reflection, for the same reason as the two
+    // above: nothing typed in a Marey assembly can cross the load-context boundary, so every
+    // argument and result is `obj`, `string`, `string[]` or `bool`. The extension holds the state
+    // as an `obj` it never looks inside, and hands it back.
+    //
+    // **None of them throws.** A view function is the reader's code, and a step that throws would
+    // take the widget down from inside a message handler, where nobody sees the exception. Each
+    // answers what it can: no state for a value that is not live, the state unchanged for a
+    // message that cannot be stepped, and an error box in place of a figure that cannot be drawn.
+
+    /// The initial state of a live figure, or `null` for any other value.
+    let liveInitForHost (value: obj) : obj =
+        match value with
+        | :? Live as l ->
+            try
+                box (Live.init l)
+            with _ ->
+                null
+        | _ -> null
+
+    /// The next state after a message from the view, or `state` itself when nothing changed, the
+    /// message cannot be read, or the step failed.
+    let liveStepForHost (value: obj, state: obj, msgType: string, payload: string) : obj =
+        match value, state with
+        | (:? Live as l), (:? LiveState as s) ->
+            match LiveMsg.parse msgType payload with
+            | Some msg ->
+                try
+                    box (Live.step l s msg)
+                with _ ->
+                    state
+            | None -> state
+        | _ -> state
+
+    /// The whole page at a state, live or static. `""` for anything that is not a live figure.
+    let liveDocumentForHost (value: obj, state: obj, isLive: bool) : string =
+        match value, state with
+        | (:? Live as l), (:? LiveState as s) -> widget l s isLive
+        | _ -> ""
+
+    /// What the view swaps in after a step: the figure's SVG first, then each control's label.
+    /// Empty for anything that is not a live figure.
+    let liveReplyForHost (value: obj, state: obj) : string[] =
+        match value, state with
+        | (:? Live as l), (:? LiveState as s) ->
+            let shown =
+                try
+                    Live.shown l s
+                with _ ->
+                    Array.create l.Controls.Length ""
+
+            Array.append [| widgetFigure l s |] shown
+        | _ -> [||]

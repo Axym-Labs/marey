@@ -29,6 +29,7 @@
 
   <ItemGroup>
     <Compile Include="Bridge.fs" />
+    <Compile Include="Live.fs" />
     <Compile Include="Formatter.fs" />
   </ItemGroup>
 

@@ -42,6 +42,20 @@ module internal Bridge =
     [<Literal>]
     let Render = "renderForHost"
 
+    // M4.5 — the live half. Four more signatures, optional as a set: a `Marey.Html` from before
+    // 0.5 has none of them, and then a live figure is drawn as a figure and nothing is opened.
+    [<Literal>]
+    let LiveInit = "liveInitForHost"
+
+    [<Literal>]
+    let LiveStep = "liveStepForHost"
+
+    [<Literal>]
+    let LiveDocument = "liveDocumentForHost"
+
+    [<Literal>]
+    let LiveReply = "liveReplyForHost"
+
     /// Assemblies named `Marey.*`. The cheapest possible rejection, and the one that runs on
     /// every value a cell produces: `CanFormat` is a probe, not a commitment.
     let isMareyValue (value: obj) =
@@ -157,3 +171,73 @@ module internal Bridge =
                 | _ -> None
             with _ ->
                 None
+
+    // ---- The live half (M4.5, D100) -----------------------------------------------------------
+
+    type private LiveMethods =
+        { Init: MethodInfo
+          Step: MethodInfo
+          Document: MethodInfo
+          Reply: MethodInfo }
+
+    let private liveCache =
+        System.Collections.Concurrent.ConcurrentDictionary<Type, LiveMethods option>()
+
+    let private liveMethodsFor (t: Type) =
+        liveCache.GetOrAdd(
+            t,
+            fun t ->
+                let find name (args: Type[]) =
+                    t.GetMethod(name, BindingFlags.Public ||| BindingFlags.Static, null, args, null)
+
+                let init = find LiveInit [| typeof<obj> |]
+                let step = find LiveStep [| typeof<obj>; typeof<obj>; typeof<string>; typeof<string> |]
+                let document = find LiveDocument [| typeof<obj>; typeof<obj>; typeof<bool> |]
+                let reply = find LiveReply [| typeof<obj>; typeof<obj> |]
+
+                if isNull init || isNull step || isNull document || isNull reply then
+                    None
+                else
+                    Some
+                        { Init = init
+                          Step = step
+                          Document = document
+                          Reply = reply }
+        )
+
+    let private live (value: obj) =
+        if isMareyValue value then
+            findRendererType value |> Option.bind liveMethodsFor
+        else
+            None
+
+    let private invoke (m: MethodInfo) (args: obj[]) =
+        try
+            Some(m.Invoke(null, args))
+        with _ ->
+            None
+
+    /// The initial state of a live figure, held by the caller as an opaque `obj`; `None` for any
+    /// other value, and for a `Marey.Html` that predates live figures.
+    let liveInit (value: obj) : obj option =
+        live value
+        |> Option.bind (fun ms -> invoke ms.Init [| value |])
+        |> Option.bind (fun s -> if isNull s then None else Some s)
+
+    /// The state after a message. The state it was given when anything goes wrong.
+    let liveStep (value: obj) (state: obj) (msgType: string) (payload: string) : obj =
+        match live value |> Option.bind (fun ms -> invoke ms.Step [| value; state; box msgType; box payload |]) with
+        | Some next when not (isNull next) -> next
+        | _ -> state
+
+    /// The page at a state, live or static.
+    let liveDocument (value: obj) (state: obj) (isLive: bool) : string option =
+        match live value |> Option.bind (fun ms -> invoke ms.Document [| value; state; box isLive |]) with
+        | Some(:? string as doc) when doc <> "" -> Some doc
+        | _ -> None
+
+    /// What the view swaps in after a step: the figure's SVG, then each control's label.
+    let liveReply (value: obj) (state: obj) : string[] option =
+        match live value |> Option.bind (fun ms -> invoke ms.Reply [| value; state |]) with
+        | Some(:? (string[]) as parts) when parts.Length > 0 -> Some parts
+        | _ -> None

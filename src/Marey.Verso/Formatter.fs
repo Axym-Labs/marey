@@ -63,7 +63,7 @@ type MareyFormatter() =
         member _.Author = "Marey contributors"
 
         member _.Description =
-            "Renders Marey figures, films, scenes, colours, ramps, palettes, dimensions, unit witnesses and erased scales as inline HTML. A film plays in the cell as a flipbook."
+            "Renders Marey figures, films, scenes, colours, ramps, palettes, dimensions, unit witnesses and erased scales as inline HTML. A film plays in the cell as a flipbook, and a live figure's controls answer from the kernel."
 
         member _.OnLoadedAsync(_context: IExtensionHostContext) = Task.CompletedTask
         member _.OnUnloadedAsync() = Task.CompletedTask
@@ -94,13 +94,18 @@ type MareyFormatter() =
             && Bridge.canRender value
 
         member _.FormatAsync(value: obj, context: IFormatterContext) =
-            // `CanFormat` said yes, but it said yes a moment ago and against a probe. If the
-            // render comes back empty the honest move is an empty HTML output rather than a
-            // throw: the resolver treats a throwing formatter as broken and skips it for the rest
-            // of the resolution, which would take the kernel's own table down with it.
-            let html =
-                match Bridge.render context.MaxWidth context.MaxHeight value with
-                | Some html -> html
-                | None -> ""
+            // M4.5 — a live figure is a page, live over a channel when the host offers one and
+            // static otherwise. See `Live.fs`.
+            match Live.format value context with
+            | Some output -> output
+            | None ->
+                // `CanFormat` said yes, but it said yes a moment ago and against a probe. If the
+                // render comes back empty the honest move is an empty HTML output rather than a
+                // throw: the resolver treats a throwing formatter as broken and skips it for the rest
+                // of the resolution, which would take the kernel's own table down with it.
+                let html =
+                    match Bridge.render context.MaxWidth context.MaxHeight value with
+                    | Some html -> html
+                    | None -> ""
 
-            Task.FromResult(CellOutput.Html html)
+                Task.FromResult(CellOutput.Html html)

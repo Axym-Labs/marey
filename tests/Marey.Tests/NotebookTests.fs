@@ -747,3 +747,206 @@ module LoadContexts =
         Assert.True(Html.canRenderForHost(box U.second))
         Assert.True(Html.canRenderForHost(box U.kelvin))
         Assert.Equal(Html.witness U.kelvin, Html.renderForHost (800.0, 600.0, box U.kelvin))
+
+// ======================================================================================
+// M4.5 — A LIVE FIGURE THROUGH THE EXTENSION (D99, D100; gate 6)
+//
+// Driven against fakes of Verso's channel host and channel, because `Verso.Testing` 1.2 has no
+// channels and no cell id. The context below carries `CellId` as a property of its own type, which
+// is where `Live.cellIdOf` finds it when the host's `IFormatterContext` does not declare one.
+// ======================================================================================
+
+module LiveFormatter =
+
+    open System.Collections.Generic
+    open System.Threading
+    open System.Threading.Tasks
+    open Verso.Abstractions
+    open Verso.Testing.Stubs
+    open Marey.Verso
+
+    type private FakeChannel(id: string, cell: Guid) =
+        let posted = List<string * obj>()
+        let received = DelegateEvent<Func<OutputChannelMessage, Task>>()
+        member val Alive = true with get, set
+        member val Snapshot: Func<CancellationToken, Task<string>> = null with get, set
+        member _.Posted = posted
+        member _.Send(msgType: string, payload: string) =
+            received.Trigger([| box (OutputChannelMessage(id, msgType, payload, [||])) |])
+
+        interface IOutputChannel with
+            member _.ChannelId = id
+            member _.CellId = cell
+            member this.IsAlive = this.Alive
+
+            member _.PostMessageAsync(msgType, payload, _) =
+                posted.Add((msgType, payload))
+                Task.CompletedTask
+
+            [<CLIEvent>]
+            member _.MessageReceived = received.Publish
+
+            member this.SnapshotProvider
+                with get () = this.Snapshot
+                and set v = this.Snapshot <- v
+
+            member _.DisposeAsync() = ValueTask()
+
+    type private FakeHost() =
+        let opened = List<FakeChannel>()
+        member _.Opened = opened
+
+        interface IOutputChannelHost with
+            member _.OpenAsync(cell, _) =
+                let c = FakeChannel(sprintf "channel-%d" opened.Count, cell)
+                opened.Add c
+                Task.FromResult(c :> IOutputChannel)
+
+            member _.Find(id) =
+                opened |> Seq.tryFind (fun c -> (c :> IOutputChannel).ChannelId = id) |> Option.map (fun c -> c :> IOutputChannel) |> Option.toObj
+
+            member _.ForCell(cell) =
+                (opened |> Seq.filter (fun c -> (c :> IOutputChannel).CellId = cell) |> Seq.map (fun c -> c :> IOutputChannel) |> Seq.toArray)
+                :> IReadOnlyList<IOutputChannel>
+
+    /// A formatter context from a host that can reach the view, naming its cell (or not).
+    ///
+    /// **Not private**, unlike the fakes above: F# compiles a private type's members as internal,
+    /// and `Live.cellIdOf` looks for a public `CellId` the way it finds one on a real host's
+    /// context. A private fake hides the property and every live test opens nothing.
+    type LiveContext(channels: IOutputChannelHost, cell: Guid option) =
+        let stub = StubFormatterContext(MimeType = "text/html", MaxWidth = 800.0, MaxHeight = 600.0) :> IFormatterContext
+
+        member _.CellId: Nullable<Guid> =
+            match cell with
+            | Some g -> Nullable g
+            | None -> Nullable()
+
+        interface IFormatterContext with
+            member _.MimeType = stub.MimeType
+            member _.MaxWidth = stub.MaxWidth
+            member _.MaxHeight = stub.MaxHeight
+
+        interface IVersoContext with
+            member _.Variables = stub.Variables
+            member _.CancellationToken = stub.CancellationToken
+            member _.WriteOutputAsync(o) = stub.WriteOutputAsync o
+            member _.Theme = stub.Theme
+            member _.LayoutCapabilities = stub.LayoutCapabilities
+            member _.ExtensionHost = stub.ExtensionHost
+            member _.NotebookMetadata = stub.NotebookMetadata
+            member _.Notebook = stub.Notebook
+            member _.OutputChannels = channels
+
+    let private formatter = MareyFormatter() :> IDataFormatter
+    let private cell = Guid.Parse "5b1ce000-0000-0000-0000-000000000042"
+
+    let private live () =
+        interact {
+            let! f = Control.slider Derived.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
+            return Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
+        }
+
+    let private format (value: obj) (context: IFormatterContext) =
+        Assert.True(formatter.CanFormat(value, context), "the formatter declined a live figure")
+        formatter.FormatAsync(value, context).GetAwaiter().GetResult()
+
+    let private payloadOf (o: obj) = o :?> Dictionary<string, obj>
+
+    /// With a host that reaches the view and names the cell, a live figure opens one channel for
+    /// that cell and is written as a live page bound to it.
+    [<Fact>]
+    let ``a live figure opens a channel for its cell`` () =
+        let host = FakeHost()
+        let output = format (box (live ())) (LiveContext(host, Some cell))
+
+        Assert.Equal(CellOutput.WidgetMimeType, output.MimeType)
+        Assert.Equal(1, host.Opened.Count)
+        Assert.Equal(cell, (host.Opened.[0] :> IOutputChannel).CellId)
+        Assert.Equal("channel-0", output.LiveChannelId)
+        Assert.DoesNotContain("disabled=\"disabled\"", output.Content)
+        XDocument.Parse output.Content |> ignore
+
+    /// The round trip: a message steps the state, and the reply carries the figure and the
+    /// labels the kernel wrote. A message that changes nothing is still answered, without the
+    /// figure, so the view's one request in flight is released.
+    [<Fact>]
+    let ``a message is stepped and answered`` () =
+        let host = FakeHost()
+        let l = live ()
+        format (box l) (LiveContext(host, Some cell)) |> ignore
+        let channel = host.Opened.[0]
+
+        channel.Send("set", "[0,2.5]")
+        let kind, reply = channel.Posted.[0]
+        Assert.Equal("render", kind)
+        let p = payloadOf reply
+        Assert.Equal<string[]>([| "2.5 Hz" |], p.["shown"] :?> string[])
+        Assert.Equal(Html.widgetFigure l (Live.step l (Live.init l) (Set(0, 2.5))), p.["svg"] :?> string)
+
+        channel.Send("set", "[0,2.5]")
+        let p2 = payloadOf (snd channel.Posted.[1])
+        Assert.False(p2.ContainsKey "svg", "an unchanged state resent its figure")
+        Assert.Equal<string[]>([| "2.5 Hz" |], p2.["shown"] :?> string[])
+
+        channel.Send("nonsense", "{")
+        Assert.Equal(3, channel.Posted.Count)
+
+    /// A save writes the page at the state the reader left it in, static.
+    [<Fact>]
+    let ``a snapshot is the current state, static`` () =
+        let host = FakeHost()
+        format (box (live ())) (LiveContext(host, Some cell)) |> ignore
+        let channel = host.Opened.[0]
+        channel.Send("set", "[0,3.7]")
+
+        let doc = channel.Snapshot.Invoke(CancellationToken.None).GetAwaiter().GetResult()
+        Assert.Contains("value=\"3.7\"", doc)
+        Assert.Contains("disabled=\"disabled\"", doc)
+
+    /// A dead channel is not posted to, and its handler does not throw.
+    [<Fact>]
+    let ``a closed channel is left alone`` () =
+        let host = FakeHost()
+        format (box (live ())) (LiveContext(host, Some cell)) |> ignore
+        let channel = host.Opened.[0]
+        channel.Alive <- false
+        channel.Send("set", "[0,2.0]")
+        Assert.Empty(channel.Posted)
+
+    /// **Gate 6.** A host with no channels, or one that does not name the cell, gets the static
+    /// page and nothing is opened.
+    [<Fact>]
+    let ``the live path degrades to a static page and opens nothing`` () =
+        let host = FakeHost()
+
+        for context in [ StubFormatterContext(MimeType = "text/html") :> IFormatterContext; LiveContext(host, None) ] do
+            let output = format (box (live ())) context
+            Assert.Equal(CellOutput.WidgetMimeType, output.MimeType)
+            Assert.Null(output.LiveChannelId)
+            Assert.Contains("disabled=\"disabled\"", output.Content)
+
+        Assert.Empty(host.Opened)
+
+    /// The four live signatures the extension reflects on, pinned as the first two are.
+    [<Fact>]
+    let ``the live bridge functions have the signatures the extension looks for`` () =
+        Assert.NotNull(Html.liveInitForHost (box (live ())))
+        let htmlType =
+            (AppDomain.CurrentDomain.GetAssemblies() |> Array.find (fun a -> a.GetName().Name = "Marey.Html")).GetType "Marey.Html"
+
+        let find name (args: Type[]) =
+            htmlType.GetMethod(name, Reflection.BindingFlags.Public ||| Reflection.BindingFlags.Static, null, args, null)
+
+        let pins =
+            [ "liveInitForHost", [| typeof<obj> |], typeof<obj>
+              "liveStepForHost", [| typeof<obj>; typeof<obj>; typeof<string>; typeof<string> |], typeof<obj>
+              "liveDocumentForHost", [| typeof<obj>; typeof<obj>; typeof<bool> |], typeof<string>
+              "liveReplyForHost", [| typeof<obj>; typeof<obj> |], typeof<string[]> ]
+
+        for name, args, ret in pins do
+            let m = find name args
+            Assert.True(not (isNull m), sprintf "Marey.Html.%s is gone" name)
+            Assert.Equal(ret, m.ReturnType)
+
+        Assert.Null(Html.liveInitForHost (box 42))
