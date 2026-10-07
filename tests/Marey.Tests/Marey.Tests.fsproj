@@ -66,6 +66,7 @@
     <Compile Include="GeomTests.fs" />
     <Compile Include="FieldTests.fs" />
     <Compile Include="InteractTests.fs" />
+    <Compile Include="DiffTests.fs" />
     <Compile Include="NotebookTests.fs" />
     <Compile Include="GuideTests.fs" />
     <Compile Include="ExampleTests.fs" />

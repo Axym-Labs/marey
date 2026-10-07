@@ -892,6 +892,30 @@ module LiveFormatter =
         channel.Send("nonsense", "{")
         Assert.Equal(3, channel.Posted.Count)
 
+    /// D103 — a step that changes one layer of a large figure is posted as a patch: the fresh
+    /// defs and the elements by id, and no whole figure. The view's hello, `size`, is answered
+    /// with the whole figure even when nothing changed, because it is how a view that cannot
+    /// apply a patch asks to start again.
+    [<Fact>]
+    let ``a local change is posted as a patch, and a hello as the figure`` () =
+        let host = FakeHost()
+        let l = Marey.Tests.DiffTests.``diffing is measured``.scatterWithCursor ()
+        format (box l) (LiveContext(host, Some cell)) |> ignore
+        let channel = host.Opened.[0]
+
+        channel.Send("set", "[0,6]")
+        let p = payloadOf (snd channel.Posted.[0])
+        Assert.False(p.ContainsKey "svg", "a local change resent the whole figure")
+        Assert.Equal<string[]>([| "figure_panel-0-0_layer-1" |], (p.["patch"] :?> string[]) |> Array.indexed |> Array.filter (fun (i, _) -> i % 2 = 0) |> Array.map snd)
+        Assert.Contains("<defs>", p.["defs"] :?> string)
+        Assert.Equal<string[]>([| "6 s" |], p.["shown"] :?> string[])
+
+        let s1 = Live.step l (Live.init l) (Set(0, 6.0))
+        channel.Send("size", sprintf "[%g,%g]" (float s1.Size.Width) (float s1.Size.Height))
+        let hello = payloadOf (snd channel.Posted.[1])
+        Assert.Equal(Html.widgetFigure l s1, hello.["svg"] :?> string)
+        Assert.False(hello.ContainsKey "patch")
+
     /// A save writes the page at the state the reader left it in, static.
     [<Fact>]
     let ``a snapshot is the current state, static`` () =
@@ -942,7 +966,8 @@ module LiveFormatter =
             [ "liveInitForHost", [| typeof<obj> |], typeof<obj>
               "liveStepForHost", [| typeof<obj>; typeof<obj>; typeof<string>; typeof<string> |], typeof<obj>
               "liveDocumentForHost", [| typeof<obj>; typeof<obj>; typeof<bool> |], typeof<string>
-              "liveReplyForHost", [| typeof<obj>; typeof<obj> |], typeof<string[]> ]
+              "liveReplyForHost", [| typeof<obj>; typeof<obj> |], typeof<string[]>
+              "liveAnswerForHost", [| typeof<obj>; typeof<obj>; typeof<obj> |], typeof<string[]> ]
 
         for name, args, ret in pins do
             let m = find name args

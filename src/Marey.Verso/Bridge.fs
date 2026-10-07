@@ -56,6 +56,10 @@ module internal Bridge =
     [<Literal>]
     let LiveReply = "liveReplyForHost"
 
+    // D103 — optional on its own: without it every step is answered with the whole figure.
+    [<Literal>]
+    let LiveAnswer = "liveAnswerForHost"
+
     /// Assemblies named `Marey.*`. The cheapest possible rejection, and the one that runs on
     /// every value a cell produces: `CanFormat` is a probe, not a commitment.
     let isMareyValue (value: obj) =
@@ -178,7 +182,8 @@ module internal Bridge =
         { Init: MethodInfo
           Step: MethodInfo
           Document: MethodInfo
-          Reply: MethodInfo }
+          Reply: MethodInfo
+          Answer: MethodInfo option }
 
     let private liveCache =
         System.Collections.Concurrent.ConcurrentDictionary<Type, LiveMethods option>()
@@ -194,6 +199,7 @@ module internal Bridge =
                 let step = find LiveStep [| typeof<obj>; typeof<obj>; typeof<string>; typeof<string> |]
                 let document = find LiveDocument [| typeof<obj>; typeof<obj>; typeof<bool> |]
                 let reply = find LiveReply [| typeof<obj>; typeof<obj> |]
+                let answer = find LiveAnswer [| typeof<obj>; typeof<obj>; typeof<obj> |]
 
                 if isNull init || isNull step || isNull document || isNull reply then
                     None
@@ -202,7 +208,8 @@ module internal Bridge =
                         { Init = init
                           Step = step
                           Document = document
-                          Reply = reply }
+                          Reply = reply
+                          Answer = Option.ofObj answer }
         )
 
     let private live (value: obj) =
@@ -239,5 +246,16 @@ module internal Bridge =
     /// What the view swaps in after a step: the figure's SVG, then each control's label.
     let liveReply (value: obj) (state: obj) : string[] option =
         match live value |> Option.bind (fun ms -> invoke ms.Reply [| value; state |]) with
+        | Some(:? (string[]) as parts) when parts.Length > 0 -> Some parts
+        | _ -> None
+
+    /// The answer to one step, as `Marey.Html.liveAnswerForHost` lays it out: a kind (`same`,
+    /// `svg` or `patch`), what it carries, then the labels. `None` for a `Marey.Html` without it.
+    let liveAnswer (value: obj) (before: obj) (after: obj) : string[] option =
+        match
+            live value
+            |> Option.bind (fun ms -> ms.Answer)
+            |> Option.bind (fun m -> invoke m [| value; before; after |])
+        with
         | Some(:? (string[]) as parts) when parts.Length > 0 -> Some parts
         | _ -> None

@@ -756,6 +756,12 @@ module Html =
     /// and disables the controls when the channel closes. With no channel it disables them at
     /// once and does nothing else.
     ///
+    /// D103 — a reply carries either the whole figure (`svg`) or a patch: `defs`, which replaces
+    /// the figure's `<defs>` whole, and `patch`, ids and markup in turn, each swapped in for the
+    /// element with that id. A patch naming an element the view does not have means the view
+    /// and the kernel disagree about what is drawn, so the view says hello again, and the
+    /// kernel answers a `size` with the whole figure.
+    ///
     /// D105 — a drag on the figure draws a band and posts its two corners in the figure's own
     /// px when the pointer comes up; with shift held it posts the pointer's movement instead,
     /// summing what waits behind the request in flight so no movement is dropped; a double
@@ -795,10 +801,36 @@ module Html =
               "      send('c' + i, 'set', [i, valueOf(el)]);"
               "    });"
               "  });"
+              "  var SVG = 'http://www.w3.org/2000/svg';"
+              "  function parse(text) {"
+              "    var d = new DOMParser().parseFromString('<svg xmlns=\"' + SVG + '\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">' + text + '</svg>', 'image/svg+xml');"
+              "    var el = d.documentElement.firstElementChild;"
+              "    return el && el.namespaceURI === SVG ? document.importNode(el, true) : null;"
+              "  }"
+              "  function patch(defs, parts) {"
+              "    var svg = fig.querySelector('svg');"
+              "    if (!svg) { return false; }"
+              "    for (var i = 0; i < parts.length; i += 2) { if (!document.getElementById(parts[i])) { return false; } }"
+              "    var old = svg.querySelector('defs'), fresh = defs ? parse(defs) : null;"
+              "    if (defs && !fresh) { return false; }"
+              "    if (old) { old.remove(); }"
+              "    if (fresh) { svg.insertBefore(fresh, svg.firstChild); }"
+              "    for (var j = 0; j < parts.length; j += 2) {"
+              "      var el = parse(parts[j + 1]);"
+              "      if (!el) { return false; }"
+              "      document.getElementById(parts[j]).replaceWith(el);"
+              "    }"
+              "    return true;"
+              "  }"
+              "  function hello() {"
+              "    var w = Math.round(fig.clientWidth || document.documentElement.clientWidth || 0);"
+              sprintf "    if (w > 0) { send('size', 'size', [w, Math.round(w * %s)]); }" (exact aspect)
+              "  }"
               "  window.addEventListener('verso:channelmessage', function (e) {"
               "    var d = e.detail || {}, p = d.payload || {};"
               "    if (d.type !== 'render') { return; }"
               "    if (typeof p.svg === 'string') { fig.innerHTML = p.svg; }"
+              "    else if (p.patch && !patch(p.defs || '', p.patch)) { hello(); }"
               "    (p.shown || []).forEach(function (s, i) {"
               "      var o = document.getElementById('v' + i);"
               "      if (o) { o.textContent = s; }"
@@ -856,8 +888,7 @@ module Html =
               "    disable((e.detail && e.detail.reason) || 'closed');"
               "  });"
               "  ch.ready('1.0');"
-              "  var w = Math.round(fig.clientWidth || document.documentElement.clientWidth || 0);"
-              sprintf "  if (w > 0) { send('size', 'size', [w, Math.round(w * %s)]); }" (exact aspect)
+              "  hello();"
               "})();"
               "//]]></script>" ]
 
@@ -1008,6 +1039,32 @@ module Html =
         | (:? Live as l), (:? LiveState as s) -> widget l s isLive
         | _ -> ""
 
+    /// **D103 — the step from `before` to `after` as the view should receive it.** A patch when
+    /// one describes the change and is at most half the document; the whole figure otherwise.
+    ///
+    /// Half, rather than merely smaller, because a patch is not free at the other end: each
+    /// element is parsed on its own, and the defs are replaced whole. A slider that moves one
+    /// annotation over a large scatter leaves the patch a few percent of the document, and a
+    /// zoom, which moves every tick and every mark, leaves it nearly all of it. Nothing lives
+    /// usefully between the two.
+    let widgetPatch (live: Live) (before: LiveState) (after: LiveState) : SvgPatch =
+        let extent = after.Shot.Outer.Extent
+        let next = Live.scene live after
+
+        let p =
+            if before.Shot.Outer.Extent = extent then
+                SvgBackend.renderPatch extent (Live.scene live before) next
+            else
+                { Document = SvgBackend.render extent next
+                  Defs = ""
+                  Elements = None }
+
+        match p.Elements with
+        | Some els ->
+            let bytes = p.Defs.Length + (els |> Array.sumBy (fun (id, svg) -> id.Length + svg.Length))
+            if 2 * bytes <= p.Document.Length then p else { p with Elements = None }
+        | None -> p
+
     /// What the view swaps in after a step: the figure's SVG first, then each control's label.
     /// Empty for anything that is not a live figure.
     let liveReplyForHost (value: obj, state: obj) : string[] =
@@ -1020,4 +1077,38 @@ module Html =
                     Array.create l.Controls.Length ""
 
             Array.append [| widgetFigure l s |] shown
+        | _ -> [||]
+
+    /// **D103 — the answer to one message**, laid out for the bridge: a kind, what the kind
+    /// carries, and then each control's label.
+    ///
+    /// - `same; labels…` — the state did not change, and the view keeps its figure.
+    /// - `svg; document; labels…` — the whole figure.
+    /// - `patch; defs; n; id₁; markup₁; … idₙ; markupₙ; labels…` — `SvgPatch`'s elements.
+    ///
+    /// Empty for anything that is not a live figure. A figure that cannot be drawn, or a patch
+    /// that cannot be taken, is answered with the whole figure, which `widgetFigure` turns into
+    /// an error box if it has to.
+    let liveAnswerForHost (value: obj, before: obj, after: obj) : string[] =
+        match value, before, after with
+        | (:? Live as l), (:? LiveState as b), (:? LiveState as a) ->
+            let shown =
+                try
+                    Live.shown l a
+                with _ ->
+                    Array.create l.Controls.Length ""
+
+            let body =
+                if obj.ReferenceEquals(b, a) then
+                    [| "same" |]
+                else
+                    match (try Some(widgetPatch l b a) with _ -> None) with
+                    | Some { Defs = defs; Elements = Some els } ->
+                        Array.append
+                            [| "patch"; defs; string els.Length |]
+                            (els |> Array.collect (fun (id, svg) -> [| id; svg |]))
+                    | Some { Document = doc } -> [| "svg"; doc |]
+                    | None -> [| "svg"; widgetFigure l a |]
+
+            Array.append body shown
         | _ -> [||]

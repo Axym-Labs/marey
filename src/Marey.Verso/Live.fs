@@ -47,13 +47,39 @@ type internal LiveSession(value: obj, initial: obj, channel: IOutputChannel) =
 
             let payload = Dictionary<string, obj>()
 
-            match Bridge.liveReply value after with
-            | Some parts ->
-                if not (obj.ReferenceEquals(before, after)) then
-                    payload.["svg"] <- box parts.[0]
+            let whole (always: bool) =
+                match Bridge.liveReply value after with
+                | Some parts ->
+                    if always || not (obj.ReferenceEquals(before, after)) then
+                        payload.["svg"] <- box parts.[0]
 
-                payload.["shown"] <- box (Array.sub parts 1 (parts.Length - 1))
-            | None -> ()
+                    payload.["shown"] <- box (Array.sub parts 1 (parts.Length - 1))
+                | None -> ()
+
+            // D103 — `size` is the view's hello, sent when it mounts and again when it cannot
+            // apply a patch, so it is always answered with the whole figure: whatever the view
+            // is showing, it is not something a patch can be taken against.
+            let answer =
+                if m.Type = "size" then None else Bridge.liveAnswer value before after
+
+            match answer with
+            | Some parts ->
+                let rest (from: int) = box (Array.sub parts from (parts.Length - from))
+
+                match parts.[0] with
+                | "svg" when parts.Length >= 2 ->
+                    payload.["svg"] <- box parts.[1]
+                    payload.["shown"] <- rest 2
+                | "patch" when parts.Length >= 3 ->
+                    match Int32.TryParse parts.[2] with
+                    | true, n when n >= 0 && parts.Length >= 3 + 2 * n ->
+                        payload.["defs"] <- box parts.[1]
+                        payload.["patch"] <- box (Array.sub parts 3 (2 * n))
+                        payload.["shown"] <- rest (3 + 2 * n)
+                    | _ -> whole true
+                | "same" -> payload.["shown"] <- rest 1
+                | _ -> whole true
+            | None -> whole (m.Type = "size")
 
             // A dead channel throws rather than drop the message. The view has gone, and so has
             // anyone to tell.
