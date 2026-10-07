@@ -242,9 +242,212 @@ module ``the wire`` =
         Assert.Equal(Some(Set(0, -3.0)), LiveMsg.parse "set" " [ 0 , -3 ] ")
 
     [<Fact>]
+    let ``zoom, pan and reset read their numbers`` () =
+        Assert.Equal(Some(Zoom { X0 = 1.0<px>; Y0 = 2.0<px>; X1 = 3.5<px>; Y1 = 4.0<px> }), LiveMsg.parse "zoom" "[1,2,3.5,4]")
+        Assert.Equal(Some(Pan({ X = 10.0<px>; Y = 20.0<px> }, { X = -3.0<px>; Y = 0.5<px> })), LiveMsg.parse "pan" "[10,20,-3,0.5]")
+        Assert.Equal(Some Reset, LiveMsg.parse "reset" "[]")
+        Assert.Equal(Some Reset, LiveMsg.parse "reset" null)
+
+    [<Fact>]
     let ``anything else is ignored rather than fatal`` () =
-        for t, p in [ "set", "2.5"; "set", "[1]"; "set", "[a,1]"; "set", null; "zoom", "[1,2]"; "set", "{\"i\":1}" ] do
+        for t, p in [ "set", "2.5"; "set", "[1]"; "set", "[a,1]"; "set", null; "zoom", "[1,2]"; "pan", "[1,2,3]"; "zoom", "[1,2,x,4]"; "set", "{\"i\":1}" ] do
             Assert.Equal(None, LiveMsg.parse t p)
+
+// ======================================================================================
+// Gate 7 — zoom selects what was dragged
+// ======================================================================================
+
+module ``zoom and pan`` =
+
+    let private still (fig: Figure) : Live = interact { return fig }
+
+    let private first (l: Live) (s: LiveState) = (Live.panels l s).[0]
+
+    /// The px a data point is drawn at, through the panel's own forward scales: the y flip once,
+    /// here, and the step's inverse has to undo it.
+    let private pxOf (v: PanelView) (x: float, y: float) : Vec2<px> =
+        { X = v.Plot.X0 + float (v.X.Project x) * (v.Plot.X1 - v.Plot.X0)
+          Y = v.Plot.Y1 - float (v.Y.Project y) * (v.Plot.Y1 - v.Plot.Y0) }
+
+    /// Drag from the top-left of a data box to its bottom-right.
+    let private drag (l: Live) (s: LiveState) ((xa, xb), (ya, yb)) =
+        let v = first l s
+        let a = pxOf v (xa, yb)
+        let b = pxOf v (xb, ya)
+        Live.step l s (Zoom { X0 = a.X; Y0 = a.Y; X1 = b.X; Y1 = b.Y })
+
+    let private near (expected: float * float) (actual: float * float) =
+        let (lo, hi), (lo', hi') = expected, actual
+        let tol = 1e-9 * abs (hi - lo)
+        Assert.True(abs (lo - lo') <= tol && abs (hi - hi') <= tol, sprintf "expected %A, got %A" expected actual)
+
+    /// A box at stated fractions of a domain, in the scale's own spacing: linear on a linear
+    /// axis, by factors on a log one.
+    let private within (s: IScaleErased) (f0: float) (f1: float) =
+        s.Invert(f0 * 1.0<nd>), s.Invert(f1 * 1.0<nd>)
+
+    /// **Gate 7.** After a drag, the panel's domains are the dragged rectangle read back through
+    /// its scales. The y box sits low in the plot, so a lost flip zooms onto the wrong band.
+    let private gate (l: Live) =
+        let s0 = Live.init l
+        let v = first l s0
+        let target = within v.X 0.2 0.45, within v.Y 0.1 0.3
+        let s1 = drag l s0 target
+        let v1 = first l s1
+        near (fst target) v1.X.Domain
+        near (snd target) v1.Y.Domain
+
+    [<Fact>]
+    let ``a drag zooms a linear panel onto what it covered`` () = gate (still (wave 1.0<1 / s> false))
+
+    [<Fact>]
+    let ``a drag zooms a log axis onto what it covered`` () =
+        let t = Array.init 60 (fun i -> 10.0 ** (float i / 15.0 - 3.0) * 1.0<s>)
+        let x = t |> Array.map (fun t -> sqrt (float t) * 1.0<m>)
+        let l = still (Chart.line U.second U.metre t x |> Chart.withXLog)
+        Assert.Equal(ScaleKind.Log 10.0, (first l (Live.init l)).X.Kind)
+        gate l
+
+    [<Fact>]
+    let ``a drag zooms a phase space onto what it covered`` () =
+        let flow: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s^2> * sin (float th) * 1.0<rad>)
+        let grid = Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 41) (Grid.linear -9.0<rad / s> 9.0<rad / s> 31) flow
+        gate (still (Field.directions Derived.radian (U.div Derived.radian U.second) grid))
+
+    /// A drag that starts outside every plot area, and a click, leave the state alone.
+    [<Fact>]
+    let ``a click or a drag off the plot changes nothing`` () =
+        let l = still (wave 1.0<1 / s> false)
+        let s0 = Live.init l
+        let v = first l s0
+        Assert.Same(s0, Live.step l s0 (Zoom { X0 = 1.0<px>; Y0 = 1.0<px>; X1 = v.Plot.X1; Y1 = v.Plot.Y1 }))
+        let c = { X = (v.Plot.X0 + v.Plot.X1) / 2.0; Y = (v.Plot.Y0 + v.Plot.Y1) / 2.0 }
+        Assert.Same(s0, Live.step l s0 (Zoom { X0 = c.X; Y0 = c.Y; X1 = c.X + 2.0<px>; Y1 = c.Y + 3.0<px> }))
+
+    /// A drag along the axis that wanders less than `MinDrag` across it zooms that axis alone.
+    [<Fact>]
+    let ``a flat drag zooms one axis`` () =
+        let l = still (wave 1.0<1 / s> false)
+        let s0 = Live.init l
+        let v = first l s0
+        let y = (v.Plot.Y0 + v.Plot.Y1) / 2.0
+        let s1 = Live.step l s0 (Zoom { X0 = v.Plot.X0 + 40.0<px>; Y0 = y; X1 = v.Plot.X0 + 120.0<px>; Y1 = y + 3.0<px> })
+        Assert.Equal<ZoomAxis[]>([| ZoomAxis.X |], s1.Zoom |> Array.map (fun z -> z.Axis))
+        Assert.Equal(v.Y.Domain, (first l s1).Y.Domain)
+
+    /// D73 under a zoom: the prefix is the zoomed domain's. Two drags take a metre axis down to
+    /// millimetres, and the title follows rather than labelling `0.001 m`.
+    [<Fact>]
+    let ``a zoom takes the prefix of what it shows`` () =
+        let l = still (wave 1.0<1 / s> false)
+        let s0 = Live.init l
+        Assert.DoesNotContain("[mm]", Html.widgetFigure l s0)
+        let v0 = first l s0
+        let s1 = drag l s0 (within v0.X 0.1 0.9, (0.0, 0.1))
+        let v1 = first l s1
+        let s2 = drag l s1 (within v1.X 0.1 0.9, (0.002, 0.006))
+        near (0.002, 0.006) (first l s2).Y.Domain
+        Assert.Contains("[mm]", Html.widgetFigure l s2)
+
+    /// The case the overflow rule cannot see. Kilometres zoomed to a few hundred metres label
+    /// `0.2 0.4 0.6` under the old prefix, which is no wider than `200 400 600` and so fits the
+    /// old gutters. A still figure of that domain says metres, and so does the zoom, because a
+    /// zoom re-arranges rather than waiting for a label to overflow.
+    [<Fact>]
+    let ``a zoom that fits still takes its own prefix`` () =
+        let t = Array.init 20 (fun i -> float i * 0.05<s>)
+        let l = still (Chart.line U.second U.metre t (t |> Array.map (fun t -> t * 2000.0<m/s>)))
+        let s0 = Live.init l
+        Assert.Contains("[km]", Html.widgetFigure l s0)
+        let v0 = first l s0
+        let s1 = drag l s0 (within v0.X 0.1 0.9, (150.0, 850.0))
+        Assert.True(Chart.fitsIn TextMeasure.approx s0.Shot (Live.view l s1), "the zoomed figure fits the old arrangement")
+        Assert.Contains("[m]", Html.widgetFigure l s1)
+        Assert.DoesNotContain("[km]", Html.widgetFigure l s1)
+
+    /// A pan on a log axis slides by a factor: the ratio of the ends is kept, and panning back
+    /// returns the domain it started from.
+    [<Fact>]
+    let ``a pan slides a log axis by a factor, and back`` () =
+        let t = Array.init 60 (fun i -> 10.0 ** (float i / 15.0 - 3.0) * 1.0<s>)
+        let l = still (Chart.line U.second U.metre t (t |> Array.map (fun t -> float t * 1.0<m>)) |> Chart.withXLog)
+        let s0 = Live.init l
+        let v0 = first l s0
+        let c = { X = (v0.Plot.X0 + v0.Plot.X1) / 2.0; Y = (v0.Plot.Y0 + v0.Plot.Y1) / 2.0 }
+        let s1 = Live.step l s0 (Pan(c, { X = 50.0<px>; Y = 0.0<px> }))
+        let lo0, hi0 = v0.X.Domain
+        let lo1, hi1 = (first l s1).X.Domain
+        Assert.True(lo1 < lo0, "dragging right shows what was left of the panel")
+        Assert.True(abs (hi1 / lo1 - hi0 / lo0) <= 1e-9 * (hi0 / lo0), sprintf "ratio %g, was %g" (hi1 / lo1) (hi0 / lo0))
+        let s2 = Live.step l s1 (Pan(c, { X = -50.0<px>; Y = 0.0<px> }))
+        near v0.X.Domain (first l s2).X.Domain
+
+    /// A double click puts back the state before the zoom, arrangement and all.
+    [<Fact>]
+    let ``a reset returns to the view's own domains`` () =
+        let l = live ()
+        let s0 = Live.init l
+        let v = first l s0
+        let zoomed = drag l s0 (within v.X 0.2 0.6, within v.Y 0.2 0.6)
+        Assert.NotEqual<LiveState>(s0, zoomed)
+        Assert.Equal<LiveState>(s0, Live.step l zoomed Reset)
+        Assert.Same(s0, Live.step l s0 Reset)
+
+    /// A zoom outlives the controls: a slider moved while zoomed draws the new view in the old box.
+    [<Fact>]
+    let ``a zoom survives a control`` () =
+        let l = live ()
+        let s0 = Live.init l
+        let v = first l s0
+        let box = within v.X 0.2 0.6, within v.Y 0.2 0.6
+        let s1 = Live.step l (drag l s0 box) (Set(0, 3.0))
+        near (fst box) (first l s1).X.Domain
+        near (snd box) (first l s1).Y.Domain
+
+    /// Panels whose axis the view drew identically zoom together, a facet stays a facet, and a
+    /// panel over a different domain is left alone.
+    [<Fact>]
+    let ``panels that agree on an axis zoom together`` () =
+        let longer =
+            let t = Array.init 50 (fun i -> float i * 0.04<s>)
+            Chart.line U.second U.metre t (t |> Array.map (fun t -> float t * 1.0<m>))
+
+        let fig = wave 1.0<1 / s> false |> Chart.beside (wave 2.0<1 / s> false) |> Chart.beside longer
+        let l = still fig
+        let s0 = Live.init l
+        let views = Live.panels l s0
+        Assert.Equal(3, views.Length)
+        Assert.Equal(views.[0].X.Domain, views.[1].X.Domain)
+        let v = views.[0]
+        let y = (v.Plot.Y0 + v.Plot.Y1) / 2.0
+        let x0, x1 = v.Plot.X0 + 30.0<px>, v.Plot.X0 + 90.0<px>
+        let s1 = Live.step l s0 (Zoom { X0 = x0; Y0 = y; X1 = x1; Y1 = y })
+        let after = Live.panels l s1
+        Assert.NotEqual(views.[0].X.Domain, after.[0].X.Domain)
+        Assert.Equal(after.[0].X.Domain, after.[1].X.Domain)
+        Assert.Equal(views.[2].X.Domain, after.[2].X.Domain)
+        Assert.Equal(views.[1].Y.Domain, after.[1].Y.Domain)
+
+    /// Zooms and pans replay like any other message: same states, same figures, on two threads.
+    [<Fact>]
+    let ``zooms and pans replay`` () =
+        let run (l: Live) =
+            let s0 = Live.init l
+            let v = first l s0
+            let c = { X = (v.Plot.X0 + v.Plot.X1) / 2.0; Y = (v.Plot.Y0 + v.Plot.Y1) / 2.0 }
+
+            [ Zoom { X0 = c.X - 60.0<px>; Y0 = c.Y - 40.0<px>; X1 = c.X + 30.0<px>; Y1 = c.Y + 50.0<px> }
+              Set(0, 3.0)
+              Pan(c, { X = 12.0<px>; Y = -7.0<px> })
+              Set(1, 1.0)
+              Reset ]
+            |> List.scan (Live.step l) s0
+            |> List.map (fun s -> s, Html.widgetFigure l s)
+
+        let runs = [| live (); live (); live () |] |> Array.Parallel.map run
+
+        for other in runs.[1..] do
+            List.iter2 (fun (a: LiveState, x: string) (b: LiveState, y: string) -> Assert.Equal<LiveState>(a, b); Assert.Equal(x, y)) runs.[0] other
 
 // ======================================================================================
 // Gate 12 — `Marey.Anim` stays put

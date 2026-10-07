@@ -745,7 +745,9 @@ module Html =
               "#controls{" + Row + ";margin:0 0 6px}"
               "#controls label{display:inline-flex;gap:6px;align-items:center}"
               "#controls output{font-variant-numeric:tabular-nums;min-width:5em}"
-              "#fig{max-width:100%;overflow-x:auto}"
+              "#stage{position:relative}"
+              "#fig{max-width:100%;overflow-x:auto;touch-action:none;user-select:none;-webkit-user-select:none}"
+              "#band{position:absolute;display:none;pointer-events:none;border:1px dashed currentColor;background:rgba(127,127,127,0.12)}"
               "#status{" + Muted + "}" ]
 
     /// The view's half of the protocol. It measures the frame and says how wide it is, reports
@@ -753,6 +755,12 @@ module Html =
     /// the newest value of each control waiting behind it, swaps in whatever the kernel sends,
     /// and disables the controls when the channel closes. With no channel it disables them at
     /// once and does nothing else.
+    ///
+    /// D105 — a drag on the figure draws a band and posts its two corners in the figure's own
+    /// px when the pointer comes up; with shift held it posts the pointer's movement instead,
+    /// summing what waits behind the request in flight so no movement is dropped; a double
+    /// click posts a reset. The script works out which pixel the pointer is on and nothing else:
+    /// which panel that is, and what it measures, is the kernel's.
     let private widgetScript (aspect: float) =
         String.concat
             "\n"
@@ -774,8 +782,9 @@ module Html =
               "    delete waiting[key];"
               "    busy = ch.post(m.type, m.payload);"
               "  }"
-              "  function send(key, type, payload) {"
+              "  function send(key, type, payload, merge) {"
               "    if (!(key in waiting)) { order.push(key); }"
+              "    else if (merge) { payload = merge(waiting[key].payload, payload); }"
               "    waiting[key] = { type: type, payload: payload };"
               "    flush();"
               "  }"
@@ -797,7 +806,53 @@ module Html =
               "    busy = false;"
               "    flush();"
               "  });"
+              "  var stage = document.getElementById('stage'), band = document.getElementById('band');"
+              "  var drag = null, closed = false;"
+              "  function at(e) {"
+              "    var svg = fig.querySelector('svg');"
+              "    if (!svg) { return null; }"
+              "    var r = svg.getBoundingClientRect(), s = stage.getBoundingClientRect();"
+              "    var vb = svg.viewBox && svg.viewBox.baseVal;"
+              "    var kx = vb && vb.width && r.width ? vb.width / r.width : 1;"
+              "    var ky = vb && vb.height && r.height ? vb.height / r.height : 1;"
+              "    return { x: (e.clientX - r.left) * kx, y: (e.clientY - r.top) * ky, bx: e.clientX - s.left, by: e.clientY - s.top };"
+              "  }"
+              "  function sum(a, b) { return [a[0], a[1], a[2] + b[2], a[3] + b[3]]; }"
+              "  fig.addEventListener('pointerdown', function (e) {"
+              "    if (e.button !== 0 || closed) { return; }"
+              "    var p = at(e);"
+              "    if (!p) { return; }"
+              "    drag = { start: p, last: p, pan: e.shiftKey };"
+              "    fig.setPointerCapture(e.pointerId);"
+              "    e.preventDefault();"
+              "  });"
+              "  fig.addEventListener('pointermove', function (e) {"
+              "    if (!drag) { return; }"
+              "    var p = at(e), a = drag.start;"
+              "    if (!p) { return; }"
+              "    if (drag.pan) {"
+              "      send('pan', 'pan', [a.x, a.y, p.x - drag.last.x, p.y - drag.last.y], sum);"
+              "      drag.last = p;"
+              "      return;"
+              "    }"
+              "    band.style.left = Math.min(a.bx, p.bx) + 'px';"
+              "    band.style.top = Math.min(a.by, p.by) + 'px';"
+              "    band.style.width = Math.abs(p.bx - a.bx) + 'px';"
+              "    band.style.height = Math.abs(p.by - a.by) + 'px';"
+              "    band.style.display = 'block';"
+              "  });"
+              "  function release(e) {"
+              "    if (!drag) { return; }"
+              "    var p = at(e), a = drag.start, pan = drag.pan;"
+              "    drag = null;"
+              "    band.style.display = 'none';"
+              "    if (p && !pan && e.type === 'pointerup') { send('zoom', 'zoom', [a.x, a.y, p.x, p.y]); }"
+              "  }"
+              "  fig.addEventListener('pointerup', release);"
+              "  fig.addEventListener('pointercancel', release);"
+              "  fig.addEventListener('dblclick', function () { if (!closed) { send('reset', 'reset', []); } });"
               "  window.addEventListener('verso:channelclosed', function (e) {"
+              "    closed = true;"
               "    disable((e.detail && e.detail.reason) || 'closed');"
               "  });"
               "  ch.ready('1.0');"
@@ -827,7 +882,9 @@ module Html =
             [ "<!DOCTYPE html><html><head><meta charset=\"utf-8\"/>"
               "<style>" + widgetStyle + "</style></head><body>"
               "<div id=\"controls\">" + controls + "</div>"
-              "<div id=\"fig\">" + widgetFigure live state + "</div>"
+              "<div id=\"stage\"><div id=\"fig\""
+              + (if isLive then " title=\"Drag to zoom, shift-drag to pan, double-click to reset\"" else "")
+              + ">" + widgetFigure live state + "</div><div id=\"band\"></div></div>"
               "<div id=\"status\">" + (if isLive then "" else "Static: run the cell to move the controls.") + "</div>"
               widgetScript aspect
               "</body></html>" ]
