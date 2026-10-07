@@ -700,6 +700,19 @@ module ``live equals replayed`` =
         Assert.Equal(0.0<s>, times.[0])
         Assert.Equal(3.3333333333333335 - 1.52325, float times.[times.Length - 1], 12)
 
+    /// A view says its size when it mounts, long before the reader touches it. Time starts at
+    /// the first thing the reader did, so a film does not open on the wait; the size still
+    /// applies from the start.
+    [<Fact>]
+    let ``time starts at the reader's first act`` () =
+        let l = live ()
+        let r = Live.record l (Recording.ofEvents [| 0.0<s>, Resize(800.0, 500.0); 46.0<s>, Set(0, 2.0); 47.5<s>, Set(0, 3.0) |])
+        Assert.Equal<float<s>[]>([| 0.0<s>; 0.0<s>; 1.5<s> |], r.Events |> Array.map fst)
+        Assert.Equal(800.0<px>, (snd r.Events.[0]).Size.Width)
+
+        let sizes = Live.record l (Recording.ofEvents [| 3.0<s>, Resize(800.0, 500.0); 9.0<s>, Resize(700.0, 440.0) |])
+        Assert.Equal(6.0<s>, Recording.duration sizes)
+
     /// The order is the truth: a time that runs backwards, or is not a number, holds the one
     /// before it rather than reordering the values.
     [<Fact>]
@@ -764,3 +777,46 @@ module ``live equals replayed`` =
         Assert.Contains("performance.now()", doc)
         Assert.DoesNotContain("Date.now", doc)
         Assert.DoesNotContain("new Date", doc)
+
+module ``a recorder`` =
+
+    let private step (r: Recorder) (state: obj) (msgType: string) (payload: string) =
+        Html.liveStepForHost (box r, state, msgType, payload)
+
+    /// A recorder is its `Live` to the host: the same states, the same answers, and the same
+    /// object back when nothing changed, which is how a host knows to answer `same`.
+    [<Fact>]
+    let ``a recorder answers as its live figure does`` () =
+        let l = live ()
+        let r = Live.recorder l
+        let wire = [ "set", "[0,2,10]"; "set", "[0,2,20]"; "set", "[1,1,30]"; "reset", "[40]" ]
+
+        let mutable sl = Html.liveInitForHost (box l)
+        let mutable sr = Html.liveInitForHost (box r)
+        Assert.Equal(Html.liveDocumentForHost (box l, sl, true), Html.liveDocumentForHost (box r, sr, true))
+
+        for t, p in wire do
+            let nl = Html.liveStepForHost (box l, sl, t, p)
+            let nr = step r sr t p
+            Assert.Equal<string[]>(Html.liveAnswerForHost (box l, sl, nl), Html.liveAnswerForHost (box r, sr, nr))
+            Assert.Equal(obj.ReferenceEquals(sl, nl), obj.ReferenceEquals(sr, nr))
+            Assert.Equal<string[]>(Html.liveReplyForHost (box l, nl), Html.liveReplyForHost (box r, nr))
+            sl <- nl
+            sr <- nr
+
+        Assert.True(Html.canRenderForHost (box r))
+        Assert.Equal(Html.renderForHost (640.0, 400.0, box l), Html.renderForHost (640.0, 400.0, box r))
+
+    /// Each display records afresh, and a message from an earlier display of the same handle is
+    /// stepped but not noted: two cells showing one handle do not interleave into one log.
+    [<Fact>]
+    let ``a second display starts again`` () =
+        let r = Live.recorder (live ())
+        let first = Html.liveInitForHost (box r)
+        let first' = step r first "set" "[0,2,100]"
+        let second = Html.liveInitForHost (box r)
+        let first'' = step r first' "set" "[0,3,200]"
+        let _ = step r second "set" "[0,4,300]"
+
+        Assert.Equal<float[]>([| 3.0; 0.0 |], (first'' :?> RecorderState).State.Values)
+        Assert.Equal<(float<s> * LiveMsg)[]>([| 0.0<s>, Set(0, 4.0) |], (Recorder.stop r).Events)

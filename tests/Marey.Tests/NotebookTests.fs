@@ -928,6 +928,47 @@ module LiveFormatter =
         Assert.Contains("value=\"3.7\"", doc)
         Assert.Contains("disabled=\"disabled\"", doc)
 
+    /// D102 — a `Recorder` goes through the extension as its `Live` does, and hands back
+    /// exactly the messages the host stepped, at the view's times. After `stop` the widget still
+    /// answers and nothing more is noted.
+    [<Fact>]
+    let ``a recorder keeps what the host stepped`` () =
+        let host = FakeHost()
+        let l = live ()
+        let r = Live.recorder l
+        let output = format (box r) (LiveContext(host, Some cell))
+        Assert.Equal("channel-0", output.LiveChannelId)
+        let channel = host.Opened.[0]
+
+        let wire =
+            [ "size", "[640,400,1000]"
+              "set", "[0,2.5,1100]"
+              "set", "[0,2.5,1150]"
+              "nonsense", "{"
+              "set", "[0,4,1300.5]" ]
+
+        for t, p in wire do
+            channel.Send(t, p)
+
+        Assert.Equal(wire.Length, channel.Posted.Count)
+        Assert.Equal<string[]>([| "2.5 Hz" |], (payloadOf (snd channel.Posted.[1])).["shown"] :?> string[])
+
+        let expected =
+            wire
+            |> List.choose (fun (t, p) -> LiveMsg.parseStamped t p)
+            |> List.map (fun (at, m) -> at.Value, m)
+            |> Array.ofList
+            |> Recording.ofEvents
+
+        let log = Recorder.stop r
+        Assert.Equal<(float<s> * LiveMsg)[]>(expected.Events, log.Events)
+        Assert.Equal(0.3005<s>, fst log.Events.[log.Events.Length - 1])
+        Assert.Equal<float[]>([| 4.0 |], (snd (Live.record l log).Events.[log.Events.Length - 1]).Values)
+
+        channel.Send("set", "[0,1,1400]")
+        Assert.Equal(wire.Length + 1, channel.Posted.Count)
+        Assert.Equal(log.Events.Length, (Recorder.log r).Events.Length)
+
     /// A dead channel is not posted to, and its handler does not throw.
     [<Fact>]
     let ``a closed channel is left alone`` () =

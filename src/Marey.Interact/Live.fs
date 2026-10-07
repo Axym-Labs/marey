@@ -369,6 +369,72 @@ module LiveLog =
         | Some _ -> Error "not a Marey live log: it needs format, version and events"
         | None -> Error "not JSON"
 
+/// **A live figure that keeps what the reader did (D102).** Displayed, it is the same widget as
+/// its `Live`; the host steps it exactly as it would, and each message the step is given is
+/// noted with the view's time. `Recorder.stop` gives the log, and `Live.record` and `Live.film`
+/// turn it into a film.
+///
+/// This is the one mutable thing in the package, and it is mutable because the host holds the
+/// session and the notebook holds the handle: the log has to be somewhere both can reach. The
+/// step stays pure; the recorder only watches what it was given.
+///
+/// **Each display records afresh.** Displaying the handle again starts a new recording, and a
+/// message from an earlier display of it is stepped but not noted, so two cells showing one
+/// handle cannot interleave into one log.
+[<Sealed; AllowNullLiteral>]
+type Recorder internal (live: Live) =
+    let gate = obj ()
+    let events = ResizeArray<float<s> * LiveMsg>()
+    let mutable session = 0
+    let mutable stopped = false
+
+    let snapshot () = Recording.ofEvents (events.ToArray())
+
+    /// The live figure being recorded.
+    member _.Live: Live = live
+
+    /// Host plumbing: a display began. Clears the log and returns the session its messages
+    /// are noted under.
+    member _.Begin() : int =
+        lock gate (fun () ->
+            session <- session + 1
+            events.Clear()
+            stopped <- false
+            session)
+
+    /// Host plumbing: a message the step was given, with the view's time if it sent one. A
+    /// message without one is held at the time before it (`Recording.ofEvents`).
+    member _.Note(from: int, at: float<s> option, msg: LiveMsg) : unit =
+        lock gate (fun () ->
+            if from = session && not stopped then
+                events.Add(defaultArg at (nan * 1.0<s>), msg))
+
+    /// The log so far, without stopping.
+    member _.Log: Recording<LiveMsg> = lock gate snapshot
+
+    /// The log, and nothing more is noted until the handle is displayed again. The widget keeps
+    /// working.
+    member _.Stop() : Recording<LiveMsg> =
+        lock gate (fun () ->
+            stopped <- true
+            snapshot ())
+
+/// Host plumbing: the state a host holds for a displayed `Recorder` — the widget's state, and the
+/// display it belongs to.
+[<NoComparison>]
+type RecorderState =
+    { Session: int
+      State: LiveState }
+
+[<RequireQualifiedAccess>]
+module Recorder =
+
+    /// The log so far; the recording carries on.
+    let log (r: Recorder) : Recording<LiveMsg> = r.Log
+
+    /// The log, and the recording stops. `Live.record r.Live` replays it.
+    let stop (r: Recorder) : Recording<LiveMsg> = r.Stop()
+
 [<RequireQualifiedAccess>]
 module Live =
 
@@ -386,6 +452,10 @@ module Live =
 
     /// A live figure from a control over figures.
     let ofControl (c: Control<Figure>) : Live = { Controls = c.Specs; View = c.Read }
+
+    /// A handle that displays as this live figure and keeps the reader's messages, for
+    /// `Recorder.stop` to hand back (D102).
+    let recorder (live: Live) : Recorder = Recorder live
 
     /// The figure for a set of values.
     let private figureOf (live: Live) (values: float[]) = live.View(Array.copy values)
@@ -656,16 +726,30 @@ module Live =
     /// view stamped it, from `start`. Every time is the view's, so the kernel's clock appears
     /// nowhere. A log with no messages records `start` alone, so the result can always be
     /// sampled.
+    ///
+    /// **Time starts at the reader's first act**, not at the view's hello. A view sends its size
+    /// when it mounts, and the reader may not touch it for a minute; the sizes before the first
+    /// other message are stepped at time zero, so a film does not open on that minute.
     let recordFrom (live: Live) (start: LiveState) (log: Recording<LiveMsg>) : Recording<LiveState> =
         if log.Events.Length = 0 then
             { Events = [| 0.0<s>, start |] }
         else
+            let origin =
+                log.Events
+                |> Array.tryPick (fun (t, msg) ->
+                    match msg with
+                    | Resize _ -> None
+                    | _ -> Some t)
+
             let mutable state = start
 
             log.Events
             |> Array.map (fun (t, msg) ->
                 state <- step live state msg
-                t, state)
+
+                match origin with
+                | Some o when t < o -> o, state
+                | _ -> t, state)
             |> Recording.ofEvents
 
     /// `recordFrom` the first state at `DefaultSize`, which is where every widget starts.

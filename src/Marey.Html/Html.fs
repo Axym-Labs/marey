@@ -943,7 +943,8 @@ module Html =
         // Erased measures make this one type test cover every unit witness there will ever be.
         | :? U<1>
         | :? IScaleErased
-        | :? Live -> true
+        | :? Live
+        | :? Recorder -> true
         | _ -> false
 
     /// The size to compile a figure at, given what the host says is available.
@@ -1000,6 +1001,7 @@ module Html =
         // A host that can only take a fragment gets the figure at the controls' initial values,
         // in the widget's own arrangement. A host with a frame for a page uses `liveDocumentForHost`.
         | :? Live as l -> guarded "live figure" (fun () -> scroller (widgetFigure l (Live.init l)))
+        | :? Recorder as r -> guarded "live figure" (fun () -> scroller (widgetFigure r.Live (Live.init r.Live)))
         | _ -> ""
 
     // ---- The live half of the bridge (M4.5, D100) ------------------------------------------
@@ -1014,18 +1016,29 @@ module Html =
     // answers what it can: no state for a value that is not live, the state unchanged for a
     // message that cannot be stepped, and an error box in place of a figure that cannot be drawn.
 
-    /// The initial state of a live figure, or `null` for any other value.
+    /// The live figure and the widget state a host is holding, through a `Recorder` too.
+    let private liveAt (value: obj) (state: obj) : (Live * LiveState) option =
+        match value, state with
+        | (:? Live as l), (:? LiveState as s) -> Some(l, s)
+        | (:? Recorder as r), (:? RecorderState as s) -> Some(r.Live, s.State)
+        | _ -> None
+
+    /// The initial state of a live figure, or `null` for any other value. A `Recorder` begins a
+    /// new recording here, once per display.
     let liveInitForHost (value: obj) : obj =
-        match value with
-        | :? Live as l ->
-            try
-                box (Live.init l)
-            with _ ->
-                null
-        | _ -> null
+        try
+            match value with
+            | :? Live as l -> box (Live.init l)
+            | :? Recorder as r ->
+                let state = Live.init r.Live
+                box { Session = r.Begin(); State = state }
+            | _ -> null
+        with _ ->
+            null
 
     /// The next state after a message from the view, or `state` itself when nothing changed, the
-    /// message cannot be read, or the step failed.
+    /// message cannot be read, or the step failed. A `Recorder` notes the message, with the
+    /// view's time, before it is stepped.
     let liveStepForHost (value: obj, state: obj, msgType: string, payload: string) : obj =
         match value, state with
         | (:? Live as l), (:? LiveState as s) ->
@@ -1036,13 +1049,24 @@ module Html =
                 with _ ->
                     state
             | None -> state
+        | (:? Recorder as r), (:? RecorderState as rs) ->
+            match LiveMsg.parseStamped msgType payload with
+            | Some(at, msg) ->
+                try
+                    r.Note(rs.Session, at, msg)
+                    let next = Live.step r.Live rs.State msg
+                    // The same object when nothing changed: a host answers `same` by reference.
+                    if obj.ReferenceEquals(next, rs.State) then state else box { rs with State = next }
+                with _ ->
+                    state
+            | None -> state
         | _ -> state
 
     /// The whole page at a state, live or static. `""` for anything that is not a live figure.
     let liveDocumentForHost (value: obj, state: obj, isLive: bool) : string =
-        match value, state with
-        | (:? Live as l), (:? LiveState as s) -> widget l s isLive
-        | _ -> ""
+        match liveAt value state with
+        | Some(l, s) -> widget l s isLive
+        | None -> ""
 
     /// **D103 — the step from `before` to `after` as the view should receive it.** A patch when
     /// one describes the change and is at most half the document; the whole figure otherwise.
@@ -1073,8 +1097,8 @@ module Html =
     /// What the view swaps in after a step: the figure's SVG first, then each control's label.
     /// Empty for anything that is not a live figure.
     let liveReplyForHost (value: obj, state: obj) : string[] =
-        match value, state with
-        | (:? Live as l), (:? LiveState as s) ->
+        match liveAt value state with
+        | Some(l, s) ->
             let shown =
                 try
                     Live.shown l s
@@ -1095,8 +1119,8 @@ module Html =
     /// that cannot be taken, is answered with the whole figure, which `widgetFigure` turns into
     /// an error box if it has to.
     let liveAnswerForHost (value: obj, before: obj, after: obj) : string[] =
-        match value, before, after with
-        | (:? Live as l), (:? LiveState as b), (:? LiveState as a) ->
+        match liveAt value before, liveAt value after with
+        | Some(l, b), Some(_, a) ->
             let shown =
                 try
                     Live.shown l a
