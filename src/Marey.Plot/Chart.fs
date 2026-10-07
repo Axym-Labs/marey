@@ -1429,6 +1429,16 @@ module Chart =
     /// beside it could only ever disagree.
     let toSceneIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : Node = Figure.toSceneIn m shot fig
 
+    /// **D105 — where each panel's plot area is in a shot, with its coord and scales**, so a
+    /// point on the surface can be read back as data (`PanelView.toData`) and a dragged
+    /// rectangle as two domains (`PanelView.domainsOf`).
+    let panelsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : PanelView[] = Figure.panelsIn m shot fig
+
+    /// State the domains of the panel at `(row, col)`, raw, in each axis's own unit. What
+    /// `withXDomain` and `withYDomain` do to the last panel, for any panel.
+    let withPanelDomains (row: int, col: int) (dx: (float * float) option) (dy: (float * float) option) (fig: Figure) =
+        Figure.withPanelDomains (row, col) dx dy fig
+
     /// The outer grid `toScene` chose — the head row and the panel regions. For inspection.
     let arrangement (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Arrangement =
         Figure.arrangement m extent fig

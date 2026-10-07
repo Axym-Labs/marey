@@ -205,6 +205,63 @@ type Shot =
       /// the colour domain's reason. Empty for a still.
       QuiverKeys: (string * QuiverKey)[] }
 
+/// D105 — **one panel as a pointer meets it**: where its plot area is on the surface, and the
+/// coord and the two scales that turn a point in it back into data.
+///
+/// Read off a `Shot` rather than off a scene, because the scene has spent its scales: a `Node`
+/// knows where a mark is and not what it measures. The scales are the panel's after `unify`, which
+/// are the ones its marks and axes were drawn through.
+[<NoEquality; NoComparison>]
+type PanelView =
+    { Row: int
+      Col: int
+      /// The plot rectangle, in the surface's px, top-left origin.
+      Plot: Rect<px>
+      Coord: Coord
+      X: IScaleErased
+      Y: IScaleErased }
+
+[<RequireQualifiedAccess>]
+module PanelView =
+
+    /// Is the point inside the plot rectangle, edges included?
+    let contains (p: Vec2<px>) (v: PanelView) =
+        p.X >= v.Plot.X0 && p.X <= v.Plot.X1 && p.Y >= v.Plot.Y0 && p.Y <= v.Plot.Y1
+
+    /// A surface point in the panel's own unit square, through the coord: where the scales would
+    /// have put it. `None` where the coord cannot invert (the pole of a polar plot), or for a
+    /// plot rectangle with no area.
+    let toUnit (p: Vec2<px>) (v: PanelView) : Vec2<nd> option =
+        let w = v.Plot.X1 - v.Plot.X0
+        let h = v.Plot.Y1 - v.Plot.Y0
+
+        if not (w > 0.0<px> && h > 0.0<px>) then
+            None
+        else
+            // The one flip: px grows downward, the unit square upward (`Layout.ndRect`'s).
+            v.Coord.FromPanel
+                { X = (p.X - v.Plot.X0) / w * 1.0<nd>
+                  Y = (v.Plot.Y1 - p.Y) / h * 1.0<nd> }
+
+    /// The data under a surface point, as raw values in each axis's own unit.
+    let toData (p: Vec2<px>) (v: PanelView) : (float * float) option =
+        toUnit p v |> Option.map (fun u -> v.X.Invert u.X, v.Y.Invert u.Y)
+
+    /// The data domains a px rectangle covers, each ascending: the box around its four corners'
+    /// inverses, which under a cartesian coord is the rectangle itself. `None` when a corner has
+    /// no inverse.
+    let domainsOf (r: Rect<px>) (v: PanelView) : ((float * float) * (float * float)) option =
+        let corners =
+            [| { X = r.X0; Y = r.Y0 }; { X = r.X1; Y = r.Y0 }; { X = r.X1; Y = r.Y1 }; { X = r.X0; Y = r.Y1 } |]
+            |> Array.map (fun c -> toData c v)
+
+        if corners |> Array.exists Option.isNone then
+            None
+        else
+            let xs = corners |> Array.map (fun c -> fst c.Value)
+            let ys = corners |> Array.map (fun c -> snd c.Value)
+            Some((Array.min xs, Array.max xs), (Array.min ys, Array.max ys))
+
 /// **The compiler.** A `Figure` in, a `Node` out, nothing in between that a backend can see.
 ///
 /// This is the layer §5.5 describes: "axes, legends, titles, colorbars, facets, error bars, box
@@ -627,6 +684,43 @@ module Figure =
     let private legendEntries (theme: Theme) (p: Panel) =
         p.Layers |> Array.collect (layerEntries theme) |> Array.distinct
 
+    /// A panel's inner grid, from gutters that are already decided. Pure arithmetic on the record
+    /// plus the solver — it measures nothing, which is exactly what lets a frozen layout be handed
+    /// in from outside and produce the same rectangle every time. The drawing pass and
+    /// `panelsIn` both take the plot rectangle from here, so there is one of it.
+    let private innerGrid (m: ITextMeasurer) (extent: Extent<px>) (region: Rect<px>) (g: PanelLayout) =
+        let cols =
+            [| Track.Content g.YTitleW
+               Track.Content g.YTicksW
+               Track.Frac 1.0
+               Track.Content g.RightPad
+               Track.Content g.BarGap
+               Track.Content g.BarW |]
+
+        let rows =
+            [| Track.Content g.TitleH
+               Track.Content g.TopPad
+               Track.Frac 1.0
+               Track.Content g.XTicksH
+               Track.Content g.XTitleH |]
+
+        let fixedCell key row col (w: float<px>) (h: float<px>) =
+            Layout.cell key row col (fun _ -> { Width = w; Height = h })
+
+        let cells =
+            [| fixedCell "ytitle" 2 0 g.YTitleW 0.0<px>
+               fixedCell "yticks" 2 1 g.YTicksW 0.0<px>
+               Layout.fill "plot" 2 2
+               fixedCell "rightpad" 2 3 g.RightPad 0.0<px>
+               fixedCell "bargap" 2 4 g.BarGap 0.0<px>
+               fixedCell "colorbar" 2 5 g.BarW 0.0<px>
+               fixedCell "ptitle" 0 0 0.0<px> g.TitleH |> Layout.spanning 1 6
+               fixedCell "toppad" 1 0 0.0<px> g.TopPad |> Layout.spanning 1 6
+               fixedCell "xticks" 3 2 0.0<px> g.XTicksH
+               fixedCell "xtitle" 4 2 0.0<px> g.XTitleH |]
+
+        Layout.arrangeIn m extent region (Layout.grid rows cols cells)
+
     /// Compile one panel into a device-space region.
     /// D72 — one function, two answers: the panel's frozen inner grid, and a thunk that draws
     /// the panel inside it.
@@ -773,41 +867,7 @@ module Figure =
                   XPrefix = pinX
                   YPrefix = pinY }
 
-            // The inner grid, from gutters that are already decided. Pure arithmetic on the
-            // record above plus the solver — it measures nothing, which is exactly what lets a
-            // frozen layout be handed in from outside and produce the same rectangle every time.
-            let build (g: PanelLayout) =
-                let cols =
-                    [| Track.Content g.YTitleW
-                       Track.Content g.YTicksW
-                       Track.Frac 1.0
-                       Track.Content g.RightPad
-                       Track.Content g.BarGap
-                       Track.Content g.BarW |]
-
-                let rows =
-                    [| Track.Content g.TitleH
-                       Track.Content g.TopPad
-                       Track.Frac 1.0
-                       Track.Content g.XTicksH
-                       Track.Content g.XTitleH |]
-
-                let fixedCell key row col (w: float<px>) (h: float<px>) =
-                    Layout.cell key row col (fun _ -> { Width = w; Height = h })
-
-                let cells =
-                    [| fixedCell "ytitle" 2 0 g.YTitleW 0.0<px>
-                       fixedCell "yticks" 2 1 g.YTicksW 0.0<px>
-                       Layout.fill "plot" 2 2
-                       fixedCell "rightpad" 2 3 g.RightPad 0.0<px>
-                       fixedCell "bargap" 2 4 g.BarGap 0.0<px>
-                       fixedCell "colorbar" 2 5 g.BarW 0.0<px>
-                       fixedCell "ptitle" 0 0 0.0<px> g.TitleH |> Layout.spanning 1 6
-                       fixedCell "toppad" 1 0 0.0<px> g.TopPad |> Layout.spanning 1 6
-                       fixedCell "xticks" 3 2 0.0<px> g.XTicksH
-                       fixedCell "xtitle" 4 2 0.0<px> g.XTitleH |]
-
-                Layout.arrangeIn m extent region (Layout.grid rows cols cells)
+            let build (g: PanelLayout) = innerGrid m extent region g
 
             // The bar's plan is made against its own height, which is the plot's — the bar
             // sits in the plot's row. That is why `Legend.fs`'s objection to outside placement
@@ -1422,6 +1482,48 @@ module Figure =
                 | _ -> false
 
         within (headHeight m fig) headRoom && Array.forall panelFits fig.Panels
+
+    /// **D105 — every drawn panel of a figure, as a pointer meets it in a shot.** The plot
+    /// rectangle comes from the shot's frozen inner grid through `innerGrid`, the function the
+    /// drawing pass takes it from, and the scales from the panel after `unify`. A panel with no
+    /// layers, or one the shot has no layout for, has nothing to point at and is left out.
+    let panelsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : PanelView[] =
+        fig.Panels
+        |> Array.choose (fun p ->
+            let key = sprintf "panel-%d-%d" p.Row p.Col
+            let frozen = shot.Panels |> Array.tryPick (fun (k, l) -> if k = key then Some l else None)
+
+            match p.Layers.Length, Layout.tryFindPx key shot.Outer, frozen with
+            | 0, _, _ -> None
+            | _, Some region, Some f ->
+                let plot = Layout.findPx "plot" (innerGrid m shot.Outer.Extent region f)
+                let sx, sy = Erase.seriesScales (unify p).Layers.[0].Data
+
+                Some
+                    { Row = p.Row
+                      Col = p.Col
+                      Plot = plot
+                      Coord = p.Coord
+                      X = sx
+                      Y = sy }
+            | _ -> None)
+
+    /// One panel's domains, stated: `Chart.withXDomain` for a panel other than the last. Raw
+    /// values in each axis's own unit; `None` leaves an axis as it is.
+    let withPanelDomains
+        (row: int, col: int)
+        (dx: (float * float) option)
+        (dy: (float * float) option)
+        (fig: Figure)
+        : Figure =
+        { fig with
+            Panels =
+                fig.Panels
+                |> Array.map (fun p ->
+                    if p.Row = row && p.Col = col then
+                        { p with Layers = p.Layers |> Array.map (fun l -> { l with Data = withDomains dx dy l.Data }) }
+                    else
+                        p) }
 
     /// **`Shot -> Figure -> Node`.** Draw this figure inside a layout that has already been
     /// decided — the frame renderer's entry point.
