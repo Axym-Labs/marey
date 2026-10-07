@@ -270,6 +270,19 @@ type internal SvgDocument(idPrefix: string) =
             defs.Add(render id)
             id
 
+    /// The `<defs>` block as `Compose` writes it, or `""` when there are none.
+    member _.DefsText() : string =
+        if defs.Count = 0 then
+            ""
+        else
+            let sb = StringBuilder()
+            sb.Append("  <defs>\n") |> ignore
+
+            for d in defs do
+                sb.Append(d) |> ignore
+
+            sb.Append("  </defs>\n").ToString()
+
     /// Compose the finished document: header, then defs, then body, then the closing tag.
     member _.Compose() : string =
         let sb = StringBuilder(header.Length + body.Length + 64)

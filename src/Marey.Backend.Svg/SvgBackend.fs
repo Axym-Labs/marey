@@ -71,6 +71,10 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
     /// markers and `Keyed` names colliding. See `SvgDocument`.
     let doc = SvgDocument(defaultArg idPrefix "")
 
+    /// D103 — where each `Keyed` element sits in the body: its key, its id, and the offsets of
+    /// its markup from the start of its line to the end of its closing tag's line.
+    let spans = ResizeArray<struct (string * string * int * int)>()
+
     let mutable started = false
     let mutable finished = false
     let mutable cached: string = null
@@ -510,11 +514,13 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
         // §5.2 — stable identity, so a future diff can address this subtree by name.
         | Keyed(Key name, child) ->
             let id = doc.UniqueId(Svg.ncname name)
+            let start = sb.Length
             openTag depth "g"
             attr "id" id
             closeOpen ()
             draw ctm (depth + 1) child
             endTag depth "g"
+            spans.Add(struct (name, id, start, sb.Length))
 
         | Annotated(s, child) ->
             openTag depth "g"
@@ -697,6 +703,10 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
         else
             cached
 
+    /// D103 — the document in its three parts, and every keyed element's place in the body.
+    member internal _.Pieces =
+        doc.Header, doc.DefsText(), doc.Body.ToString(), spans.ToArray()
+
     /// The surface size passed to `Begin`, as an nd to px map. Exposed for tests, which need
     /// to check emitted coordinates against the transform that produced them.
     member _.RootTransform: Affine<nd, px> = root
@@ -733,6 +743,7 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
 
         member _.Begin(extent: Extent<px>) =
             doc.Reset()
+            spans.Clear()
             started <- true
             finished <- false
             cached <- null
@@ -779,6 +790,21 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
             finished <- true
             cached <- null
 
+/// D103 — a new scene as a change to the document the old one rendered to.
+///
+/// The view swaps each element in `Elements` in by its id, and replaces its `<defs>` with `Defs`
+/// whole. `Elements` is `None` when no set of keyed elements describes the change, and the view
+/// is sent `Document` instead.
+[<NoEquality; NoComparison>]
+type SvgPatch =
+    { /// The new scene's whole document, exactly as `SvgBackend.render` writes it.
+      Document: string
+      /// The new scene's `<defs>` block, or `""` when it has none. Sent with every patch,
+      /// because def ids are numbered in the order the whole document discovers them.
+      Defs: string
+      /// Each replaced element's id, and its markup as it stands in `Document`.
+      Elements: (string * string)[] option }
+
 /// Convenience entry points. The interface is what a heterogeneous list of backends is driven
 /// through; these are what a caller with one backend actually wants.
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -807,6 +833,72 @@ module SvgBackend =
 
     /// Render a scene to an SVG document at the given surface size.
     let render (extent: Extent<px>) (node: Node) : string = renderScoped "" extent node
+
+    /// **D103 — the change from `before` to `after`, as elements to swap by id.**
+    ///
+    /// `Scene.diff` chooses the keys. Each is written from a render of the **whole** new scene,
+    /// never from a render of the subtree alone, because the ids a subtree refers to (`qc`, `qm`,
+    /// `qg`) are numbered in the order the whole document discovers them, and a subtree drawn
+    /// alone would number them from one.
+    ///
+    /// The same numbering is why the IR's answer is checked against the text before it is
+    /// believed. A layer that did not change can still render differently, when a marker
+    /// earlier in the document changed size and the def ids after it moved up one. So both
+    /// scenes are rendered, each replaced element is swapped back for its old markup, and the
+    /// patch is kept only if that gives the old body byte for byte. Otherwise `Elements` is
+    /// `None`, and the whole document goes. Applying a patch to `render before` therefore gives
+    /// `render after` exactly, whatever the IR missed.
+    let renderPatch (extent: Extent<px>) (before: Node) (after: Node) : SvgPatch =
+        let pieces (node: Node) =
+            let backend = SvgBackend()
+            let sink = backend :> IBackend
+            sink.Begin extent
+            sink.Draw node
+            sink.Finish()
+            backend.Result, backend.Pieces
+
+        let document, (header, defs, body, spans) = pieces after
+        let whole = { Document = document; Defs = defs; Elements = None }
+
+        match Scene.diff before after with
+        | Whole _ -> whole
+        | Replace reps when reps.Length = 0 -> { whole with Elements = Some [||] }
+        | Replace reps ->
+            let _, (header', _, body', spans') = pieces before
+
+            let spanOf (all: struct (string * string * int * int)[]) (Key k) =
+                all |> Array.tryFind (fun (struct (name, _, _, _)) -> name = k)
+
+            let pairs = reps |> Array.map (fun (k, _) -> spanOf spans k, spanOf spans' k)
+
+            let matched =
+                pairs
+                |> Array.choose (fun (a, b) ->
+                    match a, b with
+                    | Some(struct (_, id, s0, s1)), Some(struct (_, id', t0, t1)) when id = id' -> Some(id, s0, s1, t0, t1)
+                    | _ -> None)
+                |> Array.sortBy (fun (_, s0, _, _, _) -> s0)
+
+            if header <> header' || matched.Length <> pairs.Length then
+                whole
+            else
+                let back = StringBuilder(body'.Length)
+                let mutable pos = 0
+                let mutable disjoint = true
+
+                for (_, s0, s1, t0, t1) in matched do
+                    if s0 < pos then
+                        disjoint <- false
+                    else
+                        back.Append(body, pos, s0 - pos).Append(body', t0, t1 - t0) |> ignore
+                        pos <- s1
+
+                back.Append(body, pos, body.Length - pos) |> ignore
+
+                if disjoint && back.ToString() = body' then
+                    { whole with Elements = Some(matched |> Array.map (fun (id, s0, s1, _, _) -> id, body.Substring(s0, s1 - s0))) }
+                else
+                    whole
 
     /// Render a scene and write it to a file as UTF-8 with no byte-order mark.
     ///
