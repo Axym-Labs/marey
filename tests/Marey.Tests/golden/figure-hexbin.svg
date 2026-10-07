@@ -9,8 +9,10 @@
     </g>
     <g id="figure_panel-0-0">
       <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="1" data-x-tick-rule="all" data-y-tick-rule="all">
-        <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="7">
-          <path d="M61.009 236.87L368.317 236.87M61.009 211.579L368.317 211.579M61.009 186.289L368.317 186.289M61.009 160.998L368.317 160.998M61.009 135.708L368.317 135.708M61.009 110.418L368.317 110.418M61.009 85.127L368.317 85.127" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+        <g id="figure_panel-0-0_grid">
+          <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="7">
+            <path d="M61.009 236.87L368.317 236.87M61.009 211.579L368.317 211.579M61.009 186.289L368.317 186.289M61.009 160.998L368.317 160.998M61.009 135.708L368.317 135.708M61.009 110.418L368.317 110.418M61.009 85.127L368.317 85.127" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+          </g>
         </g>
         <g clip-path="url(#qc)">
           <g id="figure_panel-0-0_layer-0">
@@ -53,215 +55,221 @@
             </g>
           </g>
         </g>
-        <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="bottom" data-unit="m" data-prefix="" data-ticks="7" data-tick-rule="all">
-          <path d="M61.009 248.567L368.317 248.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
-          <path d="M81.153 248.567L81.153 251.567M122.306 248.567L122.306 251.567M163.46 248.567L163.46 251.567M204.614 248.567L204.614 251.567M245.767 248.567L245.767 251.567M286.921 248.567L286.921 251.567M328.074 248.567L328.074 251.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
-          <text x="81.153" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">-6</text>
-          <text x="122.306" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">-4</text>
-          <text x="163.46" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">-2</text>
-          <text x="204.614" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
-          <text x="245.767" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
-          <text x="286.921" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
-          <text x="328.074" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">6</text>
-          <text x="214.663" y="273.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">x [m]</text>
+        <g id="figure_panel-0-0_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="bottom" data-unit="m" data-prefix="" data-ticks="7" data-tick-rule="all">
+            <path d="M61.009 248.567L368.317 248.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M81.153 248.567L81.153 251.567M122.306 248.567L122.306 251.567M163.46 248.567L163.46 251.567M204.614 248.567L204.614 251.567M245.767 248.567L245.767 251.567M286.921 248.567L286.921 251.567M328.074 248.567L328.074 251.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="81.153" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">-6</text>
+            <text x="122.306" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">-4</text>
+            <text x="163.46" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">-2</text>
+            <text x="204.614" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+            <text x="245.767" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
+            <text x="286.921" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
+            <text x="328.074" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">6</text>
+            <text x="214.663" y="273.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">x [m]</text>
+          </g>
         </g>
-        <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="left" data-unit="s" data-prefix="" data-ticks="7" data-tick-rule="all">
-          <path d="M61.009 248.567L61.009 72.583" fill="none" stroke="#39414d" stroke-width="0.9"/>
-          <path d="M61.009 236.87L58.009 236.87M61.009 211.579L58.009 211.579M61.009 186.289L58.009 186.289M61.009 160.998L58.009 160.998M61.009 135.708L58.009 135.708M61.009 110.418L58.009 110.418M61.009 85.127L58.009 85.127" fill="none" stroke="#39414d" stroke-width="0.9"/>
-          <text x="54.009" y="236.87" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-1.5</text>
-          <text x="54.009" y="211.579" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-1.0</text>
-          <text x="54.009" y="186.289" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-0.5</text>
-          <text x="54.009" y="160.998" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.0</text>
-          <text x="54.009" y="135.708" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.5</text>
-          <text x="54.009" y="110.418" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.0</text>
-          <text x="54.009" y="85.127" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.5</text>
-          <text x="26.333" y="160.575" transform="rotate(-90 26.333 160.575)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">t [s]</text>
+        <g id="figure_panel-0-0_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="left" data-unit="s" data-prefix="" data-ticks="7" data-tick-rule="all">
+            <path d="M61.009 248.567L61.009 72.583" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M61.009 236.87L58.009 236.87M61.009 211.579L58.009 211.579M61.009 186.289L58.009 186.289M61.009 160.998L58.009 160.998M61.009 135.708L58.009 135.708M61.009 110.418L58.009 110.418M61.009 85.127L58.009 85.127" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="54.009" y="236.87" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-1.5</text>
+            <text x="54.009" y="211.579" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-1.0</text>
+            <text x="54.009" y="186.289" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-0.5</text>
+            <text x="54.009" y="160.998" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.0</text>
+            <text x="54.009" y="135.708" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.5</text>
+            <text x="54.009" y="110.418" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.0</text>
+            <text x="54.009" y="85.127" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.5</text>
+            <text x="26.333" y="160.575" transform="rotate(-90 26.333 160.575)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">t [s]</text>
+          </g>
         </g>
-        <g role="graphics-object" data-marey-role="other:colorbar" aria-label="[10⁻³·m⁻¹·s⁻¹]" data-title="[10⁻³·m⁻¹·s⁻¹]" data-unit="10⁻³·m⁻¹·s⁻¹" data-steps="176">
-          <path d="M403.651 248.567L415.651 248.567L415.651 247.217L403.651 247.217Z" fill="#440255"/>
-          <path d="M403.651 247.567L415.651 247.567L415.651 246.217L403.651 246.217Z" fill="#450557"/>
-          <path d="M403.651 246.567L415.651 246.567L415.651 245.217L403.651 245.217Z" fill="#450758"/>
-          <path d="M403.651 245.567L415.651 245.567L415.651 244.217L403.651 244.217Z" fill="#450a5a"/>
-          <path d="M403.651 244.567L415.651 244.567L415.651 243.217L403.651 243.217Z" fill="#450c5c"/>
-          <path d="M403.651 243.567L415.651 243.567L415.651 242.217L403.651 242.217Z" fill="#460f5e"/>
-          <path d="M403.651 242.567L415.651 242.567L415.651 241.217L403.651 241.217Z" fill="#461160"/>
-          <path d="M403.651 241.567L415.651 241.567L415.651 240.217L403.651 240.217Z" fill="#461362"/>
-          <path d="M403.651 240.567L415.651 240.567L415.651 239.218L403.651 239.218Z" fill="#471563"/>
-          <path d="M403.651 239.568L415.651 239.568L415.651 238.218L403.651 238.218Z" fill="#471765"/>
-          <path d="M403.651 238.568L415.651 238.568L415.651 237.218L403.651 237.218Z" fill="#471967"/>
-          <path d="M403.651 237.568L415.651 237.568L415.651 236.218L403.651 236.218Z" fill="#471b69"/>
-          <path d="M403.651 236.568L415.651 236.568L415.651 235.218L403.651 235.218Z" fill="#471c6b"/>
-          <path d="M403.651 235.568L415.651 235.568L415.651 234.218L403.651 234.218Z" fill="#471e6d"/>
-          <path d="M403.651 234.568L415.651 234.568L415.651 233.218L403.651 233.218Z" fill="#48206e"/>
-          <path d="M403.651 233.568L415.651 233.568L415.651 232.218L403.651 232.218Z" fill="#482170"/>
-          <path d="M403.651 232.568L415.651 232.568L415.651 231.218L403.651 231.218Z" fill="#482372"/>
-          <path d="M403.651 231.568L415.651 231.568L415.651 230.218L403.651 230.218Z" fill="#482574"/>
-          <path d="M403.651 230.568L415.651 230.568L415.651 229.218L403.651 229.218Z" fill="#482676"/>
-          <path d="M403.651 229.568L415.651 229.568L415.651 228.219L403.651 228.219Z" fill="#482878"/>
-          <path d="M403.651 228.569L415.651 228.569L415.651 227.219L403.651 227.219Z" fill="#482a79"/>
-          <path d="M403.651 227.569L415.651 227.569L415.651 226.219L403.651 226.219Z" fill="#482c7a"/>
-          <path d="M403.651 226.569L415.651 226.569L415.651 225.219L403.651 225.219Z" fill="#472e7b"/>
-          <path d="M403.651 225.569L415.651 225.569L415.651 224.219L403.651 224.219Z" fill="#472f7b"/>
-          <path d="M403.651 224.569L415.651 224.569L415.651 223.219L403.651 223.219Z" fill="#47317c"/>
-          <path d="M403.651 223.569L415.651 223.569L415.651 222.219L403.651 222.219Z" fill="#46337d"/>
-          <path d="M403.651 222.569L415.651 222.569L415.651 221.219L403.651 221.219Z" fill="#46357e"/>
-          <path d="M403.651 221.569L415.651 221.569L415.651 220.219L403.651 220.219Z" fill="#45377f"/>
-          <path d="M403.651 220.569L415.651 220.569L415.651 219.219L403.651 219.219Z" fill="#453880"/>
-          <path d="M403.651 219.569L415.651 219.569L415.651 218.22L403.651 218.22Z" fill="#443a81"/>
-          <path d="M403.651 218.57L415.651 218.57L415.651 217.22L403.651 217.22Z" fill="#443c82"/>
-          <path d="M403.651 217.57L415.651 217.57L415.651 216.22L403.651 216.22Z" fill="#433d82"/>
-          <path d="M403.651 216.57L415.651 216.57L415.651 215.22L403.651 215.22Z" fill="#433f83"/>
-          <path d="M403.651 215.57L415.651 215.57L415.651 214.22L403.651 214.22Z" fill="#424184"/>
-          <path d="M403.651 214.57L415.651 214.57L415.651 213.22L403.651 213.22Z" fill="#424285"/>
-          <path d="M403.651 213.57L415.651 213.57L415.651 212.22L403.651 212.22Z" fill="#414486"/>
-          <path d="M403.651 212.57L415.651 212.57L415.651 211.22L403.651 211.22Z" fill="#404687"/>
-          <path d="M403.651 211.57L415.651 211.57L415.651 210.22L403.651 210.22Z" fill="#3f4788"/>
-          <path d="M403.651 210.57L415.651 210.57L415.651 209.22L403.651 209.22Z" fill="#3f4988"/>
-          <path d="M403.651 209.57L415.651 209.57L415.651 208.22L403.651 208.22Z" fill="#3e4b89"/>
-          <path d="M403.651 208.57L415.651 208.57L415.651 207.221L403.651 207.221Z" fill="#3d4c89"/>
-          <path d="M403.651 207.571L415.651 207.571L415.651 206.221L403.651 206.221Z" fill="#3d4e8a"/>
-          <path d="M403.651 206.571L415.651 206.571L415.651 205.221L403.651 205.221Z" fill="#3d4f8a"/>
-          <path d="M403.651 205.571L415.651 205.571L415.651 204.221L403.651 204.221Z" fill="#3c518a"/>
-          <path d="M403.651 204.571L415.651 204.571L415.651 203.221L403.651 203.221Z" fill="#3c528a"/>
-          <path d="M403.651 203.571L415.651 203.571L415.651 202.221L403.651 202.221Z" fill="#3b548b"/>
-          <path d="M403.651 202.571L415.651 202.571L415.651 201.221L403.651 201.221Z" fill="#3a568b"/>
-          <path d="M403.651 201.571L415.651 201.571L415.651 200.221L403.651 200.221Z" fill="#3a578b"/>
-          <path d="M403.651 200.571L415.651 200.571L415.651 199.221L403.651 199.221Z" fill="#39598c"/>
-          <path d="M403.651 199.571L415.651 199.571L415.651 198.221L403.651 198.221Z" fill="#395a8c"/>
-          <path d="M403.651 198.571L415.651 198.571L415.651 197.222L403.651 197.222Z" fill="#385c8c"/>
-          <path d="M403.651 197.571L415.651 197.571L415.651 196.222L403.651 196.222Z" fill="#375d8c"/>
-          <path d="M403.651 196.572L415.651 196.572L415.651 195.222L403.651 195.222Z" fill="#365f8d"/>
-          <path d="M403.651 195.572L415.651 195.572L415.651 194.222L403.651 194.222Z" fill="#36608d"/>
-          <path d="M403.651 194.572L415.651 194.572L415.651 193.222L403.651 193.222Z" fill="#35628d"/>
-          <path d="M403.651 193.572L415.651 193.572L415.651 192.222L403.651 192.222Z" fill="#34638d"/>
-          <path d="M403.651 192.572L415.651 192.572L415.651 191.222L403.651 191.222Z" fill="#33658e"/>
-          <path d="M403.651 191.572L415.651 191.572L415.651 190.222L403.651 190.222Z" fill="#32668e"/>
-          <path d="M403.651 190.572L415.651 190.572L415.651 189.222L403.651 189.222Z" fill="#31688e"/>
-          <path d="M403.651 189.572L415.651 189.572L415.651 188.222L403.651 188.222Z" fill="#31698e"/>
-          <path d="M403.651 188.572L415.651 188.572L415.651 187.222L403.651 187.222Z" fill="#306a8e"/>
-          <path d="M403.651 187.572L415.651 187.572L415.651 186.223L403.651 186.223Z" fill="#306c8e"/>
-          <path d="M403.651 186.573L415.651 186.573L415.651 185.223L403.651 185.223Z" fill="#2f6d8e"/>
-          <path d="M403.651 185.573L415.651 185.573L415.651 184.223L403.651 184.223Z" fill="#2f6e8e"/>
-          <path d="M403.651 184.573L415.651 184.573L415.651 183.223L403.651 183.223Z" fill="#2f708e"/>
-          <path d="M403.651 183.573L415.651 183.573L415.651 182.223L403.651 182.223Z" fill="#2e718e"/>
-          <path d="M403.651 182.573L415.651 182.573L415.651 181.223L403.651 181.223Z" fill="#2e728e"/>
-          <path d="M403.651 181.573L415.651 181.573L415.651 180.223L403.651 180.223Z" fill="#2d748e"/>
-          <path d="M403.651 180.573L415.651 180.573L415.651 179.223L403.651 179.223Z" fill="#2c758e"/>
-          <path d="M403.651 179.573L415.651 179.573L415.651 178.223L403.651 178.223Z" fill="#2c768e"/>
-          <path d="M403.651 178.573L415.651 178.573L415.651 177.223L403.651 177.223Z" fill="#2b788e"/>
-          <path d="M403.651 177.573L415.651 177.573L415.651 176.224L403.651 176.224Z" fill="#2b798e"/>
-          <path d="M403.651 176.573L415.651 176.573L415.651 175.224L403.651 175.224Z" fill="#2a7a8e"/>
-          <path d="M403.651 175.574L415.651 175.574L415.651 174.224L403.651 174.224Z" fill="#297c8e"/>
-          <path d="M403.651 174.574L415.651 174.574L415.651 173.224L403.651 173.224Z" fill="#297d8e"/>
-          <path d="M403.651 173.574L415.651 173.574L415.651 172.224L403.651 172.224Z" fill="#287e8e"/>
-          <path d="M403.651 172.574L415.651 172.574L415.651 171.224L403.651 171.224Z" fill="#27808e"/>
-          <path d="M403.651 171.574L415.651 171.574L415.651 170.224L403.651 170.224Z" fill="#27818e"/>
-          <path d="M403.651 170.574L415.651 170.574L415.651 169.224L403.651 169.224Z" fill="#26828e"/>
-          <path d="M403.651 169.574L415.651 169.574L415.651 168.224L403.651 168.224Z" fill="#26848e"/>
-          <path d="M403.651 168.574L415.651 168.574L415.651 167.224L403.651 167.224Z" fill="#25858e"/>
-          <path d="M403.651 167.574L415.651 167.574L415.651 166.224L403.651 166.224Z" fill="#25878d"/>
-          <path d="M403.651 166.574L415.651 166.574L415.651 165.225L403.651 165.225Z" fill="#25888d"/>
-          <path d="M403.651 165.575L415.651 165.575L415.651 164.225L403.651 164.225Z" fill="#248a8d"/>
-          <path d="M403.651 164.575L415.651 164.575L415.651 163.225L403.651 163.225Z" fill="#248b8d"/>
-          <path d="M403.651 163.575L415.651 163.575L415.651 162.225L403.651 162.225Z" fill="#248c8c"/>
-          <path d="M403.651 162.575L415.651 162.575L415.651 161.225L403.651 161.225Z" fill="#238e8c"/>
-          <path d="M403.651 161.575L415.651 161.575L415.651 160.225L403.651 160.225Z" fill="#238f8c"/>
-          <path d="M403.651 160.575L415.651 160.575L415.651 159.225L403.651 159.225Z" fill="#23918c"/>
-          <path d="M403.651 159.575L415.651 159.575L415.651 158.225L403.651 158.225Z" fill="#22928b"/>
-          <path d="M403.651 158.575L415.651 158.575L415.651 157.225L403.651 157.225Z" fill="#22948b"/>
-          <path d="M403.651 157.575L415.651 157.575L415.651 156.225L403.651 156.225Z" fill="#22958b"/>
-          <path d="M403.651 156.575L415.651 156.575L415.651 155.226L403.651 155.226Z" fill="#21968b"/>
-          <path d="M403.651 155.575L415.651 155.575L415.651 154.226L403.651 154.226Z" fill="#21988a"/>
-          <path d="M403.651 154.576L415.651 154.576L415.651 153.226L403.651 153.226Z" fill="#20998a"/>
-          <path d="M403.651 153.576L415.651 153.576L415.651 152.226L403.651 152.226Z" fill="#209b8a"/>
-          <path d="M403.651 152.576L415.651 152.576L415.651 151.226L403.651 151.226Z" fill="#209c89"/>
-          <path d="M403.651 151.576L415.651 151.576L415.651 150.226L403.651 150.226Z" fill="#1f9e89"/>
-          <path d="M403.651 150.576L415.651 150.576L415.651 149.226L403.651 149.226Z" fill="#209f89"/>
-          <path d="M403.651 149.576L415.651 149.576L415.651 148.226L403.651 148.226Z" fill="#21a088"/>
-          <path d="M403.651 148.576L415.651 148.576L415.651 147.226L403.651 147.226Z" fill="#22a287"/>
-          <path d="M403.651 147.576L415.651 147.576L415.651 146.226L403.651 146.226Z" fill="#23a386"/>
-          <path d="M403.651 146.576L415.651 146.576L415.651 145.226L403.651 145.226Z" fill="#24a486"/>
-          <path d="M403.651 145.576L415.651 145.576L415.651 144.227L403.651 144.227Z" fill="#26a585"/>
-          <path d="M403.651 144.577L415.651 144.577L415.651 143.227L403.651 143.227Z" fill="#27a784"/>
-          <path d="M403.651 143.577L415.651 143.577L415.651 142.227L403.651 142.227Z" fill="#28a883"/>
-          <path d="M403.651 142.577L415.651 142.577L415.651 141.227L403.651 141.227Z" fill="#29a983"/>
-          <path d="M403.651 141.577L415.651 141.577L415.651 140.227L403.651 140.227Z" fill="#2aaa82"/>
-          <path d="M403.651 140.577L415.651 140.577L415.651 139.227L403.651 139.227Z" fill="#2bac81"/>
-          <path d="M403.651 139.577L415.651 139.577L415.651 138.227L403.651 138.227Z" fill="#2cad80"/>
-          <path d="M403.651 138.577L415.651 138.577L415.651 137.227L403.651 137.227Z" fill="#2dae7f"/>
-          <path d="M403.651 137.577L415.651 137.577L415.651 136.227L403.651 136.227Z" fill="#2fb07e"/>
-          <path d="M403.651 136.577L415.651 136.577L415.651 135.227L403.651 135.227Z" fill="#30b17e"/>
-          <path d="M403.651 135.577L415.651 135.577L415.651 134.227L403.651 134.227Z" fill="#31b27d"/>
-          <path d="M403.651 134.577L415.651 134.577L415.651 133.228L403.651 133.228Z" fill="#32b37c"/>
-          <path d="M403.651 133.578L415.651 133.578L415.651 132.228L403.651 132.228Z" fill="#33b57b"/>
-          <path d="M403.651 132.578L415.651 132.578L415.651 131.228L403.651 131.228Z" fill="#34b67a"/>
-          <path d="M403.651 131.578L415.651 131.578L415.651 130.228L403.651 130.228Z" fill="#36b779"/>
-          <path d="M403.651 130.578L415.651 130.578L415.651 129.228L403.651 129.228Z" fill="#39b877"/>
-          <path d="M403.651 129.578L415.651 129.578L415.651 128.228L403.651 128.228Z" fill="#3dba76"/>
-          <path d="M403.651 128.578L415.651 128.578L415.651 127.228L403.651 127.228Z" fill="#40bb75"/>
-          <path d="M403.651 127.578L415.651 127.578L415.651 126.228L403.651 126.228Z" fill="#44bc73"/>
-          <path d="M403.651 126.578L415.651 126.578L415.651 125.228L403.651 125.228Z" fill="#47bd72"/>
-          <path d="M403.651 125.578L415.651 125.578L415.651 124.228L403.651 124.228Z" fill="#4abe70"/>
-          <path d="M403.651 124.578L415.651 124.578L415.651 123.229L403.651 123.229Z" fill="#4dc06f"/>
-          <path d="M403.651 123.579L415.651 123.579L415.651 122.229L403.651 122.229Z" fill="#50c16d"/>
-          <path d="M403.651 122.579L415.651 122.579L415.651 121.229L403.651 121.229Z" fill="#53c26c"/>
-          <path d="M403.651 121.579L415.651 121.579L415.651 120.229L403.651 120.229Z" fill="#55c36a"/>
-          <path d="M403.651 120.579L415.651 120.579L415.651 119.229L403.651 119.229Z" fill="#58c468"/>
-          <path d="M403.651 119.579L415.651 119.579L415.651 118.229L403.651 118.229Z" fill="#5bc567"/>
-          <path d="M403.651 118.579L415.651 118.579L415.651 117.229L403.651 117.229Z" fill="#5ec765"/>
-          <path d="M403.651 117.579L415.651 117.579L415.651 116.229L403.651 116.229Z" fill="#60c863"/>
-          <path d="M403.651 116.579L415.651 116.579L415.651 115.229L403.651 115.229Z" fill="#63c961"/>
-          <path d="M403.651 115.579L415.651 115.579L415.651 114.229L403.651 114.229Z" fill="#65ca5f"/>
-          <path d="M403.651 114.579L415.651 114.579L415.651 113.229L403.651 113.229Z" fill="#68cb5d"/>
-          <path d="M403.651 113.579L415.651 113.579L415.651 112.23L403.651 112.23Z" fill="#6bcc5b"/>
-          <path d="M403.651 112.58L415.651 112.58L415.651 111.23L403.651 111.23Z" fill="#6dce59"/>
-          <path d="M403.651 111.58L415.651 111.58L415.651 110.23L403.651 110.23Z" fill="#71cf57"/>
-          <path d="M403.651 110.58L415.651 110.58L415.651 109.23L403.651 109.23Z" fill="#75cf56"/>
-          <path d="M403.651 109.58L415.651 109.58L415.651 108.23L403.651 108.23Z" fill="#79d054"/>
-          <path d="M403.651 108.58L415.651 108.58L415.651 107.23L403.651 107.23Z" fill="#7dd152"/>
-          <path d="M403.651 107.58L415.651 107.58L415.651 106.23L403.651 106.23Z" fill="#81d251"/>
-          <path d="M403.651 106.58L415.651 106.58L415.651 105.23L403.651 105.23Z" fill="#84d34f"/>
-          <path d="M403.651 105.58L415.651 105.58L415.651 104.23L403.651 104.23Z" fill="#88d44d"/>
-          <path d="M403.651 104.58L415.651 104.58L415.651 103.23L403.651 103.23Z" fill="#8cd44b"/>
-          <path d="M403.651 103.58L415.651 103.58L415.651 102.231L403.651 102.231Z" fill="#90d549"/>
-          <path d="M403.651 102.58L415.651 102.58L415.651 101.231L403.651 101.231Z" fill="#93d647"/>
-          <path d="M403.651 101.581L415.651 101.581L415.651 100.231L403.651 100.231Z" fill="#97d745"/>
-          <path d="M403.651 100.581L415.651 100.581L415.651 99.231L403.651 99.231Z" fill="#9ad843"/>
-          <path d="M403.651 99.581L415.651 99.581L415.651 98.231L403.651 98.231Z" fill="#9ed840"/>
-          <path d="M403.651 98.581L415.651 98.581L415.651 97.231L403.651 97.231Z" fill="#a1d93e"/>
-          <path d="M403.651 97.581L415.651 97.581L415.651 96.231L403.651 96.231Z" fill="#a5da3b"/>
-          <path d="M403.651 96.581L415.651 96.581L415.651 95.231L403.651 95.231Z" fill="#a8db38"/>
-          <path d="M403.651 95.581L415.651 95.581L415.651 94.231L403.651 94.231Z" fill="#abdc35"/>
-          <path d="M403.651 94.581L415.651 94.581L415.651 93.231L403.651 93.231Z" fill="#afdc32"/>
-          <path d="M403.651 93.581L415.651 93.581L415.651 92.231L403.651 92.231Z" fill="#b2dd2f"/>
-          <path d="M403.651 92.581L415.651 92.581L415.651 91.232L403.651 91.232Z" fill="#b5de2b"/>
-          <path d="M403.651 91.582L415.651 91.582L415.651 90.232L403.651 90.232Z" fill="#b9df2b"/>
-          <path d="M403.651 90.582L415.651 90.582L415.651 89.232L403.651 89.232Z" fill="#bddf2b"/>
-          <path d="M403.651 89.582L415.651 89.582L415.651 88.232L403.651 88.232Z" fill="#c1e02a"/>
-          <path d="M403.651 88.582L415.651 88.582L415.651 87.232L403.651 87.232Z" fill="#c5e02a"/>
-          <path d="M403.651 87.582L415.651 87.582L415.651 86.232L403.651 86.232Z" fill="#c9e12a"/>
-          <path d="M403.651 86.582L415.651 86.582L415.651 85.232L403.651 85.232Z" fill="#cce12a"/>
-          <path d="M403.651 85.582L415.651 85.582L415.651 84.232L403.651 84.232Z" fill="#d0e229"/>
-          <path d="M403.651 84.582L415.651 84.582L415.651 83.232L403.651 83.232Z" fill="#d4e229"/>
-          <path d="M403.651 83.582L415.651 83.582L415.651 82.232L403.651 82.232Z" fill="#d7e229"/>
-          <path d="M403.651 82.582L415.651 82.582L415.651 81.233L403.651 81.233Z" fill="#dbe328"/>
-          <path d="M403.651 81.582L415.651 81.582L415.651 80.233L403.651 80.233Z" fill="#dfe328"/>
-          <path d="M403.651 80.583L415.651 80.583L415.651 79.233L403.651 79.233Z" fill="#e2e428"/>
-          <path d="M403.651 79.583L415.651 79.583L415.651 78.233L403.651 78.233Z" fill="#e6e427"/>
-          <path d="M403.651 78.583L415.651 78.583L415.651 77.233L403.651 77.233Z" fill="#eae527"/>
-          <path d="M403.651 77.583L415.651 77.583L415.651 76.233L403.651 76.233Z" fill="#ede527"/>
-          <path d="M403.651 76.583L415.651 76.583L415.651 75.233L403.651 75.233Z" fill="#f1e626"/>
-          <path d="M403.651 75.583L415.651 75.583L415.651 74.233L403.651 74.233Z" fill="#f4e626"/>
-          <path d="M403.651 74.583L415.651 74.583L415.651 73.233L403.651 73.233Z" fill="#f8e626"/>
-          <path d="M403.651 73.583L415.651 73.583L415.651 72.583L403.651 72.583Z" fill="#fbe725"/>
-          <path d="M403.651 248.567L415.651 248.567L415.651 72.583L403.651 72.583Z" fill="none" stroke="#39414d" stroke-width="0.9"/>
-          <g role="graphics-object" data-marey-role="axis" aria-label="[10⁻³·m⁻¹·s⁻¹]" data-side="right" data-unit="10⁻³·m⁻¹·s⁻¹" data-prefix="milli" data-ticks="4" data-tick-rule="all">
-            <path d="M415.651 208.112L418.651 208.112M415.651 163.657L418.651 163.657M415.651 119.202L418.651 119.202M415.651 74.748L418.651 74.748" fill="none" stroke="#39414d" stroke-width="0.9"/>
-            <text x="422.651" y="208.112" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#14181f">50</text>
-            <text x="422.651" y="163.657" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#14181f">100</text>
-            <text x="422.651" y="119.202" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#14181f">150</text>
-            <text x="422.651" y="74.748" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#14181f">200</text>
-            <text x="449.667" y="160.575" transform="rotate(90 449.667 160.575)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">[10⁻³·m⁻¹·s⁻¹]</text>
+        <g id="figure_panel-0-0_colorbar">
+          <g role="graphics-object" data-marey-role="other:colorbar" aria-label="[10⁻³·m⁻¹·s⁻¹]" data-title="[10⁻³·m⁻¹·s⁻¹]" data-unit="10⁻³·m⁻¹·s⁻¹" data-steps="176">
+            <path d="M403.651 248.567L415.651 248.567L415.651 247.217L403.651 247.217Z" fill="#440255"/>
+            <path d="M403.651 247.567L415.651 247.567L415.651 246.217L403.651 246.217Z" fill="#450557"/>
+            <path d="M403.651 246.567L415.651 246.567L415.651 245.217L403.651 245.217Z" fill="#450758"/>
+            <path d="M403.651 245.567L415.651 245.567L415.651 244.217L403.651 244.217Z" fill="#450a5a"/>
+            <path d="M403.651 244.567L415.651 244.567L415.651 243.217L403.651 243.217Z" fill="#450c5c"/>
+            <path d="M403.651 243.567L415.651 243.567L415.651 242.217L403.651 242.217Z" fill="#460f5e"/>
+            <path d="M403.651 242.567L415.651 242.567L415.651 241.217L403.651 241.217Z" fill="#461160"/>
+            <path d="M403.651 241.567L415.651 241.567L415.651 240.217L403.651 240.217Z" fill="#461362"/>
+            <path d="M403.651 240.567L415.651 240.567L415.651 239.218L403.651 239.218Z" fill="#471563"/>
+            <path d="M403.651 239.568L415.651 239.568L415.651 238.218L403.651 238.218Z" fill="#471765"/>
+            <path d="M403.651 238.568L415.651 238.568L415.651 237.218L403.651 237.218Z" fill="#471967"/>
+            <path d="M403.651 237.568L415.651 237.568L415.651 236.218L403.651 236.218Z" fill="#471b69"/>
+            <path d="M403.651 236.568L415.651 236.568L415.651 235.218L403.651 235.218Z" fill="#471c6b"/>
+            <path d="M403.651 235.568L415.651 235.568L415.651 234.218L403.651 234.218Z" fill="#471e6d"/>
+            <path d="M403.651 234.568L415.651 234.568L415.651 233.218L403.651 233.218Z" fill="#48206e"/>
+            <path d="M403.651 233.568L415.651 233.568L415.651 232.218L403.651 232.218Z" fill="#482170"/>
+            <path d="M403.651 232.568L415.651 232.568L415.651 231.218L403.651 231.218Z" fill="#482372"/>
+            <path d="M403.651 231.568L415.651 231.568L415.651 230.218L403.651 230.218Z" fill="#482574"/>
+            <path d="M403.651 230.568L415.651 230.568L415.651 229.218L403.651 229.218Z" fill="#482676"/>
+            <path d="M403.651 229.568L415.651 229.568L415.651 228.219L403.651 228.219Z" fill="#482878"/>
+            <path d="M403.651 228.569L415.651 228.569L415.651 227.219L403.651 227.219Z" fill="#482a79"/>
+            <path d="M403.651 227.569L415.651 227.569L415.651 226.219L403.651 226.219Z" fill="#482c7a"/>
+            <path d="M403.651 226.569L415.651 226.569L415.651 225.219L403.651 225.219Z" fill="#472e7b"/>
+            <path d="M403.651 225.569L415.651 225.569L415.651 224.219L403.651 224.219Z" fill="#472f7b"/>
+            <path d="M403.651 224.569L415.651 224.569L415.651 223.219L403.651 223.219Z" fill="#47317c"/>
+            <path d="M403.651 223.569L415.651 223.569L415.651 222.219L403.651 222.219Z" fill="#46337d"/>
+            <path d="M403.651 222.569L415.651 222.569L415.651 221.219L403.651 221.219Z" fill="#46357e"/>
+            <path d="M403.651 221.569L415.651 221.569L415.651 220.219L403.651 220.219Z" fill="#45377f"/>
+            <path d="M403.651 220.569L415.651 220.569L415.651 219.219L403.651 219.219Z" fill="#453880"/>
+            <path d="M403.651 219.569L415.651 219.569L415.651 218.22L403.651 218.22Z" fill="#443a81"/>
+            <path d="M403.651 218.57L415.651 218.57L415.651 217.22L403.651 217.22Z" fill="#443c82"/>
+            <path d="M403.651 217.57L415.651 217.57L415.651 216.22L403.651 216.22Z" fill="#433d82"/>
+            <path d="M403.651 216.57L415.651 216.57L415.651 215.22L403.651 215.22Z" fill="#433f83"/>
+            <path d="M403.651 215.57L415.651 215.57L415.651 214.22L403.651 214.22Z" fill="#424184"/>
+            <path d="M403.651 214.57L415.651 214.57L415.651 213.22L403.651 213.22Z" fill="#424285"/>
+            <path d="M403.651 213.57L415.651 213.57L415.651 212.22L403.651 212.22Z" fill="#414486"/>
+            <path d="M403.651 212.57L415.651 212.57L415.651 211.22L403.651 211.22Z" fill="#404687"/>
+            <path d="M403.651 211.57L415.651 211.57L415.651 210.22L403.651 210.22Z" fill="#3f4788"/>
+            <path d="M403.651 210.57L415.651 210.57L415.651 209.22L403.651 209.22Z" fill="#3f4988"/>
+            <path d="M403.651 209.57L415.651 209.57L415.651 208.22L403.651 208.22Z" fill="#3e4b89"/>
+            <path d="M403.651 208.57L415.651 208.57L415.651 207.221L403.651 207.221Z" fill="#3d4c89"/>
+            <path d="M403.651 207.571L415.651 207.571L415.651 206.221L403.651 206.221Z" fill="#3d4e8a"/>
+            <path d="M403.651 206.571L415.651 206.571L415.651 205.221L403.651 205.221Z" fill="#3d4f8a"/>
+            <path d="M403.651 205.571L415.651 205.571L415.651 204.221L403.651 204.221Z" fill="#3c518a"/>
+            <path d="M403.651 204.571L415.651 204.571L415.651 203.221L403.651 203.221Z" fill="#3c528a"/>
+            <path d="M403.651 203.571L415.651 203.571L415.651 202.221L403.651 202.221Z" fill="#3b548b"/>
+            <path d="M403.651 202.571L415.651 202.571L415.651 201.221L403.651 201.221Z" fill="#3a568b"/>
+            <path d="M403.651 201.571L415.651 201.571L415.651 200.221L403.651 200.221Z" fill="#3a578b"/>
+            <path d="M403.651 200.571L415.651 200.571L415.651 199.221L403.651 199.221Z" fill="#39598c"/>
+            <path d="M403.651 199.571L415.651 199.571L415.651 198.221L403.651 198.221Z" fill="#395a8c"/>
+            <path d="M403.651 198.571L415.651 198.571L415.651 197.222L403.651 197.222Z" fill="#385c8c"/>
+            <path d="M403.651 197.571L415.651 197.571L415.651 196.222L403.651 196.222Z" fill="#375d8c"/>
+            <path d="M403.651 196.572L415.651 196.572L415.651 195.222L403.651 195.222Z" fill="#365f8d"/>
+            <path d="M403.651 195.572L415.651 195.572L415.651 194.222L403.651 194.222Z" fill="#36608d"/>
+            <path d="M403.651 194.572L415.651 194.572L415.651 193.222L403.651 193.222Z" fill="#35628d"/>
+            <path d="M403.651 193.572L415.651 193.572L415.651 192.222L403.651 192.222Z" fill="#34638d"/>
+            <path d="M403.651 192.572L415.651 192.572L415.651 191.222L403.651 191.222Z" fill="#33658e"/>
+            <path d="M403.651 191.572L415.651 191.572L415.651 190.222L403.651 190.222Z" fill="#32668e"/>
+            <path d="M403.651 190.572L415.651 190.572L415.651 189.222L403.651 189.222Z" fill="#31688e"/>
+            <path d="M403.651 189.572L415.651 189.572L415.651 188.222L403.651 188.222Z" fill="#31698e"/>
+            <path d="M403.651 188.572L415.651 188.572L415.651 187.222L403.651 187.222Z" fill="#306a8e"/>
+            <path d="M403.651 187.572L415.651 187.572L415.651 186.223L403.651 186.223Z" fill="#306c8e"/>
+            <path d="M403.651 186.573L415.651 186.573L415.651 185.223L403.651 185.223Z" fill="#2f6d8e"/>
+            <path d="M403.651 185.573L415.651 185.573L415.651 184.223L403.651 184.223Z" fill="#2f6e8e"/>
+            <path d="M403.651 184.573L415.651 184.573L415.651 183.223L403.651 183.223Z" fill="#2f708e"/>
+            <path d="M403.651 183.573L415.651 183.573L415.651 182.223L403.651 182.223Z" fill="#2e718e"/>
+            <path d="M403.651 182.573L415.651 182.573L415.651 181.223L403.651 181.223Z" fill="#2e728e"/>
+            <path d="M403.651 181.573L415.651 181.573L415.651 180.223L403.651 180.223Z" fill="#2d748e"/>
+            <path d="M403.651 180.573L415.651 180.573L415.651 179.223L403.651 179.223Z" fill="#2c758e"/>
+            <path d="M403.651 179.573L415.651 179.573L415.651 178.223L403.651 178.223Z" fill="#2c768e"/>
+            <path d="M403.651 178.573L415.651 178.573L415.651 177.223L403.651 177.223Z" fill="#2b788e"/>
+            <path d="M403.651 177.573L415.651 177.573L415.651 176.224L403.651 176.224Z" fill="#2b798e"/>
+            <path d="M403.651 176.573L415.651 176.573L415.651 175.224L403.651 175.224Z" fill="#2a7a8e"/>
+            <path d="M403.651 175.574L415.651 175.574L415.651 174.224L403.651 174.224Z" fill="#297c8e"/>
+            <path d="M403.651 174.574L415.651 174.574L415.651 173.224L403.651 173.224Z" fill="#297d8e"/>
+            <path d="M403.651 173.574L415.651 173.574L415.651 172.224L403.651 172.224Z" fill="#287e8e"/>
+            <path d="M403.651 172.574L415.651 172.574L415.651 171.224L403.651 171.224Z" fill="#27808e"/>
+            <path d="M403.651 171.574L415.651 171.574L415.651 170.224L403.651 170.224Z" fill="#27818e"/>
+            <path d="M403.651 170.574L415.651 170.574L415.651 169.224L403.651 169.224Z" fill="#26828e"/>
+            <path d="M403.651 169.574L415.651 169.574L415.651 168.224L403.651 168.224Z" fill="#26848e"/>
+            <path d="M403.651 168.574L415.651 168.574L415.651 167.224L403.651 167.224Z" fill="#25858e"/>
+            <path d="M403.651 167.574L415.651 167.574L415.651 166.224L403.651 166.224Z" fill="#25878d"/>
+            <path d="M403.651 166.574L415.651 166.574L415.651 165.225L403.651 165.225Z" fill="#25888d"/>
+            <path d="M403.651 165.575L415.651 165.575L415.651 164.225L403.651 164.225Z" fill="#248a8d"/>
+            <path d="M403.651 164.575L415.651 164.575L415.651 163.225L403.651 163.225Z" fill="#248b8d"/>
+            <path d="M403.651 163.575L415.651 163.575L415.651 162.225L403.651 162.225Z" fill="#248c8c"/>
+            <path d="M403.651 162.575L415.651 162.575L415.651 161.225L403.651 161.225Z" fill="#238e8c"/>
+            <path d="M403.651 161.575L415.651 161.575L415.651 160.225L403.651 160.225Z" fill="#238f8c"/>
+            <path d="M403.651 160.575L415.651 160.575L415.651 159.225L403.651 159.225Z" fill="#23918c"/>
+            <path d="M403.651 159.575L415.651 159.575L415.651 158.225L403.651 158.225Z" fill="#22928b"/>
+            <path d="M403.651 158.575L415.651 158.575L415.651 157.225L403.651 157.225Z" fill="#22948b"/>
+            <path d="M403.651 157.575L415.651 157.575L415.651 156.225L403.651 156.225Z" fill="#22958b"/>
+            <path d="M403.651 156.575L415.651 156.575L415.651 155.226L403.651 155.226Z" fill="#21968b"/>
+            <path d="M403.651 155.575L415.651 155.575L415.651 154.226L403.651 154.226Z" fill="#21988a"/>
+            <path d="M403.651 154.576L415.651 154.576L415.651 153.226L403.651 153.226Z" fill="#20998a"/>
+            <path d="M403.651 153.576L415.651 153.576L415.651 152.226L403.651 152.226Z" fill="#209b8a"/>
+            <path d="M403.651 152.576L415.651 152.576L415.651 151.226L403.651 151.226Z" fill="#209c89"/>
+            <path d="M403.651 151.576L415.651 151.576L415.651 150.226L403.651 150.226Z" fill="#1f9e89"/>
+            <path d="M403.651 150.576L415.651 150.576L415.651 149.226L403.651 149.226Z" fill="#209f89"/>
+            <path d="M403.651 149.576L415.651 149.576L415.651 148.226L403.651 148.226Z" fill="#21a088"/>
+            <path d="M403.651 148.576L415.651 148.576L415.651 147.226L403.651 147.226Z" fill="#22a287"/>
+            <path d="M403.651 147.576L415.651 147.576L415.651 146.226L403.651 146.226Z" fill="#23a386"/>
+            <path d="M403.651 146.576L415.651 146.576L415.651 145.226L403.651 145.226Z" fill="#24a486"/>
+            <path d="M403.651 145.576L415.651 145.576L415.651 144.227L403.651 144.227Z" fill="#26a585"/>
+            <path d="M403.651 144.577L415.651 144.577L415.651 143.227L403.651 143.227Z" fill="#27a784"/>
+            <path d="M403.651 143.577L415.651 143.577L415.651 142.227L403.651 142.227Z" fill="#28a883"/>
+            <path d="M403.651 142.577L415.651 142.577L415.651 141.227L403.651 141.227Z" fill="#29a983"/>
+            <path d="M403.651 141.577L415.651 141.577L415.651 140.227L403.651 140.227Z" fill="#2aaa82"/>
+            <path d="M403.651 140.577L415.651 140.577L415.651 139.227L403.651 139.227Z" fill="#2bac81"/>
+            <path d="M403.651 139.577L415.651 139.577L415.651 138.227L403.651 138.227Z" fill="#2cad80"/>
+            <path d="M403.651 138.577L415.651 138.577L415.651 137.227L403.651 137.227Z" fill="#2dae7f"/>
+            <path d="M403.651 137.577L415.651 137.577L415.651 136.227L403.651 136.227Z" fill="#2fb07e"/>
+            <path d="M403.651 136.577L415.651 136.577L415.651 135.227L403.651 135.227Z" fill="#30b17e"/>
+            <path d="M403.651 135.577L415.651 135.577L415.651 134.227L403.651 134.227Z" fill="#31b27d"/>
+            <path d="M403.651 134.577L415.651 134.577L415.651 133.228L403.651 133.228Z" fill="#32b37c"/>
+            <path d="M403.651 133.578L415.651 133.578L415.651 132.228L403.651 132.228Z" fill="#33b57b"/>
+            <path d="M403.651 132.578L415.651 132.578L415.651 131.228L403.651 131.228Z" fill="#34b67a"/>
+            <path d="M403.651 131.578L415.651 131.578L415.651 130.228L403.651 130.228Z" fill="#36b779"/>
+            <path d="M403.651 130.578L415.651 130.578L415.651 129.228L403.651 129.228Z" fill="#39b877"/>
+            <path d="M403.651 129.578L415.651 129.578L415.651 128.228L403.651 128.228Z" fill="#3dba76"/>
+            <path d="M403.651 128.578L415.651 128.578L415.651 127.228L403.651 127.228Z" fill="#40bb75"/>
+            <path d="M403.651 127.578L415.651 127.578L415.651 126.228L403.651 126.228Z" fill="#44bc73"/>
+            <path d="M403.651 126.578L415.651 126.578L415.651 125.228L403.651 125.228Z" fill="#47bd72"/>
+            <path d="M403.651 125.578L415.651 125.578L415.651 124.228L403.651 124.228Z" fill="#4abe70"/>
+            <path d="M403.651 124.578L415.651 124.578L415.651 123.229L403.651 123.229Z" fill="#4dc06f"/>
+            <path d="M403.651 123.579L415.651 123.579L415.651 122.229L403.651 122.229Z" fill="#50c16d"/>
+            <path d="M403.651 122.579L415.651 122.579L415.651 121.229L403.651 121.229Z" fill="#53c26c"/>
+            <path d="M403.651 121.579L415.651 121.579L415.651 120.229L403.651 120.229Z" fill="#55c36a"/>
+            <path d="M403.651 120.579L415.651 120.579L415.651 119.229L403.651 119.229Z" fill="#58c468"/>
+            <path d="M403.651 119.579L415.651 119.579L415.651 118.229L403.651 118.229Z" fill="#5bc567"/>
+            <path d="M403.651 118.579L415.651 118.579L415.651 117.229L403.651 117.229Z" fill="#5ec765"/>
+            <path d="M403.651 117.579L415.651 117.579L415.651 116.229L403.651 116.229Z" fill="#60c863"/>
+            <path d="M403.651 116.579L415.651 116.579L415.651 115.229L403.651 115.229Z" fill="#63c961"/>
+            <path d="M403.651 115.579L415.651 115.579L415.651 114.229L403.651 114.229Z" fill="#65ca5f"/>
+            <path d="M403.651 114.579L415.651 114.579L415.651 113.229L403.651 113.229Z" fill="#68cb5d"/>
+            <path d="M403.651 113.579L415.651 113.579L415.651 112.23L403.651 112.23Z" fill="#6bcc5b"/>
+            <path d="M403.651 112.58L415.651 112.58L415.651 111.23L403.651 111.23Z" fill="#6dce59"/>
+            <path d="M403.651 111.58L415.651 111.58L415.651 110.23L403.651 110.23Z" fill="#71cf57"/>
+            <path d="M403.651 110.58L415.651 110.58L415.651 109.23L403.651 109.23Z" fill="#75cf56"/>
+            <path d="M403.651 109.58L415.651 109.58L415.651 108.23L403.651 108.23Z" fill="#79d054"/>
+            <path d="M403.651 108.58L415.651 108.58L415.651 107.23L403.651 107.23Z" fill="#7dd152"/>
+            <path d="M403.651 107.58L415.651 107.58L415.651 106.23L403.651 106.23Z" fill="#81d251"/>
+            <path d="M403.651 106.58L415.651 106.58L415.651 105.23L403.651 105.23Z" fill="#84d34f"/>
+            <path d="M403.651 105.58L415.651 105.58L415.651 104.23L403.651 104.23Z" fill="#88d44d"/>
+            <path d="M403.651 104.58L415.651 104.58L415.651 103.23L403.651 103.23Z" fill="#8cd44b"/>
+            <path d="M403.651 103.58L415.651 103.58L415.651 102.231L403.651 102.231Z" fill="#90d549"/>
+            <path d="M403.651 102.58L415.651 102.58L415.651 101.231L403.651 101.231Z" fill="#93d647"/>
+            <path d="M403.651 101.581L415.651 101.581L415.651 100.231L403.651 100.231Z" fill="#97d745"/>
+            <path d="M403.651 100.581L415.651 100.581L415.651 99.231L403.651 99.231Z" fill="#9ad843"/>
+            <path d="M403.651 99.581L415.651 99.581L415.651 98.231L403.651 98.231Z" fill="#9ed840"/>
+            <path d="M403.651 98.581L415.651 98.581L415.651 97.231L403.651 97.231Z" fill="#a1d93e"/>
+            <path d="M403.651 97.581L415.651 97.581L415.651 96.231L403.651 96.231Z" fill="#a5da3b"/>
+            <path d="M403.651 96.581L415.651 96.581L415.651 95.231L403.651 95.231Z" fill="#a8db38"/>
+            <path d="M403.651 95.581L415.651 95.581L415.651 94.231L403.651 94.231Z" fill="#abdc35"/>
+            <path d="M403.651 94.581L415.651 94.581L415.651 93.231L403.651 93.231Z" fill="#afdc32"/>
+            <path d="M403.651 93.581L415.651 93.581L415.651 92.231L403.651 92.231Z" fill="#b2dd2f"/>
+            <path d="M403.651 92.581L415.651 92.581L415.651 91.232L403.651 91.232Z" fill="#b5de2b"/>
+            <path d="M403.651 91.582L415.651 91.582L415.651 90.232L403.651 90.232Z" fill="#b9df2b"/>
+            <path d="M403.651 90.582L415.651 90.582L415.651 89.232L403.651 89.232Z" fill="#bddf2b"/>
+            <path d="M403.651 89.582L415.651 89.582L415.651 88.232L403.651 88.232Z" fill="#c1e02a"/>
+            <path d="M403.651 88.582L415.651 88.582L415.651 87.232L403.651 87.232Z" fill="#c5e02a"/>
+            <path d="M403.651 87.582L415.651 87.582L415.651 86.232L403.651 86.232Z" fill="#c9e12a"/>
+            <path d="M403.651 86.582L415.651 86.582L415.651 85.232L403.651 85.232Z" fill="#cce12a"/>
+            <path d="M403.651 85.582L415.651 85.582L415.651 84.232L403.651 84.232Z" fill="#d0e229"/>
+            <path d="M403.651 84.582L415.651 84.582L415.651 83.232L403.651 83.232Z" fill="#d4e229"/>
+            <path d="M403.651 83.582L415.651 83.582L415.651 82.232L403.651 82.232Z" fill="#d7e229"/>
+            <path d="M403.651 82.582L415.651 82.582L415.651 81.233L403.651 81.233Z" fill="#dbe328"/>
+            <path d="M403.651 81.582L415.651 81.582L415.651 80.233L403.651 80.233Z" fill="#dfe328"/>
+            <path d="M403.651 80.583L415.651 80.583L415.651 79.233L403.651 79.233Z" fill="#e2e428"/>
+            <path d="M403.651 79.583L415.651 79.583L415.651 78.233L403.651 78.233Z" fill="#e6e427"/>
+            <path d="M403.651 78.583L415.651 78.583L415.651 77.233L403.651 77.233Z" fill="#eae527"/>
+            <path d="M403.651 77.583L415.651 77.583L415.651 76.233L403.651 76.233Z" fill="#ede527"/>
+            <path d="M403.651 76.583L415.651 76.583L415.651 75.233L403.651 75.233Z" fill="#f1e626"/>
+            <path d="M403.651 75.583L415.651 75.583L415.651 74.233L403.651 74.233Z" fill="#f4e626"/>
+            <path d="M403.651 74.583L415.651 74.583L415.651 73.233L403.651 73.233Z" fill="#f8e626"/>
+            <path d="M403.651 73.583L415.651 73.583L415.651 72.583L403.651 72.583Z" fill="#fbe725"/>
+            <path d="M403.651 248.567L415.651 248.567L415.651 72.583L403.651 72.583Z" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <g role="graphics-object" data-marey-role="axis" aria-label="[10⁻³·m⁻¹·s⁻¹]" data-side="right" data-unit="10⁻³·m⁻¹·s⁻¹" data-prefix="milli" data-ticks="4" data-tick-rule="all">
+              <path d="M415.651 208.112L418.651 208.112M415.651 163.657L418.651 163.657M415.651 119.202L418.651 119.202M415.651 74.748L418.651 74.748" fill="none" stroke="#39414d" stroke-width="0.9"/>
+              <text x="422.651" y="208.112" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#14181f">50</text>
+              <text x="422.651" y="163.657" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#14181f">100</text>
+              <text x="422.651" y="119.202" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#14181f">150</text>
+              <text x="422.651" y="74.748" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#14181f">200</text>
+              <text x="449.667" y="160.575" transform="rotate(90 449.667 160.575)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">[10⁻³·m⁻¹·s⁻¹]</text>
+            </g>
           </g>
         </g>
       </g>

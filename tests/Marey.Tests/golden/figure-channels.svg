@@ -12,8 +12,10 @@
     </g>
     <g id="figure_panel-0-0">
       <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="1" data-x-tick-rule="all" data-y-tick-rule="all">
-        <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="5">
-          <path d="M60.349 240.567L462.664 240.567M60.349 202.032L462.664 202.032M60.349 163.496L462.664 163.496M60.349 124.96L462.664 124.96M60.349 86.424L462.664 86.424" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+        <g id="figure_panel-0-0_grid">
+          <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="5">
+            <path d="M60.349 240.567L462.664 240.567M60.349 202.032L462.664 202.032M60.349 163.496L462.664 163.496M60.349 124.96L462.664 124.96M60.349 86.424L462.664 86.424" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+          </g>
         </g>
         <g clip-path="url(#qc)">
           <g id="figure_panel-0-0_layer-0">
@@ -51,45 +53,51 @@
             </g>
           </g>
         </g>
-        <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="bottom" data-unit="s" data-prefix="" data-ticks="5" data-tick-rule="all">
-          <path d="M60.349 248.567L462.664 248.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
-          <path d="M78.636 248.567L78.636 251.567M158.145 248.567L158.145 251.567M237.654 248.567L237.654 251.567M317.163 248.567L317.163 251.567M396.672 248.567L396.672 251.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
-          <text x="78.636" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
-          <text x="158.145" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
-          <text x="237.654" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
-          <text x="317.163" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">6</text>
-          <text x="396.672" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">8</text>
-          <text x="261.507" y="273.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">t [s]</text>
-        </g>
-        <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="left" data-unit="m" data-prefix="" data-ticks="5" data-tick-rule="all">
-          <path d="M60.349 248.567L60.349 72.583" fill="none" stroke="#39414d" stroke-width="0.9"/>
-          <path d="M60.349 240.567L57.349 240.567M60.349 202.032L57.349 202.032M60.349 163.496L57.349 163.496M60.349 124.96L57.349 124.96M60.349 86.424L57.349 86.424" fill="none" stroke="#39414d" stroke-width="0.9"/>
-          <text x="53.349" y="240.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0</text>
-          <text x="53.349" y="202.032" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">100</text>
-          <text x="53.349" y="163.496" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">200</text>
-          <text x="53.349" y="124.96" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">300</text>
-          <text x="53.349" y="86.424" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">400</text>
-          <text x="26.333" y="160.575" transform="rotate(-90 26.333 160.575)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">x [m]</text>
-        </g>
-        <g role="group" data-marey-role="legend" aria-label="legend" data-entries="3">
-          <path d="M67.349 140.733L154.52 140.733L154.52 79.583L67.349 79.583Z" fill="#ffffff" fill-opacity="0.9"/>
-          <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="control" data-series="control" data-color="#0072b2">
-            <g fill="#0072b2">
-              <use xlink:href="#qm" x="83.349" y="92.442"/>
-            </g>
-            <text x="100.349" y="92.442" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">control</text>
+        <g id="figure_panel-0-0_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="bottom" data-unit="s" data-prefix="" data-ticks="5" data-tick-rule="all">
+            <path d="M60.349 248.567L462.664 248.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M78.636 248.567L78.636 251.567M158.145 248.567L158.145 251.567M237.654 248.567L237.654 251.567M317.163 248.567L317.163 251.567M396.672 248.567L396.672 251.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="78.636" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+            <text x="158.145" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
+            <text x="237.654" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
+            <text x="317.163" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">6</text>
+            <text x="396.672" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">8</text>
+            <text x="261.507" y="273.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">t [s]</text>
           </g>
-          <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="treated" data-series="treated" data-color="#d55e00">
-            <g fill="#d55e00">
-              <use xlink:href="#qm-2" x="83.349" y="110.158"/>
-            </g>
-            <text x="100.349" y="110.158" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">treated</text>
+        </g>
+        <g id="figure_panel-0-0_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="left" data-unit="m" data-prefix="" data-ticks="5" data-tick-rule="all">
+            <path d="M60.349 248.567L60.349 72.583" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M60.349 240.567L57.349 240.567M60.349 202.032L57.349 202.032M60.349 163.496L57.349 163.496M60.349 124.96L57.349 124.96M60.349 86.424L57.349 86.424" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="53.349" y="240.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0</text>
+            <text x="53.349" y="202.032" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">100</text>
+            <text x="53.349" y="163.496" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">200</text>
+            <text x="53.349" y="124.96" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">300</text>
+            <text x="53.349" y="86.424" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">400</text>
+            <text x="26.333" y="160.575" transform="rotate(-90 26.333 160.575)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">x [m]</text>
           </g>
-          <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="washout" data-series="washout" data-color="#009e73">
-            <g fill="#009e73">
-              <use xlink:href="#qm-3" x="83.349" y="127.875"/>
+        </g>
+        <g id="figure_panel-0-0_legend">
+          <g role="group" data-marey-role="legend" aria-label="legend" data-entries="3">
+            <path d="M67.349 140.733L154.52 140.733L154.52 79.583L67.349 79.583Z" fill="#ffffff" fill-opacity="0.9"/>
+            <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="control" data-series="control" data-color="#0072b2">
+              <g fill="#0072b2">
+                <use xlink:href="#qm" x="83.349" y="92.442"/>
+              </g>
+              <text x="100.349" y="92.442" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">control</text>
             </g>
-            <text x="100.349" y="127.875" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">washout</text>
+            <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="treated" data-series="treated" data-color="#d55e00">
+              <g fill="#d55e00">
+                <use xlink:href="#qm-2" x="83.349" y="110.158"/>
+              </g>
+              <text x="100.349" y="110.158" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">treated</text>
+            </g>
+            <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="washout" data-series="washout" data-color="#009e73">
+              <g fill="#009e73">
+                <use xlink:href="#qm-3" x="83.349" y="127.875"/>
+              </g>
+              <text x="100.349" y="127.875" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">washout</text>
+            </g>
           </g>
         </g>
       </g>

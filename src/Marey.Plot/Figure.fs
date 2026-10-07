@@ -1090,17 +1090,21 @@ module Figure =
                                "layers", string p.Layers.Length
                                "x-tick-rule", xPlan.Rule
                                "y-tick-rule", yPlan.Rule |] },
+                        // D103 — everything but the background, the frame and the title is
+                        // keyed below the panel, so a change to one part replaces that part.
+                        // An empty part is pruned with its key, so a panel with no legend
+                        // writes no empty element for one.
                         Scene.prune (
                             Group
                                 [| Axes.panelBackground theme p.Coord plotNd
-                                   Axes.gridlines theme p.Coord plotNd gridX gridY
+                                   Keyed(Keys.grid panelKey, Axes.gridlines theme p.Coord plotNd gridX gridY)
                                    data
-                                   axisNode AxisBottom p.XAxis xSpec xPlan
-                                   axisNode AxisLeft p.YAxis ySpec yPlan
+                                   Keyed(Keys.axisX panelKey, axisNode AxisBottom p.XAxis xSpec xPlan)
+                                   Keyed(Keys.axisY panelKey, axisNode AxisLeft p.YAxis ySpec yPlan)
                                    Axes.panelFrame theme p.Coord plotNd
                                    panelTitle
-                                   legend
-                                   colorbarNode |]
+                                   Keyed(Keys.legend panelKey, legend)
+                                   Keyed(Keys.colorbar panelKey, colorbarNode) |]
                         )
                     )
                 )

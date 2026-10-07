@@ -72,6 +72,20 @@ module Keys =
     /// spelled here so that there is one spelling.
     let mark (layerKey: Key) (row: int) = child layerKey (sprintf "mark-%d" row)
 
+    /// D103 — the parts of a panel that are not its layers, each under its own key so that a
+    /// change to one is a change to it and not to the whole panel. A slider moving one
+    /// annotation over a fixed scatter leaves the axes, the gridlines and the keys alone, and
+    /// a diff can only see that when they are not all one subtree.
+    let axisX (panelKey: Key) = child panelKey "axis-x"
+
+    let axisY (panelKey: Key) = child panelKey "axis-y"
+
+    let grid (panelKey: Key) = child panelKey "grid"
+
+    let legend (panelKey: Key) = child panelKey "legend"
+
+    let colorbar (panelKey: Key) = child panelKey "colorbar"
+
     /// Does `ancestor` name `key`, or something `key` sits under?
     ///
     /// A key is a path, so this is a prefix test — but on *segments*, not on characters.
