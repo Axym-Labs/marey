@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <Compile Include="Control.fs" />
+    <Compile Include="Recording.fs" />
     <Compile Include="Live.fs" />
   </ItemGroup>
 

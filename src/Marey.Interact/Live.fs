@@ -2,6 +2,7 @@ namespace Marey
 
 open System
 open System.Globalization
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
 // M4.5 — THE PURE STEP (D100)
@@ -105,21 +106,268 @@ module LiveMsg =
             else
                 None
 
-    /// Read a message from the wire: a type and its JSON payload text. `set` takes
-    /// `[index,value]`, `size` `[width,height]`, `zoom` `[x0,y0,x1,y1]`, `pan` `[x,y,dx,dy]`, and
-    /// `reset` anything. Anything else is `None`, and a host ignores it rather than failing: a
-    /// view one protocol version ahead should not take the widget down.
-    let parse (msgType: string) (payload: string) : LiveMsg option =
+    /// How many numbers a message of this type carries before the view's clock reading.
+    let private arity (msgType: string) =
+        match msgType with
+        | "set"
+        | "size" -> Some 2
+        | "zoom"
+        | "pan" -> Some 4
+        | "reset" -> Some 0
+        | _ -> None
+
+    /// A message from its wire type and numbers, without a time: `toWire`'s inverse.
+    let ofWire (msgType: string) (ns: float[]) : LiveMsg option =
         let px (v: float) = v * 1.0<px>
 
-        match msgType, numbers payload with
-        | "set", Some [| i; v |] when i = Math.Floor i && abs i < 1e9 -> Some(Set(int i, v))
-        | "size", Some [| w; h |] -> Some(Resize(w, h))
-        | "zoom", Some [| x0; y0; x1; y1 |] ->
-            Some(Zoom { X0 = px x0; Y0 = px y0; X1 = px x1; Y1 = px y1 })
-        | "pan", Some [| x; y; dx; dy |] -> Some(Pan({ X = px x; Y = px y }, { X = px dx; Y = px dy }))
+        match msgType, ns with
+        | "set", [| i; v |] when i = Math.Floor i && abs i < 1e9 -> Some(Set(int i, v))
+        | "size", [| w; h |] -> Some(Resize(w, h))
+        | "zoom", [| x0; y0; x1; y1 |] -> Some(Zoom { X0 = px x0; Y0 = px y0; X1 = px x1; Y1 = px y1 })
+        | "pan", [| x; y; dx; dy |] -> Some(Pan({ X = px x; Y = px y }, { X = px dx; Y = px dy }))
         | "reset", _ -> Some Reset
         | _ -> None
+
+    /// Read a message from the wire, with the view's clock reading if it sent one (D102): a type
+    /// and its JSON payload text. `set` takes `[index,value]`, `size` `[width,height]`, `zoom`
+    /// `[x0,y0,x1,y1]`, `pan` `[x,y,dx,dy]`, and `reset` anything; each may carry one number
+    /// more, the event's `timeStamp` in milliseconds, which comes back in seconds. Anything else
+    /// is `None`, and a host ignores it rather than failing: a view one protocol version ahead
+    /// should not take the widget down.
+    let parseStamped (msgType: string) (payload: string) : (float<s> option * LiveMsg) option =
+        match arity msgType, numbers payload with
+        | Some 0, ns ->
+            let t =
+                match ns with
+                | Some [| t |] -> Some(t / 1000.0 * 1.0<s>)
+                | _ -> None
+
+            ofWire msgType [||] |> Option.map (fun m -> t, m)
+        | Some n, Some ns when ns.Length = n -> ofWire msgType ns |> Option.map (fun m -> None, m)
+        | Some n, Some ns when ns.Length = n + 1 ->
+            ofWire msgType (Array.sub ns 0 n)
+            |> Option.map (fun m -> Some(ns.[n] / 1000.0 * 1.0<s>), m)
+        | _ -> None
+
+    /// `parseStamped`, without the time.
+    let parse (msgType: string) (payload: string) : LiveMsg option =
+        parseStamped msgType payload |> Option.map snd
+
+    /// A message as its wire type and numbers, without a time: `parse`'s inverse.
+    let toWire (msg: LiveMsg) : string * float[] =
+        let f (v: float<px>) = float v
+
+        match msg with
+        | Set(i, v) -> "set", [| float i; v |]
+        | Resize(w, h) -> "size", [| w; h |]
+        | Zoom r -> "zoom", [| f r.X0; f r.Y0; f r.X1; f r.Y1 |]
+        | Pan(at, by) -> "pan", [| f at.X; f at.Y; f by.X; f by.Y |]
+        | Reset -> "reset", [||]
+
+/// **A session's messages as data (D102)**: what the reader did and when, by the view's clock. A
+/// log replayed through `Live.record` is the session again, because the step is pure; so the
+/// log is what is kept and written down, and the states are recomputed from it.
+///
+/// The JSON is written and read here rather than through a library, because this package may
+/// not take a dependency. Numbers are written to round-trip exactly, and the three that JSON
+/// has no number for as the strings `"NaN"`, `"Infinity"` and `"-Infinity"`, so a log that went
+/// out to a file comes back bit for bit.
+[<RequireQualifiedAccess>]
+module LiveLog =
+
+    let private invariant = CultureInfo.InvariantCulture
+
+    [<Literal>]
+    let Format = "marey.live-log"
+
+    [<Literal>]
+    let Version = 1
+
+    let private number (x: float) =
+        if Double.IsNaN x then "\"NaN\""
+        elif Double.IsPositiveInfinity x then "\"Infinity\""
+        elif Double.IsNegativeInfinity x then "\"-Infinity\""
+        else x.ToString("R", invariant)
+
+    /// The log as one line of JSON:
+    /// `{"format":"marey.live-log","version":1,"events":[[0,"set",[0,2.5]],…]}`, each event its
+    /// time in seconds, its wire type and its numbers.
+    let toJson (log: Recording<LiveMsg>) : string =
+        let event (t: float<s>, msg: LiveMsg) =
+            let kind, ns = LiveMsg.toWire msg
+            sprintf "[%s,\"%s\",[%s]]" (number (float t)) kind (ns |> Array.map number |> String.concat ",")
+
+        sprintf
+            "{\"format\":\"%s\",\"version\":%d,\"events\":[%s]}"
+            Format
+            Version
+            (log.Events |> Array.map event |> String.concat ",")
+
+    type private Json =
+        | JNum of float
+        | JStr of string
+        | JArr of Json list
+        | JObj of (string * Json) list
+        | JLit of string
+
+    /// Just enough JSON to read a log back: a value, or `None` for anything malformed.
+    let private parseJson (text: string) : Json option =
+        let n = text.Length
+        let mutable i = 0
+        let ws () = while i < n && Char.IsWhiteSpace text.[i] do i <- i + 1
+        let fail () = raise (FormatException())
+
+        let expect (c: char) =
+            ws ()
+            if i < n && text.[i] = c then i <- i + 1 else fail ()
+
+        let str () =
+            expect '"'
+            let sb = Text.StringBuilder()
+
+            while (if i < n then text.[i] <> '"' else fail ()) do
+                if text.[i] = '\\' && i + 1 < n then
+                    match text.[i + 1] with
+                    | 'u' when i + 5 < n ->
+                        sb.Append(char (Convert.ToInt32(text.Substring(i + 2, 4), 16))) |> ignore
+                        i <- i + 6
+                    | c ->
+                        sb.Append(
+                            match c with
+                            | 'n' -> '\n'
+                            | 't' -> '\t'
+                            | 'r' -> '\r'
+                            | 'b' -> '\b'
+                            | 'f' -> '\f'
+                            | c -> c
+                        )
+                        |> ignore
+
+                        i <- i + 2
+                else
+                    sb.Append(text.[i]) |> ignore
+                    i <- i + 1
+
+            i <- i + 1
+            sb.ToString()
+
+        let rec value () : Json =
+            ws ()
+
+            if i >= n then
+                fail ()
+
+            match text.[i] with
+            | '"' -> JStr(str ())
+            | '[' ->
+                i <- i + 1
+                ws ()
+
+                if i < n && text.[i] = ']' then
+                    i <- i + 1
+                    JArr []
+                else
+                    let items = ResizeArray [ value () ]
+                    ws ()
+
+                    while i < n && text.[i] = ',' do
+                        i <- i + 1
+                        items.Add(value ())
+                        ws ()
+
+                    expect ']'
+                    JArr(List.ofSeq items)
+            | '{' ->
+                i <- i + 1
+                ws ()
+
+                if i < n && text.[i] = '}' then
+                    i <- i + 1
+                    JObj []
+                else
+                    let pair () =
+                        ws ()
+                        let k = str ()
+                        expect ':'
+                        k, value ()
+
+                    let items = ResizeArray [ pair () ]
+                    ws ()
+
+                    while i < n && text.[i] = ',' do
+                        i <- i + 1
+                        items.Add(pair ())
+                        ws ()
+
+                    expect '}'
+                    JObj(List.ofSeq items)
+            | c when Char.IsLetter c ->
+                let start = i
+                while i < n && Char.IsLetter text.[i] do i <- i + 1
+                JLit(text.Substring(start, i - start))
+            | _ ->
+                let start = i
+
+                while i < n && (Char.IsDigit text.[i] || "+-.eE".IndexOf text.[i] >= 0) do
+                    i <- i + 1
+
+                match Double.TryParse(text.Substring(start, i - start), NumberStyles.Float, invariant) with
+                | true, x when i > start -> JNum x
+                | _ -> fail ()
+
+        if isNull text then
+            None
+        else
+            try
+                let v = value ()
+                ws ()
+                if i = n then Some v else None
+            with
+            | :? FormatException
+            | :? ArgumentException
+            | :? OverflowException -> None
+
+    let private numberOf (j: Json) =
+        match j with
+        | JNum x -> Some x
+        | JStr "NaN" -> Some Double.NaN
+        | JStr "Infinity" -> Some Double.PositiveInfinity
+        | JStr "-Infinity" -> Some Double.NegativeInfinity
+        | _ -> None
+
+    /// A log back from `toJson`'s text. `Error` names what is wrong: not JSON, not a Marey log,
+    /// a version this library does not read, or the first event it cannot read, by index. An
+    /// unreadable event is refused rather than skipped, because a replay with a step missing is
+    /// a different session.
+    let ofJson (json: string) : Result<Recording<LiveMsg>, string> =
+        let field k fields = fields |> List.tryFind (fst >> (=) k) |> Option.map snd
+
+        match parseJson json with
+        | Some(JObj fields) ->
+            match field "format" fields, field "version" fields, field "events" fields with
+            | Some(JStr Format), Some(JNum v), Some(JArr events) when v = float Version ->
+                let read (j: Json) =
+                    match j with
+                    | JArr [ t; JStr kind; JArr ns ] ->
+                        let ns = ns |> List.map numberOf
+
+                        match numberOf t with
+                        | Some t when ns |> List.forall Option.isSome ->
+                            LiveMsg.ofWire kind (ns |> List.map Option.get |> Array.ofList)
+                            |> Option.map (fun m -> t * 1.0<s>, m)
+                        | _ -> None
+                    | _ -> None
+
+                let read = events |> List.map read
+
+                match read |> List.tryFindIndex Option.isNone with
+                | Some k -> Error(sprintf "event %d is not a message this library reads" k)
+                | None -> Ok { Events = read |> List.map Option.get |> Array.ofList }
+            | Some(JStr Format), Some(JNum v), _ when v <> float Version ->
+                Error(sprintf "a version %g log; this library reads version %d" v Version)
+            | _ -> Error "not a Marey live log: it needs format, version and events"
+        | Some _ -> Error "not a Marey live log: it needs format, version and events"
+        | None -> Error "not JSON"
 
 [<RequireQualifiedAccess>]
 module Live =
@@ -403,6 +651,49 @@ module Live =
                 { state with
                     Zoom = [||]
                     Shot = arrange live state.Size state.Grown [||] }
+
+    /// **A session again, from its log (D102)**: the state after each message, at the time the
+    /// view stamped it, from `start`. Every time is the view's, so the kernel's clock appears
+    /// nowhere. A log with no messages records `start` alone, so the result can always be
+    /// sampled.
+    let recordFrom (live: Live) (start: LiveState) (log: Recording<LiveMsg>) : Recording<LiveState> =
+        if log.Events.Length = 0 then
+            { Events = [| 0.0<s>, start |] }
+        else
+            let mutable state = start
+
+            log.Events
+            |> Array.map (fun (t, msg) ->
+                state <- step live state msg
+                t, state)
+            |> Recording.ofEvents
+
+    /// `recordFrom` the first state at `DefaultSize`, which is where every widget starts.
+    let record (live: Live) (log: Recording<LiveMsg>) : Recording<LiveState> = recordFrom live (init live) log
+
+    /// **A recording as a film**: each state's figure, held until the next, drawn in one
+    /// arrangement laid out over **every** state the recording reached rather than over samples
+    /// of it, at the size the session ended at. The states are known, so D72's union is exact
+    /// here: a state a sampled union would have stepped over cannot overflow. Laying out costs
+    /// one figure per distinct state, which for a long drag is hundreds.
+    let film (live: Live) (recording: Recording<LiveState>) : Film =
+        let states = recording.Events |> Array.map snd
+
+        if states.Length = 0 then
+            invalidArg "recording" "Marey: an empty recording has nothing to film."
+
+        let size = states.[states.Length - 1].Size
+
+        let shot =
+            states
+            |> Array.distinctBy (fun st -> st.Values, st.Zoom)
+            |> Array.map (view live)
+            |> Chart.arrangeOver measurer size
+
+        let figures = recording |> Recording.map (view live) |> Recording.sample
+
+        { Shot = shot
+          Frames = Anim.ofSeconds figures.Duration (fun t -> Chart.toSceneIn measurer shot (figures.At t)) }
 
 /// The `interact { }` block. Applicative: `let! … and! …` and a `return`, never a second `let!`
 /// that could depend on the first.

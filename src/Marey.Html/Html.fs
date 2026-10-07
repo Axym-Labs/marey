@@ -767,6 +767,11 @@ module Html =
     /// summing what waits behind the request in flight so no movement is dropped; a double
     /// click posts a reset. The script works out which pixel the pointer is on and nothing else:
     /// which panel that is, and what it measures, is the kernel's.
+    ///
+    /// D102 — every message carries one number more than its type needs: the event's
+    /// `timeStamp`, by the page's monotonic clock, in milliseconds. A message waiting behind the
+    /// one in flight carries the newest event's time with the newest value. The kernel reads no
+    /// clock, so a recording's times are the reader's.
     let private widgetScript (aspect: float) =
         String.concat
             "\n"
@@ -786,19 +791,19 @@ module Html =
               "    if (busy || order.length === 0) { return; }"
               "    var key = order.shift(), m = waiting[key];"
               "    delete waiting[key];"
-              "    busy = ch.post(m.type, m.payload);"
+              "    busy = ch.post(m.type, m.payload.concat([m.t]));"
               "  }"
-              "  function send(key, type, payload, merge) {"
+              "  function send(key, type, payload, t, merge) {"
               "    if (!(key in waiting)) { order.push(key); }"
               "    else if (merge) { payload = merge(waiting[key].payload, payload); }"
-              "    waiting[key] = { type: type, payload: payload };"
+              "    waiting[key] = { type: type, payload: payload, t: t };"
               "    flush();"
               "  }"
               "  function valueOf(el) { return el.type === 'checkbox' ? (el.checked ? 1 : 0) : Number(el.value); }"
               "  inputs.forEach(function (el) {"
               "    var i = Number(el.getAttribute('data-i'));"
-              "    el.addEventListener(el.type === 'range' ? 'input' : 'change', function () {"
-              "      send('c' + i, 'set', [i, valueOf(el)]);"
+              "    el.addEventListener(el.type === 'range' ? 'input' : 'change', function (e) {"
+              "      send('c' + i, 'set', [i, valueOf(el)], e.timeStamp);"
               "    });"
               "  });"
               "  var SVG = 'http://www.w3.org/2000/svg';"
@@ -824,7 +829,7 @@ module Html =
               "  }"
               "  function hello() {"
               "    var w = Math.round(fig.clientWidth || document.documentElement.clientWidth || 0);"
-              sprintf "    if (w > 0) { send('size', 'size', [w, Math.round(w * %s)]); }" (exact aspect)
+              sprintf "    if (w > 0) { send('size', 'size', [w, Math.round(w * %s)], performance.now()); }" (exact aspect)
               "  }"
               "  window.addEventListener('verso:channelmessage', function (e) {"
               "    var d = e.detail || {}, p = d.payload || {};"
@@ -863,7 +868,7 @@ module Html =
               "    var p = at(e), a = drag.start;"
               "    if (!p) { return; }"
               "    if (drag.pan) {"
-              "      send('pan', 'pan', [a.x, a.y, p.x - drag.last.x, p.y - drag.last.y], sum);"
+              "      send('pan', 'pan', [a.x, a.y, p.x - drag.last.x, p.y - drag.last.y], e.timeStamp, sum);"
               "      drag.last = p;"
               "      return;"
               "    }"
@@ -878,11 +883,11 @@ module Html =
               "    var p = at(e), a = drag.start, pan = drag.pan;"
               "    drag = null;"
               "    band.style.display = 'none';"
-              "    if (p && !pan && e.type === 'pointerup') { send('zoom', 'zoom', [a.x, a.y, p.x, p.y]); }"
+              "    if (p && !pan && e.type === 'pointerup') { send('zoom', 'zoom', [a.x, a.y, p.x, p.y], e.timeStamp); }"
               "  }"
               "  fig.addEventListener('pointerup', release);"
               "  fig.addEventListener('pointercancel', release);"
-              "  fig.addEventListener('dblclick', function () { if (!closed) { send('reset', 'reset', []); } });"
+              "  fig.addEventListener('dblclick', function (e) { if (!closed) { send('reset', 'reset', [], e.timeStamp); } });"
               "  window.addEventListener('verso:channelclosed', function (e) {"
               "    closed = true;"
               "    disable((e.detail && e.detail.reason) || 'closed');"

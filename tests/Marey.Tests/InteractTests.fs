@@ -605,3 +605,162 @@ module ``a widget does not breathe`` =
             let s = Live.step hump grown (Set(0, v))
             Assert.Equal(1, s.Grown.Length)
             Assert.True(Chart.fitsIn TextMeasure.approx s.Shot (Live.view hump s), sprintf "u = %g fits the grown arrangement" v)
+
+// ======================================================================================
+// Gate 10 — live equals replayed (D102)
+// ======================================================================================
+
+module ``live equals replayed`` =
+
+    /// A drag across the middle of the first panel, as the view would send it: two corners in px.
+    let private dragPx (l: Live) =
+        let v = (Live.panels l (Live.init l)).[0]
+        let at (fx: float) (fy: float) = v.Plot.X0 + fx * (v.Plot.X1 - v.Plot.X0), v.Plot.Y0 + fy * (v.Plot.Y1 - v.Plot.Y0)
+        let (x0, y0), (x1, y1) = at 0.25 0.2, at 0.7 0.8
+        sprintf "[%.17g,%.17g,%.17g,%.17g" (float x0) (float y0) (float x1) (float y1)
+
+    /// A session as the kernel received it: wire types and payloads, each stamped by the page's
+    /// clock in ms, which starts wherever the page did. The values are ones a lossy number
+    /// format would change: e, and a time that is not a short decimal.
+    let private wire (l: Live) =
+        [ "size", "[640,400,1523.25]"
+          "set", "[0,2.718281828459045,1610.0000000000002]"
+          "set", "[0,3.3,1650.5]"
+          "set", "[1,1,1800.125]"
+          "zoom", dragPx l + ",2400]"
+          "pan", "[300,200,-12.5,4,2700.75]"
+          "reset", "[3100]"
+          "set", "[0,0.75,3333.3333333333335]" ]
+
+    let private log (l: Live) =
+        wire l
+        |> List.map (fun (t, p) ->
+            match LiveMsg.parseStamped t p with
+            | Some(Some at, msg) -> at, msg
+            | other -> failwithf "%s %s read as %A" t p other)
+        |> Array.ofList
+        |> Recording.ofEvents
+
+    let private frames (l: Live) (recording: Recording<LiveState>) =
+        Live.film l recording |> Frames.render FramePass.Serial SvgBackend.render 30.0
+
+    /// **Gate 10.** A log written to JSON, read back and replayed gives a film whose every frame
+    /// is byte-identical to the original's. The film moves — several distinct frames — so the
+    /// gate cannot hold by both sides being one still.
+    [<Fact>]
+    let ``a replayed log films the same frames`` () =
+        let l = live ()
+        let original = log l
+
+        let replayed =
+            match LiveLog.ofJson (LiveLog.toJson original) with
+            | Ok r -> r
+            | Error e -> failwith e
+
+        let a = frames l (Live.record l original)
+        let b = frames (live ()) (Live.record (live ()) replayed)
+
+        Assert.Equal(a.Length, b.Length)
+        Assert.True(a.Length > 40, sprintf "%d frames" a.Length)
+        Assert.True((Array.distinct a).Length >= 5, sprintf "%d distinct frames" (Array.distinct a).Length)
+
+        Array.iteri2 (fun i (x: string) (y: string) -> Assert.True((x = y), sprintf "frame %d differs" i)) a b
+
+    /// The log comes back bit for bit: every time and every number, the awkward ones included.
+    [<Fact>]
+    let ``a log round-trips exactly`` () =
+        let l = live ()
+        let original = log l
+
+        let back =
+            match LiveLog.ofJson (LiveLog.toJson original) with
+            | Ok r -> r
+            | Error e -> failwith e
+
+        Assert.Equal<(float<s> * LiveMsg)[]>(original.Events, back.Events)
+
+        let odd = Recording.ofEvents [| 0.0<s>, Set(0, nan); 0.1<s> + 0.2<s>, Resize(infinity, -infinity); 1e-300<s>, Set(1, 5e-324) |]
+
+        match LiveLog.ofJson (LiveLog.toJson odd) with
+        | Ok r -> Assert.Equal(LiveLog.toJson odd, LiveLog.toJson r)
+        | Error e -> failwith e
+
+    /// The times are the view's: the trailing number is the event's `timeStamp` in ms, read in
+    /// seconds, rebased to the first message; `parse` drops it, and a message without one still
+    /// reads.
+    [<Fact>]
+    let ``the times are the view's`` () =
+        Assert.Equal(Some(Some 1.5<s>, Set(1, 2.5)), LiveMsg.parseStamped "set" "[1,2.5,1500]")
+        Assert.Equal(Some(None, Set(1, 2.5)), LiveMsg.parseStamped "set" "[1,2.5]")
+        Assert.Equal(Some(Some 2.0<s>, Reset), LiveMsg.parseStamped "reset" "[2000]")
+        Assert.Equal(Some(Set(1, 2.5)), LiveMsg.parse "set" "[1,2.5,1500]")
+        Assert.Equal(None, LiveMsg.parse "set" "[1,2.5,1500,7]")
+
+        let times = (log (live ())).Events |> Array.map fst
+        Assert.Equal(0.0<s>, times.[0])
+        Assert.Equal(3.3333333333333335 - 1.52325, float times.[times.Length - 1], 12)
+
+    /// The order is the truth: a time that runs backwards, or is not a number, holds the one
+    /// before it rather than reordering the values.
+    [<Fact>]
+    let ``a clock that runs backwards holds`` () =
+        let r = Recording.ofEvents [| 10.0<s>, "a"; 12.0<s>, "b"; 11.0<s>, "c"; nan * 1.0<s>, "d"; 13.0<s>, "e" |]
+        Assert.Equal<(float<s> * string)[]>([| 0.0<s>, "a"; 2.0<s>, "b"; 2.0<s>, "c"; 2.0<s>, "d"; 3.0<s>, "e" |], r.Events)
+
+    /// Sample and hold: between two values the earlier one, at a value's time that value, at a
+    /// shared time the later, and the last value at the end and past it.
+    [<Fact>]
+    let ``sample holds`` () =
+        let a = Recording.sample (Recording.ofEvents [| 0.0<s>, 1; 1.0<s>, 2; 1.0<s>, 3; 2.5<s>, 4 |])
+        Assert.Equal(2.5<s>, a.Duration)
+        Assert.Equal(1, a.At 0.0<s>)
+        Assert.Equal(1, a.At 0.999<s>)
+        Assert.Equal(3, a.At 1.0<s>)
+        Assert.Equal(3, a.At 2.4<s>)
+        Assert.Equal(4, a.At 2.5<s>)
+        Assert.Equal(4, a.At 99.0<s>)
+        Assert.Throws<ArgumentException>(fun () -> Recording.sample { Events = [||] } |> ignore) |> ignore
+
+    /// A session with no messages records its first state, so it can always be sampled: a
+    /// still, of zero length.
+    [<Fact>]
+    let ``no messages is the first state`` () =
+        let l = live ()
+        let r = Live.record l { Events = [||] }
+        Assert.Equal(1, r.Events.Length)
+        Assert.Equal<LiveState>(Live.init l, snd r.Events.[0])
+        Assert.Equal(0.0<s>, (Live.film l r).Duration)
+
+    /// The film is laid out over every state the recording reached, so none overflows it.
+    [<Fact>]
+    let ``every recorded state fits the film`` () =
+        let l = live ()
+        let r = Live.record l (log l)
+        let film = Live.film l r
+
+        for _, st in r.Events do
+            Assert.True(Chart.fitsIn TextMeasure.approx film.Shot (Live.view l st))
+
+    /// A log that cannot be read is refused, saying why; an event it cannot read is named by
+    /// index rather than skipped, because a replay with a step missing is another session.
+    [<Fact>]
+    let ``a bad log is refused by name`` () =
+        let err (json: string) =
+            match LiveLog.ofJson json with
+            | Ok _ -> failwithf "read %s" json
+            | Error e -> e
+
+        Assert.Equal("not JSON", err "{\"format\":")
+        Assert.Contains("not a Marey live log", err "[1,2,3]")
+        Assert.Contains("version 2", err "{\"format\":\"marey.live-log\",\"version\":2,\"events\":[]}")
+        Assert.Contains("event 1", err "{\"format\":\"marey.live-log\",\"version\":1,\"events\":[[0,\"set\",[0,1]],[1,\"set\",[0]]]}")
+
+    /// The view stamps what it posts, by the page's clock, and reads no other.
+    [<Fact>]
+    let ``the view stamps every message`` () =
+        let l = live ()
+        let doc = Html.widget l (Live.init l) true
+        Assert.Contains("ch.post(m.type, m.payload.concat([m.t]))", doc)
+        Assert.Contains("performance.now()", doc)
+        Assert.DoesNotContain("Date.now", doc)
+        Assert.DoesNotContain("new Date", doc)
