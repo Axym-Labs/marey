@@ -13,6 +13,7 @@ module Marey.Tests.TikzBackendTests
 
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 open Marey.Tests.Generators
 
 // ======================================================================================

@@ -9,6 +9,7 @@ visualization system for F#. Emits `tikzpicture` source for pasting into a LaTeX
 #r "nuget: Marey.Backend.Tikz"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 Chart.line U.second U.metre t x
 |> Chart.withTheme Theme.tikz

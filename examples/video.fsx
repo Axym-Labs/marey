@@ -21,6 +21,7 @@
 #r "nuget: Marey.Tools.Video"
 
 open Marey
+open Marey.UnitsOfMeasure
 open Marey.Storyboard
 
 // ---------------------------------------------------------------------------------------------

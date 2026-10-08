@@ -146,8 +146,9 @@ makes unit correctness affordable at any data size. The runtime cost of the enti
 the two `U<'u>` values passed to `Chart.line`.
 
 Where a unit is known only at runtime — a column header in a file written elsewhere — it has to be
-asserted, and an assertion is not checked by the compiler. There is no UDUNITS-style parser;
-`pint` covers that case and Marey does not.
+asserted, and an assertion is not checked by the compiler. `U.parse` reads it in UDUNITS-2's
+syntax and `U.tryAs` asserts a measure onto the result, checked against the dimension at run time;
+`pint` checks every operation at run time, and Marey checks that one.
 
 Part of it is covered from the .NET side. FSharp.Data's CSV type provider reads units out of column
 headers, and Marey's seven base measures are FSharp.Core's, so a column headed `Time (s)` arrives
@@ -195,11 +196,20 @@ Products, quotients and prefixes are refused on affine units rather than silentl
 absolute zero. Adding that field later would have been a breaking change to every witness in the
 library.
 
-**Dimensionless is an answer, not a failure.** A CO₂ mole fraction in ppm is micromoles per mole;
-the moles cancel and there is nothing for the compiler to check. Such an axis is drawn with no unit
-brackets rather than `[1]`, carries no prefix, and takes its label from the caller.
-`Chart.Plain.line` exists for this data, and is deliberately neither the default spelling nor an
-overload, so that data which *does* have a dimension still has to state it.
+**Dimensionless is an answer, not a failure, and unstated is not dimensionless.** A CO₂ mole
+fraction in ppm is micromoles per mole; the moles cancel and there is nothing for the compiler to
+check. `U.one` says so: the axis is drawn with no brackets rather than `[1]`, carries no prefix,
+and is refused beside an axis in metres. Revenue in dollars, read from a spreadsheet, is neither
+dimensionless nor metres. Left without a unit it is `U.unspecified`, which draws the same bare
+axis and makes no dimensional claim at all, so nothing is checked against it.
+
+**Units are opt-in, and the check is not.** `open Marey` takes plain arrays and a unit per axis
+that may be stated, `Chart.Line(ts, xs, yUnit = U.metre)`, and checks a stated unit when two
+layers share an axis. `open Marey.UnitsOfMeasure` takes a witness per axis and checks it at
+compile time, `Chart.line U.second U.metre ts xs`. One implementation serves both: the
+unit-optional call reaches the measure-generic one at measure 1, carrying the unit at run time,
+so a density over a stated metre still reads `m⁻¹`. Under the second `open` the first spelling is
+a compile error, so a call cannot fall back to an axis with no unit by accident.
 
 **A figure is a value, and backends are separate packages.** `Marey.Plot` has no backend reference;
 rendering is a function passed in at render time. That is why the same figure becomes SVG or
@@ -217,11 +227,12 @@ in the guide, the README and the examples.)*
 
 ## When not to use Marey
 
-- **The data is not physical.** Counts, currencies, probabilities, mole fractions, indices — the
-  unit system has nothing to offer here, and `Chart.Plain` is a thin veneer over a normal plotting
-  library. The library still works; it is simply not *for* this.
-- **The units are known only at runtime.** There is no UDUNITS-2 parser. The witness carries the
-  fields such a parser would need, but the parser does not exist.
+- **The data is not physical.** Counts, currencies, probabilities, indices — the unit system has
+  nothing to offer here, and without `Marey.UnitsOfMeasure` the library is a normal plotting
+  library with typed output. It works; it is simply not *for* this.
+- **The units are known only at runtime, and the compile-time check is the point.** `U.parse`
+  reads UDUNITS-2's syntax and `U.tryAs` asserts a measure back, checked; but a unit first seen at
+  run time is checked at run time, and no parser can move that check to the compiler.
 - **Interactivity outside a notebook, or 3D, is needed.** Thirteen geoms and three backends. A
   figure can be animated, rendered frame by frame and encoded to video, and in a Verso notebook it
   can carry controls, zoom and a readout. But there is no interactive canvas outside a notebook, no

@@ -16,6 +16,10 @@
     <Compile Include="Prefix.fs" />
     <Compile Include="UnitDisplay.fs" />
     <Compile Include="Axis.fs" />
+    <!-- D110 — U.parse, the UDUNITS-2 syntax. After every witness it can name. -->
+    <Compile Include="Parse.fs" />
+    <!-- D124 — the C# surface, `using Marey.CSharp`. Last: it names every witness above. -->
+    <Compile Include="CSharp.fs" />
   </ItemGroup>
 
   <ItemGroup>

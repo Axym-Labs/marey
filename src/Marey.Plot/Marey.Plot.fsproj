@@ -31,6 +31,11 @@
     <!-- After Storyboard.fs: `Film.ofStory` names a `Story`, and `Frames` is what a storyboard
          is finally *for*. D77. -->
     <Compile Include="Frames.fs" />
+    <!-- D109 — the unit-required mode. Last: it reaches the implementations in Chart.fs and
+         inherits the block's operations from Plot.fs. -->
+    <Compile Include="UnitsOfMeasure.fs" />
+    <!-- D124 — the C# surface, `using Marey.CSharp`. -->
+    <Compile Include="CSharp.fs" />
   </ItemGroup>
 
   <ItemGroup>

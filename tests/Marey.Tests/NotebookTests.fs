@@ -22,6 +22,7 @@ open System.Text.RegularExpressions
 open System.Xml.Linq
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 // ======================================================================================
 // FIXTURES

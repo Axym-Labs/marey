@@ -471,60 +471,9 @@ module private PlotCompile =
 
             runOne spec
 
-/// §9 — **the grammar-of-graphics front door**: one dataset, several channels, several layers.
-///
-/// ```fsharp
-/// plot measurements {
-///     x U.second (fun r -> r.Time)
-///     y U.metre  (fun r -> r.Displacement)
-///     color (fun r -> r.Sample)
-///     size U.kilogram (fun r -> r.Mass)
-///     layerWith GeomPoint (Geom.withOpacity 0.6)
-///     theme Theme.publication
-/// }
-/// ```
-///
-/// ### The witness is stated, and that is permanent (D43)
-///
-/// §9 originally had the block *infer* the unit from the accessor's return type. It cannot be
-/// built: a measure parameter cannot be reflected on, cannot carry a member constraint, and
-/// cannot be dispatched on by overload, because erasure makes `'r -> float&lt;s&gt;` and
-/// `'r -> float&lt;m&gt;` the same signature. So a positional channel takes its witness exactly
-/// as `Chart.line` does — and then **checks the accessor against it**: naming `r.Displacement`
-/// under `U.second` is a compile error, in the measures, at the call site.
-///
-/// What the block adds is therefore composition and not inference: channels beyond x and y,
-/// layers over one dataset, a stat between the data and the geom, and — from phase 5 — facets.
-/// Everything downstream of the witness is still derived from it and never configured: the
-/// scale, the domain, the prefix, the ticks and both axis titles.
-///
-/// ### A block has one stat, and the stat decides the block's shape (D47)
-///
-/// `fit` adds a least-squares line over the block's own two channels. `histogram`, `density` and
-/// `ecdf` take the x channel *alone* and manufacture y — a count, a density, a probability — so
-/// those blocks have no `y` operation, and refuse a `layer` or an encoding channel rather than
-/// dropping it. The two shapes are why `StatSpec` enumerates rather than abstracting: a single
-/// pipeline node over a channel pair fits the first and forces a dead y channel on the rest.
-///
-/// ### The block is flat, and that is a type check rather than a taste (D44)
-///
-/// There is no nested `encode { … }`. It does not parse — a custom operation and a builder
-/// value cannot share a name — and where it does parse it severs the row type: the inner
-/// builder's `'r` is inferred from the accessors inside the block and never unified with the
-/// data's. A block whose accessors take an unrelated record then compiles and fails later, or
-/// worse, does not.
-///
-/// Flat closes that hole, because `'r` arrives from the data through this type's own parameter.
-/// The mismatch is `error FS0001: This expression was expected to have type 'Row' but here has
-/// type 'Other'`, and `ChannelTests` keeps it a compile *failure* rather than a paragraph.
-///
-/// ### It returns an ordinary `Figure`
-///
-/// Not a private type, not a builder to be finished elsewhere: the block ends in the same
-/// `Figure` `Chart.line` produces, so the whole `Chart.with*` surface — titles, axis labels,
-/// log scales, domains, legend placement, output — composes onto it with `|>` and none of it
-/// has to be restated as a custom operation.
-type PlotBuilder<'r>(rows: 'r[]) =
+/// §9 — the operations of the encoding block that both modes share: everything but the
+/// witness-free forms the unit-optional mode adds. See `PlotBuilder` for the block itself.
+type PlotBuilderBase<'r>(rows: 'r[]) =
 
     /// The dataset, materialized once. `plot` takes a `seq` and every accessor is one
     /// `Array.map` over *this* array, so a lazy or single-shot sequence is enumerated exactly
@@ -852,6 +801,117 @@ type PlotBuilder<'r>(rows: 'r[]) =
     /// The coordinate system the panel is drawn in.
     [<CustomOperation("coord")>]
     member _.Coord(spec: PlotSpec, c: Coord) : PlotSpec = { spec with Coord = c }
+
+/// §9 — **the grammar-of-graphics front door**: one dataset, several channels, several layers.
+///
+/// ```fsharp
+/// plot measurements {
+///     x U.second (fun r -> r.Time)
+///     y U.metre  (fun r -> r.Displacement)
+///     color (fun r -> r.Sample)
+///     size U.kilogram (fun r -> r.Mass)
+///     layerWith GeomPoint (Geom.withOpacity 0.6)
+///     theme Theme.publication
+/// }
+/// ```
+///
+/// ### The witness is stated, and that is permanent (D43)
+///
+/// §9 originally had the block *infer* the unit from the accessor's return type. It cannot be
+/// built: a measure parameter cannot be reflected on, cannot carry a member constraint, and
+/// cannot be dispatched on by overload, because erasure makes `'r -> float&lt;s&gt;` and
+/// `'r -> float&lt;m&gt;` the same signature. So a positional channel takes its witness exactly
+/// as `Chart.line` does — and then **checks the accessor against it**: naming `r.Displacement`
+/// under `U.second` is a compile error, in the measures, at the call site.
+///
+/// **D109 — the witness may also be left out.** Under `open Marey` alone each channel that takes
+/// a witness has a second form without one, `x (fun r -> r.Value)`, over an accessor returning
+/// plain `float`, and the axis is then `U.unspecified` (D127). The forms differ in arity, not in
+/// measure, so the overload is resolvable where D43's was not, and a witness that disagrees with
+/// its accessor is still FS0001 naming both measures. Under `open Marey.UnitsOfMeasure`, `plot`
+/// returns `Marey.UnitsOfMeasure.PlotBuilder`, which has the witness forms only, so leaving one out
+/// is FS3099.
+///
+/// What the block adds is therefore composition and not inference: channels beyond x and y,
+/// layers over one dataset, a stat between the data and the geom, and — from phase 5 — facets.
+/// Everything downstream of the witness is still derived from it and never configured: the
+/// scale, the domain, the prefix, the ticks and both axis titles.
+///
+/// ### A block has one stat, and the stat decides the block's shape (D47)
+///
+/// `fit` adds a least-squares line over the block's own two channels. `histogram`, `density` and
+/// `ecdf` take the x channel *alone* and manufacture y — a count, a density, a probability — so
+/// those blocks have no `y` operation, and refuse a `layer` or an encoding channel rather than
+/// dropping it. The two shapes are why `StatSpec` enumerates rather than abstracting: a single
+/// pipeline node over a channel pair fits the first and forces a dead y channel on the rest.
+///
+/// ### The block is flat, and that is a type check rather than a taste (D44)
+///
+/// There is no nested `encode { … }`. It does not parse — a custom operation and a builder
+/// value cannot share a name — and where it does parse it severs the row type: the inner
+/// builder's `'r` is inferred from the accessors inside the block and never unified with the
+/// data's. A block whose accessors take an unrelated record then compiles and fails later, or
+/// worse, does not.
+///
+/// Flat closes that hole, because `'r` arrives from the data through this type's own parameter.
+/// The mismatch is `error FS0001: This expression was expected to have type 'Row' but here has
+/// type 'Other'`, and `ChannelTests` keeps it a compile *failure* rather than a paragraph.
+///
+/// ### It returns an ordinary `Figure`
+///
+/// Not a private type, not a builder to be finished elsewhere: the block ends in the same
+/// `Figure` `Chart.line` produces, so the whole `Chart.with*` surface — titles, axis labels,
+/// log scales, domains, legend placement, output — composes onto it with `|>` and none of it
+/// has to be restated as a custom operation.
+type PlotBuilder<'r>(rows: 'r[]) =
+    inherit PlotBuilderBase<'r>(rows)
+
+    // ---- D109 — the channels without a witness ------------------------------------------------
+    //
+    // Each is the witness form at `U.unspecified`: no bracket, no prefix, no dimensional claim.
+
+    /// The x channel over plain numbers.
+    [<CustomOperation("x")>]
+    member _.X(spec: PlotSpec, f: 'r -> float) : PlotSpec =
+        { spec with
+            X = Some(Erase.packChannel U.unspecified (Array.map f rows)) }
+
+    /// The y channel over plain numbers.
+    [<CustomOperation("y")>]
+    member _.Y(spec: PlotSpec, f: 'r -> float) : PlotSpec =
+        { spec with
+            Y = Some(Erase.packChannel U.unspecified (Array.map f rows)) }
+
+    /// Colour by plain numbers, over the theme's sequential ramp.
+    [<CustomOperation("colorBy")>]
+    member _.ColorBy(spec: PlotSpec, f: 'r -> float) : PlotSpec =
+        let values = Array.map f rows
+        let scale = Scale.linear U.unspecified (PlotCompile.domainFor values)
+        PlotCompile.append spec (fun theme -> Channel.colorByValue "" theme.Sequential scale values)
+
+    /// `colorBy` over plain numbers and a stated ramp.
+    [<CustomOperation("colorByWith")>]
+    member _.ColorByWith(spec: PlotSpec, ramp: Ramp, f: 'r -> float) : PlotSpec =
+        let values = Array.map f rows
+        let scale = Scale.linear U.unspecified (PlotCompile.domainFor values)
+        PlotCompile.append spec (fun _ -> Channel.colorByValue "" ramp scale values)
+
+    /// Size by plain numbers.
+    [<CustomOperation("size")>]
+    member _.Size(spec: PlotSpec, f: 'r -> float) : PlotSpec =
+        let values = Array.map f rows
+        let scale = Scale.linear U.unspecified (PlotCompile.domainFor values)
+
+        PlotCompile.append spec (fun theme ->
+            let m = theme.MarkerSize
+            Channel.sizeByValue "" (m * 0.5) (m * 3.0) scale values)
+
+    /// `size` over plain numbers, between two stated device diameters.
+    [<CustomOperation("sizeWith")>]
+    member _.SizeWith(spec: PlotSpec, smallest: float<px>, largest: float<px>, f: 'r -> float) : PlotSpec =
+        let values = Array.map f rows
+        let scale = Scale.linear U.unspecified (PlotCompile.domainFor values)
+        PlotCompile.append spec (fun _ -> Channel.sizeByValue "" smallest largest scale values)
 
 /// §9 — the encoding block's one entry point.
 [<AutoOpen>]

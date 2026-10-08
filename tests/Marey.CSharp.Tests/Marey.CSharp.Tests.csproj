@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- M4.6 gate 8 — the C# surface, compiled. A second test project against D66's preference for
+       one, because the thing under test is what a C# compiler accepts, and only a C# project can
+       say so. It is in Marey.slnx, so CI's `dotnet test Marey.slnx` runs it beside Marey.Tests. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Directory.Build.props turns documentation on for the packages; a test assembly's public
+         test methods would each be CS1591 under TreatWarningsAsErrors. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Marey.Plot\Marey.Plot.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Fields\Marey.Fields.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Interact\Marey.Interact.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Backend.Tikz\Marey.Backend.Tikz.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Backend.Skia\Marey.Backend.Skia.fsproj" />
+  </ItemGroup>
+
+</Project>

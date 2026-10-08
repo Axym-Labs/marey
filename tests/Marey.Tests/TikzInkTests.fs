@@ -17,6 +17,7 @@ module Marey.Tests.TikzInkTests
 
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 open Marey.Tests.Raster
 
 // ======================================================================================

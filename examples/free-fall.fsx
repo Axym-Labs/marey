@@ -11,6 +11,7 @@
 #r "nuget: Marey.Backend.Svg"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 // Elapsed time, and the displacement of a body released from rest.
 //

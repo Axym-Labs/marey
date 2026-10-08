@@ -8,6 +8,7 @@ dimensionally-typed visualization system for F#. `netstandard2.1`.
 #r "nuget: Marey.Backend.Skia"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 let figure = Chart.line U.second U.metre t x
 

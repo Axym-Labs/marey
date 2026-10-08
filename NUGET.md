@@ -7,6 +7,7 @@ A plotting library for F# where the compiler checks your units, and the axes lab
 #r "nuget: Marey.Backend.Svg"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 let t = Array.init 24 (fun i -> float i * 0.4<s>)
 let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
@@ -38,6 +39,11 @@ plot trials {
     fit
 }
 ```
+
+Units are opt-in. `open Marey.UnitsOfMeasure` is the mode above, with a witness per axis checked at
+compile time; without it a chart takes plain arrays and a unit per axis that may be stated or left
+out, `Chart.Line(ts, xs, yUnit = U.metre)`, which is also the mode C# has, under `using
+Marey.CSharp`. A unit known only as text is read with `U.parse "V/m"`.
 
 ## The packages
 

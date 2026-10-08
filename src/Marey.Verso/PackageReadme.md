@@ -12,6 +12,7 @@ call:
 #r "nuget: Marey.Html"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 Chart.line U.second U.metre t x
 |> Chart.withTitle "Free fall"

@@ -7,6 +7,7 @@ open System
 open System.Text.RegularExpressions
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 let private surface = Chart.size 480.0 300.0
 let private measurer = TextMeasure.approx

@@ -46,97 +46,103 @@ type VectorGrid<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w> 
       U: float<'u>[]
       W: float<'w>[] }
 
-/// Node coordinates for one grid axis.
-[<RequireQualifiedAccess>]
-module Grid =
+/// D124 — inside a module F# opens with the namespace, so `Grid.linear` reads as it always has
+/// while the CLR name, `Marey.GridAxes+Grid`, stops colliding with Marey.Plot's layout type
+/// `Marey.Grid`, which C# could not tell apart from it (CS0433). See `SiWitnesses` in Marey.Units.
+[<AutoOpen>]
+module GridAxes =
 
-    /// The resolution a function is sampled at when nobody states one: 64 nodes a side. Fixed,
-    /// not derived from the panel's pixel size, so the same figure at two sizes shows the same
-    /// field (D85).
-    [<Literal>]
-    let DefaultCount = 64
+    /// Node coordinates for one grid axis.
+    [<RequireQualifiedAccess>]
+    module Grid =
 
-    /// `count` nodes evenly spaced from `lo` to `hi`, both included. Uniform in panel space on a
-    /// linear axis.
-    let linear<[<Measure>] 'x> (lo: float<'x>) (hi: float<'x>) (count: int) : float<'x>[] =
-        if count < 2 then
-            invalidArg "count" (sprintf "Marey: a grid axis needs at least two nodes, not %d." count)
+        /// The resolution a function is sampled at when nobody states one: 64 nodes a side. Fixed,
+        /// not derived from the panel's pixel size, so the same figure at two sizes shows the same
+        /// field (D85).
+        [<Literal>]
+        let DefaultCount = 64
 
-        if not (hi > lo) then
-            invalidArg "hi" "Marey: a grid axis needs hi > lo."
+        /// `count` nodes evenly spaced from `lo` to `hi`, both included. Uniform in panel space on a
+        /// linear axis.
+        let linear<[<Measure>] 'x> (lo: float<'x>) (hi: float<'x>) (count: int) : float<'x>[] =
+            if count < 2 then
+                invalidArg "count" (sprintf "Marey: a grid axis needs at least two nodes, not %d." count)
 
-        Array.init count (fun i ->
-            if i = count - 1 then hi
-            else lo + (hi - lo) * (float i / float (count - 1)))
+            if not (hi > lo) then
+                invalidArg "hi" "Marey: a grid axis needs hi > lo."
 
-    /// `count` nodes evenly spaced in log from `lo` to `hi`, both positive and both included.
-    /// Uniform in panel space on a log axis, of any base.
-    let log<[<Measure>] 'x> (lo: float<'x>) (hi: float<'x>) (count: int) : float<'x>[] =
-        if count < 2 then
-            invalidArg "count" (sprintf "Marey: a grid axis needs at least two nodes, not %d." count)
+            Array.init count (fun i ->
+                if i = count - 1 then hi
+                else lo + (hi - lo) * (float i / float (count - 1)))
 
-        if not (float lo > 0.0 && hi > lo) then
-            invalidArg "lo" "Marey: a log grid axis needs 0 < lo < hi."
+        /// `count` nodes evenly spaced in log from `lo` to `hi`, both positive and both included.
+        /// Uniform in panel space on a log axis, of any base.
+        let log<[<Measure>] 'x> (lo: float<'x>) (hi: float<'x>) (count: int) : float<'x>[] =
+            if count < 2 then
+                invalidArg "count" (sprintf "Marey: a grid axis needs at least two nodes, not %d." count)
 
-        let a = Math.Log(float lo)
-        let b = Math.Log(float hi)
+            if not (float lo > 0.0 && hi > lo) then
+                invalidArg "lo" "Marey: a log grid axis needs 0 < lo < hi."
 
-        Array.init count (fun i ->
-            if i = 0 then lo
-            elif i = count - 1 then hi
-            else LanguagePrimitives.FloatWithMeasure<'x>(Math.Exp(a + (b - a) * (float i / float (count - 1)))))
+            let a = Math.Log(float lo)
+            let b = Math.Log(float hi)
 
-    /// Check an axis: at least two nodes, finite, strictly increasing.
-    let internal check (name: string) (xs: float[]) =
-        if xs.Length < 2 then
-            invalidArg name (sprintf "Marey: a grid axis needs at least two nodes; %s has %d." name xs.Length)
+            Array.init count (fun i ->
+                if i = 0 then lo
+                elif i = count - 1 then hi
+                else LanguagePrimitives.FloatWithMeasure<'x>(Math.Exp(a + (b - a) * (float i / float (count - 1)))))
 
-        for i in 0 .. xs.Length - 1 do
-            if Double.IsNaN xs.[i] || Double.IsInfinity xs.[i] then
-                invalidArg name (sprintf "Marey: %s.[%d] is not finite." name i)
+        /// Check an axis: at least two nodes, finite, strictly increasing.
+        let internal check (name: string) (xs: float[]) =
+            if xs.Length < 2 then
+                invalidArg name (sprintf "Marey: a grid axis needs at least two nodes; %s has %d." name xs.Length)
 
-            if i > 0 && not (xs.[i] > xs.[i - 1]) then
-                invalidArg name (sprintf "Marey: %s must be strictly increasing; %s.[%d] is not." name name i)
+            for i in 0 .. xs.Length - 1 do
+                if Double.IsNaN xs.[i] || Double.IsInfinity xs.[i] then
+                    invalidArg name (sprintf "Marey: %s.[%d] is not finite." name i)
 
-    /// The cell `[xs.[k], xs.[k+1]]` holding `x`, and the fraction across it; `None` outside the
-    /// axis. Binary search rather than `Array.BinarySearch`, which Fable does not carry.
-    let internal locate (xs: float[]) (x: float) : struct (int * float) voption =
-        let n = xs.Length
+                if i > 0 && not (xs.[i] > xs.[i - 1]) then
+                    invalidArg name (sprintf "Marey: %s must be strictly increasing; %s.[%d] is not." name name i)
 
-        if Double.IsNaN x || x < xs.[0] || x > xs.[n - 1] then
-            ValueNone
-        else
-            let mutable lo = 0
-            let mutable hi = n - 1
+        /// The cell `[xs.[k], xs.[k+1]]` holding `x`, and the fraction across it; `None` outside the
+        /// axis. Binary search rather than `Array.BinarySearch`, which Fable does not carry.
+        let internal locate (xs: float[]) (x: float) : struct (int * float) voption =
+            let n = xs.Length
 
-            while hi - lo > 1 do
-                let mid = (lo + hi) / 2
+            if Double.IsNaN x || x < xs.[0] || x > xs.[n - 1] then
+                ValueNone
+            else
+                let mutable lo = 0
+                let mutable hi = n - 1
 
-                if xs.[mid] <= x then lo <- mid else hi <- mid
+                while hi - lo > 1 do
+                    let mid = (lo + hi) / 2
 
-            ValueSome(struct (lo, (x - xs.[lo]) / (xs.[lo + 1] - xs.[lo])))
+                    if xs.[mid] <= x then lo <- mid else hi <- mid
 
-    let inline internal raw (xs: float<'u>[]) : float[] = xs |> Array.map float
+                ValueSome(struct (lo, (x - xs.[lo]) / (xs.[lo + 1] - xs.[lo])))
 
-    let inline internal tagAll<[<Measure>] 'u> (xs: float[]) : float<'u>[] =
-        xs |> Array.map LanguagePrimitives.FloatWithMeasure<'u>
+        let inline internal raw (xs: float<'u>[]) : float[] = xs |> Array.map float
 
-    let internal isMissing (v: float) = Double.IsNaN v || Double.IsInfinity v
+        let inline internal tagAll<[<Measure>] 'u> (xs: float[]) : float<'u>[] =
+            xs |> Array.map LanguagePrimitives.FloatWithMeasure<'u>
 
-    /// Bilinear read of row-major `values` on the grid `xs` × `ys`. NaN outside the grid: a
-    /// field is not extrapolated past where it was sampled.
-    let internal bilinear (xs: float[]) (ys: float[]) (values: float[]) (x: float) (y: float) : float =
-        match locate xs x, locate ys y with
-        | ValueSome(struct (i, fx)), ValueSome(struct (j, fy)) ->
-            let nx = xs.Length
-            let v00 = values.[j * nx + i]
-            let v10 = values.[j * nx + i + 1]
-            let v01 = values.[(j + 1) * nx + i]
-            let v11 = values.[(j + 1) * nx + i + 1]
-            let a = v00 + (v10 - v00) * fx
-            let b = v01 + (v11 - v01) * fx
-            a + (b - a) * fy
-        | _ -> nan
+        let internal isMissing (v: float) = Double.IsNaN v || Double.IsInfinity v
+
+        /// Bilinear read of row-major `values` on the grid `xs` × `ys`. NaN outside the grid: a
+        /// field is not extrapolated past where it was sampled.
+        let internal bilinear (xs: float[]) (ys: float[]) (values: float[]) (x: float) (y: float) : float =
+            match locate xs x, locate ys y with
+            | ValueSome(struct (i, fx)), ValueSome(struct (j, fy)) ->
+                let nx = xs.Length
+                let v00 = values.[j * nx + i]
+                let v10 = values.[j * nx + i + 1]
+                let v01 = values.[(j + 1) * nx + i]
+                let v11 = values.[(j + 1) * nx + i + 1]
+                let a = v00 + (v10 - v00) * fx
+                let b = v01 + (v11 - v01) * fx
+                a + (b - a) * fy
+            | _ -> nan
 
 [<RequireQualifiedAccess>]
 module ScalarGrid =

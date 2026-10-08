@@ -8,6 +8,7 @@ system for F#. **A slider over kelvin hands the view kelvin, and labels itself i
 #r "nuget: Marey.Html"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 let ringdown (f: float<Hz>) (damped: bool) =
     let t = Array.init 200 (fun i -> float i * 0.01<s>)

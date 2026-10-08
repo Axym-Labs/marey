@@ -37,6 +37,7 @@ open System.Text
 open System.Text.RegularExpressions
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 /// The assemblies the guide's examples need, in dependency order. They sit beside the test
 /// binary because the test project references all of them.
@@ -78,6 +79,18 @@ let private blocks (markdown: string) =
     |> Seq.map (fun m -> m.Groups.[1].Value)
     |> Seq.toArray
 
+/// D109 — blocks fenced ```` ```fsharp optional ````, in the unit-optional mode. They are a second
+/// session, run in order like the first, because the first opens `Marey.UnitsOfMeasure` in §1 and
+/// under that `open` a unit-optional constructor is a compile error by design. GitHub highlights
+/// the info string by its first word, so a reader sees F#.
+let private optionalPattern =
+    Regex(@"^```fsharp optional\r?$\r?\n(.*?)^```\r?$", RegexOptions.Multiline ||| RegexOptions.Singleline)
+
+let private optionalBlocks (markdown: string) =
+    optionalPattern.Matches markdown
+    |> Seq.map (fun m -> m.Groups.[1].Value)
+    |> Seq.toArray
+
 /// `dotnet` on PATH, or `None`.
 ///
 /// This was a second copy of `TexToolchain.onPath` — its own doc comment said so — and it is now
@@ -101,8 +114,8 @@ let ``the guide has examples, and they are the ones being checked`` () =
     Assert.DoesNotContain("Chart.line U.second U.metre t t", String.concat "\n" found)
     Assert.Contains("fsharp-error", markdown)
 
-[<Fact>]
-let ``every example in the guide compiles and runs`` () =
+/// Run one session: the assemblies, then the blocks in order, under `dotnet fsi`.
+let private runSession (name: string) (pick: string -> string[]) =
     let tool = dotnetTool.Force()
 
     match tool.Path with
@@ -118,7 +131,7 @@ let ``every example in the guide compiles and runs`` () =
         for name in assemblies do
             script.AppendLine(sprintf "#r @\"%s\"" (Path.Combine(binDir, name + ".dll"))) |> ignore
 
-        blocks markdown
+        pick markdown
         |> Array.iteri (fun i block ->
             script.AppendLine(sprintf "// ---- guide.md block %d ----" (i + 1)) |> ignore
 
@@ -126,7 +139,7 @@ let ``every example in the guide compiles and runs`` () =
                 if not (line.StartsWith("#r \"nuget:", StringComparison.Ordinal)) then
                     script.AppendLine line |> ignore)
 
-        let scriptPath = Path.Combine(Path.GetTempPath(), "marey-guide-check.fsx")
+        let scriptPath = Path.Combine(Path.GetTempPath(), sprintf "marey-guide-check%s.fsx" name)
         File.WriteAllText(scriptPath, script.ToString(), UTF8Encoding false)
 
         let run =
@@ -151,3 +164,17 @@ let ``every example in the guide compiles and runs`` () =
 
         // The examples print; an empty run would mean the script compiled to nothing useful.
         Assert.False(String.IsNullOrWhiteSpace stdout, "the guide ran but produced no output")
+
+[<Fact>]
+let ``every example in the guide compiles and runs`` () = runSession "" blocks
+
+[<Fact>]
+let ``the unit-optional examples are there, and checked apart`` () =
+    let markdown = File.ReadAllText(guidePath.Force(), Encoding.UTF8)
+    let found = optionalBlocks markdown
+    Assert.True(found.Length >= 3, sprintf "expected at least 3 `fsharp optional` blocks, found %d" found.Length)
+    // Not swept into the first session, where they would fail by design.
+    Assert.DoesNotContain(found.[0], String.concat "\n" (blocks markdown))
+
+[<Fact>]
+let ``every unit-optional example in the guide compiles and runs`` () = runSession "-optional" optionalBlocks

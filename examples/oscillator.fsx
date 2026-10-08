@@ -16,6 +16,7 @@
 #r "nuget: Marey.Backend.Svg"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 // x(t) = A·e^(−t/τ)·cos(ωt) — a mass on a spring with light damping.
 let amplitude = 12.0e-3<m>

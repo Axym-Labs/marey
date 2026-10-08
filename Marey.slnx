@@ -16,6 +16,7 @@
     <Project Path="src/Marey.Verso/Marey.Verso.fsproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Marey.CSharp.Tests/Marey.CSharp.Tests.csproj" />
     <Project Path="tests/Marey.Tests/Marey.Tests.fsproj" />
   </Folder>
 </Solution>

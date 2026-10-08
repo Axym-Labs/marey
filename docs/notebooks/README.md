@@ -15,6 +15,7 @@ with `<svg`. The SVG backend produces exactly that, so this renders in a stock V
 #r "nuget: Marey.Html"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 Chart.line U.second U.metre t x
 |> Chart.withTitle "Free fall"

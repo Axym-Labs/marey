@@ -9,8 +9,34 @@ namespace Marey
 ///
 /// `Symbol` is the unit as *written by whoever declared it* — it is a presentation hint, and
 /// composing it is wrong (§2.2, §12.6). `Dim` is the truth.
+/// D111 — **the witness as a value that may be absent**: everything a `U<'u>` carries at run time,
+/// and nothing typed.
+///
+/// The unit-optional mode takes its witness as an optional method parameter, and an optional
+/// parameter cannot be measure-generic, because an omitted `'u` has nothing to resolve to. This is
+/// the non-generic type it is declared at instead. F# inserts the coercion from `U<m>` at a method
+/// argument, so `xUnit = U.metre` needs no annotation; C# already sees `U<'u>` as one non-generic
+/// class, and this is the same thing spelled for F#.
+///
+/// `[<AllowNullLiteral>]` because an omitted parameter has to be *something* to C#: F#'s own
+/// `?xUnit` compiles to an `FSharpOption` that a C# caller must pass by hand, and
+/// `DefaultParameterValue(null)` is the spelling both languages read as optional. `null` means
+/// `U.unspecified`, and `U.erase` is where that is decided, once.
+[<AllowNullLiteral>]
+type IUnit =
+    abstract Symbol: string
+    abstract Dim: Dim
+    abstract Factors: (string * int) list
+    abstract ToSI: float
+    abstract OffsetSI: float
+    /// False only for `U.unspecified` and what is composed from it — see `U.Stated`.
+    abstract Stated: bool
+
 [<Sealed>]
-type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, factors: (string * int) list) =
+type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, factors: (string * int) list, stated: bool) =
+
+    /// A unit built by composition, which records its factors — what `U.mul` and friends pass.
+    new(symbol, dim, toSI, offsetSI, factors) = U<'u>(symbol, dim, toSI, offsetSI, factors, true)
 
     /// A unit as *declared*: it records no composition, and `Factors` is empty. This is the
     /// constructor every witness in `Marey.Units` uses; only `U.mul` and friends pass factors.
@@ -58,7 +84,26 @@ type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, f
     /// meaningful product or quotient — see `U.mul`.
     member _.IsAffine = offsetSI <> 0.0
 
+    /// D127 — whether anyone *said* what this unit is. True for every witness but
+    /// `U.unspecified` and what is composed from it.
+    ///
+    /// **Unspecified is not dimensionless.** `U.one` claims the data has no dimension, and
+    /// `Prefix` and the axis-sharing check act on that claim: a `U.one` layer over metres is an
+    /// error. Revenue in dollars, read from a spreadsheet by a caller who never stated a unit,
+    /// is neither dimensionless nor metres, and the honest thing for an axis to do with it is
+    /// to make no claim at all. An unstated axis prints no bracket, takes no prefix, and shares
+    /// with anything.
+    member _.Stated = stated
+
     override _.ToString() = symbol
+
+    interface IUnit with
+        member _.Symbol = symbol
+        member _.Dim = dim
+        member _.Factors = factors
+        member _.ToSI = toSI
+        member _.OffsetSI = offsetSI
+        member _.Stated = stated
 
 /// §12.1 — **The algebra lives in module-level functions with explicit `[<Measure>]` type
 /// parameters, and it must never move into operator overloads on `U<'u>`.**
@@ -139,7 +184,8 @@ module U =
             Dim.add a.Dim b.Dim,
             a.ToSI * b.ToSI,
             0.0,
-            mergeFactors (factorsOf a.Symbol a.Factors) (factorsOf b.Symbol b.Factors)
+            mergeFactors (factorsOf a.Symbol a.Factors) (factorsOf b.Symbol b.Factors),
+            a.Stated && b.Stated
         )
 
     /// Quotient of two units. Offset is dropped: the quotient of an affine unit is not
@@ -151,7 +197,8 @@ module U =
             Dim.sub a.Dim b.Dim,
             a.ToSI / b.ToSI,
             0.0,
-            mergeFactors (factorsOf a.Symbol a.Factors) (scaleFactors -1 (factorsOf b.Symbol b.Factors))
+            mergeFactors (factorsOf a.Symbol a.Factors) (scaleFactors -1 (factorsOf b.Symbol b.Factors)),
+            a.Stated && b.Stated
         )
 
     /// Reciprocal. `recip second : U<1/s>` — frequency, and the type of a frame rate.
@@ -161,7 +208,8 @@ module U =
             Dim.neg a.Dim,
             1.0 / a.ToSI,
             0.0,
-            scaleFactors -1 (factorsOf a.Symbol a.Factors)
+            scaleFactors -1 (factorsOf a.Symbol a.Factors),
+            a.Stated
         )
 
     /// Integer powers, spelled out. There is no way to write `U<'a^n>` for a runtime `n`, so
@@ -173,7 +221,8 @@ module U =
             Dim.pow 2 a.Dim,
             a.ToSI * a.ToSI,
             0.0,
-            scaleFactors 2 (factorsOf a.Symbol a.Factors)
+            scaleFactors 2 (factorsOf a.Symbol a.Factors),
+            a.Stated
         )
 
     let cube<[<Measure>] 'a> (a: U<'a>) : U<'a^3> =
@@ -182,12 +231,35 @@ module U =
             Dim.pow 3 a.Dim,
             a.ToSI * a.ToSI * a.ToSI,
             0.0,
-            scaleFactors 3 (factorsOf a.Symbol a.Factors)
+            scaleFactors 3 (factorsOf a.Symbol a.Factors),
+            a.Stated
         )
 
     /// The dimensionless unit. `float = float<1>`, which is why this is also what a ratio,
     /// a count and a probability all get.
     let one: U<1> = U<1>("", Dim.zero, 1.0, 0.0)
+
+    /// D127 — the unit nobody stated: what the unit-optional mode draws an axis in when no
+    /// witness was given. No bracket, no prefix, and no claim for the axis-sharing check to act
+    /// on. **Not `one`**, which says the quantity has no dimension — see `U.Stated`.
+    let unspecified: U<1> = U<1>("", Dim.zero, 1.0, 0.0, [], false)
+
+    /// D128 — **a runtime unit, carried at measure 1.** The witness of the unit-optional mode,
+    /// where data is `float[]` and the unit arrives as a value: everything `u` carries at run
+    /// time, under a measure that says nothing. `null` is `unspecified`.
+    ///
+    /// After the erasure boundary (§2.3) the result is indistinguishable from `u`, which is why
+    /// one measure-generic implementation serves both modes: a stat that derives a unit derives
+    /// it from these runtime fields, so `density` over `erase U.metre` still reports `m⁻¹`. What
+    /// is given up is the compile-time half, and that is the mode's definition.
+    let erase (u: IUnit) : U<1> =
+        match u with
+        | null -> unspecified
+        // Measures are erased, so at run time every `U<'u>` *is* a `U<1>`, and the witness the
+        // caller passed is returned as it is. Only an `IUnit` implemented elsewhere is copied.
+        // Not `:? U<1>`, which FS1240 refuses for saying the same thing.
+        | u when u.GetType() = typeof<U<1>> -> unbox<U<1>> (box u)
+        | u -> U<1>(u.Symbol, u.Dim, u.ToSI, u.OffsetSI, u.Factors, u.Stated)
 
     let symbol (u: U<'u>) = u.Symbol
     let dim (u: U<'u>) = u.Dim
@@ -197,7 +269,7 @@ module U =
     /// built: `scaled "km" 1000.0 metre`. The measure is *unchanged*, which is correct —
     /// kilometres and metres are the same measure, and the difference is a runtime factor.
     let scaled<[<Measure>] 'a> (newSymbol: string) (factor: float) (a: U<'a>) : U<'a> =
-        U<'a>(newSymbol, a.Dim, a.ToSI * factor, a.OffsetSI)
+        U<'a>(newSymbol, a.Dim, a.ToSI * factor, a.OffsetSI, [], a.Stated)
 
     /// Value in SI base units, measure erased. Honours the affine offset.
     let toSI (u: U<'u>) (x: float<'u>) : float = float x * u.ToSI + u.OffsetSI

@@ -8,6 +8,7 @@ visualization system for F#. This is the package most people install.
 #r "nuget: Marey.Backend.Svg"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 let t = Array.init 24 (fun i -> float i * 0.4<s>)
 let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
@@ -26,10 +27,15 @@ out — and plotting metres against metres on these axes is a compile error.
 
 - **`Chart`** — twelve geoms: `line`, `scatter`, `area`, `bar`, `errorbar`, `step`, `ribbon`,
   `tile`, `rect`, `image`, `segment` and `text`, with box plots and violins by category under
-  `Chart.Category`. Most have an `add*`
-  that layers onto the last panel, and `Chart.Plain` covers data that genuinely has no units.
+  `Chart.Category`. Two modes: under `open Marey.UnitsOfMeasure` each takes a witness per axis,
+  checked at compile time, and most have an `add*` that layers onto the last panel; under `open
+  Marey` alone, `Chart.Line(xs, ys, yUnit = U.metre)` takes plain arrays and units that may be
+  left out, and `Chart.add` layers any figure onto another.
 - **The `plot` encoding block** — for data that is a table rather than two arrays. Declares x, y,
-  colour, shape and size in one place, with each dimensioned channel checked against its witness.
+  colour, shape and size in one place, with each dimensioned channel checked against its witness;
+  without `Marey.UnitsOfMeasure`, a channel may also leave its witness out.
+- **C#.** Extension methods on `Figure` and the `Category`, `Figures` and renderer-delegate doors,
+  in the `Marey.CSharp` namespace.
 - **Channels.** One colour or marker shape per category, with a legend that names the levels; or a
   colour or size driven by a *quantity*, which brings a colorbar labelled from its unit witness.
 - **Statistics** — histogram, kernel density, ECDF, least-squares fit, and a five-number summary.

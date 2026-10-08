@@ -1,6 +1,7 @@
 namespace Marey
 
 open System
+open System.Runtime.InteropServices
 
 // ======================================================================================
 // D84 — §8.1'S FIELDS, AND THE ONE §8.1 COULD NOT TYPE.
@@ -288,9 +289,7 @@ module Field =
         | Some(lo, _) -> float lo - 0.5, float lo + 0.5
         | None -> 0.0, 1.0
 
-    /// A scalar grid as an image coloured along `ramp`, with a colorbar in `'v` (D91). `smooth`
-    /// interpolates between nodes; otherwise every node is a flat cell.
-    let heatmapWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+    let internal heatmapWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ramp: Ramp)
         (smooth: bool)
         (ux: U<'x>)
@@ -298,10 +297,9 @@ module Field =
         (uv: U<'v>)
         (g: ScalarGrid<'x, 'y, 'v>)
         : Figure =
-        layerOf ux uy (FieldHeatmap smooth) g |> Chart.colorByWith ramp uv g.Values
+        layerOf ux uy (FieldHeatmap smooth) g |> Marey.UnitsOfMeasure.Chart.colorByWith ramp uv g.Values
 
-    /// `heatmapWith` along the theme's sequential ramp, interpolated between nodes.
-    let heatmap<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+    let internal heatmap<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ux: U<'x>)
         (uy: U<'y>)
         (uv: U<'v>)
@@ -309,8 +307,7 @@ module Field =
         : Figure =
         heatmapWith Theme.initial.Sequential true ux uy uv g
 
-    /// Contour lines at stated levels, in the theme's foreground colour (D88).
-    let contoursAt<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+    let internal contoursAt<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (levels: float<'v>[])
         (ux: U<'x>)
         (uy: U<'y>)
@@ -320,17 +317,14 @@ module Field =
 
         fig |> Chart.withStyle (fun st -> { st with Color = fig.Theme.Foreground; Width = st.Width * 0.6 })
 
-    /// Contour lines at the nice numbers the field's own range would be ticked at — about eight
-    /// of them. A field in volts gets equipotentials at round numbers of volts.
-    let contours<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+    let internal contours<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ux: U<'x>)
         (uy: U<'y>)
         (g: ScalarGrid<'x, 'y, 'v>)
         : Figure =
         contoursAt (levelsFor 8 (valueRange g) |> Array.map LanguagePrimitives.FloatWithMeasure<'v>) ux uy g
 
-    /// Filled bands between stated levels, coloured along `ramp` with a colorbar in `'v` (D88).
-    let bandsWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+    let internal bandsWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ramp: Ramp)
         (levels: float<'v>[])
         (ux: U<'x>)
@@ -340,11 +334,9 @@ module Field =
         : Figure =
         layerOf ux uy (FieldBands(raw levels)) g
         |> Chart.withStyle (fun st -> { st with FillOpacity = 1.0 })
-        |> Chart.colorByWith ramp uv g.Values
+        |> Marey.UnitsOfMeasure.Chart.colorByWith ramp uv g.Values
 
-    /// Filled bands at nice levels widened to cover the field's whole range, along the theme's
-    /// sequential ramp.
-    let bands<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+    let internal bands<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ux: U<'x>)
         (uy: U<'y>)
         (uv: U<'v>)
@@ -386,14 +378,7 @@ module Field =
           Label = UnitDisplay.quantity Unicode UnitRegistry.si true Ticks.formatGeneral uv (LanguagePrimitives.FloatWithMeasure value)
           Largest = largest }
 
-    /// A quiver: an arrow at every node, its length the vector's magnitude through the quiver's
-    /// own scale, and a key in the plot area's corner saying what one length means — `2 m/s`,
-    /// set with the prefix the value would be ticked in (D87). Both components must be in one
-    /// unit, `'v`, because a length is a magnitude; a phase space has `directions` instead.
-    ///
-    /// Arrows are drawn at every node, so sample a quiver at the density it should be read at — a
-    /// coarser grid than a heatmap's.
-    let quiver<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+    let internal quiver<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ux: U<'x>)
         (uy: U<'y>)
         (uv: U<'v>)
@@ -408,19 +393,15 @@ module Field =
 
         arrowLayerOf ux uy (FieldQuiver key) magnitude g
 
-    /// `quiver`, with each arrow also coloured by its magnitude along the theme's sequential
-    /// ramp, and a colorbar in `'v`.
-    let quiverBy<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+    let internal quiverBy<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ux: U<'x>)
         (uy: U<'y>)
         (uv: U<'v>)
         (g: VectorGrid<'x, 'y, 'v, 'v>)
         : Figure =
-        quiver ux uy uv g |> Chart.colorBy uv (VectorGrid.magnitude g).Values
+        quiver ux uy uv g |> Marey.UnitsOfMeasure.Chart.colorBy uv (VectorGrid.magnitude g).Values
 
-    /// A direction field: an arrow at every node, all one length. Any vector grid, including a
-    /// phase space whose two components are in different units and so has no magnitude to draw.
-    let directions<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
+    let internal directions<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
         (ux: U<'x>)
         (uy: U<'y>)
         (g: VectorGrid<'x, 'y, 'u, 'w>)
@@ -452,13 +433,7 @@ module Field =
                 g.U
                 g.W }
 
-    /// Evenly spaced streamlines `separation` apart on the page, with arrowheads pointing
-    /// downstream (D89). Any vector grid, a phase space included: a streamline is a curve, and
-    /// needs a direction, not a magnitude.
-    ///
-    /// The separation is in **pixels**, because evenly spaced is a visual property. The same
-    /// figure at a larger size therefore draws more lines, each the same distance apart.
-    let streamlinesWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
+    let internal streamlinesWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
         (separation: float<px>)
         (ux: U<'x>)
         (uy: U<'y>)
@@ -466,17 +441,14 @@ module Field =
         : Figure =
         arrowLayerOf ux uy (FieldStreamlines separation) (presentOf g) g
 
-    /// `streamlinesWith` at `DefaultSeparation`.
-    let streamlines<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
+    let internal streamlines<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
         (ux: U<'x>)
         (uy: U<'y>)
         (g: VectorGrid<'x, 'y, 'u, 'w>)
         : Figure =
         streamlinesWith (DefaultSeparation * 1.0<px>) ux uy g
 
-    /// Streamlines coloured by the field's magnitude — each line by its mean along it — with a
-    /// colorbar in `'v`. Both components in one unit, for `quiver`'s reason.
-    let streamlinesBy<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+    let internal streamlinesBy<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ux: U<'x>)
         (uy: U<'y>)
         (uv: U<'v>)
@@ -485,7 +457,7 @@ module Field =
         let magnitude = VectorGrid.magnitude g
 
         arrowLayerOf ux uy (FieldStreamlines(DefaultSeparation * 1.0<px>)) magnitude g
-        |> Chart.colorBy uv magnitude.Values
+        |> Marey.UnitsOfMeasure.Chart.colorBy uv magnitude.Values
 
     // ---- Line-integral convolution (D90) ------------------------------------------------------
 
@@ -513,23 +485,7 @@ module Field =
         layerWith ux uy (FieldLic options) (raw g.U) (raw g.W) values
         |> Chart.withStyle (fun st -> { st with Color = Color.white })
 
-    /// A line-integral convolution in grey: noise smeared along the field's streamlines, so the
-    /// texture is the flow at every pixel (D90). Any vector grid, a phase space included, because
-    /// it needs a direction and not a magnitude.
-    ///
-    /// **It is a raster at the plot area's resolution** times `options.Oversample`, on every
-    /// backend. SVG embeds it and TikZ writes it beside the document; neither can do better than
-    /// the pixels it was computed at, so a figure meant for print states an oversample of 2 or 3.
-    ///
-    /// **It is deterministic.** The noise comes from `Rng` seeded with `options.Seed`, so a seed,
-    /// a field and a plot size draw the same image every time, on every runtime. A different seed
-    /// draws the same flow in different grain.
-    ///
-    /// **It costs** 70 ms for a 480 × 300 figure, 0.3 s at 960 × 600 and 1.4 s at 1920 × 1200,
-    /// measured on one core of a Ryzen 9 9950X with the default 20 px kernel. The cost is close to
-    /// linear in the raster's pixel count, so it quadruples with each doubling of the
-    /// oversample.
-    let licWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
+    let internal licWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
         (options: LicOptions)
         (ux: U<'x>)
         (uy: U<'y>)
@@ -537,19 +493,14 @@ module Field =
         : Figure =
         licLayerOf options ux uy (presentOf g) g
 
-    /// `licWith licDefaults`.
-    let lic<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
+    let internal lic<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
         (ux: U<'x>)
         (uy: U<'y>)
         (g: VectorGrid<'x, 'y, 'u, 'w>)
         : Figure =
         licWith licDefaults ux uy g
 
-    /// `licWith`, coloured by the field's magnitude along the theme's sequential ramp, with a
-    /// colorbar in `'v`. The texture darkens a pixel to no less than a fifth of its colour, so
-    /// the colorbar still reads in the darkest strokes. Both components in one unit, for
-    /// `quiver`'s reason.
-    let licByWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+    let internal licByWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (options: LicOptions)
         (ux: U<'x>)
         (uy: U<'y>)
@@ -557,13 +508,166 @@ module Field =
         (g: VectorGrid<'x, 'y, 'v, 'v>)
         : Figure =
         let magnitude = VectorGrid.magnitude g
-        licLayerOf options ux uy magnitude g |> Chart.colorBy uv magnitude.Values
+        licLayerOf options ux uy magnitude g |> Marey.UnitsOfMeasure.Chart.colorBy uv magnitude.Values
 
-    /// `licByWith licDefaults`.
-    let licBy<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
+    let internal licBy<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ux: U<'x>)
         (uy: U<'y>)
         (uv: U<'v>)
         (g: VectorGrid<'x, 'y, 'v, 'v>)
         : Figure =
         licByWith licDefaults ux uy uv g
+
+/// D109, D111 — the field geoms in the unit-optional mode: a grid at measure 1, and a unit per
+/// axis and for the value that may each be stated or left out. `Field.Heatmap(g, xUnit = U.metre,
+/// yUnit = U.metre, valueUnit = U.kelvin)`. A type beside `module Field`, as `type Chart` stands beside
+/// `module Chart`: sampling, derivatives and grids stay in the module and work at measure 1 unchanged.
+/// Every member is one line over the measure-generic implementation (D128).
+[<AbstractClass; Sealed>]
+type Field =
+
+    static member HeatmapWith
+        (
+            ramp: Ramp,
+            smooth: bool,
+            g: ScalarGrid<1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] valueUnit: IUnit
+        ) : Figure =
+        Field.heatmapWith ramp smooth (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) g
+
+    static member Heatmap
+        (
+            g: ScalarGrid<1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] valueUnit: IUnit
+        ) : Figure =
+        Field.heatmap (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) g
+
+    static member ContoursAt
+        (
+            levels: float[],
+            g: ScalarGrid<1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Field.contoursAt levels (U.erase xUnit) (U.erase yUnit) g
+
+    static member Contours
+        (
+            g: ScalarGrid<1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Field.contours (U.erase xUnit) (U.erase yUnit) g
+
+    static member BandsWith
+        (
+            ramp: Ramp,
+            levels: float[],
+            g: ScalarGrid<1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] valueUnit: IUnit
+        ) : Figure =
+        Field.bandsWith ramp levels (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) g
+
+    static member Bands
+        (
+            g: ScalarGrid<1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] valueUnit: IUnit
+        ) : Figure =
+        Field.bands (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) g
+
+    static member Quiver
+        (
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] valueUnit: IUnit
+        ) : Figure =
+        Field.quiver (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) g
+
+    static member QuiverBy
+        (
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] valueUnit: IUnit
+        ) : Figure =
+        Field.quiverBy (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) g
+
+    static member Directions
+        (
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Field.directions (U.erase xUnit) (U.erase yUnit) g
+
+    static member StreamlinesWith
+        (
+            separation: float<px>,
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Field.streamlinesWith separation (U.erase xUnit) (U.erase yUnit) g
+
+    static member Streamlines
+        (
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Field.streamlines (U.erase xUnit) (U.erase yUnit) g
+
+    static member StreamlinesBy
+        (
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] valueUnit: IUnit
+        ) : Figure =
+        Field.streamlinesBy (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) g
+
+    static member LicWith
+        (
+            options: LicOptions,
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Field.licWith options (U.erase xUnit) (U.erase yUnit) g
+
+    static member Lic
+        (
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Field.lic (U.erase xUnit) (U.erase yUnit) g
+
+    static member LicByWith
+        (
+            options: LicOptions,
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] valueUnit: IUnit
+        ) : Figure =
+        Field.licByWith options (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) g
+
+    static member LicBy
+        (
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] valueUnit: IUnit
+        ) : Figure =
+        Field.licBy (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) g
+

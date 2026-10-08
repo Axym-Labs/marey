@@ -9,6 +9,7 @@ says so.**
 #r "nuget: Marey.Backend.Svg"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 // Two line charges: a potential in volts, sampled over metres.
 let phi (p: Vec2<m>) =

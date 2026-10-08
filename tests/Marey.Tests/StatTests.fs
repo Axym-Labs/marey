@@ -16,6 +16,7 @@ module Marey.Tests.StatTests
 
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 // ======================================================================================
 // Fixtures

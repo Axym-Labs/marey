@@ -40,10 +40,10 @@ let uncertainty = rows |> Array.map (fun (_, _, u) -> u)
 
 printfn "%d annual means, %g to %g" rows.Length (Array.head years) (Array.last years)
 
-// Both axes are unitless, so this is the `Chart.Plain` door: the same geoms, without the witness
-// arguments. The labels are yours because there is no unit to derive them from.
+// No unit is stated on either axis, so neither claims one: no bracket, no prefix, and the labels
+// are yours because there is no unit to derive them from.
 let figure =
-    Chart.Plain.errorbar years mean uncertainty
+    Chart.Errorbar(years, mean, uncertainty)
     |> Chart.withName "annual mean ±1σ"
     |> Chart.withXLabel "year"
     |> Chart.withYLabel "CO₂ mole fraction [ppm]"

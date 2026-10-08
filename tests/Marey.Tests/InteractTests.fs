@@ -8,6 +8,7 @@ open System.IO
 open System.Text
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 let private fieldUnit = U.div Derived.volt U.metre
 
@@ -68,7 +69,7 @@ module ``a control is typed`` =
         for name in [ "Marey.Core"; "Marey.Units"; "Marey.Anim"; "Marey.Plot"; "Marey.Interact" ] do
             sb.AppendLine(sprintf "#r @\"%s\"" (Path.Combine(binDir, name + ".dll"))) |> ignore
 
-        sb.AppendLine("open Marey").ToString()
+        sb.AppendLine("open Marey").AppendLine("open Marey.UnitsOfMeasure").ToString()
 
     let private compile (name: string) (body: string) =
         let tool = Tools.dotnet.Force()

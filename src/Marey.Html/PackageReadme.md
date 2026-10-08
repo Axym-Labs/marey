@@ -11,6 +11,7 @@ backend with it.
 #r "nuget: Marey.Html"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 let figure = Chart.line U.second U.metre t x
 

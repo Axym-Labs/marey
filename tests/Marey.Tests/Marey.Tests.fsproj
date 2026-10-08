@@ -68,6 +68,7 @@
     <Compile Include="InteractTests.fs" />
     <Compile Include="KeyTests.fs" />
     <Compile Include="DiffTests.fs" />
+    <Compile Include="SurfaceTests.fs" />
     <Compile Include="NotebookTests.fs" />
     <Compile Include="GuideTests.fs" />
     <Compile Include="ExampleTests.fs" />

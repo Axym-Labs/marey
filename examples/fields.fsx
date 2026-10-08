@@ -17,6 +17,7 @@
 #r "nuget: Marey.Backend.Skia"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 // +1 at (0.6, −0.1) m and −1 at (−0.6, 0.1) m, unit line charges: φ = ln(r₋ / r₊), in volts.
 let plus = { X = 0.6<m>; Y = -0.1<m> }

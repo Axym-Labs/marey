@@ -1,6 +1,7 @@
 namespace Marey
 
 open System
+open System.Runtime.InteropServices
 
 // ======================================================================================
 // M4.5 — TYPED CONTROLS (D101)
@@ -87,9 +88,7 @@ module Control =
         if not (step > 0.0) || Double.IsInfinity step then 0
         else max 0 (min Num.MaxDecimals (int (Math.Ceiling(-Math.Log10 step - 1e-9))))
 
-    /// A slider over a quantity, from `lo` to `hi` in steps of `step`. The view receives
-    /// `float<'u>`; the label is written in `'u` under one prefix chosen from the range.
-    let sliderBy<[<Measure>] 'u>
+    let internal sliderBy<[<Measure>] 'u>
         (u: U<'u>)
         (label: string)
         (lo: float<'u>)
@@ -121,8 +120,7 @@ module Control =
                  Show = show } |]
           Read = fun vs -> LanguagePrimitives.FloatWithMeasure vs.[0] }
 
-    /// A slider with a hundred steps across its range.
-    let slider<[<Measure>] 'u> (u: U<'u>) (label: string) (lo: float<'u>) (hi: float<'u>) (init: float<'u>) =
+    let internal slider<[<Measure>] 'u> (u: U<'u>) (label: string) (lo: float<'u>) (hi: float<'u>) (init: float<'u>) =
         sliderBy u label lo hi ((hi - lo) / 100.0) init
 
     /// One of a list of named values, starting at index `init`.
@@ -152,3 +150,31 @@ module Control =
                  Init = (if init then 1.0 else 0.0)
                  Show = fun v -> if v <> 0.0 then "on" else "off" } |]
           Read = fun vs -> vs.[0] <> 0.0 }
+
+/// D109 — the controls that take a witness, in the unit-optional mode: a slider over plain
+/// numbers, with a unit that may be stated. `Control.Slider("T", 200.0, 400.0, 300.0, unit = U.kelvin)`.
+/// The other controls take no witness and are the module's in both modes.
+[<AbstractClass; Sealed>]
+type Control =
+
+    static member SliderBy
+        (
+            label: string,
+            lo: float,
+            hi: float,
+            step: float,
+            init: float,
+            [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit
+        ) : Control<float> =
+        Control.sliderBy (U.erase unit) label lo hi step init
+
+    static member Slider
+        (
+            label: string,
+            lo: float,
+            hi: float,
+            init: float,
+            [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit
+        ) : Control<float> =
+        Control.slider (U.erase unit) label lo hi init
+

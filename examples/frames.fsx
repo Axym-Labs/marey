@@ -16,6 +16,7 @@
 #r "nuget: Marey.Backend.Svg"
 
 open Marey
+open Marey.UnitsOfMeasure
 open Marey.Storyboard
 
 // ---------------------------------------------------------------------------------------------

@@ -17,6 +17,7 @@
 #r "nuget: Marey.Backend.Svg"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 let gOverL = 9.81<1/s^2>
 let theta = Derived.radian

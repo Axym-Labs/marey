@@ -25,6 +25,7 @@ open System.IO
 open System.Text
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 /// UTF-8 with no byte-order mark, matching `SvgBackend.renderToFile`. A BOM appearing or
 /// disappearing would show up as a whole-file diff, which is exactly what golden masters must

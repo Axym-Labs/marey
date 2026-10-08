@@ -30,6 +30,7 @@ open System
 open System.IO
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 open Marey.Storyboard
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 

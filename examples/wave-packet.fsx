@@ -15,6 +15,7 @@
 #r "nuget: Marey.Backend.Tikz"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 // An ultrasound burst: a 1.5 mm carrier inside a 4 mm Gaussian envelope, peaking at 50 kPa.
 let sigma = 4.0e-3<m>
