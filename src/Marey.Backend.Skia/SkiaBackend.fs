@@ -165,97 +165,32 @@ module SkiaOptions =
           FontFiles = []
           Pdf = PdfMetadata.Default }
 
-/// The Skia backend. Renders a `Node` to PNG bytes, or to a one-page PDF.
+[<RequireQualifiedAccess>]
+module internal SkiaColor =
+
+    let ofColor (c: Color) =
+        let ch (v: float) = byte (Math.Round(Math.Max(0.0, Math.Min(1.0, v)) * 255.0))
+        SKColor(ch c.R, ch c.G, ch c.B, ch c.A)
+
+/// D131 — Skia's traversal of a `Node`, on a canvas the caller owns.
 ///
-/// The artifact is exposed by the concrete type, through `Result`, because `IBackend.Finish`
-/// returns `unit` by design (see `Backend.fs`) — and this backend is the reason that design was
-/// right: a `string`-typed protocol could not have carried it.
+/// `SkiaBackend` creates a surface or a PDF page and hands its canvas here; the GPU backend hands
+/// the canvas of a surface on its own framebuffer. Both draw with the same code, so text,
+/// gradients and clips come out the same on either.
 ///
-/// **`format` comes second** so that `new SkiaBackend(options)` keeps meaning what it meant.
-/// One traversal serves both: the whole difference is in `Begin`, `Finish` and the page unit.
+/// **`claim`** is offered every node before Skia draws it, with the transform it would be drawn
+/// under. Returning `true` means the caller has drawn the node itself and Skia skips it, children
+/// included. That is how a GPU backend takes `Markers` off Skia without a second traversal. A
+/// claimant drawing outside Skia must decline while `LayerDepth` is above zero: inside an
+/// `Opacity` layer the canvas is drawing into an offscreen buffer, and a mark drawn straight to
+/// the framebuffer would not be faded with the rest of its group.
 ///
-/// One instance may be reused: `Begin` disposes the previous document and starts a new one, so
-/// the same backend can render a sequence of scenes and two renders of one scene produce
-/// byte-identical output.
+/// Not thread-safe, like the canvas it draws on. The measurer is shared, and must be the one
+/// layout ran against (D62): the traversal centres text with the advances it measured.
 [<Sealed>]
-type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
+type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, claim: (Affine<nd, px> -> Node -> bool) option) =
 
-    let opts = defaultArg options SkiaOptions.Default
-    let format = defaultArg format SkiaFormat.Png
-
-    // **The measurer, and the same one the traversal draws with.** `Shaping` hands back the
-    // cached `SKFont` and `SKShaper` behind a `FontSpec`, so `drawText` centres a run against
-    // the width layout sized the gutter with, rather than against a second opinion.
-    let shaping =
-        new SkiaTextMeasurer(?fontFile = opts.FontFile, dpi = opts.Dpi, fontFiles = opts.FontFiles)
-    let measurer = shaping :> ITextMeasurer
-
-    let mutable started = false
-    let mutable finished = false
-    let mutable surface: SKSurface = null
-    let mutable canvas: SKCanvas = null
-    let mutable cached: byte[] = null
-
-    // PDF only. The document owns the canvas, the stream owns the bytes, and neither exists on
-    // the PNG path.
-    let mutable document: SKDocument = null
-    let mutable pdfStream: SKDynamicMemoryWStream = null
-
-    let mutable root: Affine<nd, px> =
-        Affine.scaleUniform (LanguagePrimitives.FloatWithMeasure<px / nd> 1.0)
-
-    /// The SkiaSharp shape of D63's pinned dictionary. An empty string is left unset, so the
-    /// key is absent rather than present and empty — and `Creation`/`Modified` are never set at
-    /// all, which is the decision.
-    let pdfMetadata () =
-        // **`SKDocumentPdfMetadata.Default`, not `SKDocumentPdfMetadata()`.** The
-        // parameterless struct constructor zeroes two numeric fields that are not zero-valued:
-        // `EncodingQuality` becomes 0, which is JPEG at its worst rather than the lossless 101
-        // the static default carries, and would quietly destroy any embedded raster; and
-        // `RasterDpi` becomes 0.
-        let mutable md = SKDocumentPdfMetadata.Default
-
-        // **`RasterDpi` decides the page box's precision, which was found by measuring.** Skia
-        // snaps the `MediaBox` to a whole number of device pixels at this resolution, so a
-        // 187.5 pt page is written as `188` at the default 72 and as `187.5` at 96 — where
-        // 187.5 pt is exactly 250 px. Setting it from the render's own dpi is both what makes
-        // gate 4's fractional half true and what it should have been anyway: it is the
-        // resolution Skia rasterises at for anything it cannot express as vectors.
-        md.RasterDpi <- float32 (float (Space.pxOfPt opts.Dpi 72.0<pt>))
-
-        let set (v: string) (assign: string -> unit) = if not (String.IsNullOrEmpty v) then assign v
-        set opts.Pdf.Title (fun v -> md.Title <- v)
-        set opts.Pdf.Author (fun v -> md.Author <- v)
-        set opts.Pdf.Subject (fun v -> md.Subject <- v)
-        set opts.Pdf.Keywords (fun v -> md.Keywords <- v)
-        set opts.Pdf.Creator (fun v -> md.Creator <- v)
-        set opts.Pdf.Producer (fun v -> md.Producer <- v)
-        md
-
-    /// Everything `Begin` has to let go of before it starts again, and everything `Dispose` has
-    /// to let go of once. One function rather than two copies, because the PDF path added a
-    /// second handle and a copy is where the second one gets forgotten.
-    let release () =
-        canvas <- null
-
-        if not (isNull document) then
-            document.Dispose()
-            document <- null
-
-        if not (isNull pdfStream) then
-            pdfStream.Dispose()
-            pdfStream <- null
-
-        if not (isNull surface) then
-            surface.Dispose()
-            surface <- null
-
-    let requireStarted () =
-        if not started then
-            invalidOp "Marey.SkiaBackend: Begin must be called before Draw."
-
-        if finished then
-            invalidOp "Marey.SkiaBackend: Draw cannot be called after Finish; call Begin again to start a new document."
+    let mutable layers = 0
 
     // ---- geometry --------------------------------------------------------------------
 
@@ -331,9 +266,7 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
 
     // ---- paint -----------------------------------------------------------------------
 
-    let skColor (c: Color) =
-        let ch (v: float) = byte (Math.Round(Math.Max(0.0, Math.Min(1.0, v)) * 255.0))
-        SKColor(ch c.R, ch c.G, ch c.B, ch c.A)
+    let skColor (c: Color) = SkiaColor.ofColor c
 
     /// A gradient's shader, in device space.
     ///
@@ -383,7 +316,7 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
 
     /// A fill paint. The caller disposes.
     let fillPaint (ctm: Affine<nd, px>) (paint: Paint) =
-        let p = new SKPaint(IsAntialias = opts.Antialias, Style = SKPaintStyle.Fill)
+        let p = new SKPaint(IsAntialias = antialias, Style = SKPaintStyle.Fill)
 
         match paint with
         | Solid c -> p.Color <- skColor c
@@ -405,7 +338,7 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
     let strokePaint (ctm: Affine<nd, px>) (s: Stroke) =
         let p =
             new SKPaint(
-                IsAntialias = opts.Antialias,
+                IsAntialias = antialias,
                 Style = SKPaintStyle.Stroke,
                 StrokeWidth = f32 (float s.Width),
                 StrokeMiter = f32 s.MiterLimit
@@ -515,6 +448,11 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
     // ---- traversal -------------------------------------------------------------------
 
     let rec draw (ctm: Affine<nd, px>) (node: Node) =
+        match claim with
+        | Some c when c ctm node -> ()
+        | _ -> drawUnclaimed ctm node
+
+    and drawUnclaimed (ctm: Affine<nd, px>) (node: Node) =
         match node with
 
         | Path(segs, stroke, fill, rule) ->
@@ -563,7 +501,7 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
                 canvas.ClipPath(empty, SKClipOperation.Intersect, false)
             else
                 use path = buildPath ctm segs NonZero
-                canvas.ClipPath(path, SKClipOperation.Intersect, opts.Antialias)
+                canvas.ClipPath(path, SKClipOperation.Intersect, antialias)
 
             draw ctm child
             canvas.Restore()
@@ -586,7 +524,9 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
             else
                 use paint = new SKPaint(Color = SKColors.White.WithAlpha(byte (Math.Round(a * 255.0))))
                 canvas.SaveLayer paint |> ignore
+                layers <- layers + 1
                 draw ctm child
+                layers <- layers - 1
                 canvas.Restore()
 
         // §5.2's stable identity has nowhere to land in a bitmap and is not an error: the node
@@ -780,11 +720,127 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
                     else
                         SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None)
 
-                use paint = new SKPaint(IsAntialias = opts.Antialias)
+                use paint = new SKPaint(IsAntialias = antialias)
                 canvas.DrawBitmap(bitmap, dest, sampling, paint)
                 canvas.Restore()
             finally
                 handle.Free()
+
+    /// Draw a node under a transform from panel space to device pixels.
+    member _.Draw(ctm: Affine<nd, px>, node: Node) = draw ctm node
+
+    /// The canvas being drawn on, for a claimant that needs its clip or its matrix.
+    member _.Canvas: SKCanvas = canvas
+
+    /// How many `Opacity` layers the traversal is inside. See the type's comment.
+    member _.LayerDepth: int = layers
+
+    /// The map from `Rect.unit` in panel space onto a device box of `extent`, y flipped: what a
+    /// scene's root is drawn under. The same construction as the SVG backend's, which is what
+    /// lets the cross-backend oracle compare coordinates at all.
+    static member RootTransform(extent: Extent<px>) : Affine<nd, px> =
+        Affine.fromRects
+            Rect.unit
+            { X0 = 0.0<px>
+              Y0 = extent.Height
+              X1 = extent.Width
+              Y1 = 0.0<px> }
+
+/// The Skia backend. Renders a `Node` to PNG bytes, or to a one-page PDF.
+///
+/// The artifact is exposed by the concrete type, through `Result`, because `IBackend.Finish`
+/// returns `unit` by design (see `Backend.fs`) — and this backend is the reason that design was
+/// right: a `string`-typed protocol could not have carried it.
+///
+/// **`format` comes second** so that `new SkiaBackend(options)` keeps meaning what it meant.
+/// One traversal serves both: the whole difference is in `Begin`, `Finish` and the page unit.
+///
+/// One instance may be reused: `Begin` disposes the previous document and starts a new one, so
+/// the same backend can render a sequence of scenes and two renders of one scene produce
+/// byte-identical output.
+[<Sealed>]
+type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
+
+    let opts = defaultArg options SkiaOptions.Default
+    let format = defaultArg format SkiaFormat.Png
+
+    // **The measurer, and the same one the traversal draws with.** `Shaping` hands back the
+    // cached `SKFont` and `SKShaper` behind a `FontSpec`, so `drawText` centres a run against
+    // the width layout sized the gutter with, rather than against a second opinion.
+    let shaping =
+        new SkiaTextMeasurer(?fontFile = opts.FontFile, dpi = opts.Dpi, fontFiles = opts.FontFiles)
+    let measurer = shaping :> ITextMeasurer
+
+    let mutable started = false
+    let mutable finished = false
+    let mutable surface: SKSurface = null
+    let mutable canvas: SKCanvas = null
+    let mutable cached: byte[] = null
+
+    // PDF only. The document owns the canvas, the stream owns the bytes, and neither exists on
+    // the PNG path.
+    let mutable document: SKDocument = null
+    let mutable pdfStream: SKDynamicMemoryWStream = null
+
+    // D131 — the traversal, on whichever canvas `Begin` made.
+    let mutable painter: SkiaPainter option = None
+
+    let mutable root: Affine<nd, px> =
+        Affine.scaleUniform (LanguagePrimitives.FloatWithMeasure<px / nd> 1.0)
+
+    /// The SkiaSharp shape of D63's pinned dictionary. An empty string is left unset, so the
+    /// key is absent rather than present and empty — and `Creation`/`Modified` are never set at
+    /// all, which is the decision.
+    let pdfMetadata () =
+        // **`SKDocumentPdfMetadata.Default`, not `SKDocumentPdfMetadata()`.** The
+        // parameterless struct constructor zeroes two numeric fields that are not zero-valued:
+        // `EncodingQuality` becomes 0, which is JPEG at its worst rather than the lossless 101
+        // the static default carries, and would quietly destroy any embedded raster; and
+        // `RasterDpi` becomes 0.
+        let mutable md = SKDocumentPdfMetadata.Default
+
+        // **`RasterDpi` decides the page box's precision, which was found by measuring.** Skia
+        // snaps the `MediaBox` to a whole number of device pixels at this resolution, so a
+        // 187.5 pt page is written as `188` at the default 72 and as `187.5` at 96 — where
+        // 187.5 pt is exactly 250 px. Setting it from the render's own dpi is both what makes
+        // gate 4's fractional half true and what it should have been anyway: it is the
+        // resolution Skia rasterises at for anything it cannot express as vectors.
+        md.RasterDpi <- float32 (float (Space.pxOfPt opts.Dpi 72.0<pt>))
+
+        let set (v: string) (assign: string -> unit) = if not (String.IsNullOrEmpty v) then assign v
+        set opts.Pdf.Title (fun v -> md.Title <- v)
+        set opts.Pdf.Author (fun v -> md.Author <- v)
+        set opts.Pdf.Subject (fun v -> md.Subject <- v)
+        set opts.Pdf.Keywords (fun v -> md.Keywords <- v)
+        set opts.Pdf.Creator (fun v -> md.Creator <- v)
+        set opts.Pdf.Producer (fun v -> md.Producer <- v)
+        md
+
+    /// Everything `Begin` has to let go of before it starts again, and everything `Dispose` has
+    /// to let go of once. One function rather than two copies, because the PDF path added a
+    /// second handle and a copy is where the second one gets forgotten.
+    let release () =
+        canvas <- null
+        painter <- None
+
+        if not (isNull document) then
+            document.Dispose()
+            document <- null
+
+        if not (isNull pdfStream) then
+            pdfStream.Dispose()
+            pdfStream <- null
+
+        if not (isNull surface) then
+            surface.Dispose()
+            surface <- null
+
+    let requireStarted () =
+        if not started then
+            invalidOp "Marey.SkiaBackend: Begin must be called before Draw."
+
+        if finished then
+            invalidOp "Marey.SkiaBackend: Draw cannot be called after Finish; call Begin again to start a new document."
 
     // ---- public surface --------------------------------------------------------------
 
@@ -913,7 +969,7 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
                         invalidOp (sprintf "Marey.SkiaBackend: could not create a %dx%d surface." w h)
 
                     canvas <- surface.Canvas
-                    canvas.Clear(skColor opts.Background)
+                    canvas.Clear(SkiaColor.ofColor opts.Background)
 
                 | SkiaFormat.Pdf ->
                     // **The page is not rounded.** A PDF page is measured in points and points are
@@ -947,28 +1003,22 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
                     canvas.Scale scale
 
                     // `Clear` ignores the matrix and fills the clip, so it paints the whole page.
-                    canvas.Clear(skColor opts.Background))
+                    canvas.Clear(SkiaColor.ofColor opts.Background))
 
-            // The one place the y flip lives, and it is byte-for-byte the SVG backend's: the
-            // unit panel onto a device box whose y runs from Height at nd y = 0 to 0 at nd
-            // y = 1. Sharing the construction is what lets the cross-backend oracle compare
-            // the two traversals' coordinates at all.
+            // The y flip, byte-for-byte the SVG backend's and built once in
+            // `SkiaPainter.RootTransform`: the unit panel onto a device box whose y runs from
+            // Height at nd y = 0 to 0 at nd y = 1.
             //
             // **In px for both formats.** The PDF's page is in pt and its canvas carries the
             // conversion, so the traversal — and `RootTransform`, and every coordinate a test
             // checks — stays in one unit whichever container is being written.
-            root <-
-                Affine.fromRects
-                    Rect.unit
-                    { X0 = 0.0<px>
-                      Y0 = extent.Height
-                      X1 = extent.Width
-                      Y1 = 0.0<px> }
+            root <- SkiaPainter.RootTransform extent
+            painter <- Some(SkiaPainter(canvas, shaping, opts.Antialias, None))
 
         member _.Draw(node: Node) =
             requireStarted ()
             cached <- null
-            draw root node
+            painter.Value.Draw(root, node)
 
         member _.Finish() =
             if not started then

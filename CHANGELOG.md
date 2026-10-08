@@ -24,6 +24,9 @@ land in a minor release.
   `Marey.Fields`, `Marey.Interact` and `Marey.Backend.Svg` carry their sources and project file
   under `fable/` and the `fable-library` tags, so a Fable app references them from NuGet as a
   .NET app does.
+- **`SkiaPainter`**, the Skia backend's traversal on a canvas the caller owns, with a `claim`
+  through which the caller draws a node itself and Skia skips it. `SkiaBackend` draws through
+  it, and its PNG and PDF output is unchanged to the byte.
 
 ### Changed
 
