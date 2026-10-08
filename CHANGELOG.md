@@ -10,12 +10,12 @@ rather than any one package. Each release's notes say which packages it adds.
 listed under `Changed` or `Removed` with the reason and the replacement, and until 1.0 they may
 land in a minor release.
 
-## [Unreleased]
+## [0.4.0] — unreleased
 
 **Units are opt-in.** `open Marey` takes plain arrays and a unit per axis that may be stated or
 left out; `open Marey.UnitsOfMeasure` is the mode every release so far has had, a witness per axis
-checked at compile time. Code written against 0.4.0 adds `open Marey.UnitsOfMeasure` after `open
-Marey` and is otherwise unchanged.
+checked at compile time. Code written against 0.3 that passes witnesses adds `open
+Marey.UnitsOfMeasure` after `open Marey`; the other breaking changes are under `Changed`.
 
 ### Added
 
@@ -49,36 +49,6 @@ Marey` and is otherwise unchanged.
   methods on `Figure` (`WithTitle`, `Add`, `ColorBy`, …); `fig.Save(SvgRenderer.Render, path, w,
   h)` with `SvgRenderer`, `TikzRenderer`, `PngRenderer` and `PdfRenderer`; `Category`, `Figures`
   for facets, and `Grids` for fields sampled from delegates.
-
-### Changed
-
-- **Breaking: the curried constructors that take a witness moved to `Marey.UnitsOfMeasure`.**
-  `Chart.line U.second U.metre ts xs` and every function listed above in its curried form —
-  together with the `add*` family, `colorBy`, `sizeBy` and `withColorDomain` — compile under
-  `open Marey.UnitsOfMeasure` and not under `open Marey` alone. Under that `open`, the
-  unit-optional members are compile errors that name the spelling to use, so a call cannot fall
-  through to an axis with no unit.
-- **Breaking: `plot` under `open Marey.UnitsOfMeasure` returns `Marey.UnitsOfMeasure.PlotBuilder`**,
-  whose channels take their witness; leaving one out is a compile error there.
-- `Marey.Units`' module `U` and `Marey.Fields`' module `Grid` are nested in `[<AutoOpen>]` modules
-  (`SiWitnesses`, `GridAxes`). F# spells them as before after `open Marey`; the fully qualified
-  `Marey.U.metre` without the `open` no longer resolves.
-
-### Deprecated
-
-- **`Chart.Plain`**, for one release. Use `Chart.Line(xs, ys)`, which leaves the units
-  unspecified, or pass `U.one` where the data is dimensionless.
-
-### Fixed
-
-- **A C# caller could not pass a witness.** `Marey.Core` and `Marey.Units` each exported a public
-  type `Marey.U`, so C# refused every call naming one (CS0433); `Marey.Plot` and `Marey.Fields` did
-  the same with `Marey.Grid`. No two packages now export one type name.
-
-## [0.4.0] — unreleased
-
-### Added
-
 - **`Marey.Interact`, a fourteenth package: a figure with controls, live in a notebook.** The
   guide's new §23 walks through it, and `examples/interact.dib` is a notebook built on it.
   - **Typed controls.** `Control.slider u label lo hi init` hands the view a `float<'u>` and
@@ -205,6 +175,17 @@ Marey` and is otherwise unchanged.
 
 ### Changed
 
+- **Breaking: the curried constructors that take a witness moved to `Marey.UnitsOfMeasure`.**
+  `Chart.line U.second U.metre ts xs` and every function listed above in its curried form —
+  together with the `add*` family, `colorBy`, `sizeBy` and `withColorDomain` — compile under
+  `open Marey.UnitsOfMeasure` and not under `open Marey` alone. Under that `open`, the
+  unit-optional members are compile errors that name the spelling to use, so a call cannot fall
+  through to an axis with no unit.
+- **Breaking: `plot` under `open Marey.UnitsOfMeasure` returns `Marey.UnitsOfMeasure.PlotBuilder`**,
+  whose channels take their witness; leaving one out is a compile error there.
+- `Marey.Units`' module `U` and `Marey.Fields`' module `Grid` are nested in `[<AutoOpen>]` modules
+  (`SiWitnesses`, `GridAxes`). F# spells them as before after `open Marey`; the fully qualified
+  `Marey.U.metre` without the `open` no longer resolves.
 - **The axes, the gridlines, the legend and the colorbar have keys of their own** in the scene
   (`Keys.axisX`, `axisY`, `grid`, `legend`, `colorbar`, below the panel's), so a diff can replace
   one of them without the panel. An SVG gains a `<g id="…">` around each, and a TikZ file a
@@ -230,8 +211,16 @@ Marey` and is otherwise unchanged.
   its vertices in data space, as a hexbin's hexagons are. A `match` over `Geom` that was
   exhaustive needs an arm for each.
 
+### Deprecated
+
+- **`Chart.Plain`**, for one release. Use `Chart.Line(xs, ys)`, which leaves the units
+  unspecified, or pass `U.one` where the data is dimensionless.
+
 ### Fixed
 
+- **A C# caller could not pass a witness.** `Marey.Core` and `Marey.Units` each exported a public
+  type `Marey.U`, so C# refused every call naming one (CS0433); `Marey.Plot` and `Marey.Fields` did
+  the same with `Marey.Grid`. No two packages now export one type name.
 - **A Greek letter in a TikZ text run stopped `pdflatex`.** The escaper mapped µ and Ω and
   nothing else of the Greek block, so an axis whose conventional name is Greek, a density's `ρ`
   among them, was a hard "Unicode character" error. Greek letters are now set in math italic
@@ -975,7 +964,7 @@ Superseded by `0.1.0` and not recommended for use. `Marey.Verso` in particular c
 installed from it: prerelease versions do not appear in Verso's Extensions panel at all, so an
 rc validates the package and the formatter but never the installation path.
 
-[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.3.1...HEAD
+[0.4.0]: https://github.com/Axym-Labs/marey/compare/0.3.1...HEAD
 [0.3.1]: https://github.com/Axym-Labs/marey/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/Axym-Labs/marey/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/Axym-Labs/marey/compare/0.1.1...0.2.0

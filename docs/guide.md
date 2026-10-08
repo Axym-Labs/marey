@@ -328,7 +328,7 @@ and says which spelling to use:
 Chart.Line(xs, ys)
 ```
 
-Open it after `open Marey`. Code written against 0.4.0 is in this mode already, and adds the
+Open it after `open Marey`. Code written against 0.3 is in this mode already, and adds the
 `open`.
 
 ### From C#

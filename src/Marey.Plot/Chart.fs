@@ -557,7 +557,7 @@ module Chart =
     // ---- Dimensionless ------------------------------------------------------------------------
 
     /// **Retired by D109; one release as an alias, then gone.** The constructors at `U.one U.one`,
-    /// for data with no dimension, as 0.4.0 shipped them.
+    /// for data with no dimension, as 0.3 shipped them.
     ///
     /// It was the library's answer to plain numbers while every chart required a witness, and it
     /// gave a wrong answer to most of them: `U.one` claims the data is *dimensionless*, which
