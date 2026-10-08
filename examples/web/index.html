@@ -16,6 +16,18 @@
   </p>
   <canvas id="plot" role="img" aria-label="A damped oscillation: displacement in millimetres against time in seconds."></canvas>
   <p id="status">Loading.</p>
+  <p>
+    <label>points
+      <select id="n">
+        <option value="1000">1 000</option>
+        <option value="100000" selected>100 000</option>
+        <option value="1000000">1 000 000</option>
+      </select>
+    </label>
+    <label><input id="webgl" type="checkbox" checked> WebGL2 markers</label>
+  </p>
+  <canvas id="cloud" role="img" aria-label="A scatter of normally distributed points, voltage against position."></canvas>
+  <p id="cloud-status"></p>
   <script type="module" src="out/App.js"></script>
 </body>
 </html>

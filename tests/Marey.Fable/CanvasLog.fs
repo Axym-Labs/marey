@@ -132,7 +132,9 @@ let logOf (extent: Extent<px>, node: Node) : string =
         node,
         measurer = TextMeasure.approx,
         pixelRatio = 2.0,
-        layer = root.Layer
+        layer = root.Layer,
+        // The canvas's own drawing is what is logged; WebGL2's is checked in a browser.
+        webgl = false
     )
 
     String.concat "\n" log + "\n"

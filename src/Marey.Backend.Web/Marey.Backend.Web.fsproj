@@ -16,6 +16,7 @@
   <ItemGroup>
     <Compile Include="Canvas.fs" />
     <Compile Include="WebText.fs" />
+    <Compile Include="WebGlMarkers.fs" />
     <Compile Include="CanvasBackend.fs" />
   </ItemGroup>
 

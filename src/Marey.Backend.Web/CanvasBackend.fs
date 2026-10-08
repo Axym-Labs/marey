@@ -42,8 +42,10 @@ module CssColor =
 /// `layer` makes the scratch surfaces an opacity group and a raster are drawn on, in device
 /// pixels; `Canvas.scratch` is the browser's, and a test passes its own. `scale` is the device
 /// pixels per px the context's own transform was set to, which a scratch layer has to share.
+///
+/// `markers`, where given, draws the marker batches it claims on WebGL2 (D122).
 [<Sealed>]
-type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, scale: float) =
+type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, scale: float, markers: WebGlMarkers option) =
 
     let point (ctm: Affine<nd, px>) (p: Vec2<nd>) =
         let q = Affine.apply ctm p
@@ -189,7 +191,13 @@ type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, 
                 f |> Option.iter (fun p -> fill ctx ctm p rule)
                 s |> Option.iter (stroke ctx ctm)
         | Text t -> text ctx ctm t
-        | Markers b -> markers ctx ctm b
+        | Markers b when
+            (match markers with
+             | Some gpu -> gpu.Claims b && gpu.Draw(ctx, ctm, b, scale)
+             | None -> false)
+            ->
+            ()
+        | Markers b -> drawMarkers ctx ctm b
         | Raster r -> raster ctx ctm r
         | Group ns ->
             for child in ns do
@@ -262,7 +270,7 @@ type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, 
             ctx.fillText (t.Text, ox, oy)
             ctx.restore ()
 
-    and markers (ctx: CanvasContext) (ctm: Affine<nd, px>) (b: MarkerBatch) =
+    and drawMarkers (ctx: CanvasContext) (ctm: Affine<nd, px>) (b: MarkerBatch) =
         if b.Points.Length > 0 then
             let shape = outline b.Shape (float b.Size)
 
@@ -357,13 +365,18 @@ type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, 
 ///
 /// `Semantics` is false: a canvas has no element per shape to carry a label, so `Annotated` is
 /// stripped, and a page that wants one gives the canvas element a single `aria-label`.
+///
+/// **Marker batches of `WebGlMarkers.MinimumBatch` marks or more are drawn by WebGL2** where the
+/// browser has it, composited in their place (D122); `webgl = false` leaves every batch to the
+/// canvas.
 [<Sealed>]
-type CanvasBackend(ctx: CanvasContext, ?measurer: ITextMeasurer, ?background: Color, ?pixelRatio: float, ?layer: int -> int -> CanvasContext) =
+type CanvasBackend(ctx: CanvasContext, ?measurer: ITextMeasurer, ?background: Color, ?pixelRatio: float, ?layer: int -> int -> CanvasContext, ?webgl: bool) =
 
     let measurer = defaultArg measurer TextMeasure.approx
     let background = defaultArg background Color.white
     let scale = defaultArg pixelRatio (Canvas.devicePixelRatio ())
-    let painter = CanvasPainter(measurer, defaultArg layer Canvas.scratch, scale)
+    let painter =
+        CanvasPainter(measurer, defaultArg layer Canvas.scratch, scale, (if defaultArg webgl true then Some WebGlMarkers.Shared else None))
 
     let rootFor (extent: Extent<px>) =
         Affine.fromRects
@@ -390,8 +403,8 @@ type CanvasBackend(ctx: CanvasContext, ?measurer: ITextMeasurer, ?background: Co
 
     /// Draw a scene on a context, sized to its extent at the given density: `Begin`, `Draw` of
     /// the degraded scene, `Finish`.
-    static member Draw(ctx: CanvasContext, extent: Extent<px>, node: Node, ?measurer: ITextMeasurer, ?background: Color, ?pixelRatio: float, ?layer: int -> int -> CanvasContext) : unit =
-        let b = CanvasBackend(ctx, ?measurer = measurer, ?background = background, ?pixelRatio = pixelRatio, ?layer = layer) :> IBackend
+    static member Draw(ctx: CanvasContext, extent: Extent<px>, node: Node, ?measurer: ITextMeasurer, ?background: Color, ?pixelRatio: float, ?layer: int -> int -> CanvasContext, ?webgl: bool) : unit =
+        let b = CanvasBackend(ctx, ?measurer = measurer, ?background = background, ?pixelRatio = pixelRatio, ?layer = layer, ?webgl = webgl) :> IBackend
         b.Begin extent
         b.Draw(node |> Degrade.forCaps b.Caps)
         b.Finish()
