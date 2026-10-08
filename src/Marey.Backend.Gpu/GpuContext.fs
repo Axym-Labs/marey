@@ -117,6 +117,20 @@ type internal GpuTarget(gl: GL, gr: GRContext, width: int, height: int) =
 
         flipped
 
+    /// The target's pixels as an `Image`: RGBA8, not premultiplied, top row first, as a `Raster`
+    /// node carries one.
+    member this.ReadImage() : Image =
+        let pixels = this.Read()
+
+        for i in 0 .. 4 .. pixels.Length - 4 do
+            let a = int pixels.[i + 3]
+
+            if a > 0 && a < 255 then
+                for c in 0 .. 2 do
+                    pixels.[i + c] <- byte (min 255 ((int pixels.[i + c] * 255 + a / 2) / a))
+
+        { Width = width; Height = height; Rgba = pixels }
+
     interface IDisposable with
         member _.Dispose() =
             surface.Dispose()
@@ -183,10 +197,14 @@ module internal GlfwDiagnosis =
         with e ->
             "the GLFW library did not load: " + e.Message
 
-/// The GL side of a renderer: a hidden window that exists for its context, the context, and
-/// Skia's `GRContext` on it. Built and used on the render thread only.
+/// The GL side of a renderer: a window that exists for its context, the context, and Skia's
+/// `GRContext` on it. Built and used on the render thread only.
+///
+/// The window is hidden and 16 × 16 for an offscreen renderer. `shown` gives it a title, a size
+/// and a border, and puts it on the screen unless told not to, for `GpuWindow`, which draws into the same kind of
+/// offscreen target and copies it to the window's own framebuffer.
 [<Sealed>]
-type internal GpuContext() =
+type internal GpuContext(?shown: string * int * int * bool) =
 
     let window =
         lock GlfwLibrary.gate (fun () ->
@@ -194,8 +212,18 @@ type internal GpuContext() =
             Silk.NET.Windowing.Glfw.GlfwWindowing.Use()
 
             let mutable o = WindowOptions.Default
-            o.Size <- Vector2D<int>(16, 16)
-            o.IsVisible <- false
+
+            match shown with
+            | Some(title, width, height, visible) ->
+                o.Size <- Vector2D<int>(width, height)
+                o.Title <- title
+                o.IsVisible <- visible
+                o.WindowBorder <- WindowBorder.Resizable
+                o.VSync <- true
+            | None ->
+                o.Size <- Vector2D<int>(16, 16)
+                o.IsVisible <- false
+
             o.ShouldSwapAutomatically <- false
             o.API <- GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.ForwardCompatible, APIVersion(3, 3))
             let w = Window.Create o
@@ -241,6 +269,7 @@ type internal GpuContext() =
     member _.GL = gl
     member _.Skia = gr
     member _.Markers = markers
+    member _.Window: IWindow = window
 
     /// What the driver says it is, for a report: "AMD Radeon RX 7900 XT (radeonsi, …)" on a
     /// desktop, "llvmpipe (LLVM …)" under Mesa's software driver.
@@ -257,6 +286,54 @@ type internal GpuContext() =
             let t = new GpuTarget(gl, gr, width, height)
             target <- Some t
             t
+
+    /// **Draw layers on the target for a size**, each a scene under the transform that places
+    /// it, in order, and flush. Every node is Skia's but a marker batch the instanced drawer can
+    /// draw exactly as Skia would (D119), which is claimed and drawn between Skia's flushes, so it
+    /// lands over what came before it and under what comes after. The scenes are degraded by the
+    /// caller.
+    member this.Paint(opts: SkiaOptions, shaping: SkiaTextMeasurer, instanced: bool, width: int, height: int, layers: (Affine<nd, px> * Node) seq) : GpuTarget =
+        let target = this.Target(width, height)
+        let canvas = target.Surface.Canvas
+        canvas.Clear(SkiaColor.ofColor opts.Background)
+
+        // The claim needs the painter's clip and layer depth, so it reads the painter it is
+        // handed to.
+        let mutable self: SkiaPainter option = None
+
+        let claim (ctm: Affine<nd, px>) (node: Node) =
+            match node, self with
+            | Markers b, Some painter when MarkerDrawer.Claims(b, painter.Clip, painter.LayerDepth, opts.Antialias) ->
+                // Skia's queued drawing first, then Skia is told its GL state was touched.
+                target.Surface.Flush()
+                gr.Flush()
+                markers.Draw(target.Framebuffer, width, height, ctm, b, painter.Clip)
+                gr.ResetContext()
+                true
+            | _ -> false
+
+        let painter = SkiaPainter(canvas, shaping, opts.Antialias, (if instanced then Some claim else None))
+        self <- Some painter
+
+        for ctm, node in layers do
+            painter.Draw(ctm, node)
+
+        target.Surface.Flush()
+        gr.Flush()
+        target
+
+    /// What a GPU surface draws: everything Skia does, as for a PNG, and nowhere to put a label.
+    static member Capabilities: Capabilities =
+        { Gradients = true
+          RadialGradients = true
+          Clipping = true
+          Dashes = true
+          Rasters = true
+          TextShaping = true
+          RotatedText = true
+          Semantics = false
+          GroupOpacity = true
+          MaxBatch = None }
 
     interface IDisposable with
         member _.Dispose() =

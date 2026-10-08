@@ -50,6 +50,7 @@
     <Compile Include="TikzGoldenTests.fs" />
     <Compile Include="SkiaTests.fs" />
     <Compile Include="GpuTests.fs" />
+    <Compile Include="WindowTests.fs" />
     <Compile Include="PlotTests.fs" />
     <Compile Include="ShotTests.fs" />
     <Compile Include="StoryboardTests.fs" />

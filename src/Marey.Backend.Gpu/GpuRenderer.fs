@@ -68,18 +68,7 @@ type GpuRenderer(?options: SkiaOptions, ?instancedMarkers: bool) =
 
     let measurer = shaping :> ITextMeasurer
 
-    let caps =
-        { Gradients = true
-          RadialGradients = true
-          Clipping = true
-          Dashes = true
-          Rasters = true
-          TextShaping = true
-          RotatedText = true
-          // A framebuffer has nowhere to put a label, as for a PNG.
-          Semantics = false
-          GroupOpacity = true
-          MaxBatch = None }
+    let caps = GpuContext.Capabilities
 
     let mutable disposed = false
 
@@ -97,31 +86,10 @@ type GpuRenderer(?options: SkiaOptions, ?instancedMarkers: bool) =
             // to 400 loses the half pixel at its right edge, which is where the axis line is.
             let w = max 1 (int (ceil (float extent.Width)))
             let h = max 1 (int (ceil (float extent.Height)))
-            let target = context.Target(w, h)
-            let canvas = target.Surface.Canvas
-            canvas.Clear(SkiaColor.ofColor opts.Background)
 
-            // The claim needs the painter's clip and layer depth, so it reads the painter it is
-            // handed to.
-            let mutable self: SkiaPainter option = None
+            let target =
+                context.Paint(opts, shaping, instanced, w, h, [ SkiaPainter.RootTransform extent, scene ])
 
-            let claim (ctm: Affine<nd, px>) (node: Node) =
-                match node, self with
-                | Markers b, Some painter when MarkerDrawer.Claims(b, painter.Clip, painter.LayerDepth, opts.Antialias) ->
-                    // Skia's queued drawing first, so the marks land over what came before them
-                    // and under what comes after; then Skia is told its GL state was touched.
-                    target.Surface.Flush()
-                    context.Skia.Flush()
-                    context.Markers.Draw(target.Framebuffer, w, h, ctm, b, painter.Clip)
-                    context.Skia.ResetContext()
-                    true
-                | _ -> false
-
-            let painter = SkiaPainter(canvas, shaping, opts.Antialias, (if instanced then Some claim else None))
-            self <- Some painter
-            painter.Draw(SkiaPainter.RootTransform extent, scene)
-            target.Surface.Flush()
-            context.Skia.Flush()
             w, h, target.Read())
 
     /// The capabilities the renderer draws with. `Degrade.forCaps` is applied for the caller.
