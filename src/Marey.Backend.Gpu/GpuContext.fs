@@ -184,8 +184,13 @@ type internal GpuContext() =
 
     let mutable target: GpuTarget option = None
 
+    let markers = new MarkerDrawer(gl)
+
+    do gr.ResetContext()
+
     member _.GL = gl
     member _.Skia = gr
+    member _.Markers = markers
 
     /// What the driver says it is, for a report: "AMD Radeon RX 7900 XT (radeonsi, …)" on a
     /// desktop, "llvmpipe (LLVM …)" under Mesa's software driver.
@@ -206,5 +211,6 @@ type internal GpuContext() =
     interface IDisposable with
         member _.Dispose() =
             target |> Option.iter (fun t -> (t :> IDisposable).Dispose())
+            (markers :> IDisposable).Dispose()
             gr.Dispose()
             window.Dispose()

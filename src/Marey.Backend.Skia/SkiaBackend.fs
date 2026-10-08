@@ -174,6 +174,20 @@ module SkiaColor =
         let ch (v: float) = byte (Math.Round(Math.Max(0.0, Math.Min(1.0, v)) * 255.0))
         SKColor(ch c.R, ch c.G, ch c.B, ch c.A)
 
+/// The clip in force where a `SkiaPainter` offers a node to its claimant, in device pixels.
+///
+/// A claimant drawing outside Skia has to clip as Skia would. A rectangle it can do itself, with
+/// the same antialiased edge; anything else it should leave to Skia.
+[<RequireQualifiedAccess>]
+type PainterClip =
+    /// No `Clip` node encloses the node.
+    | Unclipped
+    /// The intersection of the enclosing clips is this axis-aligned rectangle, which may be
+    /// empty and need not lie on whole pixels.
+    | Rectangle of SKRect
+    /// An enclosing clip is not an axis-aligned rectangle.
+    | Shaped
+
 /// D131 — Skia's traversal of a `Node`, on a canvas the caller owns.
 ///
 /// `SkiaBackend` creates a surface or a PDF page and hands its canvas here; the GPU backend hands
@@ -193,6 +207,18 @@ module SkiaColor =
 type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, claim: (Affine<nd, px> -> Node -> bool) option) =
 
     let mutable layers = 0
+    let mutable clip = PainterClip.Unclipped
+
+    /// The clip after intersecting the current one with a device-space path.
+    let intersect (path: SKPath) =
+        match clip with
+        | PainterClip.Shaped -> PainterClip.Shaped
+        | _ when not path.IsRect -> PainterClip.Shaped
+        | PainterClip.Unclipped -> PainterClip.Rectangle path.Bounds
+        | PainterClip.Rectangle r ->
+            let b = path.Bounds
+            let x0, y0 = max r.Left b.Left, max r.Top b.Top
+            PainterClip.Rectangle(SKRect(x0, y0, max x0 (min r.Right b.Right), max y0 (min r.Bottom b.Bottom)))
 
     // ---- geometry --------------------------------------------------------------------
 
@@ -493,6 +519,7 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
 
         | Clip(segs, child) ->
             canvas.Save() |> ignore
+            let outer = clip
 
             if segs.Length = 0 then
                 // An empty clip path clips everything away, and saying so explicitly is what
@@ -501,11 +528,14 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
                 use builder = new SKPathBuilder()
                 use empty = builder.Detach()
                 canvas.ClipPath(empty, SKClipOperation.Intersect, false)
+                clip <- PainterClip.Rectangle SKRect.Empty
             else
                 use path = buildPath ctm segs NonZero
                 canvas.ClipPath(path, SKClipOperation.Intersect, antialias)
+                clip <- intersect path
 
             draw ctm child
+            clip <- outer
             canvas.Restore()
 
         // D67 — `SaveLayer` *is* group opacity: the subtree is drawn into an offscreen layer
@@ -738,6 +768,9 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
 
     /// How many `Opacity` layers the traversal is inside. See the type's comment.
     member _.LayerDepth: int = layers
+
+    /// The clip in force, in device pixels. See `PainterClip`.
+    member _.Clip: PainterClip = clip
 
     /// The map from `Rect.unit` in panel space onto a device box of `extent`, y flipped: what a
     /// scene's root is drawn under. The same construction as the SVG backend's, which is what

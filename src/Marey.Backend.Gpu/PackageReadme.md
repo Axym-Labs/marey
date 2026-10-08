@@ -31,7 +31,14 @@ cost a renderer exists to pay once.
 
 Everything the Skia backend draws, with the same code, on the GPU: text is shaped with HarfBuzz
 and placed with the advances it was measured with. The output is close to the CPU raster's and
-not identical to the byte, because a GPU antialiases glyph edges a little differently.
+not identical to the byte, because a GPU antialiases path edges a little differently.
+
+Marker batches are the exception, and the reason for the package. Skia draws a marker as a path,
+one at a time, so 10⁵ of them take about a fifth of a second on any surface. This renderer draws
+a batch as one instanced draw, each mark's shape computed in a shader to Skia's own outline: a
+million marks take about 5 ms on a desktop GPU. A batch the shader cannot match (a gradient fill,
+a dashed or non-mitered outline, inside an opacity layer, under a clip that is not a rectangle)
+is left to Skia.
 
 ## Requirements
 

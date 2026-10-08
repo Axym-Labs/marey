@@ -30,10 +30,16 @@ open SkiaSharp
 /// Construction fails, naming the reason, where no OpenGL 3.3 context can be made: a machine
 /// with no display, or a driver too old. Under Linux with no GPU, `xvfb-run` and Mesa's
 /// `llvmpipe` provide both.
+///
+/// **Marker batches are one instanced draw each (D119)**, where the batch is one this renderer can
+/// draw exactly as Skia would: solid paints, no dash, a mitered or circular outline, outside any
+/// opacity layer, under no clip or a rectangular one. Any other batch, and every other node, is
+/// Skia's. `instancedMarkers = false` sends every batch to Skia, for comparison.
 [<Sealed>]
-type GpuRenderer(?options: SkiaOptions) =
+type GpuRenderer(?options: SkiaOptions, ?instancedMarkers: bool) =
 
     let opts = defaultArg options SkiaOptions.Default
+    let instanced = defaultArg instancedMarkers true
 
     let thread = new RenderThread("Marey GPU renderer")
 
@@ -94,7 +100,25 @@ type GpuRenderer(?options: SkiaOptions) =
             let target = context.Target(w, h)
             let canvas = target.Surface.Canvas
             canvas.Clear(SkiaColor.ofColor opts.Background)
-            let painter = SkiaPainter(canvas, shaping, opts.Antialias, None)
+
+            // The claim needs the painter's clip and layer depth, so it reads the painter it is
+            // handed to.
+            let mutable self: SkiaPainter option = None
+
+            let claim (ctm: Affine<nd, px>) (node: Node) =
+                match node, self with
+                | Markers b, Some painter when MarkerDrawer.Claims(b, painter.Clip, painter.LayerDepth, opts.Antialias) ->
+                    // Skia's queued drawing first, so the marks land over what came before them
+                    // and under what comes after; then Skia is told its GL state was touched.
+                    target.Surface.Flush()
+                    context.Skia.Flush()
+                    context.Markers.Draw(target.Framebuffer, w, h, ctm, b, painter.Clip)
+                    context.Skia.ResetContext()
+                    true
+                | _ -> false
+
+            let painter = SkiaPainter(canvas, shaping, opts.Antialias, (if instanced then Some claim else None))
+            self <- Some painter
             painter.Draw(SkiaPainter.RootTransform extent, scene)
             target.Surface.Flush()
             context.Skia.Flush()

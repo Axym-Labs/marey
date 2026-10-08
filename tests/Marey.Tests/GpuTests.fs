@@ -184,3 +184,131 @@ module ``one thread`` =
 
             for i, image in got do
                 Assert.Equal<byte[]>(expected.[i].Rgba, image.Rgba))
+
+// ======================================================================================
+// Phase 5 — marker batches as instanced draws (D119), gates 7, 8 and 9
+// ======================================================================================
+
+/// A second renderer that sends every batch to Skia, so a claim can be seen to engage or not.
+let private skiaOnly = lazy (new GpuRenderer(instancedMarkers = false))
+
+module ``instanced markers`` =
+
+    let private extent: Extent<px> = { Width = 200.0<px>; Height = 120.0<px> }
+
+    let private batch (stroke: Stroke option) =
+        Markers
+            { Points = [| for i in 0..8 -> { X = 0.1<nd> + 0.1<nd> * float i; Y = 0.5<nd> + 0.02<nd> * float (i % 3) } |]
+              Shape = MarkTriangleUp
+              Size = 18.0<px>
+              Fill = Some(Solid(Color.rgba 0.1 0.4 0.8 0.6))
+              Stroke = stroke }
+
+    let private outline = Stroke.solid (Color.rgb 0.1 0.1 0.1) 1.5<px>
+
+    /// Every shape, filled and outlined and translucent, overlapping its neighbours.
+    [<Fact>]
+    let ``every shape agrees with the CPU raster, outlined and overlapping`` () =
+        withGpu (fun gpu ->
+            for shape in [ MarkCircle; MarkSquare; MarkDiamond; MarkTriangleUp; MarkTriangleDown; MarkPlus; MarkCross ] do
+                let node =
+                    match batch (Some outline) with
+                    | Markers b -> Markers { b with Shape = shape }
+                    | n -> n
+
+                let d = blurredDistance (SkiaBackend.renderPng extent node) (gpu.RenderPng extent node)
+                Assert.True(d <= Tolerance, sprintf "%A is %.1f from the CPU raster" shape d))
+
+    /// The claim engages for a batch it can draw, and the result is not Skia's.
+    [<Fact>]
+    let ``a plain batch is drawn by the instanced path`` () =
+        withGpu (fun gpu ->
+            let node = batch (Some outline)
+            let bySkia = (skiaOnly.Force()).RenderImage extent node
+            Assert.NotEqual<byte[]>(bySkia.Rgba, (gpu.RenderImage extent node).Rgba))
+
+    /// A batch the shader cannot match is left to Skia, so the two renderers agree to the byte.
+    [<Fact>]
+    let ``a dashed outline and an opacity layer are left to Skia`` () =
+        withGpu (fun gpu ->
+            let dashed = batch (Some { outline with Dash = [| 3.0<px>; 2.0<px> |] })
+            let faded = Opacity(0.5, batch (Some outline))
+            let bevelled = batch (Some { outline with Join = Bevel })
+
+            for node in [ dashed; faded; bevelled ] do
+                Assert.Equal<byte[]>(((skiaOnly.Force()).RenderImage extent node).Rgba, (gpu.RenderImage extent node).Rgba))
+
+    /// Gate 7. The marks are drawn between Skia's work before them and after them: over a
+    /// gridline drawn first, and under an opaque box drawn last.
+    [<Fact>]
+    let ``a batch lands between what is drawn before and after it`` () =
+        withGpu (fun gpu ->
+            let rect (x0: float) (x1: float) (y0: float) (y1: float) colour =
+                Path(
+                    [| MoveTo { X = x0 * 1.0<nd>; Y = y0 * 1.0<nd> }
+                       LineTo { X = x1 * 1.0<nd>; Y = y0 * 1.0<nd> }
+                       LineTo { X = x1 * 1.0<nd>; Y = y1 * 1.0<nd> }
+                       LineTo { X = x0 * 1.0<nd>; Y = y1 * 1.0<nd> }
+                       ClosePath |],
+                    None,
+                    Some(Solid colour),
+                    NonZero
+                )
+
+            let gridline = rect 0.0 1.0 0.45 0.55 (Color.rgb 0.0 0.0 0.0)
+
+            let marks =
+                Markers
+                    { Points = [| { X = 0.25<nd>; Y = 0.5<nd> }; { X = 0.75<nd>; Y = 0.5<nd> } |]
+                      Shape = MarkSquare
+                      Size = 30.0<px>
+                      Fill = Some(Solid(Color.rgb 1.0 0.0 0.0))
+                      Stroke = None }
+
+            let legend = rect 0.6 0.9 0.3 0.7 (Color.rgb 1.0 1.0 1.0)
+            let image = gpu.RenderImage extent (Group [| gridline; marks; legend |])
+            let rgb (x: int) (y: int) = let i = (y * image.Width + x) * 4 in int image.Rgba.[i], int image.Rgba.[i + 1], int image.Rgba.[i + 2]
+            Assert.Equal((255, 0, 0), rgb 50 60)
+            Assert.Equal((255, 255, 255), rgb 150 60))
+
+    /// Gate 8 (D116). Data in seconds since 1970 never reaches the GPU: the panel transform is
+    /// applied in `float`, and the buffer holds device pixels.
+    [<Fact>]
+    let ``a time axis in seconds since 1970 draws as the CPU raster does`` () =
+        withGpu (fun gpu ->
+            let t0 = 1.7e9
+            let xs = Array.init 200 (fun i -> t0 + float i * 0.05)
+            let ys = xs |> Array.map (fun t -> sin ((t - t0) * 2.0))
+            let wide = Chart.size 480.0 300.0
+            let node = Chart.Scatter(xs, ys, xUnit = U.second) |> Chart.toSceneWith gpu.Measurer wide
+            let d = blurredDistance (SkiaBackend.renderPng wide node) (gpu.RenderPng wide node)
+            Assert.True(d <= Tolerance, sprintf "%.1f from the CPU raster" d))
+
+    /// Gate 9. A million marks in one batch, on hardware. Skipped, and said, on a software
+    /// driver, where the number would measure the CPU.
+    [<Fact>]
+    let ``a million marks render in under fifty milliseconds`` () =
+        withGpu (fun gpu ->
+            if gpu.Description.Contains "llvmpipe" then
+                Console.WriteLine("SKIPPED: gate 9 times a hardware GPU, and this is " + gpu.Description)
+            else
+                let rng = Random 9
+                let wide = Chart.size 800.0 500.0
+
+                let node =
+                    Markers
+                        { Points = Array.init 1_000_000 (fun _ -> { X = rng.NextDouble() * 1.0<nd>; Y = rng.NextDouble() * 1.0<nd> })
+                          Shape = MarkCircle
+                          Size = 3.0<px>
+                          Fill = Some(Solid(Color.rgba 0.0 0.45 0.7 0.25))
+                          Stroke = None }
+
+                gpu.RenderImage wide node |> ignore
+                let sw = Diagnostics.Stopwatch.StartNew()
+
+                for _ in 1..5 do
+                    gpu.RenderImage wide node |> ignore
+
+                let ms = sw.Elapsed.TotalMilliseconds / 5.0
+                Console.WriteLine(sprintf "gate 9: 10^6 marks in %.1f ms on %s" ms gpu.Description)
+                Assert.True(ms < 50.0, sprintf "10^6 marks took %.1f ms" ms))

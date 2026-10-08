@@ -13,6 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="GpuMarkers.fs" />
     <Compile Include="GpuContext.fs" />
     <Compile Include="GpuRenderer.fs" />
   </ItemGroup>

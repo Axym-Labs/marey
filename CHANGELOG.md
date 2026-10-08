@@ -35,6 +35,10 @@ land in a minor release.
   `Frames.render FramePass.Concurrent gpu.RenderPng` works as it does for `SkiaBackend.renderPng`.
   Lay out with `gpu.Measurer`. The output agrees with the CPU raster to within edge
   antialiasing, not to the byte. `GpuBackend.probe ()` says which driver a renderer would get.
+  A marker batch is one instanced draw: a million points render in about 5 ms on a desktop GPU,
+  where the CPU raster takes 3.6 s. Batches the shader cannot draw as Skia would (a gradient, a
+  dash, a non-mitered outline, inside an opacity layer, under a clip that is not a rectangle) are
+  drawn by Skia. `instancedMarkers = false` sends every batch to Skia.
 
 ### Changed
 
