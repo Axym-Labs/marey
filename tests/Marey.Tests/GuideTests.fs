@@ -59,6 +59,8 @@ let private assemblies =
       "Marey.Toolchain"
       "Marey.Tools.Video"
       "Marey.Tools.Tex"
+      // M4.5 phase 9, with the interaction chapter. Before `Marey.Html`, which references it.
+      "Marey.Interact"
       "Marey.Html"
       // M4 phase 9, with the fields chapter.
       "Marey.Fields" ]

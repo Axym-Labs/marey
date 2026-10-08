@@ -1,0 +1,141 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"fsharp","items":[{"aliases":[],"languageName":"fsharp","name":"fsharp"}]}}
+
+#!markdown
+
+# Two line charges, live
+
+A figure with controls. Move a slider and the kernel draws the figure again; drag a box on it to
+zoom, shift-drag to pan, double-click to go back, and hover to read the position under the
+pointer.
+
+It needs the **Marey** extension in [Verso](https://github.com/DataficationSDK/Verso), and a Verso
+newer than 1.2.2, whose cells can talk back to the kernel. Anywhere else the same cells show the
+figure with its controls disabled, and say that it is static.
+
+#!fsharp
+
+#r "nuget: Marey.Html"
+#r "nuget: Marey.Fields"
+
+open Marey
+
+#!markdown
+
+The potential of two line charges, +λ and −λ, a distance `d` apart: `λ / (2π ε₀) · ln(r₋ / r₊)`.
+The compiler checks that this is a potential. A charge per length over a permittivity is coulombs
+per farad, which is volts, so a `float<V>` is what comes out and nothing else would compile.
+
+#!fsharp
+
+let lineCharge = U.div Derived.coulomb U.metre
+let epsilon0 = 8.8541878128e-12<F/m>
+
+let xs = Grid.linear -1.8<m> 1.8<m> 90
+let ys = Grid.linear -1.2<m> 1.2<m> 60
+
+let potential (lambda: float<C/m>) (half: float<m>) (p: Vec2<m>) : float<V> =
+    let plus = Vec2.norm { X = p.X - half; Y = p.Y }
+    let minus = Vec2.norm { X = p.X + half; Y = p.Y }
+    lambda / (2.0 * System.Math.PI * epsilon0) * log (minus / plus)
+
+type Mark =
+    | Heat
+    | Bands
+    | FieldLines
+
+let draw (lambda: float<C/m>) (half: float<m>) (mark: Mark) =
+    let phi = Field.sampleScalar xs ys (potential lambda half)
+
+    let field =
+        let g = Field.grad phi
+        { g with U = Array.map (~-) g.U; W = Array.map (~-) g.W }
+
+    // The colour scale is stated, on every mark. A live figure holds one colour scale across all
+    // its states, so a stronger charge reads as a stronger potential; left to the data, that
+    // scale would be set by the few grid nodes that land next to a charge.
+    let stated = Chart.withColorDomain Derived.volt -100.0<V> 100.0<V>
+    let heat = Field.heatmap U.metre U.metre Derived.volt phi |> stated
+    let levels = [| -60.0<V>; -30.0<V>; -10.0<V>; 0.0<V>; 10.0<V>; 30.0<V>; 60.0<V> |]
+
+    match mark with
+    | Heat -> heat |> Chart.overlay (Field.contoursAt levels U.metre U.metre phi)
+    | Bands -> Field.bands U.metre U.metre Derived.volt phi |> stated
+    | FieldLines -> heat |> Chart.overlay (Field.streamlines U.metre U.metre field)
+    |> Chart.withXLabel "x"
+    |> Chart.withYLabel "y"
+
+#!markdown
+
+Three controls. The λ slider is over coulombs per metre, so the view receives a `float<C/m>`, and
+its label reads `2 nC·m⁻¹`: the unit is the witness's and the prefix is chosen once, from the
+range, so it does not change in the middle of a drag.
+
+#!fsharp
+
+let explorer =
+    interact {
+        let! lambda = Control.slider lineCharge "λ" 0.5e-9<C/m> 5.0e-9<C/m> 2.0e-9<C/m>
+        and! half = Control.slider U.metre "d/2" 0.2<m> 1.0<m> 0.6<m>
+        and! mark = Control.select "mark" [ "heatmap", Heat; "bands", Bands; "field lines", FieldLines ] 0
+        return draw lambda half mark
+    }
+
+explorer
+
+#!markdown
+
+The figure is laid out once, over the states the controls reach at their ends, so the plot area
+stays where it is while the charge grows. A zoom re-arranges it, because a zoom changes what the
+axes say: zoom close to a charge and the axes, and the readout, change to millimetres.
+
+What the cell does is a fold over the reader's messages, and it runs without a notebook. The same
+zoom and the same reading, scripted:
+
+#!fsharp
+
+// Where a point in metres is drawn in a state, through that state's panel and its scales.
+let pxAt (state: LiveState) (x: float, y: float) : Vec2<px> =
+    let v = (Live.panels explorer state).[0]
+    { X = v.Plot.X0 + float (v.X.Project x) * (v.Plot.X1 - v.Plot.X0)
+      Y = v.Plot.Y1 - float (v.Y.Project y) * (v.Plot.Y1 - v.Plot.Y0) }
+
+let start = Live.init explorer
+
+// A box 24 px by 16 px around the positive charge, at x = 0.6 m.
+let zoomed =
+    let c = pxAt start (0.6, 0.0)
+    Live.step explorer start (Zoom { X0 = c.X - 12.0<px>; Y0 = c.Y - 8.0<px>; X1 = c.X + 12.0<px>; Y1 = c.Y + 8.0<px> })
+
+// The pointer over the charge again, where the zoomed figure draws it.
+let reading = Live.step explorer zoomed (Hover(pxAt zoomed (0.6, 0.0))) |> Live.readout explorer
+
+reading |> Option.iter (fun r -> r.Lines |> Array.iter (printfn "%s"))
+printfn "zoomed onto the charge, the axes read in millimetres: %b" ((Html.widgetFigure explorer zoomed).Contains "[mm]")
+
+#!markdown
+
+## Keeping what the reader did
+
+A recorder displays as the same figure and keeps every message the reader sends, with the page's
+own times. Display it, move things, then stop it.
+
+#!fsharp
+
+let recorder = Live.recorder explorer
+
+recorder
+
+#!fsharp
+
+let session = Recorder.stop recorder
+let replay = Live.film explorer (Live.record explorer session)
+
+// The session as data, and the film as a page that plays in any browser.
+System.IO.File.WriteAllText("session.json", LiveLog.toJson session)
+System.IO.File.WriteAllText("replay.html", Html.film replay)
+
+printfn "%d messages, replayed as %g s" session.Events.Length (float replay.Duration)
+
+replay

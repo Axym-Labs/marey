@@ -30,7 +30,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>Marey.Html</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>HTML renderings of Marey values for notebooks: figures and scenes as inline SVG, colours as swatches, ramps resampled through Oklab, palettes, dimensions, unit witnesses and erased scales. Host-neutral and dependency-free.</Description>
+    <Description>HTML renderings of Marey values for notebooks: figures and scenes as inline SVG, colours as swatches, ramps resampled through Oklab, palettes, dimensions, unit witnesses and erased scales, and a live figure's page. Host-neutral and dependency-free.</Description>
     <PackageTags>fsharp html svg notebook plotting visualization formatter units-of-measure</PackageTags>
   </PropertyGroup>
 

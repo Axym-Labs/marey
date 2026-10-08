@@ -8,7 +8,7 @@ invariants.
 dotnet test
 ```
 
-**738 tests: 158 FsCheck properties and 580 example-based tests, ~75 000 generated cases per run.**
+**1379 tests: 193 FsCheck properties and 1186 example-based tests.**
 
 Around six seconds of that is `pdflatex`. The TikZ backend has no in-process oracle — the only
 authority on whether a `.tex` file is valid is a TeX engine, and the only authority on whether the
@@ -19,9 +19,9 @@ tick alone.
 Targets `net10.0`; the projects under test target `netstandard2.1`. Warnings are errors here
 too, inherited from `Directory.Build.props`.
 
-Scope is all thirteen shipped packages: `Marey.Core`, `Marey.Units`, `Marey.Plot`, `Marey.Anim`,
-`Marey.Fields`, the three backends (`Svg`, `Tikz`, `Skia`), `Marey.Html`, `Marey.Verso`,
-`Marey.Toolchain`, `Marey.Tools.Video` and `Marey.Tools.Tex`.
+Scope is all fourteen shipped packages: `Marey.Core`, `Marey.Units`, `Marey.Plot`, `Marey.Anim`,
+`Marey.Fields`, `Marey.Interact`, the three backends (`Svg`, `Tikz`, `Skia`), `Marey.Html`,
+`Marey.Verso`, `Marey.Toolchain`, `Marey.Tools.Video` and `Marey.Tools.Tex`.
 
 The one package reference that is not a test tool is `Verso.Testing`. It supplies the stub contexts
 Verso ships for extension authors, which is what lets `MareyFormatter` be exercised as a real
@@ -69,8 +69,11 @@ without a notebook host installed.
 | `FieldTests.fs` | `Marey.Fields`, and gates 2–11, 13 and 14 of `m4-plan.md`: differences exact on quadratics, units checked by compiling (curl over a phase space must not), contours on their level, the quiver key true to its arrows, streamlines tangent and evenly spaced, LIC deterministic and smooth along the flow, fixed points located and classified, and a film whose colour scale holds still. |
 | `TypesetTests.fs` | `Marey.Tools.Tex`: the SVG path reader, the outline's baseline, the scene pass, the degrade on a machine without TeX, and the caches — per call, and the `TexCache` a film holds. |
 | `VideoTests.fs` | `Marey.Tools.Video`: the argument vector as a value, a bit-exact encode read back with `ffprobe`, the build tags kept out of the container, and the degrade without `ffmpeg`. |
-| `ExampleTests.fs` | Runs each script in `examples/` on its own under `dotnet fsi`, and fails if one prints a `false`. |
-| `NotebookTests.fs` | The notebook integration, in three parts: `Html` fragments parsed as XML with the golden suite's own oracle, plus escaping, culture invariance and the two theme rules; `MareyFormatter` driven through Verso's `StubFormatterContext`; and the extension loaded into a genuinely separate collectible `AssemblyLoadContext`, which is the assumption the whole package rests on. |
+| `InteractTests.fs` | `Marey.Interact`: one quantity formatter, typed controls (a kelvin slider feeding a view over seconds must not compile), the pure step replayed and run in parallel, zoom and pan read back through linear, log and phase-space scales, the readout checked against the datum under the pointer, the widget page parsed and searched for a number formatted in the browser, a plot rectangle that holds still across every control extreme, and a recording written out, read back and filmed byte for byte. |
+| `DiffTests.fs` | D103 — the scene diff and the patch: a patch applied to the old document is the new document byte for byte, a renumbered def sends the whole document, and on a 50 000-point scatter a moving cursor patches under 5% of the document while a zoom sends all of it. |
+| `KeyTests.fs` | D104 — keys the data supplies: a datum keeps its mark's key when another row is removed, a duplicate is refused by name, a `/` cannot forge a path, and a morph pairs a keyed scatter by key, fading what enters and leaves. |
+| `ExampleTests.fs` | Runs each script in `examples/` on its own under `dotnet fsi`, and the notebook as its F# cells in order, and fails if one prints a `false`. |
+| `NotebookTests.fs` | The notebook integration, in four parts: `Html` fragments parsed as XML with the golden suite's own oracle, plus escaping, culture invariance and the two theme rules; `MareyFormatter` driven through Verso's `StubFormatterContext`; the extension loaded into a genuinely separate collectible `AssemblyLoadContext`, which is the assumption the whole package rests on; and a live figure through fake output channels, which degrades to a static page on a host that has none. |
 | `Verification.fs` | The census of every external dependency the suite needs, printed on every run; `MAREY_REQUIRE_TOOLCHAIN`, which turns an absent one into a failure in CI; and gate 15, that both workflows expect the number of packages the solution packs. |
 
 ## Golden images

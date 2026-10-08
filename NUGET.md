@@ -54,8 +54,9 @@ plot trials {
 | `Marey.Tools.Video` | Encoding a rendered frame sequence to video with `ffmpeg`, resolved on `PATH` and reported. |
 | `Marey.Tools.Tex` | Mathematical typesetting: TeX source becomes vector outlines through `latex` and `dvisvgm`, so every backend draws it. Opt-in, and degrades to plain text. |
 | `Marey.Toolchain` | Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies. |
-| `Marey.Html` | HTML renderings for a notebook cell, including a film as a playing flipbook. Host-neutral. |
-| `Marey.Verso` | The Verso notebook extension. A figure displays as a figure; a film plays. |
+| `Marey.Interact` | A figure with typed controls (a slider over kelvin hands the view kelvin), stepped by a pure function a notebook drives: zoom, pan, a readout in the axes' units, and recordings that replay as films. |
+| `Marey.Html` | HTML renderings for a notebook cell, including a film as a playing flipbook and a live figure's page. Host-neutral. |
+| `Marey.Verso` | The Verso notebook extension. A figure displays as a figure, a film plays, and a figure with controls is live. |
 
 Pre-1.0, and versioned accordingly. The API is still free to move. MIT licensed.
 

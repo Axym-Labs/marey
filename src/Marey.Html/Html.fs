@@ -984,10 +984,11 @@ module Html =
 
     /// The size to compile a figure at, given what the host says is available.
     ///
-    /// This is the half of the .NET Interactive design that was guesswork: there was no way to
-    /// ask how wide the cell was, so `defaultSize` picked 720x450 and hoped. Verso's
-    /// `IFormatterContext` carries `MaxWidth`/`MaxHeight`, so the guess is replaced by a
-    /// measurement.
+    /// The .NET Interactive design had no way to ask how wide the cell was, so `defaultSize`
+    /// picked 720x450 and hoped. Verso's `IFormatterContext` carries `MaxWidth`/`MaxHeight`, but
+    /// on its F# path they are the constants 800 and 600, so the guess moved into the host and
+    /// is still a guess. A live figure does better: its page measures its own frame and sends the
+    /// width with its first message, and the kernel lays the figure out for that.
     ///
     /// Clamped at both ends. Below ~320px a figure is not a figure, it is a smudge with axis
     /// labels; above ~1100 the line weights and font sizes chosen for a screen figure start to

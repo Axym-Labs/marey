@@ -14,6 +14,66 @@ land in a minor release.
 
 ### Added
 
+- **`Marey.Interact`, a fourteenth package: a figure with controls, live in a notebook.** The
+  guide's new §23 walks through it, and `examples/interact.dib` is a notebook built on it.
+  - **Typed controls.** `Control.slider u label lo hi init` hands the view a `float<'u>` and
+    labels itself in `'u`, under one prefix chosen from the range: a slider over coulombs per
+    metre reads `2 nC·m⁻¹`, and passing it to a view over seconds does not compile.
+    `Control.sliderBy` states the step, `Control.select` chooses among values by name, and
+    `Control.checkbox` is a `bool`.
+  - **The `interact { }` block** composes controls with `let! … and!` and a `return`. It is
+    applicative, so a control cannot be chosen by another control's value and the set of controls
+    is known before the view runs.
+  - **A live figure is a value.** `Live.init`, `Live.step` and `Live.view` are pure: a session is
+    a fold over the reader's messages (`LiveMsg`: `Set`, `Resize`, `Zoom`, `Pan`, `Reset`,
+    `Hover`, `Leave`), replays from them, and runs in a test with no notebook. `Live.step` is
+    total: a message it cannot use returns the state it was given.
+  - **One arrangement for the whole widget.** The figure is laid out over the states the controls
+    reach at their extremes (every combination up to 64, else one control at a time), so the plot
+    area holds still while the reader drags. A state that still overflows grows the arrangement,
+    and `LiveState.Grown` records each one.
+  - **Zoom, pan and reset.** A dragged box becomes the panel's domains through the panel's own
+    scales, on log axes and phase spaces as on linear ones; a pan slides them, by a factor on a
+    log axis; a reset returns the view's. A zoom re-arranges, so the axes take the prefix of what
+    they show. Panels whose axis the view drew identically zoom together, so a facet stays a facet.
+  - **A readout.** `Live.readout` reads the data under the pointer, one line per axis, in the
+    prefix and unit the axis's ticks are written in and to the places one pixel resolves. A hover
+    changes no figure (`Live.drawsAlike`), so nothing is redrawn for one.
+  - **Recordings.** `Live.recorder` displays as its live figure and keeps the messages the host
+    steps, with the page's own times. `Recorder.stop` hands back the log, `Live.record` replays it
+    from the reader's first act, and `Live.film` makes it a `Film`, laid out over every state the
+    session reached. `LiveLog.toJson` and `ofJson` write and read a log exactly.
+    `Recording.sample` turns any `Recording<'a>` into an `Anim<'a>`, sample-and-hold.
+- **A live figure in Verso.** `Marey.Verso` opens an output channel for a cell whose value is a
+  `Live` or a `Recorder`, steps the figure in the kernel on each message and answers with the
+  figure, or with only the elements that changed when that is at most half the figure. A save
+  writes the page at the state the reader left it in, with its controls disabled. This needs a
+  Verso whose formatter context carries output channels and the cell's id, which 1.2.2 does not;
+  on such a host, or with no channels, the page is written static and nothing is opened.
+- **`Html.widget`**, a live figure's whole page: the controls at a state's values, the figure, and
+  a script that posts the reader's changes, drags and pointer and swaps in the answer. The script
+  formats no number. `Html.widgetFigure` and `Html.widgetPatch` are the figure and the patch it
+  is sent.
+- **The scene diff.** `Scene.diff` compares two scenes, by reference first and then by key, and
+  names the keyed subtrees to replace. `SvgBackend.renderPatch` writes them as `(id, svg)` pairs
+  with fresh `<defs>`, and keeps the patch only if swapping it into the old document gives the new
+  one byte for byte. On a 50 000-point scatter, a moving cursor is a 577-byte patch of a 3.2 MB
+  document.
+- **Keys the data supplies.** `key` in the encoding block, or `Chart.withKeys`, names each row, and
+  its mark is keyed by the name (`Keys.datum`), so it keeps its key when another row is removed.
+  A key is one escaped segment, so a `/` in the data cannot forge a path, and a duplicate is
+  refused where the keys are given, naming the key and its rows. `morphTo` pairs two keyed
+  scatters by key: a datum moves to the datum of the same name, and one that only one side has
+  fades in or out where it is. A handle names a datum by key, `curve.["S6"]`.
+- **A panel as a pointer meets it.** `Chart.panelsIn` gives each drawn panel's plot rectangle,
+  coord, scales and axes in a shot; `PanelView.toData` reads a point back as data,
+  `PanelView.domainsOf` a rectangle as domains, and `PanelView.read` a point as text.
+  `Chart.withPanelDomains` states one panel's domains.
+- **`Chart.fitsIn`** says whether a figure fits a shot already laid out, and
+  `Chart.arrangeOver` lays a shot out over a stated set of figures.
+- **`UnitDisplay.quantity` and `quantityIn`**, the one place a value and its unit are written for
+  a reader: `2 kV·m⁻¹`, `300 K`. The quiver key, `FixedPoint.describe` and a control's label all
+  use it, and `UnitDisplay.withUnit` is where a number meets its unit text.
 - **`Marey.Fields`, a thirteenth package: fields on dimensioned planes.** The guide's new §15
   walks through it.
   - **Grids.** `ScalarGrid` and `VectorGrid` on rectilinear nodes, sampled from a function
@@ -80,6 +140,14 @@ land in a minor release.
 
 ### Changed
 
+- **The axes, the gridlines, the legend and the colorbar have keys of their own** in the scene
+  (`Keys.axisX`, `axisY`, `grid`, `legend`, `colorbar`, below the panel's), so a diff can replace
+  one of them without the panel. An SVG gains a `<g id="…">` around each, and a TikZ file a
+  comment; 25 baselines moved, and nothing else in them did.
+- **`Handle.Row` is now `Handle.Mark`**, a `(Key * MarkRef) option`, where a `MarkRef` is a row or
+  a datum, because a handle can name a datum by its key. `curve.[n]` builds a row as before.
+- **`Layer` gained `RowKeys`**, the rows' own keys, empty when the data supplies none. A record
+  expression that builds a `Layer` by hand needs the field.
 - **A layer in rad/s refuses to share an axis with a layer in Hz.** Angle is dimensionless in SI,
   so the two have one dimension and `Figure.unify` let them share an axis, plotting an angular
   velocity and a frequency, a factor of 2π apart, on one scale. It now raises, naming both units,

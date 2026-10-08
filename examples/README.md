@@ -1,6 +1,6 @@
 # Examples
 
-Fifteen standalone scripts. Start with [`reel.fsx`](reel.fsx) if you want to see what the library
+Fifteen standalone scripts and one notebook. Start with [`reel.fsx`](reel.fsx) if you want to see what the library
 does before reading how; start with [`free-fall.fsx`](free-fall.fsx) if you would rather read the
 smallest complete thing first.
 
@@ -11,7 +11,9 @@ dotnet fsi examples/free-fall.fsx
 ```
 
 Each script writes its figure into the working directory. The `#r "nuget: …"` lines at the top
-resolve from nuget.org, so nothing needs to be built first.
+resolve from nuget.org, so nothing needs to be built first. The notebook, `interact.dib`, opens in
+Verso with the Marey extension installed; its figure is live in a Verso newer than 1.2.2, and
+static anywhere else.
 
 | Example | What it shows |
 |---|---|
@@ -29,6 +31,7 @@ resolve from nuget.org, so nothing needs to be built first.
 | [`fields.fsx`](fields.fsx) | Two line charges, drawn every way `Marey.Fields` draws a field: the potential and its equipotentials, field lines over filled bands, a quiver with its key, and line-integral convolution. The field comes out in V/m and its divergence in V/m², and the script checks Gauss's law on the grid. |
 | [`dipole.fsx`](dipole.fsx) | A field in motion: a rotating dipole's potential, equipotentials and field lines, recomputed every frame and encoded to `.mp4`. The panel and the colour scale stay put while the field turns, and the script checks that every frame has the same labels. |
 | [`pendulum.fsx`](pendulum.fsx) | A phase space with a different unit on each axis, radians and radians per second. The fixed points are found and classified, with eigenvalues in s⁻¹: centres hanging down, saddles standing up, stable foci once there is friction. Also checks Liouville's theorem on the grid: the flow's divergence is zero, then minus the friction. |
+| [`interact.dib`](interact.dib) | **A live figure**, in a notebook. Two line charges with a slider over the charge per length, typed `float<C/m>` and labelled `2 nC·m⁻¹`, a slider over their separation and a choice of mark. Drag to zoom onto a charge and the axes and the readout change to millimetres. A recorder keeps what the reader did and replays it as a film. |
 | [`reel.fsx`](reel.fsx) | **The demo reel.** The whole library in one shot: unit witnesses, a storyboard that is a value, one arrangement for the whole shot so the panel holds still, a mark addressed by its row, TeX-set axis titles on the poster, a flipbook that plays in a browser with no encoder installed, and an `.mp4` at the end. Written for somebody who has read none of the rest. |
 
 ## The data
@@ -43,7 +46,7 @@ and gives the same figure every time.
 
 ## Tested
 
-`tests/Marey.Tests/ExampleTests.fs` runs every file here on each `dotnet test`, against the working
-tree rather than the published packages, and fails if a script does not compile, writes no figure,
+`tests/Marey.Tests/ExampleTests.fs` runs every file here on each `dotnet test` (the notebook as its
+F# cells in order), against the working tree rather than the published packages, and fails if a script does not compile, writes no figure,
 or **prints a `false`**. The printed booleans are claims about the library, so a false one means
 either the example is wrong or the library has moved under it.

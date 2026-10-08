@@ -35,8 +35,9 @@ The blocks form one continuous session, so bindings introduced early are still i
 20. [Video](#20-video)
 21. [Mathematical typesetting](#21-mathematical-typesetting)
 22. [Notebooks](#22-notebooks)
-23. [The scene IR](#23-the-scene-ir)
-24. [Escape hatches](#24-escape-hatches)
+23. [Interaction](#23-interaction)
+24. [The scene IR](#24-the-scene-ir)
+25. [Escape hatches](#25-escape-hatches)
 
 ---
 
@@ -64,7 +65,8 @@ open Marey
 | `Marey.Fields` | Scalar and vector fields on dimensioned planes, their derivatives, phase portraits, and the field geoms: heatmap, contours, bands, quiver, streamlines, LIC — see §15. |
 | `Marey.Tools.Tex` | Typesetting TeX in a figure as filled outlines, by shelling out to `latex` and `dvisvgm` — see §21. |
 | `Marey.Toolchain` | Resolving and running the external programs Marey drives but does not ship. Zero dependencies; arrives with `Marey.Tools.Video`. |
-| `Marey.Html` | HTML renderings of ten Marey types, for a notebook cell. Host-neutral. |
+| `Marey.Interact` | Controls on a figure, and the pure step a notebook drives: zoom, pan, a readout, recordings — see §23. Arrives with `Marey.Html`. |
+| `Marey.Html` | HTML renderings of twelve Marey types for a notebook cell, a live figure's page among them. Host-neutral. |
 | `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension. Installed *into the host*, not referenced from user code. |
 
 ---
@@ -749,6 +751,7 @@ The operations, in full:
 | `fit` `fitWith` | A least-squares line as an extra layer. |
 | `histogram` `histogramWith` `density` `densityWith` `ecdf` | The distribution stats. |
 | `facetWrap` `facetWrapIn` `facetScales` | One panel per level — see §14. |
+| `key` | Each row's own name, so a mark keeps it when other rows come and go — see §18. |
 | `name` `theme` `coord` | The series name, the theme, the coordinate system. |
 
 Three rules worth knowing before you meet them:
@@ -1443,6 +1446,47 @@ printfn
 Only a scatter can honour it. A line is one `Path`, so there is no node between its vertices to
 name, and asking for one raises rather than drawing nothing.
 
+### Keys the data supplies
+
+A row number stops naming the same datum as soon as a row before it is removed. When the rows have
+names of their own, say so with `key` in the encoding block (or `Chart.withKeys`), and each mark is
+keyed by its row's name instead:
+
+```fsharp
+type Station = { Name: string; Year: float<s>; Level: float<m> }
+
+let stations =
+    Array.init 12 (fun i -> { Name = sprintf "S%d" i; Year = float i * 1.0<s>; Level = float (i * 7 % 5) * 1.0<m> })
+
+let byStation (rows: Station[]) =
+    plot rows {
+        x U.second (fun r -> r.Year)
+        y U.metre (fun r -> r.Level)
+        key (fun r -> r.Name)
+    }
+
+let withoutS3 = stations |> Array.filter (fun r -> r.Name <> "S3")
+
+let storyFiltered =
+    scene {
+        let! sites = draw (byStation stations) |> over 0.5<s>
+        do! sites |> morphTo (byStation withoutS3) |> over 1.0<s>
+        do! highlight sites.["S6"] |> over 0.4<s>
+    }
+
+printfn "the filtered story runs for %g s" (float (Storyboard.duration storyFiltered))
+```
+
+**A morph between two keyed scatters pairs by key.** Each station moves to the station of the same
+name, so the ones that stayed hold still, and `S3` fades out where it was. A datum only the target
+has fades in where it is going. Without keys the morph pairs by position, and every station after
+the removed one would slide one place to the left. `sites.["S6"]` names a datum by its key;
+`sites.[6]` on a keyed scatter names the datum that was row 6.
+
+A key is one escaped segment of the mark's path, so a `/` in the data cannot reach into another
+layer's marks, and two rows with one key are refused where the keys are given, naming the key and
+both rows. Only a scatter pairs by key; every other geom pairs by index, as before.
+
 ### Rendering
 
 `animate` samples the storyboard, sizes one arrangement against the union of everything it saw
@@ -1804,8 +1848,8 @@ replaced rather than appended to, because a preamble is a document's own busines
 
 In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
 cell whose value is a `Figure` displays as a figure. No `.Show()`, no save-then-open, no display
-call. Ten types render: `Figure`, `Film`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`,
-`Dim`, `U<'u>` and `IScaleErased`.
+call. Twelve types render: `Figure`, `Film`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`,
+`Dim`, `U<'u>`, `IScaleErased`, and a live figure, `Live` or `Recorder` (§23).
 
 Without the extension, render to SVG and Verso's built-in `SvgFormatter` — which claims any string
 beginning with `<svg` — draws it. That path needs nothing installed.
@@ -1868,7 +1912,176 @@ See [`notebooks/README.md`](notebooks/README.md) for installation and
 
 ---
 
-## 23. The scene IR
+## 23. Interaction
+
+`Marey.Interact` puts controls on a figure. In a notebook the cell becomes a live figure: the
+reader moves a slider, the kernel runs the view again, and the figure that comes back is drawn by
+the same code as every other figure in this guide.
+
+```fsharp
+#r "nuget: Marey.Interact"
+
+let lineCharge = U.div Derived.coulomb U.metre
+let epsilon0 = 8.8541878128e-12<F/m>
+
+// Two line charges, +λ and −λ, a distance 2·half apart on the x axis.
+let pairPotential (lambda: float<C/m>) (half: float<m>) (p: Vec2<m>) : float<V> =
+    let plus = Vec2.norm { X = p.X - half; Y = p.Y }
+    let minus = Vec2.norm { X = p.X + half; Y = p.Y }
+    lambda / (2.0 * System.Math.PI * epsilon0) * log (minus / plus)
+
+let pairMap (lambda: float<C/m>) (half: float<m>) (contoured: bool) =
+    let grid = Field.sampleScalar fieldXs fieldYs (pairPotential lambda half)
+
+    let map =
+        Field.heatmap U.metre U.metre Derived.volt grid
+        |> Chart.withColorDomain Derived.volt -100.0<V> 100.0<V>
+        |> Chart.withYLabel "y"
+
+    if contoured then
+        map |> Chart.overlay (Field.contoursAt [| -50.0<V>; -20.0<V>; 0.0<V>; 20.0<V>; 50.0<V> |] U.metre U.metre grid)
+    else
+        map
+
+let explorer =
+    interact {
+        let! lambda = Control.slider lineCharge "λ" 0.5e-9<C/m> 5.0e-9<C/m> 2.0e-9<C/m>
+        and! half = Control.slider U.metre "d/2" 0.2<m> 1.0<m> 0.6<m>
+        and! contoured = Control.checkbox "contours" true
+        return pairMap lambda half contoured
+    }
+```
+
+| | The view receives | The label reads |
+|---|---|---|
+| `Control.slider u label lo hi init` | `float<'u>` | the value in `'u`, under one prefix chosen from the range |
+| `Control.sliderBy u label lo hi step init` | `float<'u>` | as above, with the places the step needs |
+| `Control.select label [ name, value; … ] init` | the chosen value | its name |
+| `Control.checkbox label init` | `bool` | `on` or `off` |
+
+**A control is typed.** The λ slider hands the view `float<C/m>`, so passing it where the view
+wants metres does not compile, and its label is written in its own unit: `2 nC·m⁻¹`, under one
+prefix chosen from the range so that it does not switch prefix in the middle of a drag.
+
+**The block is applicative**: `let! … and! …`, then `return`. A control cannot be chosen by another
+control's value, so the set of controls is known before the view runs, and the widget's shape is
+not a function of its state.
+
+### In a notebook
+
+A cell whose value is a `Live` displays as a page: the controls, the figure, and a short script.
+Moving a control posts the new value to the kernel, the kernel runs the view and sends back the
+figure, or only the parts of it that changed when that is at most half the size. On the figure
+itself:
+
+- **drag** a box to zoom onto it, on log axes and phase spaces as well as linear ones;
+- **shift-drag** to pan;
+- **double-click** to go back to the view's own domains;
+- **hover** to read the data under the pointer, in a box in the plot's top corner.
+
+The page formats no number. Every label and every reading is written by the kernel, in the units
+the axes are written in.
+
+A live figure needs a host that can talk back to the page. In Verso that is a release whose
+formatter context carries output channels (newer than 1.2.2). In any other host, and in a saved
+notebook, the same page is drawn with its controls disabled and a line saying it is static. A save
+writes the page at the state the reader left it in.
+
+**The view is yours, and it must be pure.** It is run again for every change, it is run for states
+the reader never reaches (below), and a message can arrive while another cell is executing. Steps
+for one figure run one at a time; a view that reads or writes shared mutable state can still see
+another cell's half-finished work.
+
+### A live figure is a value
+
+What the notebook does is a fold over the reader's messages, and the same functions run without
+a notebook:
+
+```fsharp
+let startState = Live.init explorer
+let movedState = Live.step explorer startState (Set(0, 4.0e-9))
+
+printfn "%s" (String.concat ", " (Live.shown explorer movedState))
+printfn "the same message gives the same state: %b" (Live.step explorer startState (Set(0, 4.0e-9)) = movedState)
+printfn "a message for no control changes nothing: %b" (obj.ReferenceEquals(Live.step explorer startState (Set(7, 1.0)), startState))
+```
+
+`Live.step` is total: a message naming no control, a value with no legal neighbour, or a size that
+is not one returns the state it was given. A page in someone's browser sent it, and a step that can
+throw is a widget that can die. `Live.view` gives the figure for any state, and `Live.scene` the
+scene it is drawn as.
+
+Zoom and the readout are messages too, in the figure's px:
+
+```fsharp
+let plotArea = (Live.panels explorer movedState).[0].Plot
+let middle = { X = (plotArea.X0 + plotArea.X1) / 2.0; Y = (plotArea.Y0 + plotArea.Y1) / 2.0 }
+
+let zoomedState =
+    Live.step explorer movedState (Zoom { X0 = middle.X - 120.0<px>; Y0 = middle.Y - 60.0<px>; X1 = middle.X; Y1 = middle.Y })
+
+match Live.step explorer zoomedState (Hover middle) |> Live.readout explorer with
+| Some reading -> reading.Lines |> Array.iter (printfn "%s")
+| None -> printfn "the pointer is off the plot"
+```
+
+A reading is written in the prefix and unit the axis's ticks are written in, to the places one px
+resolves: a log axis gets more places near its bottom than near its top. A categorical axis reads
+the level under the pointer. The reading is placed over the plot, outside the figure, so it never
+moves the layout and redrawing the figure is never what a hover costs.
+
+### The plot area holds still
+
+The figure is laid out once for the whole widget, against the union of the states its controls
+reach at their extremes: each slider's ends, every option, both states of a checkbox, every
+combination while there are at most 64 of them. So the plot area does not move while the reader
+drags, though a tick label gains a digit. A state that still does not fit grows the arrangement,
+once, and `LiveState.Grown` records it:
+
+```fsharp
+printfn "re-arranged %d times so far" movedState.Grown.Length
+```
+
+A zoom is the exception, because it changes what the axes say. It re-arranges at once, so that
+kilometres zoomed to a few hundred metres read in metres, as a still figure of that domain would.
+
+### Recording
+
+A session is its messages, because the step is pure. `Live.recorder` gives a handle that displays
+as the live figure and keeps what the reader did, with the page's own times:
+
+```fsharp
+let recorder = Live.recorder explorer
+// Display `recorder` in a cell, move things, then:
+let kept = Recorder.stop recorder
+```
+
+`Live.record` replays a log through the step, and `Live.film` turns the states into a `Film`, laid
+out over every state the recording reached. Time starts at the reader's first act, not when the
+page appeared. A log is also data, and `LiveLog` writes it as JSON and reads it back exactly:
+
+```fsharp
+let session =
+    Recording.ofEvents
+        [| 0.0<s>, Set(0, 1.0e-9)
+           0.8<s>, Set(0, 3.0e-9)
+           1.6<s>, Set(1, 0.9)
+           2.4<s>, Set(2, 0.0) |]
+
+let replay = Live.film explorer (Live.record explorer session)
+
+printfn "the replay runs for %g s" (float replay.Duration)
+printfn "a log reads back exactly: %b" (LiveLog.ofJson (LiveLog.toJson session) = Ok session)
+```
+
+The film is an ordinary `Film`, so §19 writes its frames, §20 encodes it, and in a notebook it
+plays as a flipbook (§22). The pointer is not recorded: it changes nothing a film draws.
+
+`examples/interact.dib` is a notebook with this figure in it.
+
+---
+
+## 24. The scene IR
 
 Everything above compiles to one closed ten-case `Scene` IR, and every backend consumes only that.
 It is the level at which a figure that came out wrong can be inspected.
@@ -1914,7 +2127,7 @@ paints the overlap twice. For a single shape, `Color.A` is still the simpler too
 
 ---
 
-## 24. Escape hatches
+## 25. Escape hatches
 
 **Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so the scales are
 the caller's and everything downstream still works.
@@ -1951,5 +2164,6 @@ For a stateful backend there is `IBackend` and `Chart.renderTo`, which is the pa
 ## What is not here yet
 
 Simulation (integrating a system over physical time: trajectories, pathlines, particles), further
-backends (a browser canvas and a GPU one), an interactive canvas with signals, and typesetting
-without a TeX installation are all intended, and none of them exist yet.
+backends (a browser canvas and a GPU one), interaction outside a notebook, picking a datum under
+the pointer, and typesetting without a TeX installation are all intended, and none of them exist
+yet.

@@ -52,11 +52,39 @@ The figure is laid out once for the whole widget, over the states its controls r
 extremes, so the plot area does not move while the reader drags. A state that still does not fit
 grows the arrangement, and `LiveState.Grown` records each one.
 
+## Zoom, pan and a readout
+
+A host sends the reader's pointer as messages in the figure's px, and the step answers them like
+any other:
+
+```fsharp
+let panel = (Live.panels live s1).[0]
+let area = { X0 = panel.Plot.X0 + 40.0<px>; Y0 = panel.Plot.Y0 + 20.0<px>; X1 = panel.Plot.X0 + 200.0<px>; Y1 = panel.Plot.Y0 + 120.0<px> }
+
+let zoomed = Live.step live s1 (Zoom area)      // the panel's domains become what the box covered
+let back = Live.step live zoomed Reset          // and back
+let reading = Live.step live zoomed (Hover { X = area.X0; Y = area.Y0 }) |> Live.readout live
+```
+
+The box is read back through the panel's own scales, so a log axis zooms by decades and a phase
+space by its own units. `Pan` slides the domains, and a log axis pans by a factor. A reading is one
+line per axis in the prefix and unit the axis's ticks are written in, to the places one px
+resolves. A hover changes no figure, and `Live.drawsAlike` says so, so a host does not redraw for
+one.
+
+## Recording
+
+`Live.recorder live` displays as `live` and keeps every message the host steps, with the page's
+own times. `Recorder.stop` hands back the log, `Live.record` replays it through the step, and
+`Live.film` makes the states a `Film`, laid out over every state the session reached. `LiveLog`
+writes a log as JSON and reads it back exactly.
+
 ## The document
 
 `Html.widget live state isLive` writes the whole page: the controls at the state's values, the
-figure, and a script that posts each change and swaps in the reply. The script formats no
-number: every label is written by the kernel. With `isLive = false` the controls are disabled.
+figure, and a script that posts each change and swaps in the reply, or only the elements that
+changed when that is at most half the figure. The script formats no number: every label is written
+by the kernel. With `isLive = false` the controls are disabled.
 That form suits a host with nothing to talk back to, and a saved notebook.
 
 Depends on `Marey.Core`, `Marey.Units` and `Marey.Plot`. `netstandard2.1`, no other dependencies.

@@ -1,6 +1,7 @@
 /// `examples/` is executable, and this is what executes it.
 ///
-/// Each `.fsx` under `examples/` is run **on its own** under `dotnet fsi`, unlike `docs/guide.md`,
+/// Each `.fsx` under `examples/` is run **on its own** under `dotnet fsi`, and so is each `.dib`
+/// notebook, as its F# cells in order. Unlike `docs/guide.md`,
 /// whose blocks are concatenated into one continuous session by `GuideTests`. That difference is
 /// the point: a guide example is a fragment of a narrative and may lean on a binding from six
 /// sections earlier, while an example is something a reader downloads and runs. It has to stand
@@ -51,6 +52,8 @@ let private assemblies =
       // Phase 8 shipped the package with no example using it, so the omission was invisible: a
       // list of assemblies is only wrong once a script needs the missing one.
       "Marey.Tools.Tex"
+      // Joined at M4.5 phase 9, with `interact.dib`.
+      "Marey.Interact"
       "Marey.Html"
       // Joined at M4 phase 6, with `pendulum.fsx` — the same omission as `Marey.Tools.Tex`'s:
       // phases 1–5 shipped `Marey.Fields` with no example, so nothing needed it here.
@@ -63,9 +66,33 @@ let private exampleFiles () =
     let dir = exampleDir.Force()
 
     if Directory.Exists dir then
-        Directory.GetFiles(dir, "*.fsx") |> Array.sortBy Path.GetFileName
+        Array.append (Directory.GetFiles(dir, "*.fsx")) (Directory.GetFiles(dir, "*.dib"))
+        |> Array.sortBy Path.GetFileName
     else
         [||]
+
+/// The cells of a `.dib` that are not F#. A line naming one ends the F# cell before it; any other
+/// `#!` line is a magic command inside a cell, which fsi does not know and a notebook does.
+let private otherCells =
+    set [ "#!markdown"; "#!meta"; "#!csharp"; "#!pwsh"; "#!javascript"; "#!html"; "#!mermaid"; "#!sql"; "#!kql"; "#!value" ]
+
+/// The F# an example holds: an `.fsx` whole, and a `.dib` notebook's `#!fsharp` cells in order,
+/// with its markdown, its metadata and its magic commands left out. A notebook's last expression
+/// in a cell is what the cell displays; under fsi it is evaluated and dropped, which still runs it.
+let private fsharpLines (path: string) : string[] =
+    let lines = File.ReadAllText(path, Encoding.UTF8).Replace("\r\n", "\n").Split('\n')
+
+    if Path.GetExtension path = ".dib" then
+        let mutable inFsharp = false
+
+        [| for line in lines do
+               let header = line.TrimEnd()
+
+               if header = "#!fsharp" then inFsharp <- true
+               elif otherCells.Contains header then inFsharp <- false
+               elif inFsharp && not (line.StartsWith("#!", StringComparison.Ordinal)) then yield line |]
+    else
+        lines
 
 /// The xunit `MemberData` source: one case per example, named by its file so a failure in the
 /// runner output names the example rather than an index.
@@ -120,7 +147,7 @@ let ``the example compiles and runs`` (name: string) =
 
         // `#r "nuget: …"` is the reader's line, not the checker's: resolving it would test
         // whatever is published rather than this working tree, and would need a network.
-        for line in File.ReadAllText(source, Encoding.UTF8).Replace("\r\n", "\n").Split('\n') do
+        for line in fsharpLines source do
             if not (line.StartsWith("#r \"nuget:", StringComparison.Ordinal)) then
                 script.AppendLine line |> ignore
 

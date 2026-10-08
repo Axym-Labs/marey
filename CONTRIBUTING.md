@@ -4,7 +4,7 @@
 
 ```
 dotnet build          # warning-free; warnings are errors
-dotnet test           # 1278 tests
+dotnet test           # 1379 tests
 ```
 
 `TreatWarningsAsErrors` is on for every project, set in `Directory.Build.props`. It is not
