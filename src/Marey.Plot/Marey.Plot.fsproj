@@ -26,13 +26,14 @@
     <Compile Include="Figure.fs" />
     <Compile Include="Levels.fs" />
     <Compile Include="Chart.fs" />
-    <!-- D109 — the unit-required mode. After Chart.fs, whose implementations it reaches. -->
-    <Compile Include="UnitsOfMeasure.fs" />
     <Compile Include="Plot.fs" />
     <Compile Include="Storyboard.fs" />
     <!-- After Storyboard.fs: `Film.ofStory` names a `Story`, and `Frames` is what a storyboard
          is finally *for*. D77. -->
     <Compile Include="Frames.fs" />
+    <!-- D109 — the unit-required mode. Last: it reaches the implementations in Chart.fs and
+         inherits the block's operations from Plot.fs. -->
+    <Compile Include="UnitsOfMeasure.fs" />
   </ItemGroup>
 
   <ItemGroup>

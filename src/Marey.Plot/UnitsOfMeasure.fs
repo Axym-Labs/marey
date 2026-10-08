@@ -477,3 +477,19 @@ module Chart =
 
         [<Obsolete("Marey.UnitsOfMeasure is open, so a categorical chart takes the values' witness: Chart.Category.violin. Chart.Category.Violin(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
         let Violin (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+/// D109 — **the encoding block in the unit-required mode**: every channel that takes a witness
+/// takes one, and an accessor without a measure stated for it is FS3099 rather than an unspecified
+/// axis. The block's other operations are inherited from the core's; only the witness-free forms
+/// `Marey.PlotBuilder` adds are missing, which is the whole difference.
+type PlotBuilder<'r>(rows: 'r[]) =
+    inherit PlotBuilderBase<'r>(rows)
+
+/// §9 — the encoding block's entry point in the unit-required mode. It shadows the core's `plot`,
+/// which is how the block, a class whose members cannot be shadowed one by one, changes mode with
+/// the `open`.
+[<AutoOpen>]
+module Grammar =
+
+    /// Open an encoding block over a dataset, every channel with its witness.
+    let plot (data: 'r seq) : PlotBuilder<'r> = PlotBuilder<'r>(Seq.toArray data)

@@ -527,3 +527,102 @@ module TheShadowIsAnError =
         match compile "curried-core" [ "Marey" ] body with
         | None -> skipped ()
         | Some(code, path, _) -> Assert.True(code <> 0, sprintf "Chart.line was reachable without the open: %s" path)
+
+/// Gate 7 — the block changes mode with the `open`. Compiled through `dotnet fsi` for the same
+/// reason as gate 6.
+module TheBlock =
+
+    open System
+    open System.IO
+    open System.Text
+
+    type private Row = { V: float; D: float<m> }
+
+    let private rows = [| { V = 1.0; D = 2.0<m> }; { V = 3.0; D = 1.5<m> }; { V = 4.0; D = 3.5<m> } |]
+    let private svg (fig: Figure) = SvgBackend.render extent (Chart.toScene extent fig)
+
+    /// The witness-free form is the witness form at `U.unspecified`, and nothing else.
+    [<Fact>]
+    let ``a channel without a witness is the channel at unspecified`` () =
+        let plain =
+            Marey.Grammar.plot rows {
+                x (fun r -> r.V)
+                y U.metre (fun r -> r.D)
+                colorBy (fun r -> r.V)
+                size (fun r -> r.V)
+            }
+
+        let stated =
+            Marey.Grammar.plot rows {
+                x U.unspecified (fun r -> r.V)
+                y U.metre (fun r -> r.D)
+                colorBy U.unspecified (fun r -> r.V)
+                size U.unspecified (fun r -> r.V)
+            }
+
+        Assert.Equal(svg stated, svg plain)
+        Assert.Contains("[m]", svg plain)
+
+        // And it is unspecified rather than dimensionless: a metre layer shares its x axis.
+        plain |> Chart.add (Chart.line U.metre U.metre [| 0.0<m>; 1.0<m> |] [| 1.0<m>; 2.0<m> |]) |> svg |> ignore
+
+    let private compile (name: string) (opens: string list) (body: string) =
+        let tool = Tools.dotnet.Force()
+
+        if not tool.IsAvailable then
+            None
+        else
+            let binDir = Path.GetDirectoryName(Uri(typeof<Marey.Figure>.Assembly.Location).LocalPath)
+            let sb = StringBuilder()
+
+            for dll in [ "Marey.Core"; "Marey.Units"; "Marey.Anim"; "Marey.Plot" ] do
+                sb.AppendLine(sprintf "#r @\"%s\"" (Path.Combine(binDir, dll + ".dll"))) |> ignore
+
+            for o in opens do
+                sb.AppendLine("open " + o) |> ignore
+
+            sb.AppendLine("type Row = { V: float; T: float<s>; D: float<m> }") |> ignore
+            sb.AppendLine("let rows = [| { V = 1.0; T = 0.0<s>; D = 2.0<m> } |]") |> ignore
+            let path = Path.Combine(Path.GetTempPath(), sprintf "marey-block-%s.fsx" name)
+            File.WriteAllText(path, sb.ToString() + body + "\n", UTF8Encoding false)
+
+            match Toolchain.run tool (sprintf "fsi --nologo \"%s\"" path) (Path.GetTempPath()) 600_000 with
+            | ToolUnavailable _ -> None
+            | ToolTimedOut why -> failwith why
+            | ToolRan run -> Some(run.ExitCode, path, run.Out + "\n" + run.Error)
+
+    let private skipped () = Console.WriteLine("SKIPPED: dotnet not found on PATH")
+    let private withoutWitness = "let fig = plot rows { x (fun r -> r.V); y U.metre (fun r -> r.D) }\nprintfn \"%d\" fig.Panels.Length"
+    let private withWitness = "let fig = plot rows { x U.second (fun r -> r.T); y U.metre (fun r -> r.D) }\nprintfn \"%d\" fig.Panels.Length"
+
+    [<Fact>]
+    let ``a channel without a witness compiles under open Marey`` () =
+        match compile "optional" [ "Marey" ] withoutWitness with
+        | None -> skipped ()
+        | Some(code, path, output) -> Assert.True((code = 0), sprintf "did not compile: %s\n%s" path output)
+
+    [<Fact>]
+    let ``a channel without a witness does not compile under open Marey.UnitsOfMeasure`` () =
+        match compile "required" [ "Marey"; "Marey.UnitsOfMeasure" ] withoutWitness with
+        | None -> skipped ()
+        | Some(code, path, output) ->
+            Assert.True(code <> 0, sprintf "a witness-free channel compiled in the unit-required mode: %s" path)
+            Assert.Contains("error FS3099", output)
+
+    [<Fact>]
+    let ``a channel with its witness compiles in both modes`` () =
+        for name, opens in [ "with-optional", [ "Marey" ]; "with-required", [ "Marey"; "Marey.UnitsOfMeasure" ] ] do
+            match compile name opens withWitness with
+            | None -> skipped ()
+            | Some(code, path, output) -> Assert.True((code = 0), sprintf "did not compile: %s\n%s" path output)
+
+    /// D43's check survives the overload: a witness that disagrees with its accessor is still the
+    /// measure error, naming both measures, in the mode that has the overload.
+    [<Fact>]
+    let ``a witness against the wrong accessor is still FS0001 under open Marey`` () =
+        match compile "mismatch" [ "Marey" ] "let fig = plot rows { x U.second (fun r -> r.D) }" with
+        | None -> skipped ()
+        | Some(code, path, output) ->
+            Assert.True(code <> 0, sprintf "seconds against metres compiled: %s" path)
+            Assert.Contains("error FS0001", output)
+            Assert.Contains("'s' does not match the unit of measure 'm'", output)
