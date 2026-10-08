@@ -1,6 +1,7 @@
 namespace Marey
 
 open System
+open System.Runtime.InteropServices
 
 // ======================================================================================
 // D92 — PHASE PORTRAITS: NULLCLINES, FIXED POINTS, AND WHAT KIND EACH ONE IS.
@@ -85,15 +86,7 @@ module FixedPoint =
         let s = (if abs v < 5e-13 then 0.0 else v).ToString("0.####", Globalization.CultureInfo.InvariantCulture)
         if s = "-0" then "0" else s
 
-    /// One line describing a fixed point, the coordinates in their axes' units and the
-    /// eigenvalues in `1/'t`:
-    ///
-    ///     centre (linear) at (0 rad, 0 rad·s⁻¹), λ = ±3.116i s⁻¹
-    ///
-    /// The eigenvalues are converted to SI and written in base units, never through the registry,
-    /// because the registry names s⁻¹ hertz and an eigenvalue is a rate, not a frequency (D98's
-    /// error in a different place).
-    let describe<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
+    let internal describe<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
         (ux: U<'x>)
         (uy: U<'y>)
         (ut: U<'t>)
@@ -294,10 +287,7 @@ module Phase =
     let private symbolOf (side: AxisSide) (u: U<'u>) =
         Axes.defaultLabelFor side (U.angleExponentOf u.Symbol u.Factors) u.Dim
 
-    /// The two nullclines: where `u` vanishes and where `w` does, each the zero contour of its
-    /// component, in the theme's first two categorical colours and named in the legend
-    /// `dθ/dt = 0`, after the quantity each axis would be titled with.
-    let nullclines<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
+    let internal nullclines<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
         (ux: U<'x>)
         (uy: U<'y>)
         (g: VectorGrid<'x, 'y, 'u, 'w>)
@@ -344,11 +334,7 @@ module Phase =
         | FixedPointKind.Focus false -> 6
         | FixedPointKind.Degenerate -> 7
 
-    /// The fixed points as marks, one layer per kind present, named by kind in the legend: a
-    /// diamond for a saddle, a circle for a centre, a triangle down for a stable node or focus and
-    /// up for an unstable one, a square for a degenerate point. Each kind has its own colour
-    /// (`colourIndex`). `None` when there are none.
-    let marks<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
+    let internal marks<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
         (ux: U<'x>)
         (uy: U<'y>)
         (points: FixedPoint<'x, 'y, 't>[])
@@ -373,10 +359,7 @@ module Phase =
         | [] -> None
         | first :: rest -> Some(rest |> List.fold (fun acc l -> acc |> Chart.overlay l) first)
 
-    /// A phase portrait: streamlines `separation` apart on the page, the nullclines over them,
-    /// and the fixed points over both, named by kind in the legend. The legend sits in a corner of
-    /// the plot area, where a portrait has data too; `Chart.withLegend` moves it.
-    let portraitWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
+    let internal portraitWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
         (separation: float<px>)
         (ux: U<'x>)
         (uy: U<'y>)
@@ -391,10 +374,57 @@ module Phase =
         | Some m -> flow |> Chart.overlay m
         | None -> flow
 
-    /// `portraitWith` at the streamlines' default separation.
-    let portrait<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
+    let internal portrait<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
         (ux: U<'x>)
         (uy: U<'y>)
         (g: VectorGrid<'x, 'y, 'x / 't, 'y / 't>)
         : Figure =
         portraitWith (Field.DefaultSeparation * 1.0<px>) ux uy g
+
+/// D109 — phase portraits in the unit-optional mode. See `type Field`.
+[<AbstractClass; Sealed>]
+type Phase =
+
+    static member Nullclines
+        (
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Phase.nullclines (U.erase xUnit) (U.erase yUnit) g
+
+    static member Marks
+        (
+            points: FixedPoint<1, 1, 1>[],
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure option =
+        Phase.marks (U.erase xUnit) (U.erase yUnit) points
+
+    static member PortraitWith
+        (
+            separation: float<px>,
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Phase.portraitWith separation (U.erase xUnit) (U.erase yUnit) g
+
+    static member Portrait
+        (
+            g: VectorGrid<1, 1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Phase.portrait (U.erase xUnit) (U.erase yUnit) g
+
+    /// `FixedPoint.describe`, in the unit-optional mode. A member here rather than on a type
+    /// `FixedPoint`, which would collide with the record `FixedPoint<'x, 'y, 't>` (FS0037).
+    static member Describe
+        (
+            p: FixedPoint<1, 1, 1>,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] timeUnit: IUnit
+        ) : string =
+        FixedPoint.describe (U.erase xUnit) (U.erase yUnit) (U.erase timeUnit) p

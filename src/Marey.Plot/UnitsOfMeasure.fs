@@ -415,3 +415,65 @@ module Chart =
 
     [<Obsolete("Marey.UnitsOfMeasure is open, so a chart takes a witness per axis: Chart.sizeByWith. Chart.SizeByWith(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
     let SizeByWith (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+    /// D45's categorical door in the unit-required mode: the values take a witness, the keys are
+    /// data. `Chart.Category.count`, which takes no witness, is the core's and resolves there.
+    [<RequireQualifiedAccess>]
+    module Category =
+
+        /// The typed categorical series, over the levels the keys themselves define.
+        let series (name: string) (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Levels<'k> * Series<1, 'uy> =
+            Marey.Chart.Category.series name uy keys values
+
+        /// A bar per row, in the band its key names, measured from zero.
+        let bar (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
+            Marey.Chart.Category.bar uy keys values
+
+        /// The same axis with points instead of bars — a dot plot, and the shape a categorical
+        /// colour channel will hang off in phase 2.
+        let scatter (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
+            Marey.Chart.Category.scatter uy keys values
+
+        /// §9 / D55 — **a box plot per level**, from the rows that carry it.
+        ///
+        /// The measures again do the work nobody had to ask for: `Stat.summary` of a
+        /// `float&lt;'uy&gt;[]` is entirely in `float&lt;'uy&gt;`, so the box, the whiskers and
+        /// the outliers all project through the same y scale and the axis labels itself off the
+        /// same witness the values were declared with.
+        ///
+        /// The y domain covers the whiskers **and the outliers**, padded. A domain taken from
+        /// the boxes alone is the tidier picture and it is a lie by omission: the points that
+        /// fall outside it are exactly the ones a box plot is read to find, and clipping them
+        /// hides them behind the panel edge rather than dropping them somewhere visible.
+        let boxplot (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
+            Marey.Chart.Category.boxplot uy keys values
+
+        /// §9 / D55 — **a violin per level**: the same split, drawn as a density instead of a
+        /// summary.
+        ///
+        /// **The bandwidth comes from the undivided sample** (`Stat.frameOf`), not from each
+        /// group, and that is D48's facet argument arriving in a second place. A bandwidth
+        /// chosen per group smooths the sparse ones harder and invents a difference in *shape*
+        /// that is not in the data — the quiet kind of wrong, because the figure looks fine. It
+        /// also removes a failure: a group of one value has no bandwidth of its own and a
+        /// density over it raises, where under a shared one it draws the whole sample's kernel
+        /// over its single point, which is what it is.
+        ///
+        /// A sample with no spread at all still has no density to estimate, and says so.
+        let violin (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
+            Marey.Chart.Category.violin uy keys values
+
+        [<Obsolete("Marey.UnitsOfMeasure is open, so a categorical chart takes the values' witness: Chart.Category.series. Chart.Category.Series(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+        let Series (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+        [<Obsolete("Marey.UnitsOfMeasure is open, so a categorical chart takes the values' witness: Chart.Category.bar. Chart.Category.Bar(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+        let Bar (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+        [<Obsolete("Marey.UnitsOfMeasure is open, so a categorical chart takes the values' witness: Chart.Category.scatter. Chart.Category.Scatter(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+        let Scatter (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+        [<Obsolete("Marey.UnitsOfMeasure is open, so a categorical chart takes the values' witness: Chart.Category.boxplot. Chart.Category.Boxplot(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+        let Boxplot (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+        [<Obsolete("Marey.UnitsOfMeasure is open, so a categorical chart takes the values' witness: Chart.Category.violin. Chart.Category.Violin(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+        let Violin (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."

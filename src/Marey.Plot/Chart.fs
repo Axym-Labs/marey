@@ -647,8 +647,7 @@ module Chart =
     [<RequireQualifiedAccess>]
     module Category =
 
-        /// The typed categorical series, over the levels the keys themselves define.
-        let series (name: string) (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Levels<'k> * Series<1, 'uy> =
+        let internal series (name: string) (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Levels<'k> * Series<1, 'uy> =
             if keys.Length <> values.Length then
                 invalidArg
                     "values"
@@ -690,14 +689,11 @@ module Chart =
                         { p with
                             XAxis = { p.XAxis with Label = Some "" } }) }
 
-        /// A bar per row, in the band its key names, measured from zero.
-        let bar (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
+        let internal bar (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
             let _, s = barSeries uy keys values
             ofSeries (Geom.bar 0.7 s) s |> unlabelledX
 
-        /// The same axis with points instead of bars — a dot plot, and the shape a categorical
-        /// colour channel will hang off in phase 2.
-        let scatter (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
+        let internal scatter (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
             let _, s = series "" uy keys values
             ofSeries GeomPoint s |> unlabelledX
 
@@ -732,18 +728,7 @@ module Chart =
               XScale = Levels.scale levels
               YScale = Scale.linear uy domain }
 
-        /// §9 / D55 — **a box plot per level**, from the rows that carry it.
-        ///
-        /// The measures again do the work nobody had to ask for: `Stat.summary` of a
-        /// `float&lt;'uy&gt;[]` is entirely in `float&lt;'uy&gt;`, so the box, the whiskers and
-        /// the outliers all project through the same y scale and the axis labels itself off the
-        /// same witness the values were declared with.
-        ///
-        /// The y domain covers the whiskers **and the outliers**, padded. A domain taken from
-        /// the boxes alone is the tidier picture and it is a lie by omission: the points that
-        /// fall outside it are exactly the ones a box plot is read to find, and clipping them
-        /// hides them behind the panel edge rather than dropping them somewhere visible.
-        let boxplot (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
+        let internal boxplot (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
             let groups = Stat.groupBy keys values
             let levels = Levels.ofSeq (groups |> Array.map fst)
             let summaries = groups |> Array.map (fun (_, vs) -> Stat.summary uy vs)
@@ -759,19 +744,7 @@ module Chart =
 
             ofSeries (Geom.boxplot 0.6 s summaries) s |> unlabelledX
 
-        /// §9 / D55 — **a violin per level**: the same split, drawn as a density instead of a
-        /// summary.
-        ///
-        /// **The bandwidth comes from the undivided sample** (`Stat.frameOf`), not from each
-        /// group, and that is D48's facet argument arriving in a second place. A bandwidth
-        /// chosen per group smooths the sparse ones harder and invents a difference in *shape*
-        /// that is not in the data — the quiet kind of wrong, because the figure looks fine. It
-        /// also removes a failure: a group of one value has no bandwidth of its own and a
-        /// density over it raises, where under a shared one it draws the whole sample's kernel
-        /// over its single point, which is what it is.
-        ///
-        /// A sample with no spread at all still has no density to estimate, and says so.
-        let violin (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
+        let internal violin (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
             let groups = Stat.groupBy keys values
             let levels = Levels.ofSeq (groups |> Array.map fst)
             let h = tag<'uy> (Stat.frameOf values).Bandwidth
@@ -792,6 +765,28 @@ module Chart =
                 bandSeries uy levels (paddedOr 0.05 reach) (groups |> Array.map (fun (_, vs) -> Stat.quantile 0.5 vs))
 
             ofSeries (Geom.violin 0.8 s densities) s |> unlabelledX
+
+    /// D109 — the categorical front door in the unit-optional mode: `Chart.Category.Bar(keys,
+    /// values, yUnit = U.metre)`. A type beside `module Category`, as `type Chart` stands beside
+    /// `module Chart`, so `Chart.Category.count` still resolves to the module. The keys are data
+    /// and have no unit; the values have the one stated, or none.
+    [<AbstractClass; Sealed>]
+    type Category =
+
+        static member Series(name: string, keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Levels<'k> * Series<1, 1> =
+            Category.series name (U.erase yUnit) keys values
+
+        static member Bar(keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Figure =
+            Category.bar (U.erase yUnit) keys values
+
+        static member Scatter(keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Figure =
+            Category.scatter (U.erase yUnit) keys values
+
+        static member Boxplot(keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Figure =
+            Category.boxplot (U.erase yUnit) keys values
+
+        static member Violin(keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Figure =
+            Category.violin (U.erase yUnit) keys values
 
     // ---- Combinators. All pure; every one returns a new figure. -------------------------------
 

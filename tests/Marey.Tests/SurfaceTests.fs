@@ -268,6 +268,101 @@ module OneImplementation =
         same (Marey.Chart.Line(t', x')) (Chart.line U.unspecified U.unspecified t' x')
         same (Marey.Chart.Line(t', x', yUnit = U.metre)) (Chart.line U.unspecified U.metre t' x)
 
+/// Gate 4, for the rest of the data entry: `Category`, `Field`, `Phase`, `Control`.
+module OneImplementationBeyondChart =
+
+    let private svg (fig: Figure) = SvgBackend.render extent (Chart.toScene extent fig)
+    let private same (optional: Figure) (curried: Figure) = Assert.Equal(svg curried, svg optional)
+
+    let private keys = [| "a"; "b"; "a"; "c"; "b"; "c"; "a" |]
+    let private ys = [| 1.2<m>; 2.5<m>; 1.9<m>; 3.1<m>; 2.2<m>; 2.8<m>; 1.4<m> |]
+    let private ys' = ys |> Array.map float
+
+    [<Fact>]
+    let ``the categorical constructors`` () =
+        same (Marey.Chart.Category.Bar(keys, ys', yUnit = U.metre)) (Chart.Category.bar U.metre keys ys)
+        same (Marey.Chart.Category.Scatter(keys, ys', yUnit = U.metre)) (Chart.Category.scatter U.metre keys ys)
+        same (Marey.Chart.Category.Boxplot(keys, ys', yUnit = U.metre)) (Chart.Category.boxplot U.metre keys ys)
+        same (Marey.Chart.Category.Violin(keys, ys', yUnit = U.metre)) (Chart.Category.violin U.metre keys ys)
+
+        let _, s = Marey.Chart.Category.Series("s", keys, ys', yUnit = U.metre)
+        Assert.Equal("m", (snd (Erase.seriesScales (Erase.packSeries s))).Symbol)
+
+    let private xs = Grid.linear -1.0 1.0 9
+    let private plainScalar = ScalarGrid.sample xs xs (fun x y -> 280.0 + 10.0 * x * y)
+    let private plainVector = VectorGrid.sample xs xs (fun x y -> struct (y, -x - 0.3 * y))
+
+    let private xsM = xs |> Array.map (fun v -> v * 1.0<m>)
+    let private typedScalar: ScalarGrid<m, m, K> = ScalarGrid.create xsM xsM (plainScalar.Values |> Array.map (fun v -> v * 1.0<K>))
+
+    let private typedVector: VectorGrid<m, m, m / s, m / s> =
+        VectorGrid.sample xsM xsM (fun x y -> struct (y * 1.0</s>, (-x - 0.3 * y) * 1.0</s>))
+
+    let private mps = U.div U.metre U.second
+
+    [<Fact>]
+    let ``the scalar field geoms`` () =
+        let levels = [| 275.0; 280.0; 285.0 |]
+        let levelsK = levels |> Array.map (fun v -> v * 1.0<K>)
+        same (Marey.Field.Heatmap(plainScalar, U.metre, U.metre, U.kelvin)) (Field.heatmap U.metre U.metre U.kelvin typedScalar)
+
+        same
+            (Marey.Field.HeatmapWith(Palette.viridis, true, plainScalar, U.metre, U.metre, U.kelvin))
+            (Field.heatmapWith Palette.viridis true U.metre U.metre U.kelvin typedScalar)
+
+        same (Marey.Field.Contours(plainScalar, U.metre, U.metre)) (Field.contours U.metre U.metre typedScalar)
+        same (Marey.Field.ContoursAt(levels, plainScalar, U.metre, U.metre)) (Field.contoursAt levelsK U.metre U.metre typedScalar)
+        same (Marey.Field.Bands(plainScalar, U.metre, U.metre, U.kelvin)) (Field.bands U.metre U.metre U.kelvin typedScalar)
+
+        same
+            (Marey.Field.BandsWith(Palette.viridis, levels, plainScalar, U.metre, U.metre, U.kelvin))
+            (Field.bandsWith Palette.viridis levelsK U.metre U.metre U.kelvin typedScalar)
+
+    [<Fact>]
+    let ``the vector field geoms`` () =
+        same (Marey.Field.Quiver(plainVector, U.metre, U.metre, mps)) (Field.quiver U.metre U.metre mps typedVector)
+        same (Marey.Field.QuiverBy(plainVector, U.metre, U.metre, mps)) (Field.quiverBy U.metre U.metre mps typedVector)
+        same (Marey.Field.Directions(plainVector, U.metre, U.metre)) (Field.directions U.metre U.metre typedVector)
+        same (Marey.Field.Streamlines(plainVector, U.metre, U.metre)) (Field.streamlines U.metre U.metre typedVector)
+        same (Marey.Field.StreamlinesWith(24.0<px>, plainVector, U.metre, U.metre)) (Field.streamlinesWith 24.0<px> U.metre U.metre typedVector)
+        same (Marey.Field.StreamlinesBy(plainVector, U.metre, U.metre, mps)) (Field.streamlinesBy U.metre U.metre mps typedVector)
+        let options = { Field.licDefaults with Length = 12.0<px> }
+        same (Marey.Field.LicWith(options, plainVector, U.metre, U.metre)) (Field.licWith options U.metre U.metre typedVector)
+        same (Marey.Field.LicByWith(options, plainVector, U.metre, U.metre, mps)) (Field.licByWith options U.metre U.metre mps typedVector)
+
+    [<Fact>]
+    let ``phase portraits, and the description of a fixed point`` () =
+        same (Marey.Phase.Portrait(plainVector, U.metre, U.metre)) (Phase.portrait U.metre U.metre typedVector)
+        same (Marey.Phase.PortraitWith(24.0<px>, plainVector, U.metre, U.metre)) (Phase.portraitWith 24.0<px> U.metre U.metre typedVector)
+        same (Marey.Phase.Nullclines(plainVector, U.metre, U.metre)) (Phase.nullclines U.metre U.metre typedVector)
+
+        let plainPoints = Phase.fixedPoints plainVector
+        let typedPoints = Phase.fixedPoints typedVector
+        Assert.NotEmpty plainPoints
+
+        match Marey.Phase.Marks(plainPoints, U.metre, U.metre), Phase.marks U.metre U.metre typedPoints with
+        | Some a, Some b -> same a b
+        | a, b -> failwithf "marks: %A against %A" (Option.isSome a) (Option.isSome b)
+
+        Assert.Equal(
+            FixedPoint.describe U.metre U.metre U.second typedPoints.[0],
+            Marey.Phase.Describe(plainPoints.[0], U.metre, U.metre, U.second)
+        )
+
+    /// A spec's `Show` is a function, so it is compared by what it shows.
+    let private specs (c: Control<'a>) =
+        c.Specs |> Array.map (fun s -> s.Label, s.Kind, s.Init, s.Show s.Init)
+
+    [<Fact>]
+    let ``a slider over plain numbers carries its stated unit`` () =
+        let a = Marey.Control.Slider("T", 200.0, 400.0, 300.0, unit = U.kelvin)
+        let b = Control.slider U.kelvin "T" 200.0<K> 400.0<K> 300.0<K>
+        Assert.Equal<(string * ControlKind * float * string)[]>(specs b, specs a)
+
+        let c = Marey.Control.SliderBy("T", 200.0, 400.0, 5.0, 300.0, unit = U.kelvin)
+        let d = Control.sliderBy U.kelvin "T" 200.0<K> 400.0<K> 5.0<K> 300.0<K>
+        Assert.Equal<(string * ControlKind * float * string)[]>(specs d, specs c)
+
 /// Gate 5 — coverage. Every unit-optional member has a curried counterpart in
 /// `Marey.UnitsOfMeasure`, mapped by name (`Line` → `line`), and an error-obsolete shadow there;
 /// and every curried function there that takes a witness is either reached from a member or
@@ -292,7 +387,21 @@ module Coverage =
 
     let private pairs: (Type * Type) list =
         let plot = typeof<Marey.Figure>.Assembly
-        [ typeof<Marey.Chart>, plot.GetType("Marey.UnitsOfMeasure.Chart", true) ]
+        let fields = typeof<Marey.FixedPointKind>.Assembly
+        let interact = typeof<Marey.ControlSpec>.Assembly
+
+        [ typeof<Marey.Chart>, plot.GetType("Marey.UnitsOfMeasure.Chart", true)
+          typeof<Marey.Chart.Category>, plot.GetType("Marey.UnitsOfMeasure.Chart+Category", true)
+          fields.GetType("Marey.Field", true), fields.GetType("Marey.UnitsOfMeasure.Field", true)
+          fields.GetType("Marey.Phase", true), fields.GetType("Marey.UnitsOfMeasure.Phase", true)
+          interact.GetType("Marey.Control", true), interact.GetType("Marey.UnitsOfMeasure.Control", true) ]
+
+    /// The one member not named as its counterpart: a type `FixedPoint` would collide with the
+    /// record `FixedPoint<'x, 'y, 't>` (FS0037), so `FixedPoint.describe` is `Phase.Describe`.
+    /// The shadow is where the member is, in `Phase`.
+    let private renamed =
+        let fields = typeof<Marey.FixedPointKind>.Assembly
+        dict [ "Describe", (fields.GetType("Marey.UnitsOfMeasure.FixedPoint", true), "describe") ]
 
     [<Fact>]
     let ``every unit-optional member has a curried counterpart and a shadow`` () =
@@ -300,9 +409,15 @@ module Coverage =
             let members = methodsOf optional |> Array.map (fun m -> m.Name) |> Array.distinct
             Assert.NotEmpty members
             let names = methodsOf required |> Array.map (fun m -> m.Name) |> set
-
             for n in members do
-                Assert.True(names.Contains(lower n), sprintf "%s.%s has no curried %s in Marey.UnitsOfMeasure" optional.Name n (lower n))
+                let home, curried =
+                    match renamed.TryGetValue n with
+                    | true, (t, c) -> t, c
+                    | _ -> required, lower n
+
+                let homeNames = methodsOf home |> Array.map (fun m -> m.Name) |> set
+                Assert.True(homeNames.Contains curried, sprintf "%s.%s has no curried %s in Marey.UnitsOfMeasure" optional.Name n curried)
+                ignore names
 
                 let shadow = methodsOf required |> Array.tryFind (fun m -> m.Name = n)
 
@@ -312,6 +427,13 @@ module Coverage =
 
     [<Fact>]
     let ``every curried function that takes a witness is reached from a member or listed`` () =
+        let fixedPoint = typeof<Marey.FixedPointKind>.Assembly.GetType("Marey.UnitsOfMeasure.FixedPoint", true)
+
+        Assert.True(
+            methodsOf fixedPoint |> Array.filter takesWitness |> Array.forall (fun m -> m.Name = "describe"),
+            "Marey.UnitsOfMeasure.FixedPoint gained a function that takes a witness"
+        )
+
         for optional, required in pairs do
             let members = methodsOf optional |> Array.map (fun m -> lower m.Name) |> set
 
