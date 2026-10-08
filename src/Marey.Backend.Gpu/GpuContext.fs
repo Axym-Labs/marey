@@ -205,8 +205,22 @@ type internal GpuContext() =
     let gl = GL.GetApi(window :> IGLContextSource)
 
     let gr =
+        // Skia's GL function table, built two ways because each fails on the other platform,
+        // measured: under GLX (X11, Xvfb) handing Skia a lookup callback segfaults inside
+        // `GRGlInterface.Create`, and under EGL (Wayland) Skia's own lookup aborts. The callback
+        // uses `TryGetProcAddress`, because Silk.NET's `GetProcAddress` throws on a name the
+        // driver lacks, and Skia asks for optional ones.
         let glContext = window.GLContext
-        let iface = GRGlInterface.Create(GRGlGetProcedureAddressDelegate(fun name -> glContext.GetProcAddress name))
+
+        let iface =
+            if window.Native.Kind.HasFlag NativeWindowFlags.X11 then
+                GRGlInterface.Create()
+            else
+                GRGlInterface.Create(
+                    GRGlGetProcedureAddressDelegate(fun name ->
+                        let mutable address = 0n
+                        if glContext.TryGetProcAddress(name, &address) then address else 0n)
+                )
 
         if isNull iface || not (iface.Validate()) then
             invalidOp "Marey.GpuRenderer: Skia could not load the OpenGL functions it needs from this context."
