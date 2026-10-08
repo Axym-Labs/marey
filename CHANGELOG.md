@@ -37,7 +37,7 @@ land in a minor release.
   doc comment containing `*/` each stopped the compile or the module's load. With those gone,
   the 27 SVG baselines render byte for byte under Node, and CI checks that they still do.
 
-## [0.4.0] — unreleased
+## [0.4.0] — 2026-10-08
 
 **Units are opt-in.** `open Marey` takes plain arrays and a unit per axis that may be stated or
 left out; `open Marey.UnitsOfMeasure` is the mode every release so far has had, a witness per axis
@@ -991,8 +991,8 @@ Superseded by `0.1.0` and not recommended for use. `Marey.Verso` in particular c
 installed from it: prerelease versions do not appear in Verso's Extensions panel at all, so an
 rc validates the package and the formatter but never the installation path.
 
-[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.3.1...HEAD
-[0.4.0]: https://github.com/Axym-Labs/marey/compare/0.3.1...HEAD
+[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/Axym-Labs/marey/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/Axym-Labs/marey/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/Axym-Labs/marey/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/Axym-Labs/marey/compare/0.1.1...0.2.0
