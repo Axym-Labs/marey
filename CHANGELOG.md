@@ -12,6 +12,71 @@ land in a minor release.
 
 ## [Unreleased]
 
+**Units are opt-in.** `open Marey` takes plain arrays and a unit per axis that may be stated or
+left out; `open Marey.UnitsOfMeasure` is the mode every release so far has had, a witness per axis
+checked at compile time. Code written against 0.4.0 adds `open Marey.UnitsOfMeasure` after `open
+Marey` and is otherwise unchanged.
+
+### Added
+
+- **The unit-optional constructors.** `Chart.Line(xs, ys, xUnit = U.second, yUnit = U.metre)`, and
+  one static member for each data-entry function: `Scatter`, `Area`, `Bar`, `Errorbar`, `Step`,
+  `StepWith`, `Ribbon`, `Tile`, `Image`, `Segment`, `Text`, `Fit`, `Loess`, `LoessWith`,
+  `Histogram`, `HistogramWith`, `Density`, `Ecdf`, `Heatmap`, `Hexbin`, `HexbinWith`, `Series`;
+  `Chart.Category.Bar`, `Scatter`, `Boxplot`, `Violin`; `Field.Heatmap` and every field geom over
+  a grid at measure 1; `Phase.Portrait`, `PortraitWith`, `Nullclines`, `Marks`, `Describe`;
+  `Control.Slider`, `SliderBy`. A unit is an optional named parameter. Given one, the axis gets
+  everything a witness gives it — the bracketed label, the prefix, a stat's derived unit, the
+  dimension check when two layers share an axis — and the check runs when the figure is compiled.
+- **`U.unspecified`**, the unit nobody stated: no bracket, no prefix, and no dimensional claim, so
+  an unspecified layer shares an axis with anything and the axis takes the stated layer's unit.
+  It is not `U.one`, which claims the data is dimensionless and is refused beside metres as before.
+- **`Chart.add top fig`**, a figure's layers as the next series: the unit-optional spelling of
+  `addLine` and its siblings. `Chart.fit`, `loess` and `loessWith` draw a smooth on its own, to be
+  added over the data.
+- **Channels without a witness in `plot { }`**: `x (fun r -> r.V)`, `y`, `colorBy`,
+  `colorByWith`, `size`, `sizeWith` over an accessor returning plain `float`.
+- **`U.parse "V/m"`**: a unit read from a string in UDUNITS-2's syntax — products, quotients,
+  integer powers, parentheses, SI prefixes, and the ASCII spellings `degC`, `ohm`, `Angstrom`. It
+  composes as `U.div` does, so the axis label is the same. Timestamps, logarithmic units and scale
+  factors are refused with the reason. `U.tryParse` returns the reason instead of raising.
+- **`U.tryAs target u`**: a parsed unit asserted back to a measure, checked on dimension and
+  angle. `U.tryAs U.metre (U.parse "km")` is a `U<m>` with `ToSI = 1000`.
+- **`IUnit`**, the witness as a value that may be absent, and `U.erase`, which reads one at
+  measure 1 with `null` as `U.unspecified`.
+- **A C# surface**, `using Marey.CSharp`, in the existing packages: `Units.Metre` and every other
+  witness under one name with `Units.Div`, `Units.Parse` and the rest of the algebra; extension
+  methods on `Figure` (`WithTitle`, `Add`, `ColorBy`, …); `fig.Save(SvgRenderer.Render, path, w,
+  h)` with `SvgRenderer`, `TikzRenderer`, `PngRenderer` and `PdfRenderer`; `Category`, `Figures`
+  for facets, and `Grids` for fields sampled from delegates.
+
+### Changed
+
+- **Breaking: the curried constructors that take a witness moved to `Marey.UnitsOfMeasure`.**
+  `Chart.line U.second U.metre ts xs` and every function listed above in its curried form —
+  together with the `add*` family, `colorBy`, `sizeBy` and `withColorDomain` — compile under
+  `open Marey.UnitsOfMeasure` and not under `open Marey` alone. Under that `open`, the
+  unit-optional members are compile errors that name the spelling to use, so a call cannot fall
+  through to an axis with no unit.
+- **Breaking: `plot` under `open Marey.UnitsOfMeasure` returns `Marey.UnitsOfMeasure.PlotBuilder`**,
+  whose channels take their witness; leaving one out is a compile error there.
+- `Marey.Units`' module `U` and `Marey.Fields`' module `Grid` are nested in `[<AutoOpen>]` modules
+  (`SiWitnesses`, `GridAxes`). F# spells them as before after `open Marey`; the fully qualified
+  `Marey.U.metre` without the `open` no longer resolves.
+
+### Deprecated
+
+- **`Chart.Plain`**, for one release. Use `Chart.Line(xs, ys)`, which leaves the units
+  unspecified, or pass `U.one` where the data is dimensionless.
+
+### Fixed
+
+- **A C# caller could not pass a witness.** `Marey.Core` and `Marey.Units` each exported a public
+  type `Marey.U`, so C# refused every call naming one (CS0433); `Marey.Plot` and `Marey.Fields` did
+  the same with `Marey.Grid`. No two packages now export one type name.
+
+## [0.4.0] — unreleased
+
 ### Added
 
 - **`Marey.Interact`, a fourteenth package: a figure with controls, live in a notebook.** The

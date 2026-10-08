@@ -53,9 +53,10 @@ open Marey
 open Marey.UnitsOfMeasure
 ```
 
-`open Marey.UnitsOfMeasure` is the unit-required mode, in which every chart takes a witness per
-axis and the compiler checks it; the examples in this guide are written in it. Without that
-`open`, a chart takes plain arrays and a unit is optional: `Chart.Line(xs, ys, yUnit = U.metre)`.
+`open Marey.UnitsOfMeasure` is the unit-required mode: every chart takes a witness per axis, and
+the compiler checks it. The examples in this guide are written in it. Without that `open` a chart
+takes plain arrays and a unit is optional, `Chart.Line(xs, ys, yUnit = U.metre)`; §3 has [both
+modes side by side](#two-modes), and the [C# spelling](#from-c).
 
 | Package | Take it when |
 |---|---|
@@ -215,6 +216,147 @@ angular units with `U.div` and `U.mul` from `Derived.radian`.
 Non-SI witnesses cover the units physics actually writes in: `electronvolt`, `angstrom`,
 `parsec`, `lightYear`, `dalton`, `atmosphere`, `bar`, `barn`, `calorie`, `gauss`, `litre`,
 `minute`, `hour`, `day`, `year`, `astronomicalUnit`, `degreeCelsius`, `degreeFahrenheit`.
+
+### A unit read from text
+
+A unit first seen at run time — a netCDF attribute, a CSV header — is read in the syntax of
+UDUNITS-2. It composes as `U.div` and `U.mul` do, so it labels an axis as the composition would:
+
+```fsharp
+let parsedField = U.parse "V/m"
+printfn "parsed: %s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none parsedField)
+printfn "same as composed: %b" (parsedField.Dim = fieldUnit.Dim && parsedField.Factors = fieldUnit.Factors)
+
+for text in [ "kg m s-2"; "kPa"; "degC"; "W/(m2 K)"; "days since 1970-01-01" ] do
+    match U.tryParse text with
+    | Ok u -> printfn "%-22s %s" text (Dim.show u.Dim)
+    | Error why -> printfn "%-22s refused: %s" text why
+```
+
+Products are juxtaposition, `.`, `*` or `·`; `/` divides, at the same precedence and left to
+right, so `W/m2 K` is `(W/m²)·K`. Powers are an integer after the symbol, with or without `^`.
+Prefixes go on the units that take one. Timestamps and logarithmic units are refused by name.
+
+A parsed unit is measure 1, because its measure was not known when the program was compiled.
+`U.tryAs` asserts one back, checked on the dimension:
+
+```fsharp
+let km: U<m> option = U.tryAs U.metre (U.parse "km")
+let wrong: U<m> option = U.tryAs U.metre (U.parse "s")
+printfn "km as metres: %A, seconds as metres: %b" (km |> Option.map (fun u -> u.ToSI)) wrong.IsNone
+```
+
+### Two modes
+
+`open Marey` alone is the unit-optional mode. A chart takes `float[]`, and each axis takes a unit
+as an optional named parameter. A unit left out is `U.unspecified`: no bracket, no prefix, and no
+dimensional claim, so the axis shares with anything. That is not `U.one`, which claims the data is
+dimensionless and is refused beside metres.
+
+```fsharp optional
+open Marey
+
+let quarters = [| 1.0; 2.0; 3.0; 4.0 |]
+let revenue = [| 12.4; 19.1; 7.8; 15.0 |]
+
+let sales = Chart.Bar(quarters, revenue) |> Chart.withTitle "Revenue" |> Chart.withYLabel "$M"
+
+let ts = Array.init 24 (fun i -> float i * 0.4)
+let xs = ts |> Array.map (fun t -> 0.5 * 9.81 * t * t)
+
+let stated =
+    Chart.Line(ts, xs, xUnit = U.second, yUnit = U.metre)
+    |> Chart.add (Chart.Scatter(ts.[..5], xs.[..5], xUnit = U.second, yUnit = U.metre))
+
+let statedSvg = stated |> Chart.render SvgBackend.render (Chart.size 480.0 300.0)
+printfn "stated axes: %b %b" (statedSvg.Contains "t [s]") (statedSvg.Contains "x [m]")
+```
+
+A stated unit gives the axis everything a witness gives it — the label, the prefix, the unit a
+stat derives, the check when two layers share an axis — and the check runs when the figure is
+compiled rather than when the call is. `Chart.add` is the unit-optional spelling of `addLine` and
+its siblings: any figure's layers, as the next series.
+
+```fsharp optional
+let density = Chart.Density(xs, unit = U.metre)
+let densitySvg = density |> Chart.render SvgBackend.render (Chart.size 480.0 300.0)
+printfn "a density over metres reads per metre: %b" (densitySvg.Contains "m⁻¹")
+
+let clashOptional =
+    try
+        Chart.Line(ts, xs, yUnit = U.metre)
+        |> Chart.add (Chart.Line(ts, xs, yUnit = U.kelvin))
+        |> Chart.render SvgBackend.render (Chart.size 480.0 300.0)
+        |> ignore
+        None
+    with e ->
+        Some e.Message
+
+printfn "a stated clash is still reported: %b" clashOptional.IsSome
+```
+
+The encoding block takes a channel without a witness, and the same channel with one:
+
+```fsharp optional
+type Sale = { Quarter: float; Revenue: float; Region: string }
+
+let rows =
+    [| { Quarter = 1.0; Revenue = 12.4; Region = "north" }
+       { Quarter = 2.0; Revenue = 19.1; Region = "south" }
+       { Quarter = 3.0; Revenue = 7.8; Region = "north" } |]
+
+let byRegion =
+    plot rows {
+        x (fun r -> r.Quarter)
+        y (fun r -> r.Revenue)
+        color (fun r -> r.Region)
+    }
+
+printfn "panels: %d" byRegion.Panels.Length
+```
+
+`open Marey.UnitsOfMeasure` is the unit-required mode, and the one the rest of this guide is in.
+It brings modules named as the core's — `Chart`, `Field`, `Phase`, `Control` and the `plot`
+block — whose data entry takes a witness per axis, checked against the data's measure by the
+compiler. Everything else resolves to the core's. Under it, a unit-optional call does not compile,
+and says which spelling to use:
+
+```fsharp-error
+// error FS0101: This construct is deprecated. Marey.UnitsOfMeasure is open, so a chart takes a
+// witness per axis: Chart.line. Chart.Line(…) is the unit-optional spelling, for code that does
+// not open this namespace.
+Chart.Line(xs, ys)
+```
+
+Open it after `open Marey`. Code written against 0.4.0 is in this mode already, and adds the
+`open`.
+
+### From C#
+
+C# has no measures, so it has the unit-optional mode, with the witnesses under one name and the
+combinators as extension methods, all in the `Marey.CSharp` namespace:
+
+```csharp
+using Marey;
+using Marey.CSharp;
+
+double[] ts = Enumerable.Range(0, 24).Select(i => i * 0.4).ToArray();
+double[] xs = ts.Select(t => 0.5 * 9.81 * t * t).ToArray();
+
+var fall = Chart.Line(ts, xs, xUnit: Units.Second, yUnit: Units.Metre)
+    .WithTitle("Free fall")
+    .Add(Chart.Scatter(ts, xs, xUnit: Units.Second, yUnit: Units.Metre));
+
+fall.Save(SvgRenderer.Render, "fall.svg", 800, 500);
+fall.Save(PngRenderer.Render, "fall.png", 800, 500);
+
+var field = Units.Parse("V/m");     // or Units.Div(Units.Volt, Units.Metre)
+```
+
+`Units` holds every witness and the algebra; `Category`, `Figures` (facets) and `Grids` (fields
+sampled from delegates) cover what F# writes with modules and functions. The renderers are
+`SvgRenderer`, `TikzRenderer`, `PngRenderer` and `PdfRenderer`. This block is not executed here;
+`tests/Marey.CSharp.Tests` compiles the same calls and draws the SVG baselines from C#.
 
 ---
 

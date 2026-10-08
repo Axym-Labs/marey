@@ -17,6 +17,7 @@ Everything in this notebook runs against the packages as published. Nothing is c
 #r "nuget: Marey.Html"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 #!markdown
 

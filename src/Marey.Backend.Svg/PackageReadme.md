@@ -8,6 +8,7 @@ visualization system for F#. Pure F#, **zero dependencies**, `netstandard2.1`.
 #r "nuget: Marey.Backend.Svg"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 let figure = Chart.line U.second U.metre t x
 

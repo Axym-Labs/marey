@@ -13,6 +13,7 @@ A plotting library for F# where the compiler checks your units, and the axes lab
 #r "nuget: Marey.Backend.Svg"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 let t = Array.init 24 (fun i -> float i * 0.4<s>)
 let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
@@ -115,9 +116,21 @@ a difference in the data.
 
 ## Real data, and where the units story stops
 
-Units are transformative for physical measurements and irrelevant for a mole fraction in ppm,
-which is dimensionless. A dimensionless axis is rendered with no unit brackets rather than `[1]`,
-values with no unit to carry a prefix are not rescaled, and the label is left to the caller:
+Units are transformative for physical measurements and irrelevant for a mole fraction in ppm or a
+column of revenue. They are opt-in: `open Marey.UnitsOfMeasure` is what makes every chart take a
+witness, and without it a chart takes plain arrays with a unit per axis that may be stated or left
+out.
+
+```fsharp
+open Marey
+
+Chart.Errorbar(years, mean, uncertainty)                 // no unit stated, no bracket, no prefix
+Chart.Line(ts, xs, xUnit = U.second, yUnit = U.metre)    // stated: labelled, prefixed, checked
+```
+
+A stated unit still labels, prefixes and checks, at run time rather than at compile time; a unit
+left out claims nothing, and the label is left to the caller. A unit known only as text is read in
+UDUNITS-2's syntax, `U.parse "V/m"`:
 
 <img src="docs/images/co2-record.svg" alt="Atmospheric CO2 at Mauna Loa, annual means with uncertainties" width="640">
 
@@ -169,6 +182,20 @@ is single-threaded and what crosses threads is a renderer *function*, while an `
 must be thread-safe and exactly one of them serves a whole film — not for speed, but because font
 resolution walks a family stack against whatever is installed, and a measurer per thread is a
 chance for one frame of a video to be set in a different typeface from the frame before it.
+
+## From C#
+
+C# has the unit-optional mode, with every witness under one name and the combinators as extension
+methods, in the `Marey.CSharp` namespace of the same packages:
+
+```csharp
+using Marey;
+using Marey.CSharp;
+
+Chart.Line(ts, xs, xUnit: Units.Second, yUnit: Units.Metre)
+    .WithTitle("Free fall")
+    .Save(SvgRenderer.Render, "fall.svg", 800, 500);
+```
 
 ## What is in the box
 

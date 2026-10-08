@@ -34,6 +34,11 @@ printfn "%s" (UnitDisplay.unitText Siunitx UnitRegistry.si Prefix.none composed)
 - **Affine units.** Degrees Celsius and Fahrenheit carry an offset, and `IsAffine` reports it.
   A composed unit built from an affine one drops the offset, because the quotient of an affine
   unit is not affine.
+- **Units read from text.** `U.parse "V/m"` reads UDUNITS-2's syntax — products, quotients,
+  integer powers, SI prefixes, `degC` — and composes as `U.div` would, so the axis label is the
+  same. `U.tryAs U.metre (U.parse "km")` asserts the measure back, checked on the dimension.
+- **C#.** `Units.Metre` and every other witness under one name, with the algebra and
+  `Units.Parse`, in the `Marey.CSharp` namespace.
 - **Non-SI units physics actually writes in** — `electronvolt`, `angstrom`, `parsec`, `lightYear`,
   `dalton`, `atmosphere`, `bar`, `barn`, `calorie`, `gauss`, `litre`, `minute`, `hour`, `day`,
   `year`. An electronvolt axis reads `keV`, not `kJ`.
