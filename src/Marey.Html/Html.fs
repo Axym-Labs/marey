@@ -748,6 +748,11 @@ module Html =
               "#stage{position:relative}"
               "#fig{max-width:100%;overflow-x:auto;touch-action:none;user-select:none;-webkit-user-select:none}"
               "#band{position:absolute;display:none;pointer-events:none;border:1px dashed currentColor;background:rgba(127,127,127,0.12)}"
+              // Over the data, so it needs a ground of its own: the host's background under a grey
+              // wash, and the wash alone where the host gives none, since rule 2 pins no colour.
+              "#readout{position:absolute;display:none;pointer-events:none;padding:2px 6px;border-radius:3px;"
+              "border:" + Border + ";background:linear-gradient(rgba(127,127,127,0.14),rgba(127,127,127,0.14)),"
+              "var(--verso-cell-output-background,transparent);font-size:0.85em;font-variant-numeric:tabular-nums;white-space:nowrap}"
               "#status{" + Muted + "}" ]
 
     /// The view's half of the protocol. It measures the frame and says how wide it is, reports
@@ -767,6 +772,11 @@ module Html =
     /// summing what waits behind the request in flight so no movement is dropped; a double
     /// click posts a reset. The script works out which pixel the pointer is on and nothing else:
     /// which panel that is, and what it measures, is the kernel's.
+    ///
+    /// D105 — the pointer's position over the figure is posted as it moves, under one key so
+    /// only the newest waits, and its leaving is posted under the same key. What it reads comes
+    /// back as `readout`: the plot rectangle in figure px, the corner, and the lines, which the
+    /// script places and does not read.
     ///
     /// D102 — every message carries one number more than its type needs: the event's
     /// `timeStamp`, by the page's monotonic clock, in milliseconds. A message waiting behind the
@@ -840,19 +850,41 @@ module Html =
               "      var o = document.getElementById('v' + i);"
               "      if (o) { o.textContent = s; }"
               "    });"
+              "    show(p.readout);"
               "    busy = false;"
               "    flush();"
               "  });"
               "  var stage = document.getElementById('stage'), band = document.getElementById('band');"
+              "  var readout = document.getElementById('readout');"
               "  var drag = null, closed = false;"
-              "  function at(e) {"
+              "  function frame() {"
               "    var svg = fig.querySelector('svg');"
               "    if (!svg) { return null; }"
               "    var r = svg.getBoundingClientRect(), s = stage.getBoundingClientRect();"
               "    var vb = svg.viewBox && svg.viewBox.baseVal;"
               "    var kx = vb && vb.width && r.width ? vb.width / r.width : 1;"
               "    var ky = vb && vb.height && r.height ? vb.height / r.height : 1;"
-              "    return { x: (e.clientX - r.left) * kx, y: (e.clientY - r.top) * ky, bx: e.clientX - s.left, by: e.clientY - s.top };"
+              "    return { r: r, s: s, kx: kx, ky: ky };"
+              "  }"
+              "  function at(e) {"
+              "    var f = frame();"
+              "    if (!f) { return null; }"
+              "    return { x: (e.clientX - f.r.left) * f.kx, y: (e.clientY - f.r.top) * f.ky, bx: e.clientX - f.s.left, by: e.clientY - f.s.top };"
+              "  }"
+              "  function show(r) {"
+              "    var f = frame();"
+              "    if (closed || !f || !r || r.length < 6) { readout.style.display = 'none'; return; }"
+              "    readout.textContent = '';"
+              "    r.slice(5).forEach(function (line) {"
+              "      var d = document.createElement('div');"
+              "      d.textContent = line;"
+              "      readout.appendChild(d);"
+              "    });"
+              "    var right = r[4] === 'right', x = Number(right ? r[2] : r[0]) / f.kx + f.r.left - f.s.left;"
+              "    readout.style.left = (right ? x - 4 : x + 4) + 'px';"
+              "    readout.style.top = (Number(r[1]) / f.ky + f.r.top - f.s.top + 4) + 'px';"
+              "    readout.style.transform = right ? 'translateX(-100%)' : '';"
+              "    readout.style.display = 'block';"
               "  }"
               "  function sum(a, b) { return [a[0], a[1], a[2] + b[2], a[3] + b[3]]; }"
               "  fig.addEventListener('pointerdown', function (e) {"
@@ -864,14 +896,15 @@ module Html =
               "    e.preventDefault();"
               "  });"
               "  fig.addEventListener('pointermove', function (e) {"
-              "    if (!drag) { return; }"
-              "    var p = at(e), a = drag.start;"
-              "    if (!p) { return; }"
-              "    if (drag.pan) {"
+              "    var p = at(e), a = drag && drag.start;"
+              "    if (!p || closed) { return; }"
+              "    if (drag && drag.pan) {"
               "      send('pan', 'pan', [a.x, a.y, p.x - drag.last.x, p.y - drag.last.y], e.timeStamp, sum);"
               "      drag.last = p;"
               "      return;"
               "    }"
+              "    send('hover', 'hover', [p.x, p.y], e.timeStamp);"
+              "    if (!drag) { return; }"
               "    band.style.left = Math.min(a.bx, p.bx) + 'px';"
               "    band.style.top = Math.min(a.by, p.by) + 'px';"
               "    band.style.width = Math.abs(p.bx - a.bx) + 'px';"
@@ -888,8 +921,10 @@ module Html =
               "  fig.addEventListener('pointerup', release);"
               "  fig.addEventListener('pointercancel', release);"
               "  fig.addEventListener('dblclick', function (e) { if (!closed) { send('reset', 'reset', [], e.timeStamp); } });"
+              "  fig.addEventListener('pointerleave', function (e) { if (!closed) { send('hover', 'leave', [], e.timeStamp); } });"
               "  window.addEventListener('verso:channelclosed', function (e) {"
               "    closed = true;"
+              "    show(null);"
               "    disable((e.detail && e.detail.reason) || 'closed');"
               "  });"
               "  ch.ready('1.0');"
@@ -920,7 +955,7 @@ module Html =
               "<div id=\"controls\">" + controls + "</div>"
               "<div id=\"stage\"><div id=\"fig\""
               + (if isLive then " title=\"Drag to zoom, shift-drag to pan, double-click to reset\"" else "")
-              + ">" + widgetFigure live state + "</div><div id=\"band\"></div></div>"
+              + ">" + widgetFigure live state + "</div><div id=\"band\"></div><div id=\"readout\"></div></div>"
               "<div id=\"status\">" + (if isLive then "" else "Static: run the cell to move the controls.") + "</div>"
               widgetScript aspect
               "</body></html>" ]
@@ -1006,7 +1041,7 @@ module Html =
 
     // ---- The live half of the bridge (M4.5, D100) ------------------------------------------
     //
-    // Four more functions the extension reaches by reflection, for the same reason as the two
+    // Six more functions the extension reaches by reflection, for the same reason as the two
     // above: nothing typed in a Marey assembly can cross the load-context boundary, so every
     // argument and result is `obj`, `string`, `string[]` or `bool`. The extension holds the state
     // as an `obj` it never looks inside, and hands it back.
@@ -1111,7 +1146,8 @@ module Html =
     /// **D103 — the answer to one message**, laid out for the bridge: a kind, what the kind
     /// carries, and then each control's label.
     ///
-    /// - `same; labels…` — the state did not change, and the view keeps its figure.
+    /// - `same; labels…` — the figure did not change, and the view keeps it. A hover is answered
+    ///   this way: it moved the pointer, which the figure is not drawn from.
     /// - `svg; document; labels…` — the whole figure.
     /// - `patch; defs; n; id₁; markup₁; … idₙ; markupₙ; labels…` — `SvgPatch`'s elements.
     ///
@@ -1128,7 +1164,7 @@ module Html =
                     Array.create l.Controls.Length ""
 
             let body =
-                if obj.ReferenceEquals(b, a) then
+                if obj.ReferenceEquals(b, a) || Live.drawsAlike b a then
                     [| "same" |]
                 else
                     match (try Some(widgetPatch l b a) with _ -> None) with
@@ -1141,3 +1177,22 @@ module Html =
 
             Array.append body shown
         | _ -> [||]
+
+    /// **D105 — what the pointer reads**, laid out for the bridge: the plot rectangle it is over
+    /// in figure px (`x0; y0; x1; y1`, round-trip exact), `left` or `right` for the corner the
+    /// readout sits in, then one line per axis. Empty when the pointer is off every plot, and
+    /// for anything that is not a live figure. The view places the lines and does not read them.
+    let liveReadoutForHost (value: obj, state: obj) : string[] =
+        match liveAt value state with
+        | Some(l, s) ->
+            match (try Live.readout l s with _ -> None) with
+            | Some r ->
+                Array.append
+                    [| exact (float r.Plot.X0)
+                       exact (float r.Plot.Y0)
+                       exact (float r.Plot.X1)
+                       exact (float r.Plot.Y1)
+                       (if r.Right then "right" else "left") |]
+                    r.Lines
+            | None -> [||]
+        | None -> [||]

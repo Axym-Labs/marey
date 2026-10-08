@@ -64,7 +64,23 @@ type LiveState =
       Grown: float[][]
       /// D105 — the axes the reader has zoomed or panned, oldest first, at most one per panel and
       /// axis. Applied over whatever the view returns, so a slider moved while zoomed stays zoomed.
-      Zoom: LiveZoom[] }
+      Zoom: LiveZoom[]
+      /// D105 — where the pointer is over the figure, in the figure's px, while it is over it.
+      /// Nothing is drawn from it: `Live.readout` reads it, and the figure is the same with or
+      /// without it (`Live.drawsAlike`).
+      Pointer: Vec2<px> option }
+
+/// D105 — what the pointer reads, and where it is shown: inside the top corner of the plot it is
+/// over, away from the legend, so it never moves the layout.
+type LiveReadout =
+    { Row: int
+      Col: int
+      /// The plot rectangle the pointer is over, in the figure's px.
+      Plot: Rect<px>
+      /// The top-right corner rather than the top-left, because the panel's legend is there.
+      Right: bool
+      /// One line per axis, x first (`PanelView.read`).
+      Lines: string[] }
 
 /// What the reader can do to a live figure.
 type LiveMsg =
@@ -79,6 +95,10 @@ type LiveMsg =
     | Pan of at: Vec2<px> * by: Vec2<px>
     /// D105 — a double click: every axis back to the view's own domain.
     | Reset
+    /// D105 — the pointer moved to here, in the figure's px.
+    | Hover of Vec2<px>
+    /// D105 — the pointer left the figure.
+    | Leave
 
 [<RequireQualifiedAccess>]
 module LiveMsg =
@@ -110,10 +130,12 @@ module LiveMsg =
     let private arity (msgType: string) =
         match msgType with
         | "set"
-        | "size" -> Some 2
+        | "size"
+        | "hover" -> Some 2
         | "zoom"
         | "pan" -> Some 4
-        | "reset" -> Some 0
+        | "reset"
+        | "leave" -> Some 0
         | _ -> None
 
     /// A message from its wire type and numbers, without a time: `toWire`'s inverse.
@@ -126,14 +148,16 @@ module LiveMsg =
         | "zoom", [| x0; y0; x1; y1 |] -> Some(Zoom { X0 = px x0; Y0 = px y0; X1 = px x1; Y1 = px y1 })
         | "pan", [| x; y; dx; dy |] -> Some(Pan({ X = px x; Y = px y }, { X = px dx; Y = px dy }))
         | "reset", _ -> Some Reset
+        | "hover", [| x; y |] -> Some(Hover { X = px x; Y = px y })
+        | "leave", _ -> Some Leave
         | _ -> None
 
     /// Read a message from the wire, with the view's clock reading if it sent one (D102): a type
     /// and its JSON payload text. `set` takes `[index,value]`, `size` `[width,height]`, `zoom`
-    /// `[x0,y0,x1,y1]`, `pan` `[x,y,dx,dy]`, and `reset` anything; each may carry one number
-    /// more, the event's `timeStamp` in milliseconds, which comes back in seconds. Anything else
-    /// is `None`, and a host ignores it rather than failing: a view one protocol version ahead
-    /// should not take the widget down.
+    /// `[x0,y0,x1,y1]`, `pan` `[x,y,dx,dy]`, `hover` `[x,y]`, and `reset` and `leave` anything;
+    /// each may carry one number more, the event's `timeStamp` in milliseconds, which comes back
+    /// in seconds. Anything else is `None`, and a host ignores it rather than failing: a view one
+    /// protocol version ahead should not take the widget down.
     let parseStamped (msgType: string) (payload: string) : (float<s> option * LiveMsg) option =
         match arity msgType, numbers payload with
         | Some 0, ns ->
@@ -163,6 +187,8 @@ module LiveMsg =
         | Zoom r -> "zoom", [| f r.X0; f r.Y0; f r.X1; f r.Y1 |]
         | Pan(at, by) -> "pan", [| f at.X; f at.Y; f by.X; f by.Y |]
         | Reset -> "reset", [||]
+        | Hover at -> "hover", [| f at.X; f at.Y |]
+        | Leave -> "leave", [||]
 
 /// **A session's messages as data (D102)**: what the reader did and when, by the view's clock. A
 /// log replayed through `Live.record` is the session again, because the step is pure; so the
@@ -404,10 +430,18 @@ type Recorder internal (live: Live) =
 
     /// Host plumbing: a message the step was given, with the view's time if it sent one. A
     /// message without one is held at the time before it (`Recording.ofEvents`).
+    ///
+    /// The pointer's comings and goings are not noted. They move the readout and nothing a film
+    /// draws, and a reader who reads values off a figure for a minute sends a few thousand of
+    /// them; a log of them would be mostly the pointer.
     member _.Note(from: int, at: float<s> option, msg: LiveMsg) : unit =
-        lock gate (fun () ->
-            if from = session && not stopped then
-                events.Add(defaultArg at (nan * 1.0<s>), msg))
+        match msg with
+        | Hover _
+        | Leave -> ()
+        | _ ->
+            lock gate (fun () ->
+                if from = session && not stopped then
+                    events.Add(defaultArg at (nan * 1.0<s>), msg))
 
     /// The log so far, without stopping.
     member _.Log: Recording<LiveMsg> = lock gate snapshot
@@ -564,7 +598,8 @@ module Live =
           Size = size
           Shot = arrange live size [||] [||]
           Grown = [||]
-          Zoom = [||] }
+          Zoom = [||]
+          Pointer = None }
 
     /// Every control at its initial value, at `DefaultSize`.
     let init (live: Live) : LiveState = initAt DefaultSize live
@@ -580,6 +615,44 @@ module Live =
     /// The scene for a state, drawn in the state's arrangement.
     let scene (live: Live) (state: LiveState) : Node =
         Chart.toSceneIn measurer state.Shot (view live state)
+
+    /// **Do two states draw the same figure?** True when they differ in nothing a figure is made
+    /// from, which leaves the pointer. Decided by reference, so it costs nothing and never claims
+    /// more than it knows: every step that changes the figure builds a new `Values`, `Zoom` or
+    /// `Shot`, and a `false` for two states that happen to agree costs a render, not a wrong
+    /// answer. A host answers a hover with the figure it already sent.
+    let drawsAlike (a: LiveState) (b: LiveState) : bool =
+        obj.ReferenceEquals(a.Values, b.Values)
+        && obj.ReferenceEquals(a.Zoom, b.Zoom)
+        && obj.ReferenceEquals(a.Shot, b.Shot)
+        && a.Size = b.Size
+
+    /// **D105 — what the pointer reads**: the data under it on the panel it is over, written by
+    /// the kernel in the axes' own prefixes and units (`PanelView.read`), and the corner it is
+    /// shown in. `None` when the pointer is off the figure or between plots.
+    ///
+    /// Read from the state, so a slider moved under a still pointer reads the new value under
+    /// it, and a zoom reads what the pointer is over once the axes have moved.
+    let readout (live: Live) (state: LiveState) : LiveReadout option =
+        match state.Pointer with
+        | None -> None
+        | Some at ->
+            let fig = view live state
+
+            Chart.panelsIn measurer state.Shot fig
+            |> Array.tryFind (PanelView.contains at)
+            |> Option.bind (fun v ->
+                PanelView.read at v
+                |> Option.map (fun lines ->
+                    let legendLeft =
+                        fig.Panels
+                        |> Array.exists (fun p -> p.Row = v.Row && p.Col = v.Col && p.Legend = LegendTopLeft)
+
+                    { Row = v.Row
+                      Col = v.Col
+                      Plot = v.Plot
+                      Right = legendLeft
+                      Lines = lines }))
 
     /// Each control's value as the reader reads it, in `Controls` order.
     let shown (live: Live) (state: LiveState) : string[] =
@@ -647,6 +720,10 @@ module Live =
     /// `Grown` and the union is taken again. A new size re-arranges over the same states. A zoom
     /// or a reset re-arranges; a pan grows the arrangement as a value does. A drag that starts
     /// outside every plot area, or a pan off the end of a coord, leaves the state as it was.
+    ///
+    /// A hover moves the pointer and nothing else, so its state draws alike (`drawsAlike`). A new
+    /// size forgets the pointer: the px it was at are the old arrangement's, and the view sends
+    /// the next one as soon as the pointer moves.
     let step (live: Live) (state: LiveState) (msg: LiveMsg) : LiveState =
         match msg with
         | Set(index, value) when index >= 0 && index < live.Controls.Length ->
@@ -663,7 +740,8 @@ module Live =
             | Some size when size <> state.Size ->
                 { state with
                     Size = size
-                    Shot = arrange live size state.Grown state.Zoom }
+                    Shot = arrange live size state.Grown state.Zoom
+                    Pointer = None }
             | _ -> state
         | Zoom r ->
             let start: Vec2<px> = { X = r.X0; Y = r.Y0 }
@@ -721,6 +799,10 @@ module Live =
                 { state with
                     Zoom = [||]
                     Shot = arrange live state.Size state.Grown [||] }
+        | Hover at when finite (float at.X) && finite (float at.Y) ->
+            if state.Pointer = Some at then state else { state with Pointer = Some at }
+        | Hover _ -> state
+        | Leave -> if state.Pointer.IsNone then state else { state with Pointer = None }
 
     /// **A session again, from its log (D102)**: the state after each message, at the time the
     /// view stamped it, from `start`. Every time is the view's, so the kernel's clock appears
@@ -729,7 +811,8 @@ module Live =
     ///
     /// **Time starts at the reader's first act**, not at the view's hello. A view sends its size
     /// when it mounts, and the reader may not touch it for a minute; the sizes before the first
-    /// other message are stepped at time zero, so a film does not open on that minute.
+    /// other message are stepped at time zero, so a film does not open on that minute. A pointer
+    /// passing over the figure is not an act either: it changes nothing a film draws.
     let recordFrom (live: Live) (start: LiveState) (log: Recording<LiveMsg>) : Recording<LiveState> =
         if log.Events.Length = 0 then
             { Events = [| 0.0<s>, start |] }
@@ -738,7 +821,9 @@ module Live =
                 log.Events
                 |> Array.tryPick (fun (t, msg) ->
                     match msg with
-                    | Resize _ -> None
+                    | Resize _
+                    | Hover _
+                    | Leave -> None
                     | _ -> Some t)
 
             let mutable state = start

@@ -410,6 +410,12 @@ module UnitDisplay =
     let unitText<[<Measure>] 'u> (style: UnitStyle) (registry: UnitRegistry) (p: Prefix) (u: U<'u>) =
         unitTextErasedWith style registry p u.Symbol u.Factors u.Dim u.ToSI u.OffsetSI
 
+    /// A number already written, and the unit text it was written in: `2 kV·m⁻¹`, or the number
+    /// alone when the unit has no text. `quantityIn` ends here, and so does a live figure's
+    /// readout (D105), which has its unit text from the axis rather than from a witness.
+    let withUnit (unitText: string) (shown: string) : string =
+        if unitText = "" then shown else shown + " " + unitText
+
     /// `quantity` under a prefix the caller has already chosen. A control chooses it once from
     /// its range, so its label does not jump from `950 V` to `1.05 kV` in the middle of a drag.
     let quantityIn<[<Measure>] 'u>
@@ -420,9 +426,7 @@ module UnitDisplay =
         (u: U<'u>)
         (v: float<'u>)
         : string =
-        let text = unitText style registry prefix u
-        let shown = number (float v / Prefix.factor prefix)
-        if text = "" then shown else shown + " " + text
+        withUnit (unitText style registry prefix u) (number (float v / Prefix.factor prefix))
 
     /// A value and its unit as one string: `2 kV·m⁻¹`, `300 K`, `0 rad`.
     ///

@@ -249,6 +249,13 @@ module ``the wire`` =
         Assert.Equal(Some Reset, LiveMsg.parse "reset" null)
 
     [<Fact>]
+    let ``hover and leave read and write back`` () =
+        Assert.Equal(Some(Hover { X = 12.5<px>; Y = 40.0<px> }), LiveMsg.parse "hover" "[12.5,40]")
+        Assert.Equal(Some(Some 0.25<s>, Leave), LiveMsg.parseStamped "leave" "[250]")
+        Assert.Equal(("hover", [| 12.5; 40.0 |]), LiveMsg.toWire (Hover { X = 12.5<px>; Y = 40.0<px> }))
+        Assert.Equal(("leave", [||]), LiveMsg.toWire Leave)
+
+    [<Fact>]
     let ``anything else is ignored rather than fatal`` () =
         for t, p in [ "set", "2.5"; "set", "[1]"; "set", "[a,1]"; "set", null; "zoom", "[1,2]"; "pan", "[1,2,3]"; "zoom", "[1,2,x,4]"; "set", "{\"i\":1}" ] do
             Assert.Equal(None, LiveMsg.parse t p)
@@ -448,6 +455,219 @@ module ``zoom and pan`` =
 
         for other in runs.[1..] do
             List.iter2 (fun (a: LiveState, x: string) (b: LiveState, y: string) -> Assert.Equal<LiveState>(a, b); Assert.Equal(x, y)) runs.[0] other
+
+// ======================================================================================
+// Gate 14 — the readout reads what is under the pointer (D105)
+// ======================================================================================
+
+module ``the readout`` =
+
+    open System.Globalization
+
+    let private still (fig: Figure) : Live = interact { return fig }
+
+    let private first (l: Live) (s: LiveState) = (Live.panels l s).[0]
+
+    let private pxOf (v: PanelView) (x: float, y: float) : Vec2<px> =
+        { X = v.Plot.X0 + float (v.X.Project x) * (v.Plot.X1 - v.Plot.X0)
+          Y = v.Plot.Y1 - float (v.Y.Project y) * (v.Plot.Y1 - v.Plot.Y0) }
+
+    let private linesAt (l: Live) (s: LiveState) (p: Vec2<px>) =
+        match Live.readout l (Live.step l s (Hover p)) with
+        | Some r -> r.Lines
+        | None -> failwithf "nothing read at %A" p
+
+    /// A line read back as a value in the axis's own unit: it must say the axis's name, end in
+    /// the unit text the axis's ticks are written in, and its number is scaled by the axis's
+    /// prefix. A line in any other unit fails here rather than reading wrong by a thousand.
+    let private valueOf (spec: AxisSpec) (line: string) =
+        let head = spec.Label + " = "
+        let tail = if spec.UnitText = "" then "" else " " + spec.UnitText
+        Assert.StartsWith(head, line)
+        Assert.EndsWith(tail, line)
+        let number = line.Substring(head.Length, line.Length - head.Length - tail.Length)
+        Double.Parse(number, NumberStyles.Float, CultureInfo.InvariantCulture) * Prefix.factor spec.Prefix
+
+    /// **Gate 14.** Hovering where a datum is drawn reads that datum: each line, read back
+    /// through its axis's prefix, lies among the values one px either side of the pointer. The
+    /// datum sits low in the plot, so a lost y flip reads the wrong end of the axis.
+    let private gate (l: Live) =
+        let s0 = Live.init l
+        let v = first l s0
+        let x, y = v.X.Invert 0.3<nd>, v.Y.Invert 0.2<nd>
+        let p = pxOf v (x, y)
+        let lines = linesAt l s0 p
+        Assert.Equal(2, lines.Length)
+
+        let around =
+            [ for dx in [ -1.0; 1.0 ] do
+                  for dy in [ -1.0; 1.0 ] -> PanelView.toData { X = p.X + dx * 1.0<px>; Y = p.Y + dy * 1.0<px> } v ]
+            |> List.choose id
+
+        let inside (pick: float * float -> float) (value: float) =
+            let vs = around |> List.map pick
+            value >= List.min vs && value <= List.max vs
+
+        let rx, ry = valueOf v.XAxis lines.[0], valueOf v.YAxis lines.[1]
+        Assert.True(inside fst rx, sprintf "x read %g at %g (%s)" rx x lines.[0])
+        Assert.True(inside snd ry, sprintf "y read %g at %g (%s)" ry y lines.[1])
+
+    [<Fact>]
+    let ``a pointer reads the datum under it on a linear panel`` () = gate (still (wave 1.0<1 / s> false))
+
+    [<Fact>]
+    let ``a pointer reads the datum under it on a log axis`` () =
+        let t = Array.init 60 (fun i -> 10.0 ** (float i / 15.0 - 3.0) * 1.0<s>)
+        let x = t |> Array.map (fun t -> sqrt (float t) * 1.0<m>)
+        gate (still (Chart.line U.second U.metre t x |> Chart.withXLog))
+
+    [<Fact>]
+    let ``a pointer reads the datum under it in a phase space`` () =
+        let flow: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s^2> * sin (float th) * 1.0<rad>)
+        let grid = Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 41) (Grid.linear -9.0<rad / s> 9.0<rad / s> 31) flow
+        gate (still (Field.directions Derived.radian (U.div Derived.radian U.second) grid))
+
+    /// The reading is in the unit the axis title names, prefix and all: a millimetre axis reads
+    /// millimetres. Pinned as text, so the places are pinned too: 0.98 s over the plot's width is
+    /// a few ms a px, and the reading shows milliseconds' worth and no more.
+    [<Fact>]
+    let ``a reading is written as the axis is`` () =
+        let t = Array.init 50 (fun i -> float i * 0.02<s>)
+        let l = still (Chart.line U.second U.metre t (t |> Array.map (fun t -> t * 0.005<m / s>)))
+        let s0 = Live.init l
+        let v = first l s0
+        Assert.Equal("mm", v.YAxis.UnitText)
+        Assert.Contains("[mm]", Html.widgetFigure l s0)
+        let lines = linesAt l s0 (pxOf v (0.5, 0.0025))
+        Assert.Equal<string[]>([| "t = 0.500 s"; "x = 2.50 mm" |], lines)
+
+    /// The places are what one px resolves, so a log axis reads more of them at its bottom
+    /// than at its top, and a count over millions is rounded to the pixel's decade rather than
+    /// written to the unit.
+    [<Fact>]
+    let ``a reading has the places a pixel resolves`` () =
+        let places (line: string) =
+            let number = line.Split(' ').[2]
+            match number.IndexOf '.' with
+            | -1 -> 0
+            | i -> number.Length - i - 1
+
+        let t = Array.init 60 (fun i -> 10.0 ** (float i / 15.0 - 3.0) * 1.0<s>)
+        let l = still (Chart.line U.second U.metre t (t |> Array.map (fun t -> float t * 1.0<m>)) |> Chart.withXLog)
+        let s0 = Live.init l
+        let v = first l s0
+        let at (f: float) = (linesAt l s0 (pxOf v (v.X.Invert(f * 1.0<nd>), v.Y.Invert 0.5<nd>))).[0]
+        Assert.True(places (at 0.05) > places (at 0.95), sprintf "%s against %s" (at 0.05) (at 0.95))
+
+        let n = Array.init 20 (fun i -> float i * 1.0<s>)
+        let counts = still (Chart.line U.second U.one n (n |> Array.map (fun t -> float t * 400000.0)))
+        let sc = Live.init counts
+        let vc = first counts sc
+        let y = (linesAt counts sc (pxOf vc (10.0, 4123456.0))).[1]
+        Assert.EndsWith("0000", y)
+
+    /// A categorical axis reads the level whose band the pointer is in.
+    [<Fact>]
+    let ``a categorical axis reads its level`` () =
+        let keys = [| "control"; "treated"; "placebo"; "washout" |]
+        let l = still (Chart.Category.bar U.metre keys [| 12.4<m>; 19.1<m>; 7.8<m>; 15.0<m> |])
+        let s0 = Live.init l
+        let v = first l s0
+        let lines = linesAt l s0 (pxOf v (2.1, 5.0))
+        Assert.Equal("placebo", lines.[0])
+
+    /// **A hover redraws nothing.** It moves the pointer, the state draws alike, and the host's
+    /// answer is `same`: the figure the view has is the figure, and nothing is rendered to say so.
+    [<Fact>]
+    let ``a hover redraws nothing`` () =
+        let l = live ()
+        let s0 = Live.init l
+        let v = first l s0
+        let s1 = Live.step l s0 (Hover(pxOf v (0.4, 0.0)))
+        Assert.NotSame(s0, s1)
+        Assert.True(Live.drawsAlike s0 s1)
+        Assert.Equal(Html.widgetFigure l s0, Html.widgetFigure l s1)
+        Assert.Equal<string[]>(Array.append [| "same" |] (Live.shown l s1), Html.liveAnswerForHost (box l, box s0, box s1))
+        Assert.Same(s1, Live.step l s1 (Hover(pxOf v (0.4, 0.0))))
+        Assert.False(Live.drawsAlike s1 (Live.step l s1 (Set(0, 3.0))))
+
+    /// Off every plot, after the pointer leaves, and after a resize, nothing is read; the corner
+    /// is the top-left unless the legend is there.
+    [<Fact>]
+    let ``the readout comes and goes, clear of the legend`` () =
+        let l = live ()
+        let s0 = Live.init l
+        let v = first l s0
+        let inside = pxOf v (0.4, 0.0)
+        Assert.True((Live.readout l s0).IsNone)
+        Assert.True((Live.readout l (Live.step l s0 (Hover { X = 1.0<px>; Y = 1.0<px> }))).IsNone)
+        let s1 = Live.step l s0 (Hover inside)
+        Assert.False((Live.readout l s1).Value.Right)
+        Assert.Equal(v.Plot, (Live.readout l s1).Value.Plot)
+        Assert.True((Live.readout l (Live.step l s1 Leave)).IsNone)
+        Assert.True((Live.readout l (Live.step l s1 (Resize(800.0, 500.0)))).IsNone)
+        Assert.Same(s0, Live.step l s0 Leave)
+
+        let left = still (wave 1.0<1 / s> false |> Chart.withLegend LegendTopLeft)
+        let sl = Live.step left (Live.init left) (Hover inside)
+        Assert.True((Live.readout left sl).Value.Right)
+
+    /// The pointer stays where it is while a slider moves the figure under it, and the reading
+    /// is of the new figure.
+    [<Fact>]
+    let ``a still pointer reads the moved figure`` () =
+        let l =
+            interact {
+                let! k = Control.slider U.one "k" 1.0 10.0 1.0
+                return Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; k * 1.0<m> |]
+            }
+
+        let s0 = Live.init l
+        let p = pxOf (first l s0) (0.5, 0.5)
+        let before = (Live.readout l (Live.step l s0 (Hover p))).Value.Lines.[1]
+        let after = (Live.readout l (Live.step l (Live.step l s0 (Hover p)) (Set(0, 8.0)))).Value.Lines.[1]
+        Assert.NotEqual<string>(before, after)
+
+    /// The host's half: the plot rectangle exact, the corner, and the lines; nothing at all off
+    /// the plot. The view's script places it and posts the pointer under one key.
+    [<Fact>]
+    let ``the host lays the readout out, and the view asks for it`` () =
+        let l = live ()
+        let s0 = Live.init l
+        let v = first l s0
+        let s1 = Live.step l s0 (Hover(pxOf v (0.4, 0.0)))
+        let parts = Html.liveReadoutForHost (box l, box s1)
+        Assert.Equal(7, parts.Length)
+        Assert.Equal(float v.Plot.X0, Double.Parse(parts.[0], CultureInfo.InvariantCulture))
+        Assert.Equal(float v.Plot.Y1, Double.Parse(parts.[3], CultureInfo.InvariantCulture))
+        Assert.Equal("left", parts.[4])
+        Assert.Equal<string[]>((Live.readout l s1).Value.Lines, parts.[5..])
+        Assert.Empty(Html.liveReadoutForHost (box l, box s0))
+        Assert.Empty(Html.liveReadoutForHost (box 42, box s1))
+
+        let doc = Html.widget l s1 true
+        Assert.Contains("id=\"readout\"", doc)
+        Assert.Contains("send('hover', 'hover', [p.x, p.y], e.timeStamp)", doc)
+        Assert.Contains("send('hover', 'leave', [], e.timeStamp)", doc)
+
+    /// The pointer is not an act: a log that opens with the reader looking at the figure starts
+    /// its time at the first thing they did to it, and a recorder does not note it.
+    [<Fact>]
+    let ``a pointer is not recorded, and is not the first act`` () =
+        let l = live ()
+        let hover = Hover { X = 200.0<px>; Y = 150.0<px> }
+
+        let r =
+            Live.record l (Recording.ofEvents [| 0.0<s>, Resize(800.0, 500.0); 3.0<s>, hover; 20.0<s>, Set(0, 2.0); 21.0<s>, Leave |])
+
+        Assert.Equal<float<s>[]>([| 0.0<s>; 0.0<s>; 0.0<s>; 1.0<s> |], r.Events |> Array.map fst)
+
+        let rec_ = Live.recorder l
+        let session = rec_.Begin()
+        rec_.Note(session, Some 1.0<s>, hover)
+        rec_.Note(session, Some 2.0<s>, Set(0, 2.0))
+        rec_.Note(session, Some 3.0<s>, Leave)
+        Assert.Equal<(float<s> * LiveMsg)[]>([| 0.0<s>, Set(0, 2.0) |], (Recorder.stop rec_).Events)
 
 // ======================================================================================
 // Gate 12 — `Marey.Anim` stays put

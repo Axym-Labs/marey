@@ -81,6 +81,12 @@ type internal LiveSession(value: obj, initial: obj, channel: IOutputChannel) =
                 | _ -> whole true
             | None -> whole (m.Type = "size")
 
+            // D105 — every answer says what the pointer reads, an empty one included, so a
+            // readout the pointer has left is taken down by the reply that says so.
+            match Bridge.liveReadout value after with
+            | Some parts -> payload.["readout"] <- box parts
+            | None -> ()
+
             // A dead channel throws rather than drop the message. The view has gone, and so has
             // anyone to tell.
             if channel.IsAlive then

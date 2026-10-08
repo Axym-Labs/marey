@@ -60,6 +60,10 @@ module internal Bridge =
     [<Literal>]
     let LiveAnswer = "liveAnswerForHost"
 
+    // D105 — optional on its own: without it the view shows no readout.
+    [<Literal>]
+    let LiveReadout = "liveReadoutForHost"
+
     /// Assemblies named `Marey.*`. The cheapest possible rejection, and the one that runs on
     /// every value a cell produces: `CanFormat` is a probe, not a commitment.
     let isMareyValue (value: obj) =
@@ -183,7 +187,8 @@ module internal Bridge =
           Step: MethodInfo
           Document: MethodInfo
           Reply: MethodInfo
-          Answer: MethodInfo option }
+          Answer: MethodInfo option
+          Readout: MethodInfo option }
 
     let private liveCache =
         System.Collections.Concurrent.ConcurrentDictionary<Type, LiveMethods option>()
@@ -200,6 +205,7 @@ module internal Bridge =
                 let document = find LiveDocument [| typeof<obj>; typeof<obj>; typeof<bool> |]
                 let reply = find LiveReply [| typeof<obj>; typeof<obj> |]
                 let answer = find LiveAnswer [| typeof<obj>; typeof<obj>; typeof<obj> |]
+                let readout = find LiveReadout [| typeof<obj>; typeof<obj> |]
 
                 if isNull init || isNull step || isNull document || isNull reply then
                     None
@@ -209,7 +215,8 @@ module internal Bridge =
                           Step = step
                           Document = document
                           Reply = reply
-                          Answer = Option.ofObj answer }
+                          Answer = Option.ofObj answer
+                          Readout = Option.ofObj readout }
         )
 
     let private live (value: obj) =
@@ -258,4 +265,16 @@ module internal Bridge =
             |> Option.bind (fun m -> invoke m [| value; before; after |])
         with
         | Some(:? (string[]) as parts) when parts.Length > 0 -> Some parts
+        | _ -> None
+
+    /// What the pointer reads, as `Marey.Html.liveReadoutForHost` lays it out: the plot it is
+    /// over, the corner, and the lines. `Some [||]` when it reads nothing, and `None` for a
+    /// `Marey.Html` without it.
+    let liveReadout (value: obj) (state: obj) : string[] option =
+        match
+            live value
+            |> Option.bind (fun ms -> ms.Readout)
+            |> Option.bind (fun m -> invoke m [| value; state |])
+        with
+        | Some(:? (string[]) as parts) -> Some parts
         | _ -> None

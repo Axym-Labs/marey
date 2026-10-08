@@ -226,7 +226,12 @@ type PanelView =
       Plot: Rect<px>
       Coord: Coord
       X: IScaleErased
-      Y: IScaleErased }
+      Y: IScaleErased
+      /// Each axis as it is drawn: its name, and the prefix and unit text its ticks are written
+      /// in. A reading of the pointer is written in them too (D105), so it can be checked
+      /// against the ticks without converting anything.
+      XAxis: AxisSpec
+      YAxis: AxisSpec }
 
 [<RequireQualifiedAccess>]
 module PanelView =
@@ -268,6 +273,59 @@ module PanelView =
             let xs = corners |> Array.map (fun c -> fst c.Value)
             let ys = corners |> Array.map (fun c -> snd c.Value)
             Some((Array.min xs, Array.max xs), (Array.min ys, Array.max ys))
+
+    /// **D105 — what a pointer reads**: one line per axis, x first, each the axis's name and the
+    /// value under the point, written in the prefix and unit text the axis's ticks are written
+    /// in. A categorical axis reads the level whose band the point is in.
+    ///
+    /// **The places are the ones a pixel resolves.** A reading is good to how far the value moves
+    /// when the pointer moves by one px, read back through the scales and the coord, so a log
+    /// axis gets more places near its bottom than near its top and a polar plot gets them from
+    /// both directions at once. Places past that would be the pointer's noise written down as
+    /// data; a step coarser than 1 is rounded to its decade, so a count axis reads `4120000` and
+    /// not a seven-digit number whose last four digits are the pixel grid.
+    ///
+    /// `None` when the point has no inverse, or is outside the plot.
+    let read (p: Vec2<px>) (v: PanelView) : string[] option =
+        match (if contains p v then toData p v else None) with
+        | None -> None
+        | Some(x, y) ->
+            // How far each value moves over one px, in either direction across the surface,
+            // the larger of the two: what the coord turns sideways, a pixel still resolves.
+            let moved (dx: float<px>) (dy: float<px>) =
+                match toData { X = p.X + dx; Y = p.Y + dy } v with
+                | Some(x', y') -> Some(abs (x' - x), abs (y' - y))
+                | None ->
+                    toData { X = p.X - dx; Y = p.Y - dy } v
+                    |> Option.map (fun (x', y') -> abs (x' - x), abs (y' - y))
+
+            let span f =
+                [ moved 1.0<px> 0.0<px>; moved 0.0<px> 1.0<px> ]
+                |> List.choose id
+                |> List.map f
+                |> List.fold max 0.0
+
+            let line (spec: AxisSpec) (scale: IScaleErased) (value: float) (resolution: float) =
+                let shown =
+                    match scale.Kind with
+                    | ScaleKind.Ordinal levels -> Scale.levelLabel levels value
+                    | _ ->
+                        let factor = Prefix.factor spec.Prefix
+                        let r = resolution / factor
+                        let scaled = value / factor
+
+                        let number =
+                            if r >= 1.0 && not (System.Double.IsInfinity r) then
+                                let decade = 10.0 ** floor (log10 r)
+                                Ticks.format 0 (System.Math.Round(scaled / decade) * decade)
+                            else
+                                Ticks.format (Ticks.decimalsFor r) scaled
+
+                        UnitDisplay.withUnit spec.UnitText number
+
+                if spec.Label = "" then shown else spec.Label + " = " + shown
+
+            Some [| line v.XAxis v.X x (span fst); line v.YAxis v.Y y (span snd) |]
 
 /// **The compiler.** A `Figure` in, a `Node` out, nothing in between that a backend can see.
 ///
@@ -733,6 +791,20 @@ module Figure =
 
         Layout.arrangeIn m extent region (Layout.grid rows cols cells)
 
+    /// A panel's two axes as they are drawn, under the prefixes given (`None` chooses from the
+    /// panel's own domain). The drawing pass and `panelsIn` both take them from here, so a
+    /// pointer's reading cannot be written in a unit the axis is not.
+    let private axisSpecs (theme: Theme) (pinX: Prefix option, pinY: Prefix option) (p: Panel) : AxisSpec * AxisSpec =
+        let (xPacked, yPacked) = packedScales p.Layers.[0].Data
+
+        // The one place the theme's unit spelling and a per-axis override meet. Resolved here
+        // rather than at construction time so that changing the theme on a finished figure
+        // changes its axis titles — which is what `Chart.withTheme Theme.tikz` has to do.
+        let unitStyle (cfg: AxisConfig) = defaultArg cfg.Style theme.UnitStyle
+
+        Axes.specOfPinned pinX (unitStyle p.XAxis) p.XAxis.TickCount p.XAxis.Label AxisBottom xPacked,
+        Axes.specOfPinned pinY (unitStyle p.YAxis) p.YAxis.TickCount p.YAxis.Label AxisLeft yPacked
+
     /// Compile one panel into a device-space region.
     /// D72 — one function, two answers: the panel's frozen inner grid, and a thunk that draws
     /// the panel inside it.
@@ -767,13 +839,6 @@ module Figure =
             // different questions.
             let panelKey = Keys.panel p.Row p.Col
 
-            let (xPacked, yPacked) = packedScales p.Layers.[0].Data
-
-            // The one place the theme's unit spelling and a per-axis override meet. Resolved here
-            // rather than at construction time so that changing the theme on a finished figure
-            // changes its axis titles — which is what `Chart.withTheme Theme.tikz` has to do.
-            let unitStyle (cfg: AxisConfig) = defaultArg cfg.Style theme.UnitStyle
-
             // D73 — the prefix comes from the frozen layout when there is one. A still figure
             // pins nothing and chooses per figure, which is what it has always done; an
             // animation pins both axes against the union of every frame's domain, so the axis
@@ -785,11 +850,7 @@ module Figure =
             let pinX = match frozen with Some f -> f.XPrefix | None -> fst pins
             let pinY = match frozen with Some f -> f.YPrefix | None -> snd pins
 
-            let xSpec =
-                Axes.specOfPinned pinX (unitStyle p.XAxis) p.XAxis.TickCount p.XAxis.Label AxisBottom xPacked
-
-            let ySpec =
-                Axes.specOfPinned pinY (unitStyle p.YAxis) p.YAxis.TickCount p.YAxis.Label AxisLeft yPacked
+            let xSpec, ySpec = axisSpecs theme (pinX, pinY) p
 
             let titleH =
                 if isEmpty p.Title then
@@ -1513,7 +1574,9 @@ module Figure =
             | 0, _, _ -> None
             | _, Some region, Some f ->
                 let plot = Layout.findPx "plot" (innerGrid m shot.Outer.Extent region f)
-                let sx, sy = Erase.seriesScales (unify p).Layers.[0].Data
+                let unified = unify p
+                let sx, sy = Erase.seriesScales unified.Layers.[0].Data
+                let ax, ay = axisSpecs fig.Theme (f.XPrefix, f.YPrefix) unified
 
                 Some
                     { Row = p.Row
@@ -1521,7 +1584,9 @@ module Figure =
                       Plot = plot
                       Coord = p.Coord
                       X = sx
-                      Y = sy }
+                      Y = sy
+                      XAxis = ax
+                      YAxis = ay }
             | _ -> None)
 
     /// One panel's domains, stated: `Chart.withXDomain` for a panel other than the last. Raw

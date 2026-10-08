@@ -916,6 +916,28 @@ module LiveFormatter =
         Assert.Equal(Html.widgetFigure l s1, hello.["svg"] :?> string)
         Assert.False(hello.ContainsKey "patch")
 
+    /// D105 — a hover is answered with the figure the view already has and what the pointer
+    /// reads; leaving is answered with an empty readout, which takes it down.
+    [<Fact>]
+    let ``a hover is answered with a readout and no figure`` () =
+        let host = FakeHost()
+        let l = live ()
+        format (box l) (LiveContext(host, Some cell)) |> ignore
+        let channel = host.Opened.[0]
+        let v = (Live.panels l (Live.init l)).[0]
+        let x, y = (v.Plot.X0 + v.Plot.X1) / 2.0, (v.Plot.Y0 + v.Plot.Y1) / 2.0
+
+        channel.Send("hover", sprintf "[%g,%g,1000]" (float x) (float y))
+        let p = payloadOf (snd channel.Posted.[0])
+        Assert.False(p.ContainsKey "svg", "a hover resent the figure")
+        Assert.False(p.ContainsKey "patch", "a hover sent a patch")
+        let readout = p.["readout"] :?> string[]
+        Assert.Equal(7, readout.Length)
+        Assert.StartsWith("t = ", readout.[5])
+
+        channel.Send("leave", "[1100]")
+        Assert.Empty((payloadOf (snd channel.Posted.[1])).["readout"] :?> string[])
+
     /// A save writes the page at the state the reader left it in, static.
     [<Fact>]
     let ``a snapshot is the current state, static`` () =
@@ -993,7 +1015,7 @@ module LiveFormatter =
 
         Assert.Empty(host.Opened)
 
-    /// The four live signatures the extension reflects on, pinned as the first two are.
+    /// The six live signatures the extension reflects on, pinned as the first two are.
     [<Fact>]
     let ``the live bridge functions have the signatures the extension looks for`` () =
         Assert.NotNull(Html.liveInitForHost (box (live ())))
@@ -1008,7 +1030,8 @@ module LiveFormatter =
               "liveStepForHost", [| typeof<obj>; typeof<obj>; typeof<string>; typeof<string> |], typeof<obj>
               "liveDocumentForHost", [| typeof<obj>; typeof<obj>; typeof<bool> |], typeof<string>
               "liveReplyForHost", [| typeof<obj>; typeof<obj> |], typeof<string[]>
-              "liveAnswerForHost", [| typeof<obj>; typeof<obj>; typeof<obj> |], typeof<string[]> ]
+              "liveAnswerForHost", [| typeof<obj>; typeof<obj>; typeof<obj> |], typeof<string[]>
+              "liveReadoutForHost", [| typeof<obj>; typeof<obj> |], typeof<string[]> ]
 
         for name, args, ret in pins do
             let m = find name args
