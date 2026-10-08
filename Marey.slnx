@@ -5,6 +5,7 @@
     <Project Path="src/Marey.Backend.Gpu/Marey.Backend.Gpu.fsproj" />
     <Project Path="src/Marey.Backend.Svg/Marey.Backend.Svg.fsproj" />
     <Project Path="src/Marey.Backend.Tikz/Marey.Backend.Tikz.fsproj" />
+    <Project Path="src/Marey.Backend.Web/Marey.Backend.Web.fsproj" />
     <Project Path="src/Marey.Core/Marey.Core.fsproj" />
     <Project Path="src/Marey.Fields/Marey.Fields.fsproj" />
     <Project Path="src/Marey.Html/Marey.Html.fsproj" />

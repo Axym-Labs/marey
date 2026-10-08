@@ -1,0 +1,56 @@
+canvas.width = 640
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 320 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 320 200
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 16 20 "start"
+restore
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 138.403 20 "middle"
+restore
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 279.536 20 "end"
+restore
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 16 66.531 "hanging"
+restore
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 16 87.747 "central"
+restore
+save
+font = 700 17.333px "Helvetica"
+fillStyle = rgba(28,31,38,1)
+fillText 16 112 "bold 700"
+restore
+save
+font = italic 400 17.333px "Helvetica"
+fillStyle = rgba(230,92,46,1)
+fillText 160 112 "italic"
+restore
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 16 144 "a & b < c > "d" 'e'"
+restore
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 16 168 "kg·m·s⁻² · µm · Ω · Å"
+restore
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 16 190 "  padded  "
+restore

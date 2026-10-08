@@ -162,7 +162,7 @@ jobs:
         run: |
           set -e
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 15 ] || { echo "::error::expected 15 packages, packed $count"; exit 1; }
+          [ "$count" -eq 16 ] || { echo "::error::expected 16 packages, packed $count"; exit 1; }
           fable=0
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
@@ -179,8 +179,8 @@ jobs:
             unzip -l "$pkg" | grep -q "$readme" || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
             echo "  $(basename "$pkg"): $readme"
           done
-          [ "$fable" -eq 7 ] || { echo "::error::expected 7 packages with Fable sources, found $fable"; exit 1; }
-          echo "15 packages, each with an MIT expression and the readme it declares; 7 with Fable sources"
+          [ "$fable" -eq 8 ] || { echo "::error::expected 8 packages with Fable sources, found $fable"; exit 1; }
+          echo "16 packages, each with an MIT expression and the readme it declares; 8 with Fable sources"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -212,15 +212,22 @@ jobs:
       - name: Compile with Fable
         run: dotnet fable tests/Marey.Fable -o tests/Marey.Fable/out
 
-      - name: The SVG goldens under Node
-        run: node tests/Marey.Fable/out/Main.js tests/Marey.Tests/golden
+      # And M5's gates 13 and 14 in the same run: the canvas backend's call log per golden scene,
+      # against tests/Marey.Fable/canvas, and the fonts gate.
+      - name: The SVG goldens, the canvas logs and the fonts under Node
+        run: node tests/Marey.Fable/out/Main.js tests/Marey.Tests/golden tests/Marey.Fable/canvas
+
+      # D121's consumer: the browser example compiles, so it cannot rot unseen. Serving it and
+      # looking is a person's job; compiling it is this one's.
+      - name: Compile the browser example
+        run: dotnet fable examples/web -o examples/web/out
 
       # M5 phase 2, gate 3: the same goldens built from the packages rather than the projects, so
       # Fable compiles the sources each package carries under fable/. A file the pack left out is
       # a compile error here, before anything is published.
       - name: Pack the Fable projects
         run: |
-          for p in Core Units Anim Plot Fields Interact Backend.Svg; do
+          for p in Core Units Anim Plot Fields Interact Backend.Svg Backend.Web; do
             dotnet pack src/Marey.$p --configuration Release -o fable-packages -p:Version=0.0.0-fable
           done
 
@@ -232,13 +239,15 @@ jobs:
           rm -rf tests/Marey.Fable/obj
           dotnet fable tests/Marey.Fable -o tests/Marey.Fable/out-packages
 
-      - name: The SVG goldens under Node, from the packages
-        run: node tests/Marey.Fable/out-packages/Main.js tests/Marey.Tests/golden
+      - name: The SVG goldens, the canvas logs and the fonts under Node, from the packages
+        run: node tests/Marey.Fable/out-packages/Main.js tests/Marey.Tests/golden tests/Marey.Fable/canvas
 
       - name: Upload the documents that differ
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: fable-golden-actuals
-          path: tests/Marey.Tests/golden/*.actual.svg
+          path: |
+            tests/Marey.Tests/golden/*.actual.svg
+            tests/Marey.Fable/canvas/*.actual.txt
           if-no-files-found: ignore

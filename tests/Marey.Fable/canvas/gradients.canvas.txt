@@ -1,0 +1,52 @@
+canvas.width = 640
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 320 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 320 200
+beginPath
+moveTo 12.8 90
+lineTo 150.4 90
+lineTo 150.4 10
+lineTo 12.8 10
+closePath
+save
+transform 320 0 0 -200 0 200
+fillStyle = linear 0 0 1 1 [0 rgba(252,217,51,1), 0.5 rgba(230,92,46,1), 1 rgba(76,13,89,0.851)]
+fill nonzero
+restore
+beginPath
+moveTo 169.6 90
+lineTo 307.2 90
+lineTo 307.2 10
+lineTo 169.6 10
+closePath
+save
+transform 320 0 0 -200 0 200
+fillStyle = radial 0.75 0.75 0 0.75 0.75 0.22 [0 rgba(252,217,51,1), 0.5 rgba(230,92,46,1), 1 rgba(76,13,89,0.851)]
+fill nonzero
+restore
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 12.8 190
+lineTo 150.4 190
+lineTo 150.4 110
+lineTo 12.8 110
+closePath
+save
+transform 320 0 0 -200 0 200
+fillStyle = linear 0 0 1 1 [0 rgba(252,217,51,1), 0.5 rgba(230,92,46,1), 1 rgba(76,13,89,0.851)]
+fill nonzero
+restore
+save
+font = 700 18.667px "Helvetica"
+fillStyle = linear 0 200 320 0 [0 rgba(252,217,51,1), 0.5 rgba(230,92,46,1), 1 rgba(76,13,89,0.851)]
+fillText 187.098 154.769 "gradient text"
+restore

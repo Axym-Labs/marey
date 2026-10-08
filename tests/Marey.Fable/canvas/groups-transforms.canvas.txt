@@ -1,0 +1,141 @@
+canvas.width = 640
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 320 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 320 200
+beginPath
+moveTo 32 120
+lineTo 96 120
+lineTo 96 80
+lineTo 32 80
+closePath
+fillStyle = rgba(41,97,219,0.298)
+fill nonzero
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 64 100
+lineTo 96 100
+strokeStyle = rgba(230,92,46,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 90.886 125.017
+lineTo 152.027 113.196
+lineTo 133.114 74.983
+lineTo 71.973 86.804
+closePath
+fillStyle = rgba(41,97,219,0.298)
+fill nonzero
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 112 100
+lineTo 142.571 94.09
+strokeStyle = rgba(230,92,46,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 151.658 127.8
+lineTo 204.479 105.214
+lineTo 168.342 72.2
+lineTo 115.521 94.786
+closePath
+fillStyle = rgba(41,97,219,0.298)
+fill nonzero
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 160 100
+lineTo 186.411 88.707
+strokeStyle = rgba(230,92,46,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 213.175 128.099
+lineTo 252.958 96.766
+lineTo 202.825 71.901
+lineTo 163.042 103.234
+closePath
+fillStyle = rgba(41,97,219,0.298)
+fill nonzero
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 208 100
+lineTo 227.892 84.333
+strokeStyle = rgba(230,92,46,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 274.23 125.888
+lineTo 297.421 88.606
+lineTo 237.77 74.112
+lineTo 214.579 111.394
+closePath
+fillStyle = rgba(41,97,219,0.298)
+fill nonzero
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 256 100
+lineTo 267.595 81.359
+strokeStyle = rgba(230,92,46,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke

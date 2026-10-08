@@ -972,6 +972,26 @@ module Fields =
         |> Chart.withTitle "Two line charges"
 
 /// Every SVG baseline, by file name without the extension, and how to render it.
+/// Every golden's scene, the figures compiled against a measurer: what a backend other than SVG
+/// draws (the GPU's gate 6, the canvas's gate 13).
+let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
+    let wide = Chart.size 480.0 300.0
+    let fig name extent f = name, extent, Chart.toSceneWith m extent f
+
+    [ for name, node, extent in Scenes.all -> name, extent, node ]
+    @ [ fig "figure" figureSurface figure
+        fig "figure-category" figureSurface categoryFigure
+        fig "figure-channels" figureSurface channelFigure
+        fig "figure-colorbar" figureSurface colorbarFigure
+        fig "figure-boxplot" figureSurface boxplotFigure
+        fig "figure-heatmap" figureSurface heatmapFigure
+        fig "figure-image" figureSurface imageFigure
+        fig "figure-hexbin" wide Hexbin.figure
+        fig "figure-field-heatmap" wide Fields.heatmapFigure
+        fig "figure-field-quiver" wide Fields.quiverFigure
+        fig "figure-field-streamlines" wide Fields.streamlinePortrait
+        fig "figure-field-portrait" wide Fields.phasePortrait ]
+
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
     let figureAt extent fig = fun () -> Chart.render SvgBackend.render extent fig

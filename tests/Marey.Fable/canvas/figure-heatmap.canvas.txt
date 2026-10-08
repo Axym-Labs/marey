@@ -1,0 +1,2026 @@
+canvas.width = 960
+canvas.height = 600
+setTransform 2 0 0 2 0 0
+clearRect 0 0 480 300
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 480 300
+beginPath
+moveTo 0 300
+lineTo 480 300
+lineTo 480 0
+lineTo 0 0
+closePath
+fillStyle = rgba(255,255,255,1)
+fill nonzero
+save
+font = 600 17.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 170.051 26.445 "Temperature field"
+restore
+beginPath
+moveTo 47.005 226.569
+lineTo 370.315 226.569
+moveTo 47.005 182.573
+lineTo 370.315 182.573
+moveTo 47.005 138.577
+lineTo 370.315 138.577
+moveTo 47.005 94.581
+lineTo 370.315 94.581
+strokeStyle = rgba(231,233,237,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+beginPath
+moveTo 47.005 248.567
+lineTo 370.315 248.567
+lineTo 370.315 72.583
+lineTo 47.005 72.583
+closePath
+clip nonzero
+beginPath
+moveTo 47.005 248.567
+lineTo 100.89 248.567
+lineTo 100.89 204.571
+lineTo 47.005 204.571
+closePath
+fillStyle = rgba(68,2,85,0.1804)
+fill nonzero
+strokeStyle = rgba(68,2,85,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 100.89 248.567
+lineTo 154.775 248.567
+lineTo 154.775 204.571
+lineTo 100.89 204.571
+closePath
+fillStyle = rgba(72,36,115,0.1804)
+fill nonzero
+strokeStyle = rgba(72,36,115,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 47.005 204.571
+lineTo 100.89 204.571
+lineTo 100.89 160.575
+lineTo 47.005 160.575
+closePath
+fillStyle = rgba(68,59,129,0.1804)
+fill nonzero
+strokeStyle = rgba(68,59,129,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 154.775 248.567
+lineTo 208.66 248.567
+lineTo 208.66 204.571
+lineTo 154.775 204.571
+closePath
+fillStyle = rgba(66,66,133,0.1804)
+fill nonzero
+strokeStyle = rgba(66,66,133,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 100.89 204.571
+lineTo 154.775 204.571
+lineTo 154.775 160.575
+lineTo 100.89 160.575
+closePath
+fillStyle = rgba(58,86,139,0.1804)
+fill nonzero
+strokeStyle = rgba(58,86,139,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 208.66 248.567
+lineTo 262.545 248.567
+lineTo 262.545 204.571
+lineTo 208.66 204.571
+closePath
+fillStyle = rgba(55,93,140,0.1804)
+fill nonzero
+strokeStyle = rgba(55,93,140,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 47.005 160.575
+lineTo 100.89 160.575
+lineTo 100.89 116.579
+lineTo 47.005 116.579
+closePath
+fillStyle = rgba(48,106,142,0.1804)
+fill nonzero
+strokeStyle = rgba(48,106,142,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 154.775 204.571
+lineTo 208.66 204.571
+lineTo 208.66 160.575
+lineTo 154.775 160.575
+closePath
+fillStyle = rgba(47,112,142,0.1804)
+fill nonzero
+strokeStyle = rgba(47,112,142,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 262.545 248.567
+lineTo 316.43 248.567
+lineTo 316.43 204.571
+lineTo 262.545 204.571
+closePath
+fillStyle = rgba(45,117,142,0.1804)
+fill nonzero
+strokeStyle = rgba(45,117,142,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 100.89 160.575
+lineTo 154.775 160.575
+lineTo 154.775 116.579
+lineTo 100.89 116.579
+closePath
+fillStyle = rgba(39,129,142,0.1804)
+fill nonzero
+strokeStyle = rgba(39,129,142,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 208.66 204.571
+lineTo 262.545 204.571
+lineTo 262.545 160.575
+lineTo 208.66 160.575
+closePath
+fillStyle = rgba(37,135,141,0.1804)
+fill nonzero
+strokeStyle = rgba(37,135,141,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 316.43 248.567
+lineTo 370.315 248.567
+lineTo 370.315 204.571
+lineTo 316.43 204.571
+closePath
+fillStyle = rgba(36,141,140,0.1804)
+fill nonzero
+strokeStyle = rgba(36,141,140,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 47.005 116.579
+lineTo 100.89 116.579
+lineTo 100.89 72.583
+lineTo 47.005 72.583
+closePath
+fillStyle = rgba(34,147,139,0.1804)
+fill nonzero
+strokeStyle = rgba(34,147,139,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 154.775 160.575
+lineTo 208.66 160.575
+lineTo 208.66 116.579
+lineTo 154.775 116.579
+closePath
+fillStyle = rgba(32,153,138,0.1804)
+fill nonzero
+strokeStyle = rgba(32,153,138,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 262.545 204.571
+lineTo 316.43 204.571
+lineTo 316.43 160.575
+lineTo 262.545 160.575
+closePath
+fillStyle = rgba(32,159,136,0.1804)
+fill nonzero
+strokeStyle = rgba(32,159,136,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 100.89 116.579
+lineTo 154.775 116.579
+lineTo 154.775 72.583
+lineTo 100.89 72.583
+closePath
+fillStyle = rgba(42,171,130,0.1804)
+fill nonzero
+strokeStyle = rgba(42,171,130,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 208.66 160.575
+lineTo 262.545 160.575
+lineTo 262.545 116.579
+lineTo 208.66 116.579
+closePath
+fillStyle = rgba(47,176,126,0.1804)
+fill nonzero
+strokeStyle = rgba(47,176,126,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 316.43 204.571
+lineTo 370.315 204.571
+lineTo 370.315 160.575
+lineTo 316.43 160.575
+closePath
+fillStyle = rgba(51,181,122,0.1804)
+fill nonzero
+strokeStyle = rgba(51,181,122,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 154.775 116.579
+lineTo 208.66 116.579
+lineTo 208.66 72.583
+lineTo 154.775 72.583
+closePath
+fillStyle = rgba(78,192,110,0.1804)
+fill nonzero
+strokeStyle = rgba(78,192,110,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 262.545 160.575
+lineTo 316.43 160.575
+lineTo 316.43 116.579
+lineTo 262.545 116.579
+closePath
+fillStyle = rgba(89,197,104,0.1804)
+fill nonzero
+strokeStyle = rgba(89,197,104,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 208.66 116.579
+lineTo 262.545 116.579
+lineTo 262.545 72.583
+lineTo 208.66 72.583
+closePath
+fillStyle = rgba(130,210,80,0.1804)
+fill nonzero
+strokeStyle = rgba(130,210,80,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 316.43 160.575
+lineTo 370.315 160.575
+lineTo 370.315 116.579
+lineTo 316.43 116.579
+closePath
+fillStyle = rgba(146,214,72,0.1804)
+fill nonzero
+strokeStyle = rgba(146,214,72,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 262.545 116.579
+lineTo 316.43 116.579
+lineTo 316.43 72.583
+lineTo 262.545 72.583
+closePath
+fillStyle = rgba(192,223,42,0.1804)
+fill nonzero
+strokeStyle = rgba(192,223,42,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 316.43 116.579
+lineTo 370.315 116.579
+lineTo 370.315 72.583
+lineTo 316.43 72.583
+closePath
+fillStyle = rgba(252,231,37,0.1804)
+fill nonzero
+strokeStyle = rgba(252,231,37,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+restore
+beginPath
+moveTo 47.005 248.567
+lineTo 370.315 248.567
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 73.948 248.567
+lineTo 73.948 251.567
+moveTo 127.833 248.567
+lineTo 127.833 251.567
+moveTo 181.718 248.567
+lineTo 181.718 251.567
+moveTo 235.602 248.567
+lineTo 235.602 251.567
+moveTo 289.487 248.567
+lineTo 289.487 251.567
+moveTo 343.372 248.567
+lineTo 343.372 251.567
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 70.612 264.183 "0"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 124.497 264.183 "1"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 178.382 264.183 "2"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 232.266 264.183 "3"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 286.151 264.183 "4"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 340.036 264.183 "5"
+restore
+save
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 197.913 283.24 "t [s]"
+restore
+beginPath
+moveTo 47.005 248.567
+lineTo 47.005 72.583
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 47.005 226.569
+lineTo 44.005 226.569
+moveTo 47.005 182.573
+lineTo 44.005 182.573
+moveTo 47.005 138.577
+lineTo 44.005 138.577
+moveTo 47.005 94.581
+lineTo 44.005 94.581
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 229.635 "0"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 185.639 "1"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 141.643 "2"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 97.647 "3"
+restore
+save
+translate 26.333 160.575
+rotate -1.571
+translate -26.333 -160.575
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 11.887 160.575 "x [m]"
+restore
+beginPath
+moveTo 403.651 248.567
+lineTo 415.651 248.567
+lineTo 415.651 247.217
+lineTo 403.651 247.217
+closePath
+fillStyle = rgba(68,2,85,1)
+fill nonzero
+beginPath
+moveTo 403.651 247.567
+lineTo 415.651 247.567
+lineTo 415.651 246.217
+lineTo 403.651 246.217
+closePath
+fillStyle = rgba(69,5,87,1)
+fill nonzero
+beginPath
+moveTo 403.651 246.567
+lineTo 415.651 246.567
+lineTo 415.651 245.217
+lineTo 403.651 245.217
+closePath
+fillStyle = rgba(69,7,88,1)
+fill nonzero
+beginPath
+moveTo 403.651 245.567
+lineTo 415.651 245.567
+lineTo 415.651 244.217
+lineTo 403.651 244.217
+closePath
+fillStyle = rgba(69,10,90,1)
+fill nonzero
+beginPath
+moveTo 403.651 244.567
+lineTo 415.651 244.567
+lineTo 415.651 243.217
+lineTo 403.651 243.217
+closePath
+fillStyle = rgba(69,12,92,1)
+fill nonzero
+beginPath
+moveTo 403.651 243.567
+lineTo 415.651 243.567
+lineTo 415.651 242.217
+lineTo 403.651 242.217
+closePath
+fillStyle = rgba(70,15,94,1)
+fill nonzero
+beginPath
+moveTo 403.651 242.567
+lineTo 415.651 242.567
+lineTo 415.651 241.217
+lineTo 403.651 241.217
+closePath
+fillStyle = rgba(70,17,96,1)
+fill nonzero
+beginPath
+moveTo 403.651 241.567
+lineTo 415.651 241.567
+lineTo 415.651 240.217
+lineTo 403.651 240.217
+closePath
+fillStyle = rgba(70,19,98,1)
+fill nonzero
+beginPath
+moveTo 403.651 240.567
+lineTo 415.651 240.567
+lineTo 415.651 239.218
+lineTo 403.651 239.218
+closePath
+fillStyle = rgba(71,21,99,1)
+fill nonzero
+beginPath
+moveTo 403.651 239.568
+lineTo 415.651 239.568
+lineTo 415.651 238.218
+lineTo 403.651 238.218
+closePath
+fillStyle = rgba(71,23,101,1)
+fill nonzero
+beginPath
+moveTo 403.651 238.568
+lineTo 415.651 238.568
+lineTo 415.651 237.218
+lineTo 403.651 237.218
+closePath
+fillStyle = rgba(71,25,103,1)
+fill nonzero
+beginPath
+moveTo 403.651 237.568
+lineTo 415.651 237.568
+lineTo 415.651 236.218
+lineTo 403.651 236.218
+closePath
+fillStyle = rgba(71,27,105,1)
+fill nonzero
+beginPath
+moveTo 403.651 236.568
+lineTo 415.651 236.568
+lineTo 415.651 235.218
+lineTo 403.651 235.218
+closePath
+fillStyle = rgba(71,28,107,1)
+fill nonzero
+beginPath
+moveTo 403.651 235.568
+lineTo 415.651 235.568
+lineTo 415.651 234.218
+lineTo 403.651 234.218
+closePath
+fillStyle = rgba(71,30,109,1)
+fill nonzero
+beginPath
+moveTo 403.651 234.568
+lineTo 415.651 234.568
+lineTo 415.651 233.218
+lineTo 403.651 233.218
+closePath
+fillStyle = rgba(72,32,110,1)
+fill nonzero
+beginPath
+moveTo 403.651 233.568
+lineTo 415.651 233.568
+lineTo 415.651 232.218
+lineTo 403.651 232.218
+closePath
+fillStyle = rgba(72,33,112,1)
+fill nonzero
+beginPath
+moveTo 403.651 232.568
+lineTo 415.651 232.568
+lineTo 415.651 231.218
+lineTo 403.651 231.218
+closePath
+fillStyle = rgba(72,35,114,1)
+fill nonzero
+beginPath
+moveTo 403.651 231.568
+lineTo 415.651 231.568
+lineTo 415.651 230.218
+lineTo 403.651 230.218
+closePath
+fillStyle = rgba(72,37,116,1)
+fill nonzero
+beginPath
+moveTo 403.651 230.568
+lineTo 415.651 230.568
+lineTo 415.651 229.218
+lineTo 403.651 229.218
+closePath
+fillStyle = rgba(72,38,118,1)
+fill nonzero
+beginPath
+moveTo 403.651 229.568
+lineTo 415.651 229.568
+lineTo 415.651 228.219
+lineTo 403.651 228.219
+closePath
+fillStyle = rgba(72,40,120,1)
+fill nonzero
+beginPath
+moveTo 403.651 228.569
+lineTo 415.651 228.569
+lineTo 415.651 227.219
+lineTo 403.651 227.219
+closePath
+fillStyle = rgba(72,42,121,1)
+fill nonzero
+beginPath
+moveTo 403.651 227.569
+lineTo 415.651 227.569
+lineTo 415.651 226.219
+lineTo 403.651 226.219
+closePath
+fillStyle = rgba(72,44,122,1)
+fill nonzero
+beginPath
+moveTo 403.651 226.569
+lineTo 415.651 226.569
+lineTo 415.651 225.219
+lineTo 403.651 225.219
+closePath
+fillStyle = rgba(71,46,123,1)
+fill nonzero
+beginPath
+moveTo 403.651 225.569
+lineTo 415.651 225.569
+lineTo 415.651 224.219
+lineTo 403.651 224.219
+closePath
+fillStyle = rgba(71,47,123,1)
+fill nonzero
+beginPath
+moveTo 403.651 224.569
+lineTo 415.651 224.569
+lineTo 415.651 223.219
+lineTo 403.651 223.219
+closePath
+fillStyle = rgba(71,49,124,1)
+fill nonzero
+beginPath
+moveTo 403.651 223.569
+lineTo 415.651 223.569
+lineTo 415.651 222.219
+lineTo 403.651 222.219
+closePath
+fillStyle = rgba(70,51,125,1)
+fill nonzero
+beginPath
+moveTo 403.651 222.569
+lineTo 415.651 222.569
+lineTo 415.651 221.219
+lineTo 403.651 221.219
+closePath
+fillStyle = rgba(70,53,126,1)
+fill nonzero
+beginPath
+moveTo 403.651 221.569
+lineTo 415.651 221.569
+lineTo 415.651 220.219
+lineTo 403.651 220.219
+closePath
+fillStyle = rgba(69,55,127,1)
+fill nonzero
+beginPath
+moveTo 403.651 220.569
+lineTo 415.651 220.569
+lineTo 415.651 219.219
+lineTo 403.651 219.219
+closePath
+fillStyle = rgba(69,56,128,1)
+fill nonzero
+beginPath
+moveTo 403.651 219.569
+lineTo 415.651 219.569
+lineTo 415.651 218.22
+lineTo 403.651 218.22
+closePath
+fillStyle = rgba(68,58,129,1)
+fill nonzero
+beginPath
+moveTo 403.651 218.57
+lineTo 415.651 218.57
+lineTo 415.651 217.22
+lineTo 403.651 217.22
+closePath
+fillStyle = rgba(68,60,130,1)
+fill nonzero
+beginPath
+moveTo 403.651 217.57
+lineTo 415.651 217.57
+lineTo 415.651 216.22
+lineTo 403.651 216.22
+closePath
+fillStyle = rgba(67,61,130,1)
+fill nonzero
+beginPath
+moveTo 403.651 216.57
+lineTo 415.651 216.57
+lineTo 415.651 215.22
+lineTo 403.651 215.22
+closePath
+fillStyle = rgba(67,63,131,1)
+fill nonzero
+beginPath
+moveTo 403.651 215.57
+lineTo 415.651 215.57
+lineTo 415.651 214.22
+lineTo 403.651 214.22
+closePath
+fillStyle = rgba(66,65,132,1)
+fill nonzero
+beginPath
+moveTo 403.651 214.57
+lineTo 415.651 214.57
+lineTo 415.651 213.22
+lineTo 403.651 213.22
+closePath
+fillStyle = rgba(66,66,133,1)
+fill nonzero
+beginPath
+moveTo 403.651 213.57
+lineTo 415.651 213.57
+lineTo 415.651 212.22
+lineTo 403.651 212.22
+closePath
+fillStyle = rgba(65,68,134,1)
+fill nonzero
+beginPath
+moveTo 403.651 212.57
+lineTo 415.651 212.57
+lineTo 415.651 211.22
+lineTo 403.651 211.22
+closePath
+fillStyle = rgba(64,70,135,1)
+fill nonzero
+beginPath
+moveTo 403.651 211.57
+lineTo 415.651 211.57
+lineTo 415.651 210.22
+lineTo 403.651 210.22
+closePath
+fillStyle = rgba(63,71,136,1)
+fill nonzero
+beginPath
+moveTo 403.651 210.57
+lineTo 415.651 210.57
+lineTo 415.651 209.22
+lineTo 403.651 209.22
+closePath
+fillStyle = rgba(63,73,136,1)
+fill nonzero
+beginPath
+moveTo 403.651 209.57
+lineTo 415.651 209.57
+lineTo 415.651 208.22
+lineTo 403.651 208.22
+closePath
+fillStyle = rgba(62,75,137,1)
+fill nonzero
+beginPath
+moveTo 403.651 208.57
+lineTo 415.651 208.57
+lineTo 415.651 207.221
+lineTo 403.651 207.221
+closePath
+fillStyle = rgba(61,76,137,1)
+fill nonzero
+beginPath
+moveTo 403.651 207.571
+lineTo 415.651 207.571
+lineTo 415.651 206.221
+lineTo 403.651 206.221
+closePath
+fillStyle = rgba(61,78,138,1)
+fill nonzero
+beginPath
+moveTo 403.651 206.571
+lineTo 415.651 206.571
+lineTo 415.651 205.221
+lineTo 403.651 205.221
+closePath
+fillStyle = rgba(61,79,138,1)
+fill nonzero
+beginPath
+moveTo 403.651 205.571
+lineTo 415.651 205.571
+lineTo 415.651 204.221
+lineTo 403.651 204.221
+closePath
+fillStyle = rgba(60,81,138,1)
+fill nonzero
+beginPath
+moveTo 403.651 204.571
+lineTo 415.651 204.571
+lineTo 415.651 203.221
+lineTo 403.651 203.221
+closePath
+fillStyle = rgba(60,82,138,1)
+fill nonzero
+beginPath
+moveTo 403.651 203.571
+lineTo 415.651 203.571
+lineTo 415.651 202.221
+lineTo 403.651 202.221
+closePath
+fillStyle = rgba(59,84,139,1)
+fill nonzero
+beginPath
+moveTo 403.651 202.571
+lineTo 415.651 202.571
+lineTo 415.651 201.221
+lineTo 403.651 201.221
+closePath
+fillStyle = rgba(58,86,139,1)
+fill nonzero
+beginPath
+moveTo 403.651 201.571
+lineTo 415.651 201.571
+lineTo 415.651 200.221
+lineTo 403.651 200.221
+closePath
+fillStyle = rgba(58,87,139,1)
+fill nonzero
+beginPath
+moveTo 403.651 200.571
+lineTo 415.651 200.571
+lineTo 415.651 199.221
+lineTo 403.651 199.221
+closePath
+fillStyle = rgba(57,89,140,1)
+fill nonzero
+beginPath
+moveTo 403.651 199.571
+lineTo 415.651 199.571
+lineTo 415.651 198.221
+lineTo 403.651 198.221
+closePath
+fillStyle = rgba(57,90,140,1)
+fill nonzero
+beginPath
+moveTo 403.651 198.571
+lineTo 415.651 198.571
+lineTo 415.651 197.222
+lineTo 403.651 197.222
+closePath
+fillStyle = rgba(56,92,140,1)
+fill nonzero
+beginPath
+moveTo 403.651 197.571
+lineTo 415.651 197.571
+lineTo 415.651 196.222
+lineTo 403.651 196.222
+closePath
+fillStyle = rgba(55,93,140,1)
+fill nonzero
+beginPath
+moveTo 403.651 196.572
+lineTo 415.651 196.572
+lineTo 415.651 195.222
+lineTo 403.651 195.222
+closePath
+fillStyle = rgba(54,95,141,1)
+fill nonzero
+beginPath
+moveTo 403.651 195.572
+lineTo 415.651 195.572
+lineTo 415.651 194.222
+lineTo 403.651 194.222
+closePath
+fillStyle = rgba(54,96,141,1)
+fill nonzero
+beginPath
+moveTo 403.651 194.572
+lineTo 415.651 194.572
+lineTo 415.651 193.222
+lineTo 403.651 193.222
+closePath
+fillStyle = rgba(53,98,141,1)
+fill nonzero
+beginPath
+moveTo 403.651 193.572
+lineTo 415.651 193.572
+lineTo 415.651 192.222
+lineTo 403.651 192.222
+closePath
+fillStyle = rgba(52,99,141,1)
+fill nonzero
+beginPath
+moveTo 403.651 192.572
+lineTo 415.651 192.572
+lineTo 415.651 191.222
+lineTo 403.651 191.222
+closePath
+fillStyle = rgba(51,101,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 191.572
+lineTo 415.651 191.572
+lineTo 415.651 190.222
+lineTo 403.651 190.222
+closePath
+fillStyle = rgba(50,102,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 190.572
+lineTo 415.651 190.572
+lineTo 415.651 189.222
+lineTo 403.651 189.222
+closePath
+fillStyle = rgba(49,104,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 189.572
+lineTo 415.651 189.572
+lineTo 415.651 188.222
+lineTo 403.651 188.222
+closePath
+fillStyle = rgba(49,105,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 188.572
+lineTo 415.651 188.572
+lineTo 415.651 187.222
+lineTo 403.651 187.222
+closePath
+fillStyle = rgba(48,106,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 187.572
+lineTo 415.651 187.572
+lineTo 415.651 186.223
+lineTo 403.651 186.223
+closePath
+fillStyle = rgba(48,108,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 186.573
+lineTo 415.651 186.573
+lineTo 415.651 185.223
+lineTo 403.651 185.223
+closePath
+fillStyle = rgba(47,109,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 185.573
+lineTo 415.651 185.573
+lineTo 415.651 184.223
+lineTo 403.651 184.223
+closePath
+fillStyle = rgba(47,110,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 184.573
+lineTo 415.651 184.573
+lineTo 415.651 183.223
+lineTo 403.651 183.223
+closePath
+fillStyle = rgba(47,112,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 183.573
+lineTo 415.651 183.573
+lineTo 415.651 182.223
+lineTo 403.651 182.223
+closePath
+fillStyle = rgba(46,113,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 182.573
+lineTo 415.651 182.573
+lineTo 415.651 181.223
+lineTo 403.651 181.223
+closePath
+fillStyle = rgba(46,114,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 181.573
+lineTo 415.651 181.573
+lineTo 415.651 180.223
+lineTo 403.651 180.223
+closePath
+fillStyle = rgba(45,116,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 180.573
+lineTo 415.651 180.573
+lineTo 415.651 179.223
+lineTo 403.651 179.223
+closePath
+fillStyle = rgba(44,117,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 179.573
+lineTo 415.651 179.573
+lineTo 415.651 178.223
+lineTo 403.651 178.223
+closePath
+fillStyle = rgba(44,118,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 178.573
+lineTo 415.651 178.573
+lineTo 415.651 177.223
+lineTo 403.651 177.223
+closePath
+fillStyle = rgba(43,120,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 177.573
+lineTo 415.651 177.573
+lineTo 415.651 176.224
+lineTo 403.651 176.224
+closePath
+fillStyle = rgba(43,121,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 176.573
+lineTo 415.651 176.573
+lineTo 415.651 175.224
+lineTo 403.651 175.224
+closePath
+fillStyle = rgba(42,122,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 175.574
+lineTo 415.651 175.574
+lineTo 415.651 174.224
+lineTo 403.651 174.224
+closePath
+fillStyle = rgba(41,124,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 174.574
+lineTo 415.651 174.574
+lineTo 415.651 173.224
+lineTo 403.651 173.224
+closePath
+fillStyle = rgba(41,125,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 173.574
+lineTo 415.651 173.574
+lineTo 415.651 172.224
+lineTo 403.651 172.224
+closePath
+fillStyle = rgba(40,126,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 172.574
+lineTo 415.651 172.574
+lineTo 415.651 171.224
+lineTo 403.651 171.224
+closePath
+fillStyle = rgba(39,128,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 171.574
+lineTo 415.651 171.574
+lineTo 415.651 170.224
+lineTo 403.651 170.224
+closePath
+fillStyle = rgba(39,129,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 170.574
+lineTo 415.651 170.574
+lineTo 415.651 169.224
+lineTo 403.651 169.224
+closePath
+fillStyle = rgba(38,130,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 169.574
+lineTo 415.651 169.574
+lineTo 415.651 168.224
+lineTo 403.651 168.224
+closePath
+fillStyle = rgba(38,132,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 168.574
+lineTo 415.651 168.574
+lineTo 415.651 167.224
+lineTo 403.651 167.224
+closePath
+fillStyle = rgba(37,133,142,1)
+fill nonzero
+beginPath
+moveTo 403.651 167.574
+lineTo 415.651 167.574
+lineTo 415.651 166.224
+lineTo 403.651 166.224
+closePath
+fillStyle = rgba(37,135,141,1)
+fill nonzero
+beginPath
+moveTo 403.651 166.574
+lineTo 415.651 166.574
+lineTo 415.651 165.225
+lineTo 403.651 165.225
+closePath
+fillStyle = rgba(37,136,141,1)
+fill nonzero
+beginPath
+moveTo 403.651 165.575
+lineTo 415.651 165.575
+lineTo 415.651 164.225
+lineTo 403.651 164.225
+closePath
+fillStyle = rgba(36,138,141,1)
+fill nonzero
+beginPath
+moveTo 403.651 164.575
+lineTo 415.651 164.575
+lineTo 415.651 163.225
+lineTo 403.651 163.225
+closePath
+fillStyle = rgba(36,139,141,1)
+fill nonzero
+beginPath
+moveTo 403.651 163.575
+lineTo 415.651 163.575
+lineTo 415.651 162.225
+lineTo 403.651 162.225
+closePath
+fillStyle = rgba(36,140,140,1)
+fill nonzero
+beginPath
+moveTo 403.651 162.575
+lineTo 415.651 162.575
+lineTo 415.651 161.225
+lineTo 403.651 161.225
+closePath
+fillStyle = rgba(35,142,140,1)
+fill nonzero
+beginPath
+moveTo 403.651 161.575
+lineTo 415.651 161.575
+lineTo 415.651 160.225
+lineTo 403.651 160.225
+closePath
+fillStyle = rgba(35,143,140,1)
+fill nonzero
+beginPath
+moveTo 403.651 160.575
+lineTo 415.651 160.575
+lineTo 415.651 159.225
+lineTo 403.651 159.225
+closePath
+fillStyle = rgba(35,145,140,1)
+fill nonzero
+beginPath
+moveTo 403.651 159.575
+lineTo 415.651 159.575
+lineTo 415.651 158.225
+lineTo 403.651 158.225
+closePath
+fillStyle = rgba(34,146,139,1)
+fill nonzero
+beginPath
+moveTo 403.651 158.575
+lineTo 415.651 158.575
+lineTo 415.651 157.225
+lineTo 403.651 157.225
+closePath
+fillStyle = rgba(34,148,139,1)
+fill nonzero
+beginPath
+moveTo 403.651 157.575
+lineTo 415.651 157.575
+lineTo 415.651 156.225
+lineTo 403.651 156.225
+closePath
+fillStyle = rgba(34,149,139,1)
+fill nonzero
+beginPath
+moveTo 403.651 156.575
+lineTo 415.651 156.575
+lineTo 415.651 155.226
+lineTo 403.651 155.226
+closePath
+fillStyle = rgba(33,150,139,1)
+fill nonzero
+beginPath
+moveTo 403.651 155.575
+lineTo 415.651 155.575
+lineTo 415.651 154.226
+lineTo 403.651 154.226
+closePath
+fillStyle = rgba(33,152,138,1)
+fill nonzero
+beginPath
+moveTo 403.651 154.576
+lineTo 415.651 154.576
+lineTo 415.651 153.226
+lineTo 403.651 153.226
+closePath
+fillStyle = rgba(32,153,138,1)
+fill nonzero
+beginPath
+moveTo 403.651 153.576
+lineTo 415.651 153.576
+lineTo 415.651 152.226
+lineTo 403.651 152.226
+closePath
+fillStyle = rgba(32,155,138,1)
+fill nonzero
+beginPath
+moveTo 403.651 152.576
+lineTo 415.651 152.576
+lineTo 415.651 151.226
+lineTo 403.651 151.226
+closePath
+fillStyle = rgba(32,156,137,1)
+fill nonzero
+beginPath
+moveTo 403.651 151.576
+lineTo 415.651 151.576
+lineTo 415.651 150.226
+lineTo 403.651 150.226
+closePath
+fillStyle = rgba(31,158,137,1)
+fill nonzero
+beginPath
+moveTo 403.651 150.576
+lineTo 415.651 150.576
+lineTo 415.651 149.226
+lineTo 403.651 149.226
+closePath
+fillStyle = rgba(32,159,137,1)
+fill nonzero
+beginPath
+moveTo 403.651 149.576
+lineTo 415.651 149.576
+lineTo 415.651 148.226
+lineTo 403.651 148.226
+closePath
+fillStyle = rgba(33,160,136,1)
+fill nonzero
+beginPath
+moveTo 403.651 148.576
+lineTo 415.651 148.576
+lineTo 415.651 147.226
+lineTo 403.651 147.226
+closePath
+fillStyle = rgba(34,162,135,1)
+fill nonzero
+beginPath
+moveTo 403.651 147.576
+lineTo 415.651 147.576
+lineTo 415.651 146.226
+lineTo 403.651 146.226
+closePath
+fillStyle = rgba(35,163,134,1)
+fill nonzero
+beginPath
+moveTo 403.651 146.576
+lineTo 415.651 146.576
+lineTo 415.651 145.226
+lineTo 403.651 145.226
+closePath
+fillStyle = rgba(36,164,134,1)
+fill nonzero
+beginPath
+moveTo 403.651 145.576
+lineTo 415.651 145.576
+lineTo 415.651 144.227
+lineTo 403.651 144.227
+closePath
+fillStyle = rgba(38,165,133,1)
+fill nonzero
+beginPath
+moveTo 403.651 144.577
+lineTo 415.651 144.577
+lineTo 415.651 143.227
+lineTo 403.651 143.227
+closePath
+fillStyle = rgba(39,167,132,1)
+fill nonzero
+beginPath
+moveTo 403.651 143.577
+lineTo 415.651 143.577
+lineTo 415.651 142.227
+lineTo 403.651 142.227
+closePath
+fillStyle = rgba(40,168,131,1)
+fill nonzero
+beginPath
+moveTo 403.651 142.577
+lineTo 415.651 142.577
+lineTo 415.651 141.227
+lineTo 403.651 141.227
+closePath
+fillStyle = rgba(41,169,131,1)
+fill nonzero
+beginPath
+moveTo 403.651 141.577
+lineTo 415.651 141.577
+lineTo 415.651 140.227
+lineTo 403.651 140.227
+closePath
+fillStyle = rgba(42,170,130,1)
+fill nonzero
+beginPath
+moveTo 403.651 140.577
+lineTo 415.651 140.577
+lineTo 415.651 139.227
+lineTo 403.651 139.227
+closePath
+fillStyle = rgba(43,172,129,1)
+fill nonzero
+beginPath
+moveTo 403.651 139.577
+lineTo 415.651 139.577
+lineTo 415.651 138.227
+lineTo 403.651 138.227
+closePath
+fillStyle = rgba(44,173,128,1)
+fill nonzero
+beginPath
+moveTo 403.651 138.577
+lineTo 415.651 138.577
+lineTo 415.651 137.227
+lineTo 403.651 137.227
+closePath
+fillStyle = rgba(45,174,127,1)
+fill nonzero
+beginPath
+moveTo 403.651 137.577
+lineTo 415.651 137.577
+lineTo 415.651 136.227
+lineTo 403.651 136.227
+closePath
+fillStyle = rgba(47,176,126,1)
+fill nonzero
+beginPath
+moveTo 403.651 136.577
+lineTo 415.651 136.577
+lineTo 415.651 135.227
+lineTo 403.651 135.227
+closePath
+fillStyle = rgba(48,177,126,1)
+fill nonzero
+beginPath
+moveTo 403.651 135.577
+lineTo 415.651 135.577
+lineTo 415.651 134.227
+lineTo 403.651 134.227
+closePath
+fillStyle = rgba(49,178,125,1)
+fill nonzero
+beginPath
+moveTo 403.651 134.577
+lineTo 415.651 134.577
+lineTo 415.651 133.228
+lineTo 403.651 133.228
+closePath
+fillStyle = rgba(50,179,124,1)
+fill nonzero
+beginPath
+moveTo 403.651 133.578
+lineTo 415.651 133.578
+lineTo 415.651 132.228
+lineTo 403.651 132.228
+closePath
+fillStyle = rgba(51,181,123,1)
+fill nonzero
+beginPath
+moveTo 403.651 132.578
+lineTo 415.651 132.578
+lineTo 415.651 131.228
+lineTo 403.651 131.228
+closePath
+fillStyle = rgba(52,182,122,1)
+fill nonzero
+beginPath
+moveTo 403.651 131.578
+lineTo 415.651 131.578
+lineTo 415.651 130.228
+lineTo 403.651 130.228
+closePath
+fillStyle = rgba(54,183,121,1)
+fill nonzero
+beginPath
+moveTo 403.651 130.578
+lineTo 415.651 130.578
+lineTo 415.651 129.228
+lineTo 403.651 129.228
+closePath
+fillStyle = rgba(57,184,119,1)
+fill nonzero
+beginPath
+moveTo 403.651 129.578
+lineTo 415.651 129.578
+lineTo 415.651 128.228
+lineTo 403.651 128.228
+closePath
+fillStyle = rgba(61,186,118,1)
+fill nonzero
+beginPath
+moveTo 403.651 128.578
+lineTo 415.651 128.578
+lineTo 415.651 127.228
+lineTo 403.651 127.228
+closePath
+fillStyle = rgba(64,187,117,1)
+fill nonzero
+beginPath
+moveTo 403.651 127.578
+lineTo 415.651 127.578
+lineTo 415.651 126.228
+lineTo 403.651 126.228
+closePath
+fillStyle = rgba(68,188,115,1)
+fill nonzero
+beginPath
+moveTo 403.651 126.578
+lineTo 415.651 126.578
+lineTo 415.651 125.228
+lineTo 403.651 125.228
+closePath
+fillStyle = rgba(71,189,114,1)
+fill nonzero
+beginPath
+moveTo 403.651 125.578
+lineTo 415.651 125.578
+lineTo 415.651 124.228
+lineTo 403.651 124.228
+closePath
+fillStyle = rgba(74,190,112,1)
+fill nonzero
+beginPath
+moveTo 403.651 124.578
+lineTo 415.651 124.578
+lineTo 415.651 123.229
+lineTo 403.651 123.229
+closePath
+fillStyle = rgba(77,192,111,1)
+fill nonzero
+beginPath
+moveTo 403.651 123.579
+lineTo 415.651 123.579
+lineTo 415.651 122.229
+lineTo 403.651 122.229
+closePath
+fillStyle = rgba(80,193,109,1)
+fill nonzero
+beginPath
+moveTo 403.651 122.579
+lineTo 415.651 122.579
+lineTo 415.651 121.229
+lineTo 403.651 121.229
+closePath
+fillStyle = rgba(83,194,108,1)
+fill nonzero
+beginPath
+moveTo 403.651 121.579
+lineTo 415.651 121.579
+lineTo 415.651 120.229
+lineTo 403.651 120.229
+closePath
+fillStyle = rgba(85,195,106,1)
+fill nonzero
+beginPath
+moveTo 403.651 120.579
+lineTo 415.651 120.579
+lineTo 415.651 119.229
+lineTo 403.651 119.229
+closePath
+fillStyle = rgba(88,196,104,1)
+fill nonzero
+beginPath
+moveTo 403.651 119.579
+lineTo 415.651 119.579
+lineTo 415.651 118.229
+lineTo 403.651 118.229
+closePath
+fillStyle = rgba(91,197,103,1)
+fill nonzero
+beginPath
+moveTo 403.651 118.579
+lineTo 415.651 118.579
+lineTo 415.651 117.229
+lineTo 403.651 117.229
+closePath
+fillStyle = rgba(94,199,101,1)
+fill nonzero
+beginPath
+moveTo 403.651 117.579
+lineTo 415.651 117.579
+lineTo 415.651 116.229
+lineTo 403.651 116.229
+closePath
+fillStyle = rgba(96,200,99,1)
+fill nonzero
+beginPath
+moveTo 403.651 116.579
+lineTo 415.651 116.579
+lineTo 415.651 115.229
+lineTo 403.651 115.229
+closePath
+fillStyle = rgba(99,201,97,1)
+fill nonzero
+beginPath
+moveTo 403.651 115.579
+lineTo 415.651 115.579
+lineTo 415.651 114.229
+lineTo 403.651 114.229
+closePath
+fillStyle = rgba(101,202,95,1)
+fill nonzero
+beginPath
+moveTo 403.651 114.579
+lineTo 415.651 114.579
+lineTo 415.651 113.229
+lineTo 403.651 113.229
+closePath
+fillStyle = rgba(104,203,93,1)
+fill nonzero
+beginPath
+moveTo 403.651 113.579
+lineTo 415.651 113.579
+lineTo 415.651 112.23
+lineTo 403.651 112.23
+closePath
+fillStyle = rgba(107,204,91,1)
+fill nonzero
+beginPath
+moveTo 403.651 112.58
+lineTo 415.651 112.58
+lineTo 415.651 111.23
+lineTo 403.651 111.23
+closePath
+fillStyle = rgba(109,206,89,1)
+fill nonzero
+beginPath
+moveTo 403.651 111.58
+lineTo 415.651 111.58
+lineTo 415.651 110.23
+lineTo 403.651 110.23
+closePath
+fillStyle = rgba(113,207,87,1)
+fill nonzero
+beginPath
+moveTo 403.651 110.58
+lineTo 415.651 110.58
+lineTo 415.651 109.23
+lineTo 403.651 109.23
+closePath
+fillStyle = rgba(117,207,86,1)
+fill nonzero
+beginPath
+moveTo 403.651 109.58
+lineTo 415.651 109.58
+lineTo 415.651 108.23
+lineTo 403.651 108.23
+closePath
+fillStyle = rgba(121,208,84,1)
+fill nonzero
+beginPath
+moveTo 403.651 108.58
+lineTo 415.651 108.58
+lineTo 415.651 107.23
+lineTo 403.651 107.23
+closePath
+fillStyle = rgba(125,209,82,1)
+fill nonzero
+beginPath
+moveTo 403.651 107.58
+lineTo 415.651 107.58
+lineTo 415.651 106.23
+lineTo 403.651 106.23
+closePath
+fillStyle = rgba(129,210,81,1)
+fill nonzero
+beginPath
+moveTo 403.651 106.58
+lineTo 415.651 106.58
+lineTo 415.651 105.23
+lineTo 403.651 105.23
+closePath
+fillStyle = rgba(132,211,79,1)
+fill nonzero
+beginPath
+moveTo 403.651 105.58
+lineTo 415.651 105.58
+lineTo 415.651 104.23
+lineTo 403.651 104.23
+closePath
+fillStyle = rgba(136,212,77,1)
+fill nonzero
+beginPath
+moveTo 403.651 104.58
+lineTo 415.651 104.58
+lineTo 415.651 103.23
+lineTo 403.651 103.23
+closePath
+fillStyle = rgba(140,212,75,1)
+fill nonzero
+beginPath
+moveTo 403.651 103.58
+lineTo 415.651 103.58
+lineTo 415.651 102.231
+lineTo 403.651 102.231
+closePath
+fillStyle = rgba(144,213,73,1)
+fill nonzero
+beginPath
+moveTo 403.651 102.58
+lineTo 415.651 102.58
+lineTo 415.651 101.231
+lineTo 403.651 101.231
+closePath
+fillStyle = rgba(147,214,71,1)
+fill nonzero
+beginPath
+moveTo 403.651 101.581
+lineTo 415.651 101.581
+lineTo 415.651 100.231
+lineTo 403.651 100.231
+closePath
+fillStyle = rgba(151,215,69,1)
+fill nonzero
+beginPath
+moveTo 403.651 100.581
+lineTo 415.651 100.581
+lineTo 415.651 99.231
+lineTo 403.651 99.231
+closePath
+fillStyle = rgba(154,216,67,1)
+fill nonzero
+beginPath
+moveTo 403.651 99.581
+lineTo 415.651 99.581
+lineTo 415.651 98.231
+lineTo 403.651 98.231
+closePath
+fillStyle = rgba(158,216,64,1)
+fill nonzero
+beginPath
+moveTo 403.651 98.581
+lineTo 415.651 98.581
+lineTo 415.651 97.231
+lineTo 403.651 97.231
+closePath
+fillStyle = rgba(161,217,62,1)
+fill nonzero
+beginPath
+moveTo 403.651 97.581
+lineTo 415.651 97.581
+lineTo 415.651 96.231
+lineTo 403.651 96.231
+closePath
+fillStyle = rgba(165,218,59,1)
+fill nonzero
+beginPath
+moveTo 403.651 96.581
+lineTo 415.651 96.581
+lineTo 415.651 95.231
+lineTo 403.651 95.231
+closePath
+fillStyle = rgba(168,219,56,1)
+fill nonzero
+beginPath
+moveTo 403.651 95.581
+lineTo 415.651 95.581
+lineTo 415.651 94.231
+lineTo 403.651 94.231
+closePath
+fillStyle = rgba(171,220,53,1)
+fill nonzero
+beginPath
+moveTo 403.651 94.581
+lineTo 415.651 94.581
+lineTo 415.651 93.231
+lineTo 403.651 93.231
+closePath
+fillStyle = rgba(175,220,50,1)
+fill nonzero
+beginPath
+moveTo 403.651 93.581
+lineTo 415.651 93.581
+lineTo 415.651 92.231
+lineTo 403.651 92.231
+closePath
+fillStyle = rgba(178,221,47,1)
+fill nonzero
+beginPath
+moveTo 403.651 92.581
+lineTo 415.651 92.581
+lineTo 415.651 91.232
+lineTo 403.651 91.232
+closePath
+fillStyle = rgba(181,222,43,1)
+fill nonzero
+beginPath
+moveTo 403.651 91.582
+lineTo 415.651 91.582
+lineTo 415.651 90.232
+lineTo 403.651 90.232
+closePath
+fillStyle = rgba(185,223,43,1)
+fill nonzero
+beginPath
+moveTo 403.651 90.582
+lineTo 415.651 90.582
+lineTo 415.651 89.232
+lineTo 403.651 89.232
+closePath
+fillStyle = rgba(189,223,43,1)
+fill nonzero
+beginPath
+moveTo 403.651 89.582
+lineTo 415.651 89.582
+lineTo 415.651 88.232
+lineTo 403.651 88.232
+closePath
+fillStyle = rgba(193,224,42,1)
+fill nonzero
+beginPath
+moveTo 403.651 88.582
+lineTo 415.651 88.582
+lineTo 415.651 87.232
+lineTo 403.651 87.232
+closePath
+fillStyle = rgba(197,224,42,1)
+fill nonzero
+beginPath
+moveTo 403.651 87.582
+lineTo 415.651 87.582
+lineTo 415.651 86.232
+lineTo 403.651 86.232
+closePath
+fillStyle = rgba(201,225,42,1)
+fill nonzero
+beginPath
+moveTo 403.651 86.582
+lineTo 415.651 86.582
+lineTo 415.651 85.232
+lineTo 403.651 85.232
+closePath
+fillStyle = rgba(204,225,42,1)
+fill nonzero
+beginPath
+moveTo 403.651 85.582
+lineTo 415.651 85.582
+lineTo 415.651 84.232
+lineTo 403.651 84.232
+closePath
+fillStyle = rgba(208,226,41,1)
+fill nonzero
+beginPath
+moveTo 403.651 84.582
+lineTo 415.651 84.582
+lineTo 415.651 83.232
+lineTo 403.651 83.232
+closePath
+fillStyle = rgba(212,226,41,1)
+fill nonzero
+beginPath
+moveTo 403.651 83.582
+lineTo 415.651 83.582
+lineTo 415.651 82.232
+lineTo 403.651 82.232
+closePath
+fillStyle = rgba(215,226,41,1)
+fill nonzero
+beginPath
+moveTo 403.651 82.582
+lineTo 415.651 82.582
+lineTo 415.651 81.233
+lineTo 403.651 81.233
+closePath
+fillStyle = rgba(219,227,40,1)
+fill nonzero
+beginPath
+moveTo 403.651 81.582
+lineTo 415.651 81.582
+lineTo 415.651 80.233
+lineTo 403.651 80.233
+closePath
+fillStyle = rgba(223,227,40,1)
+fill nonzero
+beginPath
+moveTo 403.651 80.583
+lineTo 415.651 80.583
+lineTo 415.651 79.233
+lineTo 403.651 79.233
+closePath
+fillStyle = rgba(226,228,40,1)
+fill nonzero
+beginPath
+moveTo 403.651 79.583
+lineTo 415.651 79.583
+lineTo 415.651 78.233
+lineTo 403.651 78.233
+closePath
+fillStyle = rgba(230,228,39,1)
+fill nonzero
+beginPath
+moveTo 403.651 78.583
+lineTo 415.651 78.583
+lineTo 415.651 77.233
+lineTo 403.651 77.233
+closePath
+fillStyle = rgba(234,229,39,1)
+fill nonzero
+beginPath
+moveTo 403.651 77.583
+lineTo 415.651 77.583
+lineTo 415.651 76.233
+lineTo 403.651 76.233
+closePath
+fillStyle = rgba(237,229,39,1)
+fill nonzero
+beginPath
+moveTo 403.651 76.583
+lineTo 415.651 76.583
+lineTo 415.651 75.233
+lineTo 403.651 75.233
+closePath
+fillStyle = rgba(241,230,38,1)
+fill nonzero
+beginPath
+moveTo 403.651 75.583
+lineTo 415.651 75.583
+lineTo 415.651 74.233
+lineTo 403.651 74.233
+closePath
+fillStyle = rgba(244,230,38,1)
+fill nonzero
+beginPath
+moveTo 403.651 74.583
+lineTo 415.651 74.583
+lineTo 415.651 73.233
+lineTo 403.651 73.233
+closePath
+fillStyle = rgba(248,230,38,1)
+fill nonzero
+beginPath
+moveTo 403.651 73.583
+lineTo 415.651 73.583
+lineTo 415.651 72.583
+lineTo 403.651 72.583
+closePath
+fillStyle = rgba(251,231,37,1)
+fill nonzero
+beginPath
+moveTo 403.651 248.567
+lineTo 415.651 248.567
+lineTo 415.651 72.583
+lineTo 403.651 72.583
+closePath
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 415.651 248.567
+lineTo 418.651 248.567
+moveTo 415.651 205.644
+lineTo 418.651 205.644
+moveTo 415.651 162.721
+lineTo 418.651 162.721
+moveTo 415.651 119.798
+lineTo 418.651 119.798
+moveTo 415.651 76.876
+lineTo 418.651 76.876
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 422.651 251.633 "280"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 422.651 208.71 "290"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 422.651 165.787 "300"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 422.651 122.864 "310"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 422.651 79.942 "320"
+restore
+save
+translate 449.667 160.575
+rotate 1.571
+translate -449.667 -160.575
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 435.587 160.575 "T [K]"
+restore

@@ -1,0 +1,83 @@
+canvas.width = 640
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 320 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 320 200
+beginPath
+moveTo 19.2 16
+lineTo 300.8 16
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 19.2 40
+lineTo 300.8 40
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 19.2 64
+lineTo 300.8 64
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 19.2 88
+lineTo 300.8 88
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 19.2 112
+lineTo 300.8 112
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 19.2 136
+lineTo 300.8 136
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 19.2 160
+lineTo 300.8 160
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke

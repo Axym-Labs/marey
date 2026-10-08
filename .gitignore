@@ -64,4 +64,5 @@ local-feed/
 tests/Marey.Fable/out/
 fable_modules/
 tests/Marey.Fable/out-packages/
+examples/web/out/
 fable-packages/

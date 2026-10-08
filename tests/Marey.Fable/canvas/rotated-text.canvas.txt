@@ -1,0 +1,59 @@
+canvas.width = 800
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 400 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 400 200
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(28,31,38,1)
+fillText 40 100 "0 deg"
+restore
+save
+translate 104 100
+rotate -0.524
+translate -104 -100
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(28,31,38,1)
+fillText 104 100 "30 deg"
+restore
+save
+translate 168 100
+rotate -1.047
+translate -168 -100
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(28,31,38,1)
+fillText 168 100 "60 deg"
+restore
+save
+translate 232 100
+rotate -1.571
+translate -232 -100
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(28,31,38,1)
+fillText 232 100 "90 deg"
+restore
+save
+translate 296 100
+rotate -2.094
+translate -296 -100
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(28,31,38,1)
+fillText 296 100 "120 deg"
+restore
+save
+translate 360 100
+rotate -2.618
+translate -360 -100
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(28,31,38,1)
+fillText 360 100 "150 deg"
+restore
+save
+translate 200 170
+rotate -0.127
+translate -200 -170
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 117.258 170 "rotated frame, upright run"
+restore

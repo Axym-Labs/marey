@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <Compile Include="../Shared/GoldenScenes.fs" Link="GoldenScenes.fs" />
+    <Compile Include="CanvasLog.fs" />
+    <Compile Include="FontsGate.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 
@@ -27,6 +29,7 @@
     <ProjectReference Include="../../src/Marey.Backend.Svg/Marey.Backend.Svg.fsproj" />
     <ProjectReference Include="../../src/Marey.Plot/Marey.Plot.fsproj" />
     <ProjectReference Include="../../src/Marey.Fields/Marey.Fields.fsproj" />
+    <ProjectReference Include="../../src/Marey.Backend.Web/Marey.Backend.Web.fsproj" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(MAREY_FROM_PACKAGES)' != ''">
@@ -37,6 +40,7 @@
     <PackageReference Include="Marey.Backend.Svg" Version="$(MAREY_FROM_PACKAGES)" />
     <PackageReference Include="Marey.Plot" Version="$(MAREY_FROM_PACKAGES)" />
     <PackageReference Include="Marey.Fields" Version="$(MAREY_FROM_PACKAGES)" />
+    <PackageReference Include="Marey.Backend.Web" Version="$(MAREY_FROM_PACKAGES)" />
   </ItemGroup>
 
 </Project>

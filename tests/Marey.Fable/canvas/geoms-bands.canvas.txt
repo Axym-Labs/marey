@@ -1,0 +1,152 @@
+canvas.width = 640
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 320 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 320 200
+beginPath
+moveTo 0 86
+lineTo 40 61.555
+lineTo 80 45.349
+lineTo 120 42.845
+lineTo 160 54.887
+lineTo 200 77.416
+lineTo 240 102.838
+lineTo 280 122.585
+lineTo 320 130
+lineTo 320 178
+lineTo 280 170.585
+lineTo 240 150.838
+lineTo 200 125.416
+lineTo 160 102.887
+lineTo 120 90.845
+lineTo 80 93.349
+lineTo 40 109.555
+lineTo 0 134
+closePath
+fillStyle = rgba(0,158,115,0.1804)
+fill nonzero
+beginPath
+moveTo 0 110
+lineTo 40 110
+lineTo 40 85.555
+lineTo 80 85.555
+lineTo 80 69.349
+lineTo 120 69.349
+lineTo 120 66.845
+lineTo 160 66.845
+lineTo 160 78.887
+lineTo 200 78.887
+lineTo 200 101.416
+lineTo 240 101.416
+lineTo 240 126.838
+lineTo 280 126.838
+lineTo 280 146.585
+lineTo 320 146.585
+lineTo 320 154
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 0 193
+lineTo 35.556 193
+lineTo 35.556 175
+lineTo 0 175
+closePath
+moveTo 35.556 193
+lineTo 71.111 193
+lineTo 71.111 175
+lineTo 35.556 175
+closePath
+moveTo 71.111 193
+lineTo 106.667 193
+lineTo 106.667 175
+lineTo 71.111 175
+closePath
+moveTo 106.667 193
+lineTo 142.222 193
+lineTo 142.222 175
+lineTo 106.667 175
+closePath
+moveTo 142.222 193
+lineTo 177.778 193
+lineTo 177.778 175
+lineTo 142.222 175
+closePath
+moveTo 177.778 193
+lineTo 213.333 193
+lineTo 213.333 175
+lineTo 177.778 175
+closePath
+moveTo 213.333 193
+lineTo 248.889 193
+lineTo 248.889 175
+lineTo 213.333 175
+closePath
+moveTo 248.889 193
+lineTo 284.444 193
+lineTo 284.444 175
+lineTo 248.889 175
+closePath
+moveTo 284.444 193
+lineTo 320 193
+lineTo 320 175
+lineTo 284.444 175
+closePath
+fillStyle = rgba(213,94,0,0.1804)
+fill nonzero
+strokeStyle = rgba(213,94,0,0.1804)
+lineWidth = 1
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 0 110
+lineTo 0 160
+moveTo 40 85.555
+lineTo 40 160
+moveTo 80 69.349
+lineTo 80 160
+moveTo 120 66.845
+lineTo 120 160
+moveTo 160 78.887
+lineTo 160 160
+moveTo 200 101.416
+lineTo 200 160
+moveTo 240 126.838
+lineTo 240 160
+moveTo 280 146.585
+lineTo 280 160
+moveTo 320 154
+lineTo 320 160
+strokeStyle = rgba(230,159,0,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(0,114,178,1)
+fillText -11.676 103 "0.45"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(0,114,178,1)
+fillText 148.324 71.887 "0.61"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(0,114,178,1)
+fillText 308.324 147 "0.23"
+restore

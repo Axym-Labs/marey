@@ -1,0 +1,237 @@
+canvas.width = 960
+canvas.height = 600
+setTransform 2 0 0 2 0 0
+clearRect 0 0 480 300
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 480 300
+beginPath
+moveTo 0 300
+lineTo 480 300
+lineTo 480 0
+lineTo 0 0
+closePath
+fillStyle = rgba(255,255,255,1)
+fill nonzero
+save
+font = 600 17.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 168.06 26.445 "Yield by treatment"
+restore
+beginPath
+moveTo 53.677 255.703
+lineTo 443.656 255.703
+moveTo 53.677 222.514
+lineTo 443.656 222.514
+moveTo 53.677 189.325
+lineTo 443.656 189.325
+moveTo 53.677 156.136
+lineTo 443.656 156.136
+moveTo 53.677 122.947
+lineTo 443.656 122.947
+moveTo 53.677 89.759
+lineTo 443.656 89.759
+strokeStyle = rgba(231,233,237,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+beginPath
+moveTo 53.677 267.9
+lineTo 443.656 267.9
+lineTo 443.656 72.583
+lineTo 53.677 72.583
+closePath
+clip nonzero
+beginPath
+moveTo 79.676 232.471
+lineTo 157.672 232.471
+lineTo 157.672 204.26
+lineTo 79.676 204.26
+closePath
+moveTo 209.669 167.752
+lineTo 287.665 167.752
+lineTo 287.665 136.223
+lineTo 209.669 136.223
+closePath
+moveTo 339.662 237.449
+lineTo 417.657 237.449
+lineTo 417.657 199.282
+lineTo 339.662 199.282
+closePath
+fillStyle = rgba(0,114,178,0.1804)
+fill nonzero
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 79.676 219.195
+lineTo 157.672 219.195
+moveTo 118.674 204.26
+lineTo 118.674 190.985
+moveTo 99.175 190.985
+lineTo 138.173 190.985
+moveTo 118.674 232.471
+lineTo 118.674 254.044
+moveTo 99.175 254.044
+lineTo 138.173 254.044
+moveTo 209.669 149.499
+lineTo 287.665 149.499
+moveTo 248.667 136.223
+lineTo 248.667 112.991
+moveTo 229.168 112.991
+lineTo 268.166 112.991
+moveTo 248.667 167.752
+lineTo 248.667 182.688
+moveTo 229.168 182.688
+lineTo 268.166 182.688
+moveTo 339.662 222.514
+lineTo 417.657 222.514
+moveTo 378.66 199.282
+lineTo 378.66 176.05
+moveTo 359.161 176.05
+lineTo 398.158 176.05
+moveTo 378.66 237.449
+lineTo 378.66 259.022
+moveTo 359.161 259.022
+lineTo 398.158 259.022
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = butt
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 1.5
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+beginPath
+arc 118.674 81.461 2.5 0 6.283
+stroke
+restore
+restore
+beginPath
+moveTo 53.677 267.9
+lineTo 443.656 267.9
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 118.674 267.9
+lineTo 118.674 270.9
+moveTo 248.667 267.9
+lineTo 248.667 270.9
+moveTo 378.66 267.9
+lineTo 378.66 270.9
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 100.668 283.516 "control"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 229.989 283.516 "treated"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 356.316 283.516 "washout"
+restore
+beginPath
+moveTo 53.677 267.9
+lineTo 53.677 72.583
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 53.677 255.703
+lineTo 50.677 255.703
+moveTo 53.677 222.514
+lineTo 50.677 222.514
+moveTo 53.677 189.325
+lineTo 50.677 189.325
+moveTo 53.677 156.136
+lineTo 50.677 156.136
+moveTo 53.677 122.947
+lineTo 50.677 122.947
+moveTo 53.677 89.759
+lineTo 50.677 89.759
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 258.769 "12"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 225.58 "14"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 192.391 "16"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 159.202 "18"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 126.013 "20"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 92.825 "22"
+restore
+save
+translate 26.333 170.242
+rotate -1.571
+translate -26.333 -170.242
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 1.513 170.242 "yield [m]"
+restore

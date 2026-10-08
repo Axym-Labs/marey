@@ -85,22 +85,7 @@ let Tolerance = 32.0
 
 /// Every SVG golden's scene, compiled against the given measurer.
 let private scenes (m: ITextMeasurer) =
-    let wide = Chart.size 480.0 300.0
-    let fig extent f = extent, Chart.toSceneWith m extent f
-
-    [ for name, node, extent in GoldenScenes.Scenes.all -> name, (extent, node) ]
-    @ [ "figure", fig GoldenScenes.figureSurface GoldenScenes.figure
-        "figure-category", fig GoldenScenes.figureSurface GoldenScenes.categoryFigure
-        "figure-channels", fig GoldenScenes.figureSurface GoldenScenes.channelFigure
-        "figure-colorbar", fig GoldenScenes.figureSurface GoldenScenes.colorbarFigure
-        "figure-boxplot", fig GoldenScenes.figureSurface GoldenScenes.boxplotFigure
-        "figure-heatmap", fig GoldenScenes.figureSurface GoldenScenes.heatmapFigure
-        "figure-image", fig GoldenScenes.figureSurface GoldenScenes.imageFigure
-        "figure-hexbin", fig wide GoldenScenes.Hexbin.figure
-        "figure-field-heatmap", fig wide GoldenScenes.Fields.heatmapFigure
-        "figure-field-quiver", fig wide GoldenScenes.Fields.quiverFigure
-        "figure-field-streamlines", fig wide GoldenScenes.Fields.streamlinePortrait
-        "figure-field-portrait", fig wide GoldenScenes.Fields.phasePortrait ]
+    [ for name, extent, node in GoldenScenes.scenesWith m -> name, (extent, node) ]
 
 // ======================================================================================
 // Gate 6 — the GPU agrees with the CPU raster

@@ -1,0 +1,94 @@
+canvas.width = 640
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 320 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 320 200
+save
+beginPath
+moveTo 6.4 186
+lineTo 313.6 186
+lineTo 313.6 10
+lineTo 6.4 10
+closePath
+clip nonzero
+beginPath
+moveTo 16 150
+bezierCurveTo 96 30 192 180 288 70
+strokeStyle = rgba(41,97,219,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+fillStyle = rgba(230,92,46,1)
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 0.75
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+beginPath
+moveTo 60 106
+lineTo 68 106
+lineTo 68 114
+lineTo 60 114
+closePath
+fill nonzero
+stroke
+beginPath
+moveTo 156 86
+lineTo 164 86
+lineTo 164 94
+lineTo 156 94
+closePath
+fill nonzero
+stroke
+beginPath
+moveTo 252 66
+lineTo 260 66
+lineTo 260 74
+lineTo 252 74
+closePath
+fill nonzero
+stroke
+restore
+layer L1 2x2
+L1 putImageData 2x2 #708759722 at 0 0
+save
+transform 320 0 0 200 0 -118
+imageSmoothingEnabled = false
+drawImage 0.6 0.68 0.3 0.18
+restore
+layer L2 640x400
+L2 setTransform 2 0 0 2 0 0
+L2 beginPath
+L2 moveTo 32 170
+L2 lineTo 96 170
+L2 lineTo 96 138
+L2 lineTo 32 138
+L2 closePath
+L2 fillStyle = rgba(41,97,219,1)
+L2 fill nonzero
+L2 beginPath
+L2 moveTo 70.4 156
+L2 lineTo 134.4 156
+L2 lineTo 134.4 124
+L2 lineTo 70.4 124
+L2 closePath
+L2 fillStyle = rgba(230,92,46,1)
+L2 fill nonzero
+save
+globalAlpha = 0.5
+drawImage 0 0 320 200
+restore
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 19.2 174 "all ten"
+restore
+restore

@@ -1,0 +1,153 @@
+canvas.width = 640
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 320 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 320 200
+save
+beginPath
+moveTo 166.4 100
+lineTo 165.798 94.257
+lineTo 164.001 88.612
+lineTo 161.041 83.162
+lineTo 156.968 78
+lineTo 151.852 73.214
+lineTo 145.78 68.887
+lineTo 138.857 65.092
+lineTo 131.2 61.895
+lineTo 122.941 59.349
+lineTo 114.221 57.499
+lineTo 105.189 56.376
+lineTo 96 56
+lineTo 86.811 56.376
+lineTo 77.779 57.499
+lineTo 69.059 59.349
+lineTo 60.8 61.895
+lineTo 53.143 65.092
+lineTo 46.22 68.887
+lineTo 40.148 73.214
+lineTo 35.032 78
+lineTo 30.959 83.162
+lineTo 27.999 88.612
+lineTo 26.202 94.257
+lineTo 25.6 100
+lineTo 26.202 105.743
+lineTo 27.999 111.388
+lineTo 30.959 116.838
+lineTo 35.032 122
+lineTo 40.148 126.786
+lineTo 46.22 131.113
+lineTo 53.143 134.908
+lineTo 60.8 138.105
+lineTo 69.059 140.651
+lineTo 77.779 142.501
+lineTo 86.811 143.624
+lineTo 96 144
+lineTo 105.189 143.624
+lineTo 114.221 142.501
+lineTo 122.941 140.651
+lineTo 131.2 138.105
+lineTo 138.857 134.908
+lineTo 145.78 131.113
+lineTo 151.852 126.786
+lineTo 156.968 122
+lineTo 161.041 116.838
+lineTo 164.001 111.388
+lineTo 165.798 105.743
+lineTo 166.4 100
+closePath
+clip nonzero
+beginPath
+moveTo 32 140
+lineTo 160 140
+lineTo 160 60
+lineTo 32 60
+closePath
+fillStyle = rgba(41,97,219,1)
+fill nonzero
+beginPath
+moveTo 32 130
+lineTo 160 70
+strokeStyle = rgba(255,255,255,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+restore
+save
+beginPath
+moveTo 166.4 100
+lineTo 165.798 94.257
+lineTo 164.001 88.612
+lineTo 161.041 83.162
+lineTo 156.968 78
+lineTo 151.852 73.214
+lineTo 145.78 68.887
+lineTo 138.857 65.092
+lineTo 131.2 61.895
+lineTo 122.941 59.349
+lineTo 114.221 57.499
+lineTo 105.189 56.376
+lineTo 96 56
+lineTo 86.811 56.376
+lineTo 77.779 57.499
+lineTo 69.059 59.349
+lineTo 60.8 61.895
+lineTo 53.143 65.092
+lineTo 46.22 68.887
+lineTo 40.148 73.214
+lineTo 35.032 78
+lineTo 30.959 83.162
+lineTo 27.999 88.612
+lineTo 26.202 94.257
+lineTo 25.6 100
+lineTo 26.202 105.743
+lineTo 27.999 111.388
+lineTo 30.959 116.838
+lineTo 35.032 122
+lineTo 40.148 126.786
+lineTo 46.22 131.113
+lineTo 53.143 134.908
+lineTo 60.8 138.105
+lineTo 69.059 140.651
+lineTo 77.779 142.501
+lineTo 86.811 143.624
+lineTo 96 144
+lineTo 105.189 143.624
+lineTo 114.221 142.501
+lineTo 122.941 140.651
+lineTo 131.2 138.105
+lineTo 138.857 134.908
+lineTo 145.78 131.113
+lineTo 151.852 126.786
+lineTo 156.968 122
+lineTo 161.041 116.838
+lineTo 164.001 111.388
+lineTo 165.798 105.743
+lineTo 166.4 100
+closePath
+clip nonzero
+beginPath
+moveTo 0 200
+lineTo 320 200
+lineTo 320 0
+lineTo 0 0
+closePath
+fillStyle = rgba(255,255,255,0.251)
+fill nonzero
+restore
+save
+beginPath
+clip nonzero
+beginPath
+moveTo 192 140
+lineTo 288 140
+lineTo 288 60
+lineTo 192 60
+closePath
+fillStyle = rgba(230,92,46,1)
+fill nonzero
+restore

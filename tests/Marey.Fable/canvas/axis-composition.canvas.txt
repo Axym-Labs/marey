@@ -1,0 +1,673 @@
+canvas.width = 960
+canvas.height = 640
+setTransform 2 0 0 2 0 0
+clearRect 0 0 480 320
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 480 320
+beginPath
+moveTo 76.8 268.8
+lineTo 465.6 268.8
+lineTo 465.6 19.2
+lineTo 76.8 19.2
+closePath
+fillStyle = rgba(252,252,255,1)
+fill nonzero
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 76.8 268.8
+lineTo 76.8 19.2
+strokeStyle = rgba(0,0,0,0.1216)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 154.56 268.8
+lineTo 154.56 19.2
+strokeStyle = rgba(0,0,0,0.1216)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 232.32 268.8
+lineTo 232.32 19.2
+strokeStyle = rgba(0,0,0,0.1216)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 310.08 268.8
+lineTo 310.08 19.2
+strokeStyle = rgba(0,0,0,0.1216)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 387.84 268.8
+lineTo 387.84 19.2
+strokeStyle = rgba(0,0,0,0.1216)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 465.6 268.8
+lineTo 465.6 19.2
+strokeStyle = rgba(0,0,0,0.1216)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 76.8 268.8
+lineTo 465.6 268.8
+strokeStyle = rgba(0,0,0,0.1216)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 76.8 206.4
+lineTo 465.6 206.4
+strokeStyle = rgba(0,0,0,0.1216)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 76.8 144
+lineTo 465.6 144
+strokeStyle = rgba(0,0,0,0.1216)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 76.8 81.6
+lineTo 465.6 81.6
+strokeStyle = rgba(0,0,0,0.1216)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 76.8 19.2
+lineTo 465.6 19.2
+strokeStyle = rgba(0,0,0,0.1216)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+beginPath
+moveTo 76.8 268.8
+lineTo 465.6 268.8
+lineTo 465.6 19.2
+lineTo 76.8 19.2
+closePath
+clip nonzero
+beginPath
+moveTo 76.8 144
+lineTo 86.769 103.964
+lineTo 96.738 73.488
+lineTo 106.708 55.947
+lineTo 116.677 52.558
+lineTo 126.646 62.422
+lineTo 136.615 82.851
+lineTo 146.585 109.93
+lineTo 156.554 139.184
+lineTo 166.523 166.267
+lineTo 176.492 187.563
+lineTo 186.462 200.627
+lineTo 196.431 204.416
+lineTo 206.4 199.298
+lineTo 216.369 186.865
+lineTo 226.338 169.587
+lineTo 236.308 150.377
+lineTo 246.277 132.139
+lineTo 256.246 117.355
+lineTo 266.215 107.777
+lineTo 276.185 104.251
+lineTo 286.154 106.686
+lineTo 296.123 114.156
+lineTo 306.092 125.116
+lineTo 316.062 137.675
+lineTo 326.031 149.904
+lineTo 336 160.107
+lineTo 345.969 167.039
+lineTo 355.938 170.04
+lineTo 365.908 169.068
+lineTo 375.877 164.649
+lineTo 385.846 157.743
+lineTo 395.815 149.568
+lineTo 405.785 141.403
+lineTo 415.754 134.401
+lineTo 425.723 129.438
+lineTo 435.692 127.017
+lineTo 445.662 127.231
+lineTo 455.631 129.794
+lineTo 465.6 134.115
+strokeStyle = rgba(41,97,219,1)
+lineWidth = 1.75
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+fillStyle = rgba(230,92,46,1)
+beginPath
+moveTo 76.8 141.5
+lineTo 79.3 144
+lineTo 76.8 146.5
+lineTo 74.3 144
+closePath
+fill nonzero
+beginPath
+moveTo 86.769 101.464
+lineTo 89.269 103.964
+lineTo 86.769 106.464
+lineTo 84.269 103.964
+closePath
+fill nonzero
+beginPath
+moveTo 96.738 70.988
+lineTo 99.238 73.488
+lineTo 96.738 75.988
+lineTo 94.238 73.488
+closePath
+fill nonzero
+beginPath
+moveTo 106.708 53.447
+lineTo 109.208 55.947
+lineTo 106.708 58.447
+lineTo 104.208 55.947
+closePath
+fill nonzero
+beginPath
+moveTo 116.677 50.058
+lineTo 119.177 52.558
+lineTo 116.677 55.058
+lineTo 114.177 52.558
+closePath
+fill nonzero
+beginPath
+moveTo 126.646 59.922
+lineTo 129.146 62.422
+lineTo 126.646 64.922
+lineTo 124.146 62.422
+closePath
+fill nonzero
+beginPath
+moveTo 136.615 80.351
+lineTo 139.115 82.851
+lineTo 136.615 85.351
+lineTo 134.115 82.851
+closePath
+fill nonzero
+beginPath
+moveTo 146.585 107.43
+lineTo 149.085 109.93
+lineTo 146.585 112.43
+lineTo 144.085 109.93
+closePath
+fill nonzero
+beginPath
+moveTo 156.554 136.684
+lineTo 159.054 139.184
+lineTo 156.554 141.684
+lineTo 154.054 139.184
+closePath
+fill nonzero
+beginPath
+moveTo 166.523 163.767
+lineTo 169.023 166.267
+lineTo 166.523 168.767
+lineTo 164.023 166.267
+closePath
+fill nonzero
+beginPath
+moveTo 176.492 185.063
+lineTo 178.992 187.563
+lineTo 176.492 190.063
+lineTo 173.992 187.563
+closePath
+fill nonzero
+beginPath
+moveTo 186.462 198.127
+lineTo 188.962 200.627
+lineTo 186.462 203.127
+lineTo 183.962 200.627
+closePath
+fill nonzero
+beginPath
+moveTo 196.431 201.916
+lineTo 198.931 204.416
+lineTo 196.431 206.916
+lineTo 193.931 204.416
+closePath
+fill nonzero
+beginPath
+moveTo 206.4 196.798
+lineTo 208.9 199.298
+lineTo 206.4 201.798
+lineTo 203.9 199.298
+closePath
+fill nonzero
+beginPath
+moveTo 216.369 184.365
+lineTo 218.869 186.865
+lineTo 216.369 189.365
+lineTo 213.869 186.865
+closePath
+fill nonzero
+beginPath
+moveTo 226.338 167.087
+lineTo 228.838 169.587
+lineTo 226.338 172.087
+lineTo 223.838 169.587
+closePath
+fill nonzero
+beginPath
+moveTo 236.308 147.877
+lineTo 238.808 150.377
+lineTo 236.308 152.877
+lineTo 233.808 150.377
+closePath
+fill nonzero
+beginPath
+moveTo 246.277 129.639
+lineTo 248.777 132.139
+lineTo 246.277 134.639
+lineTo 243.777 132.139
+closePath
+fill nonzero
+beginPath
+moveTo 256.246 114.855
+lineTo 258.746 117.355
+lineTo 256.246 119.855
+lineTo 253.746 117.355
+closePath
+fill nonzero
+beginPath
+moveTo 266.215 105.277
+lineTo 268.715 107.777
+lineTo 266.215 110.277
+lineTo 263.715 107.777
+closePath
+fill nonzero
+beginPath
+moveTo 276.185 101.751
+lineTo 278.685 104.251
+lineTo 276.185 106.751
+lineTo 273.685 104.251
+closePath
+fill nonzero
+beginPath
+moveTo 286.154 104.186
+lineTo 288.654 106.686
+lineTo 286.154 109.186
+lineTo 283.654 106.686
+closePath
+fill nonzero
+beginPath
+moveTo 296.123 111.656
+lineTo 298.623 114.156
+lineTo 296.123 116.656
+lineTo 293.623 114.156
+closePath
+fill nonzero
+beginPath
+moveTo 306.092 122.616
+lineTo 308.592 125.116
+lineTo 306.092 127.616
+lineTo 303.592 125.116
+closePath
+fill nonzero
+beginPath
+moveTo 316.062 135.175
+lineTo 318.562 137.675
+lineTo 316.062 140.175
+lineTo 313.562 137.675
+closePath
+fill nonzero
+beginPath
+moveTo 326.031 147.404
+lineTo 328.531 149.904
+lineTo 326.031 152.404
+lineTo 323.531 149.904
+closePath
+fill nonzero
+beginPath
+moveTo 336 157.607
+lineTo 338.5 160.107
+lineTo 336 162.607
+lineTo 333.5 160.107
+closePath
+fill nonzero
+beginPath
+moveTo 345.969 164.539
+lineTo 348.469 167.039
+lineTo 345.969 169.539
+lineTo 343.469 167.039
+closePath
+fill nonzero
+beginPath
+moveTo 355.938 167.54
+lineTo 358.438 170.04
+lineTo 355.938 172.54
+lineTo 353.438 170.04
+closePath
+fill nonzero
+beginPath
+moveTo 365.908 166.568
+lineTo 368.408 169.068
+lineTo 365.908 171.568
+lineTo 363.408 169.068
+closePath
+fill nonzero
+beginPath
+moveTo 375.877 162.149
+lineTo 378.377 164.649
+lineTo 375.877 167.149
+lineTo 373.377 164.649
+closePath
+fill nonzero
+beginPath
+moveTo 385.846 155.243
+lineTo 388.346 157.743
+lineTo 385.846 160.243
+lineTo 383.346 157.743
+closePath
+fill nonzero
+beginPath
+moveTo 395.815 147.068
+lineTo 398.315 149.568
+lineTo 395.815 152.068
+lineTo 393.315 149.568
+closePath
+fill nonzero
+beginPath
+moveTo 405.785 138.903
+lineTo 408.285 141.403
+lineTo 405.785 143.903
+lineTo 403.285 141.403
+closePath
+fill nonzero
+beginPath
+moveTo 415.754 131.901
+lineTo 418.254 134.401
+lineTo 415.754 136.901
+lineTo 413.254 134.401
+closePath
+fill nonzero
+beginPath
+moveTo 425.723 126.938
+lineTo 428.223 129.438
+lineTo 425.723 131.938
+lineTo 423.223 129.438
+closePath
+fill nonzero
+beginPath
+moveTo 435.692 124.517
+lineTo 438.192 127.017
+lineTo 435.692 129.517
+lineTo 433.192 127.017
+closePath
+fill nonzero
+beginPath
+moveTo 445.662 124.731
+lineTo 448.162 127.231
+lineTo 445.662 129.731
+lineTo 443.162 127.231
+closePath
+fill nonzero
+beginPath
+moveTo 455.631 127.294
+lineTo 458.131 129.794
+lineTo 455.631 132.294
+lineTo 453.131 129.794
+closePath
+fill nonzero
+beginPath
+moveTo 465.6 131.615
+lineTo 468.1 134.115
+lineTo 465.6 136.615
+lineTo 463.1 134.115
+closePath
+fill nonzero
+restore
+restore
+beginPath
+moveTo 76.8 268.8
+lineTo 76.8 276.8
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 66.607 296.931 "0.0"
+restore
+beginPath
+moveTo 154.56 268.8
+lineTo 154.56 276.8
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 144.367 296.931 "0.5"
+restore
+beginPath
+moveTo 232.32 268.8
+lineTo 232.32 276.8
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 222.127 296.931 "1.0"
+restore
+beginPath
+moveTo 310.08 268.8
+lineTo 310.08 276.8
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 299.887 296.931 "1.5"
+restore
+beginPath
+moveTo 387.84 268.8
+lineTo 387.84 276.8
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 377.647 296.931 "2.0"
+restore
+beginPath
+moveTo 465.6 268.8
+lineTo 465.6 276.8
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 455.407 296.931 "2.5"
+restore
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 259.379 320.931 "t [s]"
+restore
+beginPath
+moveTo 76.8 268.8
+lineTo 67.2 268.8
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 54.245 272.547 "0"
+restore
+beginPath
+moveTo 76.8 206.4
+lineTo 67.2 206.4
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 54.245 210.147 "1"
+restore
+beginPath
+moveTo 76.8 144
+lineTo 67.2 144
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 54.245 147.747 "2"
+restore
+beginPath
+moveTo 76.8 81.6
+lineTo 67.2 81.6
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 54.245 85.347 "3"
+restore
+beginPath
+moveTo 76.8 19.2
+lineTo 67.2 19.2
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText 54.245 22.947 "4"
+restore
+save
+translate 19.2 144
+rotate -1.571
+translate -19.2 -144
+font = 400 14.667px "Helvetica"
+fillStyle = rgba(26,26,31,1)
+fillText -0.769 144 "y [nm]"
+restore
