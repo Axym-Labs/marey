@@ -126,6 +126,34 @@ type internal GpuTarget(gl: GL, gr: GRContext, width: int, height: int) =
             gl.DeleteRenderbuffer depthStencil
             gr.ResetContext()
 
+/// The GLFW this package ships, loaded before Silk.NET asks for one.
+///
+/// Silk.NET finds GLFW by name on the system's library path and not among a package's runtime
+/// assets, so on a machine with no GLFW installed it finds none — a hosted CI runner, measured —
+/// and on a machine with one it loads that one instead of the version this package was built
+/// against. .NET's native-asset resolution knows where the package's copy is. Once it is in the
+/// process, the loader answers Silk.NET's lookup by name with it, so every machine runs the same
+/// GLFW.
+module internal GlfwLibrary =
+
+    let private names =
+        if OperatingSystem.IsWindows() then [ "glfw3.dll"; "glfw3" ]
+        elif OperatingSystem.IsMacOS() then [ "libglfw.3.dylib"; "libglfw.3" ]
+        else [ "libglfw.so.3"; "glfw" ]
+
+    let private loaded =
+        lazy
+            (let assembly = typeof<Silk.NET.GLFW.Glfw>.Assembly
+
+             names
+             |> List.exists (fun name ->
+                 let mutable handle = 0n
+                 Runtime.InteropServices.NativeLibrary.TryLoad(name, assembly, Nullable(), &handle)))
+
+    /// Load it, once. `false` when .NET cannot find it either, and Silk.NET's own search is left
+    /// to try.
+    let ensure () = loaded.Force()
+
 /// GLFW's own account of why it would not start, which Silk.NET's "couldn't find a suitable window
 /// platform" does not carry: the library did not load, or `glfwInit` failed and said why (no
 /// display, an X11 client library it loads at run time missing).
@@ -133,6 +161,7 @@ module internal GlfwDiagnosis =
 
     let why () : string =
         try
+            GlfwLibrary.ensure () |> ignore
             let glfw = Silk.NET.GLFW.Glfw.GetApi()
 
             if glfw.Init() then
@@ -155,6 +184,7 @@ module internal GlfwDiagnosis =
 type internal GpuContext() =
 
     let window =
+        GlfwLibrary.ensure () |> ignore
         Silk.NET.Windowing.Glfw.GlfwWindowing.Use()
 
         let mutable o = WindowOptions.Default

@@ -4,8 +4,12 @@
     <!-- §6's GPU row, as D115 took it: Skia's GPU backend draws everything Skia draws, on an
          OpenGL 3.3 core context, and the nodes Skia draws badly (§0.3 of the M5 inventory) are
          claimed through `SkiaPainter` and drawn here. Not Fable-compatible and does not claim
-         to be: a GL context has no meaning in a notebook kernel's browser half. -->
-    <TargetFramework>netstandard2.1</TargetFramework>
+         to be: a GL context has no meaning in a notebook kernel's browser half.
+
+         net8.0 rather than netstandard2.1, for `NativeLibrary`: the package's own GLFW has to be
+         loaded by .NET's native-asset resolution before Silk.NET looks for it by name (see
+         `GlfwLibrary`). A GPU renderer has no consumer on a runtime older than that. -->
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Marey.Backend.Gpu</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
     <Description>GPU rendering for Marey: Skia on OpenGL, with batched marks drawn by the GPU directly. A figure, a film's frames or a million points, offscreen.</Description>

@@ -1,7 +1,7 @@
 # Marey.Backend.Gpu
 
 GPU rendering for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
-visualization system for F#. Skia draws on an OpenGL 3.3 core context, offscreen. `netstandard2.1`.
+visualization system for F#. Skia draws on an OpenGL 3.3 core context, offscreen. `net8.0`.
 
 ```fsharp
 #r "nuget: Marey.Plot"
