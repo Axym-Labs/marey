@@ -15,6 +15,7 @@
 #r "nuget: Marey.Backend.Skia"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 // A title chosen for its kerning pairs. AV, VA, TA and AT are where a real face pulls letters
 // together and an advance-width table cannot.

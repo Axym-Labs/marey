@@ -14,6 +14,7 @@ module Marey.Tests.ChannelTests
 
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 // ======================================================================================
 // Fixtures — two channels, deliberately of different measures

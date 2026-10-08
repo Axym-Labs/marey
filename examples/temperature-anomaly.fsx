@@ -23,6 +23,7 @@
 #r "nuget: Marey.Backend.Tikz"
 
 open Marey
+open Marey.UnitsOfMeasure
 open System.Globalization
 
 let dataPath =

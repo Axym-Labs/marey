@@ -28,6 +28,7 @@
 #r "nuget: Marey.Html"
 
 open Marey
+open Marey.UnitsOfMeasure
 open Marey.Storyboard
 
 // ---------------------------------------------------------------------------------------------

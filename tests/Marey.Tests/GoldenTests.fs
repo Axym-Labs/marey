@@ -14,6 +14,7 @@ module Marey.Tests.GoldenTests
 
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 open Marey.Tests.Generators
 open Marey.Tests.Golden
 

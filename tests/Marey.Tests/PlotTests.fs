@@ -24,6 +24,7 @@ module Marey.Tests.PlotTests
 open FsCheck.Xunit
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 // ======================================================================================
 // Fixtures
@@ -87,64 +88,55 @@ module SelfLabellingAxes =
         Assert.DoesNotContain("µkg", svg)
 
 // ======================================================================================
-// The dimensionless shim
+// Plain numbers: unspecified, and dimensionless
 // ======================================================================================
 
-/// `Chart.Plain` is `Chart` at `U.one U.one`, for maths that genuinely has no dimension.
-///
-/// Two things worth pinning. That it really is the same call, so it can never drift into a
-/// second implementation of the front door; and that a dimensionless axis stays honest — a
-/// bare `x`, never `x [1]`, and never rescaled into a prefix, which is what would make
-/// `U.one` a hole in the thesis rather than an answer within it.
-module DimensionlessShim =
+/// `Chart.Plain` was `Chart` at `U.one U.one`; D109 retired it for the unit-optional
+/// constructors, which leave a unit out as `U.unspecified` (D127). The two witnesses differ in
+/// what they *claim* — `one` says dimensionless, and the axis-sharing check acts on it — and not
+/// in how a single layer is drawn, so that is pinned here, along with the honesty of a bare axis:
+/// a plain `x`, never `x [1]`, and never rescaled into a prefix.
+module PlainNumbers =
 
     let private xs = Array.init 40 (fun i -> float i / 4.0)
     let private ys = xs |> Array.map sin
     let private errs = ys |> Array.map (fun y -> abs y * 0.1)
 
     [<Fact>]
-    let ``every Plain entry point renders identically to the same call at U.one U.one`` () =
+    let ``a single layer draws the same whether its units are unspecified or dimensionless`` () =
         let cases =
-            [ "line", Chart.Plain.line xs ys, Chart.line U.one U.one xs ys
-              "scatter", Chart.Plain.scatter xs ys, Chart.scatter U.one U.one xs ys
-              "area", Chart.Plain.area xs ys, Chart.area U.one U.one xs ys
-              "bar", Chart.Plain.bar xs ys, Chart.bar U.one U.one xs ys
-              "errorbar", Chart.Plain.errorbar xs ys errs, Chart.errorbar U.one U.one xs ys errs
-              "addLine",
-              (Chart.Plain.line xs ys |> Chart.Plain.addLine xs (Array.rev ys)),
-              (Chart.line U.one U.one xs ys |> Chart.addLine U.one U.one xs (Array.rev ys))
-              "addScatter",
-              (Chart.Plain.line xs ys |> Chart.Plain.addScatter xs (Array.rev ys)),
-              (Chart.line U.one U.one xs ys |> Chart.addScatter U.one U.one xs (Array.rev ys))
-              "addArea",
-              (Chart.Plain.line xs ys |> Chart.Plain.addArea xs (Array.rev ys)),
-              (Chart.line U.one U.one xs ys |> Chart.addArea U.one U.one xs (Array.rev ys))
-              "addErrorbar",
-              (Chart.Plain.line xs ys |> Chart.Plain.addErrorbar xs ys errs),
-              (Chart.line U.one U.one xs ys |> Chart.addErrorbar U.one U.one xs ys errs) ]
+            [ "line", Marey.Chart.Line(xs, ys), Chart.line U.one U.one xs ys
+              "scatter", Marey.Chart.Scatter(xs, ys), Chart.scatter U.one U.one xs ys
+              "area", Marey.Chart.Area(xs, ys), Chart.area U.one U.one xs ys
+              "bar", Marey.Chart.Bar(xs, ys), Chart.bar U.one U.one xs ys
+              "errorbar", Marey.Chart.Errorbar(xs, ys, errs), Chart.errorbar U.one U.one xs ys errs
+              "add",
+              (Marey.Chart.Line(xs, ys) |> Chart.add (Marey.Chart.Scatter(xs, Array.rev ys))),
+              (Chart.line U.one U.one xs ys |> Chart.addScatter U.one U.one xs (Array.rev ys)) ]
 
-        for name, plain, explicit in cases do
-            Assert.True(renderFig surface plain = renderFig surface explicit, name)
+        for name, unspecified, dimensionless in cases do
+            Assert.True(renderFig surface unspecified = renderFig surface dimensionless, name)
 
     [<Fact>]
-    let ``a dimensionless axis reads a bare x and y, never '[1]'`` () =
-        let svg = renderFig surface (Chart.Plain.line xs ys)
+    let ``a plain axis reads a bare x and y, never '[1]'`` () =
+        for fig in [ Marey.Chart.Line(xs, ys); Chart.line U.one U.one xs ys ] do
+            let svg = renderFig surface fig
+            Assert.Contains(">x<", svg)
+            Assert.Contains(">y<", svg)
+            Assert.DoesNotContain("[1]", svg)
+            Assert.DoesNotContain("[]", svg)
 
-        Assert.Contains(">x<", svg)
-        Assert.Contains(">y<", svg)
-        Assert.DoesNotContain("[1]", svg)
-        Assert.DoesNotContain("[]", svg)
-
-    /// `Prefix` refuses to rescale a dimensionless quantity. A ratio spanning 1e-9 is a small
-    /// ratio, not a nano-ratio, and the axis must not invent a prefix to say so.
+    /// `Prefix` refuses to rescale a quantity with no dimension, and an unspecified one has none
+    /// to rescale by. A ratio spanning 1e-9 is a small ratio, not a nano-ratio.
     [<Fact>]
-    let ``tiny dimensionless data is never given an SI prefix`` () =
+    let ``tiny plain data is never given an SI prefix`` () =
         let tiny = ys |> Array.map (fun y -> y * 1e-9)
-        let svg = renderFig surface (Chart.Plain.line xs tiny)
 
-        Assert.Contains(">y<", svg)
-        Assert.DoesNotContain("[n]", svg)
-        Assert.DoesNotContain("[p]", svg)
+        for fig in [ Marey.Chart.Line(xs, tiny); Chart.line U.one U.one xs tiny ] do
+            let svg = renderFig surface fig
+            Assert.Contains(">y<", svg)
+            Assert.DoesNotContain("[n]", svg)
+            Assert.DoesNotContain("[p]", svg)
 
 // ======================================================================================
 // D45 — a categorical axis, and the check that keeps two of them apart

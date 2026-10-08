@@ -20,6 +20,7 @@ figure with its controls disabled, and say that it is static.
 #r "nuget: Marey.Fields"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 #!markdown
 

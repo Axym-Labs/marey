@@ -13,6 +13,7 @@ module Marey.Tests.RegressionTests
 
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 // ======================================================================================
 // §12.3 — `float<'u>` does not satisfy a `float` SRTP overload

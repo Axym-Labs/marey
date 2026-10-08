@@ -26,6 +26,8 @@
     <Compile Include="Figure.fs" />
     <Compile Include="Levels.fs" />
     <Compile Include="Chart.fs" />
+    <!-- D109 — the unit-required mode. After Chart.fs, whose implementations it reaches. -->
+    <Compile Include="UnitsOfMeasure.fs" />
     <Compile Include="Plot.fs" />
     <Compile Include="Storyboard.fs" />
     <!-- After Storyboard.fs: `Film.ofStory` names a `Story`, and `Frames` is what a storyboard

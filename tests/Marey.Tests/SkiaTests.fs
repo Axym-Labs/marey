@@ -26,6 +26,7 @@ module Marey.Tests.SkiaTests
 
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 // ======================================================================================
 // READING THE PIXELS BACK

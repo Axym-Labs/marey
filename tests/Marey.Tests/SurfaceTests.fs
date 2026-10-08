@@ -9,6 +9,7 @@ module Marey.Tests.SurfaceTests
 
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 let private extent = Chart.size 600.0 400.0
 
@@ -147,42 +148,42 @@ module OneImplementation =
 
     [<Fact>]
     let ``the two-axis constructors`` () =
-        same (Chart.Line(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.line U.second U.metre t x)
-        same (Chart.Scatter(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.scatter U.second U.metre t x)
-        same (Chart.Area(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.area U.second U.metre t x)
-        same (Chart.Bar(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.bar U.second U.metre t x)
-        same (Chart.Errorbar(t', x', raw err, xUnit = U.second, yUnit = U.metre)) (Chart.errorbar U.second U.metre t x err)
-        same (Chart.Step(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.step U.second U.metre t x)
+        same (Marey.Chart.Line(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.line U.second U.metre t x)
+        same (Marey.Chart.Scatter(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.scatter U.second U.metre t x)
+        same (Marey.Chart.Area(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.area U.second U.metre t x)
+        same (Marey.Chart.Bar(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.bar U.second U.metre t x)
+        same (Marey.Chart.Errorbar(t', x', raw err, xUnit = U.second, yUnit = U.metre)) (Chart.errorbar U.second U.metre t x err)
+        same (Marey.Chart.Step(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.step U.second U.metre t x)
 
         same
-            (Chart.StepWith(StepBefore, t', x', xUnit = U.second, yUnit = U.metre))
+            (Marey.Chart.StepWith(StepBefore, t', x', xUnit = U.second, yUnit = U.metre))
             (Chart.stepWith StepBefore U.second U.metre t x)
 
-        same (Chart.Ribbon(t', x', raw hi, xUnit = U.second, yUnit = U.metre)) (Chart.ribbon U.second U.metre t x hi)
-        same (Chart.Tile(0.5, 0.2, t', x', xUnit = U.second, yUnit = U.metre)) (Chart.tile U.second U.metre 0.5<s> 0.2<m> t x)
+        same (Marey.Chart.Ribbon(t', x', raw hi, xUnit = U.second, yUnit = U.metre)) (Chart.ribbon U.second U.metre t x hi)
+        same (Marey.Chart.Tile(0.5, 0.2, t', x', xUnit = U.second, yUnit = U.metre)) (Chart.tile U.second U.metre 0.5<s> 0.2<m> t x)
 
         same
-            (Chart.Segment(t', x', raw t, raw hi, xUnit = U.second, yUnit = U.metre))
+            (Marey.Chart.Segment(t', x', raw t, raw hi, xUnit = U.second, yUnit = U.metre))
             (Chart.segment U.second U.metre t x t hi)
 
         let labels = [| "a"; "b"; "c"; "d"; "e" |]
-        same (Chart.Text(t', x', labels, xUnit = U.second, yUnit = U.metre)) (Chart.text U.second U.metre t x labels)
-        same (Chart.Fit(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.fit U.second U.metre t x)
-        same (Chart.Loess(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.loess U.second U.metre t x)
+        same (Marey.Chart.Text(t', x', labels, xUnit = U.second, yUnit = U.metre)) (Chart.text U.second U.metre t x labels)
+        same (Marey.Chart.Fit(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.fit U.second U.metre t x)
+        same (Marey.Chart.Loess(t', x', xUnit = U.second, yUnit = U.metre)) (Chart.loess U.second U.metre t x)
 
         same
-            (Chart.LoessWith(0.9, t', x', xUnit = U.second, yUnit = U.metre))
+            (Marey.Chart.LoessWith(0.9, t', x', xUnit = U.second, yUnit = U.metre))
             (Chart.loessWith 0.9 U.second U.metre t x)
 
-        same (Chart.Hexbin(x', t', xUnit = U.metre, yUnit = U.second)) (Chart.hexbin U.metre U.second x t)
-        same (Chart.HexbinWith(4, x', t', xUnit = U.metre, yUnit = U.second)) (Chart.hexbinWith U.metre U.second 4 x t)
+        same (Marey.Chart.Hexbin(x', t', xUnit = U.metre, yUnit = U.second)) (Chart.hexbin U.metre U.second x t)
+        same (Marey.Chart.HexbinWith(4, x', t', xUnit = U.metre, yUnit = U.second)) (Chart.hexbinWith U.metre U.second 4 x t)
 
     [<Fact>]
     let ``an image`` () =
         let img = { Width = 2; Height = 1; Rgba = [| 255uy; 0uy; 0uy; 255uy; 0uy; 0uy; 255uy; 255uy |] }
 
         same
-            (Chart.Image(img, 0.0, 0.0, 2.0, 1.0, false, xUnit = U.second, yUnit = U.metre))
+            (Marey.Chart.Image(img, 0.0, 0.0, 2.0, 1.0, false, xUnit = U.second, yUnit = U.metre))
             (Chart.image U.second U.metre img 0.0<s> 0.0<m> 2.0<s> 1.0<m> false)
 
     /// The stats derive a unit, and derive it from the witness's runtime fields — which is what
@@ -190,37 +191,37 @@ module OneImplementation =
     [<Fact>]
     let ``the one-axis stats, and the unit a density derives`` () =
         let sample' = raw sample
-        same (Chart.Histogram(sample', unit = U.metre)) (Chart.histogram U.metre sample)
-        same (Chart.HistogramWith(7, sample', unit = U.metre)) (Chart.histogramWith U.metre 7 sample)
-        same (Chart.Density(sample', unit = U.metre)) (Chart.density U.metre sample)
-        same (Chart.Ecdf(sample', unit = U.metre)) (Chart.ecdf U.metre sample)
-        Assert.Contains("m⁻¹", svg (Chart.Density(sample', unit = U.metre)))
+        same (Marey.Chart.Histogram(sample', unit = U.metre)) (Chart.histogram U.metre sample)
+        same (Marey.Chart.HistogramWith(7, sample', unit = U.metre)) (Chart.histogramWith U.metre 7 sample)
+        same (Marey.Chart.Density(sample', unit = U.metre)) (Chart.density U.metre sample)
+        same (Marey.Chart.Ecdf(sample', unit = U.metre)) (Chart.ecdf U.metre sample)
+        Assert.Contains("m⁻¹", svg (Marey.Chart.Density(sample', unit = U.metre)))
 
     /// An affine unit carries its offset through the relabel, or a colour domain stated in kelvin
     /// would land 273.15 away.
     [<Fact>]
     let ``an affine unit, a heatmap, and the channels that take data`` () =
-        same (Chart.Line(t', raw temps, xUnit = U.second, yUnit = NonSi.degreeCelsius)) (Chart.line U.second NonSi.degreeCelsius t temps)
+        same (Marey.Chart.Line(t', raw temps, xUnit = U.second, yUnit = NonSi.degreeCelsius)) (Chart.line U.second NonSi.degreeCelsius t temps)
 
         same
-            (Chart.Heatmap(t', x', raw temps, xUnit = U.second, yUnit = U.metre, valueUnit = NonSi.degreeCelsius))
+            (Marey.Chart.Heatmap(t', x', raw temps, xUnit = U.second, yUnit = U.metre, valueUnit = NonSi.degreeCelsius))
             (Chart.heatmap U.second U.metre NonSi.degreeCelsius t x temps)
 
-        let optional () = Chart.Scatter(t', x', xUnit = U.second, yUnit = U.metre)
+        let optional () = Marey.Chart.Scatter(t', x', xUnit = U.second, yUnit = U.metre)
         let curried () = Chart.scatter U.second U.metre t x
 
         same
-            (optional () |> Chart.ColorBy(raw temps, unit = NonSi.degreeCelsius) |> Chart.WithColorDomain(280.0, 300.0, unit = U.kelvin))
+            (optional () |> Marey.Chart.ColorBy(raw temps, unit = NonSi.degreeCelsius) |> Marey.Chart.WithColorDomain(280.0, 300.0, unit = U.kelvin))
             (curried () |> Chart.colorBy NonSi.degreeCelsius temps |> Chart.withColorDomain U.kelvin 280.0<K> 300.0<K>)
 
         same
-            (optional () |> Chart.ColorByWith(Palette.viridis, raw temps, unit = NonSi.degreeCelsius))
+            (optional () |> Marey.Chart.ColorByWith(Palette.viridis, raw temps, unit = NonSi.degreeCelsius))
             (curried () |> Chart.colorByWith Palette.viridis NonSi.degreeCelsius temps)
 
-        same (optional () |> Chart.SizeBy(raw err, unit = U.metre)) (curried () |> Chart.sizeBy U.metre err)
+        same (optional () |> Marey.Chart.SizeBy(raw err, unit = U.metre)) (curried () |> Chart.sizeBy U.metre err)
 
         same
-            (optional () |> Chart.SizeByWith(2.0<px>, 9.0<px>, raw err, unit = U.metre))
+            (optional () |> Marey.Chart.SizeByWith(2.0<px>, 9.0<px>, raw err, unit = U.metre))
             (curried () |> Chart.sizeByWith 2.0<px> 9.0<px> U.metre err)
 
     /// D125 — `add` is `addLine` and its siblings, for every constructor: the next palette slot
@@ -232,31 +233,31 @@ module OneImplementation =
         let other' = raw other
         let add (top: Figure) = fig () |> Chart.add top
 
-        same (add (Chart.Line(t', other', xUnit = U.second, yUnit = U.metre))) (fig () |> Chart.addLine U.second U.metre t other)
-        same (add (Chart.Scatter(t', other', xUnit = U.second, yUnit = U.metre))) (fig () |> Chart.addScatter U.second U.metre t other)
-        same (add (Chart.Area(t', other', xUnit = U.second, yUnit = U.metre))) (fig () |> Chart.addArea U.second U.metre t other)
-        same (add (Chart.Step(t', other', xUnit = U.second, yUnit = U.metre))) (fig () |> Chart.addStep U.second U.metre t other)
+        same (add (Marey.Chart.Line(t', other', xUnit = U.second, yUnit = U.metre))) (fig () |> Chart.addLine U.second U.metre t other)
+        same (add (Marey.Chart.Scatter(t', other', xUnit = U.second, yUnit = U.metre))) (fig () |> Chart.addScatter U.second U.metre t other)
+        same (add (Marey.Chart.Area(t', other', xUnit = U.second, yUnit = U.metre))) (fig () |> Chart.addArea U.second U.metre t other)
+        same (add (Marey.Chart.Step(t', other', xUnit = U.second, yUnit = U.metre))) (fig () |> Chart.addStep U.second U.metre t other)
 
         same
-            (add (Chart.Ribbon(t', other', x', xUnit = U.second, yUnit = U.metre)))
+            (add (Marey.Chart.Ribbon(t', other', x', xUnit = U.second, yUnit = U.metre)))
             (fig () |> Chart.addRibbon U.second U.metre t other x)
 
         same
-            (add (Chart.Segment(t', other', t', x', xUnit = U.second, yUnit = U.metre)))
+            (add (Marey.Chart.Segment(t', other', t', x', xUnit = U.second, yUnit = U.metre)))
             (fig () |> Chart.addSegment U.second U.metre t other t x)
 
-        same (add (Chart.Fit(t', x', xUnit = U.second, yUnit = U.metre))) (fig () |> Chart.addFit U.second U.metre t x)
-        same (add (Chart.Loess(t', x', xUnit = U.second, yUnit = U.metre))) (fig () |> Chart.addLoess U.second U.metre t x)
+        same (add (Marey.Chart.Fit(t', x', xUnit = U.second, yUnit = U.metre))) (fig () |> Chart.addFit U.second U.metre t x)
+        same (add (Marey.Chart.Loess(t', x', xUnit = U.second, yUnit = U.metre))) (fig () |> Chart.addLoess U.second U.metre t x)
 
         same
-            (add (Chart.LoessWith(0.9, t', x', xUnit = U.second, yUnit = U.metre)))
+            (add (Marey.Chart.LoessWith(0.9, t', x', xUnit = U.second, yUnit = U.metre)))
             (fig () |> Chart.addLoessWith 0.9 U.second U.metre t x)
 
     /// `addErrorbar` adds the bars alone; `add` of an error-bar figure adds its bars and its
     /// points, in one colour, because that is the figure `Errorbar` builds.
     [<Fact>]
     let ``an added error-bar figure keeps its bars and points in one colour`` () =
-        let fig = Chart.line U.second U.metre t x |> Chart.add (Chart.Errorbar(t', x', raw err, xUnit = U.second, yUnit = U.metre))
+        let fig = Chart.line U.second U.metre t x |> Chart.add (Marey.Chart.Errorbar(t', x', raw err, xUnit = U.second, yUnit = U.metre))
         let layers = fig.Panels.[0].Layers
         Assert.Equal(3, layers.Length)
         Assert.Equal(layers.[1].Style, layers.[2].Style)
@@ -264,5 +265,143 @@ module OneImplementation =
 
     [<Fact>]
     let ``units left out are unspecified`` () =
-        same (Chart.Line(t', x')) (Chart.line U.unspecified U.unspecified t' x')
-        same (Chart.Line(t', x', yUnit = U.metre)) (Chart.line U.unspecified U.metre t' x)
+        same (Marey.Chart.Line(t', x')) (Chart.line U.unspecified U.unspecified t' x')
+        same (Marey.Chart.Line(t', x', yUnit = U.metre)) (Chart.line U.unspecified U.metre t' x)
+
+/// Gate 5 — coverage. Every unit-optional member has a curried counterpart in
+/// `Marey.UnitsOfMeasure`, mapped by name (`Line` → `line`), and an error-obsolete shadow there;
+/// and every curried function there that takes a witness is either reached from a member or
+/// listed here by name, with the reason. A constructor added to one mode only fails this.
+module Coverage =
+
+    open System
+    open System.Reflection
+
+    let private lower (n: string) = string (Char.ToLowerInvariant n.[0]) + n.Substring 1
+
+    let private methodsOf (t: Type) =
+        t.GetMethods(BindingFlags.Public ||| BindingFlags.Static ||| BindingFlags.DeclaredOnly)
+
+    let private takesWitness (m: MethodInfo) =
+        m.GetParameters() |> Array.exists (fun p -> p.ParameterType = typeof<U<1>>)
+
+    /// Curried, and no member: the add family is `Chart.add` over a constructor in the
+    /// unit-optional mode (D125).
+    let private curriedOnly =
+        set [ "addLine"; "addScatter"; "addArea"; "addErrorbar"; "addStep"; "addRibbon"; "addSegment"; "addFit"; "addLoess"; "addLoessWith" ]
+
+    let private pairs: (Type * Type) list =
+        let plot = typeof<Marey.Figure>.Assembly
+        [ typeof<Marey.Chart>, plot.GetType("Marey.UnitsOfMeasure.Chart", true) ]
+
+    [<Fact>]
+    let ``every unit-optional member has a curried counterpart and a shadow`` () =
+        for optional, required in pairs do
+            let members = methodsOf optional |> Array.map (fun m -> m.Name) |> Array.distinct
+            Assert.NotEmpty members
+            let names = methodsOf required |> Array.map (fun m -> m.Name) |> set
+
+            for n in members do
+                Assert.True(names.Contains(lower n), sprintf "%s.%s has no curried %s in Marey.UnitsOfMeasure" optional.Name n (lower n))
+
+                let shadow = methodsOf required |> Array.tryFind (fun m -> m.Name = n)
+
+                match shadow |> Option.bind (fun m -> m.GetCustomAttribute<ObsoleteAttribute>() |> Option.ofObj) with
+                | Some o -> Assert.True(o.IsError, sprintf "the shadow of %s.%s is a warning, not an error" optional.Name n)
+                | None -> failwithf "%s.%s has no error-obsolete shadow in Marey.UnitsOfMeasure" optional.Name n
+
+    [<Fact>]
+    let ``every curried function that takes a witness is reached from a member or listed`` () =
+        for optional, required in pairs do
+            let members = methodsOf optional |> Array.map (fun m -> lower m.Name) |> set
+
+            for m in methodsOf required |> Array.filter takesWitness do
+                Assert.True(
+                    members.Contains m.Name || curriedOnly.Contains m.Name,
+                    sprintf "Marey.UnitsOfMeasure.%s.%s takes a witness and has no unit-optional member" required.Name m.Name
+                )
+
+/// Gate 6 — the shadow is an error. Compiled through `dotnet fsi`, as the interaction tests
+/// compile theirs, because a compile error is the thing being tested and a test assembly that
+/// contains one does not build.
+module TheShadowIsAnError =
+
+    open System
+    open System.IO
+    open System.Text
+
+    let private compile (name: string) (opens: string list) (body: string) =
+        let tool = Tools.dotnet.Force()
+
+        if not tool.IsAvailable then
+            None
+        else
+            let binDir = Path.GetDirectoryName(Uri(typeof<Marey.Figure>.Assembly.Location).LocalPath)
+            let sb = StringBuilder()
+
+            for dll in [ "Marey.Core"; "Marey.Units"; "Marey.Anim"; "Marey.Plot" ] do
+                sb.AppendLine(sprintf "#r @\"%s\"" (Path.Combine(binDir, dll + ".dll"))) |> ignore
+
+            for o in opens do
+                sb.AppendLine("open " + o) |> ignore
+
+            let path = Path.Combine(Path.GetTempPath(), sprintf "marey-surface-%s.fsx" name)
+            File.WriteAllText(path, sb.ToString() + body + "\n", UTF8Encoding false)
+
+            match Toolchain.run tool (sprintf "fsi --nologo \"%s\"" path) (Path.GetTempPath()) 600_000 with
+            | ToolUnavailable _ -> None
+            | ToolTimedOut why -> failwith why
+            | ToolRan run -> Some(run.ExitCode, path, run.Out + "\n" + run.Error)
+
+    let private unitOptional =
+        "let fig = Chart.Line([| 0.0; 1.0 |], [| 2.0; 3.0 |], yUnit = U.metre) |> Chart.withTitle \"t\"\nprintfn \"%d\" fig.Panels.Length"
+
+    let private skipped () = Console.WriteLine("SKIPPED: dotnet not found on PATH")
+
+    /// The positive control: the same call under `open Marey` alone. Without it, a bad `#r` makes
+    /// the negative green.
+    [<Fact>]
+    let ``a unit-optional call compiles under open Marey`` () =
+        match compile "optional" [ "Marey" ] unitOptional with
+        | None -> skipped ()
+        | Some(code, path, output) -> Assert.True((code = 0), sprintf "did not compile: %s\n%s" path output)
+
+    [<Fact>]
+    let ``a unit-optional call does not compile under open Marey.UnitsOfMeasure`` () =
+        match compile "required" [ "Marey"; "Marey.UnitsOfMeasure" ] unitOptional with
+        | None -> skipped ()
+        | Some(code, path, output) ->
+            Assert.True(code <> 0, sprintf "Chart.Line compiled in the unit-required mode: %s" path)
+            Assert.Contains("error FS0101", output)
+            Assert.Contains("Chart.line", output)
+
+    /// A data-taking channel is shadowed too, not only the constructors.
+    [<Fact>]
+    let ``a unit-optional channel does not compile under open Marey.UnitsOfMeasure`` () =
+        let body =
+            "let fig = Chart.line U.second U.metre [| 0.0<s> |] [| 1.0<m> |] |> Chart.ColorBy([| 1.0 |])"
+
+        match compile "required-channel" [ "Marey"; "Marey.UnitsOfMeasure" ] body with
+        | None -> skipped ()
+        | Some(code, path, output) ->
+            Assert.True(code <> 0, sprintf "Chart.ColorBy compiled in the unit-required mode: %s" path)
+            Assert.Contains("error FS0101", output)
+
+    /// The unit-required mode's own spelling compiles under its open, with the core's combinators.
+    [<Fact>]
+    let ``a curried call compiles under open Marey.UnitsOfMeasure`` () =
+        let body =
+            "let fig = Chart.line U.second U.metre [| 0.0<s> |] [| 1.0<m> |] |> Chart.withTitle \"t\"\nprintfn \"%d\" fig.Panels.Length"
+
+        match compile "curried" [ "Marey"; "Marey.UnitsOfMeasure" ] body with
+        | None -> skipped ()
+        | Some(code, path, output) -> Assert.True((code = 0), sprintf "did not compile: %s\n%s" path output)
+
+    /// And it is not reachable without the open: the curried constructors left the core.
+    [<Fact>]
+    let ``a curried call does not compile under open Marey alone`` () =
+        let body = "let fig = Chart.line U.second U.metre [| 0.0<s> |] [| 1.0<m> |]"
+
+        match compile "curried-core" [ "Marey" ] body with
+        | None -> skipped ()
+        | Some(code, path, _) -> Assert.True(code <> 0, sprintf "Chart.line was reachable without the open: %s" path)

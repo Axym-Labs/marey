@@ -17,6 +17,7 @@ module Marey.Tests.FacetTests
 
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 // ======================================================================================
 // Fixtures

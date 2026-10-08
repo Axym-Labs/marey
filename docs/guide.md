@@ -50,7 +50,12 @@ on Units and Core, so all of it arrives transitively.
 #r "nuget: Marey.Html"
 
 open Marey
+open Marey.UnitsOfMeasure
 ```
+
+`open Marey.UnitsOfMeasure` is the unit-required mode, in which every chart takes a witness per
+axis and the compiler checks it; the examples in this guide are written in it. Without that
+`open`, a chart takes plain arrays and a unit is optional: `Chart.Line(xs, ys, yUnit = U.metre)`.
 
 | Package | Take it when |
 |---|---|

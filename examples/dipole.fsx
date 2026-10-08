@@ -21,6 +21,7 @@
 #r "nuget: Marey.Tools.Video"
 
 open Marey
+open Marey.UnitsOfMeasure
 
 let period = 3.0<s>
 let separation = 0.5<m>

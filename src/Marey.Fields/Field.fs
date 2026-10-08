@@ -298,7 +298,7 @@ module Field =
         (uv: U<'v>)
         (g: ScalarGrid<'x, 'y, 'v>)
         : Figure =
-        layerOf ux uy (FieldHeatmap smooth) g |> Chart.colorByWith ramp uv g.Values
+        layerOf ux uy (FieldHeatmap smooth) g |> Marey.UnitsOfMeasure.Chart.colorByWith ramp uv g.Values
 
     /// `heatmapWith` along the theme's sequential ramp, interpolated between nodes.
     let heatmap<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
@@ -340,7 +340,7 @@ module Field =
         : Figure =
         layerOf ux uy (FieldBands(raw levels)) g
         |> Chart.withStyle (fun st -> { st with FillOpacity = 1.0 })
-        |> Chart.colorByWith ramp uv g.Values
+        |> Marey.UnitsOfMeasure.Chart.colorByWith ramp uv g.Values
 
     /// Filled bands at nice levels widened to cover the field's whole range, along the theme's
     /// sequential ramp.
@@ -416,7 +416,7 @@ module Field =
         (uv: U<'v>)
         (g: VectorGrid<'x, 'y, 'v, 'v>)
         : Figure =
-        quiver ux uy uv g |> Chart.colorBy uv (VectorGrid.magnitude g).Values
+        quiver ux uy uv g |> Marey.UnitsOfMeasure.Chart.colorBy uv (VectorGrid.magnitude g).Values
 
     /// A direction field: an arrow at every node, all one length. Any vector grid, including a
     /// phase space whose two components are in different units and so has no magnitude to draw.
@@ -485,7 +485,7 @@ module Field =
         let magnitude = VectorGrid.magnitude g
 
         arrowLayerOf ux uy (FieldStreamlines(DefaultSeparation * 1.0<px>)) magnitude g
-        |> Chart.colorBy uv magnitude.Values
+        |> Marey.UnitsOfMeasure.Chart.colorBy uv magnitude.Values
 
     // ---- Line-integral convolution (D90) ------------------------------------------------------
 
@@ -557,7 +557,7 @@ module Field =
         (g: VectorGrid<'x, 'y, 'v, 'v>)
         : Figure =
         let magnitude = VectorGrid.magnitude g
-        licLayerOf options ux uy magnitude g |> Chart.colorBy uv magnitude.Values
+        licLayerOf options ux uy magnitude g |> Marey.UnitsOfMeasure.Chart.colorBy uv magnitude.Values
 
     /// `licByWith licDefaults`.
     let licBy<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>

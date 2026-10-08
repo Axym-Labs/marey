@@ -358,7 +358,7 @@ module Phase =
             |> Array.groupBy (fun p -> FixedPoint.kindName p.Kind)
             |> Array.sortBy fst
             |> Array.map (fun (name, ps) ->
-                let fig = Chart.scatter ux uy (ps |> Array.map (fun p -> p.X)) (ps |> Array.map (fun p -> p.Y))
+                let fig = Marey.UnitsOfMeasure.Chart.scatter ux uy (ps |> Array.map (fun p -> p.X)) (ps |> Array.map (fun p -> p.Y))
                 let theme = fig.Theme
 
                 fig

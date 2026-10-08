@@ -22,6 +22,7 @@ module Marey.Tests.GeomTests
 
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 open Marey.Tests.Generators
 
 // ======================================================================================
@@ -916,7 +917,7 @@ module ``the Chart constructors`` =
     /// margin past the last tile draws part of that region as if no cell covered it.
     [<Fact>]
     let ``a tiled figure's domain is the tiles' own edges, unpadded`` () =
-        let fig = Chart.Plain.tile 2.0 1.0 [| 0.0; 2.0; 4.0 |] [| 0.0; 1.0; 2.0 |]
+        let fig = Chart.tile U.one U.one 2.0 1.0 [| 0.0; 2.0; 4.0 |] [| 0.0; 1.0; 2.0 |]
         let x, y = Erase.seriesScales fig.Panels.[0].Layers.[0].Data
 
         Assert.Equal((-1.0, 5.0), x.Domain)
@@ -938,7 +939,7 @@ module ``the Chart constructors`` =
 
     [<Fact>]
     let ``a segment figure holds both ends inside the domain`` () =
-        let fig = Chart.Plain.segment [| 0.0; 1.0 |] [| 0.0; 1.0 |] [| 5.0; 6.0 |] [| 9.0; 2.0 |]
+        let fig = Chart.segment U.one U.one [| 0.0; 1.0 |] [| 0.0; 1.0 |] [| 5.0; 6.0 |] [| 9.0; 2.0 |]
         let x, y = Erase.seriesScales fig.Panels.[0].Layers.[0].Data
 
         Assert.True(fst x.Domain <= 0.0 && snd x.Domain >= 6.0)
@@ -949,7 +950,7 @@ module ``the Chart constructors`` =
     [<Fact>]
     let ``addLabels reuses the labelled series and stays out of the legend`` () =
         let fig =
-            Chart.Plain.scatter [| 0.0; 1.0; 2.0 |] [| 1.0; 4.0; 9.0 |]
+            Chart.scatter U.one U.one [| 0.0; 1.0; 2.0 |] [| 1.0; 4.0; 9.0 |]
             |> Chart.withName "measured"
             |> Chart.addLabels [| "a"; "b"; "c" |]
 
@@ -966,15 +967,15 @@ module ``the Chart constructors`` =
     [<Fact>]
     let ``addLabels refuses a mismatched count`` () =
         Assert.Throws<System.ArgumentException>(fun () ->
-            Chart.Plain.scatter [| 0.0; 1.0 |] [| 1.0; 2.0 |]
+            Chart.scatter U.one U.one [| 0.0; 1.0 |] [| 1.0; 2.0 |]
             |> Chart.addLabels [| "only one" |]
             |> ignore)
         |> ignore
 
     [<Fact>]
     let ``a step figure is a staircase`` () =
-        Assert.Equal(GeomStep StepAfter, geomOf (Chart.Plain.step [| 0.0; 1.0 |] [| 1.0; 2.0 |]))
-        Assert.Equal(GeomStep StepBefore, geomOf (Chart.Plain.stepWith StepBefore [| 0.0; 1.0 |] [| 1.0; 2.0 |]))
+        Assert.Equal(GeomStep StepAfter, geomOf (Chart.step U.one U.one [| 0.0; 1.0 |] [| 1.0; 2.0 |]))
+        Assert.Equal(GeomStep StepBefore, geomOf (Chart.stepWith StepBefore U.one U.one [| 0.0; 1.0 |] [| 1.0; 2.0 |]))
 
 module ``the categorical distributions`` =
 

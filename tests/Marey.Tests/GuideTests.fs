@@ -37,6 +37,7 @@ open System.Text
 open System.Text.RegularExpressions
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 
 /// The assemblies the guide's examples need, in dependency order. They sit beside the test
 /// binary because the test project references all of them.

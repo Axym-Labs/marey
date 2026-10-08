@@ -1,5 +1,6 @@
 namespace Marey
 
+open System
 open System.Runtime.InteropServices
 
 /// §9 — **the quick, matplotlib-shaped front door.**
@@ -67,9 +68,7 @@ module Chart =
     let private withZero (lo: float<'u>, hi: float<'u>) : float<'u> * float<'u> =
         min lo (tag<'u> 0.0), max hi (tag<'u> 0.0)
 
-    /// A typed series over linear scales with 5% breathing room. The last point at which the
-    /// measures are alive on this path.
-    let series (name: string) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Series<'ux, 'uy> =
+    let internal series (name: string) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Series<'ux, 'uy> =
         if x.Length <> y.Length then
             invalidArg "y" (sprintf "Marey: series '%s' has %d x values and %d y values." name x.Length y.Length)
 
@@ -105,21 +104,17 @@ module Chart =
     let ofPacked (g: Geom) (p: PackedSeries) : Figure =
         figureOf [| layerOf (Erase.seriesName p) Theme.initial 0 g p |]
 
-    let line (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+    let internal line (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         ofSeries GeomLine (series "" ux uy x y)
 
-    /// Scatter. **One `Markers` node for the whole series**, however many points — §5.1, "the
-    /// single biggest performance decision in the IR". Verifiable with `Scene.count`.
-    let scatter (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+    let internal scatter (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         ofSeries GeomPoint (series "" ux uy x y)
 
-    let area (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+    let internal area (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         let s = series "" ux uy x y
         ofSeries (Geom.area s) s
 
-    /// Bars from zero — see `withZero`. The y domain is the data's, widened to reach the
-    /// baseline the marks are measured from.
-    let bar (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+    let internal bar (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         let s = series "" ux uy x y
 
         let s =
@@ -128,13 +123,7 @@ module Chart =
 
         ofSeries (Geom.bar 0.7 s) s
 
-    /// Error bars with symmetric uncertainties.
-    ///
-    /// `err` is `float('uy)[]` — the same measure as `y`. An uncertainty in the wrong unit does
-    /// not compile, which is the whole thesis applied to the one place experimental data most
-    /// often gets it wrong. The y domain is taken over `y ± err`, so the caps are inside the
-    /// panel rather than clipped by it.
-    let errorbar (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (err: float<'uy>[]) : Figure =
+    let internal errorbar (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (err: float<'uy>[]) : Figure =
         if err.Length <> y.Length then
             invalidArg "err" (sprintf "Marey: %d y values but %d error values." y.Length err.Length)
 
@@ -160,16 +149,10 @@ module Chart =
 
     // ---- Phase 6's constructors ---------------------------------------------------------------
 
-    /// A staircase: the same points as `line`, with the claim that nothing happened between
-    /// them.
-    ///
-    /// The default is `StepAfter` — the value holds from each sample until the next — which is
-    /// what a sampled-and-held signal, a counter and a piecewise-constant control input all do.
-    /// `stepWith` states the other two.
-    let step (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+    let internal step (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         ofSeries (GeomStep StepAfter) (series "" ux uy x y)
 
-    let stepWith (align: StepAlign) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+    let internal stepWith (align: StepAlign) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         ofSeries (GeomStep align) (series "" ux uy x y)
 
     /// The series a band is drawn against: x, the midline, and a y domain over **both** bounds.
@@ -200,13 +183,7 @@ module Chart =
 
         s, Geom.ribbon s low high
 
-    /// A filled band between two y series — a confidence interval, an envelope, a min/max
-    /// spread.
-    ///
-    /// The band and nothing else. `Chart.line … |> Chart.addRibbon …` is the fit-with-interval
-    /// figure, and the order matters: the band is added second and drawn over the line, so it
-    /// wants the theme's fill opacity, which it has.
-    let ribbon (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (low: float<'uy>[]) (high: float<'uy>[]) : Figure =
+    let internal ribbon (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (low: float<'uy>[]) (high: float<'uy>[]) : Figure =
         let s, g = ribbonSeries "" ux uy x low high
         ofSeries g s
 
@@ -238,13 +215,7 @@ module Chart =
 
         if gaps.Length = 0 then tag<'u> 1.0 else Array.min gaps
 
-    /// Tiles of a stated size, centred on the given points — the heatmap geom.
-    ///
-    /// Both sizes are in the data's own units, so a cell 0.5 s wide and 2 K tall is written as
-    /// `0.5&lt;s&gt;` and `2.0&lt;K&gt;` and cannot be transposed: the compiler will not accept
-    /// a width in kelvin. What makes the tiles *mean* anything is a colour channel —
-    /// `Chart.tile … |> Chart.colorBy U.kelvin temps`, which is what `Chart.heatmap` is.
-    let tile
+    let internal tile
         (ux: U<'ux>)
         (uy: U<'uy>)
         (w: float<'ux>)
@@ -264,27 +235,7 @@ module Chart =
 
         ofSeries (Geom.tile w h s) s
 
-    /// An RGBA image placed in data space — a micrograph under its scale bar, a map under a
-    /// track, a reference plate beside a measurement (D64).
-    ///
-    /// The box is given in the axes' own units, so the image lands where the data says it does
-    /// and the axes label themselves from the witnesses as they do for anything else. `smooth`
-    /// is bilinear interpolation: `false` is right for anything whose pixels are measurements,
-    /// where smoothing invents values that were never recorded.
-    ///
-    /// **This is the only thing in Marey that produces a `Raster`**, and until it existed
-    /// `renderWithAssets` had no customer — which is D10's failure mode, and the reason D64
-    /// insists the two ship together. `Chart.heatmap` is *tiles*, not a raster, and always was.
-    ///
-    /// Both backends draw it: SVG inlines a `data:` URI, and TikZ writes a sidecar `.png`
-    /// through `TikzBackend.renderToFileWithAssets`. `TikzBackend.render` returns a bare string
-    /// and so cannot carry the sidecar; it degrades the image away rather than emitting an
-    /// `\\includegraphics` of a file nobody wrote.
-    ///
-    /// The domain is the box, unpadded, on the same rule as a tessellation's: an image
-    /// partitions the region it covers, and a margin past its edge draws part of that region as
-    /// if the image did not cover it.
-    let image
+    let internal image
         (ux: U<'ux>)
         (uy: U<'uy>)
         (img: Image)
@@ -320,12 +271,7 @@ module Chart =
 
         ofSeries (Geom.image s img x0 y0 x1 y1 smooth) s
 
-    /// A line from each `(x0, y0)` to the matching `(x1, y1)` — a displacement, an edge of a
-    /// graph, a before-and-after pair.
-    ///
-    /// Both ends are inside the domain, which is the one thing a caller cannot fix afterwards:
-    /// a segment whose far end is off the panel is clipped to a line pointing at nothing.
-    let segment
+    let internal segment
         (ux: U<'ux>)
         (uy: U<'uy>)
         (x0: float<'ux>[])
@@ -345,12 +291,7 @@ module Chart =
 
         ofSeries (Geom.segment s x1 y1) s
 
-    /// Labels at stated positions — an annotated point, a named landmark, a value printed on
-    /// its own mark.
-    ///
-    /// `Chart.addLabels` is the form that labels a series already on the figure, and is what
-    /// most callers want; this one is for text that is the whole layer.
-    let text (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (labels: string[]) : Figure =
+    let internal text (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (labels: string[]) : Figure =
         if labels.Length <> x.Length then
             invalidArg "labels" (sprintf "Marey: %d positions and %d labels." x.Length labels.Length)
 
@@ -404,26 +345,19 @@ module Chart =
             fig
             |> addLayers (fun i -> p.Layers |> Array.map (fun l -> { l with Style = Geom.styleFor fig.Theme i }))
 
-    /// Add a second (third, …) series to the last panel.
-    ///
-    /// The panel's axes are then shared: `Figure.unify` unions the domains at compile time and
-    /// rebuilds every layer's scale over the union. It also checks that the added series has the
-    /// *same physical dimension* as the existing ones and raises if not — the one runtime
-    /// dimensional check in the library, and it is runtime only because the two series have
-    /// already crossed §2.3's existential and F# can no longer compare their measures.
-    let addLine (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+    let internal addLine (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomLine (Erase.packSeries (series "" ux uy x y)) |])
 
-    let addScatter (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+    let internal addScatter (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomPoint (Erase.packSeries (series "" ux uy x y)) |])
 
-    let addArea (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+    let internal addArea (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
         let s = series "" ux uy x y
         fig |> addLayers (fun i -> [| layerOf "" fig.Theme i (Geom.area s) (Erase.packSeries s) |])
 
-    let addErrorbar (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (err: float<'uy>[]) (fig: Figure) : Figure =
+    let internal addErrorbar (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (err: float<'uy>[]) (fig: Figure) : Figure =
         let span =
             Array.append (Array.init y.Length (fun i -> y.[i] - err.[i])) (Array.init y.Length (fun i -> y.[i] + err.[i]))
 
@@ -437,18 +371,11 @@ module Chart =
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i (Geom.errorY s err) (Erase.packSeries s) |])
 
-    let addStep (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+    let internal addStep (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i (GeomStep StepAfter) (Erase.packSeries (series "" ux uy x y)) |])
 
-    /// Add a band between two y series to the last panel — the interval around a fit that was
-    /// already drawn.
-    ///
-    /// It goes in the palette like any other added series, so a band added to a line comes out
-    /// in the *next* colour rather than the line's. That is deliberate and matches
-    /// `addErrorbar`: the two arrays are a second thing that was measured, and a caller who
-    /// means it as a shading of the first says so with `Chart.withStyle`.
-    let addRibbon
+    let internal addRibbon
         (ux: U<'ux>)
         (uy: U<'uy>)
         (x: float<'ux>[])
@@ -459,7 +386,7 @@ module Chart =
         let s, g = ribbonSeries "" ux uy x low high
         fig |> addLayers (fun i -> [| layerOf "" fig.Theme i g (Erase.packSeries s) |])
 
-    let addSegment
+    let internal addSegment
         (ux: U<'ux>)
         (uy: U<'uy>)
         (x0: float<'ux>[])
@@ -578,105 +505,67 @@ module Chart =
         let s, g = histogramSeries "" h
         ofSeries g s
 
-    /// A histogram of a sample, binned by Freedman–Diaconis.
-    let histogram (u: U<'u>) (xs: float<'u>[]) : Figure = ofHistogram (Stat.bin u xs)
+    let internal histogram (u: U<'u>) (xs: float<'u>[]) : Figure = ofHistogram (Stat.bin u xs)
 
-    /// A histogram of a sample with a stated bin count.
-    let histogramWith (u: U<'u>) (bins: int) (xs: float<'u>[]) : Figure = ofHistogram (Stat.binWith u bins xs)
+    let internal histogramWith (u: U<'u>) (bins: int) (xs: float<'u>[]) : Figure = ofHistogram (Stat.binWith u bins xs)
 
     /// A figure from an already-computed density — the door for a caller who chose the bandwidth.
     let ofDensity (d: Stat.Density<'u>) : Figure =
         let s, g = densitySeries "" d
         ofSeries g s
 
-    /// A Gaussian kernel density estimate of a sample, at Silverman's bandwidth.
-    let density (u: U<'u>) (xs: float<'u>[]) : Figure = ofDensity (Stat.density u xs)
+    let internal density (u: U<'u>) (xs: float<'u>[]) : Figure = ofDensity (Stat.density u xs)
 
     /// A figure from an already-computed ECDF.
     let ofEcdf (e: Stat.Ecdf<'u>) : Figure =
         let s, g = ecdfSeries "" e
         ofSeries g s
 
-    /// The empirical CDF of a sample, drawn as the step function it is.
-    let ecdf (u: U<'u>) (xs: float<'u>[]) : Figure = ofEcdf (Stat.ecdf u xs)
+    let internal ecdf (u: U<'u>) (xs: float<'u>[]) : Figure = ofEcdf (Stat.ecdf u xs)
 
-    /// Add a least-squares fit of y against x to the last panel, as a two-point line over the
-    /// range of the data.
-    ///
-    /// **The slope is not returned, and that is D47's split rather than an omission.** The fit
-    /// is a number — `float<'uy/'ux>`, and for a displacement against a time that is a velocity
-    /// the caller can bind, print, and do arithmetic with. Handing it back through a `Figure`
-    /// would mean packing it into an existential to get it out of this function, so a caller
-    /// who wants the number calls `Stat.regression` and keeps it typed; this draws it.
-    ///
-    /// ```fsharp
-    /// let fit = Stat.regression U.second U.metre ts xs
-    /// let v: float<m/s> = fit.Slope
-    /// Chart.scatter U.second U.metre ts xs |> Chart.addFit U.second U.metre ts xs
-    /// ```
-    let addFit (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+    let internal addFit (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
         let f = Stat.regression ux uy x y
         let fx, fy = Stat.fitLine f x
 
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomLine (Erase.packSeries (series "" ux uy fx fy)) |])
 
-    /// Add a loess smooth of y against x to the last panel: R's defaults, span 0.75 and a local
-    /// quadratic, at 80 points over the data's range. `Stat.loess` returns the curve itself.
-    let addLoess (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+    let internal addLoess (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
         let l = Stat.loess ux uy x y
 
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomLine (Erase.packSeries (series "" ux uy l.X l.Y)) |])
 
-    /// `addLoess` with a stated span: the fraction of the points each local fit uses.
-    let addLoessWith (span: float) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+    let internal addLoessWith (span: float) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
         let l = Stat.loessWith ux uy span Stat.DefaultLoessPoints x y
 
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomLine (Erase.packSeries (series "" ux uy l.X l.Y)) |])
 
-    /// The least-squares line through `(x, y)`, on its own: what `addFit` draws, as a figure that
-    /// `add` can put over the data.
-    let fit (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+    let internal fit (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         let fx, fy = Stat.fitLine (Stat.regression ux uy x y) x
         ofSeries GeomLine (series "" ux uy fx fy)
 
-    /// The loess smooth of `(x, y)`, on its own — see `fit`.
-    let loess (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+    let internal loess (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         let l = Stat.loess ux uy x y
         ofSeries GeomLine (series "" ux uy l.X l.Y)
 
-    let loessWith (span: float) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+    let internal loessWith (span: float) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         let l = Stat.loessWith ux uy span Stat.DefaultLoessPoints x y
         ofSeries GeomLine (series "" ux uy l.X l.Y)
 
     // ---- Dimensionless ------------------------------------------------------------------------
 
-    /// Pure maths, where the quantity genuinely has no dimension: `sin x`, a ratio, a
-    /// probability, a count.
+    /// **Retired by D109; one release as an alias, then gone.** The constructors at `U.one U.one`,
+    /// for data with no dimension, as 0.4.0 shipped them.
     ///
-    /// ```fsharp
-    /// Chart.Plain.line xs (xs |> Array.map sin)
-    /// |> Chart.withTitle "sin x"
-    /// ```
-    ///
-    /// Every binding here is the same-named constructor at `U.one U.one` and nothing else. It
-    /// costs nothing because `float<1> = float`: the arrays a caller already has *are* the
-    /// arrays these take, with no `LanguagePrimitives.FloatWithMeasure` and no witness to invent
-    /// for a quantity that has none. The `Figure` that comes out is an ordinary one, so every
-    /// combinator, axis and output function below applies unchanged.
-    ///
-    /// `U.one` is not a hole in §1.3's thesis; it is the thesis answering "dimensionless"
-    /// correctly. Its `Dim` is `Dim.zero` and its symbol is empty, so `Axis` drops the bracket
-    /// and prints a bare `x` rather than `x [1]`, and `Prefix` refuses to rescale it, so no
-    /// probability is ever labelled in kilo-anything. The witness still arrives exactly once —
-    /// it just says "none".
-    ///
-    /// Deliberately **not** the default spelling of `Chart.line`, and not an overload of it:
-    /// `Chart` is a module, so F# has no overloading here anyway, and data that does have a
-    /// dimension should have to say so. A shim that let it stay silent would cost the library
-    /// the one thing it is for.
+    /// It was the library's answer to plain numbers while every chart required a witness, and it
+    /// gave a wrong answer to most of them: `U.one` claims the data is *dimensionless*, which
+    /// revenue in dollars is not, and `Figure.unify` acts on the claim. The unit-optional
+    /// constructors take its place — `Chart.Line(xs, ys)` leaves both units unspecified (D127),
+    /// which claims nothing — and `U.one` remains a value to pass where the data really has no
+    /// dimension, `Chart.Line(xs, ys, yUnit = U.one)`.
+    [<Obsolete("Chart.Plain is retired (D109). Use Chart.Line(xs, ys), which leaves the units unspecified, or pass U.one where the data is dimensionless.")>]
     [<RequireQualifiedAccess>]
     module Plain =
 
@@ -1099,17 +988,7 @@ module Chart =
 
         withChannel "shape" keys.Length (Channel.shapeByLevel fig.Theme levels.Labels (Levels.positions levels keys)) fig
 
-    /// **Colour by a quantity**, over a named ramp.
-    ///
-    /// The witness is an argument for the same reason it is one on `Chart.line`: `float<K>` is
-    /// `float` at runtime, and something has to hand the library the evidence exactly once.
-    /// What it buys is the same thing it buys on an axis — the colorbar labels itself `T [K]`,
-    /// picks its own prefix, and its ticks are the axis compiler's (D49).
-    ///
-    /// The domain is the data's own range, **unpadded**: an axis pads so that the extreme
-    /// points are not on the frame, and a colour ramp has no frame to sit on — padding it would
-    /// simply throw away both ends of the ramp.
-    let colorByWith (ramp: Ramp) (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
+    let internal colorByWith (ramp: Ramp) (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
         let domain =
             match Scale.domainOf values with
             | Some d -> d
@@ -1117,9 +996,7 @@ module Chart =
 
         withChannel "colour" values.Length (Channel.colorByValue "" ramp (Scale.linear u domain) values) fig
 
-    /// `colorByWith` over the theme's sequential ramp — viridis-family, perceptually ordered
-    /// and lightness-monotone, so it survives greyscale printing.
-    let colorBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
+    let internal colorBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
         colorByWith fig.Theme.Sequential u values fig
 
     /// Name the quantity a colour channel encodes: `T` in `T [K]`. The unit half is never
@@ -1140,17 +1017,7 @@ module Chart =
                             | _ -> c) })
             fig
 
-    /// **State a continuous colour channel's domain** rather than taking its values' range: the
-    /// most recent layer's colour scale runs from `lo` to `hi`, in `u`, and a value beyond either
-    /// end takes the ramp's end colour.
-    ///
-    /// For two figures that must share a colour scale, and for a film whose colours should mean
-    /// a stated range rather than the union of its sampled frames (D94). `u` need not be the
-    /// channel's own unit, only of its dimension: the ends are converted. A different dimension,
-    /// or an angle against no angle (D98), raises, as `Figure.unify` does for an axis. When
-    /// either is `U.unspecified` there is nothing to check or convert, and the ends are used as
-    /// given (D127).
-    let withColorDomain (u: U<'u>) (lo: float<'u>) (hi: float<'u>) (fig: Figure) : Figure =
+    let internal withColorDomain (u: U<'u>) (lo: float<'u>) (hi: float<'u>) (fig: Figure) : Figure =
         let angle = U.angleExponentOf u.Symbol u.Factors
 
         let rescale (scale: PackedScale) =
@@ -1185,23 +1052,7 @@ module Chart =
                             | _ -> c) })
             fig
 
-    /// **Size by a quantity**, between two device diameters.
-    ///
-    /// Interpolated in area rather than in diameter, because area is what the eye reads off a
-    /// disc. Size is the weakest of the channels for accurate reading, so it is the one to
-    /// reach for last: the key it produces is three marks in the legend, not a bar.
-    /// §9 — **a heatmap**: one tile per row, sized to the grid's own pitch, coloured by a third
-    /// quantity.
-    ///
-    /// Three witnesses and three measures, and the middle one is what a heatmap usually gets
-    /// wrong: `z` has its own unit, so the colorbar labels itself `T [K]` off the same witness
-    /// the values were declared with (D49), and a `z` handed the x array does not compile.
-    ///
-    /// The cell size is derived rather than asked for, because it is a property of the grid and
-    /// not a choice: the smallest positive gap between two x values is the column pitch, and a
-    /// tile that size tessellates. `Chart.tile` takes the size for the case where the grid is
-    /// irregular and the caller knows what the cells are.
-    let heatmap
+    let internal heatmap
         (ux: U<'ux>)
         (uy: U<'uy>)
         (uz: U<'uz>)
@@ -1249,15 +1100,13 @@ module Chart =
         |> withStyle (fun st -> { st with FillOpacity = 1.0 })
         |> colorBy h.DensityUnit h.Density
 
-    /// `ofHexbin` over `Stat.hexbinWith across`.
-    let hexbinWith (ux: U<'ux>) (uy: U<'uy>) (across: int) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+    let internal hexbinWith (ux: U<'ux>) (uy: U<'uy>) (across: int) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         ofHexbin (Stat.hexbinWith ux uy across x y)
 
-    /// `ofHexbin` over `Stat.hexbin`: 24 hexagons across.
-    let hexbin (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+    let internal hexbin (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         ofHexbin (Stat.hexbin ux uy x y)
 
-    let sizeByWith (smallest: float<px>) (largest: float<px>) (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
+    let internal sizeByWith (smallest: float<px>) (largest: float<px>) (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
         let domain =
             match Scale.domainOf values with
             | Some d -> d
@@ -1265,9 +1114,7 @@ module Chart =
 
         withChannel "size" values.Length (Channel.sizeByValue "" smallest largest (Scale.linear u domain) values) fig
 
-    /// `sizeByWith` over a range centred on the theme's marker size: half of it to three times
-    /// it, which is a visible span without producing marks that swallow their neighbours.
-    let sizeBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
+    let internal sizeBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
         let m = fig.Theme.MarkerSize
         sizeByWith (m * 0.5) (m * 3.0) u values fig
 
