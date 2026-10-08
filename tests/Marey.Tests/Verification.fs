@@ -281,3 +281,52 @@ module ``the toolchain is complete when it is required to be`` =
                 Assert.True(reread (), sprintf "%A should turn the gate on" on)
         finally
             Environment.SetEnvironmentVariable(RequireVariable, original)
+
+// ======================================================================================
+// Gate 15 of `m4-plan.md` — the package count is one number
+// ======================================================================================
+
+/// **A test about the repository rather than the library.** Both workflows check that `dotnet
+/// pack` produced an expected number of packages, as a literal, so that a project nobody meant to
+/// publish cannot reach nuget.org by being added to the solution. Two literals drift: `ci.yml`
+/// said M2's seven from 0.2.0 until 0.3.0, while `publish.yml` was raised at every phase that
+/// added a package, and nothing noticed for six weeks because a failing example stopped every CI
+/// run before the pack check. Reading two workflow files is a thing a person does once; this
+/// does it on every run.
+module ``the package count is one number`` =
+
+    open System.IO
+    open System.Text.RegularExpressions
+
+    let private read (relative: string) =
+        File.ReadAllText(Path.Combine(Golden.repoRoot.Force(), relative))
+
+    let private literalIn (workflow: string) =
+        let m = Regex.Match(read workflow, "\[ \"\$count\" -eq (\d+) \]")
+        Assert.True(m.Success, sprintf "%s no longer checks the package count in the form this gate reads" workflow)
+        int m.Groups.[1].Value
+
+    /// The projects under `src/` in the solution whose project file does not opt out of packing.
+    /// `IsPackable` defaults to true for a library, so opting out is the only thing to look for.
+    let private packable () =
+        Regex.Matches(read "Marey.slnx", "Path=\"(src/[^\"]+\\.fsproj)\"")
+        |> Seq.map (fun m -> m.Groups.[1].Value)
+        |> Seq.filter (fun p -> not ((read p).Contains "<IsPackable>false</IsPackable>"))
+        |> Seq.toList
+
+    [<Fact>]
+    let ``both workflows expect the packages the solution packs`` () =
+        let projects = packable ()
+        let ci = literalIn ".github/workflows/ci.yml"
+        let publish = literalIn ".github/workflows/publish.yml"
+
+        Assert.True(
+            ci = projects.Length && publish = projects.Length,
+            sprintf
+                "the solution packs %d projects, ci.yml expects %d and publish.yml expects %d. Raise both literals \
+                 in the commit that makes a project packable.\n%s"
+                projects.Length
+                ci
+                publish
+                (String.concat "\n" projects)
+        )

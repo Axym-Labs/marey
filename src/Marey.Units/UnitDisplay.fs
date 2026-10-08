@@ -223,8 +223,14 @@ module UnitDisplay =
     /// the same vector is `J/K` and `N·m/K`, and picking one is a guess. `factors` is not a
     /// guess: it is what the caller wrote. The registry still wins, so `mul newton metre`
     /// remains `J` rather than becoming `N·m`.
+    /// The registry's name for a dimension — unless the factorisation carries an angle, which
+    /// the dimension cannot see (D98). `rad·s⁻¹` and `Hz` share `s⁻¹`; naming the first by the
+    /// second is a factor of 2π said confidently.
+    let private canonicalFor (registry: UnitRegistry) (factors: (string * int) list) (dim: Dim) =
+        if U.angleExponentOf "" factors <> 0 then None else UnitRegistry.tryCanonical registry dim
+
     let private bodyOfWith style (registry: UnitRegistry) (factors: (string * int) list) (dim: Dim) =
-        match UnitRegistry.tryCanonical registry dim with
+        match canonicalFor registry factors dim with
         | Some us -> symText style us
         | None when not (List.isEmpty factors) -> expandedBodyWith (factorSpelling registry) style factors
         | None -> expandedBody style (Dim.exponents dim)
@@ -289,7 +295,7 @@ module UnitDisplay =
             wrapQty style (bodyOfWith style registry factors dim)
         else
             let target =
-                match UnitRegistry.tryCanonical registry dim with
+                match canonicalFor registry factors dim with
                 | Some us -> Some(p, us)
                 | None ->
                     match Dim.exponents dim with
@@ -403,3 +409,43 @@ module UnitDisplay =
 
     let unitText<[<Measure>] 'u> (style: UnitStyle) (registry: UnitRegistry) (p: Prefix) (u: U<'u>) =
         unitTextErasedWith style registry p u.Symbol u.Factors u.Dim u.ToSI u.OffsetSI
+
+    /// A number already written, and the unit text it was written in: `2 kV·m⁻¹`, or the number
+    /// alone when the unit has no text. `quantityIn` ends here, and so does a live figure's
+    /// readout (D105), which has its unit text from the axis rather than from a witness.
+    let withUnit (unitText: string) (shown: string) : string =
+        if unitText = "" then shown else shown + " " + unitText
+
+    /// `quantity` under a prefix the caller has already chosen. A control chooses it once from
+    /// its range, so its label does not jump from `950 V` to `1.05 kV` in the middle of a drag.
+    let quantityIn<[<Measure>] 'u>
+        (style: UnitStyle)
+        (registry: UnitRegistry)
+        (prefix: Prefix)
+        (number: float -> string)
+        (u: U<'u>)
+        (v: float<'u>)
+        : string =
+        withUnit (unitText style registry prefix u) (number (float v / Prefix.factor prefix))
+
+    /// A value and its unit as one string: `2 kV·m⁻¹`, `300 K`, `0 rad`.
+    ///
+    /// The one place a single quantity is written for a reader. The quiver key (D87) and
+    /// `FixedPoint.describe` (D92) each had a private copy, and the two already disagreed on the
+    /// prefix; a control's label would have made a third. What the callers legitimately differ in
+    /// is an argument here rather than a reason to copy it: `prefixed` chooses the prefix the value
+    /// would be ticked in (`Prefix.selectForUnit`) or none, and `number` writes the scaled value,
+    /// because a key wants the shortest exact form and a description wants four places.
+    ///
+    /// A dimensionless value with no symbol is the number alone, with no trailing space.
+    let quantity<[<Measure>] 'u>
+        (style: UnitStyle)
+        (registry: UnitRegistry)
+        (prefixed: bool)
+        (number: float -> string)
+        (u: U<'u>)
+        (v: float<'u>)
+        : string =
+        let x = float v
+        let prefix = if prefixed then Prefix.selectForUnit u (x, x) else Prefix.none
+        quantityIn style registry prefix number u v

@@ -146,6 +146,17 @@ module ``D32 text escaping`` =
         Assert.Equal("\\textdegree{}C", Tikz.escapeText "°C")
         Assert.Equal("\\AA{}", Tikz.escapeText "Å")
 
+    /// A Greek quantity name is set in math italic, as physics writes one; µ and Ω keep the
+    /// upright unit forms they map to first.
+    [<Fact>]
+    let ``a Greek quantity name becomes a math-mode letter`` () =
+        Assert.Equal("\\ensuremath{\\theta} [rad]", Tikz.escapeText "θ [rad]")
+        Assert.Equal("\\ensuremath{\\omega}", Tikz.escapeText "ω")
+        Assert.Equal("\\ensuremath{\\rho}", Tikz.escapeText "ρ")
+        Assert.Equal("\\ensuremath{\\Delta}t", Tikz.escapeText "Δt")
+        Assert.Equal("\\textmu{}", Tikz.escapeText "μ")
+        Assert.Equal("\\textohm{}", Tikz.escapeText "Ω")
+
     /// Unicode has two codepoints for the ohm and for the angstrom, and two plausible ones for
     /// micro. `Marey.Units` uses one of each, but a caller pasting from a units table may supply
     /// the other, and setting it as a missing glyph would be a baffling bug.
@@ -304,7 +315,11 @@ module ``escaped text compiles`` =
           "\u2126 \u212B \u03BC" // the alternative codepoints
           "10⁻¹⁸·m²"
           "a – b — c ± d × e − f"
-          "T [°C] and 1000\u00A0m and 5\u2009mm" ]
+          "T [°C] and 1000\u00A0m and 5\u2009mm"
+          // Every Greek letter the escaper maps: a quantity's conventional name is Greek as often
+          // as not, and before D98's names `ρ` on a density axis already stopped the engine.
+          "θ [rad] ω [rad·s⁻¹] α ρ"
+          "αβγδεϵζηθϑικλνξπρσςτυφϕχψω ΓΔΘΛΞΠΣΥΦΨ" ]
 
     [<Fact>]
     let ``the engine accepts every escaped hostile string`` () =

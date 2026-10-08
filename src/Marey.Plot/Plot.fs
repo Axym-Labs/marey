@@ -93,6 +93,8 @@ type PlotSpec =
       Layers: (IGeomFor * (GeomStyle -> GeomStyle)) list
       /// The stat, if any. **One per block, not one per layer** — see `StatSpec`.
       Stat: StatSpec
+      /// D104 — the data's own name for each row, if the block states one with `key`.
+      Keys: string[] option
       /// D48 — the key this block facets by, if it facets.
       Facet: FacetSpec option
       /// D48 — which axes the panels share. `None` is `ShareBoth`, which is what a facet means;
@@ -117,6 +119,7 @@ module private PlotCompile =
         { Name = ""
           X = None
           Y = None
+          Keys = None
           Channels = []
           ColorLabel = ""
           Layers = []
@@ -238,6 +241,11 @@ module private PlotCompile =
         if not (List.isEmpty spec.Channels) then
             failwithf
                 "Marey: a `%s` block cannot carry a colour, size or shape channel. The stat changes the row count, so a per-row channel has nothing left to line up with (D47). Facet the block instead, or bin each group yourself and add the series."
+                what
+
+        if spec.Keys.IsSome then
+            failwithf
+                "Marey: a `%s` block cannot carry a `key`. The stat makes its own rows (bins, a curve, a staircase), and none of them is a row of the data, so there is nothing for a key to name (D104)."
                 what
 
         if not (List.isEmpty spec.Layers) then
@@ -363,7 +371,10 @@ module private PlotCompile =
                   // layer's own entry when the name is empty, which is the same rule the quick
                   // front door plays by.
                   ShowInLegend = i = 0
-                  Addressed = [||] })
+                  Addressed = [||]
+                  // D104 — every layer of the block draws the same rows, so every layer names
+                  // them the same way. The fit below draws two points of its own and has none.
+                  RowKeys = defaultArg spec.Keys [||] })
 
         // **The fitted line is a layer, and it is appended — the order is load-bearing** (D47).
         //
@@ -384,7 +395,8 @@ module private PlotCompile =
                       Style = restyle baseStyle
                       Channels = [||]
                       ShowInLegend = false
-                      Addressed = [||] } ]
+                      Addressed = [||]
+                      RowKeys = [||] } ]
             | _ -> layers
 
         let panel =
@@ -439,6 +451,7 @@ module private PlotCompile =
                 Frame = frame
                 X = spec.X |> Option.map (Erase.selectChannel rows)
                 Y = spec.Y |> Option.map (Erase.selectChannel rows)
+                Keys = spec.Keys |> Option.map (fun ks -> rows |> Array.map (fun i -> ks.[i]))
                 Channels = spec.Channels |> List.map (fun mk -> mk >> Channel.select rows) }
 
         let parts = Array.init n (fun i -> facet.Labels.[i], runOne (sliced i))
@@ -537,6 +550,16 @@ type PlotBuilder<'r>(rows: 'r[]) =
     member _.Y(spec: PlotSpec, u: U<'u>, f: 'r -> float<'u>) : PlotSpec =
         { spec with
             Y = Some(Erase.packChannel u (Array.map f rows)) }
+
+    /// **D104 — the data's own name for each row.** A mark is then keyed by it rather than by
+    /// its row, so it keeps its name when the data is edited, and a storyboard's morph pairs it
+    /// with the datum of the same name. Keys are formatted with `string`, and must be unique:
+    /// a duplicate is refused here, by name.
+    [<CustomOperation("key")>]
+    member _.Key(spec: PlotSpec, f: 'r -> 'k) : PlotSpec =
+        let keys = rows |> Array.map (fun r -> string (f r))
+        Keys.validate rows.Length keys
+        { spec with Keys = Some keys }
 
     // ---- Non-positional channels (D46, D49, D51) ----------------------------------------------
     //

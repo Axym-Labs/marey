@@ -112,6 +112,10 @@ type GeomOf<[<Measure>] 'p> =
     /// second case would be a second branch in every consumer for no difference in what is
     /// drawn.
     | GeomRect of x0: float<'p>[] * y0: float<'p>[] * x1: float<'p>[] * y1: float<'p>[]
+    /// D93 — a closed polygon per point, its vertices in data space and projected one by one,
+    /// so a hexagon's edges are straight on the panel whatever the axes. Filled and edged in the
+    /// fill's own paint, as a tile is, because polygons that tessellate must not draw a grid.
+    | GeomPolygon of xs: float<'p>[][] * ys: float<'p>[][]
     /// A line from each point to a second point.
     | GeomSegment of x1: float<'p>[] * y1: float<'p>[]
     /// A label per point, offset from it by a device-space vector.
@@ -133,6 +137,12 @@ type GeomOf<[<Measure>] 'p> =
     /// a batched subset draws the same image in the same place, which is correct rather than
     /// lucky. A channel over an image layer has nothing to say.
     | GeomImage of image: Image * bounds: Rect<'p> * smooth: bool
+    /// D86 — a field: a grid of values, drawn as a heatmap, contour lines or filled bands. The
+    /// one geom computed on the panel rather than from its points, because a raster's pixels and
+    /// a contour's vertices depend on where the panel's final scales put the nodes. The layer's
+    /// points are the nodes, so the axes cover the grid and a colour channel over the values
+    /// gets its colorbar exactly as a scatter's would.
+    | GeomField of field: FieldPayload<'p> * mark: FieldMark
 
 /// A geom in the series' data space — what every constructor returns and every `Layer` holds.
 type Geom = GeomOf<1>
@@ -438,6 +448,7 @@ module Geom =
         | GeomStep align -> GeomStep align
         | GeomRibbon(low, high) -> GeomRibbon(Array.map fy low, Array.map fy high)
         | GeomRect(x0, y0, x1, y1) -> GeomRect(Array.map fx x0, Array.map fy y0, Array.map fx x1, Array.map fy y1)
+        | GeomPolygon(xs, ys) -> GeomPolygon(Array.map (Array.map fx) xs, Array.map (Array.map fy) ys)
         | GeomSegment(x1, y1) -> GeomSegment(Array.map fx x1, Array.map fy y1)
         | GeomText(labels, anchor, baseline, offset) -> GeomText(labels, anchor, baseline, offset)
         | GeomBox(spans, w) ->
@@ -463,6 +474,40 @@ module Geom =
                   Y1 = fy r.Y1 },
                 smooth
             )
+        | GeomField(f, mark) ->
+            // A vector's components become its direction on the panel: each times its scale's
+            // derivative at the node, by a central difference a thousandth of the node spacing
+            // wide. Linear axes make that a constant; a log axis makes it 1/x, which is what keeps
+            // an arrow tangent to the streamline through its node.
+            let slope (forward: float -> float<nd>) (nodes: float[]) =
+                nodes
+                |> Array.mapi (fun i c ->
+                    let near =
+                        [| if i > 0 then yield c - nodes.[i - 1]
+                           if i < nodes.Length - 1 then yield nodes.[i + 1] - c |]
+                        |> Array.min
+
+                    let hh = 1e-3 * near
+                    float (forward (c + hh) - forward (c - hh)) / (2.0 * hh))
+
+            let nx = f.Xs.Length
+
+            let u, w =
+                if f.U.Length = 0 then
+                    [||], [||]
+                else
+                    let sx = slope fx f.Xs
+                    let sy = slope fy f.Ys
+                    Array.init f.U.Length (fun k -> f.U.[k] * sx.[k % nx]), Array.init f.W.Length (fun k -> f.W.[k] * sy.[k / nx])
+
+            GeomField(
+                { Xs = Array.map fx f.Xs
+                  Ys = Array.map fy f.Ys
+                  Values = f.Values
+                  U = u
+                  W = w },
+                mark
+            )
 
     /// A geom put on the panel its **own** series' scales describe — what a figure would give it
     /// if nothing else shared the panel. For drawing a geom outside a figure; inside one,
@@ -474,6 +519,56 @@ module Geom =
             geom
 
     // ---- Compilation ---------------------------------------------------------------------
+
+    /// D86 — draw a field layer, given the colour each value takes. `Figure.fs` passes the
+    /// layer's colour channel through its own quantiser, so the heatmap, its contours and its
+    /// colorbar take every colour from the same call (D91, gate 7). Without a channel, every
+    /// value is the layer's colour.
+    ///
+    /// `plotSize`, `measurer` and `background` are for the arrows (D87): the quiver's length
+    /// scale is chosen in pixels against the grid's pitch, and its key is measured and set on a
+    /// box of the panel's colour.
+    let compileField
+        (coord: Coord)
+        (plotSize: Extent<px>)
+        (measurer: ITextMeasurer)
+        (background: Color)
+        (st: GeomStyle)
+        (colourOf: float -> Color option)
+        (field: FieldPayload<nd>)
+        (mark: FieldMark)
+        : Node =
+        let mapPt (v: Vec2<nd>) = if Coord.isIdentity coord then v else coord.ToPanel v
+
+        let stroke =
+            { Paint = Solid(Color.withAlpha (st.Color.A * st.Opacity) st.Color)
+              Width = st.Width
+              Dash = st.Dash
+              DashOffset = 0.0<px>
+              Cap = st.Cap
+              Join = st.Join
+              MiterLimit = 4.0 }
+
+        match mark with
+        | FieldQuiver key -> FieldMarks.arrows mapPt measurer plotSize background stroke st.Font colourOf false key field
+        | FieldDirections -> FieldMarks.arrows mapPt measurer plotSize background stroke st.Font colourOf true None field
+        | FieldStreamlines separation -> FieldMarks.streamlines mapPt plotSize stroke colourOf separation field
+        | FieldLic options -> FieldMarks.lic plotSize colourOf options field
+        | FieldHeatmap smooth -> FieldMarks.heatmap colourOf smooth field
+        | FieldContours levels ->
+            FieldMarks.contours
+                mapPt
+                { Paint = Solid(Color.withAlpha (st.Color.A * st.Opacity) st.Color)
+                  Width = st.Width
+                  Dash = st.Dash
+                  DashOffset = 0.0<px>
+                  Cap = st.Cap
+                  Join = st.Join
+                  MiterLimit = 4.0 }
+                colourOf
+                levels
+                field
+        | FieldBands levels -> FieldMarks.bands mapPt st.FillOpacity colourOf levels field
 
     let private strokeOf (st: GeomStyle) =
         { Paint = Solid(Color.withAlpha (st.Color.A * st.Opacity) st.Color)
@@ -548,7 +643,7 @@ module Geom =
     /// point. Phase 2 introduced that hazard for `GeomErrorY` and `GeomErrorX`; phase 6 would
     /// have introduced it six more times.
     let rec private compileWith
-        (address: (Key * int[]) option)
+        (address: ((int -> Key) * int[]) option)
         (spacing: float option)
         (sel: int[] option)
         (coord: Coord)
@@ -618,7 +713,7 @@ module Geom =
                     match address with
                     | None -> batch (kept |> Array.map snd)
                     | Some(_, rows) when rows.Length = 0 -> batch (kept |> Array.map snd)
-                    | Some(layerKey, rows) ->
+                    | Some(markKey, rows) ->
                         let wanted = Set.ofArray rows
                         let out = ResizeArray<Node>()
                         let run = ResizeArray<Vec2<nd>>()
@@ -631,7 +726,7 @@ module Geom =
                         for r, p in kept do
                             if wanted.Contains r then
                                 flush ()
-                                out.Add(Keyed(Keys.mark layerKey r, batch [| p |]))
+                                out.Add(Keyed(markKey r, batch [| p |]))
                             else
                                 run.Add p
 
@@ -886,6 +981,36 @@ module Geom =
                         NonZero
                     )
 
+            | GeomPolygon(xs, ys) ->
+                let segs =
+                    [| for i in 0 .. pts.Length - 1 do
+                           let k = row i
+
+                           if k < xs.Length && k < ys.Length && xs.[k].Length = ys.[k].Length && xs.[k].Length >= 3 then
+                               let corners = Array.map2 at xs.[k] ys.[k]
+
+                               if Array.forall finite corners then
+                                   yield MoveTo(mapPt corners.[0])
+
+                                   for c in 1 .. corners.Length - 1 do
+                                       yield LineTo(mapPt corners.[c])
+
+                                   yield ClosePath |]
+
+                if segs.Length = 0 then
+                    Scene.empty
+                else
+                    // The fill's paint on the edge too, for `GeomRect`'s reason.
+                    Path(
+                        segs,
+                        Some
+                            { stroke with
+                                Paint = fillOf st
+                                Width = stroke.Width * 0.5 },
+                        Some(fillOf st),
+                        NonZero
+                    )
+
             | GeomSegment(x1s, y1s) ->
                 let segs =
                     [| for i in 0 .. pts.Length - 1 do
@@ -1040,6 +1165,12 @@ module Geom =
                           Bounds = box
                           Smooth = smooth }
 
+            | GeomField(field, mark) ->
+                // Without a channel to colour it, a field is drawn in the layer's own colour.
+                // `Figure.fs` routes a channelled field layer to `compileField` directly, so that
+                // it is drawn once rather than once per colour batch.
+                compileField coord plotSize TextMeasure.approx Color.white st (fun v -> if finiteNum v then Some st.Color else None) field mark
+
             | GeomViolin(profiles, widthFraction) ->
                 let half = (defaultArg spacing (medianSpacing pts)) * widthFraction * 0.5
 
@@ -1087,7 +1218,8 @@ module Geom =
     /// draws the whole layer, which is not the same thing as `Some [| 0 .. n - 1 |]` — see the
     /// spacing note below.
     ///
-    /// `address` is D69's **named rows**, with the layer key their names hang from. Only
+    /// `address` is D69's **named rows**, with the key each one's node carries: `Keys.mark` by
+    /// row, or `Keys.datum` when the data supplied keys (D104). Only
     /// `GeomPoint` can honour it, because `Markers` is the only node in this file that batches
     /// N data points into one; a `Path` is one shape, not a batch of marks, and splitting it in
     /// three would change the joins between the pieces rather than name one of them.
@@ -1096,7 +1228,7 @@ module Geom =
     /// are two names for one body rather than two bodies, which is the shape D72 arrived at the
     /// hard way in `Figure.fs`.
     let compileFor
-        (address: (Key * int[]) option)
+        (address: ((int -> Key) * int[]) option)
         (indices: int[] option)
         (coord: Coord)
         (plotSize: Extent<px>)
@@ -1124,10 +1256,13 @@ module Geom =
                 | GeomStep _
                 | GeomRibbon _
                 | GeomRect _
+                | GeomPolygon _
                 | GeomSegment _
                 | GeomText _
-                // An image occupies a stated box and has no rhythm to read.
-                | GeomImage _ -> None
+                // An image occupies a stated box and has no rhythm to read, and a field is drawn
+                // from its grid rather than from its points.
+                | GeomImage _
+                | GeomField _ -> None
 
             compileWith address spacing (Some ix) coord plotSize st geom (ix |> Array.map (fun i -> all.[i]))
 
@@ -1164,6 +1299,7 @@ module Geom =
         | GeomBar _
         | GeomRibbon _
         | GeomRect _
+        | GeomPolygon _
         | GeomBox _
         | GeomViolin _ -> LegendSwatch
         // A text layer's mark is its colour and nothing else: the labels *are* the data, so a
@@ -1176,3 +1312,10 @@ module Geom =
         // and an unnamed layer gets no legend entry, so this is reached only by a caller who
         // named one deliberately — and a swatch is then the least wrong of the four marks.
         | GeomImage _ -> LegendSwatch
+        // Contour lines are lines; a heatmap and its bands are areas of colour. A field layer is
+        // usually unnamed and so absent from the legend — its colour is the colorbar's to explain.
+        | GeomField(_, FieldContours _)
+        | GeomField(_, FieldQuiver _)
+        | GeomField(_, FieldDirections)
+        | GeomField(_, FieldStreamlines _) -> LegendLine st.Dash
+        | GeomField _ -> LegendSwatch

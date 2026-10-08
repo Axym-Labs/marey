@@ -170,7 +170,8 @@ module CategoricalAxes =
           Style = Geom.styleFor Theme.initial i
           Channels = [||]
           ShowInLegend = false
-          Addressed = [||] }
+          Addressed = [||]
+          RowKeys = [||] }
 
     /// The whole point of D45, rendered: a bar per level, a named tick per band, and no
     /// configuration beyond the level set.
@@ -1263,10 +1264,16 @@ module Keying =
         Assert.Equal<string list>(
             [ "figure"
               "figure/panel-0-0"
+              "figure/panel-0-0/grid"
               "figure/panel-0-0/layer-0"
               "figure/panel-0-0/layer-1"
+              "figure/panel-0-0/axis-x"
+              "figure/panel-0-0/axis-y"
               "figure/panel-0-1"
-              "figure/panel-0-1/layer-0" ],
+              "figure/panel-0-1/grid"
+              "figure/panel-0-1/layer-0"
+              "figure/panel-0-1/axis-x"
+              "figure/panel-0-1/axis-y" ],
             keysOf (Chart.toScene surface fig)
         )
 
@@ -1284,7 +1291,14 @@ module Keying =
         let scene = Chart.toScene surface (fig |> Chart.withName "measured")
 
         Assert.Equal<string list>(
-            [ "figure"; "figure/panel-0-0"; "figure/panel-0-0/layer-0"; "figure/panel-0-0/layer-1" ],
+            [ "figure"
+              "figure/panel-0-0"
+              "figure/panel-0-0/grid"
+              "figure/panel-0-0/layer-0"
+              "figure/panel-0-0/layer-1"
+              "figure/panel-0-0/axis-x"
+              "figure/panel-0-0/axis-y"
+              "figure/panel-0-0/legend" ],
             keysOf scene
         )
 
@@ -1299,7 +1313,9 @@ module Keying =
     /// re-theming and a change of values — which is what an animation does between frames.
     [<Fact>]
     let ``keys survive a restyle, a rename and a change of values`` () =
-        let before = Chart.toScene surface (Chart.line U.second U.metre fallT fallX)
+        // Named in both, so both have a legend: naming a layer for the first time adds one,
+        // and a legend appearing is a change of structure rather than of identity.
+        let before = Chart.toScene surface (Chart.line U.second U.metre fallT fallX |> Chart.withName "original")
 
         let after =
             Chart.line U.second U.metre fallT (fallX |> Array.map (fun x -> x * 0.5))

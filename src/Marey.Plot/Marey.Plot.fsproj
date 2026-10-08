@@ -19,6 +19,7 @@
     <Compile Include="Layout.fs" />
     <Compile Include="Axes.fs" />
     <Compile Include="Legend.fs" />
+    <Compile Include="FieldMarks.fs" />
     <Compile Include="Geom.fs" />
     <Compile Include="Channel.fs" />
     <Compile Include="Colorbar.fs" />

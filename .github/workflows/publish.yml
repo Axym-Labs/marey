@@ -1,6 +1,6 @@
 name: Publish
 
-# Publishes the twelve packages to nuget.org using **trusted publishing**: GitHub mints a
+# Publishes the fourteen packages to nuget.org using **trusted publishing**: GitHub mints a
 # short-lived OIDC token, nuget.org validates it against a policy you registered and hands back
 # an API key valid for one hour. No long-lived secret is stored in this repository.
 #
@@ -138,7 +138,7 @@ jobs:
             -p:Version=${{ steps.version.outputs.value }} \
             -p:ContinuousIntegrationBuild=true
 
-      # As in ci.yml, and it matters more here: this is the run that decides whether twelve
+      # As in ci.yml, and it matters more here: this is the run that decides whether fourteen
       # packages go to nuget.org. A toolchain gate that skipped would publish on a green tick
       # that never compiled a document, encoded a frame or typeset a formula.
       - name: Test
@@ -154,7 +154,9 @@ jobs:
       - name: Check the packages before anything leaves the machine
         run: |
           set -e
-          # Twelve since M3 phase 8, which published Marey.Tools.Tex. Eleven since phase 6,
+          # Fourteen since M4.5 phase 2, which published Marey.Interact. Thirteen since M4 phase 2,
+          # which published Marey.Fields. Twelve since M3 phase 8, which
+          # published Marey.Tools.Tex. Eleven since phase 6,
           # which published Marey.Tools.Video and — because a published package may not depend
           # on an unpublished one — Marey.Toolchain with it. Nine since M3 phase 3 published
           # Marey.Anim; eight before that, when M2.5 added Marey.Backend.Skia. The literal is
@@ -162,7 +164,7 @@ jobs:
           # automatically, and a count that has to be edited by hand is what stops one
           # appearing on nuget.org because somebody added an .fsproj.
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 12 ] || { echo "::error::expected 12 packages, packed $count"; exit 1; }
+          [ "$count" -eq 14 ] || { echo "::error::expected 14 packages, packed $count"; exit 1; }
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
             grep -q "<version>${{ steps.version.outputs.value }}</version>" /tmp/nuspec.xml \

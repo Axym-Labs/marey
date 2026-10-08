@@ -17,6 +17,7 @@
   <ItemGroup>
     <!-- Compile order is the layer order. Do not reorder without reading the design document §2-§5. -->
     <Compile Include="Num.fs" />
+    <Compile Include="Random.fs" />
     <Compile Include="Tex.fs" />
     <Compile Include="Space.fs" />
     <Compile Include="Dim.fs" />

@@ -4,7 +4,7 @@
 
 ```
 dotnet build          # warning-free; warnings are errors
-dotnet test           # 1121 tests
+dotnet test           # 1379 tests
 ```
 
 `TreatWarningsAsErrors` is on for every project, set in `Directory.Build.props`. It is not
@@ -70,13 +70,14 @@ The package list and the reason for each entry are in `.github/tex-packages.txt`
 
 ## Golden baselines
 
-46 baselines, in SVG *and* `tikzpicture` source, tracked under `tests/Marey.Tests/golden/`. They
+57 baselines, in SVG *and* `tikzpicture` source, tracked under `tests/Marey.Tests/golden/`. They
 are text and are meant to be reviewed as a diff — that is why both formats were chosen.
 
-There is exactly one binary baseline, `figure-image.png`, and it is the sidecar half of a pair:
-`figure-image.tex` names a file and this is that file, so the two only mean anything together.
-Its bytes come from Marey's own zero-dependency PNG encoder over a hand-written pixel array, so
-nothing outside the repository can move them. **There is no PNG baseline of a rendered figure**,
+There are exactly two binary baselines, and each is the sidecar half of a pair: a `.tex` names a
+file and the `.png` is that file, so the two only mean anything together. `figure-image.png` is a
+hand-written pixel array; `figure-field-lic.png` is a line-integral convolution computed from a
+stated seed with nothing but IEEE arithmetic. Both are written by Marey's own zero-dependency PNG
+encoder, so nothing outside the repository can move them. **There is no PNG baseline of a rendered figure**,
 and there will not be: a bitmap is not reviewable in a diff and would break on a Skia version
 bump for reasons unrelated to Marey. The raster backend is covered by structure, determinism and
 ink instead.

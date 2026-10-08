@@ -725,3 +725,291 @@ module Block =
         let a = Chart.render SvgBackend.render Chart.defaultSize (build ())
         let b = Chart.render SvgBackend.render Chart.defaultSize (build ())
         Assert.Equal(a, b)
+
+// ======================================================================================
+// M4 phase 8 — hexbin (D93)
+// ======================================================================================
+
+module ``hexbin`` =
+
+    /// A seeded two-dimensional normal sample, by Box–Muller over `Rng`: x in metres with a
+    /// spread of 2 m, y in seconds with a spread of 0.5 s.
+    let private sample (n: int) =
+        let us, _ = Rng.units (2 * n) (Rng.seeded 7UL)
+
+        Array.init n (fun i ->
+            let a, b = us.[2 * i], us.[2 * i + 1]
+            let r = sqrt (-2.0 * log (1.0 - a))
+            r * cos (2.0 * System.Math.PI * b) * 2.0<m>, r * sin (2.0 * System.Math.PI * b) * 0.5<s>)
+        |> Array.unzip
+
+    let private xs, ys = sample 2000
+    let private h = Stat.hexbin U.metre U.second xs ys
+
+    /// Ray casting, independent of how the stat assigned anything.
+    let private inside (px: float) (py: float) (poly: (float * float)[]) =
+        let mutable odd = false
+        let n = poly.Length
+
+        for k in 0 .. n - 1 do
+            let x1, y1 = poly.[k]
+            let x2, y2 = poly.[(k + 1) % n]
+
+            if (y1 > py) <> (y2 > py) && px < x1 + (py - y1) * (x2 - x1) / (y2 - y1) then
+                odd <- not odd
+
+        odd
+
+    /// **Each point lies in the hexagon the figure draws for its cell.** The drawn polygons come
+    /// from `Chart.ofHexbin`'s layer, so the assignment and the geometry are checked against
+    /// each other, not against a second copy of the same arithmetic.
+    [<Fact>]
+    let ``every point is inside the hexagon drawn for its cell`` () =
+        let polygons =
+            match (Chart.ofHexbin h).Panels.[0].Layers.[0].Geom with
+            | GeomPolygon(px, py) -> Array.map2 Array.zip px py
+            | g -> failwithf "a hexbin is drawn as %A" g
+
+        Assert.Equal(h.X.Length, polygons.Length)
+
+        let cellOf (x: float) (y: float) =
+            polygons |> Array.tryFindIndex (inside x y)
+
+        for i in 0 .. xs.Length - 1 do
+            match cellOf (float xs.[i]) (float ys.[i]) with
+            | None -> failwithf "(%g, %g) is in no drawn hexagon" (float xs.[i]) (float ys.[i])
+            | Some _ -> ()
+
+        // And the counts are the drawn hexagons' point counts.
+        let counted = Array.zeroCreate polygons.Length
+
+        for i in 0 .. xs.Length - 1 do
+            match cellOf (float xs.[i]) (float ys.[i]) with
+            | Some c -> counted.[c] <- counted.[c] + 1
+            | None -> ()
+
+        Assert.Equal<int[]>(h.Counts, counted)
+
+    /// The density is a probability density in 1/(m·s): its integral over the cells is 1.
+    [<Fact>]
+    let ``the density integrates to one, in 1/(x·y)`` () =
+        let area = h.Width * h.RowSpacing
+        let total: float = h.Density |> Array.sumBy (fun d -> d * area)
+        Assert.True(abs (total - 1.0) < 1e-12, sprintf "∫ = %g" total)
+        Assert.Equal(2000, h.Counts |> Array.sum)
+
+        let d: float<1 / (m * s)> = h.Density.[0]
+        Assert.True(d > 0.0<_>)
+        Assert.Equal("m⁻¹·s⁻¹", UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none h.DensityUnit)
+
+    /// A uniform sample has a flat density, equal to one over the region's area.
+    [<Fact>]
+    let ``a uniform sample has the density of its region`` () =
+        let n = 120
+        let gx = [| for _ in 0 .. n - 1 do for i in 0 .. n - 1 -> (float i + 0.5) / float n * 4.0<m> |]
+        let gy = [| for j in 0 .. n - 1 do for _ in 0 .. n - 1 -> (float j + 0.5) / float n * 2.0<m> |]
+        let u = Stat.hexbinWith U.metre U.metre 8 gx gy
+
+        // Interior cells only: a cell on the boundary is partly outside the region.
+        let interior =
+            Array.init u.X.Length id
+            |> Array.filter (fun k ->
+                u.X.[k] > u.Width && u.X.[k] < 4.0<m> - u.Width && u.Y.[k] > u.RowSpacing && u.Y.[k] < 2.0<m> - u.RowSpacing)
+
+        Assert.True(interior.Length > 10)
+
+        for k in interior do
+            Assert.True(abs (float u.Density.[k] - 1.0 / 8.0) < 0.1 / 8.0, sprintf "%g at (%g, %g)" (float u.Density.[k]) (float u.X.[k]) (float u.Y.[k]))
+
+    [<Fact>]
+    let ``non-finite points are dropped and counted`` () =
+        let g = Stat.hexbin U.metre U.second (Array.append xs [| nan * 1.0<m> |]) (Array.append ys [| 0.0<s> |])
+        Assert.Equal(1, g.Dropped)
+        Assert.Equal(2000, g.N)
+
+    [<Fact>]
+    let ``golden: a hexbin with a colorbar in m⁻¹·s⁻¹ (svg)`` () =
+        let fig = Chart.ofHexbin h |> Chart.withTitle "A two-dimensional normal sample"
+        Golden.check "figure-hexbin.svg" (Chart.render SvgBackend.render (Chart.size 480.0 300.0) fig)
+
+// ======================================================================================
+// M4 phase 8 — loess
+// ======================================================================================
+
+module ``loess`` =
+
+    /// Unevenly spaced x in seconds, from a seed.
+    let private xs =
+        let gaps, _ = Rng.units 60 (Rng.seeded 11UL)
+        gaps |> Array.scan (fun acc g -> acc + 0.05 + g) 0.0 |> Array.map (fun v -> v * 1.0<s>)
+
+    let private close (tol: float) (a: float) (b: float) = abs (a - b) <= tol * (1.0 + abs b)
+
+    /// **A local fit of degree d reproduces a polynomial of degree d exactly**, at every span and
+    /// on uneven spacing — the property that pins weighted least squares down, whatever the
+    /// weights. Degree 1 on a line, degree 2 on a quadratic.
+    [<Theory>]
+    [<InlineData(1, 0.3)>]
+    [<InlineData(1, 0.75)>]
+    [<InlineData(2, 0.2)>]
+    [<InlineData(2, 0.75)>]
+    [<InlineData(2, 1.5)>]
+    let ``a polynomial of the fit's degree is reproduced exactly`` (degree: int) (span: float) =
+        let f (t: float<s>) =
+            let t = float t
+            (if degree = 1 then 3.0 - 0.7 * t else 3.0 - 0.7 * t + 0.11 * t * t) * 1.0<m>
+
+        let at = [| 0.0<s>; 1.3<s>; 7.77<s>; xs.[xs.Length - 1] |]
+        let l = Stat.loessIn U.second U.metre span degree at xs (xs |> Array.map f)
+
+        for k in 0 .. at.Length - 1 do
+            let fitted: float<m> = l.Y.[k]
+            Assert.True(close 1e-9 (float fitted) (float (f at.[k])), sprintf "at %g: %g, not %g" (float at.[k]) (float fitted) (float (f at.[k])))
+
+    /// And it is local: a quadratic fit does not reproduce a cubic, and a smaller span follows it
+    /// more closely than a larger one.
+    [<Fact>]
+    let ``a cubic is followed more closely by a smaller span`` () =
+        let f (t: float<s>) = (pown (float t - 15.0) 3 / 100.0) * 1.0<m>
+        let ys = xs |> Array.map f
+
+        let error span =
+            let l = Stat.loessWith U.second U.metre span 40 xs ys
+            Array.map2 (fun x y -> abs (float y - float (f x))) l.X l.Y |> Array.max
+
+        Assert.True(error 0.75 > 1e-3, "a local quadratic reproduced a cubic")
+        Assert.True(error 0.2 < error 0.75, sprintf "span 0.2: %g, span 0.75: %g" (error 0.2) (error 0.75))
+
+    /// It smooths: over noisy samples of a sine, the curve is closer to the sine than the samples
+    /// are.
+    [<Fact>]
+    let ``noise is smoothed toward the signal`` () =
+        let noise, _ = Rng.units xs.Length (Rng.seeded 3UL)
+        let truth (t: float<s>) = sin (float t / 5.0) * 1.0<m>
+        let ys = Array.map2 (fun x e -> truth x + (e - 0.5) * 0.8<m>) xs noise
+        let l = Stat.loessIn U.second U.metre 0.3 2 xs xs ys
+        let rms (a: float<m>[]) = sqrt (Array.map2 (fun x v -> (float v - float (truth x)) ** 2.0) xs a |> Array.average)
+        Assert.True(rms l.Y < 0.5 * rms ys, sprintf "curve %g against samples %g" (rms l.Y) (rms ys))
+
+    [<Fact>]
+    let ``non-finite pairs are dropped and counted, and nonsense refused`` () =
+        let ys = xs |> Array.map (fun t -> float t * 1.0<m>)
+        let l = Stat.loess U.second U.metre (Array.append xs [| nan * 1.0<s> |]) (Array.append ys [| 1.0<m> |])
+        Assert.Equal(1, l.Dropped)
+        Assert.Equal(xs.Length, l.N)
+        Assert.Equal(Stat.DefaultLoessPoints, l.X.Length)
+        Assert.Throws<System.ArgumentException>(fun () -> Stat.loessIn U.second U.metre 0.0 2 xs xs ys |> ignore) |> ignore
+        Assert.Throws<System.ArgumentException>(fun () -> Stat.loessIn U.second U.metre 0.5 3 xs xs ys |> ignore) |> ignore
+
+    [<Fact>]
+    let ``addLoess draws the curve as a second layer`` () =
+        let ys = xs |> Array.map (fun t -> sin (float t / 5.0) * 1.0<m>)
+        let fig = Chart.scatter U.second U.metre xs ys |> Chart.addLoess U.second U.metre xs ys
+        Assert.Equal(2, fig.Panels.[0].Layers.Length)
+        Assert.Equal(Stat.DefaultLoessPoints, Erase.seriesLength fig.Panels.[0].Layers.[1].Data)
+
+    /// The weights and the neighbourhood, pinned against the closed form of a weighted straight-
+    /// line fit, computed here independently of the library's solver: q = ⌊span·n⌋ nearest
+    /// points, h the q-th nearest distance, tricube weights (1 − (d/h)³)³.
+    [<Theory>]
+    [<InlineData(0.6)>]
+    [<InlineData(1.0)>]
+    [<InlineData(1.4)>]
+    let ``a local line is the tricube-weighted least-squares line`` (span: float) =
+        let px = [| 0.0; 0.4; 1.1; 1.5; 2.6; 3.0; 3.3; 4.9; 5.2; 6.0 |]
+        let py = [| 1.0; 0.2; 2.5; 1.9; 0.4; 3.1; 2.2; 4.0; 1.0; 2.8 |]
+
+        let expected (x0: float) =
+            let n = px.Length
+            let q = int (floor (span * float n + 1e-5)) |> min n
+            let d = px |> Array.map (fun x -> abs (x - x0))
+            let h = (Array.sort d).[q - 1] * max 1.0 span
+            let w = d |> Array.map (fun di -> if di < h then (1.0 - (di / h) ** 3.0) ** 3.0 else 0.0)
+            let sw = Array.sum w
+            let mx = Array.fold2 (fun acc wi xi -> acc + wi * xi) 0.0 w px / sw
+            let my = Array.fold2 (fun acc wi yi -> acc + wi * yi) 0.0 w py / sw
+            let sxy = Array.init n (fun i -> w.[i] * (px.[i] - mx) * (py.[i] - my)) |> Array.sum
+            let sxx = Array.init n (fun i -> w.[i] * (px.[i] - mx) ** 2.0) |> Array.sum
+            my + sxy / sxx * (x0 - mx)
+
+        let at = [| 0.0; 0.7; 2.0; 3.3; 5.5; 6.0 |]
+        let l = Stat.loessIn U.one U.one span 1 at px py
+
+        for k in 0 .. at.Length - 1 do
+            Assert.True(close 1e-9 (float l.Y.[k]) (expected at.[k]), sprintf "at %g: %g, not %g" at.[k] (float l.Y.[k]) (expected at.[k]))
+
+// ======================================================================================
+// M4 phase 8 — bootstrap intervals (D95's second consumer)
+// ======================================================================================
+
+module ``bootstrap`` =
+
+    /// n normal draws in metres, mean 5 m and spread 2 m, from a seed, by Box–Muller.
+    let private normal (seed: uint64) (n: int) =
+        let us, _ = Rng.units (2 * n) (Rng.seeded seed)
+        Array.init n (fun i -> (5.0 + 2.0 * sqrt (-2.0 * log (1.0 - us.[2 * i])) * cos (2.0 * System.Math.PI * us.[2 * i + 1])) * 1.0<m>)
+
+    let private mean (xs: float<m>[]) = Array.average xs
+    let private sample = normal 1UL 40
+
+    /// **Gate 11, the bootstrap's half.** A seed names one interval: two calls agree, so do four
+    /// at once on the thread pool, and another seed gives another interval.
+    [<Fact>]
+    let ``the same seed gives the same interval, and another seed does not`` () =
+        let a = Stat.bootstrap 42UL mean sample
+        let b = Stat.bootstrap 42UL mean sample
+        Assert.Equal(a, b)
+
+        for c in Array.Parallel.init 4 (fun _ -> Stat.bootstrap 42UL mean sample) do
+            Assert.Equal(a, c)
+
+        let d = Stat.bootstrap 43UL mean sample
+        Assert.True(d.Lo <> a.Lo || d.Hi <> a.Hi, "seed 43 gave seed 42's interval")
+        Assert.Equal(42UL, a.Seed)
+
+    /// It covers what it claims: over 300 independent samples, a 90% interval for the mean
+    /// contains the true mean about 90% of the time. The percentile interval runs slightly narrow
+    /// at n = 40, so the band is 84–95%; three binomial standard deviations either side is 85–95%.
+    [<Fact>]
+    let ``a 90% interval covers the mean about 90% of the time`` () =
+        let trials = 300
+
+        let hits =
+            Array.init trials (fun t ->
+                let i = Stat.bootstrapWith (uint64 (1000 + t)) 400 0.90 mean (normal (uint64 (5000 + t)) 40)
+                i.Lo <= 5.0<m> && 5.0<m> <= i.Hi)
+            |> Array.filter id
+            |> Array.length
+
+        let coverage = float hits / float trials
+        Assert.True(coverage >= 0.84 && coverage <= 0.95, sprintf "coverage %g" coverage)
+
+    /// And it is as wide as theory says: for a mean, about 2 · 1.96 · s/√n at 95%.
+    [<Fact>]
+    let ``a 95% interval for a mean is as wide as the normal theory says`` () =
+        let i = Stat.bootstrap 7UL mean sample
+        let s = sqrt ((sample |> Array.sumBy (fun x -> float ((x - mean sample) * (x - mean sample)))) / 39.0)
+        let theory = 2.0 * 1.96 * s / sqrt 40.0
+        let width = float (i.Hi - i.Lo)
+        Assert.True(abs (width / theory - 1.0) < 0.15, sprintf "width %g against %g" width theory)
+        Assert.Equal(mean sample, i.Estimate)
+        Assert.True(i.Lo < i.Estimate && i.Estimate < i.Hi)
+
+    /// The unit survives: a pairs bootstrap of a regression slope of metres against seconds is
+    /// an interval in m/s, by type.
+    [<Fact>]
+    let ``a slope's interval is in metres per second`` () =
+        let ts = Array.init 30 (fun i -> float i * 0.5<s>)
+        let noise, _ = Rng.units 30 (Rng.seeded 9UL)
+        let xs = Array.map2 (fun t e -> 1.5<m / s> * t + (e - 0.5) * 1.0<m>) ts noise
+        let slope (t: float<s>[]) (x: float<m>[]) = (Stat.regression U.second U.metre t x).Slope
+        let i = Stat.bootstrapPairs 3UL slope ts xs
+        let lo: float<m / s> = i.Lo
+        Assert.True(lo < 1.5<m / s> && 1.5<m / s> < i.Hi, sprintf "[%g, %g]" (float i.Lo) (float i.Hi))
+
+    [<Fact>]
+    let ``non-finite values are dropped before resampling, and nonsense refused`` () =
+        let i = Stat.bootstrap 1UL mean (Array.append sample [| nan * 1.0<m> |])
+        Assert.Equal(mean sample, i.Estimate)
+        Assert.Throws<System.ArgumentException>(fun () -> Stat.bootstrapWith 1UL 0 0.95 mean sample |> ignore) |> ignore
+        Assert.Throws<System.ArgumentException>(fun () -> Stat.bootstrapWith 1UL 100 1.0 mean sample |> ignore) |> ignore

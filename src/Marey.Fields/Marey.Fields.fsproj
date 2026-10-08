@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- §8 and `m4-plan.md`: fields as functions with a dimensioned domain and codomain, sampled
+         onto grids (D85), with the derived quantities whose units the type system works out
+         (D84). The geoms that draw them arrive in later phases, which is why this references
+         `Marey.Plot` from the start.
+
+         netstandard2.1 and Fable-compatible, like Core: no `System.Math` call Fable lacks, no
+         `Array.BinarySearch`, no reflection. NOTHING may be added to <PackageReference>. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Marey.Fields</AssemblyName>
+    <RootNamespace>Marey</RootNamespace>
+    <Description>Fields for Marey: scalar and vector fields on dimensioned planes, sampled onto grids, with gradient, divergence, curl and the Jacobian in the units the types work out. A phase space with a different unit on each axis is a first-class domain.</Description>
+    <PackageTags>fsharp visualization plotting fields vector-field streamlines contour units-of-measure scientific</PackageTags>
+
+    <!-- **Published from M4 phase 2**, D64's rule as `Marey.Anim` applied it: a package ships
+         with a producer. Phase 1 could sample and differentiate a field and not draw one; phase
+         2's heatmap, contours and bands are the first picture. Both workflows' package counts
+         went 12 -> 13 in the same commit, and gate 15 (`Verification.fs`) is what holds them to
+         the number of packable projects. -->
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Grid.fs" />
+    <Compile Include="Field.fs" />
+    <Compile Include="Phase.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
+    <ProjectReference Include="..\Marey.Plot\Marey.Plot.fsproj" />
+  </ItemGroup>
+
+</Project>

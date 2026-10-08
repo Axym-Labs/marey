@@ -91,6 +91,26 @@ module U =
     /// Order is first-appearance, left operand first, so `div volt metre` reads `V·m⁻¹` rather
     /// than `m⁻¹·V`: a caller who wrote a numerator first expects to read it first, and nothing
     /// downstream re-sorts.
+    /// D98 — how many powers of angle a witness carries: a radian counts once, a steradian twice
+    /// (solid angle is angle squared). Read from the factorisation, or from the declared symbol
+    /// when the witness was declared rather than built — `Derived.radian` is `rad` with no
+    /// factors.
+    ///
+    /// **Angle is dimensionless in SI, so `Dim` cannot see it**, and this is the only place it
+    /// survives the erasure. It is what keeps `rad/s` from rendering as `Hz` and from sharing an
+    /// axis with a frequency, two quantities a factor of 2π apart.
+    ///
+    /// A witness declared by hand with a compound symbol — `U<rad/s>("rad/s", …)` — has no
+    /// factors and a symbol that is not `rad`, so it reads as carrying no angle. Build angular
+    /// units by composition, `U.div Derived.radian U.second`, and the angle is seen.
+    let angleExponentOf (symbol: string) (factors: (string * int) list) : int =
+        let parts =
+            if not (List.isEmpty factors) then factors
+            elif System.String.IsNullOrEmpty symbol then []
+            else [ symbol, 1 ]
+
+        parts |> List.sumBy (fun (s, e) -> if s = "rad" then e elif s = "sr" then 2 * e else 0)
+
     let private mergeFactors (a: (string * int) list) (b: (string * int) list) =
         let merged =
             b

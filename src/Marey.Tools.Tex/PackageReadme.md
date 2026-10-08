@@ -44,9 +44,14 @@ complaint, and every other formula on the figure still typesets.
 
 ## What it costs
 
-About 105 ms of `latex` and `dvisvgm` per distinct snippet, memoised on the source. An ordinary
-figure carries two — the axis titles — so it is a fifth of a second on an export path you opt
-into, and an animation pays it once for the whole film.
+About 105 ms of `latex` and `dvisvgm` per distinct snippet, memoised on the source within one
+call. An ordinary figure carries two — the axis titles — so it is a fifth of a second on an export
+path you opt into. The memo does not outlive the call unless you hold one: pass a `TexCache` to
+`Typeset.sceneCached` for every frame of a film, and only the first frame runs the engine. Five
+frames with two formulas cost 1082 ms uncached and 217 ms cached, nearly all of it the first frame.
+The cache is keyed on the source, the preamble, the class options, the base size and the tools,
+so two callers with different preambles never share an outline. It is safe across the threads a
+film renders on.
 
 The size is applied as a **scale**, not as a second engine run, so one formula at 9 pt and 18 pt
 costs one invocation. That is not what a TeX engine would do at 18 pt — real optical sizing picks
@@ -68,7 +73,7 @@ dependency"*, and that is the whole design brief: this package exists so that no
 no third-party `PackageReference` of any kind.
 
 The alternative on the table was MathJax through a JavaScript engine, which the roadmap put on the
-web backend — a backend that does not exist until M4, and which would have left the other three
+web backend — a backend that does not exist yet, and which would have left the other three
 unable to set a fraction. Outlines reach all of them.
 
 MIT licensed. Pre-1.0: the API is still free to move.

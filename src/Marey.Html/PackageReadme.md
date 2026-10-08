@@ -4,7 +4,8 @@ HTML renderings of [Marey](https://github.com/Axym-Labs/marey) values, for a not
 cell. Host-neutral, **zero dependencies**, `netstandard2.1`.
 
 This is also the convenient package to reference, because it sits at the top of the graph:
-installing it brings `Marey.Core`, `Marey.Units`, `Marey.Plot` and the SVG backend with it.
+installing it brings `Marey.Core`, `Marey.Units`, `Marey.Plot`, `Marey.Interact` and the SVG
+backend with it.
 
 ```fsharp
 #r "nuget: Marey.Html"
@@ -17,18 +18,26 @@ let figure = Chart.line U.second U.metre t x
 Html.figure figure
 ```
 
-Ten types render: `Figure` and `Node` as inline SVG, **`Film` as a flipbook that plays**, `Color`
-as a swatch that does not lie about alpha, `Ramp` resampled through Oklab, `Color[]`,
-`PaletteReport` as a colour-vision-deficiency and contrast report, and `Dim`, `U<'u>` and
-`IScaleErased` as themselves.
+Twelve types render: `Figure` and `Node` as inline SVG, **`Film` as a flipbook that plays**,
+`Color` as a swatch that does not lie about alpha, `Ramp` resampled through Oklab, `Color[]`,
+`PaletteReport` as a colour-vision-deficiency and contrast report, `Dim`, `U<'u>` and
+`IScaleErased` as themselves, and a live figure (`Live`, `Recorder`) as its figure.
 
 A film is sampled into stills stacked in one SVG and cycled with SMIL `<animate>` — no `<style>`
 block, which a notebook cell cannot scope, and no external tool, so it plays wherever the notebook
 renders and looks the same for every reader.
 
+## A live figure's page
+
+`Html.widget live state isLive` writes a whole page for a host that draws output in a frame of its
+own: the controls at the state's values, the figure, and a script that posts the reader's changes,
+drags and pointer position, and swaps in what comes back. **The script formats no number**: every
+label and every reading is written in F#, by the kernel. With `isLive = false` the same page has
+its controls disabled, for a host with nothing to talk back to and for a saved notebook.
+
 ## Host-neutral
 
-Every function here is `something -> string`: no formatter registration, no kernel reference and no
+Every renderer here is `something -> string`: no formatter registration, no kernel reference and no
 dependency on a notebook host. The output carries no `<style>` block and no pinned colours, so it
 inherits the notebook's theme rather than fighting it.
 

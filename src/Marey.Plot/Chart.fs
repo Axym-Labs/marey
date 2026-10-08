@@ -87,7 +87,8 @@ module Chart =
           Style = Geom.styleFor theme index
           Channels = [||]
           ShowInLegend = not (System.String.IsNullOrEmpty name)
-          Addressed = [||] }
+          Addressed = [||]
+          RowKeys = [||] }
 
     // ---- Constructors ------------------------------------------------------------------------
 
@@ -152,7 +153,8 @@ module Chart =
             [| layerOf "" Theme.initial 0 bars packed
                { layerOf "" Theme.initial 0 GeomPoint packed with
                    ShowInLegend = false
-                   Addressed = [||] } |]
+                   Addressed = [||]
+                   RowKeys = [||] } |]
 
     // ---- Phase 6's constructors ---------------------------------------------------------------
 
@@ -374,6 +376,17 @@ module Chart =
                         Layers = Array.append p.Layers (mk p.Layers.Length) })
                 fig
 
+    /// Draw `top`'s layers over the last panel of `fig`, styles and channels as they were built.
+    ///
+    /// The general form of `addLine` and its siblings, for layers that were built by something
+    /// other than this module — a field's heatmap and its contours (`Marey.Fields`), or any two
+    /// figures over the same quantities. The panels' axes are unified at compile time and must
+    /// agree in dimension, exactly as for `addLine`.
+    let overlay (top: Figure) (fig: Figure) : Figure =
+        match Array.tryLast top.Panels with
+        | None -> fig
+        | Some p -> fig |> addLayers (fun _ -> p.Layers)
+
     /// Add a second (third, …) series to the last panel.
     ///
     /// The panel's axes are then shared: `Figure.unify` unions the domains at compile time and
@@ -590,6 +603,21 @@ module Chart =
 
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomLine (Erase.packSeries (series "" ux uy fx fy)) |])
+
+    /// Add a loess smooth of y against x to the last panel: R's defaults, span 0.75 and a local
+    /// quadratic, at 80 points over the data's range. `Stat.loess` returns the curve itself.
+    let addLoess (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+        let l = Stat.loess ux uy x y
+
+        fig
+        |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomLine (Erase.packSeries (series "" ux uy l.X l.Y)) |])
+
+    /// `addLoess` with a stated span: the fraction of the points each local fit uses.
+    let addLoessWith (span: float) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
+        let l = Stat.loessWith ux uy span Stat.DefaultLoessPoints x y
+
+        fig
+        |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomLine (Erase.packSeries (series "" ux uy l.X l.Y)) |])
 
     // ---- Dimensionless ------------------------------------------------------------------------
 
@@ -936,6 +964,19 @@ module Chart =
     let addressMarks (rows: int[]) (fig: Figure) : Figure =
         mapLastLayer (fun l -> { l with Addressed = Array.distinct (Array.append l.Addressed rows) }) fig
 
+    /// **D104 — name the rows of the most recently added series**, one key per row. Its marks
+    /// are then keyed by these rather than by row: drop row 3 and every later mark keeps its
+    /// name, and a storyboard's `morphTo` pairs each datum with the one of the same name. Keys
+    /// must be unique; a duplicate is refused here, with the duplicated keys and their rows.
+    ///
+    /// `plot { key (fun r -> r.Station) }` is the same thing in the encoding block.
+    let withKeys (keys: string[]) (fig: Figure) : Figure =
+        mapLastLayer
+            (fun l ->
+                Keys.validate (Erase.seriesLength l.Data) keys
+                { l with RowKeys = Array.copy keys })
+            fig
+
     let withOpacity (o: float) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withOpacity o l.Style }) fig
 
@@ -1067,6 +1108,43 @@ module Chart =
                             | _ -> c) })
             fig
 
+    /// **State a continuous colour channel's domain** rather than taking its values' range: the
+    /// most recent layer's colour scale runs from `lo` to `hi`, in `u`, and a value beyond either
+    /// end takes the ramp's end colour.
+    ///
+    /// For two figures that must share a colour scale, and for a film whose colours should mean
+    /// a stated range rather than the union of its sampled frames (D94). `u` need not be the
+    /// channel's own unit, only of its dimension: the ends are converted. A different dimension,
+    /// or an angle against no angle (D98), raises, as `Figure.unify` does for an axis.
+    let withColorDomain (u: U<'u>) (lo: float<'u>) (hi: float<'u>) (fig: Figure) : Figure =
+        let angle = U.angleExponentOf u.Symbol u.Factors
+
+        let rescale (scale: PackedScale) =
+            scale.Accept
+                { new IScaleConsumer<PackedScale> with
+                    member _.Apply<[<Measure>] 'c>(s: Scale<'c>) =
+                        if s.Unit.Dim <> u.Dim || U.angleExponentOf s.Unit.Symbol s.Unit.Factors <> angle then
+                            invalidArg
+                                "u"
+                                (sprintf
+                                    "Marey: a colour domain in %s cannot apply to a colour channel in %s."
+                                    (UnitDisplay.renderExpanded Unicode u.Dim)
+                                    (UnitDisplay.renderExpanded Unicode s.Unit.Dim))
+
+                        let into (v: float<'u>) = U.ofSI s.Unit (U.toSI u v)
+                        Erase.packScale (Scale.ofKind s.Kind s.Unit (into lo, into hi)) }
+
+        mapLastLayer
+            (fun l ->
+                { l with
+                    Channels =
+                        l.Channels
+                        |> Array.map (fun c ->
+                            match c.Map with
+                            | ColorByValue(scale, ramp) -> { c with Map = ColorByValue(rescale scale, ramp) }
+                            | _ -> c) })
+            fig
+
     /// **Size by a quantity**, between two device diameters.
     ///
     /// Interpolated in area rather than in diameter, because area is what the eye reads off a
@@ -1092,6 +1170,52 @@ module Chart =
         (z: float<'uz>[])
         : Figure =
         tile ux uy (pitch x) (pitch y) x y |> colorBy uz z
+
+    /// D93 — **a hexbin**, drawn: one hexagon per occupied cell, coloured by its density along
+    /// the theme's sequential ramp, with a colorbar in `1/('ux·'uy)`. Positions in metres give
+    /// a bar in m⁻². The hexagons are polygons in data space, projected vertex by vertex, so they
+    /// stay where their points are on a log axis.
+    let ofHexbin (h: Stat.Hexbin<'ux, 'uy>) : Figure =
+        let w = float h.Width / 2.0
+        let r = float h.RowSpacing
+
+        let corners (cx: float) (cy: float) =
+            [| cx, cy + 2.0 * r / 3.0
+               cx - w, cy + r / 3.0
+               cx - w, cy - r / 3.0
+               cx, cy - 2.0 * r / 3.0
+               cx + w, cy - r / 3.0
+               cx + w, cy + r / 3.0 |]
+
+        let hexes = Array.map2 (fun (x: float<'ux>) (y: float<'uy>) -> corners (float x) (float y)) h.X h.Y
+        let xs = hexes |> Array.map (Array.map fst)
+        let ys = hexes |> Array.map (Array.map snd)
+
+        let domain (cs: float[][]) (fallback: float * float) =
+            let all = Array.concat cs
+            if all.Length = 0 then fallback else Array.min all, Array.max all
+
+        let x0, x1 = domain xs (0.0, 1.0)
+        let y0, y1 = domain ys (0.0, 1.0)
+
+        let s: Series<'ux, 'uy> =
+            { Name = ""
+              X = h.X
+              Y = h.Y
+              XScale = Scale.linear h.XUnit (tag<'ux> x0, tag<'ux> x1)
+              YScale = Scale.linear h.YUnit (tag<'uy> y0, tag<'uy> y1) }
+
+        ofSeries (GeomPolygon(xs, ys)) s
+        |> withStyle (fun st -> { st with FillOpacity = 1.0 })
+        |> colorBy h.DensityUnit h.Density
+
+    /// `ofHexbin` over `Stat.hexbinWith across`.
+    let hexbinWith (ux: U<'ux>) (uy: U<'uy>) (across: int) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+        ofHexbin (Stat.hexbinWith ux uy across x y)
+
+    /// `ofHexbin` over `Stat.hexbin`: 24 hexagons across.
+    let hexbin (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+        ofHexbin (Stat.hexbin ux uy x y)
 
     let sizeByWith (smallest: float<px>) (largest: float<px>) (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
         let domain =
@@ -1303,12 +1427,32 @@ module Chart =
     let arrangeUnion (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (sample: float -> Figure) : Shot =
         Figure.arrangeUnion samples m extent sample
 
+    /// **D106 — one layout over states a caller lists**: `arrangeUnion` without the clock. A
+    /// widget passes the states its controls reach at their extremes.
+    let arrangeOver (m: ITextMeasurer) (extent: Extent<px>) (states: Figure[]) : Shot =
+        Figure.arrangeOver m extent states
+
+    /// **D106 — whether this figure's labels fit a layout already decided**, planned exactly as
+    /// `toSceneIn` would plan them. A state that does not fit is drawn in a new arrangement, and
+    /// the widget counts it.
+    let fitsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : bool = Figure.fitsIn m shot fig
+
     /// **Draw a figure inside a layout that is already decided.** The frame renderer's entry
     /// point, and the one function in this section that an animation calls per frame.
     ///
     /// No `Extent<px>`: the shot carries the surface it was arranged against, and a second one
     /// beside it could only ever disagree.
     let toSceneIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : Node = Figure.toSceneIn m shot fig
+
+    /// **D105 — where each panel's plot area is in a shot, with its coord and scales**, so a
+    /// point on the surface can be read back as data (`PanelView.toData`) and a dragged
+    /// rectangle as two domains (`PanelView.domainsOf`).
+    let panelsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : PanelView[] = Figure.panelsIn m shot fig
+
+    /// State the domains of the panel at `(row, col)`, raw, in each axis's own unit. What
+    /// `withXDomain` and `withYDomain` do to the last panel, for any panel.
+    let withPanelDomains (row: int, col: int) (dx: (float * float) option) (dy: (float * float) option) (fig: Figure) =
+        Figure.withPanelDomains (row, col) dx dy fig
 
     /// The outer grid `toScene` chose — the head row and the panel regions. For inspection.
     let arrangement (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Arrangement =

@@ -8,7 +8,7 @@ invariants.
 dotnet test
 ```
 
-**738 tests: 158 FsCheck properties and 580 example-based tests, ~75 000 generated cases per run.**
+**1379 tests: 193 FsCheck properties and 1186 example-based tests.**
 
 Around six seconds of that is `pdflatex`. The TikZ backend has no in-process oracle — the only
 authority on whether a `.tex` file is valid is a TeX engine, and the only authority on whether the
@@ -19,8 +19,9 @@ tick alone.
 Targets `net10.0`; the projects under test target `netstandard2.1`. Warnings are errors here
 too, inherited from `Directory.Build.props`.
 
-Scope is all seven shipped packages: `Marey.Core`, `Marey.Units`, `Marey.Backend.Svg`,
-`Marey.Backend.Tikz`, `Marey.Plot`, `Marey.Html` and `Marey.Verso`.
+Scope is all fourteen shipped packages: `Marey.Core`, `Marey.Units`, `Marey.Plot`, `Marey.Anim`,
+`Marey.Fields`, `Marey.Interact`, the three backends (`Svg`, `Tikz`, `Skia`), `Marey.Html`,
+`Marey.Verso`, `Marey.Toolchain`, `Marey.Tools.Video` and `Marey.Tools.Tex`.
 
 The one package reference that is not a test tool is `Verso.Testing`. It supplies the stub contexts
 Verso ships for extension authors, which is what lets `MareyFormatter` be exercised as a real
@@ -42,6 +43,7 @@ without a notebook host installed.
 | `ColorProperties.fs` | Oklab/Oklch round trips, `Color.mix`, `contrastRatio`, capability degradation. |
 | `SceneProperties.fs` | **D1** structural equality, `count`/`primitiveCount`, `prune`, and the ten-case guard. |
 | `AnimProperties.fs` | The animation algebra: `andThen` associativity and its two identities, `map2` as an applicative, `stretch` composition, a total seek, and the overshoot gate — per `Interp` instance, including the colour case where the answer is different. |
+| `RandomProperties.fs` | D95 — `Rng`, SplitMix64 pinned against its published outputs for seed 0, and the ranges of `unit` and `below`. |
 | `MorphProperties.fs` | Path morphing: the endpoint law stated against `Morph.prepare`, arc-length sampling against vertex-index sampling, subpath pairing and padding, closure policy, overshoot, and totality over deliberately malformed paths. |
 | `RegressionTests.fs` | The regression pins: §12's six type-system findings, and D16, D17, D32, D38 and D41, locked in. |
 | `Tools.fs` | The registry of the three external programs the suite drives, resolved through `Marey.Toolchain`. |
@@ -61,11 +63,18 @@ without a notebook host installed.
 | `StoryboardTests.fs` | D69 — the storyboard CE. What `let!` binds and what a step's duration defaults to, that `parallel'` inherits `Anim.map2`'s rule rather than restating it, and the `MarkerBatch` split: that addressing a mark still draws the same picture, and that the mark it names is the datum's **original row** rather than its position among the drawn marks. |
 | `FrameTests.fs` | D77 — rendering a film. That a frame rendered alone is the frame rendered in sequence and that the sequence rendered backwards is the same sequence; that a concurrent render is the serial one byte for byte, on both the SVG and the PNG backend; that the faces resolve in one order whichever pass renders; and the measurer cache, whose promise is stated exactly — in a serial render `Measurements` equals `Entries`, so no string is ever measured twice. |
 | `ChannelTests.fs` | The colour, shape and size channels; the legend and the colorbar they produce; the encoding block, including three `dotnet fsi` snippets that must *fail* to compile. |
-| `StatTests.fs` | The statistics, each against a closed form, and the measures that come out of them — a dimensionless count, a probability, a reciprocal-unit density, and a typed slope. |
+| `StatTests.fs` | The statistics, each against a closed form, and the measures that come out of them — a dimensionless count, a probability, a reciprocal-unit density, and a typed slope. Hexbin's points checked against the hexagons the figure draws, loess against the closed form of a tricube-weighted line, and the bootstrap's coverage over 300 seeded trials. |
 | `FacetTests.fs` | Small multiples: that every panel reports the same domains and the same plot rectangle, and that a faceted histogram bins every panel into one grid. |
 | `GeomTests.fs` | The geoms: the five-number summary, each geom's compiled geometry, the row-alignment gate for channelled layers, and cross-backend coordinate agreement over every geom. |
-| `ExampleTests.fs` | Runs each script in `examples/` on its own under `dotnet fsi`, and fails if one prints a `false`. |
-| `NotebookTests.fs` | The notebook integration, in three parts: `Html` fragments parsed as XML with the golden suite's own oracle, plus escaping, culture invariance and the two theme rules; `MareyFormatter` driven through Verso's `StubFormatterContext`; and the extension loaded into a genuinely separate collectible `AssemblyLoadContext`, which is the assumption the whole package rests on. |
+| `FieldTests.fs` | `Marey.Fields`, and gates 2–11, 13 and 14 of `m4-plan.md`: differences exact on quadratics, units checked by compiling (curl over a phase space must not), contours on their level, the quiver key true to its arrows, streamlines tangent and evenly spaced, LIC deterministic and smooth along the flow, fixed points located and classified, and a film whose colour scale holds still. |
+| `TypesetTests.fs` | `Marey.Tools.Tex`: the SVG path reader, the outline's baseline, the scene pass, the degrade on a machine without TeX, and the caches — per call, and the `TexCache` a film holds. |
+| `VideoTests.fs` | `Marey.Tools.Video`: the argument vector as a value, a bit-exact encode read back with `ffprobe`, the build tags kept out of the container, and the degrade without `ffmpeg`. |
+| `InteractTests.fs` | `Marey.Interact`: one quantity formatter, typed controls (a kelvin slider feeding a view over seconds must not compile), the pure step replayed and run in parallel, zoom and pan read back through linear, log and phase-space scales, the readout checked against the datum under the pointer, the widget page parsed and searched for a number formatted in the browser, a plot rectangle that holds still across every control extreme, and a recording written out, read back and filmed byte for byte. |
+| `DiffTests.fs` | D103 — the scene diff and the patch: a patch applied to the old document is the new document byte for byte, a renumbered def sends the whole document, and on a 50 000-point scatter a moving cursor patches under 5% of the document while a zoom sends all of it. |
+| `KeyTests.fs` | D104 — keys the data supplies: a datum keeps its mark's key when another row is removed, a duplicate is refused by name, a `/` cannot forge a path, and a morph pairs a keyed scatter by key, fading what enters and leaves. |
+| `ExampleTests.fs` | Runs each script in `examples/` on its own under `dotnet fsi`, and the notebook as its F# cells in order, and fails if one prints a `false`. |
+| `NotebookTests.fs` | The notebook integration, in four parts: `Html` fragments parsed as XML with the golden suite's own oracle, plus escaping, culture invariance and the two theme rules; `MareyFormatter` driven through Verso's `StubFormatterContext`; the extension loaded into a genuinely separate collectible `AssemblyLoadContext`, which is the assumption the whole package rests on; and a live figure through fake output channels, which degrades to a static page on a host that has none. |
+| `Verification.fs` | The census of every external dependency the suite needs, printed on every run; `MAREY_REQUIRE_TOOLCHAIN`, which turns an absent one into a failure in CI; and gate 15, that both workflows expect the number of packages the solution packs. |
 
 ## Golden images
 

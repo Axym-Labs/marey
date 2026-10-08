@@ -57,5 +57,5 @@ Depends on [`Marey.Plot`](https://www.nuget.org/packages/Marey.Plot) and
 [`Marey.Toolchain`](https://www.nuget.org/packages/Marey.Toolchain), and on nothing outside this
 repository.
 
-- [The guide, §19](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md#19-video)
+- [The guide, §20](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md#20-video)
 - [examples/video.fsx](https://github.com/Axym-Labs/marey/blob/main/examples/video.fsx)

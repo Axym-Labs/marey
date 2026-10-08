@@ -683,6 +683,284 @@ module Html =
     // dependency on Marey at all**. It is a bridge, not an integration, and it keeps working
     // across Marey versions as long as these two signatures hold.
     // ======================================================================================
+    // M4.5 — A LIVE FIGURE'S DOCUMENT (D100, D106)
+    //
+    // Not a fragment: a whole page, which a host draws in a frame of its own (Verso's
+    // `text/x-verso-widget`). Rule 1 therefore does not bind inside it — a `<style>` in a framed
+    // document styles that document and nothing else — and the page uses one. Rules 2 to 4 still
+    // hold. Rule 2 has a better answer here than in a fragment, because the host passes its theme
+    // into the frame as custom properties: foreground and background are taken together from the
+    // host, and fall back to pinning nothing.
+    //
+    // **The script formats no number.** Every label it shows arrives from the kernel, written by
+    // `UnitDisplay.quantityIn`; the script reads an input's value, posts it, and swaps in what
+    // comes back. That keeps one formatter in one language until the Fable backend can make it
+    // two languages and still one formatter (D105).
+    //
+    // **Well-formed XML as well as HTML**, so the oracle `NotebookTests` holds every fragment to
+    // holds this page too: self-closed inputs, valued boolean attributes, and the script in a
+    // CDATA section, because `&&` is an error in XML and ordinary in JavaScript.
+    //
+    // **The controls are written from the state**, not from their initial values. A snapshot
+    // taken after the reader moved a slider is a document of that state, and its slider has to
+    // be where the figure says it is. The phase 0 spike shipped a 3.7 Hz figure under a slider
+    // at 1 Hz, which is the bug this sentence is about.
+    // ======================================================================================
+
+    /// A number for an attribute a browser parses rather than a person reads: round-trip
+    /// exact, invariant. A slider over nanometres has a step of 1E-10, which `Num.at` would round
+    /// to zero, and an HTML number may carry an exponent.
+    let private exact (v: float) = v.ToString("R", System.Globalization.CultureInfo.InvariantCulture)
+
+    let private controlHtml (enabled: bool) (i: int) (c: ControlSpec) (v: float) =
+        let disabled = if enabled then "" else " disabled=\"disabled\""
+
+        let input =
+            match c.Kind with
+            | Slider(lo, hi, step) ->
+                sprintf
+                    "<input type=\"range\" data-i=\"%d\" min=\"%s\" max=\"%s\" step=\"%s\" value=\"%s\"%s/>"
+                    i (exact lo) (exact hi) (exact step) (exact v) disabled
+            | Select options ->
+                let chosen = int (System.Math.Round v)
+
+                let opts =
+                    options
+                    |> Array.mapi (fun k o ->
+                        sprintf "<option value=\"%d\"%s>%s</option>" k (if k = chosen then " selected=\"selected\"" else "") (text o))
+                    |> String.concat ""
+
+                sprintf "<select data-i=\"%d\"%s>%s</select>" i disabled opts
+            | Checkbox -> sprintf "<input type=\"checkbox\" data-i=\"%d\"%s%s/>" i (if v <> 0.0 then " checked=\"checked\"" else "") disabled
+
+        sprintf "<label><span>%s</span>%s<output id=\"v%d\">%s</output></label>" (text c.Label) input i (text (c.Show v))
+
+    /// The page's style. Scoped by being inside its own document.
+    let private widgetStyle =
+        String.concat
+            ""
+            [ "html,body{margin:0;padding:0}"
+              "body{color:var(--verso-cell-output-foreground,inherit);background:var(--verso-cell-output-background,transparent);"
+              "font-family:var(--verso-ui-font-family,system-ui,sans-serif);font-size:var(--verso-ui-font-size,14px)}"
+              "#controls{" + Row + ";margin:0 0 6px}"
+              "#controls label{display:inline-flex;gap:6px;align-items:center}"
+              "#controls output{font-variant-numeric:tabular-nums;min-width:5em}"
+              "#stage{position:relative}"
+              "#fig{max-width:100%;overflow-x:auto;touch-action:none;user-select:none;-webkit-user-select:none}"
+              "#band{position:absolute;display:none;pointer-events:none;border:1px dashed currentColor;background:rgba(127,127,127,0.12)}"
+              // Over the data, so it needs a ground of its own: the host's background under a grey
+              // wash, and the wash alone where the host gives none, since rule 2 pins no colour.
+              "#readout{position:absolute;display:none;pointer-events:none;padding:2px 6px;border-radius:3px;"
+              "border:" + Border + ";background:linear-gradient(rgba(127,127,127,0.14),rgba(127,127,127,0.14)),"
+              "var(--verso-cell-output-background,transparent);font-size:0.85em;font-variant-numeric:tabular-nums;white-space:nowrap}"
+              "#status{" + Muted + "}" ]
+
+    /// The view's half of the protocol. It measures the frame and says how wide it is, reports
+    /// itself ready, posts a control's value whenever it moves with one request in flight and
+    /// the newest value of each control waiting behind it, swaps in whatever the kernel sends,
+    /// and disables the controls when the channel closes. With no channel it disables them at
+    /// once and does nothing else.
+    ///
+    /// D103 — a reply carries either the whole figure (`svg`) or a patch: `defs`, which replaces
+    /// the figure's `<defs>` whole, and `patch`, ids and markup in turn, each swapped in for the
+    /// element with that id. A patch naming an element the view does not have means the view
+    /// and the kernel disagree about what is drawn, so the view says hello again, and the
+    /// kernel answers a `size` with the whole figure.
+    ///
+    /// D105 — a drag on the figure draws a band and posts its two corners in the figure's own
+    /// px when the pointer comes up; with shift held it posts the pointer's movement instead,
+    /// summing what waits behind the request in flight so no movement is dropped; a double
+    /// click posts a reset. The script works out which pixel the pointer is on and nothing else:
+    /// which panel that is, and what it measures, is the kernel's.
+    ///
+    /// D105 — the pointer's position over the figure is posted as it moves, under one key so
+    /// only the newest waits, and its leaving is posted under the same key. What it reads comes
+    /// back as `readout`: the plot rectangle in figure px, the corner, and the lines, which the
+    /// script places and does not read.
+    ///
+    /// D102 — every message carries one number more than its type needs: the event's
+    /// `timeStamp`, by the page's monotonic clock, in milliseconds. A message waiting behind the
+    /// one in flight carries the newest event's time with the newest value. The kernel reads no
+    /// clock, so a recording's times are the reader's.
+    let private widgetScript (aspect: float) =
+        String.concat
+            "\n"
+            [ "<script>//<![CDATA["
+              "(function () {"
+              "  var ch = window.versoChannel;"
+              "  var fig = document.getElementById('fig');"
+              "  var status = document.getElementById('status');"
+              "  var inputs = Array.prototype.slice.call(document.querySelectorAll('[data-i]'));"
+              "  function disable(why) {"
+              "    inputs.forEach(function (el) { el.disabled = true; });"
+              "    if (why) { status.textContent = why; }"
+              "  }"
+              "  if (!ch) { disable(null); return; }"
+              "  var busy = false, waiting = {}, order = [];"
+              "  function flush() {"
+              "    if (busy || order.length === 0) { return; }"
+              "    var key = order.shift(), m = waiting[key];"
+              "    delete waiting[key];"
+              "    busy = ch.post(m.type, m.payload.concat([m.t]));"
+              "  }"
+              "  function send(key, type, payload, t, merge) {"
+              "    if (!(key in waiting)) { order.push(key); }"
+              "    else if (merge) { payload = merge(waiting[key].payload, payload); }"
+              "    waiting[key] = { type: type, payload: payload, t: t };"
+              "    flush();"
+              "  }"
+              "  function valueOf(el) { return el.type === 'checkbox' ? (el.checked ? 1 : 0) : Number(el.value); }"
+              "  inputs.forEach(function (el) {"
+              "    var i = Number(el.getAttribute('data-i'));"
+              "    el.addEventListener(el.type === 'range' ? 'input' : 'change', function (e) {"
+              "      send('c' + i, 'set', [i, valueOf(el)], e.timeStamp);"
+              "    });"
+              "  });"
+              "  var SVG = 'http://www.w3.org/2000/svg';"
+              "  function parse(text) {"
+              "    var d = new DOMParser().parseFromString('<svg xmlns=\"' + SVG + '\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">' + text + '</svg>', 'image/svg+xml');"
+              "    var el = d.documentElement.firstElementChild;"
+              "    return el && el.namespaceURI === SVG ? document.importNode(el, true) : null;"
+              "  }"
+              "  function patch(defs, parts) {"
+              "    var svg = fig.querySelector('svg');"
+              "    if (!svg) { return false; }"
+              "    for (var i = 0; i < parts.length; i += 2) { if (!document.getElementById(parts[i])) { return false; } }"
+              "    var old = svg.querySelector('defs'), fresh = defs ? parse(defs) : null;"
+              "    if (defs && !fresh) { return false; }"
+              "    if (old) { old.remove(); }"
+              "    if (fresh) { svg.insertBefore(fresh, svg.firstChild); }"
+              "    for (var j = 0; j < parts.length; j += 2) {"
+              "      var el = parse(parts[j + 1]);"
+              "      if (!el) { return false; }"
+              "      document.getElementById(parts[j]).replaceWith(el);"
+              "    }"
+              "    return true;"
+              "  }"
+              "  function hello() {"
+              "    var w = Math.round(fig.clientWidth || document.documentElement.clientWidth || 0);"
+              sprintf "    if (w > 0) { send('size', 'size', [w, Math.round(w * %s)], performance.now()); }" (exact aspect)
+              "  }"
+              "  window.addEventListener('verso:channelmessage', function (e) {"
+              "    var d = e.detail || {}, p = d.payload || {};"
+              "    if (d.type !== 'render') { return; }"
+              "    if (typeof p.svg === 'string') { fig.innerHTML = p.svg; }"
+              "    else if (p.patch && !patch(p.defs || '', p.patch)) { hello(); }"
+              "    (p.shown || []).forEach(function (s, i) {"
+              "      var o = document.getElementById('v' + i);"
+              "      if (o) { o.textContent = s; }"
+              "    });"
+              "    show(p.readout);"
+              "    busy = false;"
+              "    flush();"
+              "  });"
+              "  var stage = document.getElementById('stage'), band = document.getElementById('band');"
+              "  var readout = document.getElementById('readout');"
+              "  var drag = null, closed = false;"
+              "  function frame() {"
+              "    var svg = fig.querySelector('svg');"
+              "    if (!svg) { return null; }"
+              "    var r = svg.getBoundingClientRect(), s = stage.getBoundingClientRect();"
+              "    var vb = svg.viewBox && svg.viewBox.baseVal;"
+              "    var kx = vb && vb.width && r.width ? vb.width / r.width : 1;"
+              "    var ky = vb && vb.height && r.height ? vb.height / r.height : 1;"
+              "    return { r: r, s: s, kx: kx, ky: ky };"
+              "  }"
+              "  function at(e) {"
+              "    var f = frame();"
+              "    if (!f) { return null; }"
+              "    return { x: (e.clientX - f.r.left) * f.kx, y: (e.clientY - f.r.top) * f.ky, bx: e.clientX - f.s.left, by: e.clientY - f.s.top };"
+              "  }"
+              "  function show(r) {"
+              "    var f = frame();"
+              "    if (closed || !f || !r || r.length < 6) { readout.style.display = 'none'; return; }"
+              "    readout.textContent = '';"
+              "    r.slice(5).forEach(function (line) {"
+              "      var d = document.createElement('div');"
+              "      d.textContent = line;"
+              "      readout.appendChild(d);"
+              "    });"
+              "    var right = r[4] === 'right', x = Number(right ? r[2] : r[0]) / f.kx + f.r.left - f.s.left;"
+              "    readout.style.left = (right ? x - 4 : x + 4) + 'px';"
+              "    readout.style.top = (Number(r[1]) / f.ky + f.r.top - f.s.top + 4) + 'px';"
+              "    readout.style.transform = right ? 'translateX(-100%)' : '';"
+              "    readout.style.display = 'block';"
+              "  }"
+              "  function sum(a, b) { return [a[0], a[1], a[2] + b[2], a[3] + b[3]]; }"
+              "  fig.addEventListener('pointerdown', function (e) {"
+              "    if (e.button !== 0 || closed) { return; }"
+              "    var p = at(e);"
+              "    if (!p) { return; }"
+              "    drag = { start: p, last: p, pan: e.shiftKey };"
+              "    fig.setPointerCapture(e.pointerId);"
+              "    e.preventDefault();"
+              "  });"
+              "  fig.addEventListener('pointermove', function (e) {"
+              "    var p = at(e), a = drag && drag.start;"
+              "    if (!p || closed) { return; }"
+              "    if (drag && drag.pan) {"
+              "      send('pan', 'pan', [a.x, a.y, p.x - drag.last.x, p.y - drag.last.y], e.timeStamp, sum);"
+              "      drag.last = p;"
+              "      return;"
+              "    }"
+              "    send('hover', 'hover', [p.x, p.y], e.timeStamp);"
+              "    if (!drag) { return; }"
+              "    band.style.left = Math.min(a.bx, p.bx) + 'px';"
+              "    band.style.top = Math.min(a.by, p.by) + 'px';"
+              "    band.style.width = Math.abs(p.bx - a.bx) + 'px';"
+              "    band.style.height = Math.abs(p.by - a.by) + 'px';"
+              "    band.style.display = 'block';"
+              "  });"
+              "  function release(e) {"
+              "    if (!drag) { return; }"
+              "    var p = at(e), a = drag.start, pan = drag.pan;"
+              "    drag = null;"
+              "    band.style.display = 'none';"
+              "    if (p && !pan && e.type === 'pointerup') { send('zoom', 'zoom', [a.x, a.y, p.x, p.y], e.timeStamp); }"
+              "  }"
+              "  fig.addEventListener('pointerup', release);"
+              "  fig.addEventListener('pointercancel', release);"
+              "  fig.addEventListener('dblclick', function (e) { if (!closed) { send('reset', 'reset', [], e.timeStamp); } });"
+              "  fig.addEventListener('pointerleave', function (e) { if (!closed) { send('hover', 'leave', [], e.timeStamp); } });"
+              "  window.addEventListener('verso:channelclosed', function (e) {"
+              "    closed = true;"
+              "    show(null);"
+              "    disable((e.detail && e.detail.reason) || 'closed');"
+              "  });"
+              "  ch.ready('1.0');"
+              "  hello();"
+              "})();"
+              "//]]></script>" ]
+
+    /// A live figure's SVG at a state, drawn in the state's arrangement. What a host sends back
+    /// after each step; the document embeds the same thing.
+    let widgetFigure (live: Live) (state: LiveState) : string =
+        guarded "live figure" (fun () -> SvgBackend.render state.Shot.Outer.Extent (Live.scene live state))
+
+    /// **A live figure as a whole page**: its controls, written from `state`, the figure at that
+    /// state, and the view's script. `live = false` is the static form, for a host with nothing
+    /// to talk back to and for a snapshot: the same page with the controls disabled and a line
+    /// saying so.
+    let widget (live: Live) (state: LiveState) (isLive: bool) : string =
+        let controls =
+            Array.mapi2 (controlHtml isLive) live.Controls state.Values
+            |> String.concat ""
+
+        let aspect = float state.Size.Height / float state.Size.Width
+
+        String.concat
+            ""
+            [ "<!DOCTYPE html><html><head><meta charset=\"utf-8\"/>"
+              "<style>" + widgetStyle + "</style></head><body>"
+              "<div id=\"controls\">" + controls + "</div>"
+              "<div id=\"stage\"><div id=\"fig\""
+              + (if isLive then " title=\"Drag to zoom, shift-drag to pan, double-click to reset\"" else "")
+              + ">" + widgetFigure live state + "</div><div id=\"band\"></div><div id=\"readout\"></div></div>"
+              "<div id=\"status\">" + (if isLive then "" else "Static: run the cell to move the controls.") + "</div>"
+              widgetScript aspect
+              "</body></html>" ]
+
+    // ======================================================================================
 
     /// Every type this module can display. The match a host uses to decide whether to claim a
     /// value, kept separate from `renderForHost` so the decision costs a type test rather than a
@@ -699,15 +977,18 @@ module Html =
         | :? Dim
         // Erased measures make this one type test cover every unit witness there will ever be.
         | :? U<1>
-        | :? IScaleErased -> true
+        | :? IScaleErased
+        | :? Live
+        | :? Recorder -> true
         | _ -> false
 
     /// The size to compile a figure at, given what the host says is available.
     ///
-    /// This is the half of the .NET Interactive design that was guesswork: there was no way to
-    /// ask how wide the cell was, so `defaultSize` picked 720x450 and hoped. Verso's
-    /// `IFormatterContext` carries `MaxWidth`/`MaxHeight`, so the guess is replaced by a
-    /// measurement.
+    /// The .NET Interactive design had no way to ask how wide the cell was, so `defaultSize`
+    /// picked 720x450 and hoped. Verso's `IFormatterContext` carries `MaxWidth`/`MaxHeight`, but
+    /// on its F# path they are the constants 800 and 600, so the guess moved into the host and
+    /// is still a guess. A live figure does better: its page measures its own frame and sends the
+    /// width with its first message, and the kernel lays the figure out for that.
     ///
     /// Clamped at both ends. Below ~320px a figure is not a figure, it is a smudge with axis
     /// labels; above ~1100 the line weights and font sizes chosen for a screen figure start to
@@ -753,4 +1034,166 @@ module Html =
         | :? Dim as d -> dim d
         | :? U<1> as u -> witness u
         | :? IScaleErased as sc -> scale sc
+        // A host that can only take a fragment gets the figure at the controls' initial values,
+        // in the widget's own arrangement. A host with a frame for a page uses `liveDocumentForHost`.
+        | :? Live as l -> guarded "live figure" (fun () -> scroller (widgetFigure l (Live.init l)))
+        | :? Recorder as r -> guarded "live figure" (fun () -> scroller (widgetFigure r.Live (Live.init r.Live)))
         | _ -> ""
+
+    // ---- The live half of the bridge (M4.5, D100) ------------------------------------------
+    //
+    // Six more functions the extension reaches by reflection, for the same reason as the two
+    // above: nothing typed in a Marey assembly can cross the load-context boundary, so every
+    // argument and result is `obj`, `string`, `string[]` or `bool`. The extension holds the state
+    // as an `obj` it never looks inside, and hands it back.
+    //
+    // **None of them throws.** A view function is the reader's code, and a step that throws would
+    // take the widget down from inside a message handler, where nobody sees the exception. Each
+    // answers what it can: no state for a value that is not live, the state unchanged for a
+    // message that cannot be stepped, and an error box in place of a figure that cannot be drawn.
+
+    /// The live figure and the widget state a host is holding, through a `Recorder` too.
+    let private liveAt (value: obj) (state: obj) : (Live * LiveState) option =
+        match value, state with
+        | (:? Live as l), (:? LiveState as s) -> Some(l, s)
+        | (:? Recorder as r), (:? RecorderState as s) -> Some(r.Live, s.State)
+        | _ -> None
+
+    /// The initial state of a live figure, or `null` for any other value. A `Recorder` begins a
+    /// new recording here, once per display.
+    let liveInitForHost (value: obj) : obj =
+        try
+            match value with
+            | :? Live as l -> box (Live.init l)
+            | :? Recorder as r ->
+                let state = Live.init r.Live
+                box { Session = r.Begin(); State = state }
+            | _ -> null
+        with _ ->
+            null
+
+    /// The next state after a message from the view, or `state` itself when nothing changed, the
+    /// message cannot be read, or the step failed. A `Recorder` notes the message, with the
+    /// view's time, before it is stepped.
+    let liveStepForHost (value: obj, state: obj, msgType: string, payload: string) : obj =
+        match value, state with
+        | (:? Live as l), (:? LiveState as s) ->
+            match LiveMsg.parse msgType payload with
+            | Some msg ->
+                try
+                    box (Live.step l s msg)
+                with _ ->
+                    state
+            | None -> state
+        | (:? Recorder as r), (:? RecorderState as rs) ->
+            match LiveMsg.parseStamped msgType payload with
+            | Some(at, msg) ->
+                try
+                    r.Note(rs.Session, at, msg)
+                    let next = Live.step r.Live rs.State msg
+                    // The same object when nothing changed: a host answers `same` by reference.
+                    if obj.ReferenceEquals(next, rs.State) then state else box { rs with State = next }
+                with _ ->
+                    state
+            | None -> state
+        | _ -> state
+
+    /// The whole page at a state, live or static. `""` for anything that is not a live figure.
+    let liveDocumentForHost (value: obj, state: obj, isLive: bool) : string =
+        match liveAt value state with
+        | Some(l, s) -> widget l s isLive
+        | None -> ""
+
+    /// **D103 — the step from `before` to `after` as the view should receive it.** A patch when
+    /// one describes the change and is at most half the document; the whole figure otherwise.
+    ///
+    /// Half, rather than merely smaller, because a patch is not free at the other end: each
+    /// element is parsed on its own, and the defs are replaced whole. A slider that moves one
+    /// annotation over a large scatter leaves the patch a few percent of the document, and a
+    /// zoom, which moves every tick and every mark, leaves it nearly all of it. Nothing lives
+    /// usefully between the two.
+    let widgetPatch (live: Live) (before: LiveState) (after: LiveState) : SvgPatch =
+        let extent = after.Shot.Outer.Extent
+        let next = Live.scene live after
+
+        let p =
+            if before.Shot.Outer.Extent = extent then
+                SvgBackend.renderPatch extent (Live.scene live before) next
+            else
+                { Document = SvgBackend.render extent next
+                  Defs = ""
+                  Elements = None }
+
+        match p.Elements with
+        | Some els ->
+            let bytes = p.Defs.Length + (els |> Array.sumBy (fun (id, svg) -> id.Length + svg.Length))
+            if 2 * bytes <= p.Document.Length then p else { p with Elements = None }
+        | None -> p
+
+    /// What the view swaps in after a step: the figure's SVG first, then each control's label.
+    /// Empty for anything that is not a live figure.
+    let liveReplyForHost (value: obj, state: obj) : string[] =
+        match liveAt value state with
+        | Some(l, s) ->
+            let shown =
+                try
+                    Live.shown l s
+                with _ ->
+                    Array.create l.Controls.Length ""
+
+            Array.append [| widgetFigure l s |] shown
+        | _ -> [||]
+
+    /// **D103 — the answer to one message**, laid out for the bridge: a kind, what the kind
+    /// carries, and then each control's label.
+    ///
+    /// - `same; labels…` — the figure did not change, and the view keeps it. A hover is answered
+    ///   this way: it moved the pointer, which the figure is not drawn from.
+    /// - `svg; document; labels…` — the whole figure.
+    /// - `patch; defs; n; id₁; markup₁; … idₙ; markupₙ; labels…` — `SvgPatch`'s elements.
+    ///
+    /// Empty for anything that is not a live figure. A figure that cannot be drawn, or a patch
+    /// that cannot be taken, is answered with the whole figure, which `widgetFigure` turns into
+    /// an error box if it has to.
+    let liveAnswerForHost (value: obj, before: obj, after: obj) : string[] =
+        match liveAt value before, liveAt value after with
+        | Some(l, b), Some(_, a) ->
+            let shown =
+                try
+                    Live.shown l a
+                with _ ->
+                    Array.create l.Controls.Length ""
+
+            let body =
+                if obj.ReferenceEquals(b, a) || Live.drawsAlike b a then
+                    [| "same" |]
+                else
+                    match (try Some(widgetPatch l b a) with _ -> None) with
+                    | Some { Defs = defs; Elements = Some els } ->
+                        Array.append
+                            [| "patch"; defs; string els.Length |]
+                            (els |> Array.collect (fun (id, svg) -> [| id; svg |]))
+                    | Some { Document = doc } -> [| "svg"; doc |]
+                    | None -> [| "svg"; widgetFigure l a |]
+
+            Array.append body shown
+        | _ -> [||]
+
+    /// **D105 — what the pointer reads**, laid out for the bridge: the plot rectangle it is over
+    /// in figure px (`x0; y0; x1; y1`, round-trip exact), `left` or `right` for the corner the
+    /// readout sits in, then one line per axis. Empty when the pointer is off every plot, and
+    /// for anything that is not a live figure. The view places the lines and does not read them.
+    let liveReadoutForHost (value: obj, state: obj) : string[] =
+        match liveAt value state with
+        | Some(l, s) ->
+            match (try Live.readout l s with _ -> None) with
+            | Some r ->
+                Array.append
+                    [| exact (float r.Plot.X0)
+                       exact (float r.Plot.Y0)
+                       exact (float r.Plot.X1)
+                       exact (float r.Plot.Y1)
+                       (if r.Right then "right" else "left") |]
+                    r.Lines
+            | None -> [||]
+        | None -> [||]

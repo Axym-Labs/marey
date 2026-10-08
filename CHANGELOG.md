@@ -3,16 +3,190 @@
 Notable changes to Marey. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-All twelve packages are versioned and released together, so a version number identifies the whole
-set rather than any one package. Four are new in this release: `Marey.Anim`, `Marey.Tools.Video`,
-`Marey.Tools.Tex`, and `Marey.Toolchain` — which ships only because the two tool packages depend
-on it, and a published package may not depend on an unpublished one.
+Every package is versioned and released together, so a version number identifies the whole set
+rather than any one package. Each release's notes say which packages it adds.
 
 **Pre-1.0, and versioned accordingly.** The API is still free to move. Breaking changes are
 listed under `Changed` or `Removed` with the reason and the replacement, and until 1.0 they may
 land in a minor release.
 
 ## [Unreleased]
+
+### Added
+
+- **`Marey.Interact`, a fourteenth package: a figure with controls, live in a notebook.** The
+  guide's new §23 walks through it, and `examples/interact.dib` is a notebook built on it.
+  - **Typed controls.** `Control.slider u label lo hi init` hands the view a `float<'u>` and
+    labels itself in `'u`, under one prefix chosen from the range: a slider over coulombs per
+    metre reads `2 nC·m⁻¹`, and passing it to a view over seconds does not compile.
+    `Control.sliderBy` states the step, `Control.select` chooses among values by name, and
+    `Control.checkbox` is a `bool`.
+  - **The `interact { }` block** composes controls with `let! … and!` and a `return`. It is
+    applicative, so a control cannot be chosen by another control's value and the set of controls
+    is known before the view runs.
+  - **A live figure is a value.** `Live.init`, `Live.step` and `Live.view` are pure: a session is
+    a fold over the reader's messages (`LiveMsg`: `Set`, `Resize`, `Zoom`, `Pan`, `Reset`,
+    `Hover`, `Leave`), replays from them, and runs in a test with no notebook. `Live.step` is
+    total: a message it cannot use returns the state it was given.
+  - **One arrangement for the whole widget.** The figure is laid out over the states the controls
+    reach at their extremes (every combination up to 64, else one control at a time), so the plot
+    area holds still while the reader drags. A state that still overflows grows the arrangement,
+    and `LiveState.Grown` records each one.
+  - **Zoom, pan and reset.** A dragged box becomes the panel's domains through the panel's own
+    scales, on log axes and phase spaces as on linear ones; a pan slides them, by a factor on a
+    log axis; a reset returns the view's. A zoom re-arranges, so the axes take the prefix of what
+    they show. Panels whose axis the view drew identically zoom together, so a facet stays a facet.
+  - **A readout.** `Live.readout` reads the data under the pointer, one line per axis, in the
+    prefix and unit the axis's ticks are written in and to the places one pixel resolves. A hover
+    changes no figure (`Live.drawsAlike`), so nothing is redrawn for one.
+  - **Recordings.** `Live.recorder` displays as its live figure and keeps the messages the host
+    steps, with the page's own times. `Recorder.stop` hands back the log, `Live.record` replays it
+    from the reader's first act, and `Live.film` makes it a `Film`, laid out over every state the
+    session reached. `LiveLog.toJson` and `ofJson` write and read a log exactly.
+    `Recording.sample` turns any `Recording<'a>` into an `Anim<'a>`, sample-and-hold.
+- **A live figure in Verso.** `Marey.Verso` opens an output channel for a cell whose value is a
+  `Live` or a `Recorder`, steps the figure in the kernel on each message and answers with the
+  figure, or with only the elements that changed when that is at most half the figure. A save
+  writes the page at the state the reader left it in, with its controls disabled. This needs a
+  Verso whose formatter context carries output channels and the cell's id, which 1.2.2 does not;
+  on such a host, or with no channels, the page is written static and nothing is opened.
+- **`Html.widget`**, a live figure's whole page: the controls at a state's values, the figure, and
+  a script that posts the reader's changes, drags and pointer and swaps in the answer. The script
+  formats no number. `Html.widgetFigure` and `Html.widgetPatch` are the figure and the patch it
+  is sent.
+- **The scene diff.** `Scene.diff` compares two scenes, by reference first and then by key, and
+  names the keyed subtrees to replace. `SvgBackend.renderPatch` writes them as `(id, svg)` pairs
+  with fresh `<defs>`, and keeps the patch only if swapping it into the old document gives the new
+  one byte for byte. On a 50 000-point scatter, a moving cursor is a 577-byte patch of a 3.2 MB
+  document.
+- **Keys the data supplies.** `key` in the encoding block, or `Chart.withKeys`, names each row, and
+  its mark is keyed by the name (`Keys.datum`), so it keeps its key when another row is removed.
+  A key is one escaped segment, so a `/` in the data cannot forge a path, and a duplicate is
+  refused where the keys are given, naming the key and its rows. `morphTo` pairs two keyed
+  scatters by key: a datum moves to the datum of the same name, and one that only one side has
+  fades in or out where it is. A handle names a datum by key, `curve.["S6"]`.
+- **A panel as a pointer meets it.** `Chart.panelsIn` gives each drawn panel's plot rectangle,
+  coord, scales and axes in a shot; `PanelView.toData` reads a point back as data,
+  `PanelView.domainsOf` a rectangle as domains, and `PanelView.read` a point as text.
+  `Chart.withPanelDomains` states one panel's domains.
+- **`Chart.fitsIn`** says whether a figure fits a shot already laid out, and
+  `Chart.arrangeOver` lays a shot out over a stated set of figures.
+- **`UnitDisplay.quantity` and `quantityIn`**, the one place a value and its unit are written for
+  a reader: `2 kV·m⁻¹`, `300 K`. The quiver key, `FixedPoint.describe` and a control's label all
+  use it, and `UnitDisplay.withUnit` is where a number meets its unit text.
+- **`Marey.Fields`, a thirteenth package: fields on dimensioned planes.** The guide's new §15
+  walks through it.
+  - **Grids.** `ScalarGrid` and `VectorGrid` on rectilinear nodes, sampled from a function
+    (`Field.sampleScalar`, `sample`, `sampleFlow`) or built from data, with `Grid.linear` and
+    `Grid.log` for nodes even on either kind of axis. Non-finite samples are kept, counted and
+    never drawn.
+  - **Derivatives in the units the types work out.** `Field.grad`, `div`, `curl`, `laplacian`
+    and `jacobian`: the gradient of a potential in volts over metres is in V/m, and its
+    divergence in V/m². A `Flow` has a different unit on each axis, so a phase space is a
+    domain: a pendulum's divergence is in 1/s, and its curl does not compile.
+  - **Scalar marks.** `Field.heatmap`, `contours` and `bands`, with a colorbar in the field's
+    unit. Contour levels are the nice numbers of the field's own range, saddles are resolved by
+    the asymptotic decider, and bands are filled even-odd with their holes.
+  - **Arrows.** `Field.quiver` sizes each arrow by its magnitude through the quiver's own scale,
+    with a key in the plot area's corner saying what one length means (`2 kV·m⁻¹`); `quiverBy`
+    also colours by magnitude. `Field.directions` draws equal arrows for any vector grid, phase
+    spaces included.
+  - **Streamlines.** `Field.streamlines` draws evenly spaced lines 16 px apart (`streamlinesWith`
+    states the separation), integrated on the page so they follow the field on a log axis or a
+    phase space, closed where they return to their start, with no randomness. `streamlinesBy`
+    colours each line by the field's magnitude.
+  - **Line-integral convolution.** `Field.lic` smears a noise texture along the streamlines, so
+    the flow shows at every pixel; `licBy` colours it by magnitude. A raster at the plot area's
+    resolution times a stated oversample (`licWith`, `Field.licDefaults`), seeded from `Rng`, so
+    a seed, a field and a plot size always give the same image. About 70 ms for a 480 × 300
+    figure.
+  - **Phase portraits.** `Phase.fixedPoints` finds a flow's fixed points where its nullclines
+    cross and classifies each by its linearisation: saddle, stable or unstable node or focus,
+    centre, or degenerate, with eigenvalues in `1/'t`. A centre is called one when the real part
+    is under 10⁻³ of the imaginary (`fixedPointsWith` states another tolerance), because
+    linearisation cannot tell a centre from a weak focus. `FixedPoint.describe` prints
+    `centre (linear) at (0 rad, 0 rad·s⁻¹), λ = ±3.128i s⁻¹`. `Phase.nullclines` and
+    `Phase.portrait` draw them.
+- **`Stat.hexbin` and `Chart.hexbin`**: scattered points counted into hexagons, as a density in
+  `1/('x·'y)` that integrates to one; positions in metres give a colorbar in m⁻². `hexbinWith`
+  states the hexagons across and `Stat.hexbinIn` the lattice. The rows are spaced so the hexagons
+  are regular on a plot area 1.6 times as wide as it is tall (`Stat.HexAspect`).
+- **`Stat.loess` and `Chart.addLoess`**: a local regression smooth with R's defaults (span 0.75, a
+  local quadratic, tricube weights, no robustness iterations), in the data's own units.
+  `loessWith` states the span and the points, `loessIn` where to evaluate and the degree.
+- **`Stat.bootstrap` and `Stat.bootstrapPairs`**: percentile bootstrap confidence intervals for
+  any statistic of a sample or of (x, y) pairs, in the statistic's own unit, so a slope's interval
+  is in m/s. The seed is an argument and the result carries it; resamples come from `Rng`, so a
+  seed names one interval on every runtime. `bootstrapWith` and `bootstrapPairsWith` state the
+  resamples and the level (defaults 2000 and 95%).
+- **`Rng`, a specified pseudo-random generator, in `Marey.Core`.** SplitMix64, immutable, seeded
+  explicitly: `Rng.seeded`, `next`, `unit`, `below`, `units`. Specified rather than taken from
+  `System.Random`, so that a seed names the same sequence on every runtime, Fable included.
+  Pinned against the published outputs for seed 0.
+- **`TexCache` and `Typeset.sceneCached`**: typeset outlines that outlive one call, for a film.
+  Pass one cache to every frame's pass and only the first frame runs `latex`: five frames with two
+  formulas take 217 ms instead of 1082 ms. Keyed on the source, the preamble, the class options,
+  the base size and the tools, so callers with different preambles never share an outline, and
+  safe across threads. `Typeset.scene` keeps its per-call cache.
+- **`Chart.withColorDomain`** states a continuous colour channel's domain rather than taking its
+  values' range, in any unit of the channel's dimension: for two figures that must share a colour
+  scale, and for a film.
+- **`Chart.overlay`** draws one figure's layers over another's last panel: a heatmap under its
+  contours, or any two figures over the same quantities.
+- **Three examples.** `fields.fsx` draws two line charges every way the package draws a field
+  and checks Gauss's law on the grid. `pendulum.fsx` is a phase portrait with and without
+  friction, its fixed points classified, with Liouville's theorem checked. `dipole.fsx` films a
+  rotating dipole and encodes it to `.mp4` with the colour scale held for the whole film.
+
+### Changed
+
+- **The axes, the gridlines, the legend and the colorbar have keys of their own** in the scene
+  (`Keys.axisX`, `axisY`, `grid`, `legend`, `colorbar`, below the panel's), so a diff can replace
+  one of them without the panel. An SVG gains a `<g id="…">` around each, and a TikZ file a
+  comment; 25 baselines moved, and nothing else in them did.
+- **`Handle.Row` is now `Handle.Mark`**, a `(Key * MarkRef) option`, where a `MarkRef` is a row or
+  a datum, because a handle can name a datum by its key. `curve.[n]` builds a row as before.
+- **`Layer` gained `RowKeys`**, the rows' own keys, empty when the data supplies none. A record
+  expression that builds a `Layer` by hand needs the field.
+- **A layer in rad/s refuses to share an axis with a layer in Hz.** Angle is dimensionless in SI,
+  so the two have one dimension and `Figure.unify` let them share an axis, plotting an angular
+  velocity and a frequency, a factor of 2π apart, on one scale. It now raises, naming both units,
+  as it does for metres against joules. The angle is read from the witness's factors, so build
+  angular units by composition (`U.div Derived.radian U.second`). A witness declared by hand with
+  a compound symbol carries no factors and is not recognised; the guide says so.
+- **A film holds its colour scale still.** An animated figure's continuous colour channels are
+  drawn against the union of their domains over the shot's sampled frames, as the panel's gutters
+  and prefixes already were, rather than against each frame's own range. A heatmap of a field
+  that grows tenfold used to look the same in every frame, and now reads as growing. A quiver's
+  arrows are scaled against the largest magnitude in the shot, for the same reason. `Shot` gained
+  `ColourDomains` and `QuiverKeys`, and `QuiverKey` gained `Largest`. A still is unchanged.
+- **`GeomOf` gained two cases.** `GeomField` is the geom a field layer is: a grid and what to
+  draw of it, computed on the panel at compile time. `GeomPolygon` is a closed polygon per point,
+  its vertices in data space, as a hexbin's hexagons are. A `match` over `Geom` that was
+  exhaustive needs an arm for each.
+
+### Fixed
+
+- **A Greek letter in a TikZ text run stopped `pdflatex`.** The escaper mapped µ and Ω and
+  nothing else of the Greek block, so an axis whose conventional name is Greek, a density's `ρ`
+  among them, was a hard "Unicode character" error. Greek letters are now set in math italic
+  (`\ensuremath{\theta}`), as a quantity symbol is; µ and Ω keep their upright unit forms.
+- **An axis in rad/s was titled `f [Hz]`.** The renderer named the unit by its dimension, s⁻¹,
+  and the dimension's conventional name is a frequency's. A unit whose factors carry an angle is
+  now written as composed (`rad·s⁻¹`), and the axis is named for the angle: `θ` for rad, `ω` for
+  rad/s, `α` for rad/s². `Hz` and `f` are unchanged for anything without an angle.
+- **`Marey.Tools.Tex`'s package readme still said an animation typesets once for the whole
+  film**, which was not true of `Typeset.scene`, whose cache lives for one call. The guide was
+  corrected at 0.3.0 and the readme was missed. Both now say how a film typesets once:
+  `TexCache`, above.
+- **An animation's early frames could overflow their own layout.** `Chart.arrangeUnion` pins one
+  SI prefix for a whole shot, from the union of its states' domains, but measured each state
+  under the prefix that state would choose alone. In a zoom that crosses a decade, the early
+  frames were measured as `0 2 4 6 8` and drawn as `0.002 … 0.008`, in a gutter sized for the
+  shorter labels. The prefixes are now chosen first and every state is measured under them.
+  `Chart.fitsIn` reports whether a figure fits a shot, and every state of a shot now does.
+
+## [0.3.1] — 2026-10-05
 
 ### Fixed
 
@@ -736,7 +910,8 @@ Superseded by `0.1.0` and not recommended for use. `Marey.Verso` in particular c
 installed from it: prerelease versions do not appear in Verso's Extensions panel at all, so an
 rc validates the package and the formatter but never the installation path.
 
-[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.3.0...HEAD
+[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.3.1...HEAD
+[0.3.1]: https://github.com/Axym-Labs/marey/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/Axym-Labs/marey/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/Axym-Labs/marey/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/Axym-Labs/marey/compare/0.1.0...0.1.1

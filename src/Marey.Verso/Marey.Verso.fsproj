@@ -23,12 +23,13 @@
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <AssemblyName>Marey.Verso</AssemblyName>
     <RootNamespace>Marey.Verso</RootNamespace>
-    <Description>Verso notebook extension for Marey. Figures, films, scenes, colours, ramps, palettes, dimensions, unit witnesses and erased scales display inline instead of as a field table. An animation plays in the cell.</Description>
+    <Description>Verso notebook extension for Marey. Figures, films, scenes, colours, ramps, palettes, dimensions, unit witnesses and erased scales display inline instead of as a field table. An animation plays in the cell, and a figure with controls is live: the kernel answers each change, drag and hover.</Description>
     <PackageTags>verso extension notebook fsharp plotting units visualization</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="Bridge.fs" />
+    <Compile Include="Live.fs" />
     <Compile Include="Formatter.fs" />
   </ItemGroup>
 

@@ -690,3 +690,436 @@ module Stat =
 
     let interceptQuantity (f: Fit<'ux, 'uy>) : PackedQuantity =
         Erase.packQuantity f.InterceptUnit f.Intercept
+
+    // ======================================================================================
+    // hexbin — D93, a two-dimensional density
+    // ======================================================================================
+
+    /// Scattered points counted into a hexagonal lattice, and the count as a **density in
+    /// `1/('ux·'uy)`**: `density`'s result in two dimensions. Each cell's density is its count
+    /// over `N` times the cell's area, so it integrates to 1 over the plane, and a hexbin of
+    /// positions in metres is in m⁻².
+    ///
+    /// Only cells holding at least one point are listed.
+    type Hexbin<[<Measure>] 'ux, [<Measure>] 'uy> =
+        { XUnit: U<'ux>
+          YUnit: U<'uy>
+          /// Cell centres.
+          X: float<'ux>[]
+          Y: float<'uy>[]
+          Counts: int[]
+          Density: float<1 / ('ux * 'uy)>[]
+          /// The witness for `Density`.
+          DensityUnit: U<1 / ('ux * 'uy)>
+          /// Centre-to-centre spacing along a row, which is a hexagon's width flat to flat.
+          Width: float<'ux>
+          /// Spacing between rows; alternate rows are offset by half a width. A hexagon spans
+          /// 4/3 of it vertically, and its area is `Width · RowSpacing`.
+          RowSpacing: float<'uy>
+          N: int
+          Dropped: int }
+
+    /// A hexagon is regular on a plot area this much wider than it is tall: the default figure's
+    /// proportions, roughly. A lattice is chosen before any panel exists, so it has to assume one.
+    [<Literal>]
+    let HexAspect = 1.6
+
+    /// Count into a lattice of stated `width` and `rowSpacing`, its first row's first centre at
+    /// `origin`. A point belongs to the nearest centre in the metric that makes the hexagons
+    /// regular, which is the hexagon it lies in.
+    let hexbinIn
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (width: float<'ux>)
+        (rowSpacing: float<'uy>)
+        (origin: float<'ux> * float<'uy>)
+        (xs: float<'ux>[])
+        (ys: float<'uy>[])
+        : Hexbin<'ux, 'uy> =
+        if xs.Length <> ys.Length then
+            invalidArg "ys" (sprintf "Marey: a hexbin needs matching arrays — %d x values and %d y values." xs.Length ys.Length)
+
+        if not (float width > 0.0 && isFinite (float width)) || not (float rowSpacing > 0.0 && isFinite (float rowSpacing)) then
+            invalidArg "width" "Marey: a hexagon's width and row spacing must be positive and finite."
+
+        let ox, oy = float (fst origin), float (snd origin)
+        let w, r = float width, float rowSpacing
+        let rowHeight = sqrt 3.0 / 2.0
+
+        let pairs =
+            Array.init xs.Length (fun i -> float xs.[i], float ys.[i])
+            |> Array.filter (fun (a, b) -> isFinite a && isFinite b)
+
+        // In lattice units (u along a row, v across rows, scaled so that rows are √3/2 apart),
+        // the cells are regular hexagons and the nearest centre is the cell.
+        let cellOf (x: float, y: float) =
+            let u = (x - ox) / w
+            let v = (y - oy) / r * rowHeight
+            let j0 = int (floor (v / rowHeight))
+
+            [ j0; j0 + 1 ]
+            |> List.map (fun j ->
+                let shift = if j % 2 <> 0 then 0.5 else 0.0
+                let i = int (Math.Round(u - shift, MidpointRounding.AwayFromZero))
+                let du = u - (float i + shift)
+                let dv = v - float j * rowHeight
+                (i, j), du * du + dv * dv)
+            |> List.minBy snd
+            |> fst
+
+        let counts = System.Collections.Generic.Dictionary<int * int, int>(HashIdentity.Structural)
+
+        for p in pairs do
+            let c = cellOf p
+
+            match counts.TryGetValue c with
+            | true, n -> counts.[c] <- n + 1
+            | _ -> counts.[c] <- 1
+
+        // Row order, then along the row: a function of the data, never of the dictionary.
+        let cells = counts |> Seq.map (fun kv -> kv.Key, kv.Value) |> Seq.sortBy (fun ((i, j), _) -> j, i) |> Seq.toArray
+        let n = pairs.Length
+        let area = w * r
+
+        { XUnit = ux
+          YUnit = uy
+          X = cells |> Array.map (fun ((i, j), _) -> tag<'ux> (ox + (float i + (if j % 2 <> 0 then 0.5 else 0.0)) * w))
+          Y = cells |> Array.map (fun ((_, j), _) -> tag<'uy> (oy + float j * r))
+          Counts = cells |> Array.map snd
+          Density = cells |> Array.map (fun (_, c) -> LanguagePrimitives.FloatWithMeasure<1 / ('ux * 'uy)>(float c / (float n * area)))
+          DensityUnit = U.recip (U.mul ux uy)
+          Width = width
+          RowSpacing = rowSpacing
+          N = n
+          Dropped = xs.Length - n }
+
+    /// `hexbinIn` with `across` hexagons spanning the x range, rows spaced so the hexagons are
+    /// regular on a plot area `HexAspect` times as wide as it is tall, and the lattice starting
+    /// at the data's lower-left corner.
+    let hexbinWith (ux: U<'ux>) (uy: U<'uy>) (across: int) (xs: float<'ux>[]) (ys: float<'uy>[]) : Hexbin<'ux, 'uy> =
+        if across < 1 then
+            invalidArg "across" (sprintf "Marey: a hexbin needs at least one hexagon across, not %d." across)
+
+        let finiteX, _ = finiteOf xs
+        let finiteY, _ = finiteOf ys
+
+        match Scale.domainOf finiteX, Scale.domainOf finiteY with
+        | Some(x0, x1), Some(y0, y1) ->
+            let xr = float (x1 - x0)
+            let yr = float (y1 - y0)
+            let w = if xr > 0.0 then xr / float across else 1.0
+            let yrEff = if yr > 0.0 then yr else (if xr > 0.0 then xr else 1.0)
+            let r = sqrt 3.0 / 2.0 * w * HexAspect * yrEff / (if xr > 0.0 then xr else 1.0)
+            hexbinIn ux uy (tag<'ux> w) (tag<'uy> r) (x0, y0) xs ys
+        | _ -> hexbinIn ux uy (tag<'ux> 1.0) (tag<'uy> 1.0) (tag<'ux> 0.0, tag<'uy> 0.0) xs ys
+
+    /// The hexagons across a hexbin when nobody states it.
+    [<Literal>]
+    let DefaultHexagons = 24
+
+    /// `hexbinWith DefaultHexagons`.
+    let hexbin (ux: U<'ux>) (uy: U<'uy>) (xs: float<'ux>[]) (ys: float<'uy>[]) : Hexbin<'ux, 'uy> =
+        hexbinWith ux uy DefaultHexagons xs ys
+
+    // ======================================================================================
+    // loess — M2's deferred tail, a local regression
+    // ======================================================================================
+
+    /// A loess curve: the smooth evaluated at `X`, in the data's own units.
+    type Loess<[<Measure>] 'ux, [<Measure>] 'uy> =
+        { XUnit: U<'ux>
+          YUnit: U<'uy>
+          X: float<'ux>[]
+          Y: float<'uy>[]
+          /// The fraction of the points each local fit uses.
+          Span: float
+          /// The local polynomial's degree, 1 or 2.
+          Degree: int
+          N: int
+          Dropped: int }
+
+    /// The span when nobody states one: R's and Cleveland's default.
+    [<Literal>]
+    let DefaultSpan = 0.75
+
+    /// The points a curve is evaluated at when nobody states them.
+    [<Literal>]
+    let DefaultLoessPoints = 80
+
+    /// Solve a small dense system by Gaussian elimination with partial pivoting; `None` when it
+    /// is singular to working precision.
+    let private solve (a: float[,]) (b: float[]) : float[] option =
+        let n = b.Length
+        let m = Array2D.copy a
+        let v = Array.copy b
+        let scale = Seq.max (seq { for i in 0 .. n - 1 do for j in 0 .. n - 1 -> abs m.[i, j] })
+        let mutable ok = scale > 0.0
+
+        for col in 0 .. n - 1 do
+            if ok then
+                let pivot = [ col .. n - 1 ] |> List.maxBy (fun r -> abs m.[r, col])
+
+                if abs m.[pivot, col] <= 1e-12 * scale then
+                    ok <- false
+                else
+                    if pivot <> col then
+                        for j in 0 .. n - 1 do
+                            let t = m.[col, j]
+                            m.[col, j] <- m.[pivot, j]
+                            m.[pivot, j] <- t
+
+                        let t = v.[col]
+                        v.[col] <- v.[pivot]
+                        v.[pivot] <- t
+
+                    for r in col + 1 .. n - 1 do
+                        let f = m.[r, col] / m.[col, col]
+
+                        for j in col .. n - 1 do
+                            m.[r, j] <- m.[r, j] - f * m.[col, j]
+
+                        v.[r] <- v.[r] - f * v.[col]
+
+        if not ok then
+            None
+        else
+            let x = Array.zeroCreate n
+
+            for i in n - 1 .. -1 .. 0 do
+                let mutable acc = v.[i]
+
+                for j in i + 1 .. n - 1 do
+                    acc <- acc - m.[i, j] * x.[j]
+
+                x.[i] <- acc / m.[i, i]
+
+            Some x
+
+    /// One local fit at `x0`: the `q = ⌊span·n⌋` nearest points (at least one more than the
+    /// degree), weighted by the tricube of their
+    /// distance over the q-th nearest distance (scaled up by `span` beyond 1, as R does), and a
+    /// weighted polynomial of `degree` in `(x − x0)`. Its value at `x0` is the smooth. A
+    /// neighbourhood too degenerate for the degree — fewer distinct x than coefficients — is
+    /// fitted at the next degree down.
+    let private loessAt (span: float) (degree: int) (xs: float[]) (ys: float[]) (x0: float) =
+        let n = xs.Length
+        let q = min n (max (degree + 1) (int (floor (span * float n + 1e-5))))
+        let d = xs |> Array.map (fun x -> abs (x - x0))
+        let sorted = Array.sort d
+        let h = sorted.[q - 1] * (if span > 1.0 then span else 1.0)
+
+        if h = 0.0 then
+            // Every neighbour sits on x0.
+            let near = Array.init n id |> Array.filter (fun i -> d.[i] = 0.0)
+            near |> Array.averageBy (fun i -> ys.[i])
+        else
+            let w =
+                d |> Array.map (fun di -> let r = di / h in if r < 1.0 then (let c = 1.0 - r * r * r in c * c * c) else 0.0)
+
+            let rec fit (deg: int) =
+                let k = deg + 1
+                let a = Array2D.zeroCreate k k
+                let b = Array.zeroCreate k
+
+                for i in 0 .. n - 1 do
+                    if w.[i] > 0.0 then
+                        // Centred and scaled by h, so the system is well conditioned at any scale.
+                        let t = (xs.[i] - x0) / h
+                        let pw = Array.init (2 * k - 1) (fun p -> pown t p)
+
+                        for r in 0 .. k - 1 do
+                            b.[r] <- b.[r] + w.[i] * pw.[r] * ys.[i]
+
+                            for c in 0 .. k - 1 do
+                                a.[r, c] <- a.[r, c] + w.[i] * pw.[r + c]
+
+                match solve a b with
+                | Some coef -> coef.[0]
+                | None when deg > 0 -> fit (deg - 1)
+                | None -> nan
+
+            fit degree
+
+    /// **Loess** (Cleveland, 1979; Cleveland and Devlin, 1988): at each evaluation point, a
+    /// polynomial of `degree` fitted by weighted least squares to the nearest `span` of the
+    /// points, tricube-weighted by distance. The defaults, degree 2 and span 0.75, are R's
+    /// `loess`, and so is the Gaussian family: no robustness iterations, so an outlier pulls the
+    /// curve as it would pull a least-squares fit. It has not been compared with R's output.
+    ///
+    /// A local fit of degree d reproduces any polynomial of degree d exactly, which is what the
+    /// tests hold it to. `at` lists where to evaluate; non-finite pairs are dropped and counted.
+    let loessIn
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (span: float)
+        (degree: int)
+        (at: float<'ux>[])
+        (xs: float<'ux>[])
+        (ys: float<'uy>[])
+        : Loess<'ux, 'uy> =
+        if xs.Length <> ys.Length then
+            invalidArg "ys" (sprintf "Marey: a loess needs matching arrays — %d x values and %d y values." xs.Length ys.Length)
+
+        if not (span > 0.0) || Double.IsInfinity span then
+            invalidArg "span" (sprintf "Marey: a loess span is a positive fraction of the points, not %g." span)
+
+        if degree <> 1 && degree <> 2 then
+            invalidArg "degree" (sprintf "Marey: a loess fits a local line or a local quadratic, degree 1 or 2, not %d." degree)
+
+        let pairs =
+            Array.init xs.Length (fun i -> float xs.[i], float ys.[i])
+            |> Array.filter (fun (a, b) -> isFinite a && isFinite b)
+
+        if pairs.Length < degree + 1 then
+            failwithf "Marey: a loess of degree %d needs at least %d finite (x, y) pairs; this one has %d." degree (degree + 1) pairs.Length
+
+        let px = pairs |> Array.map fst
+        let py = pairs |> Array.map snd
+
+        { XUnit = ux
+          YUnit = uy
+          X = Array.copy at
+          Y = at |> Array.map (fun x -> tag<'uy> (loessAt span degree px py (float x)))
+          Span = span
+          Degree = degree
+          N = pairs.Length
+          Dropped = xs.Length - pairs.Length }
+
+    /// `loessIn` at `points` evenly spaced over the data's x range.
+    let loessWith (ux: U<'ux>) (uy: U<'uy>) (span: float) (points: int) (xs: float<'ux>[]) (ys: float<'uy>[]) : Loess<'ux, 'uy> =
+        let kept, _ = finiteOf xs
+
+        let at =
+            match Scale.domainOf kept with
+            | Some(lo, hi) when points > 1 -> Array.init points (fun i -> lo + (hi - lo) * (float i / float (points - 1)))
+            | Some(lo, _) -> [| lo |]
+            | None -> [||]
+
+        loessIn ux uy span 2 at xs ys
+
+    /// `loessWith` at the default span, 0.75, and 80 points.
+    let loess (ux: U<'ux>) (uy: U<'uy>) (xs: float<'ux>[]) (ys: float<'uy>[]) : Loess<'ux, 'uy> =
+        loessWith ux uy DefaultSpan DefaultLoessPoints xs ys
+
+    // ======================================================================================
+    // bootstrap — M2's deferred tail, and D95's second consumer of randomness
+    // ======================================================================================
+
+    /// A bootstrap confidence interval for a statistic, in the statistic's own unit.
+    type Interval<[<Measure>] 'v> =
+        { /// The statistic of the sample itself.
+          Estimate: float<'v>
+          Lo: float<'v>
+          Hi: float<'v>
+          /// The confidence level, 0.95 for a 95% interval.
+          Level: float
+          /// Resamples whose statistic was finite, and how many were not.
+          Resamples: int
+          Dropped: int
+          /// The seed, so the interval can be cited and reproduced.
+          Seed: uint64 }
+
+    /// Resamples when nobody states how many.
+    [<Literal>]
+    let DefaultResamples = 2000
+
+    /// The percentile interval over `count` replicate statistics, each computed from a resample
+    /// of `n` indices drawn with replacement from `rng`, in order.
+    let private percentile
+        (seed: uint64)
+        (count: int)
+        (level: float)
+        (n: int)
+        (estimate: float<'v>)
+        (replicate: int[] -> float<'v>)
+        : Interval<'v> =
+        if count < 1 then
+            invalidArg "resamples" (sprintf "Marey: a bootstrap needs at least one resample, not %d." count)
+
+        if not (level > 0.0 && level < 1.0) then
+            invalidArg "level" (sprintf "Marey: a confidence level is strictly between 0 and 1, not %g." level)
+
+        if n < 1 then
+            failwith "Marey: a bootstrap needs at least one finite value to resample."
+
+        let mutable rng = Rng.seeded seed
+        let stats = Array.zeroCreate count
+
+        for b in 0 .. count - 1 do
+            let idx = Array.zeroCreate n
+
+            for i in 0 .. n - 1 do
+                let struct (k, r') = Rng.below n rng
+                idx.[i] <- k
+                rng <- r'
+
+            stats.[b] <- replicate idx
+
+        let kept = stats |> Array.filter (fun v -> isFinite (float v)) |> Array.sort
+
+        if kept.Length = 0 then
+            failwith "Marey: no bootstrap resample gave a finite statistic."
+
+        let tail = (1.0 - level) / 2.0
+
+        { Estimate = estimate
+          Lo = quantileSorted tail kept
+          Hi = quantileSorted (1.0 - tail) kept
+          Level = level
+          Resamples = kept.Length
+          Dropped = count - kept.Length
+          Seed = seed }
+
+    /// **A percentile bootstrap interval** for any statistic of one sample: resample the finite
+    /// values with replacement `resamples` times, compute the statistic of each, and take the
+    /// central `level` of them. The statistic keeps its unit, so an interval for a mean of
+    /// metres is in metres and one for a variance in m².
+    ///
+    /// **Reproducible from `seed`**, which the result carries: the resamples are drawn from
+    /// `Rng`, in order, so a seed names one interval on every runtime. A resample whose statistic
+    /// is not finite is dropped and counted.
+    ///
+    /// The percentile interval is the plain one. It is first-order accurate and runs a little
+    /// narrow for small samples; it is not BCa.
+    let bootstrapWith
+        (seed: uint64)
+        (resamples: int)
+        (level: float)
+        (statistic: float<'u>[] -> float<'v>)
+        (xs: float<'u>[])
+        : Interval<'v> =
+        let kept, _ = finiteOf xs
+        percentile seed resamples level kept.Length (statistic kept) (fun idx -> statistic (idx |> Array.map (fun i -> kept.[i])))
+
+    /// `bootstrapWith` at 2000 resamples and 95%.
+    let bootstrap (seed: uint64) (statistic: float<'u>[] -> float<'v>) (xs: float<'u>[]) : Interval<'v> =
+        bootstrapWith seed DefaultResamples 0.95 statistic xs
+
+    /// The pairs bootstrap: a statistic of (x, y) pairs, resampled together — a regression slope
+    /// in m/s, a correlation. Pairs with a non-finite coordinate are dropped first.
+    let bootstrapPairsWith
+        (seed: uint64)
+        (resamples: int)
+        (level: float)
+        (statistic: float<'ux>[] -> float<'uy>[] -> float<'v>)
+        (xs: float<'ux>[])
+        (ys: float<'uy>[])
+        : Interval<'v> =
+        if xs.Length <> ys.Length then
+            invalidArg "ys" (sprintf "Marey: a pairs bootstrap needs matching arrays — %d x values and %d y values." xs.Length ys.Length)
+
+        let keep = Array.init xs.Length id |> Array.filter (fun i -> isFinite (float xs.[i]) && isFinite (float ys.[i]))
+        let px = keep |> Array.map (fun i -> xs.[i])
+        let py = keep |> Array.map (fun i -> ys.[i])
+
+        percentile seed resamples level keep.Length (statistic px py) (fun idx ->
+            statistic (idx |> Array.map (fun i -> px.[i])) (idx |> Array.map (fun i -> py.[i])))
+
+    /// `bootstrapPairsWith` at 2000 resamples and 95%.
+    let bootstrapPairs
+        (seed: uint64)
+        (statistic: float<'ux>[] -> float<'uy>[] -> float<'v>)
+        (xs: float<'ux>[])
+        (ys: float<'uy>[])
+        : Interval<'v> =
+        bootstrapPairsWith seed DefaultResamples 0.95 statistic xs ys

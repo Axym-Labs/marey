@@ -1173,7 +1173,29 @@ module ``a geom draws where its data is`` =
           "violin", (fun s -> Geom.violin 0.5 s (Array.create 3 (Stat.density U.metre sample)))
           "image", (fun s -> Geom.image s pixel 4.2<m> 4.2<m> 5.8<m> 5.8<m> false)
           "area", Geom.area
-          "bar", Geom.bar 0.5 ]
+          "bar", Geom.bar 0.5
+          // D86 — a field carries its own grid rather than the series' points, and its node
+          // coordinates are arrays of exactly the kind D97 is about.
+          "field contours",
+          (fun _ ->
+              GeomField(
+                  { Xs = [| 4.0; 5.0; 6.0 |]
+                    Ys = [| 4.0; 5.0; 6.0 |]
+                    Values = [| 0.0; 1.0; 2.0; 1.0; 2.0; 3.0; 2.0; 3.0; 4.0 |]
+                    U = [||]
+                    W = [||] },
+                  FieldContours [| 1.5; 2.5 |]
+              ))
+          "field heatmap",
+          (fun _ ->
+              GeomField(
+                  { Xs = [| 4.0; 5.0; 6.0 |]
+                    Ys = [| 4.0; 5.0; 6.0 |]
+                    Values = [| 0.0; 1.0; 2.0; 1.0; 2.0; 3.0; 2.0; 3.0; 4.0 |]
+                    U = [||]
+                    W = [||] },
+                  FieldHeatmap false
+              )) ]
 
     let private operations: (string * (Figure -> Figure)) list =
         // Both domains reach below zero, so an area's and a bar's baseline — clamped to the panel

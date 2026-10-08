@@ -30,6 +30,7 @@
     <Compile Include="AffineProperties.fs" />
     <Compile Include="GeometryProperties.fs" />
     <Compile Include="ColorProperties.fs" />
+    <Compile Include="RandomProperties.fs" />
     <Compile Include="SceneProperties.fs" />
     <Compile Include="AnimProperties.fs" />
     <Compile Include="MorphProperties.fs" />
@@ -63,6 +64,10 @@
     <Compile Include="StatTests.fs" />
     <Compile Include="FacetTests.fs" />
     <Compile Include="GeomTests.fs" />
+    <Compile Include="FieldTests.fs" />
+    <Compile Include="InteractTests.fs" />
+    <Compile Include="KeyTests.fs" />
+    <Compile Include="DiffTests.fs" />
     <Compile Include="NotebookTests.fs" />
     <Compile Include="GuideTests.fs" />
     <Compile Include="ExampleTests.fs" />
@@ -77,6 +82,8 @@
     <ProjectReference Include="..\..\src\Marey.Core\Marey.Core.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Units\Marey.Units.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Anim\Marey.Anim.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Fields\Marey.Fields.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Interact\Marey.Interact.fsproj" />
     <!-- D66 — the Skia tests live here rather than in a `Marey.Tests.Skia` of their own.
          A second test project is a second place for a gate to rot, and the precedent for
          "the real enforcement is in CI, and a missing toolchain skips loudly" is already

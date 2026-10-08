@@ -68,9 +68,69 @@ module Keys =
     /// One mark, by its **original row** in the layer's data — not by its position within a
     /// channel batch, which is a renumbered subset (D55).
     ///
-    /// Nothing emits a node carrying this yet; D69's batch split is its first producer. It is
-    /// spelled here so that there is one spelling.
+    /// A layer whose data supplied keys names its marks by `datum` instead (D104).
     let mark (layerKey: Key) (row: int) = child layerKey (sprintf "mark-%d" row)
+
+    /// D104 — a key the data supplied, written as one path segment. `%`, `/` and the control
+    /// characters are percent-encoded and nothing else is, so a station called `Bern/Ost` is one
+    /// segment, `key-Bern%2FOst`, and cannot forge a path that `covers` would read as a child.
+    /// Distinct keys stay distinct, because the encoding is reversible.
+    let escape (k: string) : string =
+        let sb = System.Text.StringBuilder(k.Length)
+
+        for c in k do
+            if c = '%' || c = Separator || System.Char.IsControl c then
+                sb.Append('%').Append((int c).ToString("X2")) |> ignore
+            else
+                sb.Append(c) |> ignore
+
+        sb.ToString()
+
+    /// D104 — one mark, by the key its datum carries rather than by its row. A row ordinal names
+    /// a different datum as soon as an earlier row is removed (D68); a supplied key does not.
+    /// `key-` rather than `mark-`, so the two spellings cannot meet inside one layer.
+    let datum (layerKey: Key) (k: string) = child layerKey ("key-" + escape k)
+
+    /// D104 — **keys for a layer's rows, checked.** One per row, and no two alike, because a
+    /// duplicate is D68's failure: one name for two marks, and `Scene.mapKey` touching both
+    /// when asked for one. The duplicates are named, with their rows, up to five of them.
+    let validate (rows: int) (keys: string[]) : unit =
+        if isNull keys then
+            invalidArg "keys" "Marey: keys cannot be null."
+
+        if keys.Length <> rows then
+            invalidArg "keys" (sprintf "Marey: the series has %d rows and %d keys; a key names one row." rows keys.Length)
+
+        let dupes =
+            keys
+            |> Array.indexed
+            |> Array.groupBy snd
+            |> Array.filter (fun (_, xs) -> xs.Length > 1)
+
+        if dupes.Length > 0 then
+            let named =
+                dupes
+                |> Array.truncate 5
+                |> Array.map (fun (k, xs) -> sprintf "\"%s\" (rows %s)" k (xs |> Array.map (fst >> string) |> String.concat ", "))
+                |> String.concat "; "
+
+            let more = if dupes.Length > 5 then sprintf ", and %d more" (dupes.Length - 5) else ""
+
+            invalidArg "keys" (sprintf "Marey: keys must be unique within a layer; duplicated: %s%s." named more)
+
+    /// D103 — the parts of a panel that are not its layers, each under its own key so that a
+    /// change to one is a change to it and not to the whole panel. A slider moving one
+    /// annotation over a fixed scatter leaves the axes, the gridlines and the keys alone, and
+    /// a diff can only see that when they are not all one subtree.
+    let axisX (panelKey: Key) = child panelKey "axis-x"
+
+    let axisY (panelKey: Key) = child panelKey "axis-y"
+
+    let grid (panelKey: Key) = child panelKey "grid"
+
+    let legend (panelKey: Key) = child panelKey "legend"
+
+    let colorbar (panelKey: Key) = child panelKey "colorbar"
 
     /// Does `ancestor` name `key`, or something `key` sits under?
     ///

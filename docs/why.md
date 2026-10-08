@@ -222,10 +222,12 @@ in the guide, the README and the examples.)*
   library. The library still works; it is simply not *for* this.
 - **The units are known only at runtime.** There is no UDUNITS-2 parser. The witness carries the
   fields such a parser would need, but the parser does not exist.
-- **Interactivity or 3D are needed.** Twelve geoms and three backends, and a figure can now be
-  animated, rendered frame by frame and encoded to video — but nothing is clickable and nothing is
-  projected. The [guide's closing section](guide.md#what-is-not-here-yet) is the current list of
-  what does not exist.
+- **Interactivity outside a notebook, or 3D, is needed.** Thirteen geoms and three backends. A
+  figure can be animated, rendered frame by frame and encoded to video, and in a Verso notebook it
+  can carry controls, zoom and a readout. But there is no interactive canvas outside a notebook, no
+  datum can be picked, and nothing is projected. The
+  [guide's closing section](guide.md#what-is-not-here-yet) is the current list of what does not
+  exist.
 - **The host is not .NET.** The argument above rests on F# units of measure, and there is no version
   of this library for a language without them.
 
