@@ -103,3 +103,19 @@ type Units =
     static member Gauss = NonSi.gauss
     static member DegreeCelsius = NonSi.degreeCelsius
     static member DegreeFahrenheit = NonSi.degreeFahrenheit
+
+    // ---- Read from text (D110) -----------------------------------------------------------------
+
+    /// A unit in UDUNITS-2's syntax: `Units.Parse("V/m")`, `Units.Parse("kg m s-2")`. Throws
+    /// `FormatException` with the reason when the text is not one. See `U.parse`.
+    static member Parse(text: string) : U<1> = U.parse text
+
+    /// `Parse`, returning false rather than throwing.
+    static member TryParse(text: string, [<System.Runtime.InteropServices.Out>] result: byref<U<1>>) : bool =
+        match U.tryParse text with
+        | Ok u ->
+            result <- u
+            true
+        | Error _ ->
+            result <- Unchecked.defaultof<_>
+            false

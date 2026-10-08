@@ -677,3 +677,96 @@ module OneNamePerType =
         let clash = Set.intersect csharp (named "Marey")
         Assert.True(clash.IsEmpty, sprintf "ambiguous under both usings: %s" (String.concat ", " clash))
 
+
+/// Gate 9 — a parsed unit is a composed one (D110).
+module Parsing =
+
+    let private svgOf (u: IUnit) =
+        let fig = Marey.Chart.Line([| 0.0; 1.0 |], [| 1.0; 2.0 |], yUnit = u)
+        SvgBackend.render extent (Chart.toScene extent fig)
+
+    let private same (expected: U<'u>) (parsed: U<1>) =
+        Assert.Equal(expected.Dim, parsed.Dim)
+        Assert.Equal(expected.ToSI, parsed.ToSI, 12)
+        Assert.Equal(expected.OffsetSI, parsed.OffsetSI)
+        Assert.Equal<(string * int) list>(expected.Factors, parsed.Factors)
+        Assert.Equal(svgOf expected, svgOf parsed)
+
+    [<Fact>]
+    let ``a quotient is the composition, factors and label included`` () =
+        same (U.div Derived.volt U.metre) (U.parse "V/m")
+        same (U.mul (U.mul U.kilogram U.metre) (U.recip (U.square U.second))) (U.parse "kg m s-2")
+        same (U.recip U.second) (U.parse "1/s")
+
+    [<Fact>]
+    let ``a declared symbol is the declared witness`` () =
+        Assert.Same(U.metre :> obj, U.parse "m" :> obj)
+        Assert.Same(NonSi.degreeCelsius :> obj, U.parse "°C" :> obj)
+        Assert.Same(NonSi.degreeCelsius :> obj, U.parse "degC" :> obj)
+        Assert.Same(Derived.ohm :> obj, U.parse "ohm" :> obj)
+        Assert.Same(U.candela :> obj, U.parse "cd" :> obj)
+        Assert.Same(NonSi.minute :> obj, U.parse "min" :> obj)
+        Assert.Equal(273.15, (U.parse "degC").OffsetSI)
+
+    [<Fact>]
+    let ``every spelling of a power reads the same`` () =
+        for text in [ "m2"; "m^2"; "m**2"; "m²"; "m m"; "m.m"; "m*m"; "m·m" ] do
+            let u = U.parse text
+            Assert.Equal(Dim.pow 2 Dim.length, u.Dim)
+            Assert.Equal<(string * int) list>([ "m", 2 ], u.Factors)
+
+        Assert.Equal<(string * int) list>([ "s", -1 ], (U.parse "s⁻¹").Factors)
+        Assert.Equal<(string * int) list>([ "s", -2 ], (U.parse "s^-2").Factors)
+
+    [<Fact>]
+    let ``prefixes, longest first, and only on a unit that takes one`` () =
+        let kPa = U.parse "kPa"
+        Assert.Equal("kPa", kPa.Symbol)
+        Assert.Equal(1000.0, kPa.ToSI)
+        Assert.Equal(1e-6, (U.parse "µs").ToSI, 1e-18)
+        Assert.Equal(1e-6, (U.parse "us").ToSI, 1e-18)
+        Assert.Equal(1e-6, (U.parse "mg").ToSI, 1e-18)
+        Assert.Equal(10.0, (U.parse "dam").ToSI)
+        Assert.Equal(1e-3, (U.parse "ms").ToSI, 1e-15)
+        Assert.True(Result.isError (U.tryParse "kkg"))
+        Assert.True(Result.isError (U.tryParse "kmin"))
+        Assert.True(Result.isError (U.tryParse "mdegC"))
+
+    /// UDUNITS-2's precedence: `/` and juxtaposition are one level, left to right.
+    [<Fact>]
+    let ``a quotient and a product bind equally, left to right`` () =
+        Assert.Equal((U.parse "(W/m2) K").Dim, (U.parse "W/m2 K").Dim)
+        Assert.Equal((U.parse "W/m2/K").Dim, (U.parse "W/(m2 K)").Dim)
+        Assert.NotEqual((U.parse "W/m2 K").Dim, (U.parse "W/(m2 K)").Dim)
+
+    let private refused (text: string) (because: string) =
+        match U.tryParse text with
+        | Ok u -> failwithf "\"%s\" was read as %s" text u.Symbol
+        | Error why -> Assert.Contains(because, why)
+
+    [<Fact>]
+    let ``what it cannot read, it refuses by name`` () =
+        refused "days since 1970-01-01" "timestamp"
+        refused "dB" "logarithmic"
+        refused "lg(re 1 mW)" "logarithmic"
+        refused "furlong" "'furlong'"
+        refused "1000 m" "scale factor"
+        refused "1.5 m" "scale factor"
+        refused "(m s" "not closed"
+        refused "m^" "integer exponent"
+        refused "" "empty"
+        Assert.Throws<System.FormatException>(fun () -> U.parse "furlong" |> ignore) |> ignore
+
+    /// The checked assertion, not a cast: the dimension decides, and the angle (D98) with it.
+    [<Fact>]
+    let ``tryAs asserts a measure back, checked`` () =
+        match U.tryAs U.metre (U.parse "km") with
+        | Some (km: U<m>) ->
+            Assert.Equal(1000.0, km.ToSI)
+            Assert.Equal("km", km.Symbol)
+        | None -> failwith "km is a length"
+
+        Assert.True((U.tryAs U.metre (U.parse "s")).IsNone)
+        Assert.True((U.tryAs Derived.hertz (U.parse "rad/s")).IsNone)
+        Assert.True((U.tryAs U.metre U.unspecified).IsNone)
+        Assert.True((U.tryAs NonSi.degreeCelsius (U.parse "K")).IsSome)

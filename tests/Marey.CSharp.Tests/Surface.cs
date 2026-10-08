@@ -153,4 +153,16 @@ public class Surface
         Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(File.ReadAllBytes(Path.Combine(dir.FullName, "f.pdf")), 0, 4));
         dir.Delete(true);
     }
+
+    /// D110 from C#: the spelling a unit read out of a file header arrives in.
+    [Fact]
+    public void AUnitFromText()
+    {
+        var parsed = Units.Parse("V/m");
+        Assert.Equal(Svg(Chart.Line(X, Y, yUnit: Units.Div(Units.Volt, Units.Metre))), Svg(Chart.Line(X, Y, yUnit: parsed)));
+        Assert.True(Units.TryParse("kg m s-2", out var newton));
+        Assert.Equal(Units.Newton.Dim, newton.Dim);
+        Assert.False(Units.TryParse("days since 1970-01-01", out _));
+        Assert.Throws<FormatException>(() => Units.Parse("furlong"));
+    }
 }
