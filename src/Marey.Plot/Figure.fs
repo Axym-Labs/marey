@@ -317,7 +317,7 @@ module PanelView =
                         let number =
                             if r >= 1.0 && not (System.Double.IsInfinity r) then
                                 let decade = 10.0 ** floor (log10 r)
-                                Ticks.format 0 (System.Math.Round(scaled / decade) * decade)
+                                Ticks.format 0 (Num.roundEven (scaled / decade) * decade)
                             else
                                 Ticks.format (Ticks.decimalsFor r) scaled
 

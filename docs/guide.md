@@ -36,8 +36,9 @@ The blocks form one continuous session, so bindings introduced early are still i
 21. [Mathematical typesetting](#21-mathematical-typesetting)
 22. [Notebooks](#22-notebooks)
 23. [Interaction](#23-interaction)
-24. [The scene IR](#24-the-scene-ir)
-25. [Escape hatches](#25-escape-hatches)
+24. [The GPU, a window, and the browser](#24-the-gpu-a-window-and-the-browser)
+25. [The scene IR](#25-the-scene-ir)
+26. [Escape hatches](#26-escape-hatches)
 
 ---
 
@@ -2228,7 +2229,108 @@ plays as a flipbook (§22). The pointer is not recorded: it changes nothing a fi
 
 ---
 
-## 24. The scene IR
+## 24. The GPU, a window, and the browser
+
+Every backend so far turns a scene into a document or a file. Three more turn it into pixels on a
+screen: `Marey.Backend.Gpu` draws on the GPU, offscreen or in a window, and `Marey.Backend.Web`
+draws on a canvas in a browser page, where the figure is compiled too. Nothing above the scene IR
+differs between them.
+
+### On the GPU
+
+```fsharp
+#r "nuget: Marey.Backend.Gpu"
+
+let cloudN = 100_000
+let cloudRng = Rng.seeded 11UL
+let cloudU, _ = Rng.units (2 * cloudN) cloudRng
+let cloudX = Array.init cloudN (fun i -> cloudU.[2 * i] * 1.0<s>)
+let cloudY = Array.init cloudN (fun i -> (cloudU.[2 * i + 1] - 0.5) * 1.0<m>)
+let cloudFigure = Chart.scatter U.second U.metre cloudX cloudY
+
+match GpuBackend.probe () with
+| Ok driver ->
+    use gpu = new GpuRenderer()
+    let extent = Chart.size 800.0 500.0
+    let png = cloudFigure |> Chart.toSceneWith gpu.Measurer extent |> gpu.RenderPng extent
+    printfn "100 000 points drawn on %s: a %d-byte PNG" driver png.Length
+| Error why -> printfn "no OpenGL 3.3 context here: %s" why
+```
+
+`GpuRenderer` draws with the Skia backend's own code on an OpenGL 3.3 core context, so text,
+gradients and clips come out as they do in a PNG. A marker batch is the exception: it is one
+instanced draw, each mark's shape computed in a shader to Skia's outline, so a million points take
+milliseconds rather than seconds. The output agrees with the CPU raster to within antialiasing,
+not to the byte.
+
+One renderer owns one thread, one context and one text measurer for its lifetime, and any thread
+may call it; calls take turns. Keep one for many renders: creating one opens a context and
+resolves fonts. Lay out with `gpu.Measurer`, as with any backend that draws text itself.
+
+On Linux with no GPU or no display, `xvfb-run` and Mesa's `llvmpipe` provide both.
+`GpuBackend.probe ()` names the driver a renderer would get, or says why there is none.
+
+### In a window
+
+`Chart.show fig` opens a figure in a window and returns when the window is closed. `Live.show`
+does the same for a live figure, with its controls in a strip above it. Drag to zoom, shift-drag to
+pan, double-click to reset, hover to read the data, Tab and the arrow keys to move the controls,
+Escape to close.
+
+The window has no interaction model of its own. Its pointer and keys become the messages the
+notebook page sends for the same gestures (§23), stepped by `Live.step`, so a session in a window
+reaches the states a notebook session would, and a `Recorder` shown with `Recorder.show` records
+the same log. `GpuWindow.Open` returns at once instead of waiting, and drives the same window from
+code:
+
+```fsharp
+match GpuBackend.probe () with
+| Ok _ ->
+    use window = GpuWindow.Open(explorer, visible = false)
+    window.Post(WindowEvent.Key(WindowKey.Tab, false))
+    window.Post(WindowEvent.Key(WindowKey.Right, false))
+    printfn "the window's controls: %s" (String.concat ", " (Live.shown explorer window.State))
+| Error why -> printfn "no window here: %s" why
+```
+
+A window is laid out by the measurer the notebook widget uses and drawn with real fonts, which
+is the notebook's imprecision, unchanged. It runs on a thread of its own, which Linux and Windows
+allow and macOS does not.
+
+### In a browser
+
+`Marey.Backend.Web` is consumed by [Fable](https://fable.io), which compiles F# to JavaScript.
+A Fable app references `Marey.Plot` and `Marey.Backend.Web` from NuGet like any other package,
+builds a figure, and compiles and draws it in the page:
+
+```
+let ctx = Canvas.context (Canvas.byId "plot")
+let m = WebText.measurerNow ()
+let scene = Chart.toSceneWith m.Measurer extent figure
+CanvasBackend.draw m.Measurer ctx extent scene
+```
+
+The compiler is the same F#, so the browser lays the figure out exactly as a kernel would with the
+same measurer; the 27 SVG baselines in the test suite are reproduced byte for byte under Node.
+
+**Text.** The canvas measures text in the font it will draw with, and a web font may not have
+arrived when the page first draws. `WebText.measurerNow ()` returns the canvas's measurer once
+`document.fonts` has finished loading and Marey's approximate widths before then, with
+`Approximated` saying so; `WebText.measurer ()` is a promise of the real one. The canvas measurer
+refuses to measure while fonts are loading, so a layout against a fallback face cannot happen by
+accident.
+
+**Marks.** A marker batch of 2000 marks or more is drawn by WebGL2 where the browser has it, and
+composited into the canvas in its place, so it sits over what was drawn before it, under what is
+drawn after, and inside any clip or fade around it. A hundred thousand points draw about ten times
+faster than on the canvas alone.
+
+`examples/web/` is a page that does this, with two sliders and a cloud of up to a million points;
+its README says how to build and serve it.
+
+---
+
+## 25. The scene IR
 
 Everything above compiles to one closed ten-case `Scene` IR, and every backend consumes only that.
 It is the level at which a figure that came out wrong can be inspected.
@@ -2274,7 +2376,7 @@ paints the overlap twice. For a single shape, `Color.A` is still the simpler too
 
 ---
 
-## 25. Escape hatches
+## 26. Escape hatches
 
 **Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so the scales are
 the caller's and everything downstream still works.
@@ -2310,7 +2412,7 @@ For a stateful backend there is `IBackend` and `Chart.renderTo`, which is the pa
 
 ## What is not here yet
 
-Simulation (integrating a system over physical time: trajectories, pathlines, particles), further
-backends (a browser canvas and a GPU one), interaction outside a notebook, picking a datum under
+Simulation (integrating a system over physical time: trajectories, pathlines, particles), GPU
+computation of fields, a browser renderer for scenes compiled in a kernel, picking a datum under
 the pointer, and typesetting without a TeX installation are all intended, and none of them exist
 yet.

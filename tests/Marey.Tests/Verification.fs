@@ -115,10 +115,27 @@ let private nativeLibraries () : Dependency list =
               + "was skipped. "
               + why } ]
 
+/// An OpenGL 3.3 core context, which no `PATH` walk can find either: the GPU gates ask for one by
+/// building the renderer they use, and this reads the same answer (M5 gate 11). In CI it is Mesa's
+/// llvmpipe under `xvfb-run`.
+let private gpuContext () : Dependency list =
+    match GpuTests.driver () with
+    | Ok description ->
+        [ { Name = "OpenGL 3.3 context"
+            Live = true
+            Line = "OpenGL 3.3 context — " + description } ]
+    | Error why ->
+        [ { Name = "OpenGL 3.3 context"
+            Live = false
+            Line =
+              "OpenGL 3.3 context unavailable — every GPU gate was skipped. On Linux with no GPU or no "
+              + "display, install libgl1-mesa-dri and run under xvfb-run. "
+              + why } ]
+
 /// Everything, in the order a reader wants it: the suite's own programs, then the two packages',
-/// then the natives.
+/// then the natives, then the GPU.
 let census () : Dependency list =
-    suiteTools () @ packageTools () @ nativeLibraries ()
+    suiteTools () @ packageTools () @ nativeLibraries () @ gpuContext ()
 
 // ======================================================================================
 // The half a human reads
@@ -181,7 +198,7 @@ module ``the toolchain census`` =
     /// edited by hand is what makes somebody notice they changed it.
     [<Fact>]
     let ``the census covers every dependency the gates have`` () =
-        Assert.Equal(9, List.length (census ()))
+        Assert.Equal(10, List.length (census ()))
 
     /// No entry is nameless or wordless, because a census row that says nothing is worse than a
     /// missing one — it looks like it was checked.

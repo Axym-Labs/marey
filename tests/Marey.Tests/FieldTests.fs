@@ -430,26 +430,13 @@ module ``a field on a figure`` =
         let width = float (box.X1 - box.X0)
         Assert.InRange(width, 0.15, 0.30)
 
-    let private potential =
-        let xs = Grid.linear -2.0<m> 2.0<m> 13
-        let ys = Grid.linear -1.5<m> 1.5<m> 9
-
-        Field.sampleScalar xs ys (fun p ->
-            let d1 = Vec2.norm { X = p.X - 0.6<m>; Y = p.Y + 0.1<m> }
-            let d2 = Vec2.norm { X = p.X + 0.6<m>; Y = p.Y - 0.1<m> }
-            (log (float d2) - log (float d1)) * 1.0<V>)
+    let private potential = GoldenScenes.Fields.potential
 
     /// Two line charges: their potential as a heatmap with its equipotentials. The SVG baseline
     /// carries the 13 × 9 image inline, which is the size it is chosen at.
     [<Fact>]
     let ``golden: a potential, its heatmap and its equipotentials (svg)`` () =
-        let fig =
-            Field.heatmap U.metre U.metre Derived.volt potential
-            |> Chart.overlay (Field.contours U.metre U.metre potential)
-            |> Chart.withYLabel "y"
-            |> Chart.withTitle "Two line charges"
-
-        Golden.check "figure-field-heatmap.svg" (Chart.render SvgBackend.render extent fig)
+        Golden.check "figure-field-heatmap.svg" (Chart.render SvgBackend.render extent GoldenScenes.Fields.heatmapFigure)
 
     /// The same potential in bands, which is vector all the way down, so its TikZ baseline needs
     /// no sidecar and compiles with the other `.tex` baselines.
@@ -533,7 +520,7 @@ module ``arrows`` =
     let private uniform =
         VectorGrid.sample (Grid.linear 0.0<m> 1.0<m> 6) (Grid.linear 0.0<m> 1.0<m> 5) (fun _ _ -> struct (3700.0<V / m>, 0.0<V / m>))
 
-    let private fieldUnit = U.div Derived.volt U.metre
+    let private fieldUnit = GoldenScenes.Fields.fieldUnit
 
     /// **Gate 8.** The key says what one arrow length means, and it is true: its arrow is to the
     /// longest arrow as its value is to the largest magnitude. The value is the largest 1, 2 or
@@ -624,23 +611,11 @@ module ``arrows`` =
         for x, y in d do
             Assert.True(abs (a * x * x + b * y * y - 1.0) < 1e-9, sprintf "an arrow (%g, %g) is not the common length" x y)
 
-    let private chargePair =
-        let xs = Grid.linear -1.8<m> 1.8<m> 10
-        let ys = Grid.linear -1.2<m> 1.2<m> 7
+    let private chargePair = GoldenScenes.Fields.chargePair
 
-        Field.sampleScalar xs ys (fun p ->
-            let d1 = Vec2.norm { X = p.X - 0.6<m>; Y = p.Y + 0.1<m> }
-            let d2 = Vec2.norm { X = p.X + 0.6<m>; Y = p.Y - 0.1<m> }
-            (log (float d2) - log (float d1)) * 1.0<V>)
+    let private eField = GoldenScenes.Fields.eField
 
-    let private eField =
-        let g = Field.grad chargePair
-        { g with U = Array.map (~-) g.U; W = Array.map (~-) g.W }
-
-    let private quiverFigure =
-        Field.quiverBy U.metre U.metre fieldUnit eField
-        |> Chart.withYLabel "y"
-        |> Chart.withTitle "The field of two line charges"
+    let private quiverFigure = GoldenScenes.Fields.quiverFigure
 
     [<Fact>]
     let ``golden: a quiver coloured by magnitude, with its key (svg)`` () =
@@ -815,13 +790,9 @@ module ``streamlines`` =
             let diff = abs (atan2 (sin (expected - actual)) (cos (expected - actual)))
             Assert.True(diff < 1e-3, sprintf "a chord at (%g, %g) is %g rad off the field" cx cy diff)
 
-    let private pendulum =
-        let flow: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s ^ 2> * sin (float th) * 1.0<rad>)
-        Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 53) (Grid.linear -9.0<rad / s> 9.0<rad / s> 37) flow
+    let private pendulum = GoldenScenes.Fields.streamlinePendulum
 
-    let private portrait =
-        Field.streamlinesWith 18.0<px> Derived.radian (U.div Derived.radian U.second) pendulum
-        |> Chart.withTitle "A pendulum's phase portrait"
+    let private portrait = GoldenScenes.Fields.streamlinePortrait
 
     [<Fact>]
     let ``golden: a pendulum's phase portrait (svg)`` () =
@@ -1045,9 +1016,7 @@ module ``phase portraits`` =
             Assert.True(abs (float re1 - tr / 2.0) < 1e-9 && abs (float im1 - sqrt -disc / 2.0) < 1e-9)
             Assert.True(abs (float l2.Im + sqrt -disc / 2.0) < 1e-9)
 
-    let private pendulum (n: int) =
-        let flow: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s ^ 2> * sin (float th) * 1.0<rad>)
-        Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> n) (Grid.linear -9.0<rad / s> 9.0<rad / s> (n * 37 / 53)) flow
+    let private pendulum (n: int) = GoldenScenes.Fields.portraitPendulum n
 
     let private omega = sqrt 9.81
 
@@ -1143,9 +1112,7 @@ module ``phase portraits`` =
         Assert.EndsWith("i s⁻¹", text)
         Assert.DoesNotContain("Hz", text)
 
-    let private portrait =
-        Phase.portraitWith 18.0<px> Derived.radian (U.div Derived.radian U.second) (pendulum 53)
-        |> Chart.withTitle "A pendulum's phase portrait"
+    let private portrait = GoldenScenes.Fields.phasePortrait
 
     [<Fact>]
     let ``golden: a phase portrait with nullclines and fixed points (svg)`` () =

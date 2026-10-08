@@ -103,7 +103,9 @@ type LiveMsg =
 [<RequireQualifiedAccess>]
 module LiveMsg =
 
+#if !FABLE_COMPILER
     let private invariant = CultureInfo.InvariantCulture
+#endif
 
     /// `[a,b,…]` as numbers, or nothing.
     let private numbers (payload: string) : float[] option =
@@ -120,7 +122,11 @@ module LiveMsg =
                 else
                     let parsed =
                         inner.Split(',')
+#if FABLE_COMPILER
+                        |> Array.map (fun a -> Double.TryParse(a.Trim()))
+#else
                         |> Array.map (fun a -> Double.TryParse(a.Trim(), NumberStyles.Float, invariant))
+#endif
 
                     if parsed |> Array.forall fst then Some(parsed |> Array.map snd) else None
             else
@@ -201,7 +207,9 @@ module LiveMsg =
 [<RequireQualifiedAccess>]
 module LiveLog =
 
+#if !FABLE_COMPILER
     let private invariant = CultureInfo.InvariantCulture
+#endif
 
     [<Literal>]
     let Format = "marey.live-log"
@@ -213,7 +221,7 @@ module LiveLog =
         if Double.IsNaN x then "\"NaN\""
         elif Double.IsPositiveInfinity x then "\"Infinity\""
         elif Double.IsNegativeInfinity x then "\"-Infinity\""
-        else x.ToString("R", invariant)
+        else Num.shortest x
 
     /// The log as one line of JSON:
     /// `{"format":"marey.live-log","version":1,"events":[[0,"set",[0,2.5]],…]}`, each event its
@@ -337,7 +345,13 @@ module LiveLog =
                 while i < n && (Char.IsDigit text.[i] || "+-.eE".IndexOf text.[i] >= 0) do
                     i <- i + 1
 
+#if FABLE_COMPILER
+                // JavaScript parses one number syntax, with no culture: `NumberStyles.Float` and
+                // the invariant culture are what it does already, and Fable refuses to be told.
+                match Double.TryParse(text.Substring(start, i - start)) with
+#else
                 match Double.TryParse(text.Substring(start, i - start), NumberStyles.Float, invariant) with
+#endif
                 | true, x when i > start -> JNum x
                 | _ -> fail ()
 

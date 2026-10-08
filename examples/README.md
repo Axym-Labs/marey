@@ -1,6 +1,6 @@
 # Examples
 
-Fifteen standalone scripts and one notebook. Start with [`reel.fsx`](reel.fsx) if you want to see what the library
+Fifteen standalone scripts, one notebook, and one browser app. Start with [`reel.fsx`](reel.fsx) if you want to see what the library
 does before reading how; start with [`free-fall.fsx`](free-fall.fsx) if you would rather read the
 smallest complete thing first.
 
@@ -33,6 +33,11 @@ static anywhere else.
 | [`pendulum.fsx`](pendulum.fsx) | A phase space with a different unit on each axis, radians and radians per second. The fixed points are found and classified, with eigenvalues in s⁻¹: centres hanging down, saddles standing up, stable foci once there is friction. Also checks Liouville's theorem on the grid: the flow's divergence is zero, then minus the friction. |
 | [`interact.dib`](interact.dib) | **A live figure**, in a notebook. Two line charges with a slider over the charge per length, typed `float<C/m>` and labelled `2 nC·m⁻¹`, a slider over their separation and a choice of mark. Drag to zoom onto a charge and the axes and the readout change to millimetres. A recorder keeps what the reader did and replays it as a film. |
 | [`reel.fsx`](reel.fsx) | **The demo reel.** The whole library in one shot: unit witnesses, a storyboard that is a value, one arrangement for the whole shot so the panel holds still, a mark addressed by its row, TeX-set axis titles on the poster, a flipbook that plays in a browser with no encoder installed, and an `.mp4` at the end. Written for somebody who has read none of the rest. |
+
+[`web/`](web/) is a page that compiles and draws its figures in the browser, through Fable and
+`Marey.Backend.Web`: two sliders over a damped oscillation, and a cloud of up to a million points
+drawn by WebGL2. Its README says how to build and serve it. It is compiled in CI and not run, since
+running it takes a browser.
 
 ## The data
 

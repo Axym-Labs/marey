@@ -181,7 +181,7 @@ module FieldMarks =
             let nx, ny = lx.Length, ly.Length
             let rgba = Array.zeroCreate<byte> (nx * ny * 4)
 
-            let byte01 (c: float) = byte (Math.Round((max 0.0 (min 1.0 c)) * 255.0))
+            let byte01 (c: float) = byte (Num.roundEven ((max 0.0 (min 1.0 c)) * 255.0))
 
             for j in 0 .. ny - 1 do
                 for i in 0 .. nx - 1 do
@@ -991,9 +991,16 @@ module FieldMarks =
     // stops at the edge or a fixed point, the window is what there is.
     //
     // **The noise is D95's generator**, one uniform draw per raster pixel in row order from the
-    // stated seed. Nothing else is random and nothing runs in parallel, so a seed, a field and a
-    // plot size name one image on every runtime: the arithmetic is +, ×, ÷ and √, which IEEE 754
-    // rounds the same everywhere.
+    // stated seed. Nothing else is random, and the tracing runs in row order on one thread, so a
+    // seed, a field and a plot size name one image on every runtime: the arithmetic is +, ×, ÷ and
+    // √, which IEEE 754 rounds the same everywhere.
+    //
+    // **Only the per-pixel passes after the tracing run in parallel** (M5, D119 as taken). Fast LIC
+    // seeds a line only at a pixel no earlier line crossed, so the lines traced depend on the
+    // order they are traced in, and tracing in parallel would change the image a seed names. The
+    // intensity and the colouring each write one pixel from values nothing else writes, so they
+    // are parallel without the thread count reaching a byte. A GPU LIC is M5.5's, beside the
+    // solvers that need the same compute.
     //
     // **Contrast.** A mean of many draws has a small spread around one half, so the texture is
     // stretched: two standard deviations either side of its mean become black and white. The
@@ -1008,8 +1015,8 @@ module FieldMarks =
             let gx0, gx1 = p.X.[0], p.X.[p.Nx - 1]
             let gy0, gy1 = p.Y.[0], p.Y.[p.Ny - 1]
             let os = float (max 1 options.Oversample)
-            let rw = max 1 (int (Math.Round((gx1 - gx0) * float plot.Width * os)))
-            let rh = max 1 (int (Math.Round((gy1 - gy0) * float plot.Height * os)))
+            let rw = max 1 (int (Num.roundEven ((gx1 - gx0) * float plot.Width * os)))
+            let rh = max 1 (int (Num.roundEven ((gy1 - gy0) * float plot.Height * os)))
 
             // Raster coordinates to `nd`, and `nd` components to raster pixels per unit time.
             let ndX (rx: float) = gx0 + rx / float rw * (gx1 - gx0)
@@ -1069,7 +1076,7 @@ module FieldMarks =
 
             // Half the kernel, in samples; a trace runs this many times further each way, so
             // all but the last `n` samples at a cut end are deposited.
-            let n = max 1 (int (Math.Round(float options.Length * os / 2.0 / step)))
+            let n = max 1 (int (Num.roundEven (float options.Length * os / 2.0 / step)))
             let reach = 6 * n
             let sum = Array.zeroCreate<float> (rw * rh)
             let hits = Array.zeroCreate<int> (rw * rh)
@@ -1124,7 +1131,7 @@ module FieldMarks =
             // A pixel whose field is finite but which no line crossed — a fixed point, or a
             // direction that reverses at its centre — keeps its own noise.
             let intensity =
-                Array.init (rw * rh) (fun k ->
+                Array.Parallel.init (rw * rh) (fun k ->
                     if hits.[k] > 0 then sum.[k] / float hits.[k]
                     else
                         let x, y = ndX (float (k % rw) + 0.5), ndY (float (k / rw) + 0.5)
@@ -1138,9 +1145,9 @@ module FieldMarks =
                 else sqrt (present |> Array.averageBy (fun v -> (v - mean) * (v - mean)))
 
             let rgba = Array.zeroCreate<byte> (rw * rh * 4)
-            let byte01 (c: float) = byte (Math.Round((max 0.0 (min 1.0 c)) * 255.0))
+            let byte01 (c: float) = byte (Num.roundEven ((max 0.0 (min 1.0 c)) * 255.0))
 
-            for j in 0 .. rh - 1 do
+            let row (j: int) =
                 for i in 0 .. rw - 1 do
                     let k = j * rw + i
                     let t = intensity.[k]
@@ -1159,6 +1166,10 @@ module FieldMarks =
                             rgba.[o + 2] <- byte01 (c.B * b)
                             rgba.[o + 3] <- byte01 c.A
                         | None -> ()
+
+            // Each row writes its own pixels and reads nothing another row writes, so this runs in
+            // parallel without the thread count reaching the image.
+            Array.Parallel.iter row [| 0 .. rh - 1 |]
 
             Some(
                 { Width = rw; Height = rh; Rgba = rgba },

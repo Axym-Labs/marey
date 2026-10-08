@@ -450,7 +450,7 @@ module ``ink`` =
     let ``every golden scene renders with ink in it`` (name: string) =
         withSkia (fun () ->
             let _, scene, extent =
-                GoldenTests.Scenes.all |> List.find (fun (n, _, _) -> n = name)
+                GoldenScenes.Scenes.all |> List.find (fun (n, _, _) -> n = name)
 
             let png = SkiaBackend.renderPng extent scene
             let gray = SkiaPixels.decode png
@@ -1887,3 +1887,137 @@ module ``font fallback`` =
                     (right - left)
                     advance
             ))
+
+// ======================================================================================
+// THE SEAM — D131, gate 5 of the M5 plan
+//
+// `SkiaPainter` is the traversal on a canvas the caller owns, and its `claim` is how the GPU
+// backend takes a node off Skia. The backend draws through it, so the PNG and PDF suites above
+// are the claim that moving it changed nothing; these pin what the seam itself promises.
+// ======================================================================================
+
+module ``the painter`` =
+
+    open SkiaSharp
+
+    let private extent: Extent<px> = { Width = 200.0<px>; Height = 120.0<px> }
+
+    /// Draw on a white surface we own, through the painter, and encode as `SkiaBackend` does.
+    let private paint (claim: (SkiaPainter -> Affine<nd, px> -> Node -> bool) option) (node: Node) =
+        use measurer = new SkiaTextMeasurer()
+        use surface = SKSurface.Create(SKImageInfo(200, 120, SKColorType.Rgba8888, SKAlphaType.Premul))
+        surface.Canvas.Clear SKColors.White
+        let mutable self: SkiaPainter option = None
+        let hook = claim |> Option.map (fun c -> fun ctm n -> c self.Value ctm n)
+        let painter = SkiaPainter(surface.Canvas, measurer, true, hook)
+        self <- Some painter
+        painter.Draw(SkiaPainter.RootTransform extent, node)
+        use image = surface.Snapshot()
+        use data = image.Encode(SKEncodedImageFormat.Png, 100)
+        data.ToArray()
+
+    let private dots =
+        Markers
+            { Points = [| { X = 0.25<nd>; Y = 0.5<nd> }; { X = 0.75<nd>; Y = 0.5<nd> } |]
+              Shape = MarkCircle
+              Size = 12.0<px>
+              Fill = Some(Solid(Color.rgb 0.9 0.1 0.1))
+              Stroke = None }
+
+    let private frame =
+        Path([| MoveTo { X = 0.1<nd>; Y = 0.1<nd> }; LineTo { X = 0.9<nd>; Y = 0.9<nd> } |], Some(Stroke.solid ink 2.0<px>), None, NonZero)
+
+    [<Fact>]
+    let ``with no claim, the painter draws what SkiaBackend draws`` () =
+        let scene = Group [| frame; dots |]
+        Assert.Equal<byte[]>(SkiaBackend.renderPng extent scene, paint None scene)
+
+    [<Fact>]
+    let ``a claimed node is not drawn, and the rest is`` () =
+        let claimMarkers = Some(fun (_: SkiaPainter) (_: Affine<nd, px>) n -> match n with Markers _ -> true | _ -> false)
+        let claimed = paint claimMarkers (Group [| frame; dots |])
+        Assert.Equal<byte[]>(paint None frame, claimed)
+        Assert.NotEqual<byte[]>(paint None (Group [| frame; dots |]), claimed)
+
+    /// The claimant gets the transform the node would have been drawn under, so it can place the
+    /// node itself: a point at (1, 1) under a half-scale transform lands at the panel's centre.
+    [<Fact>]
+    let ``a claim sees the node's own transform`` () =
+        let mutable seen = None
+
+        let claim =
+            Some(fun (_: SkiaPainter) (ctm: Affine<nd, px>) n ->
+                match n with
+                | Markers b ->
+                    seen <- Some(Affine.apply ctm b.Points.[0])
+                    true
+                | _ -> false)
+
+        let half: Affine<nd, nd> = Affine.scale 0.5 0.5
+        paint claim (Transform(half, Markers { (match dots with Markers b -> b | _ -> failwith "") with Points = [| { X = 1.0<nd>; Y = 1.0<nd> } |] })) |> ignore
+        let p = seen.Value
+        Assert.Equal(100.0, float p.X, 9)
+        Assert.Equal(60.0, float p.Y, 9)
+
+    /// A claimant drawing outside Skia has to know when it is inside a group-opacity layer.
+    [<Fact>]
+    let ``a claim inside an opacity layer sees a layer depth of one`` () =
+        let depths = ResizeArray<int>()
+
+        let claim =
+            Some(fun (p: SkiaPainter) (_: Affine<nd, px>) n ->
+                match n with
+                | Markers _ ->
+                    depths.Add p.LayerDepth
+                    false
+                | _ -> false)
+
+        paint claim (Group [| dots; Opacity(0.5, dots); Opacity(1.0, dots) |]) |> ignore
+        Assert.Equal<int list>([ 0; 1; 0 ], List.ofSeq depths)
+
+// ======================================================================================
+// D132 — each mark is composited on its own
+// ======================================================================================
+
+module ``each mark composites on its own`` =
+
+    let private extent: Extent<px> = { Width = 100.0<px>; Height = 100.0<px> }
+
+    let private batch (stroke: Stroke option) (points: Vec2<nd>[]) =
+        Markers
+            { Points = points
+              Shape = MarkSquare
+              Size = 40.0<px>
+              Fill = Some(Solid(Color.rgba 0.0 0.0 1.0 0.5))
+              Stroke = stroke }
+
+    /// Two half-transparent marks over one pixel are darker than one, as in the SVG and TikZ
+    /// backends. Until 0.4.0 the batch was one path, and the overlap was the same 50% tint.
+    [<Fact>]
+    let ``two translucent marks are darker where they overlap`` () =
+        withSkia (fun () ->
+            let one = batch None [| { X = 0.45<nd>; Y = 0.5<nd> } |]
+            let two = batch None [| { X = 0.45<nd>; Y = 0.5<nd> }; { X = 0.55<nd>; Y = 0.5<nd> } |]
+            let r1, _, _ = SkiaPixels.rgbAt (SkiaBackend.renderPng extent one) 0.5 0.5
+            let r2, _, _ = SkiaPixels.rgbAt (SkiaBackend.renderPng extent two) 0.5 0.5
+            Assert.InRange(r1, 120, 135)
+            Assert.InRange(r2, 58, 70))
+
+    /// A mark is filled and then stroked before the next mark is drawn, so the second mark's
+    /// fill lies over the first mark's outline where they cross.
+    [<Fact>]
+    let ``a later mark covers an earlier mark's outline`` () =
+        withSkia (fun () ->
+            let red = Stroke.solid (Color.rgb 1.0 0.0 0.0) 3.0<px>
+
+            let opaque =
+                Markers
+                    { Points = [| { X = 0.4<nd>; Y = 0.5<nd> }; { X = 0.6<nd>; Y = 0.5<nd> } |]
+                      Shape = MarkSquare
+                      Size = 40.0<px>
+                      Fill = Some(Solid(Color.rgb 0.0 0.0 1.0))
+                      Stroke = Some red }
+
+            // The first square's right edge is at x = 40 + 20 = 60 px, inside the second square.
+            let r, _, b = SkiaPixels.rgbAt (SkiaBackend.renderPng extent opaque) 0.6 0.5
+            Assert.True(b > 200 && r < 40, sprintf "the first mark's outline shows through the second: rgb(%d, _, %d)" r b))

@@ -760,7 +760,7 @@ module Stat =
             [ j0; j0 + 1 ]
             |> List.map (fun j ->
                 let shift = if j % 2 <> 0 then 0.5 else 0.0
-                let i = int (Math.Round(u - shift, MidpointRounding.AwayFromZero))
+                let i = int (Num.roundAway (u - shift))
                 let du = u - (float i + shift)
                 let dv = v - float j * rowHeight
                 (i, j), du * du + dv * dv)
@@ -848,35 +848,35 @@ module Stat =
 
     /// Solve a small dense system by Gaussian elimination with partial pivoting; `None` when it
     /// is singular to working precision.
-    let private solve (a: float[,]) (b: float[]) : float[] option =
+    let private solve (a: float[][]) (b: float[]) : float[] option =
         let n = b.Length
-        let m = Array2D.copy a
+        let m = Array.map Array.copy a
         let v = Array.copy b
-        let scale = Seq.max (seq { for i in 0 .. n - 1 do for j in 0 .. n - 1 -> abs m.[i, j] })
+        let scale = Seq.max (seq { for i in 0 .. n - 1 do for j in 0 .. n - 1 -> abs m.[i].[j] })
         let mutable ok = scale > 0.0
 
         for col in 0 .. n - 1 do
             if ok then
-                let pivot = [ col .. n - 1 ] |> List.maxBy (fun r -> abs m.[r, col])
+                let pivot = [ col .. n - 1 ] |> List.maxBy (fun r -> abs m.[r].[col])
 
-                if abs m.[pivot, col] <= 1e-12 * scale then
+                if abs m.[pivot].[col] <= 1e-12 * scale then
                     ok <- false
                 else
                     if pivot <> col then
                         for j in 0 .. n - 1 do
-                            let t = m.[col, j]
-                            m.[col, j] <- m.[pivot, j]
-                            m.[pivot, j] <- t
+                            let t = m.[col].[j]
+                            m.[col].[j] <- m.[pivot].[j]
+                            m.[pivot].[j] <- t
 
                         let t = v.[col]
                         v.[col] <- v.[pivot]
                         v.[pivot] <- t
 
                     for r in col + 1 .. n - 1 do
-                        let f = m.[r, col] / m.[col, col]
+                        let f = m.[r].[col] / m.[col].[col]
 
                         for j in col .. n - 1 do
-                            m.[r, j] <- m.[r, j] - f * m.[col, j]
+                            m.[r].[j] <- m.[r].[j] - f * m.[col].[j]
 
                         v.[r] <- v.[r] - f * v.[col]
 
@@ -889,9 +889,9 @@ module Stat =
                 let mutable acc = v.[i]
 
                 for j in i + 1 .. n - 1 do
-                    acc <- acc - m.[i, j] * x.[j]
+                    acc <- acc - m.[i].[j] * x.[j]
 
-                x.[i] <- acc / m.[i, i]
+                x.[i] <- acc / m.[i].[i]
 
             Some x
 
@@ -918,7 +918,7 @@ module Stat =
 
             let rec fit (deg: int) =
                 let k = deg + 1
-                let a = Array2D.zeroCreate k k
+                let a = Array.init k (fun _ -> Array.zeroCreate<float> k)
                 let b = Array.zeroCreate k
 
                 for i in 0 .. n - 1 do
@@ -931,7 +931,7 @@ module Stat =
                             b.[r] <- b.[r] + w.[i] * pw.[r] * ys.[i]
 
                             for c in 0 .. k - 1 do
-                                a.[r, c] <- a.[r, c] + w.[i] * pw.[r + c]
+                                a.[r].[c] <- a.[r].[c] + w.[i] * pw.[r + c]
 
                 match solve a b with
                 | Some coef -> coef.[0]

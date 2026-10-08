@@ -1375,6 +1375,9 @@ module Chart =
     let render (renderer: Extent<px> -> Node -> 'a) (extent: Extent<px>) (fig: Figure) : 'a =
         renderer extent (toScene extent fig)
 
+    // D113 — file output is .NET's. A Fable build has no file system to write to, and these do not
+    // compile there.
+#if !FABLE_COMPILER
     /// One line to a file: `fig |> Chart.toFile SvgBackend.render "plot.svg" (Chart.size 800.0 500.0)`.
     ///
     /// UTF-8 without a byte-order mark, matching `SvgBackend.renderToFile`, because these files
@@ -1406,6 +1409,7 @@ module Chart =
     /// them, because a PNG that gained a BOM would not open.
     let toFileBytes (renderer: Extent<px> -> Node -> byte[]) (path: string) (extent: Extent<px>) (fig: Figure) : unit =
         System.IO.File.WriteAllBytes(path, render renderer extent fig)
+#endif
 
 /// D109, D111 — **the unit-optional front door**: data as `float[]`, and a unit per axis that may
 /// be stated or left out.

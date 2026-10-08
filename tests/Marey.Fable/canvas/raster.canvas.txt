@@ -1,0 +1,20 @@
+canvas.width = 640
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 320 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 320 200
+layer L1 2x2
+L1 putImageData 2x2 #125888907 at 0 0
+save
+transform 320 0 0 200 0 0
+imageSmoothingEnabled = false
+drawImage 0.1 0.15 0.45 0.7
+restore
+layer L2 3x1
+L2 putImageData 3x1 #646835879 at 0 0
+save
+transform 320 0 0 200 0 0
+imageSmoothingEnabled = true
+drawImage 0.62 0.35 0.3 0.3
+restore

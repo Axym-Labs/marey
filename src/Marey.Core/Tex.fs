@@ -34,7 +34,7 @@ module Tex =
     /// The replacement for one TeX-special character, or `None` when the character needs none.
     ///
     /// The ten characters TeX treats specially, and the two that need a macro rather than a
-    /// backslash: `~` and `^` are *active*/superscript rather than merely reserved, so
+    /// backslash: `~` and `^` are *active* or superscript rather than merely reserved, so
     /// `\~` and `\^` are accents that would silently swallow the following character instead of
     /// printing a tilde or a caret.
     ///

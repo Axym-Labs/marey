@@ -31,6 +31,7 @@
     <Compile Include="GeometryProperties.fs" />
     <Compile Include="ColorProperties.fs" />
     <Compile Include="RandomProperties.fs" />
+    <Compile Include="NumProperties.fs" />
     <Compile Include="SceneProperties.fs" />
     <Compile Include="AnimProperties.fs" />
     <Compile Include="MorphProperties.fs" />
@@ -43,10 +44,13 @@
     <Compile Include="TikzWriterTests.fs" />
     <Compile Include="TikzBackendTests.fs" />
     <Compile Include="TikzInkTests.fs" />
+    <Compile Include="../Shared/GoldenScenes.fs" Link="GoldenScenes.fs" />
     <Compile Include="Golden.fs" />
     <Compile Include="GoldenTests.fs" />
     <Compile Include="TikzGoldenTests.fs" />
     <Compile Include="SkiaTests.fs" />
+    <Compile Include="GpuTests.fs" />
+    <Compile Include="WindowTests.fs" />
     <Compile Include="PlotTests.fs" />
     <Compile Include="ShotTests.fs" />
     <Compile Include="StoryboardTests.fs" />
@@ -92,7 +96,11 @@
          one that gate 6 has to watch: it must not put SkiaSharp on the transitive graph of
          Core, Units, Plot, Svg or Tikz, and `SkiaTests` asserts exactly that. -->
     <ProjectReference Include="..\..\src\Marey.Backend.Skia\Marey.Backend.Skia.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Backend.Gpu\Marey.Backend.Gpu.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />
+    <!-- Not driven here (Fable and Node drive it, tests/Marey.Fable); referenced so that the
+         surface gates see its public names. -->
+    <ProjectReference Include="..\..\src\Marey.Backend.Web\Marey.Backend.Web.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Backend.Tikz\Marey.Backend.Tikz.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Plot\Marey.Plot.fsproj" />
     <!-- A ProjectReference rather than the package, like everything else here: the suite tests

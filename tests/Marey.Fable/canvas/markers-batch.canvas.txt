@@ -1,0 +1,81 @@
+canvas.width = 640
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 320 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 320 200
+save
+fillStyle = rgba(41,97,219,1)
+beginPath
+arc 16 100 3 0 6.283
+fill nonzero
+beginPath
+arc 28.48 66.44 3 0 6.283
+fill nonzero
+beginPath
+arc 40.96 41.097 3 0 6.283
+fill nonzero
+beginPath
+arc 53.44 30.175 3 0 6.283
+fill nonzero
+beginPath
+arc 65.92 36.349 3 0 6.283
+fill nonzero
+beginPath
+arc 78.4 58.107 3 0 6.283
+fill nonzero
+beginPath
+arc 90.88 90.122 3 0 6.283
+fill nonzero
+beginPath
+arc 103.36 124.555 3 0 6.283
+fill nonzero
+beginPath
+arc 115.84 152.976 3 0 6.283
+fill nonzero
+beginPath
+arc 128.32 168.427 3 0 6.283
+fill nonzero
+beginPath
+arc 140.8 167.125 3 0 6.283
+fill nonzero
+beginPath
+arc 153.28 149.388 3 0 6.283
+fill nonzero
+beginPath
+arc 165.76 119.559 3 0 6.283
+fill nonzero
+beginPath
+arc 178.24 84.942 3 0 6.283
+fill nonzero
+beginPath
+arc 190.72 54.011 3 0 6.283
+fill nonzero
+beginPath
+arc 203.2 34.34 3 0 6.283
+fill nonzero
+beginPath
+arc 215.68 30.745 3 0 6.283
+fill nonzero
+beginPath
+arc 228.16 44.106 3 0 6.283
+fill nonzero
+beginPath
+arc 240.64 71.152 3 0 6.283
+fill nonzero
+beginPath
+arc 253.12 105.261 3 0 6.283
+fill nonzero
+beginPath
+arc 265.6 138.081 3 0 6.283
+fill nonzero
+beginPath
+arc 278.08 161.579 3 0 6.283
+fill nonzero
+beginPath
+arc 290.56 169.999 3 0 6.283
+fill nonzero
+beginPath
+arc 303.04 161.282 3 0 6.283
+fill nonzero
+restore

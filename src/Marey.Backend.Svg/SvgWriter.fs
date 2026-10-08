@@ -222,8 +222,8 @@ type internal SvgDocument(idPrefix: string) =
 
     let body = StringBuilder()
     let defs = ResizeArray<string>()
-    let defIds = Dictionary<string, string>(StringComparer.Ordinal)
-    let usedIds = HashSet<string>(StringComparer.Ordinal)
+    let defIds = Dictionary<string, string>()
+    let usedIds = HashSet<string>()
     let mutable header = ""
 
     member _.Body = body

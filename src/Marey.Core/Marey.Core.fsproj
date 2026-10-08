@@ -8,6 +8,9 @@
          NOTHING may be added to <ItemGroup><PackageReference> in this file. Ever.
          FSharp.Core is the language runtime, not a dependency. -->
     <TargetFramework>netstandard2.1</TargetFramework>
+    <!-- M5 phase 2: packed with its sources under fable/, so a Fable app can reference the
+         package (Directory.Build.targets). -->
+    <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Core</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
     <Description>Dimensionally-typed visualization core: SI dimension vectors, unit witnesses, unit-indexed geometry, scales, and the closed Scene IR. Zero dependencies.</Description>

@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- D130 — gate 1 of the M5 plan. Not a .NET test project and not in Marey.slnx: it is
+         compiled by Fable and run by Node (`ci.yml`'s `fable` job), and what it proves is that
+         the projects claiming Fable write the SVG goldens byte for byte under JavaScript. -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../Shared/GoldenScenes.fs" Link="GoldenScenes.fs" />
+    <Compile Include="CanvasLog.fs" />
+    <Compile Include="FontsGate.fs" />
+    <Compile Include="Main.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Fable.Core" Version="5.3.0" />
+  </ItemGroup>
+
+  <!-- Against the projects by default. With `MAREY_FROM_PACKAGES` set to a version and
+       `MAREY_PACKAGE_SOURCE` to a directory of packed `.nupkg`s, against the packages instead:
+       Fable then compiles the sources each package carries under `fable/`, so the same 27
+       goldens are gate 3 of the M5 plan, that a Fable app can build from what is published.
+       Environment variables rather than properties, because Fable runs MSBuild itself. -->
+  <ItemGroup Condition="'$(MAREY_FROM_PACKAGES)' == ''">
+    <ProjectReference Include="../../src/Marey.Backend.Svg/Marey.Backend.Svg.fsproj" />
+    <ProjectReference Include="../../src/Marey.Plot/Marey.Plot.fsproj" />
+    <ProjectReference Include="../../src/Marey.Fields/Marey.Fields.fsproj" />
+    <ProjectReference Include="../../src/Marey.Backend.Web/Marey.Backend.Web.fsproj" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(MAREY_FROM_PACKAGES)' != ''">
+    <RestoreAdditionalProjectSources>$(MAREY_PACKAGE_SOURCE)</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(MAREY_FROM_PACKAGES)' != ''">
+    <PackageReference Include="Marey.Backend.Svg" Version="$(MAREY_FROM_PACKAGES)" />
+    <PackageReference Include="Marey.Plot" Version="$(MAREY_FROM_PACKAGES)" />
+    <PackageReference Include="Marey.Fields" Version="$(MAREY_FROM_PACKAGES)" />
+    <PackageReference Include="Marey.Backend.Web" Version="$(MAREY_FROM_PACKAGES)" />
+  </ItemGroup>
+
+</Project>

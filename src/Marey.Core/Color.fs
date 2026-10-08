@@ -151,10 +151,23 @@ module Color =
     let tryOfHex (s: string) : Color option =
         let s = s.Trim().TrimStart('#')
 
+        // Digit by digit rather than `Int32.TryParse` with `HexNumber`, which Fable cannot honour
+        // (D113) and which also took "ff 000" for #ff0000 by allowing white space inside a field.
         let hex (i: int) (n: int) =
-            match System.Int32.TryParse(s.Substring(i, n), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture) with
-            | true, v -> Some v
-            | _ -> None
+            let digit (c: char) =
+                if c >= '0' && c <= '9' then int c - int '0'
+                elif c >= 'a' && c <= 'f' then int c - int 'a' + 10
+                elif c >= 'A' && c <= 'F' then int c - int 'A' + 10
+                else -1
+
+            let mutable v = 0
+            let mutable ok = true
+
+            for k in i .. i + n - 1 do
+                let d = digit s.[k]
+                if d < 0 then ok <- false else v <- v * 16 + d
+
+            if ok then Some v else None
 
         let ok3 a b c = Some(rgb (float a / 15.0) (float b / 15.0) (float c / 15.0))
         let ok4 a b c d = Some(rgba (float a / 255.0) (float b / 255.0) (float c / 255.0) (float d / 255.0))
@@ -180,7 +193,7 @@ module Color =
         | None -> failwithf "Marey: '%s' is not a valid hex colour." s
 
     let private byte01 (x: float) =
-        int (System.Math.Round(clamp01 x * 255.0))
+        int (Num.roundEven (clamp01 x * 255.0))
 
     /// `#rrggbb`. Alpha is dropped — backends carry it separately (SVG `fill-opacity`,
     /// TikZ `opacity`), because not every target supports 8-digit hex.

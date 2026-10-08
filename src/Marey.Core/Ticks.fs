@@ -55,7 +55,7 @@ module Ticks =
     /// Snap a value to a multiple of `step`, killing the float noise that turns 0.30000000004
     /// into a four-decimal tick label.
     let private snap (step: float) (x: float) =
-        let k = System.Math.Round(x / step)
+        let k = Num.roundEven (x / step)
         k * step
 
     /// Nice ticks over `[lo, hi]`, aiming for `target` of them. Measure-generic: the ticks come
@@ -160,12 +160,11 @@ module Ticks =
     let format (decimals: int) (x: float) =
         // Negative zero renders as "-0", which looks like a bug on an axis. It is one.
         let x = if x = 0.0 then 0.0 else x
-        x.ToString("F" + string (max 0 (min 15 decimals)), System.Globalization.CultureInfo.InvariantCulture)
+        Num.fixedPoint (max 0 (min 15 decimals)) x
 
     /// Scientific notation, used when the exponent range is too wide for fixed point.
     let formatScientific (sigFigs: int) (x: float) =
         x.ToString("E" + string (max 0 (min 15 (sigFigs - 1))), System.Globalization.CultureInfo.InvariantCulture)
 
     /// Shortest round-trippable rendering. The default for anything that is not a tick label.
-    let formatGeneral (x: float) =
-        x.ToString("R", System.Globalization.CultureInfo.InvariantCulture)
+    let formatGeneral (x: float) = Num.shortest x

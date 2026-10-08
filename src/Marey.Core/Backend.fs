@@ -251,7 +251,7 @@ module Degrade =
                         let mutable i = 3
 
                         while i < dst.Length do
-                            dst.[i] <- byte (System.Math.Round(float dst.[i] * a))
+                            dst.[i] <- byte (Num.roundEven (float dst.[i] * a))
                             i <- i + 4
 
                         Raster { r with Image = { r.Image with Rgba = dst } }

@@ -1,0 +1,58 @@
+canvas.width = 640
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 320 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 320 200
+beginPath
+moveTo 16 36
+lineTo 96 20
+lineTo 176 52
+lineTo 304 36
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash [6 3]
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 16 84
+lineTo 96 68
+lineTo 176 100
+lineTo 304 84
+strokeStyle = rgba(41,97,219,1)
+lineWidth = 3
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash [1 4]
+lineDashOffset = 2.5
+stroke
+beginPath
+moveTo 16 132
+lineTo 96 116
+lineTo 176 148
+lineTo 304 132
+strokeStyle = rgba(230,92,46,1)
+lineWidth = 4
+miterLimit = 4
+lineCap = square
+lineJoin = bevel
+setLineDash [10 2 2 2]
+lineDashOffset = 1
+stroke
+beginPath
+moveTo 16 180
+lineTo 96 164
+lineTo 176 196
+lineTo 304 180
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 5
+miterLimit = 1.5
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke

@@ -1,0 +1,209 @@
+canvas.width = 640
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 320 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 320 200
+beginPath
+moveTo 16 121.667
+lineTo 64 121.667
+lineTo 64 107.5
+lineTo 16 107.5
+closePath
+moveTo 96 89.167
+lineTo 144 89.167
+lineTo 144 73.333
+lineTo 96 73.333
+closePath
+fillStyle = rgba(0,114,178,0.1804)
+fill nonzero
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 16 115
+lineTo 64 115
+moveTo 40 107.5
+lineTo 40 100.833
+moveTo 28 100.833
+lineTo 52 100.833
+moveTo 40 121.667
+lineTo 40 132.5
+moveTo 28 132.5
+lineTo 52 132.5
+moveTo 96 80
+lineTo 144 80
+moveTo 120 73.333
+lineTo 120 61.667
+moveTo 108 61.667
+lineTo 132 61.667
+moveTo 120 89.167
+lineTo 120 96.667
+moveTo 108 96.667
+lineTo 132 96.667
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = butt
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 1.5
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+beginPath
+arc 40 45.833 2.5 0 6.283
+stroke
+restore
+beginPath
+moveTo 200.073 162.5
+lineTo 200.284 157.769
+lineTo 200.906 153.038
+lineTo 202.377 148.306
+lineTo 205.191 143.575
+lineTo 209.584 138.844
+lineTo 215.252 134.113
+lineTo 221.353 129.382
+lineTo 226.755 124.651
+lineTo 230.301 119.919
+lineTo 231.075 115.188
+lineTo 228.763 110.457
+lineTo 223.897 105.726
+lineTo 217.688 100.995
+lineTo 211.539 96.263
+lineTo 206.538 91.532
+lineTo 203.166 86.801
+lineTo 201.296 82.07
+lineTo 200.474 77.339
+lineTo 200.275 72.608
+lineTo 200.519 67.876
+lineTo 201.253 63.145
+lineTo 202.531 58.414
+lineTo 204.103 53.683
+lineTo 205.318 48.952
+lineTo 205.511 44.22
+lineTo 204.565 39.489
+lineTo 203.023 34.758
+lineTo 201.601 30.027
+lineTo 200.678 25.296
+lineTo 200.229 20.565
+lineTo 200.062 15.833
+lineTo 199.938 15.833
+lineTo 199.771 20.565
+lineTo 199.322 25.296
+lineTo 198.399 30.027
+lineTo 196.977 34.758
+lineTo 195.435 39.489
+lineTo 194.489 44.22
+lineTo 194.682 48.952
+lineTo 195.897 53.683
+lineTo 197.469 58.414
+lineTo 198.747 63.145
+lineTo 199.481 67.876
+lineTo 199.725 72.608
+lineTo 199.526 77.339
+lineTo 198.704 82.07
+lineTo 196.834 86.801
+lineTo 193.462 91.532
+lineTo 188.461 96.263
+lineTo 182.312 100.995
+lineTo 176.103 105.726
+lineTo 171.237 110.457
+lineTo 168.925 115.188
+lineTo 169.699 119.919
+lineTo 173.245 124.651
+lineTo 178.647 129.382
+lineTo 184.748 134.113
+lineTo 190.416 138.844
+lineTo 194.809 143.575
+lineTo 197.623 148.306
+lineTo 199.094 153.038
+lineTo 199.716 157.769
+lineTo 199.927 162.5
+closePath
+moveTo 280.08 126.667
+lineTo 280.2 123.602
+lineTo 280.46 120.538
+lineTo 280.971 117.473
+lineTo 281.887 114.409
+lineTo 283.382 111.344
+lineTo 285.607 108.28
+lineTo 288.621 105.215
+lineTo 292.338 102.151
+lineTo 296.511 99.086
+lineTo 300.77 96.022
+lineTo 304.705 92.957
+lineTo 307.968 89.892
+lineTo 310.326 86.828
+lineTo 311.673 83.763
+lineTo 312 80.699
+lineTo 311.357 77.634
+lineTo 309.824 74.57
+lineTo 307.508 71.505
+lineTo 304.546 68.441
+lineTo 301.109 65.376
+lineTo 297.408 62.312
+lineTo 293.685 59.247
+lineTo 290.189 56.183
+lineTo 287.139 53.118
+lineTo 284.68 50.054
+lineTo 282.855 46.989
+lineTo 281.614 43.925
+lineTo 280.843 40.86
+lineTo 280.405 37.796
+lineTo 280.179 34.731
+lineTo 280.072 31.667
+lineTo 279.928 31.667
+lineTo 279.821 34.731
+lineTo 279.595 37.796
+lineTo 279.157 40.86
+lineTo 278.386 43.925
+lineTo 277.145 46.989
+lineTo 275.32 50.054
+lineTo 272.861 53.118
+lineTo 269.811 56.183
+lineTo 266.315 59.247
+lineTo 262.592 62.312
+lineTo 258.891 65.376
+lineTo 255.454 68.441
+lineTo 252.492 71.505
+lineTo 250.176 74.57
+lineTo 248.643 77.634
+lineTo 248 80.699
+lineTo 248.327 83.763
+lineTo 249.674 86.828
+lineTo 252.032 89.892
+lineTo 255.295 92.957
+lineTo 259.23 96.022
+lineTo 263.489 99.086
+lineTo 267.662 102.151
+lineTo 271.379 105.215
+lineTo 274.393 108.28
+lineTo 276.618 111.344
+lineTo 278.113 114.409
+lineTo 279.029 117.473
+lineTo 279.54 120.538
+lineTo 279.8 123.602
+lineTo 279.92 126.667
+closePath
+fillStyle = rgba(213,94,0,0.1804)
+fill nonzero
+strokeStyle = rgba(213,94,0,1)
+lineWidth = 1.5
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke

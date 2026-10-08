@@ -8,7 +8,7 @@ invariants.
 dotnet test
 ```
 
-**1424 tests: 193 FsCheck properties and 1231 example-based tests**, and 12 more in the C# project
+**1461 tests: 198 FsCheck properties and 1263 example-based tests**, and 12 more in the C# project
 `tests/Marey.CSharp.Tests`, which `dotnet test Marey.slnx` runs beside this one.
 
 Around six seconds of that is `pdflatex`. The TikZ backend has no in-process oracle — the only
@@ -20,8 +20,8 @@ tick alone.
 Targets `net10.0`; the projects under test target `netstandard2.1`. Warnings are errors here
 too, inherited from `Directory.Build.props`.
 
-Scope is all fourteen shipped packages: `Marey.Core`, `Marey.Units`, `Marey.Plot`, `Marey.Anim`,
-`Marey.Fields`, `Marey.Interact`, the three backends (`Svg`, `Tikz`, `Skia`), `Marey.Html`,
+Scope is all fifteen shipped packages: `Marey.Core`, `Marey.Units`, `Marey.Plot`, `Marey.Anim`,
+`Marey.Fields`, `Marey.Interact`, the four backends (`Svg`, `Tikz`, `Skia`, `Gpu`), `Marey.Html`,
 `Marey.Verso`, `Marey.Toolchain`, `Marey.Tools.Video` and `Marey.Tools.Tex`.
 
 The one package reference that is not a test tool is `Verso.Testing`. It supplies the stub contexts
@@ -45,6 +45,7 @@ without a notebook host installed.
 | `SceneProperties.fs` | **D1** structural equality, `count`/`primitiveCount`, `prune`, and the ten-case guard. |
 | `AnimProperties.fs` | The animation algebra: `andThen` associativity and its two identities, `map2` as an applicative, `stretch` composition, a total seek, and the overshoot gate — per `Interp` instance, including the colour case where the answer is different. |
 | `RandomProperties.fs` | D95 — `Rng`, SplitMix64 pinned against its published outputs for seed 0, and the ranges of `unit` and `below`. |
+| `NumProperties.fs` | D129 — `Num.roundAway`, `Num.at` and `Num.fixedPoint` against the .NET calls they replace, on exact halves and on random doubles. |
 | `MorphProperties.fs` | Path morphing: the endpoint law stated against `Morph.prepare`, arc-length sampling against vertex-index sampling, subpath pairing and padding, closure policy, overshoot, and totality over deliberately malformed paths. |
 | `RegressionTests.fs` | The regression pins: §12's six type-system findings, and D16, D17, D32, D38 and D41, locked in. |
 | `Tools.fs` | The registry of the three external programs the suite drives, resolved through `Marey.Toolchain`. |
@@ -54,11 +55,14 @@ without a notebook host installed.
 | `TikzWriterTests.fs` | The emitter primitives: `bp` dimensions, colour definitions, escaping, superscript runs, macro naming. |
 | `TikzBackendTests.fs` | The traversal: the missing y flip, pre-transformed geometry, the honest capability set, batched marker macros, and cross-backend coordinate agreement. |
 | `TikzInkTests.fs` | Compiles figures and asserts that ink is where it belongs, mostly by differentials. The only gate that can detect orientation. |
+| `../Shared/GoldenScenes.fs` | The scenes and figures behind every SVG baseline, and `svg`, the table naming all 27. Compiled here and by `tests/Marey.Fable`. |
 | `Golden.fs` | Golden-file infrastructure: location, diff reporting, regeneration. Format-agnostic — `check` compares text and derives its failure artefact from the baseline's extension. |
-| `GoldenTests.fs` | The snapshot scenes, the determinism suite, and the backend contract. |
+| `GoldenTests.fs` | The snapshots, the determinism suite, the backend contract, and the check that the shared table covers every SVG baseline. |
 | `TikzGoldenTests.fs` | The same scenes through the TikZ backend, plus the figure baselines both backends share. |
 | `GuideTests.fs` | Extracts every `fsharp` block from `docs/guide.md`, concatenates them into one script and runs it under `dotnet fsi`. |
-| `SkiaTests.fs` | The raster backend: byte determinism for PNG and PDF, the page extent, ink and orientation, the shaping gate, and the zero-dependency assertion over the built package graph. |
+| `SkiaTests.fs` | The raster backend: byte determinism for PNG and PDF, the page extent, ink and orientation, the shaping gate, the painter's claim (D131), and the zero-dependency assertion over the built package graph. |
+| `GpuTests.fs` | M5 — the GPU renderer against the Skia CPU raster under a stated tolerance (a 5 × 5 blur, then 32 of 255), the tolerance shown to see a marker moved by a pixel, and one renderer driven from many threads. Skips, and says so, where no OpenGL 3.3 context can be made; CI runs it on llvmpipe under `xvfb-run`. |
+| `WindowTests.fs` | M5 — the window speaks `LiveMsg`: a scripted session of pointer and key events sends exactly the notebook page's messages and reaches `Live.step`'s state, a recorder in the window keeps the log a notebook would, and a hidden window driven through `Post` matches the pure session after every event and draws the figure the GPU renderer draws. The host half skips where no context can be made. |
 | `PlotTests.fs` | `Marey.Plot`: self-labelling axes, layout invariants across four themes and four sizes, the 50 000-point batching claim, purity of the `with*` combinators, and palette validation. |
 | `ShotTests.fs` | D72/D73 — one arrangement for a whole animation. That the plot rectangle and the axis title are identical across every frame of a shot, each with its own positive control asserting that per-frame layout *does* move them, plus the union's componentwise rule. |
 | `StoryboardTests.fs` | D69 — the storyboard CE. What `let!` binds and what a step's duration defaults to, that `parallel'` inherits `Anim.map2`'s rule rather than restating it, and the `MarkerBatch` split: that addressing a mark still draws the same picture, and that the mark it names is the datum's **original row** rather than its position among the drawn marks. |
@@ -85,7 +89,7 @@ They are plain SVG and plain `tikzpicture` source, one element per line, so a re
 list of changed coordinates rather than as a wall of text.
 
 Every scene has both: `paths.svg` and `paths.tex` are the same picture at the same surface in two
-languages, from one table in `GoldenTests.Scenes`. Reading them against each other is a check in
+languages, from one table in `GoldenScenes.Scenes`. Reading them against each other is a check in
 itself — `rotated-text.svg` carries `rotate(-30 104 100)` where `rotated-text.tex` carries
 `rotate=30` at `(78bp,75bp)`, because the SVG backend flips y and negates the angle while the TikZ
 backend does neither, and `104 x 0.75 = 78`.
@@ -130,6 +134,29 @@ First difference at line 14, column 23.
 
 `*.actual.svg` and `*.actual.tex` are git-ignored, so a failed run can never accidentally be
 committed as a baseline.
+
+### Under Node
+
+`tests/Marey.Fable` compiles `tests/Shared/GoldenScenes.fs` and the projects below it with Fable,
+and Node renders the 27 SVG baselines and compares them byte for byte. The same run draws every
+golden scene with the canvas backend on a context that records each call, and compares the log
+with `tests/Marey.Fable/canvas/<name>.canvas.txt`; and it checks that the canvas's text measurer
+refuses while a page's fonts are loading. CI runs it as the `fable` job. Locally, with Node on
+`PATH`:
+
+```
+dotnet tool restore
+dotnet fable tests/Marey.Fable -o tests/Marey.Fable/out
+node tests/Marey.Fable/out/Main.js tests/Marey.Tests/golden tests/Marey.Fable/canvas
+```
+
+A difference writes `<name>.actual.svg` or `<name>.actual.txt` beside the baseline, as the .NET
+suite does.
+
+The same project builds against the packed packages instead of the projects when
+`MAREY_FROM_PACKAGES` names a version and `MAREY_PACKAGE_SOURCE` a directory holding the
+`.nupkg`s. Fable then compiles the sources each package carries under `fable/`, which is what a
+Fable app referencing Marey from NuGet gets. The `fable` job runs both.
 
 ## Determinism
 

@@ -12,6 +12,9 @@
          `Marey.Anim` does not reference this project, and must not (D80's promise, M4.5 gate 12):
          interaction is a source of values, not a kind of animation. -->
     <TargetFramework>netstandard2.1</TargetFramework>
+    <!-- M5 phase 2: packed with its sources under fable/, so a Fable app can reference the
+         package (Directory.Build.targets). -->
+    <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Interact</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
     <Description>Interaction for Marey: typed controls (a slider over kelvin hands the view kelvin, and labels itself in them), composed into a live figure by an applicative block, and stepped by a pure function a notebook host drives: controls, zoom, pan, a readout in the axes' units, and recordings that replay as films.</Description>

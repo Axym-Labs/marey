@@ -153,6 +153,7 @@ type FigureExtensions =
     static member Render(fig: Figure, renderer: Func<Extent<px>, Node, 'a>, width: float, height: float) : 'a =
         Chart.render (fun e n -> renderer.Invoke(e, n)) (Chart.size width height) fig
 
+#if !FABLE_COMPILER
     /// Write a text format — SVG, TikZ — as UTF-8 without a byte-order mark, as `Chart.toFile` does.
     [<Extension>]
     static member Save(fig: Figure, renderer: Func<Extent<px>, Node, string>, path: string, width: float, height: float) =
@@ -162,6 +163,7 @@ type FigureExtensions =
     [<Extension>]
     static member Save(fig: Figure, renderer: Func<Extent<px>, Node, byte[]>, path: string, width: float, height: float) =
         Chart.toFileBytes (fun e n -> renderer.Invoke(e, n)) path (Chart.size width height) fig
+#endif
 
 /// D124 — the arrangements that take several figures, for C#. F# passes `(title, figure)` tuples;
 /// C# passes the titles and the figures as two arrays of one length.

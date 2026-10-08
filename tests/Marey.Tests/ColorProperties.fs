@@ -171,6 +171,9 @@ module Interchange =
         Assert.Equal(Some(Color.rgba 1.0 0.0 0.0 0.0), Color.tryOfHex "#ff000000")
         Assert.Equal(None, Color.tryOfHex "#gg0000")
         Assert.Equal(None, Color.tryOfHex "nonsense")
+        // White space inside a field is not a digit: `Int32.TryParse` with `HexNumber` took this for #ff0000.
+        Assert.Equal(None, Color.tryOfHex "ff 000")
+        Assert.Equal(Some(Color.rgb 0.0 0.0 1.0), Color.tryOfHex "#0000FF")
 
     [<Fact>]
     let ``ofHex raises where tryOfHex returns None`` () =

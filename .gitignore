@@ -59,3 +59,10 @@ local-feed/
 /free-fall.svg
 /wave-packet.svg
 /wave-packet.tex
+
+# Fable output (D130): the compiled JavaScript and the library Fable copies beside it.
+tests/Marey.Fable/out/
+fable_modules/
+tests/Marey.Fable/out-packages/
+examples/web/out/
+fable-packages/

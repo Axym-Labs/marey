@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- §6's Web row, as D121 and D122 took it: the whole pipeline in a browser. A Fable app
+         compiles a figure with the same compiler the kernel runs and this draws the scene on a
+         canvas. Consumed from source by Fable (`fable/`); a .NET build compiles it and has
+         nothing to draw on. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <MareyFable>true</MareyFable>
+    <AssemblyName>Marey.Backend.Web</AssemblyName>
+    <RootNamespace>Marey</RootNamespace>
+    <Description>The browser backend for Marey: a figure compiled in the browser by the same compiler, drawn on a canvas. Consumed by Fable.</Description>
+    <PackageTags>fsharp fable canvas browser plotting charts rendering visualization</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Canvas.fs" />
+    <Compile Include="WebText.fs" />
+    <Compile Include="WebGlMarkers.fs" />
+    <Compile Include="CanvasBackend.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Fable.Core alone: the attributes that say how a member is written in JavaScript. The
+         canvas members are declared in `Canvas.fs` rather than taken from Fable.Browser.Dom,
+         whose bindings lack the font box and `document.fonts` D123 needs. Pinned to the version
+         `tests/Marey.Fable` compiles with. -->
+    <PackageReference Include="Fable.Core" Version="5.3.0" />
+  </ItemGroup>
+
+</Project>

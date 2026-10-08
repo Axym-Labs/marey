@@ -1,0 +1,222 @@
+canvas.width = 640
+canvas.height = 400
+setTransform 2 0 0 2 0 0
+clearRect 0 0 320 200
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 320 200
+save
+fillStyle = rgba(41,97,219,0.749)
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+beginPath
+arc 28.8 64 9 0 6.283
+fill nonzero
+stroke
+restore
+save
+fillStyle = rgba(230,92,46,1)
+beginPath
+arc 28.8 136 7 0 6.283
+fill nonzero
+restore
+save
+fillStyle = rgba(41,97,219,0.749)
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+beginPath
+moveTo 63 55
+lineTo 81 55
+lineTo 81 73
+lineTo 63 73
+closePath
+fill nonzero
+stroke
+restore
+save
+fillStyle = rgba(230,92,46,1)
+beginPath
+moveTo 65 129
+lineTo 79 129
+lineTo 79 143
+lineTo 65 143
+closePath
+fill nonzero
+restore
+save
+fillStyle = rgba(41,97,219,0.749)
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+beginPath
+moveTo 115.2 55
+lineTo 124.2 64
+lineTo 115.2 73
+lineTo 106.2 64
+closePath
+fill nonzero
+stroke
+restore
+save
+fillStyle = rgba(230,92,46,1)
+beginPath
+moveTo 115.2 129
+lineTo 122.2 136
+lineTo 115.2 143
+lineTo 108.2 136
+closePath
+fill nonzero
+restore
+save
+fillStyle = rgba(41,97,219,0.749)
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+beginPath
+moveTo 158.4 55
+lineTo 166.194 68.5
+lineTo 150.606 68.5
+closePath
+fill nonzero
+stroke
+restore
+save
+fillStyle = rgba(230,92,46,1)
+beginPath
+moveTo 158.4 129
+lineTo 164.462 139.5
+lineTo 152.338 139.5
+closePath
+fill nonzero
+restore
+save
+fillStyle = rgba(41,97,219,0.749)
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+beginPath
+moveTo 201.6 73
+lineTo 193.806 59.5
+lineTo 209.394 59.5
+closePath
+fill nonzero
+stroke
+restore
+save
+fillStyle = rgba(230,92,46,1)
+beginPath
+moveTo 201.6 143
+lineTo 195.538 132.5
+lineTo 207.662 132.5
+closePath
+fill nonzero
+restore
+save
+fillStyle = rgba(41,97,219,0.749)
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+beginPath
+moveTo 249.043 55.515
+lineTo 253.285 59.757
+lineTo 249.043 64
+lineTo 253.285 68.243
+lineTo 249.043 72.485
+lineTo 244.8 68.243
+lineTo 240.557 72.485
+lineTo 236.315 68.243
+lineTo 240.557 64
+lineTo 236.315 59.757
+lineTo 240.557 55.515
+lineTo 244.8 59.757
+closePath
+fill nonzero
+stroke
+restore
+save
+fillStyle = rgba(230,92,46,1)
+beginPath
+moveTo 248.1 129.4
+lineTo 251.4 132.7
+lineTo 248.1 136
+lineTo 251.4 139.3
+lineTo 248.1 142.6
+lineTo 244.8 139.3
+lineTo 241.5 142.6
+lineTo 238.2 139.3
+lineTo 241.5 136
+lineTo 238.2 132.7
+lineTo 241.5 129.4
+lineTo 244.8 132.7
+closePath
+fill nonzero
+restore
+save
+fillStyle = rgba(41,97,219,0.749)
+strokeStyle = rgba(28,31,38,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+beginPath
+moveTo 285 55
+lineTo 291 55
+lineTo 291 61
+lineTo 297 61
+lineTo 297 67
+lineTo 291 67
+lineTo 291 73
+lineTo 285 73
+lineTo 285 67
+lineTo 279 67
+lineTo 279 61
+lineTo 285 61
+closePath
+fill nonzero
+stroke
+restore
+save
+fillStyle = rgba(230,92,46,1)
+beginPath
+moveTo 285.667 129
+lineTo 290.333 129
+lineTo 290.333 133.667
+lineTo 295 133.667
+lineTo 295 138.333
+lineTo 290.333 138.333
+lineTo 290.333 143
+lineTo 285.667 143
+lineTo 285.667 138.333
+lineTo 281 138.333
+lineTo 281 133.667
+lineTo 285.667 133.667
+closePath
+fill nonzero
+restore

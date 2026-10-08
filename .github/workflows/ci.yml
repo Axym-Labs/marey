@@ -135,7 +135,11 @@ jobs:
       - name: Test
         env:
           MAREY_REQUIRE_TOOLCHAIN: '1'
-        run: dotnet test Marey.slnx --configuration Release --no-build --logger "console;verbosity=normal"
+        # Under a virtual display, for the GPU renderer's context (M5 phase 4); the census names
+        # the driver it got, which here is llvmpipe. `--blame` because a native crash in a driver
+        # aborts the test host with no failing test to read: with it, the log names the test that
+        # was running.
+        run: xvfb-run -a dotnet test Marey.slnx --configuration Release --no-build --blame --logger "console;verbosity=normal"
 
       # Packaging is part of what CI protects. It has broken on its own before -- a package
       # reference with only prereleases raised NU5104, which TreatWarningsAsErrors turned into
@@ -158,19 +162,92 @@ jobs:
         run: |
           set -e
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 14 ] || { echo "::error::expected 14 packages, packed $count"; exit 1; }
+          [ "$count" -eq 16 ] || { echo "::error::expected 16 packages, packed $count"; exit 1; }
+          fable=0
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
+            # M5 phase 2: a package that says Fable can consume it carries its sources for Fable.
+            if grep -q '<tags>.*fable-library' /tmp/nuspec.xml; then
+              id=$(grep -o '<id>[^<]*</id>' /tmp/nuspec.xml | sed 's:<id>::;s:</id>::')
+              unzip -l "$pkg" | grep -q "fable/$id.fsproj" \
+                || { echo "::error::$pkg is tagged fable-library and has no fable/$id.fsproj"; exit 1; }
+              fable=$((fable + 1))
+            fi
             readme=$(grep -o '<readme>[^<]*</readme>' /tmp/nuspec.xml | sed 's:<readme>::;s:</readme>::')
             [ -n "$readme" ] || { echo "::error::$pkg declares no readme"; exit 1; }
             grep -q '<license type="expression">MIT</license>' /tmp/nuspec.xml || { echo "::error::$pkg has no license"; exit 1; }
             unzip -l "$pkg" | grep -q "$readme" || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
             echo "  $(basename "$pkg"): $readme"
           done
-          echo "14 packages, each with an MIT expression and the readme it declares"
+          [ "$fable" -eq 8 ] || { echo "::error::expected 8 packages with Fable sources, found $fable"; exit 1; }
+          echo "16 packages, each with an MIT expression and the readme it declares; 8 with Fable sources"
 
       - uses: actions/upload-artifact@v4
         with:
           name: packages
           path: artifacts/*.nupkg
           retention-days: 7
+
+  # D130 — the Fable claim, as a job rather than a sentence. Fable compiles the projects that
+  # claim it, with the scenes and figures behind the SVG baselines (`tests/Shared`), and Node
+  # renders all of them; a document that differs by a byte fails, names itself, and is uploaded.
+  # A Fable project that gains a .NET-only API fails earlier, at compile time, naming the API.
+  fable:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Restore Fable
+        run: dotnet tool restore
+
+      - name: Compile with Fable
+        run: dotnet fable tests/Marey.Fable -o tests/Marey.Fable/out
+
+      # And M5's gates 13 and 14 in the same run: the canvas backend's call log per golden scene,
+      # against tests/Marey.Fable/canvas, and the fonts gate.
+      - name: The SVG goldens, the canvas logs and the fonts under Node
+        run: node tests/Marey.Fable/out/Main.js tests/Marey.Tests/golden tests/Marey.Fable/canvas
+
+      # D121's consumer: the browser example compiles, so it cannot rot unseen. Serving it and
+      # looking is a person's job; compiling it is this one's.
+      - name: Compile the browser example
+        run: dotnet fable examples/web -o examples/web/out
+
+      # M5 phase 2, gate 3: the same goldens built from the packages rather than the projects, so
+      # Fable compiles the sources each package carries under fable/. A file the pack left out is
+      # a compile error here, before anything is published.
+      - name: Pack the Fable projects
+        run: |
+          for p in Core Units Anim Plot Fields Interact Backend.Svg Backend.Web; do
+            dotnet pack src/Marey.$p --configuration Release -o fable-packages -p:Version=0.0.0-fable
+          done
+
+      - name: Compile with Fable from the packages
+        env:
+          MAREY_FROM_PACKAGES: 0.0.0-fable
+          MAREY_PACKAGE_SOURCE: ${{ github.workspace }}/fable-packages
+        run: |
+          rm -rf tests/Marey.Fable/obj
+          dotnet fable tests/Marey.Fable -o tests/Marey.Fable/out-packages
+
+      - name: The SVG goldens, the canvas logs and the fonts under Node, from the packages
+        run: node tests/Marey.Fable/out-packages/Main.js tests/Marey.Tests/golden tests/Marey.Fable/canvas
+
+      - name: Upload the documents that differ
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fable-golden-actuals
+          path: |
+            tests/Marey.Tests/golden/*.actual.svg
+            tests/Marey.Fable/canvas/*.actual.txt
+          if-no-files-found: ignore

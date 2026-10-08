@@ -10,7 +10,75 @@ rather than any one package. Each release's notes say which packages it adds.
 listed under `Changed` or `Removed` with the reason and the replacement, and until 1.0 they may
 land in a minor release.
 
-## [0.4.0] — unreleased
+## [Unreleased]
+
+### Added
+
+- **`Num.roundAway`, `Num.roundEven`, `Num.fixedPoint` and `Num.shortest`**: a half rounded away
+  from zero, a half rounded to even, .NET's "F" format and its "R" format, written in Marey's own
+  arithmetic so that they mean the same under Fable. Every rounding in the projects that claim
+  Fable goes through them. `Num.at`, `Ticks.format` and `Ticks.formatGeneral` are built on them, and write
+  what they wrote before.
+
+- **Fable can consume the packages.** `Marey.Core`, `Marey.Units`, `Marey.Anim`, `Marey.Plot`,
+  `Marey.Fields`, `Marey.Interact`, `Marey.Backend.Svg` and `Marey.Backend.Web` carry their sources and project file
+  under `fable/` and the `fable-library` tags, so a Fable app references them from NuGet as a
+  .NET app does.
+- **`SkiaPainter`**, the Skia backend's traversal on a canvas the caller owns, with a `claim`
+  through which the caller draws a node itself and Skia skips it. `SkiaBackend` draws through
+  it, and its PNG and PDF output is unchanged to the byte.
+
+- **`Marey.Backend.Gpu`, a fifteenth package: GPU rendering.** `GpuRenderer` draws through the
+  Skia backend's own code on an OpenGL 3.3 core context, offscreen, and reads the pixels back as
+  a PNG (`RenderPng`) or an `Image` (`RenderImage`). One renderer keeps one context, one GPU
+  context and one text measurer on its own thread, and any thread may call it, so
+  `Frames.render FramePass.Concurrent gpu.RenderPng` works as it does for `SkiaBackend.renderPng`.
+  Lay out with `gpu.Measurer`. The output agrees with the CPU raster to within edge
+  antialiasing, not to the byte. `GpuBackend.probe ()` says which driver a renderer would get.
+  A marker batch is one instanced draw: a million points render in about 5 ms on a desktop GPU,
+  where the CPU raster takes 3.6 s. Batches the shader cannot draw as Skia would (a gradient, a
+  dash, a non-mitered outline, inside an opacity layer, under a clip that is not a rectangle) are
+  drawn by Skia. `instancedMarkers = false` sends every batch to Skia.
+- **A window**: `Chart.show fig` and `Live.show live`, in `Marey.Backend.Gpu`, open a figure or a
+  live figure on screen and return when it is closed. Drag to zoom, shift-drag to pan,
+  double-click to reset, hover for a reading, Tab and the arrow keys for the controls, which are
+  drawn in a strip above the figure. The window's pointer and keys become the `LiveMsg`s a
+  notebook page sends and go through `Live.step`, so a session in a window steps to the states a
+  notebook session would, and `Recorder.show` records a log that replays the same.
+  `GpuWindow.Open` opens one without waiting and `Post` drives it from code. Linux and Windows.
+- **`Marey.Backend.Web`, a sixteenth package: a canvas in a browser.** A Fable app compiles a
+  figure in the page with the same code a .NET process runs, and `CanvasBackend` draws the scene
+  on a 2-D canvas at the display's pixel density: all ten node cases, by the Skia backend's rules.
+  `WebText.measurerNow ()` lays out with the canvas's own text measurements once `document.fonts`
+  has loaded, and with the approximate widths before then, saying so in `Approximated`;
+  `WebText.measurer ()` waits for the fonts. Marker batches of 2000 marks or more are drawn by
+  WebGL2 and composited in place, about ten times faster than the canvas at 10⁵ marks. Its
+  dependency is `Fable.Core`; it carries its sources under `fable/` like the other seven.
+
+### Changed
+
+- **`Num.at` past 10¹⁵ at the requested places** writes the value exactly where it used to stop
+  at fifteen significant digits: `Num.at 5 4339842218598.2778` is `4339842218598.27783`, not
+  `4339842218598.28`.
+- **Under Fable**, `Chart.toFile`, `Chart.toSvg`, `Chart.toFileBytes`, `Frames.write`,
+  `Frames.writeText` and `SvgBackend.renderToFile` are not compiled, because there is no file
+  system to write to. A .NET caller sees no change.
+
+### Fixed
+
+- **The Skia backend drew a marker batch as one shape.** Two translucent markers that overlapped
+  were no darker than one, so a dense cloud of points at 30% opacity read as a flat 30% tint, and
+  every fill was drawn before every outline. Each mark is now filled and stroked on its own, as
+  the SVG and TikZ backends always did. Batches of polygon markers draw about a third slower;
+  circles are unchanged.
+- **`Color.tryOfHex` accepted white space inside a field**: `"ff 000"` read as `#ff0000`. It is
+  now `None`.
+- **The projects that claim Fable compile under Fable 5.** They did not: a round-trip format, a
+  rectangular array, a concurrent dictionary, an ordinal string comparer, file output, and a
+  doc comment containing `*/` each stopped the compile or the module's load. With those gone,
+  the 27 SVG baselines render byte for byte under Node, and CI checks that they still do.
+
+## [0.4.0] — 2026-10-08
 
 **Units are opt-in.** `open Marey` takes plain arrays and a unit per axis that may be stated or
 left out; `open Marey.UnitsOfMeasure` is the mode every release so far has had, a witness per axis
@@ -964,7 +1032,8 @@ Superseded by `0.1.0` and not recommended for use. `Marey.Verso` in particular c
 installed from it: prerelease versions do not appear in Verso's Extensions panel at all, so an
 rc validates the package and the formatter but never the installation path.
 
-[0.4.0]: https://github.com/Axym-Labs/marey/compare/0.3.1...HEAD
+[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/Axym-Labs/marey/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/Axym-Labs/marey/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/Axym-Labs/marey/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/Axym-Labs/marey/compare/0.1.1...0.2.0

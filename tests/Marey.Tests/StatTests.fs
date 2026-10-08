@@ -733,19 +733,9 @@ module Block =
 
 module ``hexbin`` =
 
-    /// A seeded two-dimensional normal sample, by Box–Muller over `Rng`: x in metres with a
-    /// spread of 2 m, y in seconds with a spread of 0.5 s.
-    let private sample (n: int) =
-        let us, _ = Rng.units (2 * n) (Rng.seeded 7UL)
-
-        Array.init n (fun i ->
-            let a, b = us.[2 * i], us.[2 * i + 1]
-            let r = sqrt (-2.0 * log (1.0 - a))
-            r * cos (2.0 * System.Math.PI * b) * 2.0<m>, r * sin (2.0 * System.Math.PI * b) * 0.5<s>)
-        |> Array.unzip
-
-    let private xs, ys = sample 2000
-    let private h = Stat.hexbin U.metre U.second xs ys
+    let private sample = GoldenScenes.Hexbin.sample
+    let private xs, ys = GoldenScenes.Hexbin.xs, GoldenScenes.Hexbin.ys
+    let private h = GoldenScenes.Hexbin.h
 
     /// Ray casting, independent of how the stat assigned anything.
     let private inside (px: float) (py: float) (poly: (float * float)[]) =
@@ -830,8 +820,7 @@ module ``hexbin`` =
 
     [<Fact>]
     let ``golden: a hexbin with a colorbar in m⁻¹·s⁻¹ (svg)`` () =
-        let fig = Chart.ofHexbin h |> Chart.withTitle "A two-dimensional normal sample"
-        Golden.check "figure-hexbin.svg" (Chart.render SvgBackend.render (Chart.size 480.0 300.0) fig)
+        Golden.check "figure-hexbin.svg" (Chart.render SvgBackend.render (Chart.size 480.0 300.0) GoldenScenes.Hexbin.figure)
 
 // ======================================================================================
 // M4 phase 8 — loess

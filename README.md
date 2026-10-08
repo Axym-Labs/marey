@@ -38,8 +38,10 @@ dotnet add package Marey.Backend.Svg
 ```
 
 `Marey.Html` sits at the top of the graph, so referencing it alone brings the rest. For PNG and
-PDF, add `Marey.Backend.Skia` — the one package here with third-party dependencies, which is why
-it is a separate one.
+PDF, add `Marey.Backend.Skia`, which depends on SkiaSharp and is a separate package for that
+reason. `Marey.Backend.Gpu` draws the same on an OpenGL context, offscreen or in a window:
+`Chart.show fig`. `Marey.Backend.Web` draws on a canvas in a browser, where a Fable app compiles
+the figure with the same code.
 
 ## Units, end to end
 
@@ -206,7 +208,9 @@ Chart.Line(ts, xs, xUnit: Units.Second, yUnit: Units.Metre)
 | `Marey.Plot` | `Chart` and the `plot` encoding block, thirteen geoms (hexbin the newest), colour/shape/size channels, statistics (loess and seeded bootstrap intervals among them), facets, six themes, colour-blind-safe palettes with a validator, constraint layout, the axis and legend compilers, the `scene` storyboard block, and the parallel frame writer. No backend reference. |
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, byte-identical across renders. |
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX, with `siunitx` units and inherited fonts. |
-| `Marey.Backend.Skia` | PNG and vector PDF, and real text shaping through HarfBuzz. The only package with third-party dependencies. |
+| `Marey.Backend.Skia` | PNG and vector PDF, and real text shaping through HarfBuzz. Depends on SkiaSharp. |
+| `Marey.Backend.Gpu` | The Skia backend's drawing on an OpenGL 3.3 context, with marker batches as instanced draws: offscreen, callable from any thread, or in a window (`Chart.show`, `Live.show`) that steps a live figure as a notebook does. Depends on Silk.NET's GLFW and OpenGL bindings. |
+| `Marey.Backend.Web` | A canvas in a browser: a Fable app compiles the figure in the page and this draws it, marker batches on WebGL2. Waits for the page's fonts before measuring. Depends on `Fable.Core`. |
 | `Marey.Anim` | Animation as a pure function of time: a seekable, composable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
 | `Marey.Fields` | Scalar and vector fields on dimensioned planes, phase spaces included: grids, gradient, divergence, curl and the Jacobian in the units the types work out; heatmaps, contours, filled bands, quivers with a key, evenly spaced streamlines and line-integral convolution; phase portraits with fixed points classified and eigenvalues in `1/'t`. |
 | `Marey.Tools.Video` | Encoding a rendered frame sequence to video by shelling out to `ffmpeg`, degrading to the numbered frames when it is absent. |
@@ -254,7 +258,7 @@ The suite is FsCheck property suites for the dimension group laws, all seven sca
 interpolation, colour and the scene IR; golden baselines in SVG *and* `tikzpicture` source; a real
 `pdflatex` compile gate; rasterised ink gates over the compiled TeX, the rendered PNG and the
 rendered PDF, checking the picture is not blank and is the right way up; an assertion over the
-built assembly graph that no package but `Marey.Backend.Skia` can see SkiaSharp; and executable
+built assembly graph that no vector package can see SkiaSharp; and executable
 checks over every example in [the guide](docs/guide.md) and in [`examples/`](examples/).
 
 Several of those gates shell out, and every one of them **passes when the program it needs is
