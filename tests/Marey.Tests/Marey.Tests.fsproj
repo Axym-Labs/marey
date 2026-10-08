@@ -31,6 +31,7 @@
     <Compile Include="GeometryProperties.fs" />
     <Compile Include="ColorProperties.fs" />
     <Compile Include="RandomProperties.fs" />
+    <Compile Include="NumProperties.fs" />
     <Compile Include="SceneProperties.fs" />
     <Compile Include="AnimProperties.fs" />
     <Compile Include="MorphProperties.fs" />

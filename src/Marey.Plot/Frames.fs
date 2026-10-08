@@ -85,7 +85,12 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 [<Sealed>]
 type MemoTextMeasurer(inner: ITextMeasurer) =
 
+#if FABLE_COMPILER
+    // One thread under JavaScript, so nothing to be concurrent about.
+    let cache = Collections.Generic.Dictionary<struct (FontSpec * string), TextMetrics>()
+#else
     let cache = ConcurrentDictionary<struct (FontSpec * string), TextMetrics>()
+#endif
     let mutable measurements = 0
 
     /// The measurer underneath, as the interface. The decorator forwards nothing but `Measure`,
@@ -95,7 +100,11 @@ type MemoTextMeasurer(inner: ITextMeasurer) =
     member _.Inner: ITextMeasurer = inner
 
     /// Calls that reached the inner measurer.
+#if FABLE_COMPILER
+    member _.Measurements: int = measurements
+#else
     member _.Measurements: int = Threading.Volatile.Read &measurements
+#endif
 
     /// Distinct `(FontSpec, string)` questions answered.
     member _.Entries: int = cache.Count
@@ -107,7 +116,11 @@ type MemoTextMeasurer(inner: ITextMeasurer) =
             match cache.TryGetValue key with
             | true, hit -> hit
             | _ ->
+#if FABLE_COMPILER
+                measurements <- measurements + 1
+#else
                 Threading.Interlocked.Increment &measurements |> ignore
+#endif
                 let m = inner.Measure spec text
                 cache.[key] <- m
                 m
@@ -264,7 +277,7 @@ module Frames =
                 "fps"
                 (sprintf "Marey.Frames: %g s at %g fps is %g frames, which is not a render this library will start." d fps n)
 
-        max 1 (int (Math.Round(n, MidpointRounding.AwayFromZero)))
+        max 1 (int (Num.roundAway n))
 
     /// The instants a sequence of `fps` frames samples a film of this duration at.
     ///
@@ -296,6 +309,9 @@ module Frames =
         | FramePass.Serial -> ts |> Array.map one
         | FramePass.Concurrent -> ts |> Array.Parallel.map one
 
+    // D113 — file output is .NET's. A Fable build has no file system to write to, and these do not
+    // compile there.
+#if !FABLE_COMPILER
     let private writeAll
         (pass: FramePass)
         (renderer: Extent<px> -> Node -> 'a)
@@ -375,3 +391,4 @@ module Frames =
         (film: Film)
         : FrameSequence =
         writeAll pass renderer (fun path text -> IO.File.WriteAllText(path, text, UTF8Encoding false)) target fps film
+#endif

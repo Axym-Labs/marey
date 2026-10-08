@@ -401,7 +401,7 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
     /// malformed XML, so a repeat is suffixed rather than dropped: the data survives and the
     /// document parses.
     let writeData (pairs: (string * string)[]) =
-        let seen = System.Collections.Generic.HashSet<string>(StringComparer.Ordinal)
+        let seen = System.Collections.Generic.HashSet<string>()
 
         for (k, v) in pairs do
             let stem = "data-" + Svg.namePart k
@@ -900,6 +900,9 @@ module SvgBackend =
                 else
                     whole
 
+    // D113 — file output is .NET's. A Fable build has no file system to write to, and these do not
+    // compile there.
+#if !FABLE_COMPILER
     /// Render a scene and write it to a file as UTF-8 with no byte-order mark.
     ///
     /// The encoding is pinned rather than left to the default because these files are golden
@@ -907,3 +910,4 @@ module SvgBackend =
     let renderToFile (path: string) (extent: Extent<px>) (node: Node) : unit =
         let text = render extent node
         IO.File.WriteAllText(path, text, UTF8Encoding(false))
+#endif
