@@ -626,3 +626,34 @@ module TheBlock =
             Assert.True(code <> 0, sprintf "seconds against metres compiled: %s" path)
             Assert.Contains("error FS0001", output)
             Assert.Contains("'s' does not match the unit of measure 'm'", output)
+
+/// Gate 8, its first half (D124): **no two Marey assemblies export one type name.** C# resolves a
+/// type by its full CLR name and refuses one that two referenced assemblies both define (CS0433),
+/// so a duplicate is a type no C# caller can name — and, for `Marey.U` until M4.6, every witness.
+/// F# merges modules of one name across assemblies and never notices, which is why it went
+/// unseen through five releases.
+module OneNamePerType =
+
+    open System
+    open System.IO
+    open System.Reflection
+
+    [<Fact>]
+    let ``every public type name is exported by one assembly`` () =
+        let dir = Path.GetDirectoryName(Uri(typeof<Marey.Figure>.Assembly.Location).LocalPath)
+
+        let assemblies =
+            Directory.GetFiles(dir, "Marey.*.dll")
+            |> Array.filter (fun p -> not (Path.GetFileName(p).StartsWith "Marey.Tests"))
+            |> Array.map (fun p -> Assembly.LoadFrom p)
+
+        Assert.Equal(14, assemblies.Length)
+
+        let duplicates =
+            assemblies
+            |> Array.collect (fun a -> a.GetExportedTypes() |> Array.map (fun t -> t.FullName, a.GetName().Name))
+            |> Array.groupBy fst
+            |> Array.filter (fun (_, xs) -> xs.Length > 1)
+            |> Array.map (fun (n, xs) -> sprintf "%s (%s)" n (xs |> Array.map snd |> String.concat ", "))
+
+        Assert.True(Array.isEmpty duplicates, sprintf "exported by more than one assembly: %s" (String.concat "; " duplicates))
