@@ -40,7 +40,12 @@ type GpuRenderer(?options: SkiaOptions) =
     let context, shaping =
         try
             thread.Invoke(fun () ->
-                let c = new GpuContext()
+                let c =
+                    try
+                        new GpuContext()
+                    with e ->
+                        raise (InvalidOperationException(e.Message + " GLFW: " + GlfwDiagnosis.why () + ".", e))
+
                 let m = new SkiaTextMeasurer(?fontFile = opts.FontFile, dpi = opts.Dpi, fontFiles = opts.FontFiles)
                 c, m)
         with e ->

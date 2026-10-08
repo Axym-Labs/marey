@@ -1,3 +1,6 @@
+// FS0009: reading GLFW's error string is a native pointer, once, on a path that is already failing.
+#nowarn "9"
+
 namespace Marey
 
 open System
@@ -122,6 +125,29 @@ type internal GpuTarget(gl: GL, gr: GRContext, width: int, height: int) =
             gl.DeleteRenderbuffer colour
             gl.DeleteRenderbuffer depthStencil
             gr.ResetContext()
+
+/// GLFW's own account of why it would not start, which Silk.NET's "couldn't find a suitable window
+/// platform" does not carry: the library did not load, or `glfwInit` failed and said why (no
+/// display, an X11 client library it loads at run time missing).
+module internal GlfwDiagnosis =
+
+    let why () : string =
+        try
+            let glfw = Silk.NET.GLFW.Glfw.GetApi()
+
+            if glfw.Init() then
+                glfw.Terminate()
+                "GLFW itself initialises here"
+            else
+                let mutable description = NativeInterop.NativePtr.nullPtr<byte>
+                let code = glfw.GetError(&description)
+
+                let text =
+                    Runtime.InteropServices.Marshal.PtrToStringAnsi(NativeInterop.NativePtr.toNativeInt description)
+
+                sprintf "glfwInit failed (%A): %s" code text
+        with e ->
+            "the GLFW library did not load: " + e.Message
 
 /// The GL side of a renderer: a hidden window that exists for its context, the context, and
 /// Skia's `GRContext` on it. Built and used on the render thread only.
