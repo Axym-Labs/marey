@@ -50,6 +50,10 @@ type IScaleErased =
 
     abstract OffsetSI: float
 
+    /// D127 — whether the unit was stated, or is `U.unspecified`. An unstated axis makes no
+    /// dimensional claim, so the checks that compare two axes skip it — see `U.Stated`.
+    abstract Stated: bool
+
     abstract Kind: ScaleKind
     /// Raw domain endpoints, in the scale's own unit.
     abstract Domain: float * float
@@ -156,6 +160,7 @@ module Erase =
             member _.Factors = s.Unit.Factors
             member _.ToSI = s.Unit.ToSI
             member _.OffsetSI = s.Unit.OffsetSI
+            member _.Stated = s.Unit.Stated
             member _.Kind = s.Kind
 
             member _.Domain =
@@ -344,7 +349,8 @@ module Erase =
                     // Written twice rather than once over a pair: `'ux` and `'uy` are
                     // different type variables and one shared helper would be monomorphised by
                     // whichever axis reached it first (§12.2).
-                    if s.XScale.Unit.Dim <> bx.Dim then
+                    // D127 — an unstated side makes no claim to check.
+                    if s.XScale.Unit.Stated && bx.Stated && s.XScale.Unit.Dim <> bx.Dim then
                         invalidArg
                             "b"
                             (sprintf
@@ -352,7 +358,7 @@ module Erase =
                                 bx.Symbol
                                 s.XScale.Unit.Symbol)
 
-                    if s.YScale.Unit.Dim <> by.Dim then
+                    if s.YScale.Unit.Stated && by.Stated && s.YScale.Unit.Dim <> by.Dim then
                         invalidArg
                             "b"
                             (sprintf

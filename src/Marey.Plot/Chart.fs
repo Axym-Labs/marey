@@ -1115,7 +1115,9 @@ module Chart =
     /// For two figures that must share a colour scale, and for a film whose colours should mean
     /// a stated range rather than the union of its sampled frames (D94). `u` need not be the
     /// channel's own unit, only of its dimension: the ends are converted. A different dimension,
-    /// or an angle against no angle (D98), raises, as `Figure.unify` does for an axis.
+    /// or an angle against no angle (D98), raises, as `Figure.unify` does for an axis. When
+    /// either is `U.unspecified` there is nothing to check or convert, and the ends are used as
+    /// given (D127).
     let withColorDomain (u: U<'u>) (lo: float<'u>) (hi: float<'u>) (fig: Figure) : Figure =
         let angle = U.angleExponentOf u.Symbol u.Factors
 
@@ -1123,7 +1125,11 @@ module Chart =
             scale.Accept
                 { new IScaleConsumer<PackedScale> with
                     member _.Apply<[<Measure>] 'c>(s: Scale<'c>) =
-                        if s.Unit.Dim <> u.Dim || U.angleExponentOf s.Unit.Symbol s.Unit.Factors <> angle then
+                        // D127 — either side unstated: no claim to check and no conversion to
+                        // make, so the ends are taken as the numbers they are.
+                        let both = s.Unit.Stated && u.Stated
+
+                        if both && (s.Unit.Dim <> u.Dim || U.angleExponentOf s.Unit.Symbol s.Unit.Factors <> angle) then
                             invalidArg
                                 "u"
                                 (sprintf
@@ -1131,7 +1137,8 @@ module Chart =
                                     (UnitDisplay.renderExpanded Unicode u.Dim)
                                     (UnitDisplay.renderExpanded Unicode s.Unit.Dim))
 
-                        let into (v: float<'u>) = U.ofSI s.Unit (U.toSI u v)
+                        let into (v: float<'u>) =
+                            if both then U.ofSI s.Unit (U.toSI u v) else LanguagePrimitives.FloatWithMeasure<'c>(float v)
                         Erase.packScale (Scale.ofKind s.Kind s.Unit (into lo, into hi)) }
 
         mapLastLayer

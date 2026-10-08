@@ -524,7 +524,7 @@ module Live =
                     if p.Layers.Length = 0 then
                         None
                     else
-                        Some((p.Row, p.Col), Erase.seriesScales (Figure.unify p).Layers.[0].Data))
+                        Some((p.Row, p.Col), Figure.axisScalesErased (Figure.unify p)))
 
             let same (a: IScaleErased) (b: IScaleErased) =
                 a.Domain = b.Domain && a.Dim = b.Dim && a.ToSI = b.ToSI && a.OffsetSI = b.OffsetSI

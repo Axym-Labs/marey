@@ -363,6 +363,26 @@ module Figure =
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
                     Erase.packScale s.XScale, Erase.packScale s.YScale }
 
+    /// D127 — **which layer an axis takes its unit from**: the first whose unit on that axis was
+    /// stated, or the first layer when none was. An unspecified layer drawn first under a metre
+    /// layer makes no claim about the axis, so the axis reads `[m]` whichever order they were
+    /// added in. Every reader of a panel's axes goes through here — the drawing pass, the prefix a
+    /// shot pins and the pointer's readout — so they cannot disagree about it.
+    let private axisLayer (pick: PackedSeries -> IScaleErased) (p: Panel) : PackedSeries =
+        match p.Layers |> Array.tryFind (fun l -> (pick l.Data).Stated) with
+        | Some l -> l.Data
+        | None -> p.Layers.[0].Data
+
+    /// A panel's x and y scales as its axes draw them. See `axisLayer`.
+    let axisScales (p: Panel) : PackedScale * PackedScale =
+        fst (packedScales (axisLayer (Erase.seriesScales >> fst) p)),
+        snd (packedScales (axisLayer (Erase.seriesScales >> snd) p))
+
+    /// `axisScales`, across the erasure boundary.
+    let axisScalesErased (p: Panel) : IScaleErased * IScaleErased =
+        fst (Erase.seriesScales (axisLayer (Erase.seriesScales >> fst) p)),
+        snd (Erase.seriesScales (axisLayer (Erase.seriesScales >> snd) p))
+
 
     /// Rebuild a packed series over new raw domains.
     ///
@@ -485,6 +505,9 @@ module Figure =
     let private agreeOn (describe: int -> string) (axis: string) (scales: IScaleErased[]) : float * float =
         let s0 = scales.[0]
 
+        let reference =
+            scales |> Array.indexed |> Array.tryFind (fun (_, s) -> s.Stated)
+
         // The categorical counterpart of the dimensional check, and it is needed for exactly the
         // reason that check is: an ordinal scale is dimensionless (D45), so two scales with
         // *different* level sets have identical `Dim` and the check cannot see the difference.
@@ -517,31 +540,37 @@ module Figure =
                     (describe i)
             | _ -> ()
 
-            // D98 — the one difference `Dim` cannot see. An angular velocity and a frequency are
-            // both s⁻¹ and differ by 2π, so a rad/s layer and a Hz layer on one axis plot one of
-            // them 6.28 times too high without a word.
-            let a0 = U.angleExponentOf s0.Symbol s0.Factors
-            let ai = U.angleExponentOf si.Symbol si.Factors
+            // D127 — the dimensional checks compare stated units only, each against the first
+            // stated one: an unspecified layer makes no claim, so it neither fails the check nor
+            // becomes the reference that hides a disagreement between two that did.
+            match reference with
+            | Some(ri, r) when ri <> i && si.Stated ->
+                // D98 — the one difference `Dim` cannot see. An angular velocity and a frequency are
+                // both s⁻¹ and differ by 2π, so a rad/s layer and a Hz layer on one axis plot one of
+                // them 6.28 times too high without a word.
+                let ar = U.angleExponentOf r.Symbol r.Factors
+                let ai = U.angleExponentOf si.Symbol si.Factors
 
-            if si.Dim = s0.Dim && ai <> a0 then
-                failwithf
-                    "Marey: %s has %s %s axis in %s but %s has one in %s. Their dimensions agree, but one carries an angle and the other does not — an angular velocity and a frequency differ by 2π. They cannot share an axis."
-                    (describe 0)
-                    (if axis = "x" then "an" else "a")
-                    axis
-                    (UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none s0.Symbol s0.Factors s0.Dim s0.ToSI s0.OffsetSI)
-                    (describe i)
-                    (UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none si.Symbol si.Factors si.Dim si.ToSI si.OffsetSI)
+                if si.Dim = r.Dim && ai <> ar then
+                    failwithf
+                        "Marey: %s has %s %s axis in %s but %s has one in %s. Their dimensions agree, but one carries an angle and the other does not — an angular velocity and a frequency differ by 2π. They cannot share an axis."
+                        (describe ri)
+                        (if axis = "x" then "an" else "a")
+                        axis
+                        (UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none r.Symbol r.Factors r.Dim r.ToSI r.OffsetSI)
+                        (describe i)
+                        (UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none si.Symbol si.Factors si.Dim si.ToSI si.OffsetSI)
 
-            if si.Dim <> s0.Dim then
-                failwithf
-                    "Marey: %s has %s %s axis in %s but %s has one in %s. Two physical dimensions cannot share an axis."
-                    (describe 0)
-                    (if axis = "x" then "an" else "a")
-                    axis
-                    (Dim.show s0.Dim)
-                    (describe i)
-                    (Dim.show si.Dim)
+                if si.Dim <> r.Dim then
+                    failwithf
+                        "Marey: %s has %s %s axis in %s but %s has one in %s. Two physical dimensions cannot share an axis."
+                        (describe ri)
+                        (if axis = "x" then "an" else "a")
+                        axis
+                        (Dim.show r.Dim)
+                        (describe i)
+                        (Dim.show si.Dim)
+            | _ -> ()
 
         let ds = scales |> Array.map (fun s -> s.Domain)
         (ds |> Array.map fst |> Array.min), (ds |> Array.map snd |> Array.max)
@@ -795,7 +824,7 @@ module Figure =
     /// panel's own domain). The drawing pass and `panelsIn` both take them from here, so a
     /// pointer's reading cannot be written in a unit the axis is not.
     let private axisSpecs (theme: Theme) (pinX: Prefix option, pinY: Prefix option) (p: Panel) : AxisSpec * AxisSpec =
-        let (xPacked, yPacked) = packedScales p.Layers.[0].Data
+        let (xPacked, yPacked) = axisScales p
 
         // The one place the theme's unit spelling and a per-axis override meet. Resolved here
         // rather than at construction time so that changing the theme on a finished figure
@@ -1454,8 +1483,8 @@ module Figure =
                         Some(Axis.prefixForPacked (lo, hi) (packedOf drawn.[0]))
 
                 key,
-                (pinFor (fun p -> fst (packedScales p.Layers.[0].Data)),
-                 pinFor (fun p -> snd (packedScales p.Layers.[0].Data))))
+                (pinFor (fun p -> fst (axisScales p)),
+                 pinFor (fun p -> snd (axisScales p))))
             |> dict
 
         let panels =
@@ -1575,7 +1604,7 @@ module Figure =
             | _, Some region, Some f ->
                 let plot = Layout.findPx "plot" (innerGrid m shot.Outer.Extent region f)
                 let unified = unify p
-                let sx, sy = Erase.seriesScales unified.Layers.[0].Data
+                let sx, sy = axisScalesErased unified
                 let ax, ay = axisSpecs fig.Theme (f.XPrefix, f.YPrefix) unified
 
                 Some
