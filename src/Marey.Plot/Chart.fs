@@ -1,5 +1,7 @@
 namespace Marey
 
+open System.Runtime.InteropServices
+
 /// §9 — **the quick, matplotlib-shaped front door.**
 ///
 /// ```fsharp
@@ -387,6 +389,21 @@ module Chart =
         | None -> fig
         | Some p -> fig |> addLayers (fun _ -> p.Layers)
 
+    /// D125 — **add a figure's layers as the next series**: `Chart.add (Chart.Line(xs, ys)) fig`.
+    ///
+    /// The unit-optional mode's one spelling for what `addLine` and its nine siblings do. Unlike
+    /// `overlay`, which keeps the top figure's styles because the field marks are built to be
+    /// drawn as they came, this gives every layer of `top` the *next* palette slot of `fig`'s
+    /// theme, as `addLine` does — one slot for all of them, so the bars and the points of an
+    /// error-bar figure stay one colour. A style set on `top` before adding is replaced; style
+    /// the added layer afterwards, as after `addLine`. Names, channels and keys are kept.
+    let add (top: Figure) (fig: Figure) : Figure =
+        match Array.tryLast top.Panels with
+        | None -> fig
+        | Some p ->
+            fig
+            |> addLayers (fun i -> p.Layers |> Array.map (fun l -> { l with Style = Geom.styleFor fig.Theme i }))
+
     /// Add a second (third, …) series to the last panel.
     ///
     /// The panel's axes are then shared: `Figure.unify` unions the domains at compile time and
@@ -618,6 +635,21 @@ module Chart =
 
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i GeomLine (Erase.packSeries (series "" ux uy l.X l.Y)) |])
+
+    /// The least-squares line through `(x, y)`, on its own: what `addFit` draws, as a figure that
+    /// `add` can put over the data.
+    let fit (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+        let fx, fy = Stat.fitLine (Stat.regression ux uy x y) x
+        ofSeries GeomLine (series "" ux uy fx fy)
+
+    /// The loess smooth of `(x, y)`, on its own — see `fit`.
+    let loess (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+        let l = Stat.loess ux uy x y
+        ofSeries GeomLine (series "" ux uy l.X l.Y)
+
+    let loessWith (span: float) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
+        let l = Stat.loessWith ux uy span Stat.DefaultLoessPoints x y
+        ofSeries GeomLine (series "" ux uy l.X l.Y)
 
     // ---- Dimensionless ------------------------------------------------------------------------
 
@@ -1139,6 +1171,7 @@ module Chart =
 
                         let into (v: float<'u>) =
                             if both then U.ofSI s.Unit (U.toSI u v) else LanguagePrimitives.FloatWithMeasure<'c>(float v)
+
                         Erase.packScale (Scale.ofKind s.Kind s.Unit (into lo, into hi)) }
 
         mapLastLayer
@@ -1531,3 +1564,243 @@ module Chart =
     /// them, because a PNG that gained a BOM would not open.
     let toFileBytes (renderer: Extent<px> -> Node -> byte[]) (path: string) (extent: Extent<px>) (fig: Figure) : unit =
         System.IO.File.WriteAllBytes(path, render renderer extent fig)
+
+/// D109, D111 — **the unit-optional front door**: data as `float[]`, and a unit per axis that may
+/// be stated or left out.
+///
+/// ```fsharp
+/// Chart.Line(ts, xs, xUnit = U.second, yUnit = U.metre)
+/// |> Chart.withTitle "displacement"
+///
+/// Chart.Bar(quarters, revenue)          // no unit stated on either axis
+/// ```
+///
+/// A static class beside `module Chart`, so that construction is a method and everything after
+/// it stays curried: `Chart.Line(…)` resolves here and `Chart.withTitle` to the module, as
+/// `String.Join` and `String.concat` do. A method because only a method can have optional
+/// parameters, and a parameter that may be omitted is the whole of this mode.
+///
+/// An omitted unit is `U.unspecified` (D127): no bracket, no prefix, and no claim for the
+/// axis-sharing check to act on. A stated one gives the axis everything a witness gives it in
+/// `Marey.UnitsOfMeasure` — the bracketed label, the prefix, a derived unit for a stat, and the
+/// dimension check when two layers share an axis — except that the check runs when the figure is
+/// compiled rather than when the call is.
+///
+/// Every member is one line over the curried, measure-generic implementation at measure 1
+/// (D128): there is one implementation of each chart, and this is a way of reaching it.
+///
+/// The units are typed `IUnit` because an optional parameter cannot be measure-generic, and are
+/// declared with `Optional` and a `null` default rather than as F#'s `?xUnit`, because that is
+/// the form C# also reads as optional. F# inserts the coercion from `U<m>` at the argument.
+[<AbstractClass; Sealed>]
+type Chart =
+
+    static member Line
+        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        : Figure =
+        Chart.line (U.erase xUnit) (U.erase yUnit) x y
+
+    static member Scatter
+        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        : Figure =
+        Chart.scatter (U.erase xUnit) (U.erase yUnit) x y
+
+    static member Area
+        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        : Figure =
+        Chart.area (U.erase xUnit) (U.erase yUnit) x y
+
+    static member Bar
+        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        : Figure =
+        Chart.bar (U.erase xUnit) (U.erase yUnit) x y
+
+    /// `err` is in `y`'s unit.
+    static member Errorbar
+        (
+            x: float[],
+            y: float[],
+            err: float[],
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.errorbar (U.erase xUnit) (U.erase yUnit) x y err
+
+    static member Step
+        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        : Figure =
+        Chart.step (U.erase xUnit) (U.erase yUnit) x y
+
+    static member StepWith
+        (
+            align: StepAlign,
+            x: float[],
+            y: float[],
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.stepWith align (U.erase xUnit) (U.erase yUnit) x y
+
+    /// `low` and `high` are in `y`'s unit.
+    static member Ribbon
+        (
+            x: float[],
+            low: float[],
+            high: float[],
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.ribbon (U.erase xUnit) (U.erase yUnit) x low high
+
+    /// `width` is in `x`'s unit and `height` in `y`'s.
+    static member Tile
+        (
+            width: float,
+            height: float,
+            x: float[],
+            y: float[],
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.tile (U.erase xUnit) (U.erase yUnit) width height x y
+
+    static member Image
+        (
+            img: Image,
+            x0: float,
+            y0: float,
+            x1: float,
+            y1: float,
+            smooth: bool,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.image (U.erase xUnit) (U.erase yUnit) img x0 y0 x1 y1 smooth
+
+    static member Segment
+        (
+            x0: float[],
+            y0: float[],
+            x1: float[],
+            y1: float[],
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.segment (U.erase xUnit) (U.erase yUnit) x0 y0 x1 y1
+
+    static member Text
+        (
+            x: float[],
+            y: float[],
+            labels: string[],
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.text (U.erase xUnit) (U.erase yUnit) x y labels
+
+    /// A least-squares line, to `add` over the data it was fitted to.
+    static member Fit
+        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        : Figure =
+        Chart.fit (U.erase xUnit) (U.erase yUnit) x y
+
+    static member Loess
+        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        : Figure =
+        Chart.loess (U.erase xUnit) (U.erase yUnit) x y
+
+    static member LoessWith
+        (
+            span: float,
+            x: float[],
+            y: float[],
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.loessWith span (U.erase xUnit) (U.erase yUnit) x y
+
+    /// Counts per bin. The y axis is a count whatever `unit` is.
+    static member Histogram(x: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.histogram (U.erase unit) x
+
+    static member HistogramWith(bins: int, x: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.histogramWith (U.erase unit) bins x
+
+    /// A kernel density estimate. The y axis is in the reciprocal of `unit`, derived at run time,
+    /// so a density over metres reads `m⁻¹`.
+    static member Density(x: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.density (U.erase unit) x
+
+    static member Ecdf(x: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.ecdf (U.erase unit) x
+
+    /// One tile per `(x, y)`, coloured by `z` in `valueUnit`.
+    static member Heatmap
+        (
+            x: float[],
+            y: float[],
+            z: float[],
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] valueUnit: IUnit
+        ) : Figure =
+        Chart.heatmap (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) x y z
+
+    static member Hexbin
+        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        : Figure =
+        Chart.hexbin (U.erase xUnit) (U.erase yUnit) x y
+
+    static member HexbinWith
+        (
+            across: int,
+            x: float[],
+            y: float[],
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.hexbinWith (U.erase xUnit) (U.erase yUnit) across x y
+
+    /// The typed series under the axes, for `Chart.ofSeries` and the stats that take one.
+    static member Series
+        (
+            name: string,
+            x: float[],
+            y: float[],
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Series<1, 1> =
+        Chart.series name (U.erase xUnit) (U.erase yUnit) x y
+
+    // ---- Channels that take data (D126) -------------------------------------------------------
+    //
+    // A method that returns the combinator, so that it pipes as the curried form does:
+    // `fig |> Chart.ColorBy(temps, unit = U.kelvin)`.
+
+    /// Colour the last layer's marks by `values` in `unit`, on the theme's sequential ramp.
+    static member ColorBy(values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure -> Figure =
+        Chart.colorBy (U.erase unit) values
+
+    static member ColorByWith
+        (ramp: Ramp, values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit)
+        : Figure -> Figure =
+        Chart.colorByWith ramp (U.erase unit) values
+
+    /// State the last layer's colour domain. With a unit, the ends are converted into the
+    /// channel's; with none, or on an unstated channel, they are the numbers given.
+    static member WithColorDomain
+        (lo: float, hi: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit)
+        : Figure -> Figure =
+        Chart.withColorDomain (U.erase unit) lo hi
+
+    static member SizeBy(values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure -> Figure =
+        Chart.sizeBy (U.erase unit) values
+
+    static member SizeByWith
+        (
+            smallest: float<px>,
+            largest: float<px>,
+            values: float[],
+            [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit
+        ) : Figure -> Figure =
+        Chart.sizeByWith smallest largest (U.erase unit) values
