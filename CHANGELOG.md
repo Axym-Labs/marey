@@ -28,6 +28,14 @@ land in a minor release.
   through which the caller draws a node itself and Skia skips it. `SkiaBackend` draws through
   it, and its PNG and PDF output is unchanged to the byte.
 
+- **`Marey.Backend.Gpu`, a fifteenth package: GPU rendering.** `GpuRenderer` draws through the
+  Skia backend's own code on an OpenGL 3.3 core context, offscreen, and reads the pixels back as
+  a PNG (`RenderPng`) or an `Image` (`RenderImage`). One renderer keeps one context, one GPU
+  context and one text measurer on its own thread, and any thread may call it, so
+  `Frames.render FramePass.Concurrent gpu.RenderPng` works as it does for `SkiaBackend.renderPng`.
+  Lay out with `gpu.Measurer`. The output agrees with the CPU raster to within edge
+  antialiasing, not to the byte. `GpuBackend.probe ()` says which driver a renderer would get.
+
 ### Changed
 
 - **`Num.at` past 10¹⁵ at the requested places** writes the value exactly where it used to stop

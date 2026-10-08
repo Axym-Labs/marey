@@ -647,7 +647,7 @@ module OneNamePerType =
             |> Array.filter (fun p -> not (Path.GetFileName(p).StartsWith "Marey.Tests"))
             |> Array.map (fun p -> Assembly.LoadFrom p)
 
-        Assert.Equal(14, assemblies.Length)
+        Assert.Equal(15, assemblies.Length)
 
         let duplicates =
             assemblies

@@ -49,6 +49,7 @@
     <Compile Include="GoldenTests.fs" />
     <Compile Include="TikzGoldenTests.fs" />
     <Compile Include="SkiaTests.fs" />
+    <Compile Include="GpuTests.fs" />
     <Compile Include="PlotTests.fs" />
     <Compile Include="ShotTests.fs" />
     <Compile Include="StoryboardTests.fs" />
@@ -94,6 +95,7 @@
          one that gate 6 has to watch: it must not put SkiaSharp on the transitive graph of
          Core, Units, Plot, Svg or Tikz, and `SkiaTests` asserts exactly that. -->
     <ProjectReference Include="..\..\src\Marey.Backend.Skia\Marey.Backend.Skia.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Backend.Gpu\Marey.Backend.Gpu.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Backend.Tikz\Marey.Backend.Tikz.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Plot\Marey.Plot.fsproj" />

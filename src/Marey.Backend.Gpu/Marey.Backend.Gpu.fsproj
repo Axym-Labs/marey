@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- §6's GPU row, as D115 took it: Skia's GPU backend draws everything Skia draws, on an
+         OpenGL 3.3 core context, and the nodes Skia draws badly (§0.3 of the M5 inventory) are
+         claimed through `SkiaPainter` and drawn here. Not Fable-compatible and does not claim
+         to be: a GL context has no meaning in a notebook kernel's browser half. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Marey.Backend.Gpu</AssemblyName>
+    <RootNamespace>Marey</RootNamespace>
+    <Description>GPU rendering for Marey: Skia on OpenGL, with batched marks drawn by the GPU directly. A figure, a film's frames or a million points, offscreen.</Description>
+    <PackageTags>fsharp opengl gpu skia plotting charts rendering visualization</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="GpuContext.fs" />
+    <Compile Include="GpuRenderer.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
+    <ProjectReference Include="..\Marey.Backend.Skia\Marey.Backend.Skia.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- GLFW only. `Silk.NET.Windowing` is a meta-package that brings SDL as well, a second
+         native windowing library this package would never load. Pinned for D33's reason: a
+         windowing layer that moves under a pinned rasteriser is a bug report nobody can
+         reproduce. -->
+    <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.23.0" />
+    <PackageReference Include="Silk.NET.OpenGL" Version="2.23.0" />
+  </ItemGroup>
+
+</Project>

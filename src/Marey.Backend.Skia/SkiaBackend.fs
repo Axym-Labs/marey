@@ -165,10 +165,12 @@ module SkiaOptions =
           FontFiles = []
           Pdf = PdfMetadata.Default }
 
+/// A Marey colour as Skia's, each channel rounded to a byte. Public for the GPU backend, which
+/// clears its surface to the same background.
 [<RequireQualifiedAccess>]
-module internal SkiaColor =
+module SkiaColor =
 
-    let ofColor (c: Color) =
+    let ofColor (c: Color) : SKColor =
         let ch (v: float) = byte (Math.Round(Math.Max(0.0, Math.Min(1.0, v)) * 255.0))
         SKColor(ch c.R, ch c.G, ch c.B, ch c.A)
 

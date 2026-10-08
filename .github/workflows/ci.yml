@@ -135,7 +135,9 @@ jobs:
       - name: Test
         env:
           MAREY_REQUIRE_TOOLCHAIN: '1'
-        run: dotnet test Marey.slnx --configuration Release --no-build --logger "console;verbosity=normal"
+        # Under a virtual display, for the GPU renderer's context (M5 phase 4); the census names
+        # the driver it got, which here is llvmpipe.
+        run: xvfb-run -a dotnet test Marey.slnx --configuration Release --no-build --logger "console;verbosity=normal"
 
       # Packaging is part of what CI protects. It has broken on its own before -- a package
       # reference with only prereleases raised NU5104, which TreatWarningsAsErrors turned into
@@ -158,7 +160,7 @@ jobs:
         run: |
           set -e
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 14 ] || { echo "::error::expected 14 packages, packed $count"; exit 1; }
+          [ "$count" -eq 15 ] || { echo "::error::expected 15 packages, packed $count"; exit 1; }
           fable=0
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
@@ -176,7 +178,7 @@ jobs:
             echo "  $(basename "$pkg"): $readme"
           done
           [ "$fable" -eq 7 ] || { echo "::error::expected 7 packages with Fable sources, found $fable"; exit 1; }
-          echo "14 packages, each with an MIT expression and the readme it declares; 7 with Fable sources"
+          echo "15 packages, each with an MIT expression and the readme it declares; 7 with Fable sources"
 
       - uses: actions/upload-artifact@v4
         with:

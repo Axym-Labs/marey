@@ -54,7 +54,8 @@ Marey.CSharp`. A unit known only as text is read with `U.parse "V/m"`.
 | `Marey.Plot` | `Chart` and the `plot` encoding block, thirteen geoms, channels, statistics (loess and bootstrap intervals among them), facets, themes, colour-blind-safe palettes, layout, the `scene` storyboard block, and the parallel frame writer. No backend reference. |
 | `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, deterministic. |
 | `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX. |
-| `Marey.Backend.Skia` | PNG and vector PDF, with real text shaping. The only package with third-party dependencies. |
+| `Marey.Backend.Skia` | PNG and vector PDF, with real text shaping. Depends on SkiaSharp. |
+| `Marey.Backend.Gpu` | The Skia backend's drawing on an OpenGL 3.3 context, offscreen, callable from any thread. |
 | `Marey.Anim` | Animation as a pure function of time: a seekable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
 | `Marey.Fields` | Fields on dimensioned planes, phase spaces included: derivatives in the units the types work out; heatmaps, contours, bands, quivers, streamlines and line-integral convolution; fixed points found and classified. |
 | `Marey.Tools.Video` | Encoding a rendered frame sequence to video with `ffmpeg`, resolved on `PATH` and reported. |

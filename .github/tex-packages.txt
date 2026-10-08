@@ -27,6 +27,12 @@
 #                              texlive entries above -- which is the same omission the Skia
 #                              native assets made twice. `latex` itself comes from
 #                              texlive-latex-base, alongside the pdflatex the TeX gates use.
+#   xvfb                       a virtual X display, since M5 phase 4. The GPU renderer opens a
+#                              hidden GLFW window for its OpenGL context, and a hosted runner has
+#                              no display to open it on.
+#   libgl1-mesa-dri            Mesa's DRI drivers, llvmpipe among them: OpenGL 3.3 core on the
+#   libglx-mesa0               CPU, which is the only GPU a hosted runner has (D120). libglx-mesa0
+#                              is the GLX side that GLFW asks for the context through.
 #
 # Changing this file changes the apt cache key in both workflows, so a package added here is
 # fetched fresh once and then cached.
@@ -40,3 +46,6 @@ libfontconfig1
 libfreetype6
 ffmpeg
 dvisvgm
+xvfb
+libgl1-mesa-dri
+libglx-mesa0

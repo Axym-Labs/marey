@@ -20,8 +20,8 @@ tick alone.
 Targets `net10.0`; the projects under test target `netstandard2.1`. Warnings are errors here
 too, inherited from `Directory.Build.props`.
 
-Scope is all fourteen shipped packages: `Marey.Core`, `Marey.Units`, `Marey.Plot`, `Marey.Anim`,
-`Marey.Fields`, `Marey.Interact`, the three backends (`Svg`, `Tikz`, `Skia`), `Marey.Html`,
+Scope is all fifteen shipped packages: `Marey.Core`, `Marey.Units`, `Marey.Plot`, `Marey.Anim`,
+`Marey.Fields`, `Marey.Interact`, the four backends (`Svg`, `Tikz`, `Skia`, `Gpu`), `Marey.Html`,
 `Marey.Verso`, `Marey.Toolchain`, `Marey.Tools.Video` and `Marey.Tools.Tex`.
 
 The one package reference that is not a test tool is `Verso.Testing`. It supplies the stub contexts
@@ -60,7 +60,8 @@ without a notebook host installed.
 | `GoldenTests.fs` | The snapshots, the determinism suite, the backend contract, and the check that the shared table covers every SVG baseline. |
 | `TikzGoldenTests.fs` | The same scenes through the TikZ backend, plus the figure baselines both backends share. |
 | `GuideTests.fs` | Extracts every `fsharp` block from `docs/guide.md`, concatenates them into one script and runs it under `dotnet fsi`. |
-| `SkiaTests.fs` | The raster backend: byte determinism for PNG and PDF, the page extent, ink and orientation, the shaping gate, and the zero-dependency assertion over the built package graph. |
+| `SkiaTests.fs` | The raster backend: byte determinism for PNG and PDF, the page extent, ink and orientation, the shaping gate, the painter's claim (D131), and the zero-dependency assertion over the built package graph. |
+| `GpuTests.fs` | M5 — the GPU renderer against the Skia CPU raster under a stated tolerance (a 5 × 5 blur, then 32 of 255), the tolerance shown to see a marker moved by a pixel, and one renderer driven from many threads. Skips, and says so, where no OpenGL 3.3 context can be made; CI runs it on llvmpipe under `xvfb-run`. |
 | `PlotTests.fs` | `Marey.Plot`: self-labelling axes, layout invariants across four themes and four sizes, the 50 000-point batching claim, purity of the `with*` combinators, and palette validation. |
 | `ShotTests.fs` | D72/D73 — one arrangement for a whole animation. That the plot rectangle and the axis title are identical across every frame of a shot, each with its own positive control asserting that per-frame layout *does* move them, plus the union's componentwise rule. |
 | `StoryboardTests.fs` | D69 — the storyboard CE. What `let!` binds and what a step's duration defaults to, that `parallel'` inherits `Anim.map2`'s rule rather than restating it, and the `MarkerBatch` split: that addressing a mark still draws the same picture, and that the mark it names is the datum's **original row** rather than its position among the drawn marks. |
