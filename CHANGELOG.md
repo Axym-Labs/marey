@@ -21,7 +21,7 @@ land in a minor release.
   what they wrote before.
 
 - **Fable can consume the packages.** `Marey.Core`, `Marey.Units`, `Marey.Anim`, `Marey.Plot`,
-  `Marey.Fields`, `Marey.Interact` and `Marey.Backend.Svg` carry their sources and project file
+  `Marey.Fields`, `Marey.Interact`, `Marey.Backend.Svg` and `Marey.Backend.Web` carry their sources and project file
   under `fable/` and the `fable-library` tags, so a Fable app references them from NuGet as a
   .NET app does.
 - **`SkiaPainter`**, the Skia backend's traversal on a canvas the caller owns, with a `claim`
@@ -39,6 +39,21 @@ land in a minor release.
   where the CPU raster takes 3.6 s. Batches the shader cannot draw as Skia would (a gradient, a
   dash, a non-mitered outline, inside an opacity layer, under a clip that is not a rectangle) are
   drawn by Skia. `instancedMarkers = false` sends every batch to Skia.
+- **A window**: `Chart.show fig` and `Live.show live`, in `Marey.Backend.Gpu`, open a figure or a
+  live figure on screen and return when it is closed. Drag to zoom, shift-drag to pan,
+  double-click to reset, hover for a reading, Tab and the arrow keys for the controls, which are
+  drawn in a strip above the figure. The window's pointer and keys become the `LiveMsg`s a
+  notebook page sends and go through `Live.step`, so a session in a window steps to the states a
+  notebook session would, and `Recorder.show` records a log that replays the same.
+  `GpuWindow.Open` opens one without waiting and `Post` drives it from code. Linux and Windows.
+- **`Marey.Backend.Web`, a sixteenth package: a canvas in a browser.** A Fable app compiles a
+  figure in the page with the same code a .NET process runs, and `CanvasBackend` draws the scene
+  on a 2-D canvas at the display's pixel density: all ten node cases, by the Skia backend's rules.
+  `WebText.measurerNow ()` lays out with the canvas's own text measurements once `document.fonts`
+  has loaded, and with the approximate widths before then, saying so in `Approximated`;
+  `WebText.measurer ()` waits for the fonts. Marker batches of 2000 marks or more are drawn by
+  WebGL2 and composited in place, about ten times faster than the canvas at 10⁵ marks. Its
+  dependency is `Fable.Core`; it carries its sources under `fable/` like the other seven.
 
 ### Changed
 

@@ -8,7 +8,7 @@ invariants.
 dotnet test
 ```
 
-**1424 tests: 193 FsCheck properties and 1231 example-based tests**, and 12 more in the C# project
+**1461 tests: 198 FsCheck properties and 1263 example-based tests**, and 12 more in the C# project
 `tests/Marey.CSharp.Tests`, which `dotnet test Marey.slnx` runs beside this one.
 
 Around six seconds of that is `pdflatex`. The TikZ backend has no in-process oracle — the only
@@ -62,6 +62,7 @@ without a notebook host installed.
 | `GuideTests.fs` | Extracts every `fsharp` block from `docs/guide.md`, concatenates them into one script and runs it under `dotnet fsi`. |
 | `SkiaTests.fs` | The raster backend: byte determinism for PNG and PDF, the page extent, ink and orientation, the shaping gate, the painter's claim (D131), and the zero-dependency assertion over the built package graph. |
 | `GpuTests.fs` | M5 — the GPU renderer against the Skia CPU raster under a stated tolerance (a 5 × 5 blur, then 32 of 255), the tolerance shown to see a marker moved by a pixel, and one renderer driven from many threads. Skips, and says so, where no OpenGL 3.3 context can be made; CI runs it on llvmpipe under `xvfb-run`. |
+| `WindowTests.fs` | M5 — the window speaks `LiveMsg`: a scripted session of pointer and key events sends exactly the notebook page's messages and reaches `Live.step`'s state, a recorder in the window keeps the log a notebook would, and a hidden window driven through `Post` matches the pure session after every event and draws the figure the GPU renderer draws. The host half skips where no context can be made. |
 | `PlotTests.fs` | `Marey.Plot`: self-labelling axes, layout invariants across four themes and four sizes, the 50 000-point batching claim, purity of the `with*` combinators, and palette validation. |
 | `ShotTests.fs` | D72/D73 — one arrangement for a whole animation. That the plot rectangle and the axis title are identical across every frame of a shot, each with its own positive control asserting that per-frame layout *does* move them, plus the union's componentwise rule. |
 | `StoryboardTests.fs` | D69 — the storyboard CE. What `let!` binds and what a step's duration defaults to, that `parallel'` inherits `Anim.map2`'s rule rather than restating it, and the `MarkerBatch` split: that addressing a mark still draws the same picture, and that the mark it names is the datum's **original row** rather than its position among the drawn marks. |
@@ -137,16 +138,20 @@ committed as a baseline.
 ### Under Node
 
 `tests/Marey.Fable` compiles `tests/Shared/GoldenScenes.fs` and the projects below it with Fable,
-and Node renders the 27 SVG baselines and compares them byte for byte. CI runs it as the `fable`
-job. Locally, with Node on `PATH`:
+and Node renders the 27 SVG baselines and compares them byte for byte. The same run draws every
+golden scene with the canvas backend on a context that records each call, and compares the log
+with `tests/Marey.Fable/canvas/<name>.canvas.txt`; and it checks that the canvas's text measurer
+refuses while a page's fonts are loading. CI runs it as the `fable` job. Locally, with Node on
+`PATH`:
 
 ```
 dotnet tool restore
 dotnet fable tests/Marey.Fable -o tests/Marey.Fable/out
-node tests/Marey.Fable/out/Main.js tests/Marey.Tests/golden
+node tests/Marey.Fable/out/Main.js tests/Marey.Tests/golden tests/Marey.Fable/canvas
 ```
 
-A difference writes `<name>.actual.svg` beside the baseline, as the .NET suite does.
+A difference writes `<name>.actual.svg` or `<name>.actual.txt` beside the baseline, as the .NET
+suite does.
 
 The same project builds against the packed packages instead of the projects when
 `MAREY_FROM_PACKAGES` names a version and `MAREY_PACKAGE_SOURCE` a directory holding the

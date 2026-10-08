@@ -1,7 +1,8 @@
 # Marey.Backend.Gpu
 
 GPU rendering for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
-visualization system for F#. Skia draws on an OpenGL 3.3 core context, offscreen. `net8.0`.
+visualization system for F#. Skia draws on an OpenGL 3.3 core context, offscreen or in a window.
+`net8.0`.
 
 ```fsharp
 #r "nuget: Marey.Plot"
@@ -39,6 +40,19 @@ a batch as one instanced draw, each mark's shape computed in a shader to Skia's 
 million marks take about 5 ms on a desktop GPU. A batch the shader cannot match (a gradient fill,
 a dashed or non-mitered outline, inside an opacity layer, under a clip that is not a rectangle)
 is left to Skia.
+
+## In a window
+
+```fsharp
+Chart.show figure          // returns when the window is closed
+Live.show (interact { … }) // a live figure, its controls in a strip above it
+```
+
+Drag to zoom, shift-drag to pan, double-click to reset, hover for a reading in the axes' units, Tab
+and the arrow keys for the controls, Escape to close. The window steps a live figure with
+`Live.step`, exactly as a notebook does, so `Recorder.show` records a session a notebook would
+replay. `GpuWindow.Open` opens one without waiting. Linux and Windows; not macOS, where GLFW
+requires the main thread.
 
 ## Requirements
 
