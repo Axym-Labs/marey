@@ -154,6 +154,11 @@ module internal GlfwLibrary =
     /// to try.
     let ensure () = loaded.Force()
 
+    /// GLFW keeps global state and is not thread-safe, and each renderer makes and destroys its
+    /// window on its own render thread. Every GLFW call goes through this one lock, so two
+    /// renderers starting at once take turns.
+    let gate = obj ()
+
 /// GLFW's own account of why it would not start, which Silk.NET's "couldn't find a suitable window
 /// platform" does not carry: the library did not load, or `glfwInit` failed and said why (no
 /// display, an X11 client library it loads at run time missing).
@@ -164,7 +169,7 @@ module internal GlfwDiagnosis =
             GlfwLibrary.ensure () |> ignore
             let glfw = Silk.NET.GLFW.Glfw.GetApi()
 
-            if glfw.Init() then
+            if lock GlfwLibrary.gate glfw.Init then
                 glfw.Terminate()
                 "GLFW itself initialises here"
             else
@@ -184,17 +189,18 @@ module internal GlfwDiagnosis =
 type internal GpuContext() =
 
     let window =
-        GlfwLibrary.ensure () |> ignore
-        Silk.NET.Windowing.Glfw.GlfwWindowing.Use()
+        lock GlfwLibrary.gate (fun () ->
+            GlfwLibrary.ensure () |> ignore
+            Silk.NET.Windowing.Glfw.GlfwWindowing.Use()
 
-        let mutable o = WindowOptions.Default
-        o.Size <- Vector2D<int>(16, 16)
-        o.IsVisible <- false
-        o.ShouldSwapAutomatically <- false
-        o.API <- GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.ForwardCompatible, APIVersion(3, 3))
-        let w = Window.Create o
-        w.Initialize()
-        w
+            let mutable o = WindowOptions.Default
+            o.Size <- Vector2D<int>(16, 16)
+            o.IsVisible <- false
+            o.ShouldSwapAutomatically <- false
+            o.API <- GraphicsAPI(ContextAPI.OpenGL, ContextProfile.Core, ContextFlags.ForwardCompatible, APIVersion(3, 3))
+            let w = Window.Create o
+            w.Initialize()
+            w)
 
     let gl = GL.GetApi(window :> IGLContextSource)
 
@@ -243,4 +249,4 @@ type internal GpuContext() =
             target |> Option.iter (fun t -> (t :> IDisposable).Dispose())
             (markers :> IDisposable).Dispose()
             gr.Dispose()
-            window.Dispose()
+            lock GlfwLibrary.gate (fun () -> window.Dispose())

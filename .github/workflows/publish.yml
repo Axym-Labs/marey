@@ -145,8 +145,10 @@ jobs:
         env:
           MAREY_REQUIRE_TOOLCHAIN: '1'
         # Under a virtual display, for the GPU renderer's context (M5 phase 4); the census names
-        # the driver it got, which here is llvmpipe.
-        run: xvfb-run -a dotnet test Marey.slnx --configuration Release --no-build --logger "console;verbosity=normal"
+        # the driver it got, which here is llvmpipe. `--blame` because a native crash in a driver
+        # aborts the test host with no failing test to read: with it, the log names the test that
+        # was running.
+        run: xvfb-run -a dotnet test Marey.slnx --configuration Release --no-build --blame --logger "console;verbosity=normal"
 
       - name: Pack
         run: |
