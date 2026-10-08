@@ -47,6 +47,11 @@ land in a minor release.
 
 ### Fixed
 
+- **The Skia backend drew a marker batch as one shape.** Two translucent markers that overlapped
+  were no darker than one, so a dense cloud of points at 30% opacity read as a flat 30% tint, and
+  every fill was drawn before every outline. Each mark is now filled and stroked on its own, as
+  the SVG and TikZ backends always did. Batches of polygon markers draw about a third slower;
+  circles are unchanged.
 - **`Color.tryOfHex` accepted white space inside a field**: `"ff 000"` read as `#ff0000`. It is
   now `None`.
 - **The projects that claim Fable compile under Fable 5.** They did not: a round-trip format, a

@@ -618,42 +618,44 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
 
     and drawMarkers (ctm: Affine<nd, px>) (b: MarkerBatch) =
         if b.Points.Length > 0 then
-            // §5.1 — "a 100 000-point scatter must be *one* IR node". It is also **one canvas
-            // call per batch and per paint** here, not one per point: the whole batch is
-            // accumulated into a single `SKPath` and drawn once. That is the same decision SVG
-            // makes with one `<defs>` shape and N `<use>`s, and TikZ with one `\providecommand`
-            // and N calls, arriving at the shape this backend can actually express.
-            use builder = new SKPathBuilder()
+            // §5.1 — "a 100 000-point scatter must be *one* IR node", and one outline and one
+            // pair of paints here, built once for the batch.
+            //
+            // **D132 — but each mark is composited on its own, filled and then stroked.** That is
+            // what the SVG backend's `<use>`s and TikZ's per-mark paths do, and what a scatter
+            // plot means: two translucent marks that overlap are darker where they overlap,
+            // which is how a dense region shows. Until 0.4.0 this backend added the whole batch to
+            // one path and filled it once, so overlaps were a union and a cloud of points at 30%
+            // read as a flat 30% tint; and it drew every fill before every stroke, so a later
+            // mark's fill never covered an earlier mark's outline.
             let size = f32 (float b.Size)
+
+            use fill = b.Fill |> Option.map (fillPaint ctm) |> Option.toObj
+            use stroke = b.Stroke |> Option.map (strokePaint ctm) |> Option.toObj
 
             match markerOutline b.Shape size with
             | Choice1Of2 r ->
                 for p in b.Points do
                     let struct (x, y) = point ctm p
-                    builder.AddCircle(x, y, r)
+                    if not (isNull fill) then canvas.DrawCircle(x, y, r, fill)
+                    if not (isNull stroke) then canvas.DrawCircle(x, y, r, stroke)
             | Choice2Of2 outline ->
+                use builder = new SKPathBuilder()
+                builder.MoveTo(fst outline.[0], snd outline.[0])
+
+                for i in 1 .. outline.Length - 1 do
+                    builder.LineTo(fst outline.[i], snd outline.[i])
+
+                builder.Close()
+                use path = builder.Detach()
+
                 for p in b.Points do
                     let struct (x, y) = point ctm p
-                    builder.MoveTo(x + fst outline.[0], y + snd outline.[0])
-
-                    for i in 1 .. outline.Length - 1 do
-                        builder.LineTo(x + fst outline.[i], y + snd outline.[i])
-
-                    builder.Close()
-
-            use path = builder.Detach()
-
-            match b.Fill with
-            | Some p ->
-                use paint = fillPaint ctm p
-                canvas.DrawPath(path, paint)
-            | None -> ()
-
-            match b.Stroke with
-            | Some s ->
-                use paint = strokePaint ctm s
-                canvas.DrawPath(path, paint)
-            | None -> ()
+                    canvas.Save() |> ignore
+                    canvas.Translate(x, y)
+                    if not (isNull fill) then canvas.DrawPath(path, fill)
+                    if not (isNull stroke) then canvas.DrawPath(path, stroke)
+                    canvas.Restore()
 
     and drawRaster (ctm: Affine<nd, px>) (r: RasterNode) =
         let img = r.Image

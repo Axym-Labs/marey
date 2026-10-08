@@ -1974,3 +1974,50 @@ module ``the painter`` =
 
         paint claim (Group [| dots; Opacity(0.5, dots); Opacity(1.0, dots) |]) |> ignore
         Assert.Equal<int list>([ 0; 1; 0 ], List.ofSeq depths)
+
+// ======================================================================================
+// D132 — each mark is composited on its own
+// ======================================================================================
+
+module ``each mark composites on its own`` =
+
+    let private extent: Extent<px> = { Width = 100.0<px>; Height = 100.0<px> }
+
+    let private batch (stroke: Stroke option) (points: Vec2<nd>[]) =
+        Markers
+            { Points = points
+              Shape = MarkSquare
+              Size = 40.0<px>
+              Fill = Some(Solid(Color.rgba 0.0 0.0 1.0 0.5))
+              Stroke = stroke }
+
+    /// Two half-transparent marks over one pixel are darker than one, as in the SVG and TikZ
+    /// backends. Until 0.4.0 the batch was one path, and the overlap was the same 50% tint.
+    [<Fact>]
+    let ``two translucent marks are darker where they overlap`` () =
+        withSkia (fun () ->
+            let one = batch None [| { X = 0.45<nd>; Y = 0.5<nd> } |]
+            let two = batch None [| { X = 0.45<nd>; Y = 0.5<nd> }; { X = 0.55<nd>; Y = 0.5<nd> } |]
+            let r1, _, _ = SkiaPixels.rgbAt (SkiaBackend.renderPng extent one) 0.5 0.5
+            let r2, _, _ = SkiaPixels.rgbAt (SkiaBackend.renderPng extent two) 0.5 0.5
+            Assert.InRange(r1, 120, 135)
+            Assert.InRange(r2, 58, 70))
+
+    /// A mark is filled and then stroked before the next mark is drawn, so the second mark's
+    /// fill lies over the first mark's outline where they cross.
+    [<Fact>]
+    let ``a later mark covers an earlier mark's outline`` () =
+        withSkia (fun () ->
+            let red = Stroke.solid (Color.rgb 1.0 0.0 0.0) 3.0<px>
+
+            let opaque =
+                Markers
+                    { Points = [| { X = 0.4<nd>; Y = 0.5<nd> }; { X = 0.6<nd>; Y = 0.5<nd> } |]
+                      Shape = MarkSquare
+                      Size = 40.0<px>
+                      Fill = Some(Solid(Color.rgb 0.0 0.0 1.0))
+                      Stroke = Some red }
+
+            // The first square's right edge is at x = 40 + 20 = 60 px, inside the second square.
+            let r, _, b = SkiaPixels.rgbAt (SkiaBackend.renderPng extent opaque) 0.6 0.5
+            Assert.True(b > 200 && r < 40, sprintf "the first mark's outline shows through the second: rgb(%d, _, %d)" r b))
