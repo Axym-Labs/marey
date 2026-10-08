@@ -174,3 +174,38 @@ jobs:
           name: packages
           path: artifacts/*.nupkg
           retention-days: 7
+
+  # D130 — the Fable claim, as a job rather than a sentence. Fable compiles the projects that
+  # claim it, with the scenes and figures behind the SVG baselines (`tests/Shared`), and Node
+  # renders all of them; a document that differs by a byte fails, names itself, and is uploaded.
+  # A Fable project that gains a .NET-only API fails earlier, at compile time, naming the API.
+  fable:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Restore Fable
+        run: dotnet tool restore
+
+      - name: Compile with Fable
+        run: dotnet fable tests/Marey.Fable -o tests/Marey.Fable/out
+
+      - name: The SVG goldens under Node
+        run: node tests/Marey.Fable/out/Main.js tests/Marey.Tests/golden
+
+      - name: Upload the documents that differ
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fable-golden-actuals
+          path: tests/Marey.Tests/golden/*.actual.svg
+          if-no-files-found: ignore

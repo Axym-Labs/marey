@@ -294,14 +294,22 @@ Re-run with %s=1 to accept the new output."
         elif File.Exists candidate then
             File.Delete candidate
 
-/// The standard surface for golden documents.
-///
-/// Deliberately **not square and not round**: 320x200 is 8:5, so an anisotropic nd → px map is
-/// the normal case rather than the exception. D13's text-rotation finding — that pushing the
-/// direction vector through the CTM renders a requested 30° as 23.4° on 800x600 — is invisible
-/// on a square surface, and a golden suite that only ever renders squares would never have
-/// caught it.
-let surface: Extent<px> = { Width = 320.0<px>; Height = 200.0<px> }
+// The scene vocabulary and the figures moved to `tests/Shared/GoldenScenes.fs` (D130), where
+// the Fable project compiles them too. These are the names the suite already uses.
+let surface = GoldenScenes.surface
+let font = GoldenScenes.font
+let text = GoldenScenes.text
+let pt = GoldenScenes.pt
+let stops = GoldenScenes.stops
+let figure = GoldenScenes.figure
+let categoryFigure = GoldenScenes.categoryFigure
+let channelFigure = GoldenScenes.channelFigure
+let colorbarFigure = GoldenScenes.colorbarFigure
+let boxplotFigure = GoldenScenes.boxplotFigure
+let heatmapFigure = GoldenScenes.heatmapFigure
+let imageFigure = GoldenScenes.imageFigure
+let figureSurface = GoldenScenes.figureSurface
+
 
 /// Render a scene at the standard surface and compare it to its baseline.
 let render (name: string) (node: Node) = check name (SvgBackend.render surface node)
@@ -316,201 +324,6 @@ let renderAt (extent: Extent<px>) (name: string) (node: Node) = check name (SvgB
 let renderTikzAt (extent: Extent<px>) (name: string) (node: Node) =
     check name (TikzBackend.render extent node)
 
-// ======================================================================================
-// SHARED SCENE VOCABULARY
-//
-// Small constructors so the golden scenes read as pictures rather than as record literals.
-// ======================================================================================
-
-let font size weight italic : FontSpec =
-    { Family = "Helvetica"
-      Size = size * 1.0<pt>
-      Weight = weight
-      Italic = italic }
-
-let text (s: string) (x: float) (y: float) (anchor: TextAnchor) (baseline: TextBaseline) (rotation: float) =
-    Text
-        { Text = s
-          Tex = None
-          At = { X = x * 1.0<nd>; Y = y * 1.0<nd> }
-          Font = font 11.0 400 false
-          Paint = Solid(Color.rgb 0.1 0.1 0.12)
-          Anchor = anchor
-          Baseline = baseline
-          Rotation = rotation * 1.0<rad> }
-
-let pt (x: float) (y: float) : Vec2<nd> = { X = x * 1.0<nd>; Y = y * 1.0<nd> }
-
-let stops (cs: (float * Color) list) =
-    cs |> List.map (fun (o, c) -> { Offset = o; Color = c }) |> Array.ofList
-
-// ======================================================================================
-// THE SHARED FIGURE
-//
-// Gate 6 in the M1 plan: until now there was **no** golden baseline for a `Figure` in
-// either backend. All thirteen scenes are hand-built `Node`s, and `Chart` output was checked only
-// by substring assertions — so the one artefact users actually produce, and the only one that
-// exercises layout, axes, ticks, legend and theme together, had no reviewable record at all.
-//
-// One figure, rendered by both backends, so a layout change shows up as a diff in two files that
-// can be read against each other.
-// ======================================================================================
-
-/// A two-series figure with everything a real one has: a title, a subtitle, a legend, grids on
-/// both axes, unit-derived axis titles, a line and a scatter.
-///
-/// `UnitStyle` is left at the theme default (`Unicode`) deliberately. The siunitx spelling is a
-/// TeX-only artefact and would put raw macros into the SVG baseline; it gets its own TikZ-only
-/// golden instead, so this pair stays a comparison of *the same picture* through two backends.
-let figure: Figure =
-    let ts = Array.init 24 (fun i -> float i * 0.4<s>)
-    let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
-
-    Chart.line U.second U.metre ts xs
-    |> Chart.withName "model"
-    |> Chart.addScatter U.second U.metre ts.[..5] (ts.[..5] |> Array.map (fun t -> 0.5 * 9.6<m / s^2> * t * t))
-    |> Chart.withName "measured"
-    |> Chart.withTitle "Free fall"
-    |> Chart.withSubtitle "displacement against elapsed time"
-    |> Chart.withLegend LegendTopLeft
-    |> Chart.withGrid true true
-
-/// D45 — the categorical figure, and the second thing in this file that a user actually
-/// produces.
-///
-/// Four string levels, one bar each, through `Chart.Category.bar`. What the baseline records
-/// that no substring assertion can: that the bands are evenly spaced and centred, that the bars
-/// are one band wide, that the level names land under them in order, and that the x axis carries
-/// no conventional symbol while the y axis still carries its unit. A shift in any of those is a
-/// diff in two files.
-let categoryFigure: Figure =
-    Chart.Category.bar
-        U.metre
-        [| "control"; "treated"; "placebo"; "washout" |]
-        [| 12.4<m>; 19.1<m>; 7.8<m>; 15.0<m> |]
-    |> Chart.withXLabel "treatment"
-    |> Chart.withYLabel "yield"
-    |> Chart.withTitle "Yield by treatment"
-    |> Chart.withGrid false true
-
-/// D46 / D49 — a categorical colour channel with shape as its redundant encoding.
-///
-/// One series, three levels, and the baseline records what the counts cannot: that the legend
-/// enumerates the *levels* rather than the series, that each level's marks carry both its colour
-/// and its shape, and that a channelled layer is still one batch per level in the emitted
-/// document rather than one element per point.
-let channelFigure: Figure =
-    let keys = Array.init 24 (fun i -> [| "control"; "treated"; "washout" |].[i % 3])
-    let ts = Array.init 24 (fun i -> float i * 0.4<s>)
-    let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
-
-    Chart.scatter U.second U.metre ts xs
-    |> Chart.colorByKey keys
-    |> Chart.shapeByKey keys
-    |> Chart.withTitle "Fall by treatment"
-    |> Chart.withLegend LegendTopLeft
-
-/// D49 — **the colorbar, in both backends, and this is the baseline the decision asked for.**
-///
-/// The failure it exists to catch is one no assertion can see. A gradient-filled bar is valid in
-/// SVG and comes out of the TikZ backend as a single flat `#23908c` block, because
-/// `Gradients = false` makes `Degrade.forCaps` collapse the ramp to its Oklab midpoint — valid
-/// TeX, clean text diff, and no colorbar. So the bar is strips, and here are the strips, in a
-/// file a reviewer can count.
-///
-/// It also records the placement claim: the bar is one more content column, the plot gives up
-/// its width to it, and the x axis keeps its ticks.
-let colorbarFigure: Figure =
-    let ts = Array.init 24 (fun i -> float i * 0.4<s>)
-    let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
-    let temps = ts |> Array.map (fun t -> (280.0 + 2.5 * float t) * 1.0<K>)
-
-    Chart.scatter U.second U.metre ts xs
-    |> Chart.colorBy U.kelvin temps
-    |> Chart.withColorLabel "T"
-    |> Chart.withTitle "Fall by temperature"
-
-/// M2 phase 6 / D55 — **the box plot, as a picture**, and the first figure in this file whose
-/// marks are a *summary* rather than the data.
-///
-/// What the baseline records that no assertion reaches: that the whiskers stop at an
-/// observation rather than at the extreme, that the outlier is drawn outside them and is
-/// countable, that the median rule spans the box exactly, and that the three bands are the same
-/// width and evenly spaced. Every one of those is a thing that still renders when it is wrong.
-///
-/// The sample is written out rather than generated, because a golden master over a generated
-/// sample is a record of a generator.
-let boxplotFigure: Figure =
-    let control = [| 12.1; 12.8; 13.4; 13.9; 14.2; 14.6; 15.1; 15.9; 22.5 |]
-    let treated = [| 16.4; 17.0; 17.3; 17.9; 18.4; 18.8; 19.2; 19.9; 20.6 |]
-    let washout = [| 11.8; 12.4; 13.1; 13.6; 14.0; 14.9; 15.4; 16.2; 16.8 |]
-
-    let keys =
-        Array.concat
-            [ Array.create control.Length "control"
-              Array.create treated.Length "treated"
-              Array.create washout.Length "washout" ]
-
-    let values =
-        Array.concat [ control; treated; washout ] |> Array.map (fun v -> v * 1.0<m>)
-
-    Chart.Category.boxplot U.metre keys values
-    |> Chart.withYLabel "yield"
-    |> Chart.withTitle "Yield by treatment"
-    |> Chart.withGrid false true
-
-/// M2 phase 6 — **the tile, and the colorbar over it.**
-///
-/// A heatmap is the geom that is worthless without a colour channel, so this is also the second
-/// figure in the suite carrying a continuous ramp — and the one where the TikZ half matters for
-/// a reason `figure-colorbar` does not cover: the tiles themselves are one `Path` per quantised
-/// colour step (D46), so a batching regression shows up here as a file that is many times longer.
-let heatmapFigure: Figure =
-    let xs = [| 0.0 .. 5.0 |]
-    let ys = [| 0.0 .. 3.0 |]
-
-    let grid =
-        [| for gy in ys do
-               for gx in xs do
-                   yield gx, gy |]
-
-    let temps =
-        grid |> Array.map (fun (gx, gy) -> (280.0 + 4.0 * gx + 7.0 * gy) * 1.0<K>)
-
-    Chart.heatmap U.second U.metre U.kelvin (grid |> Array.map (fst >> (*) 1.0<s>)) (grid |> Array.map (snd >> (*) 1.0<m>)) temps
-    |> Chart.withColorLabel "T"
-    |> Chart.withTitle "Temperature field"
-
-/// M2.5 phase 1 — **the image, and the sidecar it makes the TikZ backend write** (D64).
-///
-/// The first figure in the suite that puts a `Raster` into a scene. Nothing above the IR
-/// produced one before `Chart.image`, which is why `renderWithAssets` had no customer and
-/// `figure-heatmap` — which *looks* like the raster figure — contains no raster at all: a
-/// heatmap is tiles.
-///
-/// **The image is deliberately asymmetric in both axes and in colour**, and that is the whole
-/// design of the fixture. Orientation is the one property no coordinate test can reach, because
-/// a flip applied wrongly to both backends still satisfies cross-backend agreement — so the top
-/// row is bright and the bottom row is dark, and the left column differs from the right. A
-/// symmetric test image would hide exactly the bug this figure exists to catch, in both the
-/// `data:` URI path and the `\includegraphics` one.
-///
-/// Six pixels rather than six hundred: the sidecar is a committed baseline, and the encoder's
-/// output is what is under review.
-let imageFigure: Figure =
-    let px r g b = [| byte r; byte g; byte b; 255uy |]
-
-    let rgba =
-        Array.concat
-            [| px 250 240 60; px 250 140 40; px 230 40 40 // top row, bright, left to right
-               px 40 60 150; px 30 40 110; px 15 20 70 |] // bottom row, dark
-
-    Chart.image U.second U.metre { Width = 3; Height = 2; Rgba = rgba } 0.0<s> 0.0<m> 6.0<s> 4.0<m> false
-    |> Chart.withTitle "Placed image"
-
-/// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
-/// fit, and a cramped one tests the collision ladder rather than the layout.
-let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
 
 /// Assert that a scene really does exercise the `Node` cases it claims to. §5 makes the case
 /// count the thing to defend, so a golden test that says it covers all ten should be able to

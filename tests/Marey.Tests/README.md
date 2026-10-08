@@ -45,6 +45,7 @@ without a notebook host installed.
 | `SceneProperties.fs` | **D1** structural equality, `count`/`primitiveCount`, `prune`, and the ten-case guard. |
 | `AnimProperties.fs` | The animation algebra: `andThen` associativity and its two identities, `map2` as an applicative, `stretch` composition, a total seek, and the overshoot gate — per `Interp` instance, including the colour case where the answer is different. |
 | `RandomProperties.fs` | D95 — `Rng`, SplitMix64 pinned against its published outputs for seed 0, and the ranges of `unit` and `below`. |
+| `NumProperties.fs` | D129 — `Num.roundAway`, `Num.at` and `Num.fixedPoint` against the .NET calls they replace, on exact halves and on random doubles. |
 | `MorphProperties.fs` | Path morphing: the endpoint law stated against `Morph.prepare`, arc-length sampling against vertex-index sampling, subpath pairing and padding, closure policy, overshoot, and totality over deliberately malformed paths. |
 | `RegressionTests.fs` | The regression pins: §12's six type-system findings, and D16, D17, D32, D38 and D41, locked in. |
 | `Tools.fs` | The registry of the three external programs the suite drives, resolved through `Marey.Toolchain`. |
@@ -54,8 +55,9 @@ without a notebook host installed.
 | `TikzWriterTests.fs` | The emitter primitives: `bp` dimensions, colour definitions, escaping, superscript runs, macro naming. |
 | `TikzBackendTests.fs` | The traversal: the missing y flip, pre-transformed geometry, the honest capability set, batched marker macros, and cross-backend coordinate agreement. |
 | `TikzInkTests.fs` | Compiles figures and asserts that ink is where it belongs, mostly by differentials. The only gate that can detect orientation. |
+| `../Shared/GoldenScenes.fs` | The scenes and figures behind every SVG baseline, and `svg`, the table naming all 27. Compiled here and by `tests/Marey.Fable`. |
 | `Golden.fs` | Golden-file infrastructure: location, diff reporting, regeneration. Format-agnostic — `check` compares text and derives its failure artefact from the baseline's extension. |
-| `GoldenTests.fs` | The snapshot scenes, the determinism suite, and the backend contract. |
+| `GoldenTests.fs` | The snapshots, the determinism suite, the backend contract, and the check that the shared table covers every SVG baseline. |
 | `TikzGoldenTests.fs` | The same scenes through the TikZ backend, plus the figure baselines both backends share. |
 | `GuideTests.fs` | Extracts every `fsharp` block from `docs/guide.md`, concatenates them into one script and runs it under `dotnet fsi`. |
 | `SkiaTests.fs` | The raster backend: byte determinism for PNG and PDF, the page extent, ink and orientation, the shaping gate, and the zero-dependency assertion over the built package graph. |
@@ -85,7 +87,7 @@ They are plain SVG and plain `tikzpicture` source, one element per line, so a re
 list of changed coordinates rather than as a wall of text.
 
 Every scene has both: `paths.svg` and `paths.tex` are the same picture at the same surface in two
-languages, from one table in `GoldenTests.Scenes`. Reading them against each other is a check in
+languages, from one table in `GoldenScenes.Scenes`. Reading them against each other is a check in
 itself — `rotated-text.svg` carries `rotate(-30 104 100)` where `rotated-text.tex` carries
 `rotate=30` at `(78bp,75bp)`, because the SVG backend flips y and negates the angle while the TikZ
 backend does neither, and `104 x 0.75 = 78`.
@@ -130,6 +132,20 @@ First difference at line 14, column 23.
 
 `*.actual.svg` and `*.actual.tex` are git-ignored, so a failed run can never accidentally be
 committed as a baseline.
+
+### Under Node
+
+`tests/Marey.Fable` compiles `tests/Shared/GoldenScenes.fs` and the projects below it with Fable,
+and Node renders the 27 SVG baselines and compares them byte for byte. CI runs it as the `fable`
+job. Locally, with Node on `PATH`:
+
+```
+dotnet tool restore
+dotnet fable tests/Marey.Fable -o tests/Marey.Fable/out
+node tests/Marey.Fable/out/Main.js tests/Marey.Tests/golden
+```
+
+A difference writes `<name>.actual.svg` beside the baseline, as the .NET suite does.
 
 ## Determinism
 

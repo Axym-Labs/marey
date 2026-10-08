@@ -22,6 +22,7 @@ open Xunit
 open Marey
 open Marey.Tests.Golden
 open Marey.Tests.GoldenTests
+open Marey.Tests.GoldenScenes
 
 // ======================================================================================
 // THE SNAPSHOTS

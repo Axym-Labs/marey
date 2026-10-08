@@ -44,6 +44,7 @@
     <Compile Include="TikzWriterTests.fs" />
     <Compile Include="TikzBackendTests.fs" />
     <Compile Include="TikzInkTests.fs" />
+    <Compile Include="../Shared/GoldenScenes.fs" Link="GoldenScenes.fs" />
     <Compile Include="Golden.fs" />
     <Compile Include="GoldenTests.fs" />
     <Compile Include="TikzGoldenTests.fs" />

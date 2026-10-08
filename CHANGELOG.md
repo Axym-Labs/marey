@@ -10,6 +10,33 @@ rather than any one package. Each release's notes say which packages it adds.
 listed under `Changed` or `Removed` with the reason and the replacement, and until 1.0 they may
 land in a minor release.
 
+## [Unreleased]
+
+### Added
+
+- **`Num.roundAway`, `Num.fixedPoint` and `Num.shortest`**: a half rounded away from zero, .NET's
+  "F" format and its "R" format, written in Marey's own arithmetic so that they mean the same
+  under Fable. `Num.at`, `Ticks.format` and `Ticks.formatGeneral` are built on them, and write
+  what they wrote before.
+
+### Changed
+
+- **`Num.at` past 10¹⁵ at the requested places** writes the value exactly where it used to stop
+  at fifteen significant digits: `Num.at 5 4339842218598.2778` is `4339842218598.27783`, not
+  `4339842218598.28`.
+- **Under Fable**, `Chart.toFile`, `Chart.toSvg`, `Chart.toFileBytes`, `Frames.write`,
+  `Frames.writeText` and `SvgBackend.renderToFile` are not compiled, because there is no file
+  system to write to. A .NET caller sees no change.
+
+### Fixed
+
+- **`Color.tryOfHex` accepted white space inside a field**: `"ff 000"` read as `#ff0000`. It is
+  now `None`.
+- **The projects that claim Fable compile under Fable 5.** They did not: a round-trip format, a
+  rectangular array, a concurrent dictionary, an ordinal string comparer, file output, and a
+  doc comment containing `*/` each stopped the compile or the module's load. With those gone,
+  the 27 SVG baselines render byte for byte under Node, and CI checks that they still do.
+
 ## [0.4.0] — unreleased
 
 **Units are opt-in.** `open Marey` takes plain arrays and a unit per axis that may be stated or
@@ -964,6 +991,7 @@ Superseded by `0.1.0` and not recommended for use. `Marey.Verso` in particular c
 installed from it: prerelease versions do not appear in Verso's Extensions panel at all, so an
 rc validates the package and the formatter but never the installation path.
 
+[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.3.1...HEAD
 [0.4.0]: https://github.com/Axym-Labs/marey/compare/0.3.1...HEAD
 [0.3.1]: https://github.com/Axym-Labs/marey/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/Axym-Labs/marey/compare/0.2.0...0.3.0

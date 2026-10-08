@@ -450,7 +450,7 @@ module ``ink`` =
     let ``every golden scene renders with ink in it`` (name: string) =
         withSkia (fun () ->
             let _, scene, extent =
-                GoldenTests.Scenes.all |> List.find (fun (n, _, _) -> n = name)
+                GoldenScenes.Scenes.all |> List.find (fun (n, _, _) -> n = name)
 
             let png = SkiaBackend.renderPng extent scene
             let gray = SkiaPixels.decode png
