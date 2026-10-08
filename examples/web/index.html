@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Marey in the browser</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; color: #1c1f26; }
+    label { display: inline-flex; gap: 0.5rem; align-items: center; margin-right: 1.5rem; }
+    #status { color: #6b7280; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <p>
+    <label>frequency <input id="f" type="range" min="0.5" max="5" step="0.05" value="2"></label>
+    <label>damping <input id="gamma" type="range" min="0" max="3" step="0.05" value="0.6"></label>
+  </p>
+  <canvas id="plot" role="img" aria-label="A damped oscillation: displacement in millimetres against time in seconds."></canvas>
+  <p id="status">Loading.</p>
+  <script type="module" src="out/App.js"></script>
+</body>
+</html>
