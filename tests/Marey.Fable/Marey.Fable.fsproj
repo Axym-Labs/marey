@@ -18,10 +18,25 @@
     <PackageReference Include="Fable.Core" Version="5.3.0" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Against the projects by default. With `MAREY_FROM_PACKAGES` set to a version and
+       `MAREY_PACKAGE_SOURCE` to a directory of packed `.nupkg`s, against the packages instead:
+       Fable then compiles the sources each package carries under `fable/`, so the same 27
+       goldens are gate 3 of the M5 plan, that a Fable app can build from what is published.
+       Environment variables rather than properties, because Fable runs MSBuild itself. -->
+  <ItemGroup Condition="'$(MAREY_FROM_PACKAGES)' == ''">
     <ProjectReference Include="../../src/Marey.Backend.Svg/Marey.Backend.Svg.fsproj" />
     <ProjectReference Include="../../src/Marey.Plot/Marey.Plot.fsproj" />
     <ProjectReference Include="../../src/Marey.Fields/Marey.Fields.fsproj" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(MAREY_FROM_PACKAGES)' != ''">
+    <RestoreAdditionalProjectSources>$(MAREY_PACKAGE_SOURCE)</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(MAREY_FROM_PACKAGES)' != ''">
+    <PackageReference Include="Marey.Backend.Svg" Version="$(MAREY_FROM_PACKAGES)" />
+    <PackageReference Include="Marey.Plot" Version="$(MAREY_FROM_PACKAGES)" />
+    <PackageReference Include="Marey.Fields" Version="$(MAREY_FROM_PACKAGES)" />
   </ItemGroup>
 
 </Project>

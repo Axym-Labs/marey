@@ -159,15 +159,24 @@ jobs:
           set -e
           count=$(ls artifacts/*.nupkg | wc -l)
           [ "$count" -eq 14 ] || { echo "::error::expected 14 packages, packed $count"; exit 1; }
+          fable=0
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
+            # M5 phase 2: a package that says Fable can consume it carries its sources for Fable.
+            if grep -q '<tags>.*fable-library' /tmp/nuspec.xml; then
+              id=$(grep -o '<id>[^<]*</id>' /tmp/nuspec.xml | sed 's:<id>::;s:</id>::')
+              unzip -l "$pkg" | grep -q "fable/$id.fsproj" \
+                || { echo "::error::$pkg is tagged fable-library and has no fable/$id.fsproj"; exit 1; }
+              fable=$((fable + 1))
+            fi
             readme=$(grep -o '<readme>[^<]*</readme>' /tmp/nuspec.xml | sed 's:<readme>::;s:</readme>::')
             [ -n "$readme" ] || { echo "::error::$pkg declares no readme"; exit 1; }
             grep -q '<license type="expression">MIT</license>' /tmp/nuspec.xml || { echo "::error::$pkg has no license"; exit 1; }
             unzip -l "$pkg" | grep -q "$readme" || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
             echo "  $(basename "$pkg"): $readme"
           done
-          echo "14 packages, each with an MIT expression and the readme it declares"
+          [ "$fable" -eq 7 ] || { echo "::error::expected 7 packages with Fable sources, found $fable"; exit 1; }
+          echo "14 packages, each with an MIT expression and the readme it declares; 7 with Fable sources"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -201,6 +210,26 @@ jobs:
 
       - name: The SVG goldens under Node
         run: node tests/Marey.Fable/out/Main.js tests/Marey.Tests/golden
+
+      # M5 phase 2, gate 3: the same goldens built from the packages rather than the projects, so
+      # Fable compiles the sources each package carries under fable/. A file the pack left out is
+      # a compile error here, before anything is published.
+      - name: Pack the Fable projects
+        run: |
+          for p in Core Units Anim Plot Fields Interact Backend.Svg; do
+            dotnet pack src/Marey.$p --configuration Release -o fable-packages -p:Version=0.0.0-fable
+          done
+
+      - name: Compile with Fable from the packages
+        env:
+          MAREY_FROM_PACKAGES: 0.0.0-fable
+          MAREY_PACKAGE_SOURCE: ${{ github.workspace }}/fable-packages
+        run: |
+          rm -rf tests/Marey.Fable/obj
+          dotnet fable tests/Marey.Fable -o tests/Marey.Fable/out-packages
+
+      - name: The SVG goldens under Node, from the packages
+        run: node tests/Marey.Fable/out-packages/Main.js tests/Marey.Tests/golden
 
       - name: Upload the documents that differ
         if: failure()

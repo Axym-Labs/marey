@@ -9,6 +9,9 @@
          netstandard2.1 and Fable-compatible, like Core: no `System.Math` call Fable lacks, no
          `Array.BinarySearch`, no reflection. NOTHING may be added to <PackageReference>. -->
     <TargetFramework>netstandard2.1</TargetFramework>
+    <!-- M5 phase 2: packed with its sources under fable/, so a Fable app can reference the
+         package (Directory.Build.targets). -->
+    <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Fields</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
     <Description>Fields for Marey: scalar and vector fields on dimensioned planes, sampled onto grids, with gradient, divergence, curl and the Jacobian in the units the types work out. A phase space with a different unit on each axis is a first-class domain.</Description>

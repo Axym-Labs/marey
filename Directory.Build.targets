@@ -36,4 +36,18 @@
           Visible="false" />
   </ItemGroup>
 
+  <!-- M5 phase 2 — a package Fable can consume. Fable compiles a library from source, so a project
+       that sets `MareyFable` packs its `.fsproj` and its `.fs` files under `fable/`, which is
+       where Fable looks for them, and carries the tags Fable's package checks read. A .NET
+       consumer sees two extra folders in the package and nothing else. `tests/Marey.Fable`
+       built against the packed packages is the gate that the folders are complete. -->
+  <PropertyGroup Condition="'$(MareyFable)' == 'true'">
+    <PackageTags>$(PackageTags) fable fable-library fable-javascript fable-dotnet</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(MareyFable)' == 'true' AND '$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildProjectFullPath)" Pack="true" PackagePath="fable/" Visible="false" />
+    <None Include="@(Compile)" Pack="true" PackagePath="fable/" Visible="false" />
+  </ItemGroup>
+
 </Project>

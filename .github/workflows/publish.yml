@@ -165,8 +165,16 @@ jobs:
           # appearing on nuget.org because somebody added an .fsproj.
           count=$(ls artifacts/*.nupkg | wc -l)
           [ "$count" -eq 14 ] || { echo "::error::expected 14 packages, packed $count"; exit 1; }
+          fable=0
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
+            # M5 phase 2: a package that says Fable can consume it carries its sources for Fable.
+            if grep -q '<tags>.*fable-library' /tmp/nuspec.xml; then
+              id=$(grep -o '<id>[^<]*</id>' /tmp/nuspec.xml | sed 's:<id>::;s:</id>::')
+              unzip -l "$pkg" | grep -q "fable/$id.fsproj" \
+                || { echo "::error::$pkg is tagged fable-library and has no fable/$id.fsproj"; exit 1; }
+              fable=$((fable + 1))
+            fi
             grep -q "<version>${{ steps.version.outputs.value }}</version>" /tmp/nuspec.xml \
               || { echo "::error::$pkg is not version ${{ steps.version.outputs.value }}"; exit 1; }
             grep -q '<license type="expression">MIT</license>' /tmp/nuspec.xml \
@@ -177,6 +185,8 @@ jobs:
             unzip -l "$pkg" | grep -q "$readme" \
               || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
           done
+          # Seven since M5 phase 2: Core, Units, Anim, Plot, Fields, Interact, Backend.Svg.
+          [ "$fable" -eq 7 ] || { echo "::error::expected 7 packages with Fable sources, found $fable"; exit 1; }
           ls -1 artifacts/*.nupkg
 
       # Deliberately the last thing before the push. The key nuget.org returns is valid for one

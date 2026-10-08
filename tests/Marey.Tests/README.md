@@ -147,6 +147,11 @@ node tests/Marey.Fable/out/Main.js tests/Marey.Tests/golden
 
 A difference writes `<name>.actual.svg` beside the baseline, as the .NET suite does.
 
+The same project builds against the packed packages instead of the projects when
+`MAREY_FROM_PACKAGES` names a version and `MAREY_PACKAGE_SOURCE` a directory holding the
+`.nupkg`s. Fable then compiles the sources each package carries under `fable/`, which is what a
+Fable app referencing Marey from NuGet gets. The `fable` job runs both.
+
 ## Determinism
 
 Three hard rules, all enforced by tests rather than by convention:

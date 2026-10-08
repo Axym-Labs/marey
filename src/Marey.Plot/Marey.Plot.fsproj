@@ -6,6 +6,9 @@
          grammar-of-graphics CE (§9), which is M2. Renaming later is cheap; shipping a
          half-grammar under the grammar name is not. -->
     <TargetFramework>netstandard2.1</TargetFramework>
+    <!-- M5 phase 2: packed with its sources under fable/, so a Fable app can reference the
+         package (Directory.Build.targets). -->
+    <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Plot</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
     <Description>Themes, palettes, constraint layout, and the axis/legend compiler that turns figures into Scene IR.</Description>

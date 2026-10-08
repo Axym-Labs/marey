@@ -20,6 +20,11 @@ land in a minor release.
   Fable goes through them. `Num.at`, `Ticks.format` and `Ticks.formatGeneral` are built on them, and write
   what they wrote before.
 
+- **Fable can consume the packages.** `Marey.Core`, `Marey.Units`, `Marey.Anim`, `Marey.Plot`,
+  `Marey.Fields`, `Marey.Interact` and `Marey.Backend.Svg` carry their sources and project file
+  under `fable/` and the `fable-library` tags, so a Fable app references them from NuGet as a
+  .NET app does.
+
 ### Changed
 
 - **`Num.at` past 10¹⁵ at the requested places** writes the value exactly where it used to stop
