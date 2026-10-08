@@ -168,7 +168,7 @@ module Scale =
     /// written. `Erase.scale` and the axis compiler both format ordinal ticks through this, so
     /// the measured and erased paths cannot drift — the same argument D16 makes for `ToSI`.
     let levelLabel (levels: string[]) (v: float) =
-        let i = int (round v)
+        let i = int (Num.roundEven v)
         if i >= 0 && i < levels.Length then levels.[i] else ""
 
     let private ordinalIn<[<Measure>] 'u> (u: U<'u>) (levels: string[]) : Scale<'u> =

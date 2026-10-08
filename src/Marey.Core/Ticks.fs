@@ -55,7 +55,7 @@ module Ticks =
     /// Snap a value to a multiple of `step`, killing the float noise that turns 0.30000000004
     /// into a four-decimal tick label.
     let private snap (step: float) (x: float) =
-        let k = System.Math.Round(x / step)
+        let k = Num.roundEven (x / step)
         k * step
 
     /// Nice ticks over `[lo, hi]`, aiming for `target` of them. Measure-generic: the ticks come

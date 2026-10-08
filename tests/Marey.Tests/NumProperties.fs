@@ -111,3 +111,18 @@ let ``fixedPoint rounds the binary value, a half to even`` () =
     Assert.Equal("-0.00", Num.fixedPoint 2 -0.001)
     Assert.Equal("100000000000000000000.00", Num.fixedPoint 2 1e20)
     Assert.Equal("-0", Num.fixedPoint 0 -0.0)
+
+[<Property>]
+let ``roundEven is Math.Round`` (FsCheck.NormalFloat x) = Num.roundEven x = Math.Round x
+
+[<Fact>]
+let ``roundEven breaks an exact half to even, and nothing else`` () =
+    Assert.Equal<float[]>(
+        [| 0.0; 2.0; 2.0; -2.0; 3.0; 3.0; 4.0; 0.0 |],
+        [| 0.5; 1.5; 2.5; -2.5; 2.500000001; 3.4999999999; 3.5; -0.49999999999999994 |] |> Array.map Num.roundEven
+    )
+
+[<Fact>]
+let ``roundEven agrees with Math.Round on a sweep of halves and near-halves`` () =
+    for v in sweep 200_000 do
+        Assert.True((Num.roundEven v = Math.Round v), sprintf "%.17g: %g, Math.Round %g" v (Num.roundEven v) (Math.Round v))

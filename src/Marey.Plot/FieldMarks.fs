@@ -181,7 +181,7 @@ module FieldMarks =
             let nx, ny = lx.Length, ly.Length
             let rgba = Array.zeroCreate<byte> (nx * ny * 4)
 
-            let byte01 (c: float) = byte (Math.Round((max 0.0 (min 1.0 c)) * 255.0))
+            let byte01 (c: float) = byte (Num.roundEven ((max 0.0 (min 1.0 c)) * 255.0))
 
             for j in 0 .. ny - 1 do
                 for i in 0 .. nx - 1 do
@@ -1008,8 +1008,8 @@ module FieldMarks =
             let gx0, gx1 = p.X.[0], p.X.[p.Nx - 1]
             let gy0, gy1 = p.Y.[0], p.Y.[p.Ny - 1]
             let os = float (max 1 options.Oversample)
-            let rw = max 1 (int (Math.Round((gx1 - gx0) * float plot.Width * os)))
-            let rh = max 1 (int (Math.Round((gy1 - gy0) * float plot.Height * os)))
+            let rw = max 1 (int (Num.roundEven ((gx1 - gx0) * float plot.Width * os)))
+            let rh = max 1 (int (Num.roundEven ((gy1 - gy0) * float plot.Height * os)))
 
             // Raster coordinates to `nd`, and `nd` components to raster pixels per unit time.
             let ndX (rx: float) = gx0 + rx / float rw * (gx1 - gx0)
@@ -1069,7 +1069,7 @@ module FieldMarks =
 
             // Half the kernel, in samples; a trace runs this many times further each way, so
             // all but the last `n` samples at a cut end are deposited.
-            let n = max 1 (int (Math.Round(float options.Length * os / 2.0 / step)))
+            let n = max 1 (int (Num.roundEven (float options.Length * os / 2.0 / step)))
             let reach = 6 * n
             let sum = Array.zeroCreate<float> (rw * rh)
             let hits = Array.zeroCreate<int> (rw * rh)
@@ -1138,7 +1138,7 @@ module FieldMarks =
                 else sqrt (present |> Array.averageBy (fun v -> (v - mean) * (v - mean)))
 
             let rgba = Array.zeroCreate<byte> (rw * rh * 4)
-            let byte01 (c: float) = byte (Math.Round((max 0.0 (min 1.0 c)) * 255.0))
+            let byte01 (c: float) = byte (Num.roundEven ((max 0.0 (min 1.0 c)) * 255.0))
 
             for j in 0 .. rh - 1 do
                 for i in 0 .. rw - 1 do

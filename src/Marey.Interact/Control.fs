@@ -62,7 +62,7 @@ module ControlSpec =
         else
             match spec.Kind with
             | Slider(lo, hi, _) -> Some(max lo (min hi v))
-            | Select options -> Some(float (max 0 (min (options.Length - 1) (int (Math.Round v)))))
+            | Select options -> Some(float (max 0 (min (options.Length - 1) (int (Num.roundEven v)))))
             | Checkbox -> Some(if v <> 0.0 then 1.0 else 0.0)
 
 [<RequireQualifiedAccess>]
@@ -139,8 +139,8 @@ module Control =
             [| { Label = label
                  Kind = Select names
                  Init = float init
-                 Show = fun v -> names.[max 0 (min (names.Length - 1) (int (Math.Round v)))] } |]
-          Read = fun vs -> snd options.[max 0 (min (options.Length - 1) (int (Math.Round vs.[0])))] }
+                 Show = fun v -> names.[max 0 (min (names.Length - 1) (int (Num.roundEven v)))] } |]
+          Read = fun vs -> snd options.[max 0 (min (options.Length - 1) (int (Num.roundEven vs.[0])))] }
 
     /// On or off.
     let checkbox (label: string) (init: bool) : Control<bool> =

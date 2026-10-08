@@ -14,9 +14,10 @@ land in a minor release.
 
 ### Added
 
-- **`Num.roundAway`, `Num.fixedPoint` and `Num.shortest`**: a half rounded away from zero, .NET's
-  "F" format and its "R" format, written in Marey's own arithmetic so that they mean the same
-  under Fable. `Num.at`, `Ticks.format` and `Ticks.formatGeneral` are built on them, and write
+- **`Num.roundAway`, `Num.roundEven`, `Num.fixedPoint` and `Num.shortest`**: a half rounded away
+  from zero, a half rounded to even, .NET's "F" format and its "R" format, written in Marey's own
+  arithmetic so that they mean the same under Fable. Every rounding in the projects that claim
+  Fable goes through them. `Num.at`, `Ticks.format` and `Ticks.formatGeneral` are built on them, and write
   what they wrote before.
 
 ### Changed

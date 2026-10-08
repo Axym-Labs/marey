@@ -97,7 +97,7 @@ module Channel =
     /// A marker diameter, rounded to the size quantum. The one place `SizeStep` is applied, so
     /// that a size key's swatch is drawn at the size the marks it describes are drawn at.
     let quantiseSize (size: float<px>) : float<px> =
-        float (max 0 (int (round (size / SizeStep)))) * SizeStep
+        float (max 0 (int (Num.roundEven (size / SizeStep)))) * SizeStep
 
     let private finite (x: float) =
         not (System.Double.IsNaN x) && not (System.Double.IsInfinity x)
@@ -148,7 +148,7 @@ module Channel =
     /// option that does not put a wrong mark on the page. `split` reports how many.
     let bucketer (map: ChannelMap) : float -> int =
         let level (n: int) (value: float) =
-            let i = int (round value)
+            let i = int (Num.roundEven value)
             if i < 0 || i >= n then -1 else i
 
         match map with

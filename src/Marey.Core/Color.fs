@@ -193,7 +193,7 @@ module Color =
         | None -> failwithf "Marey: '%s' is not a valid hex colour." s
 
     let private byte01 (x: float) =
-        int (System.Math.Round(clamp01 x * 255.0))
+        int (Num.roundEven (clamp01 x * 255.0))
 
     /// `#rrggbb`. Alpha is dropped — backends carry it separately (SVG `fill-opacity`,
     /// TikZ `opacity`), because not every target supports 8-digit hex.

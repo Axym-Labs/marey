@@ -36,7 +36,8 @@ open System.Numerics
 //   * D129 — no rounding and no formatting is left to the platform. Under Fable the "same
 //     compiler" is JavaScript's arithmetic, and the two runtimes disagree on exact halves:
 //     Fable reads `Math.Round(x, MidpointRounding.AwayFromZero)` as rounding to one decimal
-//     place, ignores the mode in `Math.Round(x, d, mode)`, and JavaScript's `toFixed` rounds a
+//     place, ignores the mode in `Math.Round(x, d, mode)`, calls anything within 10⁻⁸ of a half
+//     a tie in `Math.Round(x)`, and JavaScript's `toFixed` rounds a
 //     half the other way from .NET's "F". So rounding is done here, in operations IEEE 754
 //     makes exact on both, and each function below reproduces what .NET produced before it,
 //     which is what keeps every golden byte-identical.
@@ -60,6 +61,18 @@ module Num =
         let t = Math.Truncate x
 
         if abs (x - t) >= 0.5 then t + float (sign x) else t
+
+    /// The nearest integer, a half rounded to the even one. `Math.Round(x)` without the platform
+    /// (D129): Fable's version calls anything within 10⁻⁸ of a half a tie, so it rounds 2.500000001
+    /// down and 3.4999999999 up. The fraction is exact, so a tie here is an exact half.
+    let roundEven (x: float) : float =
+        let t = Math.Truncate x
+        let f = abs (x - t)
+
+        if f > 0.5 then t + float (sign x)
+        elif f < 0.5 then t
+        elif t % 2.0 = 0.0 then t
+        else t + float (sign x)
 
     /// The most decimal places `at` will honour. Requests above this are clamped rather than
     /// rejected: a caller asking for more precision than a document needs wants the finest
