@@ -16,6 +16,8 @@
     <Compile Include="Prefix.fs" />
     <Compile Include="UnitDisplay.fs" />
     <Compile Include="Axis.fs" />
+    <!-- D124 — the C# surface, `using Marey.CSharp`. Last: it names every witness above. -->
+    <Compile Include="CSharp.fs" />
   </ItemGroup>
 
   <ItemGroup>

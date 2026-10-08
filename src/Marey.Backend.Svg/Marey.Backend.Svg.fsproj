@@ -13,6 +13,8 @@
   <ItemGroup>
     <Compile Include="SvgWriter.fs" />
     <Compile Include="SvgBackend.fs" />
+    <!-- D124 — the C# surface, `using Marey.CSharp`. -->
+    <Compile Include="CSharp.fs" />
   </ItemGroup>
 
   <ItemGroup>

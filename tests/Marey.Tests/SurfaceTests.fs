@@ -657,3 +657,23 @@ module OneNamePerType =
             |> Array.map (fun (n, xs) -> sprintf "%s (%s)" n (xs |> Array.map snd |> String.concat ", "))
 
         Assert.True(Array.isEmpty duplicates, sprintf "exported by more than one assembly: %s" (String.concat "; " duplicates))
+
+    /// A C# caller writes `using Marey; using Marey.CSharp;`, and a simple name defined in both
+    /// namespaces is then ambiguous (CS0104) wherever it is written. Arity counts: C# tells `X`
+    /// from `X<T>`.
+    [<Fact>]
+    let ``nothing in Marey.CSharp shares a simple name with Marey`` () =
+        let dir = Path.GetDirectoryName(Uri(typeof<Marey.Figure>.Assembly.Location).LocalPath)
+
+        let exported =
+            Directory.GetFiles(dir, "Marey.*.dll")
+            |> Array.filter (fun p -> not (Path.GetFileName(p).StartsWith "Marey.Tests"))
+            |> Array.collect (fun p -> (Assembly.LoadFrom p).GetExportedTypes())
+            |> Array.filter (fun t -> not t.IsNested)
+
+        let named ns = exported |> Array.filter (fun t -> t.Namespace = ns) |> Array.map (fun t -> t.Name) |> set
+        let csharp = named "Marey.CSharp"
+        Assert.NotEmpty csharp
+        let clash = Set.intersect csharp (named "Marey")
+        Assert.True(clash.IsEmpty, sprintf "ambiguous under both usings: %s" (String.concat ", " clash))
+

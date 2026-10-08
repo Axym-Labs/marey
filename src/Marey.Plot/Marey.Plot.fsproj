@@ -34,6 +34,8 @@
     <!-- D109 — the unit-required mode. Last: it reaches the implementations in Chart.fs and
          inherits the block's operations from Plot.fs. -->
     <Compile Include="UnitsOfMeasure.fs" />
+    <!-- D124 — the C# surface, `using Marey.CSharp`. -->
+    <Compile Include="CSharp.fs" />
   </ItemGroup>
 
   <ItemGroup>
