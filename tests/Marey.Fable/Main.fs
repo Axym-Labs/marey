@@ -1,4 +1,4 @@
-/// D130 — the 27 SVG goldens under Node; M5's gates 13 and 14, the canvas backend's call logs
+/// D130 — the 28 SVG goldens under Node; M5's gates 13 and 14, the canvas backend's call logs
 /// and the fonts, which need Node for the same reason; and M5.5's gate 10, the simulations.
 ///
 /// Fable compiles `GoldenScenes`, the same file the .NET suite renders its baselines from, and

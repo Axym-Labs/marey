@@ -112,34 +112,63 @@ module Axis =
         | Unicode
         | Ascii -> false
 
-    /// Decimals that make the labels injective (§4) *after* prefix rescaling.
+    /// The prefix an axis takes when nothing pins one: D19's choice from the domain, except on
+    /// a wide log axis, which takes none.
     ///
-    /// Log ticks are not on a uniform grid, so a single step-derived count is wrong for them;
-    /// take the finest any individual tick needs. This mirrors `Erase.scale` exactly — the
-    /// difference is only that it runs on the rescaled values.
-    let private decimalsFor (kind: ScaleKind) (step: float) (values: float[]) =
+    /// A prefix names one decade in three, and a wide log axis has many more. Chosen from the top
+    /// of the domain it turned a joule axis over 10⁻¹⁸ … 10⁸ into megajoules, and moved every
+    /// label twenty-four decades away from the number in the data. Powers of ten need no prefix:
+    /// `10⁻¹⁸` reads in joules as well as anything would. A narrow log axis takes its prefix as
+    /// a linear one does, which leaves its ticks in [10⁻³, 10³) (`Ticks.WideLogDecades`).
+    let private prefixFor (kind: ScaleKind) (select: float * float -> Prefix) (domain: float * float) =
         match kind with
-        | ScaleKind.Log _ ->
-            values
-            |> Array.fold
-                (fun acc v ->
-                    let a = abs v
-                    if a = 0.0 then acc else max acc (Ticks.decimalsFor a))
-                0
-        | _ -> Ticks.decimalsFor step
+        | ScaleKind.Log _ when Ticks.isWideLog domain -> Prefix.none
+        | _ -> select domain
 
-    /// How a tick value becomes text. Numeric for every continuous kind; a level name for
-    /// `Ordinal`, read out of the kind through `Scale.levelLabel` — the same function
-    /// `Erase.scale` uses, so the measured, packed and erased paths cannot label a category
-    /// three different ways.
+    let private intText (n: int) =
+        n.ToString(System.Globalization.CultureInfo.InvariantCulture)
+
+    /// A log tick as a power of ten in `style`. `Unicode` is `Ticks.formatPower`'s `2×10⁻⁸`;
+    /// `Ascii` spells it `2x10^-8`, the caret `UnitDisplay` uses for `m.s^-2`; both TeX styles
+    /// set it in math, `$2\times10^{-8}$`, which needs no package.
+    let private powerText (style: UnitStyle) (x: float) =
+        match style, Ticks.powerOfTen x with
+        | Unicode, _ -> Ticks.formatPower x
+        | _, (0, _) -> "0"
+        | Ascii, (m, e) -> (if m = 1 then "" else intText m + "x") + "10^" + intText e
+        | (Latex | Siunitx), (m, e) -> "$" + (if m = 1 then "" else intText m + "\\times") + "10^{" + intText e + "}$"
+
+    /// The ticks' labels, plain and TeX, *after* prefix rescaling, so that they are injective
+    /// (§4) in the numbers the axis actually prints.
     ///
-    /// A categorical axis is not rescaled, so the value handed here is the level index whatever
-    /// path it arrived by: `Prefix.selectFor` refuses to rescale a dimensionless axis and an
-    /// ordinal scale is dimensionless by construction (D45).
-    let private labelFor (kind: ScaleKind) (decimals: int) =
+    /// A log axis's ticks are not on a uniform grid, so each takes its own decimals, or the axis
+    /// is written in powers of ten — the rule is `Ticks.logInPowers`, applied here to the
+    /// rescaled values. A linear axis takes the decimals its step needs. A categorical axis
+    /// prints level names, read out of the kind through `Scale.levelLabel` — the same function
+    /// `Erase.scale` uses, so the measured, packed and erased paths cannot label a category
+    /// three different ways. It is not rescaled, so the value handed here is the level index:
+    /// `Prefix.selectFor` refuses to rescale a dimensionless axis and an ordinal scale is
+    /// dimensionless by construction (D45).
+    ///
+    /// Only a power of ten has a TeX form. Digits and a decimal point typeset identically in TeX
+    /// and in plain text.
+    let private tickLabels
+        (style: UnitStyle)
+        (kind: ScaleKind)
+        (domain: float * float)
+        (step: float)
+        (values: float[])
+        : (string * string option)[] =
         match kind with
-        | ScaleKind.Ordinal levels -> Scale.levelLabel levels
-        | _ -> Ticks.format decimals
+        | ScaleKind.Ordinal levels -> values |> Array.map (fun v -> Scale.levelLabel levels v, None)
+        | ScaleKind.Log _ when Ticks.logInPowers domain values ->
+            values
+            |> Array.map (fun v ->
+                powerText (plainCounterpart style) v, (if isTexStyle style then Some(powerText style v) else None))
+        | ScaleKind.Log _ -> values |> Array.map (fun v -> Ticks.formatOwn v, None)
+        | _ ->
+            let decimals = Ticks.decimalsFor step
+            values |> Array.map (fun v -> Ticks.format decimals v, None)
 
     /// The full form, with the prefix decided somewhere else — D73.
     ///
@@ -166,27 +195,27 @@ module Axis =
         (scale: Scale<'u>)
         : AxisSpec =
         let lo, hi = scale.Domain
+        let domain = float lo, float hi
 
         let prefix =
             match pin with
             | Some p -> p
-            | None -> Prefix.selectForUnit scale.Unit (float lo, float hi)
+            | None -> prefixFor scale.Kind (Prefix.selectForUnit scale.Unit) domain
 
         let factor = Prefix.factor prefix
 
         let raw = scale.TickHint tickCount
         let rescaled = raw |> Array.map (fun v -> float v / factor)
 
-        let decimals =
-            decimalsFor scale.Kind (Ticks.linearStep tickCount scale.Domain / factor) rescaled
-
-        let tickText = labelFor scale.Kind decimals
+        let labels =
+            tickLabels style scale.Kind domain (Ticks.linearStep tickCount scale.Domain / factor) rescaled
 
         let ticks =
             Array.init raw.Length (fun i ->
                 { Value = rescaled.[i]
                   Position = scale.Forward raw.[i]
-                  Label = tickText rescaled.[i] })
+                  Label = fst labels.[i]
+                  LabelTex = snd labels.[i] })
 
         let unitText =
             UnitDisplay.unitText (plainCounterpart style) registry prefix scale.Unit
@@ -263,11 +292,12 @@ module Axis =
                     float lo, float hi }
 
     /// The prefix this axis *would* choose if its numbers were `domain` rather than its own —
-    /// D73's other half. The unit comes from the scale, the range from the caller.
+    /// D73's other half. The unit comes from the scale, the range from the caller, and a log
+    /// scale over a wide range takes none, as `ofScaleWith` would decide.
     let prefixForPacked (domain: float * float) (packed: PackedScale) : Prefix =
         packed.Accept
             { new IScaleConsumer<Prefix> with
-                member _.Apply<[<Measure>] 'u>(s: Scale<'u>) = Prefix.selectForUnit s.Unit domain }
+                member _.Apply<[<Measure>] 'u>(s: Scale<'u>) = prefixFor s.Kind (Prefix.selectForUnit s.Unit) domain }
 
     /// The reloaded-figure path (§15).
     ///
@@ -296,7 +326,7 @@ module Axis =
         (scale: IScaleErased)
         : AxisSpec =
         let prefix =
-            Prefix.selectForErased scale.Symbol scale.Dim scale.ToSI scale.OffsetSI scale.Domain
+            prefixFor scale.Kind (Prefix.selectForErased scale.Symbol scale.Dim scale.ToSI scale.OffsetSI) scale.Domain
 
         let factor = Prefix.factor prefix
         let raw = scale.Ticks tickCount
@@ -304,16 +334,15 @@ module Axis =
 
         // `float = float<1>`, so the raw erased domain feeds the measure-generic tick helpers
         // unchanged.
-        let decimals =
-            decimalsFor scale.Kind (Ticks.linearStep tickCount scale.Domain / factor) rescaled
-
-        let tickText = labelFor scale.Kind decimals
+        let labels =
+            tickLabels style scale.Kind scale.Domain (Ticks.linearStep tickCount scale.Domain / factor) rescaled
 
         let ticks =
             Array.init raw.Length (fun i ->
                 { Value = rescaled.[i]
                   Position = raw.[i].Position
-                  Label = tickText rescaled.[i] })
+                  Label = fst labels.[i]
+                  LabelTex = snd labels.[i] })
 
         let unitTextIn s =
             UnitDisplay.unitTextErasedWith

@@ -55,7 +55,7 @@ without a notebook host installed.
 | `TikzWriterTests.fs` | The emitter primitives: `bp` dimensions, colour definitions, escaping, superscript runs, macro naming. |
 | `TikzBackendTests.fs` | The traversal: the missing y flip, pre-transformed geometry, the honest capability set, batched marker macros, and cross-backend coordinate agreement. |
 | `TikzInkTests.fs` | Compiles figures and asserts that ink is where it belongs, mostly by differentials. The only gate that can detect orientation. |
-| `../Shared/GoldenScenes.fs` | The scenes and figures behind every SVG baseline, and `svg`, the table naming all 27. Compiled here and by `tests/Marey.Fable`. |
+| `../Shared/GoldenScenes.fs` | The scenes and figures behind every SVG baseline, and `svg`, the table naming all 28. Compiled here and by `tests/Marey.Fable`. |
 | `Golden.fs` | Golden-file infrastructure: location, diff reporting, regeneration. Format-agnostic — `check` compares text and derives its failure artefact from the baseline's extension. |
 | `GoldenTests.fs` | The snapshots, the determinism suite, the backend contract, and the check that the shared table covers every SVG baseline. |
 | `TikzGoldenTests.fs` | The same scenes through the TikZ backend, plus the figure baselines both backends share. |
@@ -138,7 +138,7 @@ committed as a baseline.
 ### Under Node
 
 `tests/Marey.Fable` compiles `tests/Shared/GoldenScenes.fs` and the projects below it with Fable,
-and Node renders the 27 SVG baselines and compares them byte for byte. The same run draws every
+and Node renders the 28 SVG baselines and compares them byte for byte. The same run draws every
 golden scene with the canvas backend on a context that records each call, and compares the log
 with `tests/Marey.Fable/canvas/<name>.canvas.txt`; and it checks that the canvas's text measurer
 refuses while a page's fonts are loading. CI runs it as the `fable` job. Locally, with Node on
@@ -213,7 +213,7 @@ and fixing it is a deliberate, test-breaking act rather than a silent one. They 
 | `ScaleProperties.Preconditions` | `Scale.symlog` does not validate its logarithm base, while `Scale.logBase` does. Base 1 gives NaN for every projection outside the linear region; base 0 silently gives a constant map. |
 | `TickProperties.MeasuredExceptions` (count) | The `[n/2, 2n]` tick-count bound is false at `n = 1` and `n = 3`. `Ticks.linear 3 (0.49, 921.3)` returns one tick; `Ticks.linear 1 (0.5, 8.0)` returns none. |
 | `TickProperties.MeasuredExceptions` (containment) | `Ticks.linear` can emit a tick **below the domain**. `first = ceil(lo/step - 1e-9) * step` compares an absolute epsilon against `lo/step`, so once `lo/step <= 1e-9` the `ceil` drops a grid line. `Ticks.linear 10 (1.0, 1e10)` puts a tick at 0. |
-| `TickProperties.InjectivityLimits` | Label injectivity fails once fixed-point formatting runs out of decimals — `Ticks.format` clamps at 15 places. A log axis spanning 36 decades yields 21 ticks all reading `0.000000000000000`; so does a dimensionless axis below 1e-15. `Ticks.formatScientific` exists and is never called. |
+| `TickProperties.InjectivityLimits` | Label injectivity fails once fixed-point formatting runs out of decimals — `Ticks.format` clamps at 15 places — on a dimensionless linear axis below 1e-15, which takes no prefix. A log axis no longer reaches it: past three decades it is written in powers of ten. |
 None of them is a weakened property. The properties they sit beside are stated in full, with the
 precondition under which they hold made explicit, and every precondition is either a documented
 numerical-conditioning bound or a pointer to the defect test that owns the excluded case.

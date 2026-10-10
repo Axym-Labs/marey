@@ -308,6 +308,7 @@ let colorbarFigure = GoldenScenes.colorbarFigure
 let boxplotFigure = GoldenScenes.boxplotFigure
 let heatmapFigure = GoldenScenes.heatmapFigure
 let imageFigure = GoldenScenes.imageFigure
+let logFigure = GoldenScenes.logFigure
 let figureSurface = GoldenScenes.figureSurface
 
 

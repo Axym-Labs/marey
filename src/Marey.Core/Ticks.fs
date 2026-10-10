@@ -16,9 +16,9 @@ namespace Marey
 ///   string. That one is not automatic: it is a constraint on the *decimal count*, and it is
 ///   why `decimalsFor` is derived from the step rather than hardcoded.
 ///
-/// Everything here is measure-generic. Label *text* is not decided here: prefix selection and
-/// unit symbols live in `Marey.Units`, because they need the `Dim`, and Core does not know
-/// what a kilometre is.
+/// Everything here is measure-generic. Label *text* is decided here only as far as the number
+/// goes — decimals, and powers of ten on a wide log axis. Prefix selection and unit symbols live
+/// in `Marey.Units`, because they need the `Dim`, and Core does not know what a kilometre is.
 [<RequireQualifiedAccess>]
 module Ticks =
 
@@ -162,9 +162,84 @@ module Ticks =
         let x = if x = 0.0 then 0.0 else x
         Num.fixedPoint (max 0 (min 15 decimals)) x
 
-    /// Scientific notation, used when the exponent range is too wide for fixed point.
+    /// Scientific notation, `1.235E+004`. Not used for tick labels: a log axis too wide for
+    /// fixed point is written in powers of ten (`formatPower`).
     let formatScientific (sigFigs: int) (x: float) =
         x.ToString("E" + string (max 0 (min 15 (sigFigs - 1))), System.Globalization.CultureInfo.InvariantCulture)
 
     /// Shortest round-trippable rendering. The default for anything that is not a tick label.
     let formatGeneral (x: float) = Num.shortest x
+
+    // ---- log tick labels ---------------------------------------------------------------
+    //
+    // A log axis's ticks are not on a grid, so no one decimal count suits them all: the finest
+    // tick's count, shared, gave `0.000001 … 1.000000` over six decades, and past fifteen decades
+    // the clamp in `format` wrote the lowest ticks as the same row of zeros. Each tick here takes
+    // its own decimals, and an axis too wide for that is written in powers of ten.
+
+    /// A log axis whose domain spans more than this many decades is written in powers of ten
+    /// and takes no SI prefix.
+    ///
+    /// Three because a prefix spans three. Over at most three decades, a prefix chosen from the
+    /// top of the domain leaves every tick in [10⁻³, 10³), which fixed point writes in at most
+    /// five characters (`0.001`, `500`). Each further decade adds a character to the longest
+    /// label while `10⁻⁵` stays four, and no one prefix suits both ends of the axis.
+    [<Literal>]
+    let WideLogDecades = 3.0
+
+    /// Whether a log axis over `(lo, hi)` spans more than `WideLogDecades`. False for a domain
+    /// that is not positive and finite, which a log scale cannot draw anyway.
+    let isWideLog (lo: float, hi: float) : bool =
+        lo > 0.0
+        && hi > 0.0
+        && not (System.Double.IsInfinity lo || System.Double.IsInfinity hi)
+        && abs (System.Math.Log10 hi - System.Math.Log10 lo) > WideLogDecades + 1e-9
+
+    /// Whether fixed point writes a log tick in at most three decimals and four digits.
+    let private brief (x: float) =
+        let a = abs x
+        a >= 1e-3 * (1.0 - 1e-9) && a <= 1e3 * (1.0 + 1e-9)
+
+    /// Whether a log axis over `domain`, with its ticks at `values`, is written in powers of ten:
+    /// when the domain is wide, or when a tick lies outside [10⁻³, 10³].
+    ///
+    /// The second condition covers a narrow axis no prefix brought near 1: a dimensionless one,
+    /// one in a unit that takes no prefix (`h`), or one whose prefix was pinned elsewhere (D73).
+    /// [10⁻³, 10³] is the range a prefix leaves a narrow axis in, so a tick outside it is a
+    /// number a prefix would have shortened.
+    let logInPowers (domain: float * float) (values: float[]) : bool =
+        isWideLog domain || not (Array.forall brief values)
+
+    /// A positive `x` as `m × 10^e` with `m` from 1 to 9.
+    ///
+    /// The mantissa is rounded, not truncated: a log tick is a whole mantissa times a decade
+    /// (`log10`), and dividing by a prefix leaves it as `2.9999999999999996` as often as `3`.
+    /// `(0, 0)` for zero, a negative or a non-finite `x`, none of which a log axis has.
+    let powerOfTen (x: float) : int * int =
+        if not (x > 0.0) || System.Double.IsInfinity x then
+            0, 0
+        else
+            let e = int (floor (System.Math.Log10 x + 1e-9))
+            let m = Num.roundAway (x / 10.0 ** float e)
+
+            if m >= 10.0 then 1, e + 1 else int m, e
+
+    /// A log tick as a power of ten, in Unicode: `10⁻⁸`, `2×10⁻⁸`. Every exponent is written,
+    /// `10⁰` and `10¹` included, so the labels of one axis read as one series.
+    let formatPower (x: float) : string =
+        match powerOfTen x with
+        | 0, _ -> "0"
+        | 1, e -> "10" + Num.superscript e
+        | m, e -> string m + "×10" + Num.superscript e
+
+    /// `x` with the decimals it needs itself rather than those of the finest tick on its axis:
+    /// `0.01`, `1`, `100`. Injective over log ticks in [10⁻³, 10³], which differ in their mantissa
+    /// or their decade and need at most three decimals.
+    let formatOwn (x: float) : string = format (decimalsFor (abs x)) x
+
+    /// The labels of a log axis's ticks, in Unicode: each tick's own decimals, or powers of ten
+    /// when `logInPowers`. What `Erase.scale` writes; `Marey.Units` applies the same rule after
+    /// choosing a prefix, and in the requested `UnitStyle`.
+    let internal logLabels (domain: float * float) (values: float[]) : string[] =
+        let label = if logInPowers domain values then formatPower else formatOwn
+        values |> Array.map label

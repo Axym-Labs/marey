@@ -160,6 +160,46 @@ module Injectivity =
         let s = Scale.log10 U.metre (lo * 1.0<m>, hi * 1.0<m>)
         distinct ((Axis.auto Unicode "x" s).Ticks |> Array.map (fun t -> t.Label))
 
+    /// The log axes a label property has to survive: a prefixable unit, a dimensionless one, a
+    /// dimension that takes its prefix as a power of ten (`m²`), and a unit that takes none (`h`).
+    let private logAxes (lo: float, hi: float) : PackedScale list =
+        [ Erase.packScale (Scale.log10 U.metre (lo * 1.0<m>, hi * 1.0<m>))
+          Erase.packScale (Scale.log10 Derived.joule (lo * 1.0<J>, hi * 1.0<J>))
+          Erase.packScale (Scale.log10 U.one (lo, hi))
+          Erase.packScale (Scale.log10 U.squareMetre (lo * 1.0<m^2>, hi * 1.0<m^2>))
+          Erase.packScale (Scale.log2 NonSi.hour (lo * 1.0<h>, hi * 1.0<h>)) ]
+
+    let private styles = [ Unicode; Ascii; Latex; Siunitx ]
+
+    /// §4's injectivity on a log axis, for any positive domain: fifteen orders of magnitude used to
+    /// share one decimal count, and past fifteen decimals the lowest ticks all read
+    /// `0.000000000000000`.
+    [<Property>]
+    let ``log axis tick labels are distinct for any positive domain`` (AnyLogDomain(lo, hi)) (TickTarget n) =
+        [ for packed in logAxes (lo, hi) do
+              for style in styles do
+                  yield (Axis.ofPackedWith style UnitRegistry.si n "x" packed).Ticks ]
+        |> List.forall (fun ticks ->
+            distinct (ticks |> Array.map (fun t -> t.Label))
+            && distinct (ticks |> Array.choose (fun t -> t.LabelTex)))
+
+    /// The same with the prefix decided elsewhere (D73), where a narrow axis can be left far
+    /// from 1: an animation's union domain can pin megajoules onto a frame over nanojoules.
+    [<Property>]
+    let ``log axis tick labels are distinct under any pinned prefix`` (AnyLogDomain(lo, hi)) (TickTarget n) =
+        [ for e in -30..3..30 do
+              let pin = Prefix.ofExponent e
+
+              for packed in logAxes (lo, hi) do
+                  yield (Axis.ofPackedPinnedWith pin Unicode UnitRegistry.si n "x" packed).Ticks ]
+        |> List.forall (fun ticks -> distinct (ticks |> Array.map (fun t -> t.Label)))
+
+    /// The same through the erasure, which is all a reloaded figure has (§15).
+    [<Property>]
+    let ``Erase.scale log tick labels are distinct for any positive domain`` (AnyLogDomain(lo, hi)) (TickTarget n) =
+        let s = Scale.log10 U.one (lo, hi)
+        distinct ((Erase.scale s).Ticks n |> Array.map (fun t -> t.Label))
+
     /// D19 — "an `m²` axis over 0…5e-18 renders six ticks that *all* read `0.000000000000000`",
     /// which is why selection rescales even when a prefix cannot be glued on. The fix is
     /// verified here from the outside: the axis reads `am`, and the labels are 0 through 5.
@@ -183,6 +223,99 @@ module Injectivity =
         Assert.Contains("10", ax.UnitText)
         Assert.DoesNotContain("am", ax.UnitText)
         Assert.True(distinct (ax.Ticks |> Array.map (fun t -> t.Label)))
+
+/// What a log axis's labels read, on the domains that were wrong: a shared decimal count, and a
+/// prefix chosen from the top of a domain fifteen decades wide.
+module LogLabels =
+
+    let private labels (ax: AxisSpec) = ax.Ticks |> Array.map (fun t -> t.Label)
+
+    let private energy (lo: float) (hi: float) =
+        Scale.log10 Derived.joule (lo * 1.0<J>, hi * 1.0<J>)
+
+    /// Three decades, no prefix: each tick takes the decimals it needs, not the finest tick's.
+    [<Fact>]
+    let ``a narrow log axis gives each tick its own decimals`` () =
+        let ax = Axis.auto Unicode "E" (energy 1e-2 10.0)
+        Assert.Equal("E [J]", ax.Title)
+        Assert.Equal<string[]>([| "0.01"; "0.1"; "1"; "10" |], labels ax)
+
+    /// A narrow axis takes its prefix as a linear one does, from the top of the domain.
+    [<Fact>]
+    let ``a narrow log axis takes its prefix from the top of the domain`` () =
+        let ax = Axis.ofScaleWith Unicode UnitRegistry.si 9 "E" (energy 2e-6 5e-4)
+        Assert.Equal("E [µJ]", ax.Title)
+        Assert.Equal<string[]>([| "2"; "5"; "10"; "20"; "50"; "100"; "200"; "500" |], labels ax)
+
+    /// The domains of the defect, which read `0.000001 … 1.000000` in kilojoules, `100.000000000`
+    /// in joules, and `0.000000000000000` for every tick below 10⁻¹⁵ J in megajoules.
+    [<Fact>]
+    let ``a wide log axis is written in powers of ten with no prefix`` () =
+        for lo, hi, first, last in [ 1e-3, 1e3, "10⁻³", "10³"; 1e-9, 1e2, "10⁻⁹", "10²"; 1e-18, 1e8, "10⁻¹⁸", "10⁸" ] do
+            let ax = Axis.auto Unicode "E" (energy lo hi)
+            let ls = labels ax
+            Assert.Equal("E [J]", ax.Title)
+            Assert.Equal(Prefix.none.Exponent, ax.Prefix.Exponent)
+            Assert.Equal(first, ls.[0])
+            Assert.Equal(last, ls.[ls.Length - 1])
+            Assert.Equal(ls.Length, (Array.distinct ls).Length)
+
+    /// `Latex` and `Siunitx` keep the Unicode label in `Label`, as `Title` does, and put the TeX in
+    /// `LabelTex`; `Ascii` stays 7-bit.
+    [<Fact>]
+    let ``a power of ten is spelled in every style`` () =
+        let tick style =
+            let t = (Axis.auto style "E" (energy 1e-18 1e8)).Ticks.[10]
+            t.Label, t.LabelTex
+
+        Assert.Equal(("10⁻⁸", None), tick Unicode)
+        Assert.Equal(("10^-8", None), tick Ascii)
+        Assert.Equal(("10⁻⁸", Some "$10^{-8}$"), tick Latex)
+        Assert.Equal(("10⁻⁸", Some "$10^{-8}$"), tick Siunitx)
+
+    /// A tick count high enough for 1-2-5 subdivision puts a mantissa in front of the power.
+    [<Fact>]
+    let ``a subdivided wide log axis writes the mantissa`` () =
+        let ax = Axis.ofScaleWith Latex UnitRegistry.si 40 "E" (energy 1e-3 1e3)
+        let t = ax.Ticks |> Array.find (fun t -> abs (t.Value - 2e-3) < 1e-12)
+        Assert.Equal("2×10⁻³", t.Label)
+        Assert.Equal(Some "$2\\times10^{-3}$", t.LabelTex)
+
+        let ascii = Axis.ofScaleWith Ascii UnitRegistry.si 40 "E" (energy 1e-3 1e3)
+        Assert.Contains("2x10^-3", labels ascii)
+
+    /// A narrow axis no prefix can bring near 1 is written in powers too: a dimensionless one
+    /// keeps its numbers (D19), and `0.000001` is the label this avoids.
+    [<Fact>]
+    let ``a narrow dimensionless log axis far from 1 is written in powers of ten`` () =
+        let ax = Axis.auto Unicode "p" (Scale.log10 U.one (1e-6, 1e-4))
+        Assert.Equal("10⁻⁶", (labels ax).[0])
+        Assert.Equal("p", ax.Title)
+
+    /// The threshold, from both sides: three decades is narrow, a little over is wide.
+    [<Fact>]
+    let ``the wide threshold is three decades`` () =
+        Assert.False(Ticks.isWideLog (1.0, 1000.0))
+        Assert.False(Ticks.isWideLog (1000.0, 1.0))
+        Assert.True(Ticks.isWideLog (1.0, 1001.0))
+        Assert.False(Ticks.isWideLog (0.0, 1e9))
+        Assert.Equal("kJ", (Axis.auto Unicode "E" (energy 1.0 1e3)).UnitText)
+        Assert.Equal("J", (Axis.auto Unicode "E" (energy 1.0 1001.0)).UnitText)
+
+    /// D73 — an animation's pinned prefix comes from the union of its frames' domains, and a wide
+    /// union pins none.
+    [<Fact>]
+    let ``a wide log union pins no prefix`` () =
+        let packed = Erase.packScale (energy 1e-9 1e-8)
+        Assert.Equal(Prefix.none.Exponent, (Axis.prefixForPacked (1e-9, 1e2) packed).Exponent)
+        Assert.Equal(-9, (Axis.prefixForPacked (1e-9, 1e-8) packed).Exponent)
+
+    /// Through the erasure the rule is the same, without the prefix and in Unicode.
+    [<Fact>]
+    let ``Erase.scale writes log ticks by the same rule`` () =
+        let erased (lo: float) hi = (Erase.scale (Scale.log10 U.one (lo, hi))).Ticks 5 |> Array.map (fun t -> t.Label)
+        Assert.Equal<string[]>([| "0.01"; "0.1"; "1"; "10" |], erased 1e-2 10.0)
+        Assert.Equal("10⁻¹⁸", (erased 1e-18 1e8).[0])
 
 module Formatting =
 
@@ -299,28 +432,22 @@ module InjectivityLimits =
     /// **§4's injectivity requirement fails once fixed-point formatting runs out of decimals.**
     ///
     /// `Ticks.format` clamps at 15 decimal places (and `Ticks.decimalsFor` clamps the same way),
-    /// so any tick value below 1e-15 renders as a string of zeros. D19 records this at the Core
-    /// level and answers it with prefix rescaling in `Marey.Units` — which works, but only
-    /// shifts the window by one factor.
+    /// so any tick value below 1e-15 renders as a string of zeros. D19 answers it on a linear
+    /// axis with prefix rescaling in `Marey.Units`, which shifts the window by one factor.
     ///
-    /// A `log10` axis spanning 36 decades still breaks it *after* rescaling: the prefix can only
-    /// name one decade, so the small end of the axis is still beyond fixed point. Twenty-one of
-    /// the thirty-six ticks below read `0.000000000000000`.
-    ///
-    /// `Ticks.formatScientific` exists in Core and is never called by `Erase.scale` or by
-    /// `Axis`; routing wide log axes through it is the fix. Recorded, not fixed.
+    /// A log axis spanning 36 decades used to break it after rescaling: twenty-one of its
+    /// thirty-seven ticks read `0.000000000000000`. It is now written in powers of ten
+    /// (`Ticks.WideLogDecades`), with no prefix.
     [<Fact>]
-    let ``DEFECT a log axis spanning 36 decades produces duplicate labels`` () =
+    let ``a log axis spanning 36 decades is labelled in distinct powers of ten`` () =
         let ax = Axis.auto Unicode "x" (Scale.log10 U.metre (1e-18<m>, 1e18<m>))
         let labels = ax.Ticks |> Array.map (fun t -> t.Label)
 
-        Assert.True(labels.Length > 20)
-        Assert.True(
-            (Array.distinct labels).Length < labels.Length,
-            "expected the recorded fixed-point overflow; if this now passes, the defect was fixed"
-        )
-
-        Assert.True(labels |> Array.filter (fun l -> l = "0.000000000000000") |> Array.length > 1)
+        Assert.Equal(37, labels.Length)
+        Assert.Equal(labels.Length, (Array.distinct labels).Length)
+        Assert.Equal("10⁻¹⁸", labels.[0])
+        Assert.Equal("10¹⁸", labels.[36])
+        Assert.Equal("x [m]", ax.Title)
 
     /// The Core-level case D19 describes, on a dimensionless axis, where prefix selection
     /// deliberately declines to rescale ("a ratio, a probability, a count: there is no unit to

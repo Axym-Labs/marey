@@ -158,6 +158,12 @@ type LogDomain = LogDomain of lo: float * hi: float
 /// twenty-four decades. Measured relative round-trip error at twelve decades: 8.8e-5.
 type ReciprocalDomain = ReciprocalDomain of lo: float * hi: float
 
+/// A strictly positive domain anywhere from 1e-150 to 1e150, spanning from nothing to eighty
+/// decades, in either orientation. `LogDomain` stays inside twelve decades, which is why it never
+/// reached the wide log axis whose fixed-point labels collided; this one is for the label
+/// properties, which have to hold for any positive domain rather than a well-conditioned one.
+type AnyLogDomain = AnyLogDomain of lo: float * hi: float
+
 /// A scale, described as data rather than as a closure, so that a failing property prints
 /// something a human can paste into a REPL. `ScaleSpec.build` is the only place these become
 /// `Scale<1>` values.
@@ -336,6 +342,15 @@ module Gens =
             let! lo = scaledFloat -12 12
             let! decades = Gen.choose (1, 120) |> Gen.map (fun i -> float i / 10.0)
             return lo, lo * (10.0 ** decades)
+        }
+
+    let anyLogDomain: Gen<float * float> =
+        gen {
+            let! lo = scaledFloat -150 150
+            let! decades = Gen.choose (0, 800) |> Gen.map (fun i -> float i / 10.0)
+            let! reversed = Gen.elements [ false; true ]
+            let hi = lo * (10.0 ** decades)
+            return if reversed then hi, lo else lo, hi
         }
 
     let reciprocalDomain: Gen<float * float> =
@@ -860,6 +875,9 @@ type MareyArbs =
         Gens.linearDomain |> Gen.map LinearDomain |> Arb.fromGen
 
     static member LogDomain() = Gens.logDomain |> Gen.map LogDomain |> Arb.fromGen
+
+    static member AnyLogDomain() =
+        Gens.anyLogDomain |> Gen.map AnyLogDomain |> Arb.fromGen
 
     static member ReciprocalDomain() =
         Gens.reciprocalDomain |> Gen.map ReciprocalDomain |> Arb.fromGen
