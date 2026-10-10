@@ -264,11 +264,33 @@ type internal GpuContext(?shown: string * int * int * bool) =
 
     let markers = new MarkerDrawer(gl)
 
+    // D139: made the first time a solver asks, so a renderer that only draws compiles no shader of it.
+    let mutable compute: GpuCompute option = None
+
     do gr.ResetContext()
 
     member _.GL = gl
     member _.Skia = gr
     member _.Markers = markers
+
+    /// Run compute passes, with the GL state they assume set first and Skia told afterwards that
+    /// its state was touched.
+    member _.Compute(f: GpuCompute -> 'a) : 'a =
+        let c =
+            match compute with
+            | Some c -> c
+            | None ->
+                let c = new GpuCompute(gl)
+                compute <- Some c
+                c
+
+        c.Begin()
+
+        try
+            f c
+        finally
+            c.End()
+            gr.ResetContext()
     member _.Window: IWindow = window
 
     /// What the driver says it is, for a report: "AMD Radeon RX 7900 XT (radeonsi, …)" on a
@@ -338,6 +360,7 @@ type internal GpuContext(?shown: string * int * int * bool) =
     interface IDisposable with
         member _.Dispose() =
             target |> Option.iter (fun t -> (t :> IDisposable).Dispose())
+            compute |> Option.iter (fun c -> (c :> IDisposable).Dispose())
             (markers :> IDisposable).Dispose()
             gr.Dispose()
             lock GlfwLibrary.gate (fun () -> window.Dispose())

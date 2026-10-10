@@ -92,6 +92,13 @@ type GpuRenderer(?options: SkiaOptions, ?instancedMarkers: bool) =
 
             w, h, target.Read())
 
+    /// Run compute passes on the renderer's context, on its thread, queued with its drawing (D139).
+    member internal _.Compute(f: GpuCompute -> 'a) : 'a =
+        if disposed then
+            raise (ObjectDisposedException "GpuRenderer")
+
+        thread.Invoke(fun () -> context.Compute f)
+
     /// The capabilities the renderer draws with. `Degrade.forCaps` is applied for the caller.
     member _.Caps: Capabilities = caps
 
