@@ -1,4 +1,4 @@
-/// The definitions behind the 27 SVG golden baselines, shared by the .NET suite and the Fable
+/// The definitions behind the 28 SVG golden baselines, shared by the .NET suite and the Fable
 /// project in `tests/Marey.Fable` (D130), so that "the same compiler under Node" is checked
 /// against the same scenes and figures rather than a copy of them.
 ///
@@ -209,6 +209,26 @@ let imageFigure: Figure =
 
     Chart.image U.second U.metre { Width = 3; Height = 2; Rgba = rgba } 0.0<s> 0.0<m> 6.0<s> 4.0<m> false
     |> Chart.withTitle "Placed image"
+
+/// A wide log axis: two integrators' energy drift over eleven decades, in joules, written in
+/// powers of ten with no prefix (`Ticks.WideLogDecades`). Its TikZ golden is set under
+/// `Theme.tikz`, so the ticks reach TeX as `$10^{-8}$` rather than as superscript text.
+///
+/// The values are products of exact constants, not `exp`: Node and .NET differ in the last bit of
+/// `exp` (D141), and this figure is also rendered under Node byte for byte.
+let logFigure: Figure =
+    let ts = Array.init 11 (fun i -> float i * 1.0<s>)
+    let euler = Array.scan (fun e _ -> e * 10.0) 1e-14<J> [| 1..10 |]
+    let leapfrog = ts |> Array.mapi (fun i _ -> if i % 2 = 0 then 2e-15<J> else 5e-15<J>)
+
+    Chart.line U.second Derived.joule ts euler
+    |> Chart.withName "Euler"
+    |> Chart.addLine U.second Derived.joule ts leapfrog
+    |> Chart.withName "leapfrog"
+    |> Chart.withYLog
+    |> Chart.withYLabel "drift"
+    |> Chart.withTitle "Energy drift"
+    |> Chart.withLegend LegendTopLeft
 
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
@@ -986,6 +1006,7 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-boxplot" figureSurface boxplotFigure
         fig "figure-heatmap" figureSurface heatmapFigure
         fig "figure-image" figureSurface imageFigure
+        fig "figure-log" figureSurface logFigure
         fig "figure-hexbin" wide Hexbin.figure
         fig "figure-field-heatmap" wide Fields.heatmapFigure
         fig "figure-field-quiver" wide Fields.quiverFigure
@@ -1004,6 +1025,7 @@ let svg: (string * (unit -> string)) list =
         "figure-boxplot", figureAt figureSurface boxplotFigure
         "figure-heatmap", figureAt figureSurface heatmapFigure
         "figure-image", figureAt figureSurface imageFigure
+        "figure-log", figureAt figureSurface logFigure
         "figure-hexbin", figureAt wide Hexbin.figure
         "figure-field-heatmap", figureAt wide Fields.heatmapFigure
         "figure-field-quiver", figureAt wide Fields.quiverFigure

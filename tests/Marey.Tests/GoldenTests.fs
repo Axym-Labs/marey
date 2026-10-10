@@ -135,6 +135,12 @@ module Figures =
     let ``an image figure`` () =
         check "figure-image.svg" (Chart.render SvgBackend.render figureSurface imageFigure)
 
+    /// A log axis over eleven decades: powers of ten, every one distinct, and `drift [J]` with no
+    /// prefix.
+    [<Fact>]
+    let ``a wide log axis`` () =
+        check "figure-log.svg" (Chart.render SvgBackend.render figureSurface logFigure)
+
     /// A figure is a scene like any other, so it has to be one: if `Figure.toScene` ever emitted
     /// something outside the ten cases this would not compile, and if it stopped exercising them
     /// the golden above would be measuring less than it claims.

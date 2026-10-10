@@ -299,6 +299,12 @@ module Figures =
     let ``a complete figure under Theme tikz`` () =
         check "figure-siunitx.tex" (figure |> Chart.withTheme Theme.tikz |> Chart.render TikzBackend.render figureSurface)
 
+    /// The wide log axis under `Theme.tikz`, so its ticks are the TeX `$10^{-8}$` a Siunitx axis
+    /// carries in `TickLabel.LabelTex` rather than the Unicode `10⁻⁸` escaped as text.
+    [<Fact>]
+    let ``a wide log axis under Theme tikz`` () =
+        check "figure-log-siunitx.tex" (logFigure |> Chart.withTheme Theme.tikz |> Chart.render TikzBackend.render figureSurface)
+
     /// Gate 6 meets gate 7. A baseline can be byte-stable, valid TeX and *blank* — that is
     /// precisely the failure this milestone already shipped once. So the committed figure is also
     /// compiled and looked at, which is what makes it a record of a picture rather than of a
@@ -461,6 +467,25 @@ module ``the baselines compile`` =
                 && TexToolchain.accepts
                     "figure-symbols-golden"
                     (TikzBackend.standalone (Chart.render TikzBackend.render figureSurface Figures.symbolFigure))
+            )
+        then
+            System.Console.WriteLine("SKIPPED: " + TexToolchain.report ())
+
+    /// The wide log axis both ways: its ticks as math under `Theme.tikz`, and as the Unicode
+    /// `10⁻⁸` the writer escapes to `10\textsuperscript{-8}` under the default theme.
+    [<Fact>]
+    let ``the wide log axis is valid TeX`` () =
+        let plain = Chart.render TikzBackend.render figureSurface logFigure
+
+        let siunitx =
+            logFigure |> Chart.withTheme Theme.tikz |> Chart.render TikzBackend.render figureSurface
+
+        Assert.Contains("$10^{-8}$", siunitx)
+
+        if
+            not (
+                TexToolchain.accepts "figure-log" (TikzBackend.standalone plain)
+                && TexToolchain.accepts "figure-log-siunitx" (TikzBackend.standalone siunitx)
             )
         then
             System.Console.WriteLine("SKIPPED: " + TexToolchain.report ())

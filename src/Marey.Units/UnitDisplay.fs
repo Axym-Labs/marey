@@ -35,23 +35,8 @@ module UnitDisplay =
 
     let private intText (n: int) = n.ToString(invariant)
 
-    let private superDigits =
-        [| '⁰'; '¹'; '²'; '³'; '⁴'; '⁵'; '⁶'; '⁷'; '⁸'; '⁹' |]
-
-    /// Unicode superscript for an integer exponent: `-2` becomes `⁻²`.
-    ///
-    /// U+207B SUPERSCRIPT MINUS, not a hyphen — the hyphen sits on the baseline next to
-    /// superscript digits and looks like a typesetting bug in every font.
-    let superscript (n: int) =
-        let sb = System.Text.StringBuilder()
-
-        if n < 0 then
-            sb.Append('⁻') |> ignore
-
-        for c in intText (abs n) do
-            sb.Append(superDigits.[int c - int '0']) |> ignore
-
-        sb.ToString()
+    /// Unicode superscript for an integer exponent: `-2` becomes `⁻²`. See `Num.superscript`.
+    let superscript (n: int) = Num.superscript n
 
     // ---- Spelling tables --------------------------------------------------------------
 

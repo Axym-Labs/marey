@@ -88,6 +88,12 @@ land in a minor release.
   film.
 - **`examples/double-pendulum.fsx`**: a chaotic system's path over a phase portrait, a Poincaré
   section, and a film.
+- **`TickLabel.LabelTex`**, a tick's label as TeX source. Set on a power of ten when the axis is
+  compiled in the `Latex` or `Siunitx` style, as `AxisSpec.TitleTex` is for the title, and drawn
+  by the TikZ backend in math.
+- **`Ticks.WideLogDecades`, `Ticks.isWideLog`, `Ticks.logInPowers`, `Ticks.powerOfTen`,
+  `Ticks.formatPower` and `Ticks.formatOwn`**, the rule a log axis's tick labels follow, and
+  `Num.superscript`, which `UnitDisplay.superscript` now calls.
 
 ### Changed
 
@@ -95,6 +101,8 @@ land in a minor release.
   every case without a wildcard no longer compiles until it handles the new one.
 - **`FieldMarks.licImage` and `FieldMarks.lic` take the compile measurer first**, so a backend's
   measurer can convolve.
+- **`TickLabel` has a fourth field, `LabelTex`.** A record expression that builds one needs
+  `LabelTex = None`.
 
 ### Fixed
 
@@ -118,6 +126,13 @@ land in a minor release.
 - **Every package requires FSharp.Core ≥ 8.0.100**, stated in the build, instead of the version
   bundled with the SDK that packed it. Every `0.5.0` package required ≥ 10.1.401, so a project on
   SDK 10.0.1xx restored any of them with a downgrade warning (NU1605).
+- **A log axis gave every tick the decimals of its finest one, and took its prefix from the top
+  of its domain.** Over 10⁻³ … 10³ J the ticks read `0.000001` … `1.000000` in kJ. Over 10⁻¹⁸ …
+  10⁸ J the axis was in MJ and every tick below 10⁻¹⁵ MJ read `0.000000000000000`, so the labels
+  were not distinct. Each tick now takes the decimals it needs: `0.01`, `1`, `100`. A log axis
+  spanning more than three decades is written in powers of ten, `10⁻⁸`, and takes no prefix. A
+  narrower one takes its prefix as a linear axis does, and is written in powers of ten when a tick
+  still lies outside [10⁻³, 10³]. `Erase.scale` follows the same rule.
 
 ## [0.5.0] — 2026-10-10
 

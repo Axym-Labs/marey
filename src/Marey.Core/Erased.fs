@@ -9,7 +9,13 @@ namespace Marey
 type TickLabel =
     { Value: float
       Position: float<nd>
-      Label: string }
+      /// The label as plain text, the `Unicode` spelling when a TeX one was asked for.
+      Label: string
+      /// The label as TeX source, for the axis compiled in the `Latex` or `Siunitx` style whose
+      /// label needs markup: `$10^{-8}$` where `Label` is `10⁻⁸`. `None` for plain digits, which
+      /// typeset identically either way, and always `None` from `Erase.scale`, which has no
+      /// style. The rule is `AxisSpec.TitleTex`'s.
+      LabelTex: string option }
 
 /// §2.3 — **The erasure boundary.**
 ///
@@ -175,33 +181,29 @@ module Erase =
             member _.Ticks n =
                 let vs = s.TickHint n
 
-                // How a tick value becomes text, which is the one thing a categorical axis does
+                // How the ticks become text, which is the one thing a categorical axis does
                 // differently from every other kind: its labels are names and there is no
                 // decimal count to derive. D45 puts the level array in `Kind` precisely so that
                 // this path — the erased one, all a reloaded figure has (§15) — can still read
                 // them.
-                let label =
+                let labels =
                     match s.Kind with
-                    | ScaleKind.Ordinal levels -> Scale.levelLabel levels
+                    | ScaleKind.Ordinal levels -> vs |> Array.map (fun v -> Scale.levelLabel levels (float v))
                     | ScaleKind.Log _ ->
-                        // Log ticks are not on a uniform grid, so a single step-derived
-                        // decimal count is wrong. Take the finest any individual tick needs.
-                        let decimals =
-                            vs
-                            |> Array.fold
-                                (fun acc v ->
-                                    let a = abs (float v)
-                                    if a = 0.0 then acc else max acc (Ticks.decimalsFor a))
-                                0
-
-                        Ticks.format decimals
-                    | _ -> Ticks.format (Ticks.decimalsFor (Ticks.linearStep n s.Domain))
+                        // Log ticks are not on a uniform grid, so each takes its own decimals,
+                        // and a wide axis is written in powers of ten.
+                        let lo, hi = s.Domain
+                        Ticks.logLabels (float lo, float hi) (vs |> Array.map float)
+                    | _ ->
+                        let label = Ticks.format (Ticks.decimalsFor (Ticks.linearStep n s.Domain))
+                        vs |> Array.map (fun v -> label (float v))
 
                 vs
-                |> Array.map (fun v ->
+                |> Array.mapi (fun i v ->
                     { Value = float v
                       Position = s.Forward v
-                      Label = label (float v) }) }
+                      Label = labels.[i]
+                      LabelTex = None }) }
 
     let series (name: string) (sx: Scale<'ux>) (sy: Scale<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : PackedSeries =
         if x.Length <> y.Length then

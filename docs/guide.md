@@ -388,6 +388,10 @@ let logFigure =
     |> Chart.withTitle "Response against distance"
 ```
 
+A log axis spanning at most three decades is ticked in plain numbers, each with the decimals it
+needs, under an SI prefix chosen as for a linear axis. A wider one is ticked in powers of ten,
+`10⁻⁸` (`$10^{-8}$` in the TeX styles, `10^-8` in `Ascii`), and takes no prefix.
+
 Build one directly to control the domain:
 
 ```fsharp
@@ -2312,7 +2316,7 @@ CanvasBackend.draw m.Measurer ctx extent scene
 ```
 
 The compiler is the same F#, so the browser lays the figure out exactly as a kernel would with the
-same measurer; the 27 SVG baselines in the test suite are reproduced byte for byte under Node.
+same measurer; the 28 SVG baselines in the test suite are reproduced byte for byte under Node.
 
 **Text.** The canvas measures text in the font it will draw with, and a web font may not have
 arrived when the page first draws. `WebText.measurerNow ()` returns the canvas's measurer once

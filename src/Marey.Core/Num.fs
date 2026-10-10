@@ -219,3 +219,24 @@ module Num =
 #else
         x.ToString("R", invariant)
 #endif
+
+    let private superDigits =
+        [| '⁰'; '¹'; '²'; '³'; '⁴'; '⁵'; '⁶'; '⁷'; '⁸'; '⁹' |]
+
+    /// Unicode superscript for an integer exponent: `-2` becomes `⁻²`.
+    ///
+    /// U+207B SUPERSCRIPT MINUS, not a hyphen — the hyphen sits on the baseline next to
+    /// superscript digits and looks like a typesetting bug in every font. Here rather than in
+    /// `Marey.Units` because a log axis's `10⁻⁸` is written in Core (`Ticks.formatPower`) and a
+    /// unit's `s⁻²` in `UnitDisplay`, and the two must not drift apart (F2).
+    let superscript (n: int) : string =
+        let digits = string (abs (int64 n))
+        let sb = System.Text.StringBuilder()
+
+        if n < 0 then
+            sb.Append('⁻') |> ignore
+
+        for c in digits do
+            sb.Append(superDigits.[int c - int '0']) |> ignore
+
+        sb.ToString()

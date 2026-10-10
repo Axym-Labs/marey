@@ -430,12 +430,11 @@ module Axes =
                            yield
                                Text
                                    { Text = k.Label
-                                     // Tick labels are digits, a decimal point and a minus
-                                     // sign, all of which typeset identically in TeX and in
-                                     // plain text. The one exception is the prefix-unattachable
-                                     // fallback, where a label becomes `10⁻¹⁸·m²` and does need
-                                     // a TeX form; that arrives with `AxisSpec.Ticks`.
-                                     Tex = None
+                                     // Digits, a decimal point and a minus sign typeset
+                                     // identically in TeX and in plain text. A power of ten on
+                                     // a wide log axis does not, and when the axis was compiled
+                                     // in a TeX style its TeX form arrives with the tick.
+                                     Tex = k.LabelTex
                                      At = anchorPoint k.Position + d
                                      Font = t.TickFont
                                      Paint = textPaint
