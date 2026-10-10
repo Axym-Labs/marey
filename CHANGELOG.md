@@ -20,7 +20,10 @@ land in a minor release.
   flow with time (`Flow2T`); `Ode.eulerWith` and `Ode.rk4With` any state given a `Tangent`, the
   two operations that advance it and combine its rates. An acceleration or a rate in the wrong
   unit does not compile. `Ode.verletInPlace` steps the caller's arrays and allocates nothing.
-  `Sim.ofStep`, `Sim.run` and `Sim.states` run a step with time computed as `k · h`. The package
+  `Sim.ofStep`, `Sim.run` and `Sim.states` run a step with time computed as `k · h`.
+  `Sim.trajectory every horizon` is the simulation as an `Anim`: a seek to any time replays from
+  the nearest checkpoint and gives the state a straight run reaches, bit for bit, on any thread. A
+  checkpoint table estimated over 512 MiB is refused, naming an interval that fits. The package
   claims Fable.
 
 ### Fixed

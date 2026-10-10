@@ -389,3 +389,152 @@ module ``a wrong unit does not compile`` =
              + reactorLin
              + " }")
             "'K/s' does not match the unit of measure 'K'"
+
+// ======================================================================================
+// Gates 4 and 5 — a seek is a run (phase 3)
+// ======================================================================================
+
+module ``a trajectory seeks to what a run reaches`` =
+
+    open FsCheck
+    open FsCheck.Xunit
+
+    let private bits (x: float<'u>) = BitConverter.DoubleToInt64Bits(float x)
+
+    let private sameState (struct (qa: float<m>[], va: float<m/s>[])) (struct (qb: float<m>[], vb: float<m/s>[])) =
+        Array.forall2 (fun a b -> bits a = bits b) qa qb && Array.forall2 (fun a b -> bits a = bits b) va vb
+
+    /// Three bodies on springs, each driven by a force that depends on time, so that a step
+    /// replayed at a drifted time sees a different force.
+    let private second (t: float<s>) (q: float<m>[]) : float<m/s^2>[] =
+        q |> Array.mapi (fun i x -> -4.0</s^2> * x + 0.5<m/s^2> * cos (1.3</s> * t + float i))
+
+    let private kick (t: float<s>) (q: float<m>[]) (dt: float<s>) (v: float<m/s>[]) =
+        let a = second t q
+
+        for i in 0 .. v.Length - 1 do
+            v.[i] <- v.[i] + dt * a.[i]
+
+    let private copy (struct (q: float<m>[], v: float<m/s>[])) = struct (Array.copy q, Array.copy v)
+
+    let private start () = struct ([| 1.0<m>; -0.5<m>; 0.25<m> |], [| 0.0<m/s>; 0.3<m/s>; -0.7<m/s> |])
+
+    let private h = 0.01<s>
+
+    /// The four fixed-step integrators, and Verlet in place, over the same state.
+    let private sims =
+        [ "Euler", Sim.ofStep h (Ode.eulerWith Tangent.secondOrder (fun t (struct (q, v)) -> struct (v, second t q))) (start ())
+          "RK4", Sim.ofStep h (Ode.rk4With Tangent.secondOrder (fun t (struct (q, v)) -> struct (v, second t q))) (start ())
+          "Verlet", Sim.ofStep h (Ode.verlet second) (start ())
+          "leapfrog", Sim.ofStep h (Ode.leapfrog second) (start ())
+          "Verlet in place", Sim.ofStep h (Ode.verletInPlace kick) (start ()) |> Sim.withCheckpoint copy ]
+
+    /// The straight run to `t`: whole steps from zero, then the same remainder step.
+    let private straight (sim: Sim<_>) (t: float<s>) =
+        let mutable k = int (floor (t / sim.H))
+
+        while float (k + 1) * sim.H <= t do
+            k <- k + 1
+
+        while k > 0 && float k * sim.H > t do
+            k <- k - 1
+
+        let s = Sim.run k sim
+        let tk = float k * sim.H
+        if t > tk then sim.Step tk (t - tk) s else s
+
+    /// Gate 4: for random times, in a random order, a seek equals the straight run, bit for bit,
+    /// with checkpoints every 0.37 s (a stride of 37 steps) over 10 s.
+    [<Property(MaxTest = 60)>]
+    let ``seeking equals stepping from zero, bit for bit`` (times: NormalFloat list) =
+        let ts =
+            times |> List.map (fun x -> abs (float x.Get) % 10.0 * 1.0<s>) |> List.append [ 0.0<s>; 0.37<s>; 5.0<s>; 9.99<s>; 10.0<s> ]
+
+        sims
+        |> List.forall (fun (name, sim) ->
+            let traj = Sim.trajectory 0.37<s> 10.0<s> sim
+
+            ts
+            |> List.forall (fun t ->
+                let ok = sameState (traj.At t) (straight sim t)
+
+                if not ok then
+                    printfn "%s differs at t = %.17g" name (float t)
+
+                ok))
+
+    /// The same, at every whole step and the steps either side of every checkpoint.
+    [<Fact>]
+    let ``every whole step and both sides of every checkpoint`` () =
+        for (name, sim) in sims do
+            let traj = Sim.trajectory 0.37<s> 3.0<s> sim
+            let all = Sim.states 300 sim
+
+            for k in 0..300 do
+                Assert.True(sameState all.[k] (traj.At(float k * h)), sprintf "%s differs at step %d" name k)
+
+    /// Gate 5: frames rendered concurrently see the frames rendered one by one. With Verlet in
+    /// place, a seek that stepped the table's own arrays would corrupt the next one.
+    [<Fact>]
+    let ``concurrent seeks equal serial seeks`` () =
+        for (name, sim) in sims do
+            let traj = Sim.trajectory 0.25<s> 10.0<s> sim
+            let ts = Array.init 600 (fun i -> float ((i * 7919) % 600) / 60.0 * 1.0<s>)
+            // Copied as they are read: a state stepped in place is a reference to arrays that a
+            // later seek could still be writing, and comparing references compares nothing.
+            let seek t = copy (traj.At t)
+            let serial = ts |> Array.map seek
+            let concurrent = ts |> Array.Parallel.map seek
+            let again = ts |> Array.map seek
+
+            for i in 0 .. ts.Length - 1 do
+                Assert.True(sameState serial.[i] concurrent.[i], sprintf "%s: the concurrent seek differs at %g s" name (float ts.[i]))
+                Assert.True(sameState serial.[i] again.[i], sprintf "%s: a second seek differs at %g s" name (float ts.[i]))
+
+    [<Fact>]
+    let ``time is clamped at every door, AtSeconds included`` () =
+        let sim = Sim.ofStep h (Ode.verlet second) (start ())
+        let traj = Sim.trajectory 1.0<s> 2.0<s> sim
+        Assert.Equal(2.0, float traj.Duration)
+        Assert.True(sameState (traj.At 0.0<s>) (traj.AtSeconds -5.0<s>))
+        Assert.True(sameState (traj.At 0.0<s>) (traj.AtSeconds(nan * 1.0<s>)))
+        Assert.True(sameState (traj.At 2.0<s>) (traj.AtSeconds 50.0<s>))
+        Assert.True(sameState (traj.At 2.0<s>) (traj.AtFraction 1.5))
+        Assert.True(sameState (Sim.run 200 sim) (traj.At 2.0<s>))
+
+    /// A horizon between steps ends on a remainder step; `every` past the horizon keeps only the
+    /// start; a zero horizon is the start.
+    [<Fact>]
+    let ``odd horizons and strides`` () =
+        let sim = Sim.ofStep h (Ode.leapfrog second) (start ())
+        Assert.True(sameState (straight sim 1.234<s>) ((Sim.trajectory 0.1<s> 1.234<s> sim).At 1.234<s>))
+        Assert.True(sameState (straight sim 0.7<s>) ((Sim.trajectory 50.0<s> 1.0<s> sim).At 0.7<s>))
+        Assert.True(sameState (start ()) ((Sim.trajectory 0.1<s> 0.0<s> sim).At 3.0<s>))
+        // `every` below the step size is one step.
+        Assert.True(sameState (straight sim 0.55<s>) ((Sim.trajectory 0.001<s> 1.0<s> sim).At 0.55<s>))
+
+    [<Fact>]
+    let ``a bad every or horizon is refused`` () =
+        let sim = Sim.ofStep h (Ode.leapfrog second) (start ())
+
+        for every in [ 0.0<s>; -1.0<s>; nan * 1.0<s>; infinity * 1.0<s> ] do
+            Assert.Throws<ArgumentException>(fun () -> Sim.trajectory every 1.0<s> sim |> ignore) |> ignore
+
+        for horizon in [ -1.0<s>; nan * 1.0<s>; infinity * 1.0<s>; 1e8<s> ] do
+            Assert.Throws<ArgumentException>(fun () -> Sim.trajectory 1.0<s> horizon sim |> ignore) |> ignore
+
+    /// A 512² grid of doubles is 2 MiB; checkpointed every step over 1000 steps it is 2 GiB. The
+    /// refusal names the size and an `every` that fits, and that `every` is accepted.
+    [<Fact>]
+    let ``a table over the cap is refused, naming an every that fits`` () =
+        let grid = Array.zeroCreate<float> (512 * 512)
+        let sim = Sim.ofStep 0.001<s> (fun _ _ (g: float[]) -> g) grid
+        let e = Assert.Throws<ArgumentException>(fun () -> Sim.trajectory 0.001<s> 1.0<s> sim |> ignore)
+        Assert.Contains("1001 checkpoints of about 2097152 bytes each", e.Message)
+        Assert.Contains("over the 512 MB allowed", e.Message)
+        let m = Text.RegularExpressions.Regex.Match(e.Message, @"Checkpoint every ([0-9.eE+-]+) s")
+        Assert.True(m.Success, e.Message)
+        let every = float m.Groups.[1].Value * 1.0<s>
+        Sim.trajectory every 1.0<s> sim |> ignore
+        // And a lower cap through trajectoryWithin.
+        Assert.Throws<ArgumentException>(fun () -> Sim.trajectoryWithin 1_000_000L 0.5<s> 1.0<s> sim |> ignore) |> ignore
