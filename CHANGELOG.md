@@ -40,8 +40,20 @@ land in a minor release.
   `open Marey.UnitsOfMeasure`), `Sim.drift` samples each one's drift over a trajectory, relative
   to its start or absolute where the start is zero, and `Drift.chart` draws them. The package
   claims Fable.
+- **A time control**: `Control.time "t" 0.0<s> 10.0<s>` (and `Control.timeWith samples loop`,
+  `Control.Time("t", 0.0, 10.0)` over plain seconds). The notebook widget draws a range input and
+  a play button, and plays it on the page's clock; the window plays it on its frame loop, with
+  space to play and pause and a button before the track. Every frame played is an ordinary `Set`,
+  so a recording replays the playback. A live figure is arranged over 60 states along the time
+  control's range rather than its two ends, so a view whose widest state lies inside the range
+  does not re-arrange as it plays.
 - **`examples/integrators.fsx`**: Euler, RK4 and Verlet on one oscillator, and the energy drift of
   each over 100 periods.
+
+### Changed
+
+- **`ControlKind` gained a case, `Time of lo * hi * samples * loop`.** A match over it that names
+  every case without a wildcard no longer compiles until it handles the new one.
 
 ### Fixed
 

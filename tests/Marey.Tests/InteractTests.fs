@@ -1041,3 +1041,112 @@ module ``a recorder`` =
 
         Assert.Equal<float[]>([| 3.0; 0.0 |], (first'' :?> RecorderState).State.Values)
         Assert.Equal<(float<s> * LiveMsg)[]>([| 0.0<s>, Set(0, 4.0) |], (Recorder.stop r).Events)
+
+/// M5.5 phase 7, gate 9 — a time control arranges once (D137). A live figure is laid out over
+/// its controls' extremes; a time control's are samples along its range, so a view whose widest
+/// state lies *inside* the range is arranged for it before it is played, where the two ends alone
+/// would re-arrange mid-playback.
+///
+/// What samples cannot do, measured and pinned below: a view on automatic axes of a coordinate
+/// that passes through zero changes its axis's prefix at every decade on the way (m, mm, µm, …),
+/// and at the crossing itself `cos (π/2)` is 6·10⁻¹⁷ m, which an automatic axis labels in
+/// attometres. No finite sample holds every decade. Such a view states its axes.
+module ``a time control arranges once`` =
+
+    /// A dimensionless pulse from 1 to 1000 and back: its widest tick labels are at `t = 5 s`,
+    /// which neither end sees, and a dimensionless axis takes no prefix to absorb them.
+    let private pulse (t: float<s>) =
+        Chart.bar U.one U.one [| 0.0 |] [| 1.0 + 999.0 * sin (Math.PI * t / 10.0<s>) |]
+
+    let private play (l: Live) (frames: int) =
+        [ 1..frames ] |> List.fold (fun st k -> Live.step l st (Set(0, 10.0 * float k / float frames))) (Live.init l)
+
+    [<Fact>]
+    let ``played across its range, a view peaking inside it ends with Grown empty`` () =
+        let l = interact {
+                    let! t = Control.time "t" 0.0<s> 10.0<s>
+                    return pulse t
+                }
+
+        Assert.Equal(60, (Live.extremes l).Length)
+
+        // At 60 frames a second, and at a rate that shares no frame with the samples.
+        for frames in [ 600; 997 ] do
+            let last = play l frames
+            Assert.Equal(10.0, last.Values.[0])
+            Assert.Empty(last.Grown)
+
+    /// The control the gate exists against: the same view on a slider, arranged over its two
+    /// ends, grows as it plays. If this stopped growing, the gate above would measure nothing.
+    [<Fact>]
+    let ``on a slider over the same range it grows`` () =
+        let l = interact {
+                    let! t = Control.slider U.second "t" 0.0<s> 10.0<s> 0.0<s>
+                    return pulse t
+                }
+
+        Assert.NotEmpty((play l 600).Grown)
+
+    /// The limit, pinned so that a change to it is seen: a bob on a circle, on automatic axes,
+    /// re-arranges at its quarter turns however densely the range is sampled, and with its axes
+    /// stated never does.
+    [<Fact>]
+    let ``a coordinate through zero on automatic axes still grows; stated axes do not`` () =
+        let bob (stated: bool) (t: float<s>) =
+            let a = 2.0 * Math.PI * t / 3.0<s>
+            let fig = Chart.scatter U.metre U.metre [| cos a * 1.0<m> |] [| sin a * 1.0<m> |]
+            if stated then fig |> Chart.withXDomain -1.2 1.2 |> Chart.withYDomain -1.2 1.2 else fig
+
+        let live stated = interact {
+                              let! t = Control.timeWith 600 true "t" 0.0<s> 10.0<s>
+                              return bob stated t
+                          }
+
+        let grown = (play (live false) 600).Grown |> Array.map (fun v -> Math.Round(v.[0], 3))
+        Assert.Equal<float[]>([| 0.75; 1.5; 2.25; 3.0 |], grown)
+        Assert.Empty((play (live true) 600).Grown)
+
+    /// Past `MaxExtremes` the others fall back to one at a time and the time control keeps every
+    /// sample.
+    [<Fact>]
+    let ``past the cap the time control keeps its samples`` () =
+        let l = interact {
+                    let! t = Control.time "t" 0.0<s> 10.0<s>
+                    and! big = Control.checkbox "big" false
+                    return pulse (if big then t * 2.0 else t)
+                }
+
+        let ex = Live.extremes l
+        let times = ex |> Array.filter (fun v -> v.[1] = 0.0) |> Array.map (fun v -> v.[0]) |> Array.distinct
+        Assert.Equal(60, times.Length)
+        Assert.Contains(ex, fun v -> v.[1] = 1.0)
+
+    [<Fact>]
+    let ``a time control normalises, shows seconds, and refuses a bad range`` () =
+        let c = Control.time "t" 0.0<s> 10.0<s>
+        let spec = c.Specs.[0]
+        Assert.Equal(Some 10.0, ControlSpec.normalise spec 12.0)
+        Assert.Equal(Some 0.0, ControlSpec.normalise spec -1.0)
+        Assert.Equal("4.2 s", spec.Show 4.2)
+        Assert.Equal(4.2<s>, c.Read [| 4.2 |])
+        Assert.Throws<ArgumentException>(fun () -> Control.time "t" 1.0<s> 1.0<s> |> ignore) |> ignore
+        Assert.Throws<ArgumentException>(fun () -> Control.timeWith 1 true "t" 0.0<s> 1.0<s> |> ignore) |> ignore
+        let plain = Marey.Control.Time("t", 0.0, 5.0)
+        Assert.Equal(3.0, plain.Read [| 3.0 |])
+
+    /// The notebook widget draws a time control as a range input and a play button, from the
+    /// state, and the page is still well-formed XML.
+    [<Fact>]
+    let ``the widget draws a range and a play button`` () =
+        let l = interact {
+                    let! t = Control.time "t" 0.0<s> 10.0<s>
+                    return pulse t
+                }
+
+        let st = Live.step l (Live.init l) (Set(0, 2.5))
+        let page = Html.widget l st true
+        Assert.Contains("type=\"range\" data-i=\"0\" min=\"0\" max=\"10\" step=\"0.01\" value=\"2.5\"", page)
+        Assert.Contains("data-play=\"0\" data-loop=\"1\"", page)
+        Assert.Contains("requestAnimationFrame(tick)", page)
+        Xml.Linq.XDocument.Parse(page.Substring(page.IndexOf("<html"))) |> ignore
+        Assert.Contains("data-play=\"0\" data-loop=\"1\" title=\"Play\" disabled=\"disabled\"", Html.widget l st false)
