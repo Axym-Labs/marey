@@ -98,6 +98,13 @@ land in a minor release.
 
 ### Fixed
 
+- **`ScalarGrid.at` and `VectorGrid.at` copied the whole grid on every call.** One lookup on a
+  512 × 512 grid took about 0.4 ms for a scalar grid and 0.9 ms for a vector grid; it now takes
+  under 0.1 µs. The grid's arrays are read in place rather than copied without their units.
+- **A field mark with no colour channel ignored the layer's opacity.** `Field.streamlines …
+  |> Chart.withOpacity 0.3` drew at full strength, and so did quivers, direction fields, contours
+  and line-integral convolutions. The opacity now applies with or without a channel, and a
+  channel-coloured mark draws as before.
 - **`Field.laplacian`'s documentation says it is a display operator**: its wide stencil is zero on
   a checkerboard, so it is not what a solver should step with.
 - **Every package requires FSharp.Core ≥ 8.0.100**, stated in the build, instead of the version

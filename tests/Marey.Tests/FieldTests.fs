@@ -809,6 +809,76 @@ module ``streamlines`` =
         | TexToolchain.Failed why -> failwithf "the streamlines baseline does not compile:\n%s" why
 
 // ======================================================================================
+// The layer's opacity on a field mark with no colour channel.
+// ======================================================================================
+
+module ``opacity without a colour channel`` =
+
+    let rec private collect (pick: Node -> 'a list) (n: Node) : 'a list =
+        let below =
+            match n with
+            | Group ns -> ns |> Array.toList |> List.collect (collect pick)
+            | Transform(_, c)
+            | Clip(_, c)
+            | Keyed(_, c)
+            | Annotated(_, c)
+            | Opacity(_, c) -> collect pick c
+            | _ -> []
+
+        pick n @ below
+
+    /// A colour nothing else on the figure is drawn in, so every paint in it is the field's.
+    let private ink = Color.rgb 0.8 0.2 0.6
+
+    let private rotation =
+        let cs = Grid.linear -1.0<m> 1.0<m> 9
+        VectorGrid.sample cs cs (fun x y -> struct (-(float y) * 1.0<V / m>, float x * 1.0<V / m>))
+
+    let private figure (mark: string) : Figure =
+        match mark with
+        | "streamlines" -> Field.streamlines U.metre U.metre rotation
+        | "quiver" -> Field.quiver U.metre U.metre GoldenScenes.Fields.fieldUnit rotation
+        | "directions" -> Field.directions U.metre U.metre rotation
+        | "contours" -> Field.contours U.metre U.metre GoldenScenes.Fields.potential
+        | _ -> Field.lic U.metre U.metre rotation
+
+    /// `Field.streamlines … |> Chart.withOpacity 0.3` once drew at full strength: the stroke
+    /// carried the opacity, but every segment was painted in the layer's colour without it.
+    [<Theory>]
+    [<InlineData("streamlines")>]
+    [<InlineData("quiver")>]
+    [<InlineData("directions")>]
+    [<InlineData("contours")>]
+    [<InlineData("lic")>]
+    let ``the layer's opacity reaches every mark`` (mark: string) =
+        let scene =
+            figure mark
+            |> Chart.withStyle (fun st -> { st with Color = ink })
+            |> Chart.withOpacity 0.3
+            |> Chart.toScene (Chart.size 480.0 300.0)
+
+        let alphas =
+            scene
+            |> collect (function
+                | Path(_, stroke, fill, _) ->
+                    [ match stroke with
+                      | Some { Paint = Solid c } when (c.R, c.G, c.B) = (ink.R, ink.G, ink.B) -> yield c.A
+                      | _ -> ()
+                      match fill with
+                      | Some(Solid c) when (c.R, c.G, c.B) = (ink.R, ink.G, ink.B) -> yield c.A
+                      | _ -> () ]
+                | Raster r ->
+                    [ for k in 3..4 .. r.Image.Rgba.Length - 1 do
+                          if r.Image.Rgba.[k] > 0uy then
+                              yield float r.Image.Rgba.[k] / 255.0 ]
+                | _ -> [])
+
+        Assert.NotEmpty alphas
+
+        for a in alphas do
+            Assert.InRange(a, 0.29, 0.31)
+
+// ======================================================================================
 // Phase 5 — line-integral convolution (D90). Gate 11, and the PNG baseline.
 // ======================================================================================
 

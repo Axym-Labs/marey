@@ -1082,8 +1082,8 @@ module Figure =
                                                 match bucket v with
                                                 | k when k < 0 -> None
                                                 | k ->
-                                                    let col = (Channel.restyle c.Map k l.Style).Color
-                                                    Some(Color.withAlpha (col.A * l.Style.Opacity) col)
+                                                    // `compileField` applies the opacity.
+                                                    Some (Channel.restyle c.Map k l.Style).Color
                                         | None -> fun v -> if System.Double.IsNaN v || System.Double.IsInfinity v then None else Some l.Style.Color
 
                                     Geom.compileField p.Coord plotSize m theme.PanelBackground l.Style colourOf field mark, [||]
