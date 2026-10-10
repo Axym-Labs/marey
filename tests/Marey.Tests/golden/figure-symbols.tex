@@ -1,0 +1,55 @@
+\begin{tikzpicture}[every node/.style={inner sep=0bp,outer sep=0bp}]
+  \definecolor{qcA}{rgb}{1,1,1}
+  \definecolor{qcB}{rgb}{0,0.447059,0.698039}
+  \definecolor{qcC}{rgb}{0.062745,0.062745,0.062745}
+  \useasboundingbox (0bp,0bp) rectangle (360bp,225bp);
+  % marey-key: figure
+  \path[fill=qcA] (0bp,0bp) -- (360bp,0bp) -- (360bp,225bp) -- (0bp,225bp) -- cycle;
+  % marey-key: figure/panel-0-0
+  % marey-role: other:panel -- panel
+  % marey-data: row = 0
+  % marey-data: col = 0
+  % marey-data: layers = 1
+  % marey-data: x-tick-rule = all
+  % marey-data: y-tick-rule = all
+  \begin{scope}
+    \clip (36.726bp,31.85bp) -- (350.454bp,31.85bp) -- (350.454bp,194.3bp) -- (36.726bp,194.3bp) -- cycle;
+    % marey-key: figure/panel-0-0/layer-0
+    % marey-role: series -- series
+    % marey-data: series =
+    % marey-data: points = 24
+    \path[draw=qcB,line width=1.05bp,line cap=round,line join=round] (50.987bp,39.234bp) -- (63.387bp,39.513bp) -- (75.787bp,40.351bp) -- (88.188bp,41.747bp) -- (100.588bp,43.701bp) -- (112.988bp,46.213bp) -- (125.389bp,49.284bp) -- (137.789bp,52.914bp) -- (150.189bp,57.101bp) -- (162.589bp,61.847bp) -- (174.99bp,67.151bp) -- (187.39bp,73.014bp) -- (199.79bp,79.435bp) -- (212.191bp,86.414bp) -- (224.591bp,93.952bp) -- (236.991bp,102.048bp) -- (249.392bp,110.702bp) -- (261.792bp,119.915bp) -- (274.192bp,129.686bp) -- (286.592bp,140.015bp) -- (298.993bp,150.903bp) -- (311.393bp,162.349bp) -- (323.793bp,174.353bp) -- (336.194bp,186.916bp);
+  \end{scope}
+  % marey-key: figure/panel-0-0/axis-x
+  % marey-role: axis -- ωt − φ₀ at 20 °C, µ·τ² ≤ ∂θ [s]
+  % marey-data: side = bottom
+  % marey-data: unit = s
+  % marey-data: prefix =
+  % marey-data: ticks = 5
+  % marey-data: tick-rule = all
+  \path[draw=qcC,line width=0.6bp] (36.726bp,31.85bp) -- (350.454bp,31.85bp);
+  \path[draw=qcC,line width=0.6bp] (50.987bp,31.85bp) -- (50.987bp,29.225bp) (112.988bp,31.85bp) -- (112.988bp,29.225bp) (174.99bp,31.85bp) -- (174.99bp,29.225bp) (236.991bp,31.85bp) -- (236.991bp,29.225bp) (298.993bp,31.85bp) -- (298.993bp,29.225bp);
+  \node[anchor=north,text=qcC,font=\fontsize{8}{9.6}\selectfont] at (50.987bp,26.975bp) {0};
+  \node[anchor=north,text=qcC,font=\fontsize{8}{9.6}\selectfont] at (112.988bp,26.975bp) {2};
+  \node[anchor=north,text=qcC,font=\fontsize{8}{9.6}\selectfont] at (174.99bp,26.975bp) {4};
+  \node[anchor=north,text=qcC,font=\fontsize{8}{9.6}\selectfont] at (236.991bp,26.975bp) {6};
+  \node[anchor=north,text=qcC,font=\fontsize{8}{9.6}\selectfont] at (298.993bp,26.975bp) {8};
+  \node[anchor=north,text=qcC,font=\fontsize{9}{10.8}\selectfont] at (193.59bp,15.825bp) {\ensuremath{\omega}t \ensuremath{-} \ensuremath{\varphi}\textsubscript{0} at 20 \textdegree{}C, \textmu{}\textperiodcentered{}\ensuremath{\tau}\textsuperscript{2} \ensuremath{\leq} \ensuremath{\partial}\ensuremath{\theta} [\qty{}{\second}]};
+  % marey-key: figure/panel-0-0/axis-y
+  % marey-role: axis -- |ΔE| × 10³ [mJ]
+  % marey-data: side = left
+  % marey-data: unit = mJ
+  % marey-data: prefix = milli
+  % marey-data: ticks = 7
+  % marey-data: tick-rule = all
+  \path[draw=qcC,line width=0.6bp] (36.726bp,31.85bp) -- (36.726bp,194.3bp);
+  \path[draw=qcC,line width=0.6bp] (36.726bp,39.234bp) -- (34.101bp,39.234bp) (36.726bp,62.498bp) -- (34.101bp,62.498bp) (36.726bp,85.763bp) -- (34.101bp,85.763bp) (36.726bp,109.027bp) -- (34.101bp,109.027bp) (36.726bp,132.291bp) -- (34.101bp,132.291bp) (36.726bp,155.556bp) -- (34.101bp,155.556bp) (36.726bp,178.82bp) -- (34.101bp,178.82bp);
+  \node[anchor=east,text=qcC,font=\fontsize{8}{9.6}\selectfont] at (31.851bp,39.234bp) {0};
+  \node[anchor=east,text=qcC,font=\fontsize{8}{9.6}\selectfont] at (31.851bp,62.498bp) {20};
+  \node[anchor=east,text=qcC,font=\fontsize{8}{9.6}\selectfont] at (31.851bp,85.763bp) {40};
+  \node[anchor=east,text=qcC,font=\fontsize{8}{9.6}\selectfont] at (31.851bp,109.027bp) {60};
+  \node[anchor=east,text=qcC,font=\fontsize{8}{9.6}\selectfont] at (31.851bp,132.291bp) {80};
+  \node[anchor=east,text=qcC,font=\fontsize{8}{9.6}\selectfont] at (31.851bp,155.556bp) {100};
+  \node[anchor=east,text=qcC,font=\fontsize{8}{9.6}\selectfont] at (31.851bp,178.82bp) {120};
+  \node[anchor=base,text=qcC,rotate=90,font=\fontsize{9}{10.8}\selectfont] at (15.825bp,113.075bp) {\textbar{}\ensuremath{\Delta}E\textbar{} \ensuremath{\times} 10\textsuperscript{3} [\qty{}{\milli\joule}]};
+\end{tikzpicture}

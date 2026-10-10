@@ -20,6 +20,7 @@ module Marey.Tests.TikzGoldenTests
 
 open Xunit
 open Marey
+open Marey.UnitsOfMeasure
 open Marey.Tests.Golden
 open Marey.Tests.GoldenTests
 open Marey.Tests.GoldenScenes
@@ -273,6 +274,24 @@ module Figures =
             // And it is an image rather than an empty box: a blank page is uniformly 255.
             Assert.True(below < 200.0, sprintf "no dark pixels where the image's dark half belongs (mean %.1f)" below)
 
+    /// Axis titles carrying the non-ASCII characters a quantity name uses: Greek, `×`, `°`, `µ`,
+    /// `·`, `−`, `≤`, `∂`, a superscript and a subscript. Under `Theme.tikz` a title is TeX source
+    /// (`TitleTex`) rather than text, so it does not pass through the backend's escaping; until
+    /// `Tex.escape` mapped these, a raw `Δ` reached `pdflatex` and stopped it.
+    let symbolFigure: Figure =
+        let ts = Array.init 24 (fun i -> float i * 0.4<s>)
+        let es = ts |> Array.map (fun t -> 1.5e-3<J / s^2> * t * t)
+
+        Chart.line U.second Derived.joule ts es
+        |> Chart.withXLabel "ωt − φ₀ at 20 °C, µ·τ² ≤ ∂θ"
+        |> Chart.withYLabel "|ΔE| × 10³"
+        |> Chart.withLegend LegendNone
+        |> Chart.withTheme Theme.tikz
+
+    [<Fact>]
+    let ``axis titles with Greek and symbols under Theme tikz`` () =
+        check "figure-symbols.tex" (Chart.render TikzBackend.render figureSurface symbolFigure)
+
     /// The milestone's headline as a committed artefact rather than a substring assertion:
     /// `Theme.tikz` alone turns the unit witnesses into siunitx markup. TeX-only, because
     /// `\qty{}{\metre}` in an SVG would be nonsense.
@@ -426,10 +445,10 @@ module ``the baselines compile`` =
 
             failwithf "the golden pictures do not compile.\n\n%s\n\n--- individually ---\n%s" combined detail
 
-    /// The two figure baselines, which go through `Chart` rather than through a hand-built scene
-    /// and are the documents a user would actually produce.
+    /// The figure baselines that go through `Chart` rather than through a hand-built scene and
+    /// are the documents a user would actually produce.
     [<Fact>]
-    let ``both figure baselines are valid TeX`` () =
+    let ``the figure baselines are valid TeX`` () =
         let plain = Chart.render TikzBackend.render figureSurface figure
 
         let siunitx =
@@ -439,6 +458,9 @@ module ``the baselines compile`` =
             not (
                 TexToolchain.accepts "figure-golden" (TikzBackend.standalone plain)
                 && TexToolchain.accepts "figure-siunitx-golden" (TikzBackend.standalone siunitx)
+                && TexToolchain.accepts
+                    "figure-symbols-golden"
+                    (TikzBackend.standalone (Chart.render TikzBackend.render figureSurface Figures.symbolFigure))
             )
         then
             System.Console.WriteLine("SKIPPED: " + TexToolchain.report ())
