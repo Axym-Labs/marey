@@ -71,6 +71,7 @@
     <Compile Include="FieldTests.fs" />
     <Compile Include="../Shared/SimRuns.fs" Link="SimRuns.fs" />
     <Compile Include="SimTests.fs" />
+    <Compile Include="FluidTests.fs" />
     <Compile Include="InteractTests.fs" />
     <Compile Include="KeyTests.fs" />
     <Compile Include="DiffTests.fs" />

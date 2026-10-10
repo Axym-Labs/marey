@@ -391,6 +391,28 @@ module ``a wrong unit does not compile`` =
 
         refuses "invariant" (sim + "\nlet e = sim |> Sim.withInvariant \"energy\" Derived.joule (fun (struct (_, v)) -> 2.0<kg> * v)") "'J' does not match the unit of measure 'kg m/s'"
 
+    /// M5.6 gate 3: a fluid's options in the wrong units. The control is the same record, right.
+    [<Fact>]
+    let ``a fluid's options in the right units compile`` () =
+        let body =
+            "let o = { Stam.defaults<m, K> with Viscosity = 1e-3<m^2/s>; Buoyancy = 0.01<m/s^2/K>; Force = (fun _ _ -> struct (0.0<m/s^2>, -9.8<m/s^2>)); Source = (fun _ _ -> 1.0<K/s>) }\nlet s = Stam.step o"
+
+        match compile "fluid-control" body with
+        | None -> skipped ()
+        | Some(code, path, output) -> Assert.True((code = 0), sprintf "the control did not compile: %s\n%s" path output)
+
+    [<Fact>]
+    let ``a viscosity in m/s does not compile`` () =
+        refuses "fluid-viscosity" "let o = { Stam.defaults<m, K> with Viscosity = 1e-3<m/s> }" "does not match the unit of measure 'm/s'"
+
+    [<Fact>]
+    let ``a force in m/s does not compile`` () =
+        refuses "fluid-force" "let o = { Stam.defaults<m, K> with Force = (fun _ _ -> struct (0.0<m/s>, 1.0<m/s>)) }" "does not match the unit of measure 'm/s'"
+
+    [<Fact>]
+    let ``a buoyancy without the dye's unit does not compile`` () =
+        refuses "fluid-buoyancy" "let o = { Stam.defaults<m, K> with Buoyancy = 0.01<m/s^2> }" "does not match the unit of measure 'm/s ^ 2'"
+
     /// Tier 3: a tangent whose advance forgets `h` adds kelvin per second to kelvin.
     [<Fact>]
     let ``a tangent that forgets h does not compile`` () =
