@@ -122,7 +122,10 @@ module GridAxes =
 
                 ValueSome(struct (lo, (x - xs.[lo]) / (xs.[lo + 1] - xs.[lo])))
 
-        let inline internal raw (xs: float<'u>[]) : float[] = xs |> Array.map float
+        /// The same array without its unit, not a copy: `float<'u>[]` is `float[]` at run time, on
+        /// .NET and under Fable alike, so a lookup costs O(log n) rather than O(grid size). Every
+        /// caller only reads the result; one that wrote to it would write to the grid.
+        let inline internal raw (xs: float<'u>[]) : float[] = unbox<float[]> (box xs)
 
         let inline internal tagAll<[<Measure>] 'u> (xs: float[]) : float<'u>[] =
             xs |> Array.map LanguagePrimitives.FloatWithMeasure<'u>

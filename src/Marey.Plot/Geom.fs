@@ -523,7 +523,8 @@ module Geom =
     /// D86 — draw a field layer, given the colour each value takes. `Figure.fs` passes the
     /// layer's colour channel through its own quantiser, so the heatmap, its contours and its
     /// colorbar take every colour from the same call (D91, gate 7). Without a channel, every
-    /// value is the layer's colour.
+    /// value is the layer's colour. `colourOf` gives colours before the layer's opacity, which
+    /// is applied here.
     ///
     /// `plotSize`, `measurer` and `background` are for the arrows (D87): the quiver's length
     /// scale is chosen in pixels against the grid's pitch, and its key is measured and set on a
@@ -539,6 +540,9 @@ module Geom =
         (mark: FieldMark)
         : Node =
         let mapPt (v: Vec2<nd>) = if Coord.isIdentity coord then v else coord.ToPanel v
+
+        // Every mark paints with `colourOf`, not with `stroke`, so the opacity goes in here.
+        let colourOf (v: float) = colourOf v |> Option.map (fun c -> Color.withAlpha (c.A * st.Opacity) c)
 
         let stroke =
             { Paint = Solid(Color.withAlpha (st.Color.A * st.Opacity) st.Color)
