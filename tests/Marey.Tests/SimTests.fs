@@ -1196,3 +1196,124 @@ module ``hard discs`` =
         Assert.Throws<ArgumentException>(fun () -> Collide.create [| 1.0<m> |] [| 1.0; 2.0 |] 1.0 Box.Open |> ignore) |> ignore
         Assert.Throws<ArgumentException>(fun () -> Collide.create [| -1.0<m> |] [| 1.0 |] 1.0 Box.Open |> ignore) |> ignore
         Assert.Throws<ArgumentException>(fun () -> Collide.create [| 1.0<m> |] [| 1.0 |] 1.2 Box.Open |> ignore) |> ignore
+
+// ======================================================================================
+// Phase 8 — Poincaré sections (D142): gate 8
+// ======================================================================================
+
+module ``Poincaré sections`` =
+
+    /// Gate 8, stroboscopic: a damped oscillator driven at Ω settles onto a period-1 orbit, whose
+    /// stroboscopic section is one point, `(A cos φ, A Ω sin φ)` in closed form.
+    [<Fact>]
+    let ``a period-1 orbit is one stroboscopic point`` () =
+        let gamma, w0, bigW, f = 0.5</s>, 2.0</s>, 1.3</s>, 1.0<m/s^2>
+        let flow: Flow2T<m, m/s, s> = fun t x v -> struct (v, -gamma * v - w0 * w0 * x + f * cos (bigW * t))
+        let period = 2.0 * Math.PI / bigW
+        let sim = Sim.ofStep 1e-3<s> (Ode.rk4 flow) (struct (1.0<m>, 0.0<m/s>))
+        let points = Poincare.stroboscopic period (Sim.trajectory period (60.0 * period) sim)
+        Assert.Equal(61, points.Length)
+        Assert.Equal(60.0 * period, points.[60].Time)
+
+        let amplitude = f / sqrt ((w0 * w0 - bigW * bigW) * (w0 * w0 - bigW * bigW) + gamma * gamma * bigW * bigW)
+        let phase = atan2 (float (gamma * bigW)) (float (w0 * w0 - bigW * bigW))
+        let xe, ve = amplitude * cos phase, amplitude * bigW * sin phase
+
+        // The transient decays as e^(−γt/2); after 40 periods it is below 10⁻¹⁰ m.
+        for p in points.[40..] do
+            let struct (x, v) = p.State
+            Assert.True(abs (x - xe) < 1e-9<m> && abs (v - ve) < 1e-9<m/s>, sprintf "(%g, %g) at %g s, expected (%g, %g)" (float x) (float v) (float p.Time) (float xe) (float ve))
+
+        // And early on it is not there yet: the section shows the approach.
+        let struct (x0, _) = points.[1].State
+        Assert.True(abs (x0 - xe) > 1e-3<m>)
+
+    let private omega = 2.0</s>
+    let private circle: Flow2T<m, m/s, s> = fun _ x v -> struct (v, -omega * omega * x)
+
+    /// The rising crossings of `x = 0` by `x = cos ωt`: at `ωt = 3π/2 + 2πk`, with `v = ω`.
+    let private crossings (horizon: float<s>) =
+        [ for k in 0..100 do
+              let t = (1.5 * Math.PI + 2.0 * Math.PI * float k) / omega
+              if t <= horizon then yield t ]
+
+    let private section (direction: Direction) (step: Step<struct (float<m> * float<m/s>), s>) (h: float<s>) =
+        Sim.ofStep h step (struct (1.0<m>, 0.0<m/s>))
+        |> Poincare.section direction (fun (struct (x: float<m>, _)) -> x) 20.0<s>
+
+    /// Gate 8, spatial: each orbit crosses once, on the rising side, on the surface, and the point
+    /// is right to the integrator's order, not to an interpolation's.
+    [<Fact>]
+    let ``a spatial section is crossed once an orbit, on its side, at the integrator's order`` () =
+        let expected = crossings 20.0<s>
+        let points = section Direction.Rising (Ode.rk4 circle) 0.01<s>
+        Assert.Equal(expected.Length, points.Length)
+
+        for p, t in Array.zip points (Array.ofList expected) do
+            let struct (x, v) = p.State
+            // RK4's own phase error at this step is a few 10⁻⁹ s by 20 s; the order is measured below.
+            Assert.True(abs (p.Time - t) < 1e-7<s>, sprintf "crossed at %.12f s, expected %.12f" (float p.Time) (float t))
+            Assert.True(abs x < 1e-10<m>, sprintf "%g m off the surface" (float x))
+            Assert.True(v > 0.0<m/s>)
+
+        // The error in the crossing times against the step: RK4's fourth order, and Verlet's
+        // second. The times carry the phase error; v at the crossing is the orbit's amplitude
+        // times ω, whose error on a linear oscillator is one order higher.
+        let timeErrors (points: SectionPoint<'s>[]) =
+            Array.map2 (fun (p: SectionPoint<'s>) t -> abs (float (p.Time - t))) points (Array.ofList (crossings 20.0<s>)) |> Array.max
+
+        let errorAt (step: Step<_, s>) (h: float<s>) = timeErrors (section Direction.Rising step h)
+
+        let order (step: Step<_, s>) (hs: float<s> list) =
+            let xs = hs |> List.map (float >> log) |> Array.ofList
+            let ys = hs |> List.map (errorAt step >> log) |> Array.ofList
+            slope xs ys
+
+        let rk4 = order (Ode.rk4 circle) [ 0.08<s>; 0.04<s>; 0.02<s>; 0.01<s> ]
+        Assert.True(abs (rk4 - 4.0) <= 0.3, sprintf "RK4's section points converge at order %.3f" rk4)
+
+        let verletSection (h: float<s>) =
+            Sim.ofStep h (Ode.verlet (fun _ (q: float<m>[]) -> q |> Array.map (fun x -> -omega * omega * x))) (struct ([| 1.0<m> |], [| 0.0<m/s> |]))
+            |> Poincare.section Direction.Rising (fun (struct (q: float<m>[], _)) -> q.[0]) 20.0<s>
+            |> timeErrors
+
+        let hs = [ 0.04<s>; 0.02<s>; 0.01<s>; 0.005<s> ]
+        let verlet = slope (hs |> List.map (float >> log) |> Array.ofList) (hs |> List.map (verletSection >> log) |> Array.ofList)
+        Assert.True(abs (verlet - 2.0) <= 0.3, sprintf "Verlet's section points converge at order %.3f" verlet)
+
+    [<Fact>]
+    let ``falling and either`` () =
+        let falling = section Direction.Falling (Ode.rk4 circle) 0.01<s>
+        let either = section Direction.Either (Ode.rk4 circle) 0.01<s>
+        Assert.True(falling |> Array.forall (fun p -> let struct (_, v) = p.State in v < 0.0<m/s>))
+        Assert.Equal(falling.Length + (crossings 20.0<s>).Length, either.Length)
+        // Interleaved, never two in a row on one side.
+        either |> Array.pairwise |> Array.iter (fun (a, b) ->
+            let struct (_, va) = a.State
+            let struct (_, vb) = b.State
+            Assert.True(sign (float va) <> sign (float vb)))
+
+    /// Adaptively, through the dense output, and alongside the simulation's own events.
+    [<Fact>]
+    let ``adaptively, and beside other events`` () =
+        let sim = Sim.ofAdaptive 0.01<s> (Ode.dopri5 1e-10<m> 1e-10<m/s> 1e-10 circle |> Ode.withMaxStep 0.1<s>) (struct (1.0<m>, 0.0<m/s>))
+
+        let points = Poincare.section Direction.Rising (fun (struct (x: float<m>, _)) -> x) 20.0<s> sim
+        Assert.Equal((crossings 20.0<s>).Length, points.Length)
+
+        for p in points do
+            let struct (_, v) = p.State
+            Assert.True(abs (v - omega * 1.0<m>) < 1e-8<m/s>)
+
+        // A simulation with an event of its own that stops it at its first maximum of v, at
+        // ωt = 3π/2, keeps the crossings before it: one, at the same time.
+        let stopper = Event.create "top" Direction.Falling Response.Stop (fun (struct (_: float<m>, v: float<m/s>)) -> v - 1.999<m/s>)
+        let stopped = Poincare.section Direction.Rising (fun (struct (x: float<m>, _)) -> x) 20.0<s> (sim |> Sim.withEvents [ stopper ])
+        Assert.Equal(1, stopped.Length)
+        Assert.True(abs (stopped.[0].Time - points.[0].Time) < 1e-6<s>)
+
+    [<Fact>]
+    let ``a stroboscopic period must be positive`` () =
+        let traj = Sim.trajectory 1.0<s> 2.0<s> (Sim.ofStep 0.1<s> (Ode.rk4 circle) (struct (1.0<m>, 0.0<m/s>)))
+        Assert.Throws<ArgumentException>(fun () -> Poincare.stroboscopic 0.0<s> traj |> ignore) |> ignore
+        Assert.Equal(1, (Poincare.stroboscopic 5.0<s> traj).Length)

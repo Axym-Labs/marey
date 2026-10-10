@@ -305,6 +305,26 @@ module Sim =
 
         u.At t
 
+    /// The events a straight run passes up to `horizon`, each with the state the run went on from
+    /// (after the response), kept through `Checkpoint`.
+    let internal hitsWithStates (horizon: float<s>) (sim: Sim<'s>) : (Hit * 's) list =
+        let events = Array.ofList sim.Events
+        let hits = Collections.Generic.List<Hit * 's>()
+
+        if events.Length > 0 then
+            let mutable c = start sim
+
+            while not c.Stopped && c.T <= horizon do
+                let u = advance sim events c
+
+                match u.Hit with
+                | Some hit when hit.Time <= horizon -> hits.Add((hit, sim.Checkpoint u.Next.S))
+                | _ -> ()
+
+                c <- u.Next
+
+        List.ofSeq hits
+
     /// The events a straight run passes up to `horizon`, in order, each with its time and what it
     /// did. A run that stopped ends the list with the reason.
     let events (horizon: float<s>) (sim: Sim<'s>) : Hit list =

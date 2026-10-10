@@ -36,6 +36,10 @@ land in a minor release.
   in free flight with every contact inside the step resolved exactly in time order, against walls,
   on a torus or in the open, with a grid broad phase above 256 discs and a per-step contact cap
   whose hits are counted.
+  `Poincare.stroboscopic period trajectory` is the state at every multiple of a period, each by a
+  seek; `Poincare.section direction surface horizon sim` is every crossing of a surface in a
+  direction, located by the event machinery, so each point is the integrator's own state on the
+  surface.
   `Sim.withInvariant` attaches a conserved quantity (with a unit witness under
   `open Marey.UnitsOfMeasure`), `Sim.drift` samples each one's drift over a trajectory, relative
   to its start or absolute where the start is zero, and `Drift.chart` draws them. The package
@@ -49,6 +53,8 @@ land in a minor release.
   does not re-arrange as it plays.
 - **`examples/integrators.fsx`**: Euler, RK4 and Verlet on one oscillator, and the energy drift of
   each over 100 periods.
+- **`examples/double-pendulum.fsx`**: a chaotic system's path over a phase portrait, a Poincaré
+  section, and a film.
 
 ### Changed
 
