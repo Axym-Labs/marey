@@ -180,7 +180,7 @@ jobs:
         run: |
           set -e
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 16 ] || { echo "::error::expected 16 packages, packed $count"; exit 1; }
+          [ "$count" -eq 17 ] || { echo "::error::expected 17 packages, packed $count"; exit 1; }
           fable=0
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
@@ -197,8 +197,8 @@ jobs:
             unzip -l "$pkg" | grep -q "$readme" || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
             echo "  $(basename "$pkg"): $readme"
           done
-          [ "$fable" -eq 8 ] || { echo "::error::expected 8 packages with Fable sources, found $fable"; exit 1; }
-          echo "16 packages, each with an MIT expression and the readme it declares; 8 with Fable sources"
+          [ "$fable" -eq 9 ] || { echo "::error::expected 9 packages with Fable sources, found $fable"; exit 1; }
+          echo "17 packages, each with an MIT expression and the readme it declares; 9 with Fable sources"
 
       # D146, gate 1: the FSharp.Core a consumer needs is the one src/Directory.Build.props states,
       # not the one this leg's SDK bundles. 0.5.0 shipped `>= 10.1.401` because it was the latter.

@@ -12,6 +12,23 @@ land in a minor release.
 
 ## [Unreleased]
 
+### Added
+
+- **`Marey.Sim`**, the seventeenth package: ODE integrators typed by units of measure, and a
+  simulation as a step function. `Ode.verlet` and `Ode.leapfrog` integrate a second-order state,
+  positions in one unit and velocities in that unit per second; `Ode.euler` and `Ode.rk4` a 2-D
+  flow with time (`Flow2T`); `Ode.eulerWith` and `Ode.rk4With` any state given a `Tangent`, the
+  two operations that advance it and combine its rates. An acceleration or a rate in the wrong
+  unit does not compile. `Ode.verletInPlace` steps the caller's arrays and allocates nothing.
+  `Sim.ofStep`, `Sim.run` and `Sim.states` run a step with time computed as `k · h`. The package
+  claims Fable.
+
+### Fixed
+
+- **Every package requires FSharp.Core ≥ 8.0.100**, stated in the build, instead of the version
+  bundled with the SDK that packed it. Every `0.5.0` package required ≥ 10.1.401, so a project on
+  SDK 10.0.1xx restored any of them with a downgrade warning (NU1605).
+
 ## [0.5.0] — 2026-10-10
 
 **Two backends that draw pixels on a screen.** `Marey.Backend.Gpu` renders on an OpenGL 3.3

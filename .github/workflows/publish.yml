@@ -165,7 +165,7 @@ jobs:
       - name: Check the packages before anything leaves the machine
         run: |
           set -e
-          # Sixteen since M5 phase 8, which published Marey.Backend.Web. Fifteen since M5 phase 4, which published Marey.Backend.Gpu. Fourteen since M4.5 phase 2, which published Marey.Interact. Thirteen since M4 phase 2,
+          # Seventeen since M5.5 phase 2, which published Marey.Sim. Sixteen since M5 phase 8, which published Marey.Backend.Web. Fifteen since M5 phase 4, which published Marey.Backend.Gpu. Fourteen since M4.5 phase 2, which published Marey.Interact. Thirteen since M4 phase 2,
           # which published Marey.Fields. Twelve since M3 phase 8, which
           # published Marey.Tools.Tex. Eleven since phase 6,
           # which published Marey.Tools.Video and — because a published package may not depend
@@ -175,7 +175,7 @@ jobs:
           # automatically, and a count that has to be edited by hand is what stops one
           # appearing on nuget.org because somebody added an .fsproj.
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 16 ] || { echo "::error::expected 16 packages, packed $count"; exit 1; }
+          [ "$count" -eq 17 ] || { echo "::error::expected 17 packages, packed $count"; exit 1; }
           fable=0
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
@@ -196,9 +196,10 @@ jobs:
             unzip -l "$pkg" | grep -q "$readme" \
               || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
           done
-          # Eight since M5 phase 8: Core, Units, Anim, Plot, Fields, Interact, Backend.Svg, and
-          # Backend.Web, which only Fable consumes. Seven since M5 phase 2.
-          [ "$fable" -eq 8 ] || { echo "::error::expected 8 packages with Fable sources, found $fable"; exit 1; }
+          # Nine since M5.5 phase 2, with Sim. Eight since M5 phase 8: Core, Units, Anim, Plot,
+          # Fields, Interact, Backend.Svg, and Backend.Web, which only Fable consumes. Seven since
+          # M5 phase 2.
+          [ "$fable" -eq 9 ] || { echo "::error::expected 9 packages with Fable sources, found $fable"; exit 1; }
           ls -1 artifacts/*.nupkg
 
       # D146: the same check as CI's. 0.5.0 required FSharp.Core >= 10.1.401 because that is what
