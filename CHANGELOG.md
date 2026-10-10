@@ -10,7 +10,7 @@ rather than any one package. Each release's notes say which packages it adds.
 listed under `Changed` or `Removed` with the reason and the replacement, and until 1.0 they may
 land in a minor release.
 
-## [Unreleased]
+## [0.5.0]
 
 ### Added
 
@@ -78,7 +78,7 @@ land in a minor release.
   doc comment containing `*/` each stopped the compile or the module's load. With those gone,
   the 27 SVG baselines render byte for byte under Node, and CI checks that they still do.
 
-## [0.4.0] — 2026-10-08
+## [0.4.0]
 
 **Units are opt-in.** `open Marey` takes plain arrays and a unit per axis that may be stated or
 left out; `open Marey.UnitsOfMeasure` is the mode every release so far has had, a witness per axis
