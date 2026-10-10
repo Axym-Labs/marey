@@ -37,8 +37,9 @@ The blocks form one continuous session, so bindings introduced early are still i
 22. [Notebooks](#22-notebooks)
 23. [Interaction](#23-interaction)
 24. [The GPU, a window, and the browser](#24-the-gpu-a-window-and-the-browser)
-25. [The scene IR](#25-the-scene-ir)
-26. [Escape hatches](#26-escape-hatches)
+25. [Simulation](#25-simulation)
+26. [The scene IR](#26-the-scene-ir)
+27. [Escape hatches](#27-escape-hatches)
 
 ---
 
@@ -2330,7 +2331,204 @@ its README says how to build and serve it.
 
 ---
 
-## 25. The scene IR
+## 25. Simulation
+
+`Marey.Sim` integrates a system over physical time. A simulation is a start and a way to step,
+and its trajectory is an `Anim`, so everything in §17–§19 applies to it: it seeks, it renders
+frames concurrently, it becomes a film.
+
+```fsharp
+#r "nuget: Marey.Sim"
+
+// A mass on a spring with a period of one second, stepped by velocity Verlet at 1 ms.
+let springRate = 4.0 * System.Math.PI * System.Math.PI * 1.0</s^2>
+let springAccel (_: float<s>) (q: float<m>[]) : float<m/s^2>[] = q |> Array.map (fun x -> -springRate * x)
+
+let springSim = Sim.ofStep 1e-3<s> (Ode.verlet springAccel) (struct ([| 0.1<m> |], [| 0.0<m/s> |]))
+let springOrbit = Sim.trajectory 0.5<s> 20.0<s> springSim
+
+let struct (springQ, _) = springOrbit.At 7.1<s>
+printfn "x at 7.1 s: %.6f m" (float springQ.[0])
+```
+
+`Sim.trajectory every horizon` runs the simulation once to `horizon`, keeping the state every
+`every`, and a seek to any time replays from the checkpoint before it. **A seek is exactly the
+state a straight run reaches**, bit for bit, whatever was seeked before and on whichever thread:
+the table is immutable once built and each seek owns its copy. `every` is the memory dial, and a
+table estimated over 512 MiB is refused with the interval that would fit. Time is `k · h` for the
+`k`-th step, never a sum of steps, so a force that depends on time sees the same time on a replay.
+
+### Integrators, and the shape of a state
+
+An integrator returns a step, `t -> h -> state -> state`, and the state's shape decides which:
+
+- **Positions and velocities in one unit**: `Ode.verlet` (kick–drift–kick) and `Ode.leapfrog`
+  (drift–kick–drift), symplectic, the default for anything Hamiltonian. The acceleration is in
+  `'q/s²`, checked. `Ode.verletInPlace` steps the caller's arrays and allocates nothing.
+- **A 2-D system with time**: `Ode.euler` and `Ode.rk4` over a `Flow2T`, the `Flow` of §15 with a
+  clock. `Ode.ofFlow` lifts a `Flow`.
+- **Anything else**: `Ode.eulerWith` and `Ode.rk4With` given a `Tangent`, the two operations that
+  advance a state along a rate and combine two rates. A reactor with a temperature in kelvin and
+  a concentration in mol/m³ is a record, and its `Tangent` is where the units meet.
+
+```fsharp
+let drivenPendulum: Flow2T<rad, rad/s, s> =
+    fun t th om -> struct (om, -9.81<rad/s^2> * sin (float th) - 0.2</s> * om + 0.5<rad/s^2> * cos (1.3 * float t))
+
+let pendulumSim = Sim.ofStep 1e-3<s> (Ode.rk4 drivenPendulum) (struct (0.5<rad>, 0.0<rad/s>))
+```
+
+An acceleration in the wrong unit does not compile:
+
+```fsharp-error
+let wrong = Ode.verlet (fun _ (q: float<m>[]) -> q |> Array.map (fun x -> -4.0</s> * x))
+```
+
+**Adaptive steps.** `Ode.dopri5` is Dormand–Prince 4(5) with an absolute tolerance per axis and a
+relative one; `Ode.dopri5With` takes a `Tangent` and an `ErrorNorm`, which weighs each component
+of a mixed state against its own tolerance. `Sim.ofAdaptive` runs one, and a trajectory over it
+checkpoints the controller as well as the state, so a seek still equals the straight run. A
+problem the method integrates exactly (free fall) grows its step tenfold at a time;
+`Ode.withMaxStep` caps it.
+
+```fsharp
+let adaptivePendulum =
+    Sim.ofAdaptive 0.01<s> (Ode.dopri5 1e-9<rad> 1e-9<rad/s> 1e-9 drivenPendulum) (struct (0.5<rad>, 0.0<rad/s>))
+```
+
+### Invariants
+
+A conserved quantity plotted against time is how a broken integrator is caught. `Sim.drift`
+samples each invariant over a trajectory, relative to its start, or absolute in its unit where the
+start is zero:
+
+```fsharp
+let springEnergy (struct (q: float<m>[], v: float<m/s>[])) : float<J/kg> = 0.5 * v.[0] * v.[0] + 0.5 * springRate * q.[0] * q.[0]
+
+let watched = springSim |> Sim.withInvariant "energy" (U.div Derived.joule U.kilogram) springEnergy
+let energyDrift = Sim.drift 201 (Sim.trajectory 1.0<s> 20.0<s> watched) watched
+let driftChart = Drift.chart energyDrift
+```
+
+Verlet's energy error stays in a band; RK4's is smaller per step and grows; Euler's grows
+exponentially. `examples/integrators.fsx` draws the three.
+
+### Events
+
+An event is a function of the state crossing zero in a direction. Its root is located in time, to
+a fraction of the step (on the dense output of an adaptive step, by re-stepping a fixed one), and
+its response replaces the state or stops the simulation:
+
+```fsharp
+let floorHit =
+    Event.create "floor" Direction.Falling (Response.reflect 0 0.8) (fun (struct (q: float<m>[], _)) -> q.[0])
+    |> Event.withMinSeparation 0.01<s>
+
+let ball =
+    Sim.ofStep 1e-3<s> (Ode.verlet (fun _ (q: float<m>[]) -> q |> Array.map (fun _ -> -9.81<m/s^2>))) (struct ([| 1.0<m> |], [| 0.0<m/s> |]))
+    |> Sim.withEvents [ floorHit ]
+
+for hit in Sim.events 5.0<s> ball |> List.truncate 3 do
+    printfn "%s at %.6f s" hit.Name (float hit.Time)
+```
+
+A ball with restitution below one bounces infinitely often before a finite time. The minimum
+separation is how that ends: a crossing closer than it to the event's previous one applies the
+event's rest response (`Event.withRest`) or stops the simulation, saying why, and nothing loops.
+A crossing whose two sides both fall inside one step is not seen, so the separation, and the step,
+must be shorter than the shortest thing the event should catch.
+
+`Collide.step` steps hard discs: free flight, with every contact inside the step resolved in time
+order and exactly, against walls, on a torus or in the open. Above 256 discs pairs are found
+through a grid. A step that reaches its contact cap finishes without colliding and is counted.
+
+### Poincaré sections
+
+```fsharp
+let strobe = Poincare.stroboscopic (2.0 * System.Math.PI / 1.3 * 1.0<s>) (Sim.trajectory 1.0<s> 60.0<s> pendulumSim)
+let crossings = Poincare.section Direction.Rising (fun (struct (th: float<rad>, _)) -> th) 30.0<s> pendulumSim
+```
+
+`stroboscopic` is the state at every multiple of a period, each by a seek. `section` is every
+crossing of a surface in a direction, located by the event machinery, so each point is the
+integrator's own state on the surface. `examples/double-pendulum.fsx` takes one of a chaotic system.
+
+### Particles in a field that changes
+
+A field that depends on time is an `Unsteady`, the `Flow2T` of a velocity. An analytic one is
+passed as it is; gridded data goes through `Unsteady.ofSnapshots` (bilinear in space, linear in
+time) or `Unsteady.ofFunction` (a grid built for each time asked). `Particles.step` carries many
+particles together, stage by stage, so a field built per stage time is built once per stage for
+all of them:
+
+```fsharp
+let swirl: Unsteady<m, m, s> = fun t x y -> struct (-(1.0 + 0.5 * sin (float t)) * y * 1.0</s>, (1.0 + 0.5 * sin (float t)) * x * 1.0</s>)
+let carriedSim = Sim.ofStep 0.01<s> (Particles.step swirl) (struct ([| 1.0<m>; 0.5<m> |], [| 0.0<m>; 0.0<m> |]))
+let paths = Particles.pathlines [| 0.0<s> .. 0.1<s> .. 5.0<s> |] (Sim.trajectory 1.0<s> 5.0<s> carriedSim)
+```
+
+A pathline is a trajectory in the field's units, unlike §15's streamlines, which are a picture of
+one instant drawn in pixels. `Particles.streakStep` releases particles from seeds every step: a
+streakline. `examples/double-gyre.fsx` draws all three.
+
+### Grid solvers
+
+`Fdm` steps a `ScalarGrid` by finite differences, with a boundary condition per side: a
+`Dirichlet` value in the field's unit, a `Neumann` outward flux in its unit per metre, or
+`Periodic`. Heat diffuses as `∂T/∂t = α ∇²T`, and the stability limit of the explicit scheme is a
+time:
+
+```fsharp
+let plateGrid = ScalarGrid.sample (Grid.linear 0.0<m> 0.1<m> 41) (Grid.linear 0.0<m> 0.1<m> 41) (fun x y -> if x < 0.05<m> then 350.0<K> else 300.0<K>)
+let steel = 1.2e-5<m^2/s>
+let plateEdges = { Boundaries.all (Boundary.Neumann 0.0<K/m>) with Left = Boundary.Dirichlet 350.0<K> }
+
+printfn "forward Euler is stable below %.4f s on this grid" (float (Fdm.explicitLimit steel plateGrid))
+let plate = Sim.ofStep 0.5<s> (Fdm.heatImplicit steel plateEdges) plateGrid |> Sim.trajectory 10.0<s> 120.0<s>
+let plateFigure = Field.heatmap U.metre U.metre U.kelvin (plate.At 60.0<s>)
+```
+
+`Fdm.heat` is forward Euler, and refuses a step past `Fdm.explicitLimit` with both numbers.
+`Fdm.heatImplicit` is Crank–Nicolson, stable at any step and second order in time; it damps the
+highest frequencies weakly, so a jump in the data rings for a few steps. `Fdm.wave` is leapfrog
+under `Fdm.waveLimit`, and `Fdm.poisson` solves `∇²u = f` by over-relaxation, reporting its
+sweeps and residual. All of them use `Fdm.laplacian5`, the compact five-point stencil, and not
+`Field.laplacian`, whose wide stencil is zero on a checkerboard and would never damp one. The grid
+must be uniform.
+
+### Playing a simulation
+
+A trajectory is an `Anim`, so `Anim.map view trajectory` is a film (§19). In a live figure, a
+time control plays it:
+
+```fsharp
+let platePlayer =
+    interact {
+        let! t = Control.time "t" 0.0<s> 120.0<s>
+        return Field.heatmap U.metre U.metre U.kelvin (plate.At t)
+    }
+```
+
+A notebook draws a range input and a play button, and plays it on the page's clock; a window
+plays it on its frame loop, with space to start and stop. Every frame played is an ordinary value
+change, so a recording replays the playback. The figure is arranged over 60 states along the time
+control's range, so a view whose widest state lies between the ends does not re-arrange as it
+plays. A view of a moving point on automatic axes still does, each time a coordinate passes
+through zero; state its axes.
+
+### Under Fable
+
+`Marey.Sim` compiles under Fable, and a simulation in a browser page runs from the same source
+(`examples/web/`). The .NET suite and Node print the same digits for the runs in
+`tests/Marey.Tests/golden/sim-runs.txt`. **A chaotic system is the exception**: JavaScript's `sin`
+and `exp` differ from .NET's in the last bit for a few percent of arguments, and a double pendulum
+turns an ulp into 0.1 rad within half a minute, so the browser's double pendulum and the kernel's
+are different trajectories after that. Both are correct to the integrator's order. An adaptive
+step whose force calls such a function differs in its last digits for the same reason.
+
+---
+
+## 26. The scene IR
 
 Everything above compiles to one closed ten-case `Scene` IR, and every backend consumes only that.
 It is the level at which a figure that came out wrong can be inspected.
@@ -2376,7 +2574,7 @@ paints the overlap twice. For a single shape, `Color.A` is still the simpler too
 
 ---
 
-## 26. Escape hatches
+## 27. Escape hatches
 
 **Bring your own scales.** `Chart.ofSeries` takes an already-scaled typed series, so the scales are
 the caller's and everything downstream still works.
@@ -2412,7 +2610,7 @@ For a stateful backend there is `IBackend` and `Chart.renderTo`, which is the pa
 
 ## What is not here yet
 
-Simulation (integrating a system over physical time: trajectories, pathlines, particles), GPU
-computation of fields, a browser renderer for scenes compiled in a kernel, picking a datum under
-the pointer, and typesetting without a TeX installation are all intended, and none of them exist
-yet.
+GPU computation of fields (Stable Fluids, lattice Boltzmann, line-integral convolution on the
+GPU), stiff ODE solvers, solvers on non-uniform grids, a browser renderer for scenes compiled in a
+kernel, picking a datum under the pointer, and typesetting without a TeX installation are all
+intended, and none of them exist yet.

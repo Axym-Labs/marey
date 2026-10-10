@@ -17,11 +17,12 @@
     <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Sim</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>Simulation for Marey: ODE integrators typed by units of measure (Euler, RK4, velocity Verlet, leapfrog), a simulation as a step function, and trajectories that seek like any other animation.</Description>
+    <Description>Simulation for Marey: ODE integrators typed by units of measure (Euler, RK4, Dormand-Prince, velocity Verlet, leapfrog), trajectories that seek like any other animation, invariants, events and collisions, Poincare sections, pathlines and particles, and finite-difference heat, wave and Poisson solvers.</Description>
     <PackageTags>fsharp simulation ode integrator runge-kutta verlet symplectic units-of-measure scientific</PackageTags>
     <!-- Published from M5.5 phase 2, with the integrators as its producer: a step is usable
          alone, folded by hand or by `Sim.run`. Both workflows' package counts went 16 -> 17 and
-         their Fable counts 8 -> 9 in the same commit (gate 16). -->
+         their Fable counts 8 -> 9 in the same commit (gate 16). Its own PackageReadme.md from
+         phase 12. -->
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 

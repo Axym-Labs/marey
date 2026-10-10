@@ -66,7 +66,9 @@ let private assemblies =
       // M4 phase 9, with the fields chapter.
       "Marey.Fields"
       // M5 phase 10, with the GPU and window chapter.
-      "Marey.Backend.Gpu" ]
+      "Marey.Backend.Gpu"
+      // M5.5 phase 12, with the simulation chapter.
+      "Marey.Sim" ]
 
 let private guidePath =
     lazy (Path.Combine(Golden.repoRoot.Force(), "docs", "guide.md"))
