@@ -505,6 +505,20 @@ module ``D32 TeX markup is separated from displayable text`` =
         // ...and left alone in the plain one.
         Assert.Contains("50% yield_2", spec.Title)
 
+    /// `TitleTex` goes to a TeX engine verbatim, past the backend's own escaping, so the quantity
+    /// name's non-ASCII characters have to become macros here. A raw `Δ` stops `pdflatex`.
+    [<Fact>]
+    let ``a Greek quantity name becomes math-mode macros in the TeX title only`` () =
+        let spec = Axis.auto Siunitx "|ΔE|" accel
+
+        Assert.Equal(
+            "\\textbar{}\\ensuremath{\\Delta}E\\textbar{} [\\qty{}{\\metre\\per\\second\\squared}]",
+            spec.TitleTex.Value
+        )
+
+        Assert.Equal("|ΔE| [m·s⁻²]", spec.Title)
+        Assert.Equal("|ΔE| [m·s⁻²]", (Axis.auto Unicode "|ΔE|" accel).Title)
+
     /// The erased path must make the same split, or a reloaded figure loses its TeX titles.
     [<Fact>]
     let ``the erased path splits markup the same way`` () =
@@ -543,14 +557,106 @@ module ``D32 Tex escaping`` =
     let ``a backslash does not get its own braces re-escaped`` () =
         Assert.Equal("\\textbackslash{}", Tex.escape "\\")
 
+    /// Latin letters with diacritics are set by LaTeX's own UTF-8 support and pass through.
     [<Fact>]
-    let ``escape leaves unicode alone`` () =
-        Assert.Equal("kg·m·s⁻² Ω µm", Tex.escape "kg·m·s⁻² Ω µm")
+    let ``escape leaves Latin diacritics alone`` () =
+        Assert.Equal("Größe é ñ ç", Tex.escape "Größe é ñ ç")
 
     [<Fact>]
     let ``isLiteralSafe agrees with escape`` () =
         for s in [ "plain"; "50%"; "a_b"; "kg·m"; "\\qty"; "~"; "^"; "" ] do
             Assert.Equal(Tex.isLiteralSafe s, Tex.escape s = s)
+
+// ======================================================================================
+// The non-ASCII characters `Tex.escape` rewrites
+//
+// An axis title under `Latex` or `Siunitx` is TeX source, which a backend passes through verbatim,
+// so the quantity name inside it is escaped by `Tex.escape` alone. Before the Unicode table moved
+// from the TikZ backend into Core, `Chart.withYLabel "|ΔE|"` under `Theme.tikz` put a raw `Δ` into
+// the document and `pdflatex` stopped on it. The set is stated on `Tex`; this pins it exactly.
+// ======================================================================================
+
+module ``Tex escaping of non-ASCII characters`` =
+
+    /// Every non-ASCII character `escape` rewrites, with what it becomes. The table on `Tex`, in
+    /// full: adding or dropping a character fails the exhaustive test below.
+    let private table: (char * string) list =
+        let greek =
+            [ 'α', "alpha"; 'β', "beta"; 'γ', "gamma"; 'δ', "delta"; 'ε', "varepsilon"; 'ϵ', "epsilon"
+              'ζ', "zeta"; 'η', "eta"; 'θ', "theta"; 'ϑ', "vartheta"; 'ι', "iota"; 'κ', "kappa"
+              'λ', "lambda"; 'ν', "nu"; 'ξ', "xi"; 'π', "pi"; 'ρ', "rho"; 'σ', "sigma"
+              'ς', "varsigma"; 'τ', "tau"; 'υ', "upsilon"; 'φ', "varphi"; 'ϕ', "phi"; 'χ', "chi"
+              'ψ', "psi"; 'ω', "omega"; 'Γ', "Gamma"; 'Δ', "Delta"; 'Θ', "Theta"; 'Λ', "Lambda"
+              'Ξ', "Xi"; 'Π', "Pi"; 'Σ', "Sigma"; 'Υ', "Upsilon"; 'Φ', "Phi"; 'Ψ', "Psi" ]
+            |> List.map (fun (c, m) -> c, "\\ensuremath{\\" + m + "}")
+
+        let operators =
+            [ '×', "times"; '±', "pm"; '⋅', "cdot"; '≤', "leq"; '≥', "geq"; '≈', "approx"
+              '≠', "neq"; '∂', "partial"; '∇', "nabla"; '∞', "infty" ]
+            |> List.map (fun (c, m) -> c, "\\ensuremath{\\" + m + "}")
+
+        let scripts =
+            [ for c, a in Seq.zip "⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺" "0123456789-+" -> c, "\\textsuperscript{" + string a + "}"
+              for c, a in Seq.zip "₀₁₂₃₄₅₆₇₈₉₋₊" "0123456789-+" -> c, "\\textsubscript{" + string a + "}" ]
+
+        greek
+        @ operators
+        @ scripts
+        @ [ '−', "\\ensuremath{-}"
+            '·', "\\textperiodcentered{}"
+            '°', "\\textdegree{}"
+            '\u00B5', "\\textmu{}" // micro sign
+            '\u03BC', "\\textmu{}" // Greek mu
+            '\u03A9', "\\textohm{}" // Greek capital omega
+            '\u2126', "\\textohm{}" // ohm sign
+            '\u00C5', "\\AA{}" // A with ring
+            '\u212B', "\\AA{}" // angstrom sign
+            '\u00A0', "~"
+            '\u2009', "\\,"
+            '–', "--"
+            '—', "---" ]
+
+    [<Fact>]
+    let ``each character in the table becomes its macro`` () =
+        for c, expected in table do
+            Assert.Equal(expected, Tex.escape (string c))
+
+    /// Exhaustive over the Basic Multilingual Plane: a non-ASCII character is rewritten exactly
+    /// when it is in the table, and what it becomes is ASCII.
+    [<Fact>]
+    let ``no other non-ASCII character is rewritten`` () =
+        let mapped = table |> List.map fst |> Set.ofList
+        Assert.Equal(table.Length, mapped.Count)
+
+        for code in 0x80 .. 0xFFFF do
+            if code < 0xD800 || code > 0xDFFF then
+                let c = char code
+                let out = Tex.escape (string c)
+                Assert.True((out <> string c) = mapped.Contains c, sprintf "U+%04X" code)
+
+                if mapped.Contains c then
+                    Assert.True(out |> Seq.forall (fun ch -> int ch < 0x80), sprintf "U+%04X -> %s" code out)
+
+    let private alphabet =
+        Array.append [| for code in 0x20 .. 0x7E -> char code |] (table |> List.map fst |> Array.ofList)
+
+    /// A string of ASCII and table characters escapes to pure ASCII, whatever the mix: runs of
+    /// scripts, reserved characters next to Greek, macros next to letters.
+    [<FsCheck.Xunit.Property>]
+    let ``ASCII and table characters escape to pure ASCII`` (picks: int[]) =
+        let n = alphabet.Length
+        let s = picks |> Array.map (fun i -> alphabet.[((i % n) + n) % n]) |> System.String
+        Tex.escape s |> Seq.forall (fun ch -> int ch < 0x80)
+
+    /// A script run becomes one script, and a superscript after a subscript starts a new one.
+    [<Fact>]
+    let ``script runs collapse`` () =
+        Assert.Equal("v\\textsubscript{0}\\textsuperscript{2}", Tex.escape "v₀²")
+        Assert.Equal("x\\textsubscript{-12}", Tex.escape "x₋₁₂")
+
+    [<FsCheck.Xunit.Property>]
+    let ``isLiteralSafe agrees with escape on any string`` (s: string) =
+        Tex.isLiteralSafe s = (Tex.escape s = (if isNull s then "" else s))
 
 // ======================================================================================
 // D38 — the three characters TeX accepts and then typesets as something else

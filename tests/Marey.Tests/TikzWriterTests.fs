@@ -122,11 +122,12 @@ module ``D32 text escaping`` =
         Assert.Equal("a \\& b \\# c \\$ d", Tikz.escapeText "a & b # c $ d")
         Assert.Equal("\\{braced\\}", Tikz.escapeText "{braced}")
 
-    /// Shared with `Marey.Units` through `Tex.tryEscapeChar` rather than copied, so the axis-title
-    /// composer and the backend cannot disagree about what needs escaping (F2).
+    /// Shared with `Marey.Units` through `Tex.escape` rather than copied, so the axis-title
+    /// composer and the backend cannot disagree about what needs escaping (F2) — the Unicode
+    /// half included, since a TeX axis title passes through this backend unescaped.
     [<Fact>]
-    let ``escaping agrees with Core for pure-ASCII input`` () =
-        for s in [ "plain"; "50%"; "a_b"; "a&b"; "#1"; "$x$"; "{a}"; "~"; "^"; "\\" ] do
+    let ``escaping agrees with Core`` () =
+        for s in [ "plain"; "50%"; "a_b"; "a&b"; "#1"; "$x$"; "{a}"; "~"; "^"; "\\"; "|ΔE|"; "s⁻²"; "v₀" ] do
             Assert.Equal(Tex.escape s, Tikz.escapeText s)
 
     /// A whole exponent becomes one script, not one per digit: `s⁻²` must set as
@@ -301,7 +302,8 @@ module ``generated identifiers are TeX-safe`` =
 module ``escaped text compiles`` =
 
     /// Strings chosen to cover every branch of the escaper at once: reserved characters, both
-    /// codepoints of the ambiguous glyphs, superscript runs, and the dashes and spaces.
+    /// codepoints of the ambiguous glyphs, super- and subscript runs, the operators, and the
+    /// dashes and spaces.
     let private hostile =
         [ "plain text"
           "50% yield_2 & more #1 $x$ {braced}"
@@ -319,7 +321,9 @@ module ``escaped text compiles`` =
           // Every Greek letter the escaper maps: a quantity's conventional name is Greek as often
           // as not, and before D98's names `ρ` on a density axis already stopped the engine.
           "θ [rad] ω [rad·s⁻¹] α ρ"
-          "αβγδεϵζηθϑικλνξπρσςτυφϕχψω ΓΔΘΛΞΠΣΥΦΨ" ]
+          "αβγδεϵζηθϑικλνξπρσςτυφϕχψω ΓΔΘΛΞΠΣΥΦΨ"
+          "a ⋅ b ≤ c ≥ d ≈ e ≠ f ∂g ∇h ∞"
+          "v₀ x₋₁₂ y₊ s⁻² v₀²" ]
 
     [<Fact>]
     let ``the engine accepts every escaped hostile string`` () =

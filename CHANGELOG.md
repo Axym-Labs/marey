@@ -100,6 +100,14 @@ land in a minor release.
 
 - **`Field.laplacian`'s documentation says it is a display operator**: its wide stencil is zero on
   a checkerboard, so it is not what a solver should step with.
+- **A Greek letter in an axis title stopped `pdflatex` under the `Latex` and `Siunitx` unit
+  styles.** Those titles are TeX source, which the TikZ backend passes through unescaped, and the
+  quantity name in them was escaped for TeX's reserved characters only: `Chart.withYLabel "|ΔE|"`
+  under `Theme.tikz` wrote a raw `Δ`. The Unicode-to-macro table moved from the TikZ backend into
+  `Tex.escape`, so a TeX title and a plain text run are escaped alike, and `Tex` states the set:
+  Greek, `µ Ω Å °`, `× ± − · ⋅ ≤ ≥ ≈ ≠ ∂ ∇ ∞`, super- and subscript digits and signs, two spaces
+  and two dashes. Subscripts and the operators from `⋅` on are new to the table, and now also
+  compile in plain text runs. The plain `Title` is unchanged.
 - **Every package requires FSharp.Core ≥ 8.0.100**, stated in the build, instead of the version
   bundled with the SDK that packed it. Every `0.5.0` package required ≥ 10.1.401, so a project on
   SDK 10.0.1xx restored any of them with a downgrade warning (NU1605).

@@ -45,16 +45,13 @@ open System.Text
 // and a `_` outside maths is an error. `runContent` is the only function that decides which is
 // which, so no traversal code has to remember.
 //
-// Escaping is one pass over the string, interleaving three substitutions:
+// Escaping is `Tex.escape` in Core: TeX's reserved characters, runs of Unicode superscripts and
+// subscripts, and the stated set of non-ASCII characters — Greek, `·`, `Ω`, `µ`, `Å`, `°`, the
+// operators — as kernel macros. It lives in Core because `Marey.Units` needs the identical rule
+// for the quantity name inside a TeX axis title, which this backend passes through verbatim; a
+// copy here would drift from that one.
 //
-//   1. TeX's reserved characters, via `Tex.tryEscapeChar` in Core — shared with the axis-title
-//      composer in `Marey.Units` rather than copied, so the two cannot drift (F2);
-//   2. runs of Unicode superscripts, collapsed into a single `\textsuperscript{...}`, so that
-//      `s⁻²` sets as `s\textsuperscript{-2}` rather than as two separate scripts;
-//   3. single Unicode characters the unit renderer produces — `·`, `Ω`, `µ`, `Å`, `°`.
-//
-// Everything else passes through as UTF-8, which modern LaTeX reads natively. Verified: a
-// document using exactly these macros compiles under pdfLaTeX with zero errors.
+// Everything else passes through as UTF-8; `Tex` says which of it pdfLaTeX can set.
 // ======================================================================================
 
 /// Number formatting, TeX escaping, colour definitions and identifier allocation for TikZ
@@ -141,142 +138,8 @@ module Tikz =
 
     // ---- text ------------------------------------------------------------------------
 
-    /// The ASCII character a Unicode superscript stands for, or `None`.
-    ///
-    /// The digits are split across two Unicode blocks — ¹²³ are Latin-1 leftovers at U+00B9,
-    /// U+00B2, U+00B3 while ⁰ and ⁴-⁹ live at U+2070, U+2074-U+2079 — which is exactly the kind
-    /// of thing a hand-written range check gets wrong. `UnitDisplay.superscript` emits these,
-    /// and U+207B SUPERSCRIPT MINUS rather than a hyphen.
-    let private superscriptOf (c: char) : char option =
-        match c with
-        | '⁰' -> Some '0'
-        | '¹' -> Some '1'
-        | '²' -> Some '2'
-        | '³' -> Some '3'
-        | '⁴' -> Some '4'
-        | '⁵' -> Some '5'
-        | '⁶' -> Some '6'
-        | '⁷' -> Some '7'
-        | '⁸' -> Some '8'
-        | '⁹' -> Some '9'
-        | '⁻' -> Some '-'
-        | '⁺' -> Some '+'
-        | _ -> None
-
-    /// A TeX macro for a single Unicode character, or `None` to pass it through.
-    ///
-    /// Scoped to what the unit renderer actually produces, plus the typographic characters that
-    /// turn up in a caller's axis label. Where Unicode has two codepoints for one glyph both are
-    /// mapped: `Marey.Units` uses U+03A9 GREEK CAPITAL OMEGA for the ohm and U+00C5 for the
-    /// angstrom, but a caller pasting from a units table may well supply U+2126 OHM SIGN or
-    /// U+212B ANGSTROM SIGN, and silently setting one of those as a missing glyph would be a
-    /// baffling bug to chase.
-    ///
-    /// `\textperiodcentered`, `\textdegree`, `\textohm` and `\textmu` come from `textcomp`,
-    /// which has been part of the LaTeX kernel since 2020; `\AA` is plain LaTeX. All verified to
-    /// compile.
-    /// Greek letters, as math-mode macros. **A quantity's conventional name is Greek as often as
-    /// not** — ρ for a density, θ, ω and α for an angle and its rates (D98) — and an axis titled
-    /// with one stopped `pdflatex` at "Unicode character θ (U+03B8)". Math mode because a
-    /// quantity symbol is set in italic, which is what `\theta` gives and what physics writes.
-    ///
-    /// µ and the capital omega are absent here on purpose: `unicodeMacro` maps them first, to the
-    /// upright `\textmu` and `\textohm` a unit wants. Capitals that look like Latin letters (Α, Β,
-    /// Ε, …) have no macro of their own in LaTeX and are not mapped.
-    let private greekMacro (c: char) : string option =
-        match c with
-        | 'α' -> Some "\\alpha"
-        | 'β' -> Some "\\beta"
-        | 'γ' -> Some "\\gamma"
-        | 'δ' -> Some "\\delta"
-        | 'ε' -> Some "\\varepsilon"
-        | 'ϵ' -> Some "\\epsilon"
-        | 'ζ' -> Some "\\zeta"
-        | 'η' -> Some "\\eta"
-        | 'θ' -> Some "\\theta"
-        | 'ϑ' -> Some "\\vartheta"
-        | 'ι' -> Some "\\iota"
-        | 'κ' -> Some "\\kappa"
-        | 'λ' -> Some "\\lambda"
-        | 'ν' -> Some "\\nu"
-        | 'ξ' -> Some "\\xi"
-        | 'π' -> Some "\\pi"
-        | 'ρ' -> Some "\\rho"
-        | 'σ' -> Some "\\sigma"
-        | 'ς' -> Some "\\varsigma"
-        | 'τ' -> Some "\\tau"
-        | 'υ' -> Some "\\upsilon"
-        | 'φ' -> Some "\\varphi"
-        | 'ϕ' -> Some "\\phi"
-        | 'χ' -> Some "\\chi"
-        | 'ψ' -> Some "\\psi"
-        | 'ω' -> Some "\\omega"
-        | 'Γ' -> Some "\\Gamma"
-        | 'Δ' -> Some "\\Delta"
-        | 'Θ' -> Some "\\Theta"
-        | 'Λ' -> Some "\\Lambda"
-        | 'Ξ' -> Some "\\Xi"
-        | 'Π' -> Some "\\Pi"
-        | 'Σ' -> Some "\\Sigma"
-        | 'Υ' -> Some "\\Upsilon"
-        | 'Φ' -> Some "\\Phi"
-        | 'Ψ' -> Some "\\Psi"
-        | _ -> None
-
-    let private unicodeMacro (c: char) : string option =
-        match c with
-        | '·' -> Some "\\textperiodcentered{}" // · MIDDLE DOT — the unit separator
-        | '°' -> Some "\\textdegree{}" // ° DEGREE SIGN
-        | 'µ' // µ MICRO SIGN — what Prefix.micro uses
-        | 'μ' -> Some "\\textmu{}" // μ GREEK SMALL MU
-        | 'Ω' // Ω GREEK CAPITAL OMEGA — what Derived.ohm uses
-        | 'Ω' -> Some "\\textohm{}" // Ω OHM SIGN
-        | 'Å' // Å LATIN CAPITAL A WITH RING — what NonSi.angstrom uses
-        | 'Å' -> Some "\\AA{}" // Å ANGSTROM SIGN
-        | '−' -> Some "\\ensuremath{-}" // − MINUS SIGN, not a hyphen
-        | '×' -> Some "\\ensuremath{\\times}" // ×
-        | '±' -> Some "\\ensuremath{\\pm}" // ±
-        | ' ' -> Some "~" // NO-BREAK SPACE is a tie in TeX
-        | ' ' -> Some "\\," // THIN SPACE
-        | '–' -> Some "--" // – EN DASH
-        | '—' -> Some "---" // — EM DASH
-        | c -> greekMacro c |> Option.map (fun m -> "\\ensuremath{" + m + "}")
-
-    /// Escape literal text so TeX typesets it as written.
-    ///
-    /// One pass, three substitutions, in the order documented at the top of the file. Superscript
-    /// runs are consumed greedily so that a whole exponent becomes one `\textsuperscript`.
-    let escapeText (s: string) : string =
-        if isNull s then
-            ""
-        else
-            let sb = StringBuilder(s.Length + 16)
-            let mutable i = 0
-
-            while i < s.Length do
-                match superscriptOf s.[i] with
-                | Some _ ->
-                    sb.Append "\\textsuperscript{" |> ignore
-
-                    while i < s.Length && (superscriptOf s.[i]).IsSome do
-                        sb.Append((superscriptOf s.[i]).Value) |> ignore
-                        i <- i + 1
-
-                    sb.Append '}' |> ignore
-
-                | None ->
-                    let c = s.[i]
-
-                    match Tex.tryEscapeChar c with
-                    | Some replacement -> sb.Append replacement |> ignore
-                    | None ->
-                        match unicodeMacro c with
-                        | Some macro -> sb.Append macro |> ignore
-                        | None -> sb.Append c |> ignore
-
-                    i <- i + 1
-
-            sb.ToString()
+    /// Escape literal text so TeX typesets it as written. `Tex.escape`, named for this backend.
+    let escapeText (s: string) : string = Tex.escape s
 
     /// What to typeset for a text run: its TeX source if it has any, otherwise its escaped plain
     /// text.

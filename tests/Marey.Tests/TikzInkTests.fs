@@ -292,6 +292,24 @@ module ``a figure inks the parts it is made of`` =
             // The curve is unaffected, which is what makes the two claims above about *text*.
             Assert.Equal(coverageIn panel full, coverageIn panel stripped, 6))
 
+    /// An axis title under `Theme.tikz` is TeX source that skips the backend's escaping, so a Greek
+    /// letter in it reaches the engine as whatever `Tex.escape` made of it. A raw `Δ` stops
+    /// `pdflatex`; a mapping that compiled to nothing would pass the compile gate and lose the
+    /// letter. So the title with the `Δ` must put more ink in the left margin than the same title
+    /// without it.
+    [<Fact>]
+    let ``a Greek letter in a TeX axis title is set, not dropped`` () =
+        let titled (label: string) = freeFall |> Chart.withYLabel label
+
+        withRasters2 (rasterOfFigure "ink-title-delta" (titled "|ΔE|")) (rasterOfFigure "ink-title-plain" (titled "|E|")) (fun delta plain ->
+            let withDelta = coverageIn leftMargin delta
+            let without = coverageIn leftMargin plain
+
+            Assert.True(
+                withDelta > without,
+                sprintf "the title with Δ has %.4f%% ink in the left margin, the one without %.4f%%" (100.0 * withDelta) (100.0 * without)
+            ))
+
     /// The legend was the second thing the D33 bug made invisible, and `LegendTopLeft` puts it in
     /// the one part of the panel this curve never reaches — so the placement is the assertion.
     [<Fact>]
