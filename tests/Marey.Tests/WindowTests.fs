@@ -204,6 +204,23 @@ module ``gate 12`` =
 
         Assert.Equal(2.0, session.State.Values.[0])
 
+    /// The window draws `Live.readout` of the state its events reach, so a pointer moved to the
+    /// bottom of a wide log axis reads there as the page does: in powers of ten, not as fifteen
+    /// zeros.
+    [<Fact>]
+    let ``the window reads a wide log axis in powers of ten`` () =
+        let t = Array.init 27 (fun i -> float i * 1.0<s>)
+        let e = Array.init 27 (fun i -> 10.0 ** float (i - 18) * 1.0<J>)
+        let l = interact { return Chart.line U.second Derived.joule t e |> Chart.withYLog }
+        let strip = WindowStrip.height l.Controls
+        let size: Extent<px> = { Width = 800.0<px>; Height = 500.0<px> + strip }
+        let sized, _ = WindowSession.feed l (WindowSession.start l) (0.0<s>, WindowEvent.Resized size)
+        let v = (Live.panels l sized.State).[0]
+        let bottom = { X = (v.Plot.X0 + v.Plot.X1) / 2.0; Y = v.Plot.Y1 }
+        let over, sent = WindowSession.feed l sized (0.1<s>, WindowEvent.Moved { bottom with Y = bottom.Y + strip })
+        Assert.True((sent = [ Hover bottom ]), sprintf "sent %A" sent)
+        Assert.Matches(@"^E = (\d(\.\d+)?×)?10⁻¹⁸ J$", (Live.readout l over.State).Value.Lines.[1])
+
 // ======================================================================================
 // The host, driven through `Post`
 // ======================================================================================

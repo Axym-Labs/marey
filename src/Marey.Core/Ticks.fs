@@ -232,6 +232,32 @@ module Ticks =
         | 1, e -> "10" + Num.superscript e
         | m, e -> string m + "×10" + Num.superscript e
 
+    /// A reading on an axis written in powers of ten, in Unicode, its mantissa to the places
+    /// `resolution` resolves: `1.1×10⁻¹⁸` where the reading is good to a tenth of 10⁻¹⁸. A
+    /// mantissa of 1 with no places is written `10⁻¹⁸`, as the tick is. A resolution coarser than
+    /// the decade is rounded to the nearest power, since no digit of the mantissa is known.
+    ///
+    /// The mantissa is rounded half away from zero, as `format` rounds, and one that rounds up to
+    /// 10 moves to the next decade with one place more, so that it claims the same precision.
+    let formatPowerTo (resolution: float) (x: float) : string =
+        if not (x > 0.0) || System.Double.IsInfinity x then
+            format 0 x
+        else
+            let e = int (floor (System.Math.Log10 x + 1e-9))
+            let r = resolution / 10.0 ** float e
+
+            if r >= 10.0 && not (System.Double.IsInfinity r) then
+                "10" + Num.superscript (int (Num.roundAway (System.Math.Log10 x)))
+            else
+                let d = decimalsFor r
+                let m = Num.roundAway (x / 10.0 ** float e * 10.0 ** float d) / 10.0 ** float d
+                let m, e, d = if m >= 10.0 then m / 10.0, e + 1, min 15 (d + 1) else m, e, d
+
+                if d = 0 && m = 1.0 then
+                    "10" + Num.superscript e
+                else
+                    format d m + "×10" + Num.superscript e
+
     /// `x` with the decimals it needs itself rather than those of the finest tick on its axis:
     /// `0.01`, `1`, `100`. Injective over log ticks in [10⁻³, 10³], which differ in their mantissa
     /// or their decade and need at most three decimals.

@@ -317,6 +317,18 @@ module LogLabels =
         Assert.Equal<string[]>([| "0.01"; "0.1"; "1"; "10" |], erased 1e-2 10.0)
         Assert.Equal("10⁻¹⁸", (erased 1e-18 1e8).[0])
 
+    /// A reading in powers of ten keeps the places its resolution gives the mantissa. One that
+    /// rounds up to 10 moves to the next decade with a place more, and one coarser than its
+    /// decade is the nearest power.
+    [<Fact>]
+    let ``a reading in powers of ten has its resolution's places`` () =
+        Assert.Equal("1.1×10⁻¹⁸", Ticks.formatPowerTo 2e-19 1.0617e-18)
+        Assert.Equal("1.06×10⁻¹⁸", Ticks.formatPowerTo 2e-20 1.0617e-18)
+        Assert.Equal("10⁸", Ticks.formatPowerTo 2e8 1e8)
+        Assert.Equal("9×10⁷", Ticks.formatPowerTo 2e7 9.4e7)
+        Assert.Equal("1.00×10⁸", Ticks.formatPowerTo 1e6 9.96e7)
+        Assert.Equal("10⁸", Ticks.formatPowerTo 5e8 4e7)
+
 module Formatting =
 
     /// Ticks.fs: "a figure rendered on a German-locale machine must not label its axis `1,5`

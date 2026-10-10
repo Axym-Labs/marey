@@ -94,6 +94,8 @@ land in a minor release.
 - **`Ticks.WideLogDecades`, `Ticks.isWideLog`, `Ticks.logInPowers`, `Ticks.powerOfTen`,
   `Ticks.formatPower` and `Ticks.formatOwn`**, the rule a log axis's tick labels follow, and
   `Num.superscript`, which `UnitDisplay.superscript` now calls.
+- **`Ticks.formatPowerTo`**, a reading in powers of ten with its mantissa to a given resolution:
+  `1.1×10⁻¹⁸`.
 
 ### Changed
 
@@ -118,6 +120,11 @@ land in a minor release.
   spanning more than three decades is written in powers of ten, `10⁻⁸`, and takes no prefix. A
   narrower one takes its prefix as a linear axis does, and is written in powers of ten when a tick
   still lies outside [10⁻³, 10³]. `Erase.scale` follows the same rule.
+- **The pointer's readout on a log axis written in powers of ten was in fixed point.** Over
+  10⁻¹⁸ … 10⁸ J it read `0.000000000000000 J` at the bottom, `0.000010 J` in the middle and
+  `100000000 J` at the top. It is now written in powers of ten as the ticks are, its mantissa to the
+  places a pixel resolves: `1.0×10⁻¹⁸ J`, `1.0×10⁻⁵ J`, `1.0×10⁸ J`, in the widget and in the
+  window.
 
 ## [0.5.0] — 2026-10-10
 
