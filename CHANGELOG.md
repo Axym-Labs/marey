@@ -21,6 +21,9 @@ land in a minor release.
   two operations that advance it and combine its rates. An acceleration or a rate in the wrong
   unit does not compile. `Ode.verletInPlace` steps the caller's arrays and allocates nothing.
   `Sim.ofStep`, `Sim.run` and `Sim.states` run a step with time computed as `k · h`.
+  `Ode.dopri5` (a 2-D flow, an absolute tolerance per axis) and `Ode.dopri5With` (any state, with
+  an `ErrorNorm` that weighs each component by its own tolerance) are Dormand–Prince 4(5) with a PI
+  controller and fourth-order dense output; `Sim.ofAdaptive` runs one.
   `Sim.trajectory every horizon` is the simulation as an `Anim`: a seek to any time replays from
   the nearest checkpoint and gives the state a straight run reaches, bit for bit, on any thread. A
   checkpoint table estimated over 512 MiB is refused, naming an interval that fits. The package

@@ -1,5 +1,7 @@
 namespace Marey
 
+open System
+
 // ======================================================================================
 // D134 — THE SHAPE OF A STATE, AND THE INTEGRATOR'S TYPE.
 //
@@ -75,6 +77,91 @@ module Tangent =
           Lin =
             fun a (struct (dq1, dv1)) b (struct (dq2, dv2)) ->
                 struct (Array.map2 (fun x y -> a * x + b * y) dq1 dq2, Array.map2 (fun x y -> a * x + b * y) dv1 dv2) }
+
+// ---- D143: adaptive steps -----------------------------------------------------------------------
+
+/// What an adaptive integrator carries from one step to the next: the step it proposes, and the
+/// previous step's error, which the PI controller weighs against the current one. Both belong in a
+/// checkpoint (D143): a replay that restarted the controller from anything else would choose
+/// different steps than the straight run did.
+[<Struct>]
+type Controller<[<Measure>] 't> =
+    { H: float<'t>
+      ErrOld: float }
+
+[<RequireQualifiedAccess>]
+module Controller =
+
+    /// The controller before its first step: a proposed `h` and no error history.
+    let start<[<Measure>] 't> (h: float<'t>) : Controller<'t> = { H = h; ErrOld = 1e-4 }
+
+/// One accepted step of an adaptive integrator, from `T0` to `T1`.
+type Accepted<'s, [<Measure>] 't> =
+    {
+        T0: float<'t>
+        T1: float<'t>
+        /// The state at `T1`.
+        State: 's
+        /// The controller for the next step.
+        Next: Controller<'t>
+        /// The state at any time in `[T0, T1]`, from the step's own stages.
+        Dense: float<'t> -> 's
+        /// Attempts refused before this one was accepted.
+        Rejected: int
+    }
+
+/// An adaptive integrator: from a state at `t` and the controller, the next accepted step.
+type AdaptiveStep<'s, [<Measure>] 't> = float<'t> -> Controller<'t> -> 's -> Accepted<'s, 't>
+
+/// The size of a step's local error against its tolerances, dimensionless, so that a step is
+/// accepted at 1 or less: `norm h e s0 s1`, where `h · e` is the error estimate and `s0`, `s1`
+/// the states at the step's ends. A single tolerance across kelvin and mol/m³ means nothing, so a
+/// state of mixed units weighs each component by its own.
+type ErrorNorm<'s, 'ds, [<Measure>] 't> = float<'t> -> 'ds -> 's -> 's -> float
+
+[<RequireQualifiedAccess>]
+module ErrorNorm =
+
+    let private term (e: float) (scale: float) = let r = e / scale in r * r
+
+    let private check (rtol: float) (atols: float list) =
+        if not (rtol >= 0.0) || List.exists (fun a -> not (a >= 0.0)) atols then
+            invalidArg "rtol" "Marey: tolerances must be non-negative."
+
+        if rtol = 0.0 && List.exists (fun a -> a = 0.0) atols then
+            invalidArg "rtol" "Marey: a component with no absolute tolerance needs a relative one."
+
+    /// The root mean square of each component's error over `atol + rtol · max(|s0|, |s1|)`, for a
+    /// 2-D state with an absolute tolerance per axis.
+    let flow2<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
+        (atolX: float<'x>)
+        (atolY: float<'y>)
+        (rtol: float)
+        : ErrorNorm<struct (float<'x> * float<'y>), struct (float<'x / 't> * float<'y / 't>), 't> =
+        check rtol [ float atolX; float atolY ]
+
+        fun h (struct (ex, ey)) (struct (x0, y0)) (struct (x1, y1)) ->
+            let sx = atolX + rtol * max (abs x0) (abs x1)
+            let sy = atolY + rtol * max (abs y0) (abs y1)
+            sqrt ((term (float (h * ex)) (float sx) + term (float (h * ey)) (float sy)) / 2.0)
+
+    /// The same for a second-order state: one absolute tolerance for the coordinates, one for the
+    /// velocities.
+    let secondOrder<[<Measure>] 'q, [<Measure>] 't>
+        (atolQ: float<'q>)
+        (atolV: float<'q / 't>)
+        (rtol: float)
+        : ErrorNorm<struct (float<'q>[] * float<'q / 't>[]), struct (float<'q / 't>[] * float<'q / 't ^ 2>[]), 't> =
+        check rtol [ float atolQ; float atolV ]
+
+        fun h (struct (eq, ev)) (struct (q0, v0)) (struct (q1, v1)) ->
+            let mutable sum = 0.0
+
+            for i in 0 .. q0.Length - 1 do
+                sum <- sum + term (float (h * eq.[i])) (float (atolQ + rtol * max (abs q0.[i]) (abs q1.[i])))
+                sum <- sum + term (float (h * ev.[i])) (float (atolV + rtol * max (abs v0.[i]) (abs v1.[i])))
+
+            if q0.Length = 0 then 0.0 else sqrt (sum / float (2 * q0.Length))
 
 /// §8.3's integrators. Each returns a `Step`, so `Sim.ofStep h (Ode.rk4 f) s0` is a whole
 /// simulation, and a step is usable on its own: `step t h s`.
@@ -203,3 +290,135 @@ module Ode =
 
             kick (t + h) q half v
             struct (q, v)
+
+    // ---- Dormand–Prince 4(5) (D143) ---------------------------------------------------------------
+
+    // The tableau, and the error weights `b − b̂`. The fifth-order solution is propagated (local
+    // extrapolation), and the seventh stage is the derivative at the step's end.
+    let private a21 = 1.0 / 5.0
+    let private a31, a32 = 3.0 / 40.0, 9.0 / 40.0
+    let private a41, a42, a43 = 44.0 / 45.0, -56.0 / 15.0, 32.0 / 9.0
+    let private a51, a52, a53, a54 = 19372.0 / 6561.0, -25360.0 / 2187.0, 64448.0 / 6561.0, -212.0 / 729.0
+    let private a61, a62, a63, a64, a65 = 9017.0 / 3168.0, -355.0 / 33.0, 46732.0 / 5247.0, 49.0 / 176.0, -5103.0 / 18656.0
+    let private b1, b3, b4, b5, b6 = 35.0 / 384.0, 500.0 / 1113.0, 125.0 / 192.0, -2187.0 / 6784.0, 11.0 / 84.0
+    let private e1, e3, e4, e5, e6, e7 = 71.0 / 57600.0, -71.0 / 16695.0, 71.0 / 1920.0, -17253.0 / 339200.0, 22.0 / 525.0, -1.0 / 40.0
+
+    // Shampine's fourth-order continuous extension, as Hairer's DOPRI5 writes it.
+    let private d1, d3, d4, d5, d6, d7 =
+        -12715105075.0 / 11282082432.0,
+        87487479700.0 / 32700410799.0,
+        -10690763975.0 / 1880347072.0,
+        701980252875.0 / 199316789632.0,
+        -1453857185.0 / 822651844.0,
+        69997945.0 / 29380423.0
+
+    /// The weights of `k₁…k₇` in the dense output at `θ ∈ [0, 1]`: `y(θ) = y₀ + h Σ wᵢ kᵢ`. Hairer's
+    /// nested form, `θ(r₂ + (1−θ)(r₃ + θ(r₄ + (1−θ)r₅)))`, with each `r` expanded into the stages.
+    let private denseWeights (th: float) : float[] =
+        let b = [| b1; 0.0; b3; b4; b5; b6; 0.0 |]
+        let d = [| d1; 0.0; d3; d4; d5; d6; d7 |]
+        let u = 1.0 - th
+
+        Array.init 7 (fun i ->
+            let r2 = b.[i]
+            let r3 = (if i = 0 then 1.0 else 0.0) - b.[i]
+            let r4 = 2.0 * b.[i] - (if i = 0 then 1.0 else 0.0) - (if i = 6 then 1.0 else 0.0)
+            th * (r2 + u * (r3 + th * (r4 + u * d.[i]))))
+
+    // The PI controller, with Hairer's constants: a safety factor of 0.9, a step that grows at most
+    // tenfold and shrinks at most fivefold, β = 0.04 on the previous error.
+    let private safety = 0.9
+    let private beta = 0.04
+    let private expo = 0.2 - 0.75 * beta
+    let private maxRejections = 100
+
+    /// Dormand–Prince 4(5) over any state given a tangent and an error norm: steps chosen by a PI
+    /// controller to keep each step's error at 1 in `norm`, and the state between a step's ends
+    /// from its fourth-order dense output. A step that cannot meet its tolerance at a step size
+    /// rounding can still see is refused, naming the time.
+    let dopri5With<'s, 'ds, [<Measure>] 't>
+        (tangent: Tangent<'s, 'ds, 't>)
+        (norm: ErrorNorm<'s, 'ds, 't>)
+        (f: float<'t> -> 's -> 'ds)
+        : AdaptiveStep<'s, 't> =
+        // `a₁k₁ + a₂k₂ + …`, folded left from the first pair. Written as calls rather than over
+        // arrays: the arrays were most of a step's allocation.
+        let inline lin2 w1 k1 w2 k2 = tangent.Lin w1 k1 w2 k2
+        let inline lin3 w1 k1 w2 k2 w3 k3 = tangent.Lin 1.0 (lin2 w1 k1 w2 k2) w3 k3
+        let inline lin4 w1 k1 w2 k2 w3 k3 w4 k4 = tangent.Lin 1.0 (lin3 w1 k1 w2 k2 w3 k3) w4 k4
+        let inline lin5 w1 k1 w2 k2 w3 k3 w4 k4 w5 k5 = tangent.Lin 1.0 (lin4 w1 k1 w2 k2 w3 k3 w4 k4) w5 k5
+        let inline lin6 w1 k1 w2 k2 w3 k3 w4 k4 w5 k5 w6 k6 = tangent.Lin 1.0 (lin5 w1 k1 w2 k2 w3 k3 w4 k4 w5 k5) w6 k6
+
+        let dense (ks: 'ds[]) (th: float) =
+            let w = denseWeights th
+            let mutable acc = tangent.Lin w.[0] ks.[0] w.[1] ks.[1]
+
+            for i in 2..6 do
+                acc <- tangent.Lin 1.0 acc w.[i] ks.[i]
+
+            acc
+
+        fun t0 control s0 ->
+            if not (control.H > 0.0<_>) || Double.IsInfinity(float control.H) then
+                invalidArg "control" (sprintf "Marey: an adaptive step must start from a positive, finite h, not %g." (float control.H))
+
+            let k1 = f t0 s0
+            let mutable h = control.H
+            let mutable result = None
+            let mutable rejected = 0
+
+            while result.IsNone do
+                if float h <= 1e-14 * max 1.0 (abs (float t0)) then
+                    failwithf "Marey: Dormand–Prince cannot meet its tolerance at t = %g; the step fell to %g." (float t0) (float h)
+
+                let k2 = f (t0 + 0.2 * h) (tangent.Axpy h (lin2 a21 k1 0.0 k1) s0)
+                let k3 = f (t0 + 0.3 * h) (tangent.Axpy h (lin2 a31 k1 a32 k2) s0)
+                let k4 = f (t0 + 0.8 * h) (tangent.Axpy h (lin3 a41 k1 a42 k2 a43 k3) s0)
+                let k5 = f (t0 + 8.0 / 9.0 * h) (tangent.Axpy h (lin4 a51 k1 a52 k2 a53 k3 a54 k4) s0)
+                let k6 = f (t0 + h) (tangent.Axpy h (lin5 a61 k1 a62 k2 a63 k3 a64 k4 a65 k5) s0)
+                let s1 = tangent.Axpy h (lin5 b1 k1 b3 k3 b4 k4 b5 k5 b6 k6) s0
+                let t1 = t0 + h
+                let k7 = f t1 s1
+                let e = lin6 e1 k1 e3 k3 e4 k4 e5 k5 e6 k6 e7 k7
+                let err = norm h e s0 s1
+                let err = if Double.IsNaN err then infinity else err
+                let fac11 = err ** expo
+
+                if err <= 1.0 then
+                    // Grow by at most 10, shrink by at most 5, and not at all right after a refusal.
+                    let fac = max 0.1 (min 5.0 (fac11 / control.ErrOld ** beta / safety))
+                    let next = h / fac
+                    let next = if rejected > 0 then min next h else next
+                    let ks = [| k1; k2; k3; k4; k5; k6; k7 |]
+                    let hh = h
+
+                    result <-
+                        Some
+                            { T0 = t0
+                              T1 = t1
+                              State = s1
+                              Next = { H = next; ErrOld = max err 1e-4 }
+                              Dense =
+                                fun t ->
+                                    if t = t0 then s0
+                                    else tangent.Axpy hh (dense ks (float ((t - t0) / hh))) s0
+                              Rejected = rejected }
+                else
+                    rejected <- rejected + 1
+
+                    if rejected > maxRejections then
+                        failwithf "Marey: Dormand–Prince refused %d steps in a row at t = %g." rejected (float t0)
+
+                    h <- h / min 5.0 (fac11 / safety)
+
+            result.Value
+
+    /// Dormand–Prince 4(5) over a 2-D flow, with an absolute tolerance per axis and one relative
+    /// tolerance.
+    let dopri5<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
+        (atolX: float<'x>)
+        (atolY: float<'y>)
+        (rtol: float)
+        (f: Flow2T<'x, 'y, 't>)
+        : AdaptiveStep<struct (float<'x> * float<'y>), 't> =
+        dopri5With Tangent.flow2 (ErrorNorm.flow2 atolX atolY rtol) (fun t (struct (x, y)) -> f t x y)

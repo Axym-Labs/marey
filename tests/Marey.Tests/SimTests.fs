@@ -265,8 +265,9 @@ module ``a simulation`` =
         let sim = Sim.ofStep h (fun _ _ s -> s) 0
         // 0.1 added 30 times is 3.0000000000000013; 30 · 0.1 is 3.0000000000000004.
         let summed = Seq.fold (fun acc _ -> acc + h) 0.0<s> [ 1..30 ]
-        Assert.Equal(30.0 * 0.1, float (Sim.timeOf 30 sim))
-        Assert.NotEqual(float summed, float (Sim.timeOf 30 sim))
+        let times = Sim.times 30 sim
+        Assert.Equal(30.0 * 0.1, float times.[30])
+        Assert.NotEqual(float summed, float times.[30])
 
     /// A step that records the times it is given: `run` hands it `k · H`.
     [<Fact>]
@@ -431,17 +432,20 @@ module ``a trajectory seeks to what a run reaches`` =
 
     /// The straight run to `t`: whole steps from zero, then the same remainder step.
     let private straight (sim: Sim<_>) (t: float<s>) =
-        let mutable k = int (floor (t / sim.H))
+        match sim.Stepping with
+        | Stepping.Adaptive _ -> failwith "a fixed-step simulation was expected"
+        | Stepping.Fixed(h, step) ->
+            let mutable k = int (floor (t / h))
 
-        while float (k + 1) * sim.H <= t do
-            k <- k + 1
+            while float (k + 1) * h <= t do
+                k <- k + 1
 
-        while k > 0 && float k * sim.H > t do
-            k <- k - 1
+            while k > 0 && float k * h > t do
+                k <- k - 1
 
-        let s = Sim.run k sim
-        let tk = float k * sim.H
-        if t > tk then sim.Step tk (t - tk) s else s
+            let s = Sim.run k sim
+            let tk = float k * h
+            if t > tk then step tk (t - tk) s else s
 
     /// Gate 4: for random times, in a random order, a seek equals the straight run, bit for bit,
     /// with checkpoints every 0.37 s (a stride of 37 steps) over 10 s.
@@ -538,3 +542,179 @@ module ``a trajectory seeks to what a run reaches`` =
         Sim.trajectory every 1.0<s> sim |> ignore
         // And a lower cap through trajectoryWithin.
         Assert.Throws<ArgumentException>(fun () -> Sim.trajectoryWithin 1_000_000L 0.5<s> 1.0<s> sim |> ignore) |> ignore
+
+// ======================================================================================
+// Phase 4 — Dormand–Prince 4(5): gates 2 and 4 for the adaptive integrator
+// ======================================================================================
+
+module ``Dormand–Prince`` =
+
+    open FsCheck.Xunit
+
+    let private start = struct (1.0<m>, 0.0<m/s>)
+
+    let private error (struct (x: float<m>, v: float<m/s>)) (struct (xe: float<m>, ve: float<m/s>)) =
+        sqrt (float ((x - xe) * (x - xe)) + float ((v - ve) / Driven.omega * ((v - ve) / Driven.omega)))
+
+    /// A tolerance so loose that every step is accepted at the `h` it was given: Dormand–Prince
+    /// at a fixed step, reached through the public step by ignoring the controller's proposal.
+    let private loose = Ode.dopri5 1e300<m> 1e300<m/s> 0.0 Driven.flow
+
+    /// Gate 2: the propagated solution is fifth order.
+    [<Fact>]
+    let ``at a fixed step it converges at order 5`` () =
+        let horizon = 2.0<s>
+        let ns = [ 8; 16; 32; 64; 128 ]
+
+        let run n =
+            let h = horizon / float n
+            let mutable s = start
+
+            for k in 0 .. n - 1 do
+                let a = loose (float k * h) (Controller.start h) s
+                Assert.Equal(float k * h + h, a.T1)
+                s <- a.State
+
+            error s (Driven.exact horizon)
+
+        let got = slope (ns |> List.map (fun n -> log (float horizon / float n)) |> Array.ofList) (ns |> List.map (run >> log) |> Array.ofList)
+        Assert.True(abs (got - 5.0) <= 0.2, sprintf "order %.3f" got)
+
+    /// The dense output's own error, one step from the exact state, at the step's middle: fourth
+    /// order as a continuous extension, so a local error of order 5. Linear interpolation between
+    /// the ends would be order 2.
+    [<Fact>]
+    let ``its dense output is a fourth-order continuous extension`` () =
+        let t0 = 0.7<s>
+        let hs = [ 0.2<s>; 0.1<s>; 0.05<s>; 0.025<s>; 0.0125<s> ]
+
+        let local (h: float<s>) =
+            let a = loose t0 (Controller.start h) (Driven.exact t0)
+            [ 0.25; 0.5; 0.75 ] |> List.map (fun th -> error (a.Dense(t0 + th * h)) (Driven.exact (t0 + th * h))) |> List.max
+
+        let got = slope (hs |> List.map (float >> log) |> Array.ofList) (hs |> List.map (local >> log) |> Array.ofList)
+        Assert.True(got >= 4.8, sprintf "the dense output's local error has order %.3f" got)
+
+        // And it meets the step's ends: the start exactly, the end to rounding.
+        let a = loose t0 (Controller.start 0.1<s>) (Driven.exact t0)
+        Assert.Equal(Driven.exact t0, a.Dense t0)
+        let struct (x1, v1) = a.State
+        let struct (xd, vd) = a.Dense a.T1
+        Assert.Equal(float x1, float xd, 12)
+        Assert.Equal(float v1, float vd, 12)
+
+    /// Gate 2, adaptively: across a sweep of tolerances the error over 20 s follows the tolerance,
+    /// and against the mean step it falls at order 5.
+    [<Fact>]
+    let ``across a tolerance sweep the error follows the tolerance at order 5`` () =
+        let horizon = 20.0<s>
+
+        let measured (tol: float) =
+            let sim = Sim.ofAdaptive 0.01<s> (Ode.dopri5 (tol * 1.0<m>) (tol * 1.0<m/s>) tol Driven.flow) start
+            let traj = Sim.trajectory 0.5<s> horizon sim
+            let ts = Sim.times 100_000 sim
+            let steps = ts |> Array.findIndex (fun t -> t > horizon)
+            let e = [ 0..400 ] |> List.map (fun i -> let t = float i * 0.05<s> in error (traj.At t) (Driven.exact t)) |> List.max
+            float horizon / float steps, e
+
+        let tols = [ 1e-5; 1e-6; 1e-7; 1e-8; 1e-9 ]
+        let runs = tols |> List.map measured
+
+        for tol, (_, e) in List.zip tols runs do
+            Assert.True(e < 20.0 * tol && e > 0.5 * tol, sprintf "at a tolerance of %g the error was %g" tol e)
+
+        let got = slope (runs |> List.map (fst >> log) |> Array.ofList) (runs |> List.map (snd >> log) |> Array.ofList)
+        Assert.True(abs (got - 5.0) <= 0.2, sprintf "order %.3f against the mean step" got)
+
+    [<Fact>]
+    let ``a step too large is refused and retried smaller`` () =
+        let step = Ode.dopri5 1e-9<m> 1e-9<m/s> 1e-9 Driven.flow
+        let a = step 0.0<s> (Controller.start 1.0<s>) start
+        Assert.True(a.Rejected > 0)
+        Assert.True(a.T1 < 1.0<s>)
+        Assert.True(error a.State (Driven.exact a.T1) < 1e-8)
+
+    [<Fact>]
+    let ``a tolerance that cannot be met is refused, naming the time`` () =
+        let blowUp: Flow2T<m, m/s, s> = fun t x v -> struct (v, 1.0</s^2> * x * x * x * 1.0</m^2> + 0.0<m/s^2> * float t)
+        let sim = Sim.ofAdaptive 0.1<s> (Ode.dopri5 1e-6<m> 1e-6<m/s> 1e-6 blowUp) (struct (10.0<m>, 0.0<m/s>))
+        let e = Assert.ThrowsAny<exn>(fun () -> Sim.run 10_000 sim |> ignore)
+        Assert.Contains("Dormand–Prince", e.Message)
+        Assert.Contains("at t = ", e.Message)
+
+    [<Fact>]
+    let ``tolerances must be non-negative, and not both zero`` () =
+        Assert.Throws<ArgumentException>(fun () -> ErrorNorm.flow2 -1.0<m> 1.0<m/s> 0.1 |> ignore) |> ignore
+        Assert.Throws<ArgumentException>(fun () -> ErrorNorm.flow2 0.0<m> 1.0<m/s> 0.0 |> ignore) |> ignore
+        Assert.Throws<ArgumentException>(fun () -> ErrorNorm.flow2 1.0<m> 1.0<m/s> nan |> ignore) |> ignore
+        ErrorNorm.flow2 0.0<m> 0.0<m/s> 1e-6 |> ignore
+
+    // ---- gate 4, adaptively -------------------------------------------------------------------
+
+    let private bits (x: float<'u>) = BitConverter.DoubleToInt64Bits(float x)
+
+    /// The straight run to `t`, written out against the step rather than through `Sim`: accepted
+    /// steps from zero until one ends past `t`, then its dense output.
+    let private straight (h0: float<s>) (step: AdaptiveStep<'s, s>) (s0: 's) (t: float<s>) : 's =
+        let mutable a = step 0.0<s> (Controller.start h0) s0
+
+        while a.T1 <= t do
+            a <- step a.T1 a.Next a.State
+
+        a.Dense t
+
+    let private tier2 = Ode.dopri5 1e-8<m> 1e-8<m/s> 1e-8 Driven.flow
+
+    let private tier3 =
+        Ode.dopri5With Tangent.secondOrder (ErrorNorm.secondOrder 1e-8<m> 1e-8<m/s> 1e-8) Driven.derivative
+
+    let private sameFlow (struct (a: float<m>, b: float<m/s>)) (struct (c: float<m>, d: float<m/s>)) = bits a = bits c && bits b = bits d
+
+    let private sameSecond (struct (qa: float<m>[], va: float<m/s>[])) (struct (qb: float<m>[], vb: float<m/s>[])) =
+        Array.forall2 (fun a b -> bits a = bits b) qa qb && Array.forall2 (fun a b -> bits a = bits b) va vb
+
+    [<Property(MaxTest = 40)>]
+    let ``seeking equals the straight run, bit for bit`` (times: FsCheck.NormalFloat list) =
+        let ts = times |> List.map (fun x -> abs (float x.Get) % 10.0 * 1.0<s>) |> List.append [ 0.0<s>; 0.5<s>; 5.0<s>; 10.0<s> ]
+        let t2 = Sim.ofAdaptive 0.01<s> tier2 start |> Sim.trajectory 0.5<s> 10.0<s>
+        let s3 = struct ([| 1.0<m>; 0.5<m> |], [| 0.0<m/s>; -0.2<m/s> |])
+        let t3 = Sim.ofAdaptive 0.01<s> tier3 s3 |> Sim.trajectory 0.5<s> 10.0<s>
+
+        ts
+        |> List.forall (fun t ->
+            sameFlow (t2.At t) (straight 0.01<s> tier2 start t)
+            && sameSecond (t3.At t) (straight 0.01<s> tier3 s3 t))
+
+    /// At every step boundary of the straight run, and just either side of it: a boundary is where
+    /// a half-open interval and a closed one would disagree.
+    [<Fact>]
+    let ``at and around every step boundary`` () =
+        let sim = Sim.ofAdaptive 0.01<s> tier2 start
+        let traj = Sim.trajectory 0.5<s> 10.0<s> sim
+        let ts = Sim.times 2000 sim |> Array.filter (fun t -> t <= 10.0<s>)
+        Assert.True(ts.Length > 50, sprintf "only %d steps" ts.Length)
+
+        for t in ts do
+            for u in [ t; t * (1.0 - 1e-15); t * (1.0 + 1e-15) ] do
+                Assert.True(sameFlow (traj.At u) (straight 0.01<s> tier2 start u), sprintf "differs at %.17g" (float u))
+
+    [<Fact>]
+    let ``concurrent seeks equal serial seeks`` () =
+        let traj = Sim.ofAdaptive 0.01<s> tier2 start |> Sim.trajectory 0.25<s> 10.0<s>
+        let ts = Array.init 600 (fun i -> float ((i * 7919) % 600) / 60.0 * 1.0<s>)
+        let serial = ts |> Array.map traj.At
+        let concurrent = ts |> Array.Parallel.map traj.At
+
+        for i in 0 .. ts.Length - 1 do
+            Assert.True(sameFlow serial.[i] concurrent.[i], sprintf "differs at %g s" (float ts.[i]))
+
+    /// A step that crosses several checkpoint marks fills each; a seek before a mark's boundary
+    /// steps from an earlier one.
+    [<Fact>]
+    let ``checkpoints closer than the steps`` () =
+        let sim = Sim.ofAdaptive 0.01<s> (Ode.dopri5 1e-3<m> 1e-3<m/s> 1e-3 Driven.flow) start
+        let traj = Sim.trajectory 0.01<s> 3.0<s> sim
+
+        for i in 0..300 do
+            let t = float i * 0.01<s>
+            Assert.True(sameFlow (traj.At t) (straight 0.01<s> (Ode.dopri5 1e-3<m> 1e-3<m/s> 1e-3 Driven.flow) start t), sprintf "differs at %g" (float t))
