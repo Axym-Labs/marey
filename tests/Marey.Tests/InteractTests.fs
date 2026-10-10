@@ -478,6 +478,27 @@ module ``the readout`` =
         | Some r -> r.Lines
         | None -> failwithf "nothing read at %A" p
 
+    /// A reading's number: fixed point, or a power of ten as a wide log axis writes its ticks,
+    /// `1.1×10⁻¹⁸` or `10⁸`.
+    let private numberOf (text: string) =
+        let digits = "⁰¹²³⁴⁵⁶⁷⁸⁹"
+
+        match text.Split '×' with
+        | _ when not (text |> Seq.exists (fun c -> c = '⁻' || digits.IndexOf c >= 0)) ->
+            Double.Parse(text, NumberStyles.Float, CultureInfo.InvariantCulture)
+        | parts ->
+            let mantissa = if parts.Length = 2 then Double.Parse(parts.[0], CultureInfo.InvariantCulture) else 1.0
+            let power = parts.[parts.Length - 1]
+            Assert.StartsWith("10", power)
+            let exponent = power.Substring 2
+            let sign = if exponent.StartsWith "⁻" then -1.0 else 1.0
+
+            let e =
+                exponent.TrimStart '⁻'
+                |> Seq.fold (fun n c -> (Assert.True(digits.IndexOf c >= 0, text); n * 10 + digits.IndexOf c)) 0
+
+            mantissa * 10.0 ** (sign * float e)
+
     /// A line read back as a value in the axis's own unit: it must say the axis's name, end in
     /// the unit text the axis's ticks are written in, and its number is scaled by the axis's
     /// prefix. A line in any other unit fails here rather than reading wrong by a thousand.
@@ -487,17 +508,11 @@ module ``the readout`` =
         Assert.StartsWith(head, line)
         Assert.EndsWith(tail, line)
         let number = line.Substring(head.Length, line.Length - head.Length - tail.Length)
-        Double.Parse(number, NumberStyles.Float, CultureInfo.InvariantCulture) * Prefix.factor spec.Prefix
+        numberOf number * Prefix.factor spec.Prefix
 
-    /// **Gate 14.** Hovering where a datum is drawn reads that datum: each line, read back
-    /// through its axis's prefix, lies among the values one px either side of the pointer. The
-    /// datum sits low in the plot, so a lost y flip reads the wrong end of the axis.
-    let private gate (l: Live) =
-        let s0 = Live.init l
-        let v = first l s0
-        let x, y = v.X.Invert 0.3<nd>, v.Y.Invert 0.2<nd>
-        let p = pxOf v (x, y)
-        let lines = linesAt l s0 p
+    /// Each line, read back through its axis's prefix, lies among the values one px either side
+    /// of `p`.
+    let private readsWithinAPixel (v: PanelView) (p: Vec2<px>) (lines: string[]) =
         Assert.Equal(2, lines.Length)
 
         let around =
@@ -509,9 +524,19 @@ module ``the readout`` =
             let vs = around |> List.map pick
             value >= List.min vs && value <= List.max vs
 
+        let x, y = (PanelView.toData p v).Value
         let rx, ry = valueOf v.XAxis lines.[0], valueOf v.YAxis lines.[1]
         Assert.True(inside fst rx, sprintf "x read %g at %g (%s)" rx x lines.[0])
         Assert.True(inside snd ry, sprintf "y read %g at %g (%s)" ry y lines.[1])
+
+    /// **Gate 14.** Hovering where a datum is drawn reads that datum: each line lies among the
+    /// values one px either side of the pointer. The datum sits low in the plot, so a lost y flip
+    /// reads the wrong end of the axis.
+    let private gate (l: Live) =
+        let s0 = Live.init l
+        let v = first l s0
+        let p = pxOf v (v.X.Invert 0.3<nd>, v.Y.Invert 0.2<nd>)
+        readsWithinAPixel v p (linesAt l s0 p)
 
     [<Fact>]
     let ``a pointer reads the datum under it on a linear panel`` () = gate (still (wave 1.0<1 / s> false))
@@ -542,9 +567,9 @@ module ``the readout`` =
         let lines = linesAt l s0 (pxOf v (0.5, 0.0025))
         Assert.Equal<string[]>([| "t = 0.500 s"; "x = 2.50 mm" |], lines)
 
-    /// The places are what one px resolves, so a log axis reads more of them at its bottom
-    /// than at its top, and a count over millions is rounded to the pixel's decade rather than
-    /// written to the unit.
+    /// The places are what one px resolves, so a narrow log axis, written in fixed point, reads
+    /// more of them at its bottom than at its top, and a count over millions is rounded to the
+    /// pixel's decade rather than written to the unit.
     [<Fact>]
     let ``a reading has the places a pixel resolves`` () =
         let places (line: string) =
@@ -553,10 +578,11 @@ module ``the readout`` =
             | -1 -> 0
             | i -> number.Length - i - 1
 
-        let t = Array.init 60 (fun i -> 10.0 ** (float i / 15.0 - 3.0) * 1.0<s>)
+        let t = Array.init 60 (fun i -> 10.0 ** (float i / 20.0 - 1.5) * 1.0<s>)
         let l = still (Chart.line U.second U.metre t (t |> Array.map (fun t -> float t * 1.0<m>)) |> Chart.withXLog)
         let s0 = Live.init l
         let v = first l s0
+        Assert.False(Ticks.isWideLog v.X.Domain)
         let at (f: float) = (linesAt l s0 (pxOf v (v.X.Invert(f * 1.0<nd>), v.Y.Invert 0.5<nd>))).[0]
         Assert.True(places (at 0.05) > places (at 0.95), sprintf "%s against %s" (at 0.05) (at 0.95))
 
@@ -566,6 +592,28 @@ module ``the readout`` =
         let vc = first counts sc
         let y = (linesAt counts sc (pxOf vc (10.0, 4123456.0))).[1]
         Assert.EndsWith("0000", y)
+
+    /// A wide log axis is read as its ticks are written: in powers of ten, in the unit with no
+    /// prefix, the mantissa to the places a pixel resolves. Under ticks of `10⁻¹⁸ … 10⁸` J the
+    /// readout wrote fixed point: fifteen zeros at the bottom, `0.000010 J` between and
+    /// `100000000 J` at the top. The page's host passes the lines on as they are.
+    [<Fact>]
+    let ``a wide log axis reads in powers of ten, at its ends and between`` () =
+        let t = Array.init 27 (fun i -> float i * 1.0<s>)
+        let e = Array.init 27 (fun i -> 10.0 ** float (i - 18) * 1.0<J>)
+        let l = still (Chart.line U.second Derived.joule t e |> Chart.withYLog)
+        let s0 = Live.init l
+        let v = first l s0
+        Assert.Equal("J", v.YAxis.UnitText)
+        Assert.Equal("10⁻¹⁸", v.YAxis.Ticks.[0].Label)
+
+        for f in [ 0.0; 0.5; 1.0 ] do
+            let p = { X = (v.Plot.X0 + v.Plot.X1) / 2.0; Y = v.Plot.Y1 - f * (v.Plot.Y1 - v.Plot.Y0) }
+            let s = Live.step l s0 (Hover p)
+            let lines = (Live.readout l s).Value.Lines
+            Assert.Matches(@"^E = (\d(\.\d+)?×)?10⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+ J$", lines.[1])
+            readsWithinAPixel v p lines
+            Assert.Equal<string[]>(lines, (Html.liveReadoutForHost (box l, box s)).[5..])
 
     /// A categorical axis reads the level whose band the pointer is in.
     [<Fact>]

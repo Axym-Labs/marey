@@ -283,7 +283,9 @@ module PanelView =
     /// axis gets more places near its bottom than near its top and a polar plot gets them from
     /// both directions at once. Places past that would be the pointer's noise written down as
     /// data; a step coarser than 1 is rounded to its decade, so a count axis reads `4120000` and
-    /// not a seven-digit number whose last four digits are the pixel grid.
+    /// not a seven-digit number whose last four digits are the pixel grid. A log axis whose ticks
+    /// are powers of ten (`Ticks.logInPowers`) is read in them, its mantissa to the same places:
+    /// `1.1×10⁻¹⁸ J` under ticks of `10⁻¹⁸ … 10⁸`, where fixed point wrote fifteen zeros.
     ///
     /// `None` when the point has no inverse, or is outside the plot.
     let read (p: Vec2<px>) (v: PanelView) : string[] option =
@@ -314,8 +316,17 @@ module PanelView =
                         let r = resolution / factor
                         let scaled = value / factor
 
+                        // A log axis whose ticks are powers of ten is read in them, by the rule
+                        // that wrote the ticks: fixed point at its fine end is a row of zeros.
+                        let inPowers =
+                            match scale.Kind with
+                            | ScaleKind.Log _ -> Ticks.logInPowers scale.Domain (spec.Ticks |> Array.map (fun t -> t.Value))
+                            | _ -> false
+
                         let number =
-                            if r >= 1.0 && not (System.Double.IsInfinity r) then
+                            if inPowers then
+                                Ticks.formatPowerTo r scaled
+                            elif r >= 1.0 && not (System.Double.IsInfinity r) then
                                 let decade = 10.0 ** floor (log10 r)
                                 Ticks.format 0 (Num.roundEven (scaled / decade) * decade)
                             else
