@@ -1456,3 +1456,182 @@ module ``pathlines and particles`` =
         let e = Assert.Throws<ArgumentException>(fun () -> Unsteady.ofSnapshots [| 0.0<s>; 1.0<s> |] [| grid 0.0<s>; other |] |> ignore)
         Assert.Contains("snapshot 1 is on a different grid", e.Message)
         Assert.Throws<ArgumentException>(fun () -> Unsteady.ofSnapshots [| 1.0<s>; 0.0<s> |] [| grid 0.0<s>; grid 1.0<s> |] |> ignore) |> ignore
+
+// ======================================================================================
+// Phase 10 — grid solvers (D138): gates 12 and 13
+// ======================================================================================
+
+module ``grid solvers`` =
+
+    let private square (n: int) (lo: float<m>) (hi: float<m>) (f: float<m> -> float<m> -> float<K>) : ScalarGrid<m, m, K> =
+        ScalarGrid.sample (Grid.linear lo hi n) (Grid.linear lo hi n) f
+
+    let private cold = Boundaries.all (Boundary.Dirichlet 0.0<K>)
+    let private insulated = Boundaries.all (Boundary.Neumann 0.0<K/m>)
+    let private torus: Boundaries<m, K> = Boundaries.all Boundary.Periodic
+
+    let private maxAbs (xs: float<'u>[]) = xs |> Array.fold (fun m x -> max m (abs (float x))) 0.0
+
+    /// A Gaussian of σ = 0.1 m spreading at α = 10⁻³ m²/s on a 2 m plate: its peak falls as
+    /// `σ² / (σ² + 2αt)` and it stays Gaussian.
+    let private alpha = 1e-3<m^2/s>
+    let private sigma = 0.1<m>
+    let private gaussian = square 101 -1.0<m> 1.0<m> (fun x y -> exp (-(x * x + y * y) / (2.0 * sigma * sigma)) * 1.0<K>)
+
+    let private spread (t: float<s>) (x: float<m>) (y: float<m>) =
+        let s2 = sigma * sigma + 2.0 * alpha * t
+        float (sigma * sigma / s2) * exp (-(x * x + y * y) / (2.0 * s2))
+
+    let private errorAgainst (t: float<s>) (g: ScalarGrid<m, m, K>) =
+        let n = g.Xs.Length
+        Array.init g.Values.Length (fun k -> abs (float g.Values.[k] - spread t g.Xs.[k % n] g.Ys.[k / n])) |> Array.max
+
+    [<Fact>]
+    let ``gate 12: a Gaussian spreads as the analytic one, explicitly and implicitly`` () =
+        let limit = Fdm.explicitLimit alpha gaussian
+        Assert.Equal(0.1, float limit, 12)
+
+        let explicitRun = Sim.ofStep 0.05<s> (Fdm.heat alpha cold) gaussian |> Sim.run 40
+        let implicitRun = Sim.ofStep 0.2<s> (Fdm.heatImplicit alpha cold) gaussian |> Sim.run 10
+        let ee = errorAgainst 2.0<s> explicitRun
+        let ie = errorAgainst 2.0<s> implicitRun
+        Assert.True(ee < 2e-3, sprintf "explicit: %g K from the analytic spread" ee)
+        Assert.True(ie < 2e-3, sprintf "implicit: %g K from the analytic spread" ie)
+
+    [<Fact>]
+    let ``gate 12: the explicit limit is refused with both numbers; the implicit takes ten times it`` () =
+        let step = Fdm.heat alpha cold
+        let e = Assert.Throws<ArgumentException>(fun () -> step 0.0<s> 0.11<s> gaussian |> ignore)
+        Assert.Contains("0.11 s is past forward Euler's limit of 0.1 s", e.Message)
+
+        let big = Sim.ofStep 1.0<s> (Fdm.heatImplicit alpha cold) gaussian |> Sim.states 20
+
+        for g in big do
+            Assert.True(maxAbs g.Values <= 1.0 + 1e-12, "the implicit solution grew")
+
+        Assert.True(errorAgainst 20.0<s> big.[20] < 2e-2)
+
+    /// The checkerboard is the five-point stencil's highest mode, eigenvalue −8/h². Forward Euler
+    /// multiplies it by `1 − 8αΔt/h²` a step and ADI by `((1 − 4s)/(1 + 4s))²`, `s = αΔt/2h²`. And
+    /// `Field.laplacian` gives it exactly zero, which is why the solvers do not use it.
+    [<Fact>]
+    let ``gate 12: a checkerboard damps at the five-point rate, and Field.laplacian does not see it`` () =
+        let board = ScalarGrid.sample (Grid.linear 0.0<m> 15.0<m> 16) (Grid.linear 0.0<m> 15.0<m> 16) (fun x y -> (if (int x + int y) % 2 = 0 then 1.0 else -1.0) * 1.0<K>)
+        let a = 0.1<m^2/s>
+
+        let lap = Fdm.laplacian5 torus board
+        Assert.True(Array.forall2 (fun (l: float<K/m^2>) (v: float<K>) -> float l = -8.0 * float v) lap.Values board.Values)
+
+        let ratio (g: ScalarGrid<m, m, K>) = float (g.Values.[17] / board.Values.[17])
+        let explicitOne = Fdm.heat a torus 0.0<s> 1.0<s> board
+        Assert.Equal(1.0 - 8.0 * 0.1, ratio explicitOne, 12)
+        let s = 0.1 * 1.0 / 2.0
+        let implicitOne = Fdm.heatImplicit a torus 0.0<s> 1.0<s> board
+        Assert.Equal(((1.0 - 4.0 * s) / (1.0 + 4.0 * s)) ** 2.0, ratio implicitOne, 12)
+
+        // The wide stencil: zero on every interior node.
+        let wide = Field.laplacian board
+        for j in 2..13 do
+            for i in 2..13 do
+                Assert.Equal(0.0, float wide.Values.[j * 16 + i], 12)
+
+    /// Crank–Nicolson is second order in Δt, forward Euler first: against a run at a tiny step on
+    /// the same grid, so the spatial error cancels.
+    [<Fact>]
+    let ``gate 12: Crank–Nicolson is second order in time`` () =
+        let mode = square 21 0.0<m> 1.0<m> (fun x y -> sin (Math.PI * float x) * sin (Math.PI * float y) * 1.0<K>)
+        let a = 0.05<m^2/s>
+        let at (step: Step<ScalarGrid<m, m, K>, s>) (dt: float<s>) = Sim.ofStep dt step mode |> Sim.run (int (Math.Round(0.2<s> / dt)))
+        let reference = at (Fdm.heatImplicit a cold) 1e-4<s>
+        let err (step: Step<ScalarGrid<m, m, K>, s>) (dt: float) = maxAbs (Array.map2 (-) (at step (dt * 1.0<s>)).Values reference.Values)
+        let dts = [ 0.02; 0.01; 0.005; 0.0025 ]
+        let order step = slope (dts |> List.map log |> Array.ofList) (dts |> List.map (err step >> log) |> Array.ofList)
+        let cn = order (Fdm.heatImplicit a cold)
+        Assert.True(abs (cn - 2.0) <= 0.2, sprintf "Crank–Nicolson at order %.3f" cn)
+        let fe = slope ([ 0.002; 0.001; 0.0005 ] |> List.map log |> Array.ofList) ([ 0.002; 0.001; 0.0005 ] |> List.map (err (Fdm.heat a cold) >> log) |> Array.ofList)
+        Assert.True(abs (fe - 1.0) <= 0.2, sprintf "forward Euler at order %.3f" fe)
+
+    /// An insulated plate keeps its heat: the trapezoid sum, half weights on the edges, is what the
+    /// mirrored ghost nodes conserve.
+    [<Fact>]
+    let ``an insulated plate keeps its heat; a periodic one too`` () =
+        let blob = square 31 0.0<m> 1.0<m> (fun x y -> exp (-((x - 0.3<m>) * (x - 0.3<m>) + (y - 0.6<m>) * (y - 0.6<m>)) / 0.01<m^2>) * 1.0<K>)
+        let weighted (g: ScalarGrid<m, m, K>) =
+            let n = g.Xs.Length
+            let w k = (if k = 0 || k = n - 1 then 0.5 else 1.0)
+            Array.init g.Values.Length (fun k -> w (k % n) * w (k / n) * float g.Values.[k]) |> Array.sum
+
+        for step in [ Fdm.heat 1e-3<m^2/s> insulated; Fdm.heatImplicit 1e-3<m^2/s> insulated ] do
+            let after = Sim.ofStep 0.2<s> step blob |> Sim.run 200
+            Assert.Equal(weighted blob, weighted after, 9)
+
+        let ring = ScalarGrid.sample (Grid.linear 0.0<m> 0.95<m> 20) (Grid.linear 0.0<m> 0.95<m> 20) (fun x _ -> sin (2.0 * Math.PI * float x) * 1.0<K>)
+        for step in [ Fdm.heat 1e-3<m^2/s> torus; Fdm.heatImplicit 1e-3<m^2/s> torus ] do
+            let after = Sim.ofStep 0.2<s> step ring |> Sim.run 100
+            Assert.Equal(Array.sum (ring.Values |> Array.map float), Array.sum (after.Values |> Array.map float), 9)
+
+    [<Fact>]
+    let ``Dirichlet sides hold, and a one-sided periodic axis or an uneven grid is refused`` () =
+        let warm = { cold with Left = Boundary.Dirichlet 300.0<K> }
+        let after = Sim.ofStep 0.1<s> (Fdm.heatImplicit 1e-3<m^2/s> warm) gaussian |> Sim.run 5
+
+        for j in 1..99 do
+            Assert.Equal(300.0, float after.Values.[j * 101])
+            Assert.Equal(0.0, float after.Values.[j * 101 + 100])
+
+        let e = Assert.Throws<ArgumentException>(fun () -> Fdm.laplacian5 { torus with Left = Boundary.Neumann 0.0<K/m> } gaussian |> ignore)
+        Assert.Contains("both sides of an axis", e.Message)
+        let uneven = ScalarGrid.sample [| 0.0<m>; 0.1<m>; 0.3<m>; 0.4<m> |] (Grid.linear 0.0<m> 1.0<m> 5) (fun _ _ -> 1.0<K>)
+        let e2 = Assert.Throws<ArgumentException>(fun () -> Fdm.laplacian5 cold uneven |> ignore)
+        Assert.Contains("uniform grid", e2.Message)
+
+    /// A standing wave on a fixed square: at a quarter period the mode is at zero, and the error
+    /// there is the phase error, second order in h. (After a whole period the mode is at the top
+    /// of its cosine, so the error is the phase error squared and falls at fourth order, which
+    /// says nothing about the scheme.)
+    [<Fact>]
+    let ``the wave equation: a standing mode, the CFL limit, second order`` () =
+        let c = 1.0<m/s>
+
+        let run (n: int) =
+            let u = ScalarGrid.sample (Grid.linear 0.0<m> 1.0<m> n) (Grid.linear 0.0<m> 1.0<m> n) (fun x y -> sin (Math.PI * float x) * sin (Math.PI * float y) * 1.0<m>)
+            let v = { Xs = u.Xs; Ys = u.Ys; Values = Array.zeroCreate<float<m/s>> u.Values.Length }
+            let limit = Fdm.waveLimit c u
+            let quarter = 2.0 / sqrt 2.0 / 4.0 * 1.0<s>
+            let steps = int (ceil (quarter / (0.5 * limit)))
+            let dt = quarter / float steps
+            let struct (uT, _) = Sim.ofStep dt (Fdm.wave c (Boundaries.all (Boundary.Dirichlet 0.0<m>))) (struct (u, v)) |> Sim.run steps
+            maxAbs uT.Values
+
+        let e1, e2 = run 17, run 33
+        Assert.True(e1 < 0.01, sprintf "at a quarter period, %g m from zero" e1)
+        let order = log (e1 / e2) / log 2.0
+        Assert.True(abs (order - 2.0) <= 0.2, sprintf "order %.3f in h" order)
+
+        let u = ScalarGrid.sample (Grid.linear 0.0<m> 1.0<m> 11) (Grid.linear 0.0<m> 1.0<m> 11) (fun _ _ -> 0.0<m>)
+        let v = { Xs = u.Xs; Ys = u.Ys; Values = Array.zeroCreate<float<m/s>> u.Values.Length }
+        let e = Assert.Throws<ArgumentException>(fun () -> Fdm.wave c (Boundaries.all (Boundary.Dirichlet 0.0<m>)) 0.0<s> 0.1<s> (struct (u, v)) |> ignore)
+        Assert.Contains("CFL limit", e.Message)
+
+    /// Gate 13: `∇²u = −2π² sin πx sin πy` on the unit square, held at zero, recovers
+    /// `sin πx sin πy` at second order in h.
+    [<Fact>]
+    let ``gate 13: Poisson recovers a manufactured solution at second order`` () =
+        let solveAt (n: int) =
+            let f = ScalarGrid.sample (Grid.linear 0.0<m> 1.0<m> n) (Grid.linear 0.0<m> 1.0<m> n) (fun x y -> -2.0 * Math.PI * Math.PI * sin (Math.PI * float x) * sin (Math.PI * float y) * 1.0<V/m^2>)
+            let sol = Fdm.poisson (Boundaries.all (Boundary.Dirichlet 0.0<V>)) 1e-12 100_000 f
+            Assert.True(sol.Converged, sprintf "%d sweeps, residual %g" sol.Iterations (float sol.Residual))
+            let xs = sol.Solution.Xs
+            Array.init sol.Solution.Values.Length (fun k -> abs (float sol.Solution.Values.[k] - sin (Math.PI * float xs.[k % n]) * sin (Math.PI * float xs.[k / n]))) |> Array.max, sol.Iterations
+
+        let runs = [ 9; 17; 33; 65 ] |> List.map solveAt
+        let hs = [ 8.0; 16.0; 32.0; 64.0 ] |> List.map (fun n -> log (1.0 / n)) |> Array.ofList
+        let order = slope hs (runs |> List.map (fst >> log) |> Array.ofList)
+        Assert.True(abs (order - 2.0) <= 0.1, sprintf "order %.3f in h" order)
+        // The optimal factor: sweeps grow like n, not n².
+        let sweeps = runs |> List.map snd
+        // Gauss–Seidel's would grow sixteenfold from 17 to 65 nodes; this grows about fourfold.
+        Assert.True(sweeps.[3] < 6 * sweeps.[1], sprintf "sweeps %A" sweeps)
+
+        let e = Assert.Throws<ArgumentException>(fun () -> Fdm.poisson (Boundaries.all (Boundary.Neumann 0.0<V/m>)) 1e-9 10 (ScalarGrid.sample (Grid.linear 0.0<m> 1.0<m> 5) (Grid.linear 0.0<m> 1.0<m> 5) (fun _ _ -> 0.0<V/m^2>)) |> ignore)
+        Assert.Contains("no Dirichlet side", e.Message)

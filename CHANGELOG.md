@@ -46,6 +46,12 @@ land in a minor release.
   built per stage time is built once per stage, not once per particle; `Particles.streakStep`
   releases particles from seeds every step, and `Particles.pathlines` reads each particle's path
   from a trajectory.
+  `Fdm`: finite differences on a uniform `ScalarGrid` with typed boundaries per side (`Boundary.
+  Dirichlet` in the field's unit, `Neumann` in its unit per metre, `Periodic`). `Fdm.laplacian5`
+  is the compact five-point stencil; `Fdm.heat` steps by forward Euler and refuses a step past
+  `Fdm.explicitLimit`; `Fdm.heatImplicit` is Crank–Nicolson by ADI, stable at any step;
+  `Fdm.wave` is leapfrog under `Fdm.waveLimit`; `Fdm.poisson` solves by over-relaxation and reports
+  its sweeps and residual.
   `Sim.withInvariant` attaches a conserved quantity (with a unit witness under
   `open Marey.UnitsOfMeasure`), `Sim.drift` samples each one's drift over a trajectory, relative
   to its start or absolute where the start is zero, and `Drift.chart` draws them. The package
@@ -59,6 +65,8 @@ land in a minor release.
   does not re-arrange as it plays.
 - **`examples/integrators.fsx`**: Euler, RK4 and Verlet on one oscillator, and the energy drift of
   each over 100 periods.
+- **`examples/heat.fsx`**: heat in a plate by Crank–Nicolson, as a film and as a live figure with a
+  time control.
 - **`examples/double-gyre.fsx`**: pathlines, a streakline and particles in an unsteady field, as a
   film.
 - **`examples/double-pendulum.fsx`**: a chaotic system's path over a phase portrait, a Poincaré
@@ -71,6 +79,8 @@ land in a minor release.
 
 ### Fixed
 
+- **`Field.laplacian`'s documentation says it is a display operator**: its wide stencil is zero on
+  a checkerboard, so it is not what a solver should step with.
 - **Every package requires FSharp.Core ≥ 8.0.100**, stated in the build, instead of the version
   bundled with the SDK that packed it. Every `0.5.0` package required ≥ 10.1.401, so a project on
   SDK 10.0.1xx restored any of them with a downgrade warning (NU1605).
