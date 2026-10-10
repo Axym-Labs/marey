@@ -40,6 +40,12 @@ land in a minor release.
   seek; `Poincare.section direction surface horizon sim` is every crossing of a surface in a
   direction, located by the event machinery, so each point is the integrator's own state on the
   surface.
+  `Unsteady` is a velocity field that depends on time; `Unsteady.ofSnapshots` reads grids at
+  stated times, bilinear in space and linear in time, and `Unsteady.ofFunction` a grid built for
+  each time asked. `Particles.step` carries many particles together, stage by stage, so a field
+  built per stage time is built once per stage, not once per particle; `Particles.streakStep`
+  releases particles from seeds every step, and `Particles.pathlines` reads each particle's path
+  from a trajectory.
   `Sim.withInvariant` attaches a conserved quantity (with a unit witness under
   `open Marey.UnitsOfMeasure`), `Sim.drift` samples each one's drift over a trajectory, relative
   to its start or absolute where the start is zero, and `Drift.chart` draws them. The package
@@ -53,6 +59,8 @@ land in a minor release.
   does not re-arrange as it plays.
 - **`examples/integrators.fsx`**: Euler, RK4 and Verlet on one oscillator, and the energy drift of
   each over 100 periods.
+- **`examples/double-gyre.fsx`**: pathlines, a streakline and particles in an unsteady field, as a
+  film.
 - **`examples/double-pendulum.fsx`**: a chaotic system's path over a phase portrait, a Poincaré
   section, and a film.
 

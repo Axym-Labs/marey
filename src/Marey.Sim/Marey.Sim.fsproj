@@ -31,6 +31,7 @@
     <Compile Include="Sim.fs" />
     <Compile Include="Collide.fs" />
     <Compile Include="Poincare.fs" />
+    <Compile Include="Unsteady.fs" />
     <!-- D109 — the unit-required mode, after the implementations it reaches. -->
     <Compile Include="UnitsOfMeasure.fs" />
   </ItemGroup>

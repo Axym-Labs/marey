@@ -1317,3 +1317,142 @@ module ``Poincaré sections`` =
         let traj = Sim.trajectory 1.0<s> 2.0<s> (Sim.ofStep 0.1<s> (Ode.rk4 circle) (struct (1.0<m>, 0.0<m/s>)))
         Assert.Throws<ArgumentException>(fun () -> Poincare.stroboscopic 0.0<s> traj |> ignore) |> ignore
         Assert.Equal(1, (Poincare.stroboscopic 5.0<s> traj).Length)
+
+// ======================================================================================
+// Phase 9 — unsteady fields, pathlines, particles (D142, D145): gate 11
+// ======================================================================================
+
+module ``pathlines and particles`` =
+
+    /// A rotation about the origin at `ω(t) = ω₀ (1 + ½ sin t)`: linear in space, so bilinear
+    /// interpolation is exact on it and a gridded copy differs from it only in time.
+    let private w0 = 1.0</s>
+    let private rate (t: float<s>) = w0 * (1.0 + 0.5 * sin (float t))
+    let private turned (t: float<s>) = float w0 * (float t - 0.5 * cos (float t) + 0.5)
+
+    let private rotation: Unsteady<m, m, s> = fun t x y -> struct (-rate t * y, rate t * x)
+
+    let private exact (x0: float<m>) (y0: float<m>) (t: float<s>) =
+        let a = turned t
+        struct (x0 * cos a - y0 * sin a, x0 * sin a + y0 * cos a)
+
+    let private seeds = struct ([| 1.0<m>; 0.0<m>; -0.5<m>; 1.2<m> |], [| 0.0<m>; 0.8<m>; 0.5<m>; -1.0<m> |])
+
+    /// The largest distance from the closed form after `horizon`, stepping at `h`.
+    let private error (field: Unsteady<m, m, s>) (h: float<s>) (horizon: float<s>) =
+        let n = int (Math.Round(horizon / h))
+        let struct (x, y) = Sim.ofStep h (Particles.step field) seeds |> Sim.run n
+        let struct (x0, y0) = seeds
+
+        Array.init x.Length (fun i ->
+            let struct (xe, ye) = exact x0.[i] y0.[i] (float n * h)
+            sqrt (float ((x.[i] - xe) * (x.[i] - xe) + (y.[i] - ye) * (y.[i] - ye))))
+        |> Array.max
+
+    let private orderOf (f: float -> float) (hs: float list) =
+        slope (hs |> List.map log |> Array.ofList) (hs |> List.map (f >> log) |> Array.ofList)
+
+    let private grid (t: float<s>) : VectorGrid<m, m, m/s, m/s> =
+        VectorGrid.sample (Grid.linear -2.0<m> 2.0<m> 9) (Grid.linear -2.0<m> 2.0<m> 9) (rotation t)
+
+    [<Fact>]
+    let ``a rotation's pathlines match its closed form at RK4's order`` () =
+        let errs = [ 0.2; 0.1; 0.05; 0.025 ] |> List.map (fun h -> error rotation (h * 1.0<s>) 5.0<s>)
+        let got = orderOf (fun h -> error rotation (h * 1.0<s>) 5.0<s>) [ 0.2; 0.1; 0.05; 0.025 ]
+        Assert.True(abs (got - 4.0) <= 0.2, sprintf "order %.3f, errors %A" got errs)
+
+    /// A steady double gyre: a pathline is a streamline in metres, a level set of the
+    /// streamfunction `ψ = sin πx sin πy`, which it keeps to RK4's error.
+    [<Fact>]
+    let ``in a steady field a pathline is a streamline`` () =
+        let psi (x: float<m>) (y: float<m>) = sin (Math.PI * float x) * sin (Math.PI * float y)
+        let gyre: Flow<m, m, s> = fun x y -> struct (-Math.PI * sin (Math.PI * float x) * cos (Math.PI * float y) * 1.0<m/s>, Math.PI * cos (Math.PI * float x) * sin (Math.PI * float y) * 1.0<m/s>)
+        let start = struct ([| 0.3<m>; 1.6<m>; 0.5<m> |], [| 0.5<m>; 0.3<m>; 0.1<m> |])
+
+        let drift (h: float<s>) =
+            let n = int (Math.Round(10.0<s> / h))
+            let struct (x, y) = Sim.ofStep h (Particles.step (Unsteady.ofSteady gyre)) start |> Sim.run n
+            let struct (x0, y0) = start
+            Array.init 3 (fun i -> abs (psi x.[i] y.[i] - psi x0.[i] y0.[i])) |> Array.max
+
+        Assert.True(drift 0.005<s> < 1e-7, sprintf "ψ drifted by %g" (drift 0.005<s>))
+        let got = orderOf (fun h -> drift (h * 1.0<s>)) [ 0.08; 0.04; 0.02; 0.01 ]
+        Assert.True(got > 3.7, sprintf "ψ's drift falls at order %.3f" got)
+
+    /// Snapshots are second order in their spacing whatever the integrator: at a fine RK4 step,
+    /// halving the spacing quarters the error.
+    [<Fact>]
+    let ``snapshots converge at second order in their spacing`` () =
+        let withSpacing (dt: float) =
+            let times = Array.init (int (Math.Round(6.0 / dt)) + 1) (fun k -> float k * dt * 1.0<s>)
+            error (Unsteady.ofSnapshots times (times |> Array.map grid)) 0.001<s> 5.0<s>
+
+        let got = orderOf withSpacing [ 0.4; 0.2; 0.1; 0.05 ]
+        Assert.True(abs (got - 2.0) <= 0.2, sprintf "order %.3f in the snapshot spacing" got)
+
+    /// A grid built at every stage time is exact in time, so the integrator's order is back.
+    [<Fact>]
+    let ``a grid per stage time converges at the integrator's order`` () =
+        let got = orderOf (fun h -> error (Unsteady.ofFunction grid) (h * 1.0<s>) 5.0<s>) [ 0.2; 0.1; 0.05; 0.025 ]
+        Assert.True(abs (got - 4.0) <= 0.2, sprintf "order %.3f" got)
+
+    /// The batch step builds a grid per stage time, never per particle: the same count for one
+    /// particle as for a thousand.
+    [<Fact>]
+    let ``a batch step builds one grid per stage time, whatever the count`` () =
+        let builds (n: int) =
+            let mutable count = 0
+            let field = Unsteady.ofFunction (fun t -> count <- count + 1; grid t)
+            let start = struct (Array.init n (fun i -> float i / float n * 1.0<m>), Array.zeroCreate n)
+            Sim.ofStep 0.1<s> (Particles.step field) start |> Sim.run 10 |> ignore
+            count
+
+        // Stages at t, t + h/2 (twice) and t + h: three times a step at most, and fewer when the
+        // next step starts at the time this one ended (`(k + 1) · h` and `k · h + h` can differ by
+        // an ulp, so not always).
+        Assert.InRange(builds 1, 1 + 2 * 10, 3 * 10)
+        Assert.Equal(builds 1, builds 1000)
+
+    /// Concurrent seeks of particles carried by a grid built per stage time see the serial ones:
+    /// the kept grid is replaced whole, never read half-written.
+    [<Fact>]
+    let ``concurrent seeks through a built field equal serial ones`` () =
+        let sim = Sim.ofStep 0.05<s> (Particles.step (Unsteady.ofFunction grid)) seeds
+        let traj = Sim.trajectory 0.5<s> 5.0<s> sim
+        let ts = Array.init 400 (fun i -> float ((i * 7919) % 400) / 80.0 * 1.0<s>)
+        let serial = ts |> Array.map traj.At
+        let concurrent = ts |> Array.Parallel.map traj.At
+
+        for i in 0 .. ts.Length - 1 do
+            let struct (sx, sy) = serial.[i]
+            let struct (cx, cy) = concurrent.[i]
+            Assert.Equal<float<m>[]>(sx, cx)
+            Assert.Equal<float<m>[]>(sy, cy)
+
+    [<Fact>]
+    let ``streaks, pathlines and what is outside`` () =
+        let field = Unsteady.ofSteady (fun (_: float<m>) (_: float<m>) -> struct (1.0<m/s>, 0.0<m/s>))
+        let streak = Sim.ofStep 0.1<s> (Particles.streakStep [| 0.0<m> |] [| 0.0<m> |] field) (struct ([| 0.0<m> |], [| 0.0<m> |]))
+        let struct (x, _) = Sim.run 10 streak
+        Assert.Equal(11, x.Length)
+        // The oldest particle has gone 1 m; each later one 0.1 m less.
+        for i in 0..10 do
+            Assert.Equal(1.0 - 0.1 * float i, float x.[i], 12)
+
+        let lines = Particles.pathlines [| 0.0<s>; 0.5<s>; 1.0<s> |] (Sim.trajectory 0.5<s> 1.0<s> streak)
+        Assert.Equal(11, lines.Length)
+        let struct (lastX, _) = lines.[10]
+        Assert.True(Double.IsNaN(float lastX.[0]) && Double.IsNaN(float lastX.[1]) && lastX.[2] = 0.0<m>)
+
+        // A snapshot field has no velocity outside its grid or its times.
+        let snaps = Unsteady.ofSnapshots [| 0.0<s>; 1.0<s> |] [| grid 0.0<s>; grid 1.0<s> |]
+        let struct (u, _) = snaps 0.5<s> 3.0<m> 0.0<m>
+        let struct (u2, _) = snaps 2.0<s> 0.0<m> 0.0<m>
+        Assert.True(Double.IsNaN(float u) && Double.IsNaN(float u2))
+
+    [<Fact>]
+    let ``snapshots on different grids are refused`` () =
+        let other = VectorGrid.sample (Grid.linear -2.0<m> 2.0<m> 5) (Grid.linear -2.0<m> 2.0<m> 9) (rotation 1.0<s>)
+        let e = Assert.Throws<ArgumentException>(fun () -> Unsteady.ofSnapshots [| 0.0<s>; 1.0<s> |] [| grid 0.0<s>; other |] |> ignore)
+        Assert.Contains("snapshot 1 is on a different grid", e.Message)
+        Assert.Throws<ArgumentException>(fun () -> Unsteady.ofSnapshots [| 1.0<s>; 0.0<s> |] [| grid 0.0<s>; grid 1.0<s> |] |> ignore) |> ignore
