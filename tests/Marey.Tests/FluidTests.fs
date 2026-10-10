@@ -186,3 +186,105 @@ module ``a fluid moves as the equations say`` =
         Assert.Throws<ArgumentException>(fun () -> Fluid.box<m, 1> FluidEdge.Wall FluidEdge.Wall 0.1<m> 1 4 |> ignore) |> ignore
         Assert.Throws<ArgumentException>(fun () -> Fluid.box<m, 1> FluidEdge.Wall FluidEdge.Wall 0.0<m> 4 4 |> ignore) |> ignore
         Assert.Throws<ArgumentException>(fun () -> Stam.step { Stam.defaults<m, 1> with Cycles = 0 } |> ignore) |> ignore
+
+// ======================================================================================
+// Gates 4 and 5 — lattice Boltzmann (phase 2)
+// ======================================================================================
+
+module ``a lattice flows as the equations say`` =
+
+    let private dx = 1e-3<m>
+    let private dt = 1e-3<s>
+
+    /// Plane Poiseuille flow: a channel between two walls, periodic along it, driven by a body
+    /// force, settles to `u = a y (H − y) / 2ν` with the walls half a cell outside the edge cells.
+    [<Theory>]
+    [<InlineData(0.6)>]
+    [<InlineData(0.8)>]
+    [<InlineData(1.2)>]
+    let ``Poiseuille flow reaches its parabola within 1%`` (tau: float) =
+        let ny = 32
+        let nu = (tau - 0.5) / 3.0 * dx * dx / dt
+        let a = 1e-5<m/s^2>
+        let options = { Lbm.defaults nu with Force = (a, 0.0<m/s^2>); Bottom = LatticeEdge.Wall; Top = LatticeEdge.Wall }
+        let l = Sim.ofStep dt (Lbm.step options) (Lattice.create dx dt 4 ny) |> Sim.run 40_000
+        let v = Lattice.velocityUnder options.Force l
+        let height = float ny * dx
+        let exact (j: int) = let y = (float j + 0.5) * dx in a / (2.0 * nu) * y * (height - y)
+        let peak = exact (ny / 2)
+        let worst = [ 0 .. ny - 1 ] |> List.map (fun j -> abs (v.U.[j * 4] - exact j)) |> List.max
+
+        // Measured: 0.067%, 0.027%, 0.34%.
+        Assert.True(worst < 0.01 * peak, sprintf "the profile is %g of its peak from the parabola" (worst / peak))
+
+    [<Fact>]
+    let ``a closed channel keeps its mass to 1e-10`` () =
+        let l0 =
+            Lattice.create dx dt 100 30
+            |> Lattice.withObstacle (fun x y -> (x - 0.03<m>) * (x - 0.03<m>) + (y - 0.016<m>) * (y - 0.016<m>) <= 0.005<m> * 0.005<m>)
+
+        let options = { Lbm.defaults (0.02 * dx * dx / dt) with Force = (2e-3<m/s^2>, 1e-3<m/s^2>); Bottom = LatticeEdge.Wall; Top = LatticeEdge.Wall }
+        let l = Sim.ofStep dt (Lbm.step options) l0 |> Sim.run 10_000
+        let drift = abs ((Lattice.mass l - Lattice.mass l0) / Lattice.mass l0)
+        let moving = (Lattice.velocityUnder options.Force l).U |> Array.exists (fun u -> u > 1e-3<m/s>)
+
+        // Measured on 200 × 50: 8.6e-15.
+        Assert.True(drift < 1e-10, sprintf "the mass drifted by %g" drift)
+        Assert.True(moving, "the force moved nothing, so the mass was never at risk")
+
+    [<Fact>]
+    let ``an obstacle's cells hold no velocity and an inflow fills the channel`` () =
+        let u = 0.05<m/s>
+
+        let l0 =
+            Lattice.create dx dt 60 20
+            |> Lattice.withObstacle (fun x y -> abs (x - 0.02<m>) < 0.003<m> && abs (y - 0.01<m>) < 0.003<m>)
+
+        let options = { Lbm.defaults (0.05 * dx * dx / dt) with Left = LatticeEdge.Inflow(u, 0.0<m/s>); Right = LatticeEdge.Outflow; Bottom = LatticeEdge.Wall; Top = LatticeEdge.Wall }
+        let l = Sim.ofStep dt (Lbm.step options) l0 |> Sim.run 3000
+        let v = Lattice.velocity l
+
+        for k in 0 .. l.Solid.Length - 1 do
+            if l.Solid.[k] then Assert.True(Double.IsNaN(float v.U.[k]))
+
+        // The column after the inflow carries its flux, the walls' boundary layers aside.
+        let mid = [ 5..14 ] |> List.averageBy (fun j -> float v.U.[j * 60 + 1])
+        Assert.True(abs (mid - float u) < 0.05 * float u, sprintf "the inflow column moves at %g against %g" mid (float u))
+
+    [<Fact>]
+    let ``a seek through a lattice's trajectory is the run`` () =
+        let l0 = Lattice.create dx dt 24 12 |> Lattice.withVelocity (fun x _ -> struct (0.02<m/s> * sin (float x * 300.0), 0.01<m/s>))
+        let sim = Sim.ofStep dt (Lbm.step (Lbm.defaults (0.1 * dx * dx / dt))) l0
+        let run = Sim.states 40 sim
+        let traj = Sim.trajectory 0.01<s> 0.04<s> sim
+
+        for k, s in [| 7; 19; 33; 40 |] |> Array.Parallel.map (fun k -> k, traj.At(float k * dt)) do
+            Assert.True((s.Populations = run.[k].Populations), sprintf "the seek to step %d differs from the run" k)
+
+module ``a lattice refuses what it cannot do`` =
+
+    let private dx = 1e-3<m>
+    let private dt = 1e-3<s>
+    let private l = Lattice.create dx dt 8 8
+
+    let private refused (options: LbmOptions<m>) (h: float<s>) (fragments: string list) =
+        let e = Assert.Throws<ArgumentException>(fun () -> Lbm.step options 0.0<s> h l |> ignore)
+
+        for f in fragments do
+            Assert.Contains(f, e.Message)
+
+    [<Fact>]
+    let ``no viscosity, with tau`` () =
+        refused (Lbm.defaults 0.0<m^2/s>) dt [ "τ = 0.5"; "τ > ½" ]
+
+    [<Fact>]
+    let ``an inflow past the lattice's Mach bound, with both speeds`` () =
+        refused { Lbm.defaults 1e-4<m^2/s> with Left = LatticeEdge.Inflow(0.4<m/s>, 0.0<m/s>); Right = LatticeEdge.Outflow } dt [ "0.4"; "0.3" ]
+
+    [<Fact>]
+    let ``a step that is not the tick, with both`` () =
+        refused (Lbm.defaults 1e-4<m^2/s>) 2e-3<s> [ "0.001 s"; "0.002 s" ]
+
+    [<Fact>]
+    let ``periodic on one side of an axis only`` () =
+        refused { Lbm.defaults 1e-4<m^2/s> with Left = LatticeEdge.Wall } dt [ "periodic" ]

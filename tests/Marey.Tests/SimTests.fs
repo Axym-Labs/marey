@@ -413,6 +413,23 @@ module ``a wrong unit does not compile`` =
     let ``a buoyancy without the dye's unit does not compile`` () =
         refuses "fluid-buoyancy" "let o = { Stam.defaults<m, K> with Buoyancy = 0.01<m/s^2> }" "does not match the unit of measure 'm/s ^ 2'"
 
+    [<Fact>]
+    let ``a lattice's options in the right units compile`` () =
+        let body =
+            "let o = { Lbm.defaults 1e-6<m^2/s> with Force = (0.0<m/s^2>, -9.8<m/s^2>); Left = LatticeEdge.Inflow(0.1<m/s>, 0.0<m/s>); Right = LatticeEdge.Outflow }\nlet s = Lbm.step o"
+
+        match compile "lattice-control" body with
+        | None -> skipped ()
+        | Some(code, path, output) -> Assert.True((code = 0), sprintf "the control did not compile: %s\n%s" path output)
+
+    [<Fact>]
+    let ``a lattice's inflow in metres does not compile`` () =
+        refuses "lattice-inflow" "let o: LbmOptions<m> = { Lbm.defaults 1e-6<m^2/s> with Left = LatticeEdge.Inflow(0.1<m>, 0.0<m>) }" "does not match the unit of measure 'm"
+
+    [<Fact>]
+    let ``a lattice's force in m/s does not compile`` () =
+        refuses "lattice-force" "let o = { Lbm.defaults 1e-6<m^2/s> with Force = (1.0<m/s>, 0.0<m/s>) }" "does not match the unit of measure 'm/s'"
+
     /// Tier 3: a tangent whose advance forgets `h` adds kelvin per second to kelvin.
     [<Fact>]
     let ``a tangent that forgets h does not compile`` () =
