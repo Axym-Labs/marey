@@ -10,7 +10,15 @@ rather than any one package. Each release's notes say which packages it adds.
 listed under `Changed` or `Removed` with the reason and the replacement, and until 1.0 they may
 land in a minor release.
 
-## [0.5.0]
+## [Unreleased]
+
+## [0.5.0] — 2026-10-10
+
+**Two backends that draw pixels on a screen.** `Marey.Backend.Gpu` renders on an OpenGL 3.3
+context, offscreen or in a desktop window that runs a live figure; `Marey.Backend.Web` draws on a
+canvas in a browser page, where a Fable app compiles the figure with the same code. Sixteen
+packages, two of them new. Nothing breaks for a .NET caller: the two entries under `Changed`
+concern numbers past 10¹⁵ and what is compiled under Fable.
 
 ### Added
 
@@ -78,7 +86,7 @@ land in a minor release.
   doc comment containing `*/` each stopped the compile or the module's load. With those gone,
   the 27 SVG baselines render byte for byte under Node, and CI checks that they still do.
 
-## [0.4.0]
+## [0.4.0] — 2026-10-08
 
 **Units are opt-in.** `open Marey` takes plain arrays and a unit per axis that may be stated or
 left out; `open Marey.UnitsOfMeasure` is the mode every release so far has had, a witness per axis
@@ -1032,7 +1040,8 @@ Superseded by `0.1.0` and not recommended for use. `Marey.Verso` in particular c
 installed from it: prerelease versions do not appear in Verso's Extensions panel at all, so an
 rc validates the package and the formatter but never the installation path.
 
-[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.5.0...HEAD
+[0.5.0]: https://github.com/Axym-Labs/marey/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/Axym-Labs/marey/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/Axym-Labs/marey/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/Axym-Labs/marey/compare/0.2.0...0.3.0
