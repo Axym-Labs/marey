@@ -830,3 +830,369 @@ module ``invariants and drift`` =
             |> Marey.Sim.withInvariant "x" (fun (struct (x, _)) -> float x)
 
         Assert.False(s.Invariants.Head.Unit.Stated)
+
+// ======================================================================================
+// Phase 6 — events (D144): gate 7's bouncing ball, and gate 4 with events
+// ======================================================================================
+
+/// A ball over a floor at `y = 0`. `Resting` is the modelling decision D144 leaves to the user: at
+/// rest, the floor holds it and nothing moves.
+type private Ball =
+    { Y: float<m>
+      V: float<m/s>
+      Resting: bool }
+
+type private BallRate = { DY: float<m/s>; DV: float<m/s^2> }
+
+module ``events`` =
+
+    open FsCheck.Xunit
+
+    let private g = 9.81<m/s^2>
+    let private e = 0.8
+    let private h0 = 1.0<m>
+
+    let private tangent: Tangent<Ball, BallRate, s> =
+        { Axpy = fun h d b -> { b with Y = b.Y + h * d.DY; V = b.V + h * d.DV }
+          Lin = fun a d1 b d2 -> { DY = a * d1.DY + b * d2.DY; DV = a * d1.DV + b * d2.DV } }
+
+    let private fall (_: float<s>) (b: Ball) =
+        if b.Resting then { DY = 0.0<m/s>; DV = 0.0<m/s^2> } else { DY = b.V; DV = -g }
+
+    /// Longer than the fixed step: a flight shorter than one step lands with both of the step's
+    /// ends below the floor, and is not seen.
+    let private separation = 1e-2<s>
+
+    let private floor =
+        Event.create "floor" Direction.Falling (Response.Continue(fun b -> { b with V = -e * b.V })) (fun (b: Ball) -> b.Y)
+        |> Event.withRest separation (fun _ -> { Y = 0.0<m>; V = 0.0<m/s>; Resting = true })
+
+    let private drop = { Y = h0; V = 0.0<m/s>; Resting = false }
+
+    let private fixedBall = Sim.ofStep 1e-3<s> (Ode.rk4With tangent fall) drop |> Sim.withEvents [ floor ]
+
+    let private norm: ErrorNorm<Ball, BallRate, s> =
+        fun h d b0 b1 ->
+            let sy = 1e-9<m> + 1e-9 * max (abs b0.Y) (abs b1.Y)
+            let sv = 1e-9<m/s> + 1e-9 * max (abs b0.V) (abs b1.V)
+            sqrt (((float (h * d.DY / sy)) ** 2.0 + (float (h * d.DV / sv)) ** 2.0) / 2.0)
+
+    let private adaptiveBall =
+        Sim.ofAdaptive 1e-3<s> (Ode.dopri5With tangent norm fall |> Ode.withMaxStep 1e-3<s>) drop |> Sim.withEvents [ floor ]
+
+    /// The first impact, the impact speed, and the Zeno time `t₁ + 2 e v₁ / (g (1 − e))`.
+    let private t1 = sqrt (2.0 * h0 / g)
+    let private v1 = g * t1
+    let private zeno = t1 + 2.0 * e * v1 / (g * (1.0 - e))
+
+    /// The n-th impact (from 1): `t₁ + Σ_{k<n} 2 eᵏ v₁ / g`.
+    let private impact (n: int) = t1 + (List.sum [ for k in 1 .. n - 1 -> 2.0 * (e ** float k) * v1 / g ])
+
+    let private check (sim: Sim<Ball>) =
+        let hits = Sim.events 10.0<s> sim
+        let fired = hits |> List.filter (fun h -> h.Kind = HitKind.Fired)
+        Assert.True(fired.Length > 20, sprintf "only %d bounces" fired.Length)
+
+        // The bounce times, against the closed form.
+        fired |> List.iteri (fun i hit -> Assert.True(abs (hit.Time - impact (i + 1)) < 1e-9<s>, sprintf "bounce %d at %.12f s, expected %.12f" (i + 1) (float hit.Time) (float (impact (i + 1)))))
+
+        // Each apex, read from the state just after its bounce, is e² of the one before.
+        let apex (t: float<s>) = let b = Sim.at t sim in b.Y + b.V * b.V / (2.0 * g)
+        let apexes = h0 :: (fired |> List.map (fun hit -> apex hit.Time))
+
+        for a, b in List.pairwise apexes do
+            Assert.True(abs (float (b / a) - e * e) < 1e-6, sprintf "apex ratio %.9f, expected %.9f" (float (b / a)) (e * e))
+
+        // The run ends at rest near the Zeno time, once, and does not loop: within the time the
+        // remaining bounces would have taken, which is under `separation · e / (1 − e)`.
+        let rested = hits |> List.filter (fun h -> h.Kind = HitKind.Rested)
+        Assert.Equal(1, rested.Length)
+        Assert.True(abs (rested.Head.Time - zeno) <= separation * e / (1.0 - e) + 1e-9<s>, sprintf "rested at %.9f s, Zeno time %.9f s" (float rested.Head.Time) (float zeno))
+        Assert.Equal(rested.Head, List.last hits)
+        let still = Sim.at 9.0<s> sim
+        Assert.True(still.Resting && still.Y = 0.0<m> && still.V = 0.0<m/s>)
+
+    [<Fact>]
+    let ``gate 7: the bouncing ball, at a fixed step`` () = check fixedBall
+
+    [<Fact>]
+    let ``gate 7: the bouncing ball, adaptively`` () = check adaptiveBall
+
+    /// Without a rest response the guard stops the run, naming the event and the separation.
+    [<Fact>]
+    let ``without a rest the Zeno guard stops the run, saying why`` () =
+        let floor =
+            Event.create "floor" Direction.Falling (Response.Continue(fun b -> { b with V = -e * b.V })) (fun (b: Ball) -> b.Y)
+            |> Event.withMinSeparation separation
+
+        let sim = Sim.ofStep 1e-3<s> (Ode.rk4With tangent fall) drop |> Sim.withEvents [ floor ]
+        let hits = Sim.events 10.0<s> sim
+
+        match (List.last hits).Kind with
+        | HitKind.Stopped why ->
+            Assert.Contains("floor fired", why)
+            Assert.Contains("minimum separation of 0.01 s", why)
+        | other -> Assert.Fail(sprintf "the run ended with %A" other)
+
+    [<Fact>]
+    let ``a stop holds the state from the event on`` () =
+        let ground = Event.create "ground" Direction.Falling Response.Stop (fun (b: Ball) -> b.Y)
+        let sim = Sim.ofStep 1e-3<s> (Ode.rk4With tangent fall) drop |> Sim.withEvents [ ground ]
+        let hits = Sim.events 5.0<s> sim
+        Assert.Equal(1, hits.Length)
+        Assert.True(abs (hits.Head.Time - t1) < 1e-9<s>)
+        let traj = Sim.trajectory 0.1<s> 5.0<s> sim
+        Assert.Equal(traj.At 2.0<s>, traj.At 5.0<s>)
+        Assert.True((traj.At 5.0<s>).Y <= 0.0<m> && (traj.At 5.0<s>).Y > -1e-9<m>)
+
+    /// Gate 4 with events: seeking into the middle of the bounce sequence equals the straight run,
+    /// bit for bit, at a fixed step and adaptively, in any order.
+    [<Property(MaxTest = 40)>]
+    let ``gate 4: seeking through bounces equals the straight run`` (times: FsCheck.NormalFloat list) =
+        let ts = times |> List.map (fun x -> abs (float x.Get) % 6.0 * 1.0<s>) |> List.append [ 0.0<s>; t1; impact 3; 4.0<s>; zeno; 6.0<s> ]
+        let bits (x: float<'u>) = BitConverter.DoubleToInt64Bits(float x)
+        let same (a: Ball) (b: Ball) = bits a.Y = bits b.Y && bits a.V = bits b.V && a.Resting = b.Resting
+
+        [ fixedBall; adaptiveBall ]
+        |> List.forall (fun sim ->
+            let traj = Sim.trajectory 0.3<s> 6.0<s> sim
+            ts |> List.forall (fun t -> same (traj.At t) (Sim.at t sim)))
+
+    /// At and around every bounce, where a checkpoint inside the event's step would show.
+    [<Fact>]
+    let ``gate 4: at and around every bounce, concurrently`` () =
+        for sim in [ fixedBall; adaptiveBall ] do
+            let traj = Sim.trajectory 0.05<s> 6.0<s> sim
+            let ts = Sim.events 6.0<s> sim |> List.collect (fun hit -> [ hit.Time * (1.0 - 1e-12); hit.Time; hit.Time * (1.0 + 1e-12) ]) |> Array.ofList
+            let serial = ts |> Array.map traj.At
+            let concurrent = ts |> Array.Parallel.map traj.At
+
+            for i in 0 .. ts.Length - 1 do
+                Assert.Equal(Sim.at ts.[i] sim, serial.[i])
+                Assert.Equal(serial.[i], concurrent.[i])
+
+    /// Checkpoints a millisecond apart put some between the last bounces, closer together than
+    /// the separation: a seek from one of those must remember when the floor last fired, or it
+    /// bounces where the straight run rests.
+    [<Fact>]
+    let ``gate 4: seeking from a checkpoint between the last bounces`` () =
+        for sim in [ fixedBall; adaptiveBall ] do
+            let traj = Sim.trajectory 1e-3<s> 4.2<s> sim
+            let rest = (Sim.events 4.2<s> sim |> List.last).Time
+
+            for i in 0..400 do
+                let t = rest - 0.2<s> + float i * 1e-3<s>
+                Assert.Equal(Sim.at t sim, traj.At t)
+
+    /// Without events, `Sim.at` and the fixed-step trajectory agree too: the engine's clock is
+    /// `k · h` until the first event.
+    [<Fact>]
+    let ``the engine's clock is the fixed path's`` () =
+        let sim = Sim.ofStep 0.01<s> (Ode.rk4 Driven.flow) (struct (1.0<m>, 0.0<m/s>))
+        let traj = Sim.trajectory 0.37<s> 5.0<s> sim
+
+        for i in 0..500 do
+            let t = float i * 0.0097<s>
+            Assert.Equal(traj.At t, Sim.at t sim)
+
+    [<Fact>]
+    let ``directions`` () =
+        // A sine crossed upward at 0 (not counted: it starts there), 2π; downward at π, 3π.
+        let osc = Sim.ofStep 0.01<s> (Ode.rk4 (fun _ (x: float<m>) (v: float<m/s>) -> struct (v, -1.0</s^2> * x))) (struct (0.0<m>, 1.0<m/s>))
+        let ev d = Event.create "x" d (Response.Continue id) (fun (struct (x: float<m>, _)) -> x)
+        let times d = Sim.events 10.0<s> (osc |> Sim.withEvents [ ev d ]) |> List.map (fun h -> float h.Time)
+        let close (expected: float list) (got: float list) =
+            Assert.Equal(expected.Length, got.Length)
+            List.iter2 (fun a b -> Assert.True(abs (a - b) < 1e-8, sprintf "%g against %g" b a)) expected got
+
+        close [ 2.0 * Math.PI ] (times Direction.Rising)
+        close [ Math.PI; 3.0 * Math.PI ] (times Direction.Falling)
+        close [ Math.PI; 2.0 * Math.PI; 3.0 * Math.PI ] (times Direction.Either)
+
+    /// Two events in one step: the earlier fires first, and the later is found again after it.
+    [<Fact>]
+    let ``two roots in one step are taken in order`` () =
+        let line = Sim.ofStep 1.0<s> (Ode.euler (fun _ (_: float<m>) (_: float<m/s>) -> struct (1.0<m/s>, 0.0<m/s^2>))) (struct (0.0<m>, 0.0<m/s>))
+        let at (name: string) (x0: float<m>) = Event.create name Direction.Rising (Response.Continue id) (fun (struct (x: float<m>, _)) -> x - x0)
+        let hits = Sim.events 3.0<s> (line |> Sim.withEvents [ at "late" 0.7<m>; at "early" 0.3<m> ])
+        Assert.Equal<string list>([ "early"; "late" ], hits |> List.map (fun h -> h.Name))
+        Assert.True(abs (hits.[0].Time - 0.3<s>) < 1e-9<s> && abs (hits.[1].Time - 0.7<s>) < 1e-9<s>)
+
+    /// An event whose response does not move the state off its root fires once per restart until
+    /// the jam guard stops it.
+    [<Fact>]
+    let ``a jam stops instead of looping`` () =
+        let line = Sim.ofStep 0.1<s> (Ode.euler (fun _ (_: float<m>) (_: float<m/s>) -> struct (1.0<m/s>, 0.0<m/s^2>))) (struct (0.0<m>, 0.0<m/s>))
+        // Every crossing of 0.5 m sends the point back to 0.4999999 m.
+        let sticky = Event.create "sticky" Direction.Rising (Response.Continue(fun (struct (_, v)) -> struct (0.5<m> - 1e-7<m>, v))) (fun (struct (x: float<m>, _)) -> x - 0.5<m>)
+        let hits = Sim.events 10.0<s> (line |> Sim.withEvents [ sticky ])
+
+        match (List.last hits).Kind with
+        | HitKind.Stopped why -> Assert.Contains("events in a row", why)
+        | other -> Assert.Fail(sprintf "ended with %A" other)
+
+    [<Fact>]
+    let ``Illinois locates a root to its tolerance from either side`` () =
+        for root in [ 0.1; 0.5; 0.999 ] do
+            let phi x = Math.Exp(x) - Math.Exp(root)
+            let b = Event.locate phi 0.0 1.0 (phi 0.0) (phi 1.0) 1e-12
+            Assert.True(b >= root && b - root < 1e-11, sprintf "%.15f for %g" b root)
+            let falling x = -(phi x)
+            let b = Event.locate falling 0.0 1.0 (falling 0.0) (falling 1.0) 1e-12
+            Assert.True(b >= root && b - root < 1e-11, sprintf "%.15f for %g, falling" b root)
+
+    [<Fact>]
+    let ``Response.reflect`` () =
+        match Response.reflect<m, s> 1 0.5 with
+        | Response.Continue f ->
+            let q = [| 1.0<m>; 0.0<m> |]
+            let v = [| 2.0<m/s>; -4.0<m/s> |]
+            let struct (q', v') = f (struct (q, v))
+            Assert.Equal<float<m/s>[]>([| 2.0<m/s>; 2.0<m/s> |], v')
+            Assert.Equal<float<m/s>[]>([| 2.0<m/s>; -4.0<m/s> |], v)
+            Assert.Equal<float<m>[]>(q, q')
+        | Response.Stop -> Assert.Fail "reflect stopped"
+
+        Assert.Throws<ArgumentException>(fun () -> Response.reflect<m, s> 0 1.5 |> ignore) |> ignore
+
+module ``hard discs`` =
+
+    /// 400 discs of radius 1 cm on a 20 × 20 lattice in a 1 m box, jittered, with masses from 1
+    /// to 3 and velocities up to about 1 m/s, all from a seed.
+    let private gas (seed: uint64) =
+        let n = 400
+        let u, _ = Rng.units (5 * n) (Rng.seeded seed)
+        let x = Array.init n (fun i -> (float (i % 20) + 0.5 + 0.3 * (u.[i] - 0.5)) * 0.05<m>)
+        let y = Array.init n (fun i -> (float (i / 20) + 0.5 + 0.3 * (u.[n + i] - 0.5)) * 0.05<m>)
+        let vx = Array.init n (fun i -> (u.[2 * n + i] - 0.5) * 2.0<m/s>)
+        let vy = Array.init n (fun i -> (u.[3 * n + i] - 0.5) * 2.0<m/s>)
+        let masses = Array.init n (fun i -> 1.0 + 2.0 * u.[4 * n + i])
+        Discs.create x y vx vy, Array.create n 0.01<m>, masses
+
+    /// The smallest gap between two discs, as a fraction of their radii's sum, to the nearest image.
+    let private worstOverlap (box: Box<m>) (radii: float<m>[]) (d: Discs<m>) =
+        let n = d.X.Length
+        let mutable worst = infinity
+
+        for i in 0 .. n - 2 do
+            for j in i + 1 .. n - 1 do
+                let mutable dx = float (d.X.[j] - d.X.[i])
+                let mutable dy = float (d.Y.[j] - d.Y.[i])
+
+                match box with
+                | Box.Periodic(w, hgt) ->
+                    dx <- dx - float w * Math.Round(dx / float w)
+                    dy <- dy - float hgt * Math.Round(dy / float hgt)
+                | _ -> ()
+
+                worst <- min worst (sqrt (dx * dx + dy * dy) / float (radii.[i] + radii.[j]))
+
+        worst
+
+    /// Gate 7, the gas: ten thousand elastic collisions on a torus conserve momentum and kinetic
+    /// energy to rounding, and no two discs ever overlap at a step's end, which a pair missed by
+    /// the grid would.
+    [<Fact>]
+    let ``an elastic gas conserves momentum and energy over 10^4 collisions`` () =
+        let d0, radii, masses = gas 7UL
+        let box = Box.Periodic(1.0<m>, 1.0<m>)
+        let col = Collide.create radii masses 1.0 box
+        Assert.True(400 > col.BroadPhaseAbove, "the gate should exercise the grid")
+        let step = Collide.step col
+        let e0 = Discs.kinetic masses d0
+        let struct (px0, py0) = Discs.momentum masses d0
+        let scale = Array.sum (Array.map2 (fun mi (vx: float<m/s>) -> mi * abs vx) masses d0.VX)
+        let mutable d = d0
+        let mutable k = 0
+
+        while d.Collisions < 10_000L do
+            d <- step (float k * 0.01<s>) 0.01<s> d
+            k <- k + 1
+
+            // Every step: a missed pair overlaps for a step or two before the next contact
+            // between them pushes them apart.
+            Assert.True(worstOverlap box radii d >= 1.0 - 1e-9, sprintf "two discs overlap after step %d" k)
+
+        let struct (px, py) = Discs.momentum masses d
+        Assert.True(abs (px - px0) < 1e-12 * scale && abs (py - py0) < 1e-12 * scale, sprintf "momentum moved by %g, %g" (float (px - px0)) (float (py - py0)))
+        let drift = abs (float ((Discs.kinetic masses d - e0) / e0))
+        Assert.True(drift < 1e-12, sprintf "kinetic energy drifted by %g relative" drift)
+        Assert.Equal(0L, d.Capped)
+        Assert.True(worstOverlap box radii d >= 1.0 - 1e-9)
+
+    /// The grid is a speed-up, not a different answer: with every pair tested instead, the same
+    /// steps give the same bits.
+    [<Fact>]
+    let ``the grid and all pairs agree, bit for bit`` () =
+        let d0, radii, masses = gas 11UL
+        let box = Box.Periodic(1.0<m>, 1.0<m>)
+        let grid = Collide.step (Collide.create radii masses 1.0 box)
+        let all = Collide.step (Collide.create radii masses 1.0 box |> Collide.withBroadPhaseAbove 1000)
+        let mutable a = d0
+        let mutable b = d0
+
+        for k in 0..39 do
+            a <- grid (float k * 0.01<s>) 0.01<s> a
+            b <- all (float k * 0.01<s>) 0.01<s> b
+
+        Assert.True(a.Collisions > 100L, sprintf "only %d collisions" a.Collisions)
+        Assert.Equal(a, b)
+
+    [<Fact>]
+    let ``walls hold the gas, and an inelastic one cools while keeping its momentum off the walls`` () =
+        let d0, radii, masses = gas 3UL
+        let box = Box.Walls(0.0<m>, 1.0<m>, 0.0<m>, 1.0<m>)
+        let mutable d = d0
+        let step = Collide.step (Collide.create radii masses 1.0 box)
+
+        for k in 0..299 do
+            d <- step (float k * 0.01<s>) 0.01<s> d
+
+        Assert.True(d.WallHits > 100L && d.Collisions > 1000L)
+        Assert.True(abs (float ((Discs.kinetic masses d - Discs.kinetic masses d0) / Discs.kinetic masses d0)) < 1e-12)
+
+        for i in 0 .. d.X.Length - 1 do
+            Assert.True(d.X.[i] >= radii.[i] * (1.0 - 1e-9) && d.X.[i] <= 1.0<m> - radii.[i] * (1.0 - 1e-9), sprintf "disc %d left the box" i)
+
+        // Inelastic, on a torus so that only the discs exchange momentum.
+        let torus = Box.Periodic(1.0<m>, 1.0<m>)
+        let sticky = Collide.step (Collide.create radii masses 0.5 torus)
+        let mutable c = d0
+
+        for k in 0..99 do
+            c <- sticky (float k * 0.01<s>) 0.01<s> c
+
+        let struct (px0, _) = Discs.momentum masses d0
+        let struct (px, _) = Discs.momentum masses c
+        Assert.True(Discs.kinetic masses c < 0.5 * Discs.kinetic masses d0)
+        Assert.True(abs (px - px0) < 1e-12<m/s> * 400.0)
+
+    /// A step that reaches its cap finishes without colliding and is counted, rather than running
+    /// on.
+    [<Fact>]
+    let ``the cap is counted`` () =
+        let d0, radii, masses = gas 5UL
+        let step = Collide.step (Collide.create radii masses 1.0 (Box.Periodic(1.0<m>, 1.0<m>)) |> Collide.withCap 2)
+        let mutable d = d0
+
+        for k in 0..49 do
+            d <- step (float k * 0.01<s>) 0.01<s> d
+
+        Assert.True(d.Capped > 0L, "no step reached a cap of two contacts")
+        Assert.True(d.Collisions <= 2L * 50L)
+
+    /// Gate 4 for a collision step: a seek is the straight run.
+    [<Fact>]
+    let ``seeking a gas equals the straight run`` () =
+        let d0, radii, masses = gas 13UL
+        let sim = Sim.ofStep 0.01<s> (Collide.step (Collide.create radii masses 1.0 (Box.Periodic(1.0<m>, 1.0<m>)))) d0
+        let traj = Sim.trajectory 0.1<s> 1.0<s> sim
+
+        for t in [ 0.0<s>; 0.123<s>; 0.5<s>; 0.777<s>; 1.0<s>; 0.05<s> ] do
+            Assert.Equal(Sim.at t sim, traj.At t)
+
+    [<Fact>]
+    let ``a collider refuses what it cannot simulate`` () =
+        Assert.Throws<ArgumentException>(fun () -> Collide.create [| 1.0<m> |] [| 1.0; 2.0 |] 1.0 Box.Open |> ignore) |> ignore
+        Assert.Throws<ArgumentException>(fun () -> Collide.create [| -1.0<m> |] [| 1.0 |] 1.0 Box.Open |> ignore) |> ignore
+        Assert.Throws<ArgumentException>(fun () -> Collide.create [| 1.0<m> |] [| 1.0 |] 1.2 Box.Open |> ignore) |> ignore

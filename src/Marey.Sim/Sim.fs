@@ -39,6 +39,8 @@ type Sim<'s> =
         /// What the simulation should conserve, for `Sim.drift`. Plotting them against time is
         /// the standard way to catch a broken integrator.
         Invariants: Invariant<'s> list
+        /// Crossings to locate and respond to, in the order a tie is broken (D144).
+        Events: Event<'s> list
     }
 
 /// One invariant's drift over a trajectory: `Values.[i]` at `Times.[i]`, relative to its initial
@@ -68,7 +70,8 @@ module Sim =
         { Initial = initial
           Stepping = Stepping.Fixed(h, step)
           Checkpoint = id
-          Invariants = [] }
+          Invariants = []
+          Events = [] }
 
     /// A simulation from an adaptive integrator (`Ode.dopri5`), the step its controller starts
     /// from, and a start.
@@ -78,7 +81,8 @@ module Sim =
         { Initial = initial
           Stepping = Stepping.Adaptive(h0, step)
           Checkpoint = id
-          Invariants = [] }
+          Invariants = []
+          Events = [] }
 
     /// The same simulation with a state that a step updates in place, and `copy` to keep one.
     let withCheckpoint (copy: 's -> 's) (sim: Sim<'s>) : Sim<'s> = { sim with Checkpoint = copy }
@@ -93,37 +97,233 @@ module Sim =
     let internal withInvariantIn<'s, [<Measure>] 'e> (name: string) (u: U<'e>) (f: 's -> float<'e>) (sim: Sim<'s>) : Sim<'s> =
         { sim with Invariants = sim.Invariants @ [ { Name = name; Unit = (u :> IUnit); Of = fun s -> float (f s) } ] }
 
-    /// Every state from the start through `n` steps (accepted steps, for an adaptive
-    /// integrator), with its time, passed to `visit`. The start is copied through `Checkpoint`
-    /// first, so a simulation that steps in place can be run again.
+    /// D144 — the simulation with events attached, after any it has. Their order breaks a tie
+    /// between two roots at the same time.
+    let withEvents (events: Event<'s> list) (sim: Sim<'s>) : Sim<'s> = { sim with Events = sim.Events @ events }
+
+    // ---- The engine: adaptive steps and events (D143, D144) ------------------------------------------
+    //
+    // A run is a sequence of units, each one step or one step cut short at an event, between
+    // cursors. A fixed step's time is `Origin + J · h`: `k · h` until the first event, and counted
+    // from the last event after it, never summed. Without events a fixed step does not come through
+    // here: `walk` and `trajectory` have a path of their own that allocates nothing per step.
+
+    /// Where a run is: a boundary between two units, with everything the next unit depends on.
+    type private Cursor<'s> =
+        {
+            /// The time a fixed step counts from: zero, or the last event.
+            Origin: float<s>
+            /// Fixed steps since `Origin`.
+            J: int
+            T: float<s>
+            S: 's
+            /// An adaptive integrator's controller (D143).
+            C: Controller<s>
+            /// When each event last fired; NaN before it has.
+            Last: float<s>[]
+            /// Units in a row that ended at an event.
+            Streak: int
+            Stopped: bool
+        }
+
+    /// One unit: the cursor it ends at, the state anywhere in `[start, end)`, and the event that
+    /// ended it, if one did.
+    type private Unit<'s> =
+        { Next: Cursor<'s>
+          At: float<s> -> 's
+          Hit: Hit option }
+
+    /// Events in a row, each ending a unit before a whole step was taken, that stop a run as jammed.
+    [<Literal>]
+    let private MaxStreak = 10_000
+
+    let private start (sim: Sim<'s>) : Cursor<'s> =
+        { Origin = 0.0<s>
+          J = 0
+          T = 0.0<s>
+          S = sim.Checkpoint sim.Initial
+          C =
+            match sim.Stepping with
+            | Stepping.Fixed(h, _) -> Controller.start h
+            | Stepping.Adaptive(h0, _) -> Controller.start h0
+          Last = Array.create sim.Events.Length (LanguagePrimitives.FloatWithMeasure<s> nan)
+          Streak = 0
+          Stopped = false }
+
+    let private copyOf (sim: Sim<'s>) (c: Cursor<'s>) = { c with S = sim.Checkpoint c.S }
+
+    /// The unit that starts at `c`. `c.S` may be stepped in place; `At` works from a copy.
+    let private advance (sim: Sim<'s>) (events: Event<'s>[]) (c: Cursor<'s>) : Unit<'s> =
+        if c.Stopped then
+            let held = c.S
+
+            { Next = { c with T = LanguagePrimitives.FloatWithMeasure<s> infinity }
+              At = fun _ -> sim.Checkpoint held
+              Hit = None }
+        else
+            let t0 = c.T
+            let g0 = events |> Array.map (fun e -> e.Of c.S)
+
+            // The step: where it ends, the state there, the next controller, and the state at any
+            // time inside it.
+            let t1, s1, next, stateAt =
+                match sim.Stepping with
+                | Stepping.Fixed(h, step) ->
+                    let start = sim.Checkpoint c.S
+                    let at (t: float<s>) = if t > t0 then step t0 (t - t0) (sim.Checkpoint start) else sim.Checkpoint start
+                    c.Origin + float (c.J + 1) * h, step t0 h c.S, c.C, at
+                | Stepping.Adaptive(_, step) ->
+                    let a = step t0 c.C c.S
+                    a.T1, a.State, a.Next, a.Dense
+
+            // The earliest root of an event crossed in this step, located on the crossed side.
+            let mutable first = -1
+            let mutable tau = infinity
+            let span = float (t1 - t0)
+
+            for i in 0 .. events.Length - 1 do
+                let e = events.[i]
+                let g1 = e.Of s1
+
+                if Event.crosses e.Direction g0.[i] g1 then
+                    let phi (x: float) = e.Of(stateAt (t0 + LanguagePrimitives.FloatWithMeasure<s> x))
+                    let root = Event.locate phi 0.0 span g0.[i] g1 (e.Tolerance * span)
+
+                    if root < tau then
+                        first <- i
+                        tau <- root
+
+            if first < 0 then
+                { Next =
+                    { c with
+                        J = c.J + 1
+                        T = t1
+                        S = s1
+                        C = next
+                        Streak = 0 }
+                  At = stateAt
+                  Hit = None }
+            else
+                let e = events.[first]
+                let te = t0 + LanguagePrimitives.FloatWithMeasure<s> tau
+                let se = stateAt te
+                let last = c.Last.[first]
+
+                let tooSoon =
+                    match e.MinSeparation with
+                    | Some m -> not (Double.IsNaN(float last)) && te - last < m
+                    | None -> false
+
+                let state, kind =
+                    if tooSoon then
+                        match e.Rest with
+                        | Some rest -> rest se, HitKind.Rested
+                        | None ->
+                            se,
+                            HitKind.Stopped(
+                                sprintf
+                                    "%s fired %g s after its previous crossing, under its minimum separation of %g s, and has no rest response"
+                                    e.Name
+                                    (float (te - last))
+                                    (float e.MinSeparation.Value)
+                            )
+                    else
+                        match e.Response with
+                        | Response.Continue f -> f se, HitKind.Fired
+                        | Response.Stop -> se, HitKind.Stopped(sprintf "%s stops the simulation" e.Name)
+
+                let kind =
+                    if c.Streak + 1 >= MaxStreak then
+                        HitKind.Stopped(sprintf "%d events in a row without a whole step, the last %s at %g s" MaxStreak e.Name (float te))
+                    else
+                        kind
+
+                let fired = Array.copy c.Last
+                fired.[first] <- te
+
+                { Next =
+                    { Origin = te
+                      J = 0
+                      T = te
+                      S = state
+                      C = next
+                      Last = fired
+                      Streak = c.Streak + 1
+                      Stopped =
+                        match kind with
+                        | HitKind.Stopped _ -> true
+                        | _ -> false }
+                  At = stateAt
+                  Hit = Some { Name = e.Name; Time = te; Kind = kind } }
+
+    /// Every state from the start through `n` units (steps; accepted steps for an adaptive
+    /// integrator; a step cut short at an event counts as one), with its time, passed to `visit`.
+    /// The start is copied through `Checkpoint` first, so a simulation that steps in place can be
+    /// run again. After a stop the state and time hold.
     let private walk (n: int) (sim: Sim<'s>) (visit: int -> float<s> -> 's -> unit) : 's =
         if n < 0 then
             invalidArg "n" (sprintf "Marey: cannot run %d steps." n)
 
-        let mutable s = sim.Checkpoint sim.Initial
-        visit 0 0.0<s> s
+        match sim.Stepping, sim.Events with
+        | Stepping.Fixed(h, step), [] ->
+            let mutable s = sim.Checkpoint sim.Initial
+            visit 0 0.0<s> s
 
-        match sim.Stepping with
-        | Stepping.Fixed(h, step) ->
             for k in 0 .. n - 1 do
                 s <- step (float k * h) h s
                 visit (k + 1) (float (k + 1) * h) s
-        | Stepping.Adaptive(h0, step) ->
-            let mutable t = 0.0<s>
-            let mutable control = Controller.start h0
+
+            s
+        | _ ->
+            let events = Array.ofList sim.Events
+            let mutable c = start sim
+            visit 0 c.T c.S
 
             for k in 0 .. n - 1 do
-                let a = step t control s
-                s <- a.State
-                t <- a.T1
-                control <- a.Next
-                visit (k + 1) t s
+                if not c.Stopped then
+                    c <- (advance sim events c).Next
 
-        s
+                visit (k + 1) c.T c.S
 
-    /// The state after `n` steps: at `t = n · h` for a fixed step, wherever the `n`-th accepted
-    /// step ends for an adaptive one.
+            c.S
+
+    /// The state after `n` steps: at `t = n · h` for a fixed step without events, wherever the
+    /// `n`-th unit ends otherwise.
     let run (n: int) (sim: Sim<'s>) : 's = walk n sim (fun _ _ _ -> ())
+
+    /// The state at time `t` by one straight run from the start, without a checkpoint table: what
+    /// a trajectory's seek must equal.
+    let at (t: float<s>) (sim: Sim<'s>) : 's =
+        let t = if not (t > 0.0<s>) then 0.0<s> else t
+        let events = Array.ofList sim.Events
+        let mutable c = start sim
+        let mutable u = advance sim events c
+
+        while u.Next.T <= t do
+            c <- u.Next
+            u <- advance sim events c
+
+        u.At t
+
+    /// The events a straight run passes up to `horizon`, in order, each with its time and what it
+    /// did. A run that stopped ends the list with the reason.
+    let events (horizon: float<s>) (sim: Sim<'s>) : Hit list =
+        let events = Array.ofList sim.Events
+        let hits = Collections.Generic.List<Hit>()
+
+        if events.Length > 0 then
+            let mutable c = start sim
+
+            while not c.Stopped && c.T <= horizon do
+                let u = advance sim events c
+
+                match u.Hit with
+                | Some hit when hit.Time <= horizon -> hits.Add hit
+                | _ -> ()
+
+                c <- u.Next
+
+        List.ofSeq hits
 
     /// The `n + 1` states of `run n`, the start first, each kept through `Checkpoint`.
     let states (n: int) (sim: Sim<'s>) : 's[] =
@@ -253,58 +453,56 @@ module Sim =
 
         Anim<'s>(horizon, seek)
 
-    /// A checkpoint of an adaptive run: a step boundary, the state there, and the controller that
-    /// proposes the next step (D143).
-    [<Struct>]
-    type private Mark<'s> =
-        { T: float<s>
-          S: 's
-          C: Controller<s> }
-
-    let private adaptiveTrajectory maxBytes (every: float<s>) (horizon: float<s>) (sim: Sim<'s>) (h0: float<s>) (step: AdaptiveStep<'s, s>) =
+    /// A trajectory through the engine, for an adaptive integrator or a simulation with events.
+    /// Checkpoint `i` is the first unit boundary at or past `i · every`, with everything the next
+    /// unit depends on: the controller (D143), when each event last fired, the step origin.
+    let private unitTrajectory maxBytes (every: float<s>) (horizon: float<s>) (sim: Sim<'s>) =
         if horizon / every >= 2.0e9 then
             invalidArg "every" (sprintf "Marey: %g s checkpointed every %g s is more checkpoints than a trajectory counts." (float horizon) (float every))
 
+        let events = Array.ofList sim.Events
         let count = lastStepAt every horizon + 1
-        let first = sim.Checkpoint sim.Initial
+        let first = start sim
 
-        capped maxBytes count first (fun fit -> sprintf "%g s" (float horizon / float fit))
+        capped maxBytes count first.S (fun fit -> sprintf "%g s" (float horizon / float fit))
 
-        // Checkpoint `i` is the first step boundary at or past `i · every`. A step that crosses
-        // several of those marks fills them all with the same boundary.
+        // A unit that crosses several marks fills them all with the same boundary. A run that
+        // stopped fills what is left with where it stopped.
         let table = Array.zeroCreate count
-        table.[0] <- { T = 0.0<s>; S = sim.Checkpoint first; C = Controller.start h0 }
+        table.[0] <- copyOf sim first
         let mutable filled = 1
-        let mutable mark = { T = 0.0<s>; S = first; C = Controller.start h0 }
+        let mutable c = first
 
         while filled < count do
-            let a = step mark.T mark.C mark.S
-            mark <- { T = a.T1; S = a.State; C = a.Next }
-
-            while filled < count && float filled * every <= mark.T do
-                // Written out, not `{ mark with … }`: Fable 5.20 compiles a copy-and-update of a
-                // mutable struct local through a reference cell and reads the fields off the cell.
-                table.[filled] <- { T = mark.T; S = sim.Checkpoint mark.S; C = mark.C }
+            if c.Stopped then
+                table.[filled] <- copyOf sim c
                 filled <- filled + 1
+            else
+                c <- (advance sim events c).Next
+
+                while filled < count && float filled * every <= c.T do
+                    table.[filled] <- copyOf sim c
+                    filled <- filled + 1
 
         let seek (t: float<s>) : 's =
             let t = clampTo horizon t
-            // The last checkpoint at or before `t`. Its mark is at or past `i · every`, so it may
-            // lie past `t`; the start never does.
+            // The last checkpoint at or before `t`: its boundary is at or past `i · every`, so it
+            // may lie past `t`, and the start never does.
             let mutable i = min (count - 1) (lastStepAt every t)
 
             while table.[i].T > t do
                 i <- i - 1
 
-            let m = table.[i]
-            let mutable a = step m.T m.C (sim.Checkpoint m.S)
+            let mutable c = copyOf sim table.[i]
+            let mutable u = advance sim events c
 
-            // The step whose interval `[T0, T1)` holds `t`: half-open, so a seek to a boundary
-            // reads the step that starts there, as the straight run does.
-            while a.T1 <= t do
-                a <- step a.T1 a.Next a.State
+            // The unit whose interval `[start, end)` holds `t`: half-open, so a seek to a boundary
+            // reads the unit that starts there, as the straight run does.
+            while u.Next.T <= t do
+                c <- u.Next
+                u <- advance sim events c
 
-            a.Dense t
+            u.At t
 
         Anim<'s>(horizon, seek)
 
@@ -316,9 +514,9 @@ module Sim =
         if not (horizon >= 0.0<s>) || Double.IsInfinity(float horizon) then
             invalidArg "horizon" (sprintf "Marey: a trajectory's horizon must be non-negative and finite, not %g s." (float horizon))
 
-        match sim.Stepping with
-        | Stepping.Fixed(h, step) -> fixedTrajectory maxBytes every horizon sim h step
-        | Stepping.Adaptive(h0, step) -> adaptiveTrajectory maxBytes every horizon sim h0 step
+        match sim.Stepping, sim.Events with
+        | Stepping.Fixed(h, step), [] -> fixedTrajectory maxBytes every horizon sim h step
+        | _ -> unitTrajectory maxBytes every horizon sim
 
     /// §8.2's bridge: the simulation as an `Anim` over `[0, horizon]`, seekable at any time.
     ///

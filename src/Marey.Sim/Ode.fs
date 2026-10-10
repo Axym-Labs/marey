@@ -422,3 +422,15 @@ module Ode =
         (f: Flow2T<'x, 'y, 't>)
         : AdaptiveStep<struct (float<'x> * float<'y>), 't> =
         dopri5With Tangent.flow2 (ErrorNorm.flow2 atolX atolY rtol) (fun t (struct (x, y)) -> f t x y)
+
+    /// An adaptive step that never takes, or proposes, more than `hmax`. A controller on a problem
+    /// it integrates exactly (free fall, for Dormand–Prince) grows its step tenfold at a time, and
+    /// an event whose function crosses zero and back inside one step is not seen; the cap is how a
+    /// simulation with events says how long its shortest feature is.
+    let withMaxStep<'s, [<Measure>] 't> (hmax: float<'t>) (step: AdaptiveStep<'s, 't>) : AdaptiveStep<'s, 't> =
+        if not (hmax > LanguagePrimitives.FloatWithMeasure<'t> 0.0) || Double.IsInfinity(float hmax) then
+            invalidArg "hmax" (sprintf "Marey: a maximum step must be positive and finite, not %g." (float hmax))
+
+        fun t control s ->
+            let a = step t { control with H = min control.H hmax } s
+            { a with Next = { a.Next with H = min a.Next.H hmax } }

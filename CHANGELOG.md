@@ -27,6 +27,15 @@ land in a minor release.
   `Sim.trajectory every horizon` is the simulation as an `Anim`: a seek to any time replays from
   the nearest checkpoint and gives the state a straight run reaches, bit for bit, on any thread. A
   checkpoint table estimated over 512 MiB is refused, naming an interval that fits.
+  Events (`Event.create`, `Sim.withEvents`): a function of the state crossing zero in a stated
+  direction, located to a tolerance in time (on the dense output for `dopri5`, by re-stepping for
+  a fixed step), with a response that replaces the state or stops the run, and a minimum
+  separation that applies a rest response or stops instead of looping (Zeno). `Sim.events` lists
+  the events a run passed; `Sim.at` is the straight run to a time. `Response.reflect` for a
+  second-order state. `Ode.withMaxStep` caps an adaptive step. `Collide.step` steps hard discs
+  in free flight with every contact inside the step resolved exactly in time order, against walls,
+  on a torus or in the open, with a grid broad phase above 256 discs and a per-step contact cap
+  whose hits are counted.
   `Sim.withInvariant` attaches a conserved quantity (with a unit witness under
   `open Marey.UnitsOfMeasure`), `Sim.drift` samples each one's drift over a trajectory, relative
   to its start or absolute where the start is zero, and `Drift.chart` draws them. The package
