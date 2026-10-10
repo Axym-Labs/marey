@@ -57,7 +57,9 @@ let private assemblies =
       "Marey.Html"
       // Joined at M4 phase 6, with `pendulum.fsx` — the same omission as `Marey.Tools.Tex`'s:
       // phases 1–5 shipped `Marey.Fields` with no example, so nothing needed it here.
-      "Marey.Fields" ]
+      "Marey.Fields"
+      // Joined at M5.5 phase 5, with `integrators.fsx`, in the phase that wrote the first example.
+      "Marey.Sim" ]
 
 let private exampleDir =
     lazy (Path.Combine(Golden.repoRoot.Force(), "examples"))

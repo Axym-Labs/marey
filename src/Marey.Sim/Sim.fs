@@ -14,6 +14,13 @@ type Stepping<'s> =
     /// Accepted steps of an adaptive integrator, its controller started at `h0`.
     | Adaptive of h0: float<s> * step: AdaptiveStep<'s, s>
 
+/// §8.2 — a quantity a simulation should conserve: energy, momentum, mass. Erased to `float`, with
+/// the unit it was stated in kept beside it for the drift figure's axis (D136).
+type Invariant<'s> =
+    { Name: string
+      Unit: IUnit
+      Of: 's -> float }
+
 /// §8.2 — a simulation is a start and a way to step.
 ///
 /// Simulations are sequential and `Anim` asks for random access to time; `Sim.trajectory` is the
@@ -29,7 +36,22 @@ type Sim<'s> =
         /// A copy of a state that is safe to keep while stepping goes on: the identity for an
         /// immutable state, a deep copy for one a step updates in place (a grid solver's buffers).
         Checkpoint: 's -> 's
+        /// What the simulation should conserve, for `Sim.drift`. Plotting them against time is
+        /// the standard way to catch a broken integrator.
+        Invariants: Invariant<'s> list
     }
+
+/// One invariant's drift over a trajectory: `Values.[i]` at `Times.[i]`, relative to its initial
+/// value, or absolute in its own unit where the initial value is zero and a ratio would not exist.
+type Drift =
+    { Name: string
+      /// The invariant's unit. The drift is in it when `Relative` is false.
+      Unit: IUnit
+      Relative: bool
+      /// The invariant's value at the start, in its unit.
+      Initial: float
+      Times: float<s>[]
+      Values: float[] }
 
 [<RequireQualifiedAccess>]
 module Sim =
@@ -45,7 +67,8 @@ module Sim =
 
         { Initial = initial
           Stepping = Stepping.Fixed(h, step)
-          Checkpoint = id }
+          Checkpoint = id
+          Invariants = [] }
 
     /// A simulation from an adaptive integrator (`Ode.dopri5`), the step its controller starts
     /// from, and a start.
@@ -54,10 +77,21 @@ module Sim =
 
         { Initial = initial
           Stepping = Stepping.Adaptive(h0, step)
-          Checkpoint = id }
+          Checkpoint = id
+          Invariants = [] }
 
     /// The same simulation with a state that a step updates in place, and `copy` to keep one.
     let withCheckpoint (copy: 's -> 's) (sim: Sim<'s>) : Sim<'s> = { sim with Checkpoint = copy }
+
+    /// D136 — the simulation with an invariant attached, in no stated unit. In the unit-required
+    /// mode (`open Marey.UnitsOfMeasure`) this is shadowed by a form that takes a witness.
+    let withInvariant (name: string) (f: 's -> float) (sim: Sim<'s>) : Sim<'s> =
+        { sim with Invariants = sim.Invariants @ [ { Name = name; Unit = U.unspecified; Of = f } ] }
+
+    /// `withInvariant` with the invariant's unit as a witness, erased into the record. What the
+    /// unit-required mode's `Sim.withInvariant` reaches.
+    let internal withInvariantIn<'s, [<Measure>] 'e> (name: string) (u: U<'e>) (f: 's -> float<'e>) (sim: Sim<'s>) : Sim<'s> =
+        { sim with Invariants = sim.Invariants @ [ { Name = name; Unit = (u :> IUnit); Of = fun s -> float (f s) } ] }
 
     /// Every state from the start through `n` steps (accepted steps, for an adaptive
     /// integrator), with its time, passed to `visit`. The start is copied through `Checkpoint`
@@ -303,3 +337,68 @@ module Sim =
     /// naming the `every` that would fit (`trajectoryWithin` sets another cap).
     let trajectory (every: float<s>) (horizon: float<s>) (sim: Sim<'s>) : Anim<'s> =
         trajectoryWithin DefaultCheckpointBytes every horizon sim
+
+    // ---- Drift (D136) -------------------------------------------------------------------------------
+
+    /// Each invariant's drift over a trajectory, at `samples` evenly spaced times from 0 to its
+    /// duration: `(I(t) − I(0)) / |I(0)|`, or `I(t) − I(0)` in the invariant's unit where `I(0)` is
+    /// zero, and `Relative` says which. A simulation with no invariants has no drift to give, and
+    /// is refused rather than answered with nothing.
+    let drift (samples: int) (trajectory: Anim<'s>) (sim: Sim<'s>) : Drift list =
+        if samples < 2 then
+            invalidArg "samples" (sprintf "Marey: a drift needs at least two samples, not %d." samples)
+
+        if List.isEmpty sim.Invariants then
+            invalidArg "sim" "Marey: the simulation has no invariants; attach one with Sim.withInvariant."
+
+        let d = trajectory.Duration
+        let times = Array.init samples (fun i -> d * float i / float (samples - 1))
+        let states = times |> Array.map trajectory.At
+
+        sim.Invariants
+        |> List.map (fun inv ->
+            let values = states |> Array.map inv.Of
+            let i0 = values.[0]
+            let relative = i0 <> 0.0
+
+            { Name = inv.Name
+              Unit = inv.Unit
+              Relative = relative
+              Initial = i0
+              Times = times
+              Values = values |> Array.map (fun v -> if relative then (v - i0) / abs i0 else v - i0) })
+
+/// Drawing a drift.
+[<RequireQualifiedAccess>]
+module Drift =
+
+    /// The same drift under another name: the integrator's, say, when three are compared.
+    let named (name: string) (d: Drift) : Drift = { d with Name = name }
+
+    /// The drift in the invariant's own unit, `I(t) − I(0)`, whichever way it was computed: an
+    /// energy's drift in joules rather than as a fraction of where it started.
+    let absolute (d: Drift) : Drift =
+        if d.Relative then { d with Relative = false; Values = d.Values |> Array.map (fun v -> v * abs d.Initial) } else d
+
+    /// The drift's size, `|Values|`, for a logarithmic axis, where an energy that RK4 loses and one
+    /// Euler gains are both a distance from where they started.
+    let magnitude (d: Drift) : Drift = { d with Values = Array.map abs d.Values }
+
+    /// One line per drift against time in seconds, named in the legend, on one panel. Relative
+    /// drifts are dimensionless; absolute ones are in their invariant's unit, and must share it.
+    /// A mixture of the two has no common axis and is refused.
+    let chart (drifts: Drift list) : Figure =
+        match drifts with
+        | [] -> invalidArg "drifts" "Marey: no drift to draw."
+        | first :: _ ->
+            if drifts |> List.exists (fun d -> d.Relative <> first.Relative) then
+                invalidArg "drifts" "Marey: relative and absolute drifts have no axis in common; draw them apart."
+
+            let yUnit: IUnit = if first.Relative then U.one else first.Unit
+            let line (d: Drift) = Chart.Line(Array.map float d.Times, d.Values, xUnit = U.second, yUnit = yUnit)
+
+            drifts
+            |> List.tail
+            |> List.fold (fun fig d -> fig |> Chart.add (line d) |> Chart.withName d.Name) (line first |> Chart.withName first.Name)
+            |> Chart.withYLabel (if first.Relative then "relative drift" else "drift")
+            |> Chart.withXLabel "time"

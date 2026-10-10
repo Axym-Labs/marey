@@ -380,6 +380,17 @@ module ``a wrong unit does not compile`` =
             "let s = Ode.rk4 (fun (_: float<s>) (x: float<m>) (v: float<m/s>) -> struct (v, -4.0</s> * x)) 0.0<s> 0.1<s> (struct (1.0<m>, 0.0<m/s>))"
             "'m/s ^ 2' does not match the unit of measure 'm/s'"
 
+    /// An invariant whose witness says joules and whose function returns a momentum.
+    [<Fact>]
+    let ``an invariant in the wrong unit does not compile`` () =
+        let sim = "let sim = Sim.ofStep 0.1<s> (Ode.rk4 (fun (_: float<s>) (x: float<m>) (v: float<m/s>) -> struct (v, -4.0</s^2> * x))) (struct (1.0<m>, 0.0<m/s>))"
+
+        match compile "invariant-control" (sim + "\nlet e = sim |> Sim.withInvariant \"p\" (U.mul U.kilogram (U.div U.metre U.second)) (fun (struct (_, v)) -> 2.0<kg> * v)") with
+        | None -> skipped ()
+        | Some(code, path, output) -> Assert.True((code = 0), sprintf "the control did not compile: %s\n%s" path output)
+
+        refuses "invariant" (sim + "\nlet e = sim |> Sim.withInvariant \"energy\" Derived.joule (fun (struct (_, v)) -> 2.0<kg> * v)") "'J' does not match the unit of measure 'kg m/s'"
+
     /// Tier 3: a tangent whose advance forgets `h` adds kelvin per second to kelvin.
     [<Fact>]
     let ``a tangent that forgets h does not compile`` () =
@@ -718,3 +729,104 @@ module ``Dormand–Prince`` =
         for i in 0..300 do
             let t = float i * 0.01<s>
             Assert.True(sameFlow (traj.At t) (straight 0.01<s> (Ode.dopri5 1e-3<m> 1e-3<m/s> 1e-3 Driven.flow) start t), sprintf "differs at %g" (float t))
+
+// ======================================================================================
+// Phase 5 — invariants and drift (D136)
+// ======================================================================================
+
+module ``invariants and drift`` =
+
+    let private omega = 2.0 * Math.PI * 1.0</s>
+    let private energy (x: float<m>) (v: float<m/s>) : float<J> = 0.5 * 1.0<kg> * (v * v + omega * omega * x * x)
+    let private flow: Flow2T<m, m/s, s> = fun _ x v -> struct (v, -omega * omega * x)
+
+    let private sim (step: Step<struct (float<m> * float<m/s>), s>) =
+        Sim.ofStep 0.01<s> step (struct (0.1<m>, 0.0<m/s>))
+        |> Sim.withInvariant "energy" Derived.joule (fun (struct (x, v)) -> energy x v)
+        |> Sim.withInvariant "momentum" (U.mul U.kilogram (U.div U.metre U.second)) (fun (struct (_, v)) -> 1.0<kg> * v)
+
+    [<Fact>]
+    let ``a drift is relative, and absolute where the start is zero`` () =
+        let s = sim (Ode.rk4 flow)
+        let traj = Sim.trajectory 1.0<s> 10.0<s> s
+        let drifts = Sim.drift 11 traj s
+        Assert.Equal<string list>([ "energy"; "momentum" ], drifts |> List.map (fun d -> d.Name))
+        let e = drifts.[0]
+        let p = drifts.[1]
+        Assert.True(e.Relative)
+        Assert.False(p.Relative, "the momentum starts at rest, so its drift cannot be relative")
+        Assert.Equal("J", e.Unit.Symbol)
+        Assert.Equal<float<s>[]>(Array.init 11 (fun i -> 10.0<s> * float i / 10.0), e.Times)
+        Assert.Equal(0.0, e.Values.[0])
+        // The relative drift at the end is the energy's own, computed by hand.
+        let struct (x, v) = traj.At 10.0<s>
+        let e0 = energy 0.1<m> 0.0<m/s>
+        Assert.Equal(float ((energy x v - e0) / e0), e.Values.[10], 15)
+        Assert.Equal(float (1.0<kg> * v), p.Values.[10], 15)
+
+    /// The integrators' signatures: Euler's energy grows, RK4's falls slowly, Verlet's stays in
+    /// its band — the figure `integrators.fsx` draws.
+    [<Fact>]
+    let ``Euler gains, RK4 loses, Verlet holds`` () =
+        let first (s: Sim<'s>) = Sim.drift 401 (Sim.trajectory 1.0<s> 20.0<s> s) s |> List.head
+        let e = first (sim (Ode.euler flow))
+        let r = first (sim (Ode.rk4 flow))
+
+        let v =
+            Sim.ofStep 0.01<s> (Ode.verlet (fun _ (q: float<m>[]) -> q |> Array.map (fun x -> -omega * omega * x))) (struct ([| 0.1<m> |], [| 0.0<m/s> |]))
+            |> Sim.withInvariant "energy" Derived.joule (fun (struct (q, v)) -> energy q.[0] v.[0])
+            |> first
+
+        let last (d: Drift) = d.Values.[d.Values.Length - 1]
+        let band (d: Drift) lo hi = d.Values.[lo..hi] |> Array.map abs |> Array.max
+        Assert.True(last e > 1.0, sprintf "Euler's energy should have more than doubled: %g" (last e))
+        Assert.True(last r < 0.0 && last r > -1e-5, sprintf "RK4's energy should fall slightly: %g" (last r))
+        Assert.True(band v 380 400 <= 1.01 * band v 0 20, "Verlet's band grew")
+
+    [<Fact>]
+    let ``absolute and magnitude`` () =
+        let s = sim (Ode.euler flow)
+        let d = Sim.drift 5 (Sim.trajectory 1.0<s> 4.0<s> s) s |> List.head
+        let a = Drift.absolute d
+        Assert.False a.Relative
+        Assert.Equal(float (energy 0.1<m> 0.0<m/s>), d.Initial, 15)
+
+        for i in 0..4 do
+            Assert.Equal(d.Values.[i] * d.Initial, a.Values.[i], 15)
+
+        Assert.True(Drift.magnitude { a with Values = [| -2.0; 3.0 |] } |> fun m -> m.Values = [| 2.0; 3.0 |])
+        Assert.Equal("RK4", (Drift.named "RK4" d).Name)
+
+    [<Fact>]
+    let ``a drift needs an invariant and two samples`` () =
+        let bare = Sim.ofStep 0.01<s> (Ode.rk4 flow) (struct (0.1<m>, 0.0<m/s>))
+        let traj = Sim.trajectory 1.0<s> 1.0<s> bare
+        let e = Assert.Throws<ArgumentException>(fun () -> Sim.drift 10 traj bare |> ignore)
+        Assert.Contains("Sim.withInvariant", e.Message)
+        Assert.Throws<ArgumentException>(fun () -> Sim.drift 1 traj (sim (Ode.rk4 flow)) |> ignore) |> ignore
+
+    /// The chart is one line per drift, labelled in the invariant's unit when absolute and
+    /// dimensionless when relative; a mixture is refused.
+    [<Fact>]
+    let ``the drift chart`` () =
+        let s = sim (Ode.rk4 flow)
+        let drifts = Sim.drift 50 (Sim.trajectory 1.0<s> 5.0<s> s) s
+        let energyAbs = drifts.[0] |> Drift.absolute
+        let extent = Chart.size 640.0 400.0
+        let svg (fig: Figure) = SvgBackend.render extent (Chart.toScene extent fig)
+        let relative = Drift.chart [ drifts.[0]; Drift.named "again" drifts.[0] ] |> svg
+        Assert.Contains("relative drift", relative)
+        Assert.Contains("again", relative)
+        let absolute = Drift.chart [ energyAbs ] |> svg
+        Assert.Contains("J]", absolute)
+        Assert.Throws<ArgumentException>(fun () -> Drift.chart [ drifts.[0]; drifts.[1] ] |> ignore) |> ignore
+        Assert.Throws<ArgumentException>(fun () -> Drift.chart [] |> ignore) |> ignore
+
+    /// Under `open Marey` alone an invariant takes no witness, and its unit is unspecified.
+    [<Fact>]
+    let ``the unit-optional mode's invariant`` () =
+        let s =
+            Sim.ofStep 0.01<s> (Ode.rk4 flow) (struct (0.1<m>, 0.0<m/s>))
+            |> Marey.Sim.withInvariant "x" (fun (struct (x, _)) -> float x)
+
+        Assert.False(s.Invariants.Head.Unit.Stated)

@@ -26,8 +26,13 @@ land in a minor release.
   controller and fourth-order dense output; `Sim.ofAdaptive` runs one.
   `Sim.trajectory every horizon` is the simulation as an `Anim`: a seek to any time replays from
   the nearest checkpoint and gives the state a straight run reaches, bit for bit, on any thread. A
-  checkpoint table estimated over 512 MiB is refused, naming an interval that fits. The package
+  checkpoint table estimated over 512 MiB is refused, naming an interval that fits.
+  `Sim.withInvariant` attaches a conserved quantity (with a unit witness under
+  `open Marey.UnitsOfMeasure`), `Sim.drift` samples each one's drift over a trajectory, relative
+  to its start or absolute where the start is zero, and `Drift.chart` draws them. The package
   claims Fable.
+- **`examples/integrators.fsx`**: Euler, RK4 and Verlet on one oscillator, and the energy drift of
+  each over 100 periods.
 
 ### Fixed
 

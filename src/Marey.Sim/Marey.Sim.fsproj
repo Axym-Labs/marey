@@ -28,6 +28,8 @@
   <ItemGroup>
     <Compile Include="Ode.fs" />
     <Compile Include="Sim.fs" />
+    <!-- D109 — the unit-required mode, after the implementations it reaches. -->
+    <Compile Include="UnitsOfMeasure.fs" />
   </ItemGroup>
 
   <ItemGroup>
