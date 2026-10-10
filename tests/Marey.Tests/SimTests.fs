@@ -1635,3 +1635,9 @@ module ``grid solvers`` =
 
         let e = Assert.Throws<ArgumentException>(fun () -> Fdm.poisson (Boundaries.all (Boundary.Neumann 0.0<V/m>)) 1e-9 10 (ScalarGrid.sample (Grid.linear 0.0<m> 1.0<m> 5) (Grid.linear 0.0<m> 1.0<m> 5) (fun _ _ -> 0.0<V/m^2>)) |> ignore)
         Assert.Contains("no Dirichlet side", e.Message)
+
+/// M5.5 phase 11, gate 10's .NET half: the runs Node prints are these, to twelve decimals.
+module ``the simulations Node runs`` =
+
+    [<Fact>]
+    let ``print as golden/sim-runs.txt says`` () = Golden.check "sim-runs.txt" (SimRuns.text ())

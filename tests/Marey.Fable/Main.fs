@@ -1,5 +1,5 @@
-/// D130 — the 27 SVG goldens under Node; and M5's gates 13 and 14, the canvas backend's call logs
-/// and the fonts, which need Node for the same reason.
+/// D130 — the 27 SVG goldens under Node; M5's gates 13 and 14, the canvas backend's call logs
+/// and the fonts, which need Node for the same reason; and M5.5's gate 10, the simulations.
 ///
 /// Fable compiles `GoldenScenes`, the same file the .NET suite renders its baselines from, and
 /// the seven projects below it; Node runs the result and compares each document with its file in
@@ -77,5 +77,18 @@ for f in fontFailures do
 
 printfn "the fonts gate: %s" (if fontFailures.IsEmpty then "holds" else "fails")
 
-if not (failures.IsEmpty && canvasFailures.IsEmpty && fontFailures.IsEmpty) then
+// M5.5 gate 10: the simulations, printed to twelve decimals, against the file .NET checks too.
+let private simFailures =
+    let expected = normalise (readFileSync (dir + "/sim-runs.txt", "utf8"))
+    let actual = normalise (SimRuns.text ())
+
+    if actual = expected then
+        printfn "the simulations: identical to .NET's, %d lines" (expected.Split('\n').Length - 1)
+        []
+    else
+        writeFileSync (dir + "/sim-runs.actual.txt", actual)
+        printfn "  FAIL  the simulations, %s" (firstDifference expected actual)
+        [ "sim-runs" ]
+
+if not (failures.IsEmpty && canvasFailures.IsEmpty && fontFailures.IsEmpty && simFailures.IsEmpty) then
     setExitCode 1

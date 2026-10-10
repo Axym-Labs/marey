@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Marey.Plot/Marey.Plot.fsproj" />
     <ProjectReference Include="../../src/Marey.Backend.Web/Marey.Backend.Web.fsproj" />
+    <ProjectReference Include="../../src/Marey.Sim/Marey.Sim.fsproj" />
   </ItemGroup>
 
 </Project>

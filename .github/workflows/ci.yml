@@ -266,7 +266,7 @@ jobs:
       # a compile error here, before anything is published.
       - name: Pack the Fable projects
         run: |
-          for p in Core Units Anim Plot Fields Interact Backend.Svg Backend.Web; do
+          for p in Core Units Anim Plot Fields Interact Backend.Svg Backend.Web Sim; do
             dotnet pack src/Marey.$p --configuration Release -o fable-packages -p:Version=0.0.0-fable
           done
 

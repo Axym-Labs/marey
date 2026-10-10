@@ -389,6 +389,7 @@ module Sim =
     /// so it is zero and the table is not capped.
     let private estimate (s: 's) : int64 =
 #if FABLE_COMPILER
+        ignore s
         0L
 #else
         bytesOf 0 (box s)
