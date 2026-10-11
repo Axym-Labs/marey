@@ -39,6 +39,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- D157: the script a canvas page draws a scene with, built from src/Marey.Html.View by
+         tools/view/build.sh and committed. CI rebuilds it and fails on a difference. -->
+    <EmbeddedResource Include="view/marey-view.js" LogicalName="marey-view.js" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
     <ProjectReference Include="..\Marey.Units\Marey.Units.fsproj" />
     <ProjectReference Include="..\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />

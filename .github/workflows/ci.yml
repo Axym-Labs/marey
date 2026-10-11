@@ -261,6 +261,14 @@ jobs:
       - name: Compile the browser example
         run: dotnet fable examples/web -o examples/web/out
 
+      # Step F, gate 7 (D157): the script a canvas page draws with is committed and embedded in
+      # Marey.Html, so a change to what it is built from, without a rebuild, would ship a stale
+      # script. Rebuild it and compare; Fable and esbuild are pinned, so the bytes must agree.
+      - name: The page's script is the one its sources build
+        run: |
+          tools/view/build.sh
+          git diff --exit-code -- src/Marey.Html/view/marey-view.js
+
       # M5 phase 2, gate 3: the same goldens built from the packages rather than the projects, so
       # Fable compiles the sources each package carries under fable/. A file the pack left out is
       # a compile error here, before anything is published.
