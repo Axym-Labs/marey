@@ -34,7 +34,11 @@ let options =
         Viscosity = 2e-4<m^2/s>
         Diffusion = 2e-4<m^2/s>
         Buoyancy = 0.08<m/s^2/K>
-        Source = fun x y -> if abs (x - 0.45<m>) < 0.06<m> && y < 0.06<m> then 40.0<K/s> else 0.0<K/s> }
+        Source = fun x y -> if abs (x - 0.45<m>) < 0.06<m> && y < 0.06<m> then 40.0<K/s> else 0.0<K/s>
+        // A viscous solve couples a cell to its neighbours by νh/H², 0.04 here, so a Gauss–Seidel
+        // sweep cuts its error about sixty times and four sweeps are plenty; the default twenty
+        // are for a stickier fluid or a longer step.
+        Sweeps = 4 }
 
 let gpu =
     try
