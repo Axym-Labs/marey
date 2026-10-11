@@ -54,6 +54,9 @@ type LatticeEdge<[<Measure>] 'x> =
 ///
 /// The populations run east, north, west, south, then north-east, north-west, south-west,
 /// south-east, after the rest population.
+///
+/// A trajectory over a lattice is read at whole steps, `k · h`: between two, a fixed-step
+/// trajectory takes a shorter last step, and a lattice refuses any step but its tick.
 type Lattice<[<Measure>] 'x> =
     { Nx: int
       Ny: int

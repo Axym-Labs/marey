@@ -59,7 +59,10 @@ let private assemblies =
       // phases 1–5 shipped `Marey.Fields` with no example, so nothing needed it here.
       "Marey.Fields"
       // Joined at M5.5 phase 5, with `integrators.fsx`, in the phase that wrote the first example.
-      "Marey.Sim" ]
+      "Marey.Sim"
+      // Joined at M5.6 phase 7, with `fluid.fsx` and `cylinder.fsx`, the first examples to ask
+      // for a GPU. Each falls back to the CPU where none can be made, and says so.
+      "Marey.Backend.Gpu" ]
 
 let private exampleDir =
     lazy (Path.Combine(Golden.repoRoot.Force(), "examples"))
