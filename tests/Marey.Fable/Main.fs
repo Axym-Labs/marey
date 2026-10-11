@@ -1,5 +1,6 @@
 /// D130 — the 28 SVG goldens under Node; M5's gates 13 and 14, the canvas backend's call logs
-/// and the fonts, which need Node for the same reason; and M5.5's gate 10, the simulations.
+/// and the fonts, which need Node for the same reason; M5.5's gate 10, the simulations; and step
+/// F's gates 1–3, the wire format's goldens decoded, re-encoded and drawn (`WireGate`).
 ///
 /// Fable compiles `GoldenScenes`, the same file the .NET suite renders its baselines from, and
 /// the seven projects below it; Node runs the result and compares each document with its file in
@@ -69,6 +70,11 @@ let private canvasFailures = CanvasLog.check canvasDir
 let private canvasCount = (GoldenScenes.scenesWith Marey.TextMeasure.approx).Length
 printfn "%d of %d canvas call logs identical" (canvasCount - canvasFailures.Length) canvasCount
 
+// Step F, gates 1–3: the wire, against the bytes .NET committed.
+let private wireFailures = WireGate.check dir canvasDir
+let private wireCount = (GoldenScenes.scenesWith Marey.TextMeasure.approx).Length
+printfn "%d of %d wire goldens: decoded, re-encoded byte for byte, and drawn" (wireCount - wireFailures.Length) wireCount
+
 // Gate 14: no layout against a fallback face.
 let private fontFailures = FontsGate.check ()
 
@@ -90,5 +96,5 @@ let private simFailures =
         printfn "  FAIL  the simulations, %s" (firstDifference expected actual)
         [ "sim-runs" ]
 
-if not (failures.IsEmpty && canvasFailures.IsEmpty && fontFailures.IsEmpty && simFailures.IsEmpty) then
+if not (failures.IsEmpty && canvasFailures.IsEmpty && wireFailures.IsEmpty && fontFailures.IsEmpty && simFailures.IsEmpty) then
     setExitCode 1
