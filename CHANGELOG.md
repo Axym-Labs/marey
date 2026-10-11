@@ -12,6 +12,19 @@ land in a minor release.
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-10-11
+
+**Simulation.** `Marey.Sim` steps a physical system with its units checked: ODE integrators,
+events and hard-disc collisions, Poincaré sections, particles in an unsteady field, finite
+differences for heat, waves and Poisson's equation, and two fluid solvers, Stam's stable fluids
+and lattice Boltzmann. A simulation is an `Anim` that seeks to any time and gives the state a
+straight run reaches, bit for bit, and a time control plays it in a notebook or the window.
+`Marey.Backend.Gpu` steps both fluids and convolves LIC on the GPU. Seventeen packages, one of them
+new. Three entries under `Changed` can break a build: a match over `ControlKind` that names every
+case, a call to `FieldMarks.lic` or `FieldMarks.licImage`, and a record expression that builds a
+`TickLabel`. Every package now requires FSharp.Core ≥ 8.0.100, so a project on SDK 10.0.1xx
+restores without a downgrade warning.
+
 ### Added
 
 - **`Marey.Sim`**, the seventeenth package: ODE integrators typed by units of measure, and a
@@ -1169,7 +1182,8 @@ Superseded by `0.1.0` and not recommended for use. `Marey.Verso` in particular c
 installed from it: prerelease versions do not appear in Verso's Extensions panel at all, so an
 rc validates the package and the formatter but never the installation path.
 
-[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.5.0...HEAD
+[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/Axym-Labs/marey/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/Axym-Labs/marey/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/Axym-Labs/marey/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/Axym-Labs/marey/compare/0.3.0...0.3.1
