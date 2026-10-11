@@ -93,8 +93,8 @@ type MemoTextMeasurer(inner: ITextMeasurer) =
 #endif
     let mutable measurements = 0
 
-    /// The measurer underneath, as the interface. The decorator forwards nothing but `Measure`,
-    /// so it cannot go stale when the thing it wraps grows a member — and a caller who needs a
+    /// The measurer underneath, as the interface. The decorator forwards nothing but `Measure`
+    /// and D150's `ILicConvolver`, so it cannot go stale when the thing it wraps grows a member — and a caller who needs a
     /// concrete measurer's own surface, `SkiaTextMeasurer.ResolvedFaces` above all, keeps their
     /// own reference to it rather than downcasting this.
     member _.Inner: ITextMeasurer = inner
@@ -124,6 +124,18 @@ type MemoTextMeasurer(inner: ITextMeasurer) =
                 let m = inner.Measure spec text
                 cache.[key] <- m
                 m
+
+    /// D150: the measurer underneath's convolution, when it has one.
+    interface ILicConvolver with
+        member _.Convolve(job: LicJob) =
+#if FABLE_COMPILER
+            ignore job
+            ValueNone
+#else
+            match inner with
+            | :? ILicConvolver as c -> c.Convolve job
+            | _ -> ValueNone
+#endif
 
 /// How a frame sequence is rendered.
 ///

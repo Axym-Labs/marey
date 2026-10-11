@@ -41,6 +41,23 @@ million marks take about 5 ms on a desktop GPU. A batch the shader cannot match 
 a dashed or non-mitered outline, inside an opacity layer, under a clip that is not a rectangle)
 is left to Skia.
 
+## Simulation and LIC on the GPU
+
+```fsharp
+let step = GpuSim.stam gpu options   // the same Fluid as Stam.step, on this GPU
+let lattice = GpuSim.lbm gpu water   // the same Lattice as Lbm.step
+```
+
+`GpuSim.stam` and `GpuSim.lbm` step `Marey.Sim`'s fluid and lattice states by fragment shaders, so
+`Sim.trajectory` and films take them unchanged. A call uploads the state, steps it in float32 and
+reads it back; `stamWith k` and `lbmWith k` run k steps a call. The shaders compute the CPU
+steps' expressions in the same order, and agree with them to a few parts in a million of a field's
+largest value after 200 steps. One device repeats itself to the bit.
+
+A figure compiled with `gpu.Measurer` has its LIC convolved on the GPU, one streamline per pixel:
+1.6 ms at 1920 × 1200 where the CPU's fast LIC takes over a second. The texture is the same as the
+CPU's, the pixels are not.
+
 ## In a window
 
 ```fsharp

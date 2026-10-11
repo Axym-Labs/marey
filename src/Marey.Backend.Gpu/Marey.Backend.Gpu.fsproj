@@ -12,14 +12,17 @@
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Marey.Backend.Gpu</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>GPU rendering for Marey: Skia on OpenGL, with batched marks drawn by the GPU directly. A figure, a film's frames or a million points, offscreen.</Description>
+    <Description>GPU rendering for Marey: Skia on OpenGL, with batched marks drawn by the GPU directly. A figure, a film's frames or a million points, offscreen; fluid solvers and LIC on the GPU.</Description>
     <PackageTags>fsharp opengl gpu skia plotting charts rendering visualization</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="GpuMarkers.fs" />
+    <Compile Include="GpuCompute.fs" />
     <Compile Include="GpuContext.fs" />
+    <Compile Include="GpuLic.fs" />
     <Compile Include="GpuRenderer.fs" />
+    <Compile Include="GpuSim.fs" />
     <Compile Include="WindowInput.fs" />
     <Compile Include="GpuWindow.fs" />
   </ItemGroup>
@@ -29,6 +32,9 @@
     <ProjectReference Include="..\Marey.Backend.Skia\Marey.Backend.Skia.fsproj" />
     <!-- The window (D118) shows a `Figure` or a live value and steps it with `Live.step`. -->
     <ProjectReference Include="..\Marey.Interact\Marey.Interact.fsproj" />
+    <!-- D151: the GPU solvers step `Marey.Sim`'s states, and share this package's context and
+         thread (D117), so they live here rather than in a package of their own. -->
+    <ProjectReference Include="..\Marey.Sim\Marey.Sim.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

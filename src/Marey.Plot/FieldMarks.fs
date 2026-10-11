@@ -999,8 +999,14 @@ module FieldMarks =
     // seeds a line only at a pixel no earlier line crossed, so the lines traced depend on the
     // order they are traced in, and tracing in parallel would change the image a seed names. The
     // intensity and the colouring each write one pixel from values nothing else writes, so they
-    // are parallel without the thread count reaching a byte. A GPU LIC is M5.5's, beside the
-    // solvers that need the same compute.
+    // are parallel without the thread count reaching a byte.
+    //
+    // **A backend may convolve instead** (D150). When the compile measurer is an `ILicConvolver`
+    // that answers, its intensities replace the traced ones: the GPU renderer's computes each
+    // pixel's own window, the exact convolution at its centre, which correlates 0.90 with fast
+    // LIC's averaged windows on the same noise (measured in the M5.6 inventory). The stretch and
+    // the colouring below are the same either way. Any other measurer leaves the image as it was,
+    // to the byte.
     //
     // **Contrast.** A mean of many draws has a small spread around one half, so the texture is
     // stretched: two standard deviations either side of its mean become black and white. The
@@ -1009,7 +1015,7 @@ module FieldMarks =
 
     /// The image and the panel rectangle it covers, which is the grid's extent; `None` for a
     /// payload with no vector components. Public for the tests; `lic` draws it.
-    let licImage (plot: Extent<px>) (colourOf: float -> Color option) (options: LicOptions) (f: FieldPayload<nd>) : (Image * Rect<nd>) option =
+    let licImage (measurer: ITextMeasurer) (plot: Extent<px>) (colourOf: float -> Color option) (options: LicOptions) (f: FieldPayload<nd>) : (Image * Rect<nd>) option =
         match plane f with
         | Some p when p.U.Length > 0 ->
             let gx0, gx1 = p.X.[0], p.X.[p.Nx - 1]
@@ -1078,64 +1084,89 @@ module FieldMarks =
             // all but the last `n` samples at a cut end are deposited.
             let n = max 1 (int (Num.roundEven (float options.Length * os / 2.0 / step)))
             let reach = 6 * n
-            let sum = Array.zeroCreate<float> (rw * rh)
-            let hits = Array.zeroCreate<int> (rw * rh)
+            let ownNoise (k: int) =
+                let x, y = ndX (float (k % rw) + 0.5), ndY (float (k / rw) + 0.5)
+                if finite (interpolate p p.U x y) && finite (interpolate p p.W x y) then noise.[k] else nan
 
-            // One side of a trace: the points after the seed, and whether the line ended there
-            // rather than being cut at `reach`.
-            let side (sx: float) (sy: float) (sign: float) =
-                let pts = ResizeArray<struct (float * float)>()
-                let mutable x, y = sx, sy
-                let mutable ended = false
+            let convolved: float[] voption =
+#if FABLE_COMPILER
+                // Fable cannot test for an interface, and nothing in a page convolves on a GPU.
+                ignore measurer
+                ValueNone
+#else
+                match measurer with
+                | :? ILicConvolver as c ->
+                    c.Convolve
+                        { Xs = p.X
+                          Ys = p.Y
+                          U = p.U |> Array.map (fun u -> u * kx)
+                          W = p.W |> Array.map (fun w -> w * ky)
+                          Width = rw
+                          Height = rh
+                          Noise = noise
+                          HalfLength = n
+                          Step = step
+                          Slowest = slowest }
+                | _ -> ValueNone
+#endif
 
-                while not ended && pts.Count < reach do
-                    match rk4 x y sign with
-                    | ValueSome(struct (nx, ny)) ->
-                        pts.Add(struct (nx, ny))
-                        x <- nx
-                        y <- ny
-                    | ValueNone -> ended <- true
-
-                pts, ended
-
-            for j in 0 .. rh - 1 do
-                for i in 0 .. rw - 1 do
-                    let k = j * rw + i
-                    let sx, sy = float i + 0.5, float j + 0.5
-
-                    if hits.[k] = 0 && (direction sx sy).IsSome then
-                        let ahead, aheadEnded = side sx sy 1.0
-                        let behind, behindEnded = side sx sy -1.0
-
-                        let line =
-                            Array.concat [ behind.ToArray() |> Array.rev; [| struct (sx, sy) |]; ahead.ToArray() ]
-
-                        let cells = line |> Array.map (fun (struct (x, y)) -> pixelOf x y)
-                        let prefix = Array.zeroCreate (cells.Length + 1)
-
-                        for m in 0 .. cells.Length - 1 do
-                            prefix.[m + 1] <- prefix.[m] + noise.[cells.[m]]
-
-                        let last = cells.Length - 1
-
-                        for m in 0 .. last do
-                            let lo = m - n
-                            let hi = m + n
-
-                            if (lo >= 0 || behindEnded) && (hi <= last || aheadEnded) then
-                                let a = max 0 lo
-                                let b = min last hi
-                                sum.[cells.[m]] <- sum.[cells.[m]] + (prefix.[b + 1] - prefix.[a]) / float (b - a + 1)
-                                hits.[cells.[m]] <- hits.[cells.[m]] + 1
-
-            // A pixel whose field is finite but which no line crossed — a fixed point, or a
-            // direction that reverses at its centre — keeps its own noise.
             let intensity =
-                Array.Parallel.init (rw * rh) (fun k ->
-                    if hits.[k] > 0 then sum.[k] / float hits.[k]
-                    else
-                        let x, y = ndX (float (k % rw) + 0.5), ndY (float (k / rw) + 0.5)
-                        if finite (interpolate p p.U x y) && finite (interpolate p p.W x y) then noise.[k] else nan)
+                match convolved with
+                | ValueSome c -> Array.Parallel.init (rw * rh) (fun k -> if finite c.[k] then c.[k] else ownNoise k)
+                | ValueNone ->
+                    let sum = Array.zeroCreate<float> (rw * rh)
+                    let hits = Array.zeroCreate<int> (rw * rh)
+
+                    // One side of a trace: the points after the seed, and whether the line ended there
+                    // rather than being cut at `reach`.
+                    let side (sx: float) (sy: float) (sign: float) =
+                        let pts = ResizeArray<struct (float * float)>()
+                        let mutable x, y = sx, sy
+                        let mutable ended = false
+
+                        while not ended && pts.Count < reach do
+                            match rk4 x y sign with
+                            | ValueSome(struct (nx, ny)) ->
+                                pts.Add(struct (nx, ny))
+                                x <- nx
+                                y <- ny
+                            | ValueNone -> ended <- true
+
+                        pts, ended
+
+                    for j in 0 .. rh - 1 do
+                        for i in 0 .. rw - 1 do
+                            let k = j * rw + i
+                            let sx, sy = float i + 0.5, float j + 0.5
+
+                            if hits.[k] = 0 && (direction sx sy).IsSome then
+                                let ahead, aheadEnded = side sx sy 1.0
+                                let behind, behindEnded = side sx sy -1.0
+
+                                let line =
+                                    Array.concat [ behind.ToArray() |> Array.rev; [| struct (sx, sy) |]; ahead.ToArray() ]
+
+                                let cells = line |> Array.map (fun (struct (x, y)) -> pixelOf x y)
+                                let prefix = Array.zeroCreate (cells.Length + 1)
+
+                                for m in 0 .. cells.Length - 1 do
+                                    prefix.[m + 1] <- prefix.[m] + noise.[cells.[m]]
+
+                                let last = cells.Length - 1
+
+                                for m in 0 .. last do
+                                    let lo = m - n
+                                    let hi = m + n
+
+                                    if (lo >= 0 || behindEnded) && (hi <= last || aheadEnded) then
+                                        let a = max 0 lo
+                                        let b = min last hi
+                                        sum.[cells.[m]] <- sum.[cells.[m]] + (prefix.[b + 1] - prefix.[a]) / float (b - a + 1)
+                                        hits.[cells.[m]] <- hits.[cells.[m]] + 1
+
+                    // A pixel whose field is finite but which no line crossed — a fixed point, or a
+                    // direction that reverses at its centre — keeps its own noise.
+                    Array.Parallel.init (rw * rh) (fun k -> if hits.[k] > 0 then sum.[k] / float hits.[k] else ownNoise k)
 
             let present = intensity |> Array.filter finite
             let mean = if present.Length = 0 then 0.5 else Array.average present
@@ -1182,8 +1213,8 @@ module FieldMarks =
 
     /// The convolution as a `Raster` over the grid's extent, interpolated by the backend where it
     /// does not land on whole device pixels.
-    let lic (plot: Extent<px>) (colourOf: float -> Color option) (options: LicOptions) (f: FieldPayload<nd>) : Node =
-        match licImage plot colourOf options f with
+    let lic (measurer: ITextMeasurer) (plot: Extent<px>) (colourOf: float -> Color option) (options: LicOptions) (f: FieldPayload<nd>) : Node =
+        match licImage measurer plot colourOf options f with
         | Some(image, bounds) ->
             Raster
                 { Image = image
