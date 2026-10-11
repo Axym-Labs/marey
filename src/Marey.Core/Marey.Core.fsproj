@@ -39,6 +39,9 @@
     <Compile Include="Png.fs" />
     <Compile Include="Coord.fs" />
     <Compile Include="Backend.fs" />
+    <!-- D152–D155: a scene as bytes, for a page that draws what a kernel compiled. After
+         Backend.fs, because D156's text metrics are an `ITextMeasurer`'s. -->
+    <Compile Include="Wire.fs" />
   </ItemGroup>
 
 </Project>
