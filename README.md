@@ -272,6 +272,11 @@ in the axes' own units. The figure is laid out once over the states the controls
 plot area holds still while the numbers move. This needs a Verso newer than 1.2.2; anywhere else
 the same cell shows the figure with its controls disabled.
 
+**A large figure is drawn on a canvas.** From 5000 drawn elements on, the kernel sends the scene as
+bytes, a quarter of its SVG, and the page draws it with the same code a browser app uses: a
+10⁵-point live figure steps in tens of milliseconds rather than a second. `Html.renderMode`
+chooses SVG or canvas for every figure instead.
+
 ## Building
 
 ```

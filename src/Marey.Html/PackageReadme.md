@@ -24,6 +24,13 @@ Twelve types render: `Figure` and `Node` as inline SVG, **`Film` as a flipbook t
 `PaletteReport` as a colour-vision-deficiency and contrast report, `Dim`, `U<'u>` and
 `IScaleErased` as themselves, and a live figure (`Live`, `Recorder`) as its figure.
 
+**A large figure is drawn on a canvas.** From `Html.CanvasThreshold` drawn elements on (5000), a
+figure or a live figure is a page holding a `<canvas>`, the scene's bytes (`Wire`, in
+`Marey.Core`) and a script compiled from Marey's own canvas backend, which this package embeds.
+A 10⁵-point scatter is 2.1 MB rather than 6.4 MB of SVG and draws in tens of milliseconds; a live
+step that moves one mark sends a few kilobytes. Under the canvas is the figure's SVG without its
+large batches, for a viewer that runs no script. `Html.renderMode` sets `Svg`, `Canvas` or `Auto`.
+
 A film is sampled into stills stacked in one SVG and cycled with SMIL `<animate>` — no `<style>`
 block, which a notebook cell cannot scope, and no external tool, so it plays wherever the notebook
 renders and looks the same for every reader.

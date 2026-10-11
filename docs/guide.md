@@ -2140,6 +2140,26 @@ formatter context carries output channels (newer than 1.2.2). In any other host,
 notebook, the same page is drawn with its controls disabled and a line saying it is static. A save
 writes the page at the state the reader left it in.
 
+**A large figure is drawn on a canvas.** From `Html.CanvasThreshold` drawn elements on (5000: each
+mark, path and text run), the page holds a `<canvas>` and the kernel sends the scene as bytes rather
+than as SVG. A scatter of 10⁵ points is 2.1 MB rather than 6.4 MB, and the page draws it in tens of
+milliseconds where the SVG takes about a second to parse and lay out. A step that moves one mark
+sends a patch of a few kilobytes. The bytes carry the text measurements the kernel laid the figure
+out with, so labels sit where they would in the SVG. Below the threshold nothing changes.
+
+```fsharp
+Html.renderMode <- RenderMode.Svg      // every figure as SVG
+Html.renderMode <- RenderMode.Canvas   // every figure on a canvas
+Html.renderMode <- RenderMode.Auto     // by size; the default
+```
+
+A figure without controls above the threshold is drawn the same way, as a page with no controls.
+A canvas page draws from the bytes it carries, so a saved notebook shows the figure without a
+kernel. Under the canvas is the figure's SVG without its large marker batches, so a viewer that
+runs no script still shows the axes, the titles and the legend, with a line saying how many marks
+are missing. A page keeps the kind it was first drawn as: a slider that carries a figure across the
+threshold does not switch it.
+
 **The view is yours, and it must be pure.** It is run again for every change, it is run for states
 the reader never reaches (below), and a message can arrive while another cell is executing. Steps
 for one figure run one at a time; a view that reads or writes shared mutable state can still see
@@ -2689,7 +2709,5 @@ For a stateful backend there is `IBackend` and `Chart.renderTo`, which is the pa
 
 ## What is not here yet
 
-GPU computation of fields (Stable Fluids, lattice Boltzmann, line-integral convolution on the
-GPU), stiff ODE solvers, solvers on non-uniform grids, a browser renderer for scenes compiled in a
-kernel, picking a datum under the pointer, and typesetting without a TeX installation are all
-intended, and none of them exist yet.
+Stiff ODE solvers, solvers on non-uniform grids, picking a datum under the pointer, and
+typesetting without a TeX installation are all intended, and none of them exist yet.

@@ -28,6 +28,8 @@ printfn "%A" (scale.Forward 5.0<m>)  // normalized panel space
 - **`Vec2`/`Vec3`, `Affine`, `Coord`** — unit-indexed geometry and coordinate transforms.
 - **`Scale`** — seven scale kinds, each with `Forward`/`Inverse` verified as mutual inverses.
 - **`Scene`** — a small closed IR of ten cases. Every backend consumes this and nothing else.
+- **`Wire`** — a scene or a patch as bytes and back, exactly: little-endian float64, versioned,
+  with the text metrics its layout used (`TextTable`). What a kernel sends a page to draw.
 - **`Interp`**, tick generation, and text metrics.
 
 ## Zero dependencies
