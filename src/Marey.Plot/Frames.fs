@@ -128,9 +128,14 @@ type MemoTextMeasurer(inner: ITextMeasurer) =
     /// D150: the measurer underneath's convolution, when it has one.
     interface ILicConvolver with
         member _.Convolve(job: LicJob) =
+#if FABLE_COMPILER
+            ignore job
+            ValueNone
+#else
             match inner with
             | :? ILicConvolver as c -> c.Convolve job
             | _ -> ValueNone
+#endif
 
 /// How a frame sequence is rendered.
 ///

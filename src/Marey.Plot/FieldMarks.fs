@@ -1088,7 +1088,12 @@ module FieldMarks =
                 let x, y = ndX (float (k % rw) + 0.5), ndY (float (k / rw) + 0.5)
                 if finite (interpolate p p.U x y) && finite (interpolate p p.W x y) then noise.[k] else nan
 
-            let convolved =
+            let convolved: float[] voption =
+#if FABLE_COMPILER
+                // Fable cannot test for an interface, and nothing in a page convolves on a GPU.
+                ignore measurer
+                ValueNone
+#else
                 match measurer with
                 | :? ILicConvolver as c ->
                     c.Convolve
@@ -1103,6 +1108,7 @@ module FieldMarks =
                           Step = step
                           Slowest = slowest }
                 | _ -> ValueNone
+#endif
 
             let intensity =
                 match convolved with

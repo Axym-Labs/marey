@@ -76,6 +76,46 @@ let private grids () =
     [ line "heat" [ float hot.Values.[0]; float hot.Values.[205]; float hot.Values.[419] ]
       line "poisson" [ float poisson.Iterations; float poisson.Solution.Values.[144] ] ]
 
+/// M5.6: Stam in a closed box and on a torus, and lattice Boltzmann past an obstacle, from
+/// polynomial starts. The steps are arithmetic but for the multigrid's coarsest factor,
+/// `cos (π/m)`, which reaches a printed digit through a factor that only speeds convergence.
+let private fluids () =
+    let stam (edge: FluidEdge) =
+        Fluid.box edge edge 0.05<m> 24 16
+        |> Fluid.withVelocity (fun x y -> struct ((x * (1.2<m> - x) * (y - 0.4<m>)) * 4.0</(m^2 s)>, (y * (0.8<m> - y) * (x - 0.6<m>)) * -4.0</(m^2 s)>))
+        |> Fluid.withDye (fun x y -> if x > 0.4<m> && x < 0.8<m> && y < 0.3<m> then 1.0<K> else 0.0<K>)
+
+    let options =
+        { Stam.defaults<m, K> with
+            Viscosity = 1e-3<m^2/s>
+            Diffusion = 1e-3<m^2/s>
+            Buoyancy = 0.5<m/s^2/K>
+            Source = fun x y -> if x > 0.55<m> && x < 0.65<m> && y < 0.1<m> then 2.0<K/s> else 0.0<K/s> }
+
+    let walls = Sim.ofStep 0.02<s> (Stam.step options) (stam FluidEdge.Wall) |> Sim.run 20
+    let torus = Sim.ofStep 0.02<s> (Stam.step options) (stam FluidEdge.Periodic) |> Sim.run 20
+
+    let dx, dt = 1e-3<m>, 1e-3<s>
+
+    let lattice =
+        Lattice.create dx dt 30 12
+        |> Lattice.withObstacle (fun x y -> x > 0.008<m> && x < 0.012<m> && y > 0.004<m> && y < 0.007<m>)
+        |> Lattice.withVelocity (fun _ y -> struct (0.03<m/s>, (y - 0.006<m>) * 2.0</s>))
+
+    let lbmOptions =
+        { Lbm.defaults (0.05 * dx * dx / dt) with
+            Left = LatticeEdge.Inflow(0.03<m/s>, 0.0<m/s>)
+            Right = LatticeEdge.Outflow
+            Bottom = LatticeEdge.Wall
+            Top = LatticeEdge.Wall }
+
+    let flowed = Sim.ofStep dt (Lbm.step lbmOptions) lattice |> Sim.run 100
+    let v = Lattice.velocity flowed
+
+    [ line "stam walls" [ float walls.UFaces.[160]; float walls.VFaces.[200]; float walls.Dye.[205]; float walls.Pressure.[100] ]
+      line "stam torus" [ float torus.UFaces.[160]; float torus.VFaces.[200]; float torus.Dye.[205]; float torus.Pressure.[100] ]
+      line "lbm" [ float v.U.[6 * 30 + 20]; float v.W.[6 * 30 + 20]; float (Lattice.density flowed).Values.[3 * 30 + 25] ] ]
+
 /// Every line, in order: what `golden/sim-runs.txt` holds.
 let text () : string =
-    [ oscillator (); pendulum (); ball (); gas (); grids () ] |> List.concat |> String.concat "\n" |> fun s -> s + "\n"
+    [ oscillator (); pendulum (); ball (); gas (); grids (); fluids () ] |> List.concat |> String.concat "\n" |> fun s -> s + "\n"
