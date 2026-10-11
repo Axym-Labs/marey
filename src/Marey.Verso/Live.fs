@@ -45,7 +45,38 @@ type internal LiveSession(value: obj, initial: obj, channel: IOutputChannel) =
 
         let payload = Dictionary<string, obj>()
 
+        // An answer laid out as `Marey.Html` lays them out: a kind, what it carries, the labels.
+        // False for a layout this build does not know.
+        let put (parts: string[]) : bool =
+            let rest (from: int) = box (Array.sub parts from (parts.Length - from))
+
+            match parts.[0] with
+            | "svg" when parts.Length >= 2 ->
+                payload.["svg"] <- box parts.[1]
+                payload.["shown"] <- rest 2
+                true
+            // Step F (D159): a canvas page's whole scene, its size and its bytes, and a patch's bytes.
+            | "scene" when parts.Length >= 4 ->
+                payload.["w"] <- box parts.[1]
+                payload.["h"] <- box parts.[2]
+                payload.["scene"] <- box parts.[3]
+                payload.["shown"] <- rest 4
+                true
+            | "wpatch" when parts.Length >= 2 ->
+                payload.["wpatch"] <- box parts.[1]
+                payload.["shown"] <- rest 2
+                true
+            | "same" ->
+                payload.["shown"] <- rest 1
+                true
+            | _ -> false
+
         let whole (always: bool) =
+            let changed = always || not (obj.ReferenceEquals(before, after))
+
+            match (if changed then Bridge.liveWhole value after else None) with
+            | Some parts when put parts -> ()
+            | _ ->
             match Bridge.liveReply value after with
             | Some parts ->
                 if always || not (obj.ReferenceEquals(before, after)) then
@@ -65,9 +96,6 @@ type internal LiveSession(value: obj, initial: obj, channel: IOutputChannel) =
             let rest (from: int) = box (Array.sub parts from (parts.Length - from))
 
             match parts.[0] with
-            | "svg" when parts.Length >= 2 ->
-                payload.["svg"] <- box parts.[1]
-                payload.["shown"] <- rest 2
             | "patch" when parts.Length >= 3 ->
                 match Int32.TryParse parts.[2] with
                 | true, n when n >= 0 && parts.Length >= 3 + 2 * n ->
@@ -75,8 +103,7 @@ type internal LiveSession(value: obj, initial: obj, channel: IOutputChannel) =
                     payload.["patch"] <- box (Array.sub parts 3 (2 * n))
                     payload.["shown"] <- rest (3 + 2 * n)
                 | _ -> whole true
-            | "same" -> payload.["shown"] <- rest 1
-            | _ -> whole true
+            | _ -> if not (put parts) then whole true
         | None -> whole (m.Type = "size")
 
         // D105 — every answer says what the pointer reads, an empty one included, so a

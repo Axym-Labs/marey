@@ -64,6 +64,11 @@ module internal Bridge =
     [<Literal>]
     let LiveReadout = "liveReadoutForHost"
 
+    /// Step F — the whole figure at a state, in the page's kind (SVG or canvas bytes). Optional,
+    /// like `LiveAnswer`: a `Marey.Html` without it is answered with `LiveReply`'s SVG.
+    [<Literal>]
+    let LiveWhole = "liveWholeForHost"
+
     /// Assemblies named `Marey.*`. The cheapest possible rejection, and the one that runs on
     /// every value a cell produces: `CanFormat` is a probe, not a commitment.
     let isMareyValue (value: obj) =
@@ -188,7 +193,8 @@ module internal Bridge =
           Document: MethodInfo
           Reply: MethodInfo
           Answer: MethodInfo option
-          Readout: MethodInfo option }
+          Readout: MethodInfo option
+          Whole: MethodInfo option }
 
     let private liveCache =
         System.Collections.Concurrent.ConcurrentDictionary<Type, LiveMethods option>()
@@ -206,6 +212,7 @@ module internal Bridge =
                 let reply = find LiveReply [| typeof<obj>; typeof<obj> |]
                 let answer = find LiveAnswer [| typeof<obj>; typeof<obj>; typeof<obj> |]
                 let readout = find LiveReadout [| typeof<obj>; typeof<obj> |]
+                let whole = find LiveWhole [| typeof<obj>; typeof<obj> |]
 
                 if isNull init || isNull step || isNull document || isNull reply then
                     None
@@ -216,7 +223,8 @@ module internal Bridge =
                           Document = document
                           Reply = reply
                           Answer = Option.ofObj answer
-                          Readout = Option.ofObj readout }
+                          Readout = Option.ofObj readout
+                          Whole = Option.ofObj whole }
         )
 
     let private live (value: obj) =
@@ -263,6 +271,17 @@ module internal Bridge =
             live value
             |> Option.bind (fun ms -> ms.Answer)
             |> Option.bind (fun m -> invoke m [| value; before; after |])
+        with
+        | Some(:? (string[]) as parts) when parts.Length > 0 -> Some parts
+        | _ -> None
+
+    /// The whole figure at a state, as `Marey.Html.liveWholeForHost` lays it out: a kind (`svg` or
+    /// `scene`), what it carries, then the labels. `None` for a `Marey.Html` without it.
+    let liveWhole (value: obj) (state: obj) : string[] option =
+        match
+            live value
+            |> Option.bind (fun ms -> ms.Whole)
+            |> Option.bind (fun m -> invoke m [| value; state |])
         with
         | Some(:? (string[]) as parts) when parts.Length > 0 -> Some parts
         | _ -> None

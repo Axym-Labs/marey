@@ -74,6 +74,15 @@ open System.Text
 // for. A figure that is wider than the cell scrolls; it does not shrink.
 // ======================================================================================
 
+/// **D161 — how a notebook page draws a figure.** `Auto` draws on a canvas from
+/// `Html.CanvasThreshold` drawn elements on (`Scene.primitiveCount`: each mark, path and text run),
+/// and as SVG below it; `Svg` and `Canvas` choose for every figure.
+[<RequireQualifiedAccess>]
+type RenderMode =
+    | Svg
+    | Canvas
+    | Auto
+
 /// HTML renderings of Marey's values, for a notebook cell or anywhere else HTML is wanted.
 [<RequireQualifiedAccess>]
 module Html =
@@ -789,185 +798,206 @@ module Html =
     /// `timeStamp`, by the page's monotonic clock, in milliseconds. A message waiting behind the
     /// one in flight carries the newest event's time with the newest value. The kernel reads no
     /// clock, so a recording's times are the reader's.
-    let private widgetScript (aspect: float) =
+    ///
+    /// D159 — on a canvas page (`canvas = true`) the figure is a `<canvas>` that `MareyView` (D157)
+    /// draws from the scene's bytes in the page, first and with or without a channel. A reply
+    /// carries `scene` with its size, or `wpatch`, in place of `svg` and `patch`, and a pixel is
+    /// placed against the canvas's size in px. An SVG page's script is unchanged, line for line.
+    let private widgetScript (aspect: float) (canvas: bool) =
         String.concat
             "\n"
-            [ "<script>//<![CDATA["
-              "(function () {"
-              "  var ch = window.versoChannel;"
-              "  var fig = document.getElementById('fig');"
-              "  var status = document.getElementById('status');"
-              "  var inputs = Array.prototype.slice.call(document.querySelectorAll('[data-i]'));"
-              "  var plays = Array.prototype.slice.call(document.querySelectorAll('[data-play]'));"
-              "  function disable(why) {"
-              "    inputs.concat(plays).forEach(function (el) { el.disabled = true; });"
-              "    if (why) { status.textContent = why; }"
-              "  }"
-              "  if (!ch) { disable(null); return; }"
-              "  var busy = false, waiting = {}, order = [];"
-              "  function flush() {"
-              "    if (busy || order.length === 0) { return; }"
-              "    var key = order.shift(), m = waiting[key];"
-              "    delete waiting[key];"
-              "    busy = ch.post(m.type, m.payload.concat([m.t]));"
-              "  }"
-              "  function send(key, type, payload, t, merge) {"
-              "    if (!(key in waiting)) { order.push(key); }"
-              "    else if (merge) { payload = merge(waiting[key].payload, payload); }"
-              "    waiting[key] = { type: type, payload: payload, t: t };"
-              "    flush();"
-              "  }"
-              "  function valueOf(el) { return el.type === 'checkbox' ? (el.checked ? 1 : 0) : Number(el.value); }"
-              "  inputs.forEach(function (el) {"
-              "    var i = Number(el.getAttribute('data-i'));"
-              "    el.addEventListener(el.type === 'range' ? 'input' : 'change', function (e) {"
-              "      send('c' + i, 'set', [i, valueOf(el)], e.timeStamp);"
-              "    });"
-              "  });"
+            [ yield "<script>//<![CDATA["
+              yield "(function () {"
+              yield "  var ch = window.versoChannel;"
+              yield "  var fig = document.getElementById('fig');"
+              yield "  var status = document.getElementById('status');"
+              yield "  var inputs = Array.prototype.slice.call(document.querySelectorAll('[data-i]'));"
+              yield "  var plays = Array.prototype.slice.call(document.querySelectorAll('[data-play]'));"
+
+              if canvas then
+                  yield "  var cv = document.getElementById('cv');"
+                  yield "  function draw(b64, w, h) { cv.setAttribute('data-w', w); cv.setAttribute('data-h', h); var why = MareyView.show(cv, b64, Number(w), Number(h)); if (why) { status.textContent = why; } }"
+                  yield "  draw(document.getElementById('scene').textContent, cv.getAttribute('data-w'), cv.getAttribute('data-h'));"
+
+              yield "  function disable(why) {"
+              yield "    inputs.concat(plays).forEach(function (el) { el.disabled = true; });"
+              yield "    if (why) { status.textContent = why; }"
+              yield "  }"
+              yield "  if (!ch) { disable(null); return; }"
+              yield "  var busy = false, waiting = {}, order = [];"
+              yield "  function flush() {"
+              yield "    if (busy || order.length === 0) { return; }"
+              yield "    var key = order.shift(), m = waiting[key];"
+              yield "    delete waiting[key];"
+              yield "    busy = ch.post(m.type, m.payload.concat([m.t]));"
+              yield "  }"
+              yield "  function send(key, type, payload, t, merge) {"
+              yield "    if (!(key in waiting)) { order.push(key); }"
+              yield "    else if (merge) { payload = merge(waiting[key].payload, payload); }"
+              yield "    waiting[key] = { type: type, payload: payload, t: t };"
+              yield "    flush();"
+              yield "  }"
+              yield "  function valueOf(el) { return el.type === 'checkbox' ? (el.checked ? 1 : 0) : Number(el.value); }"
+              yield "  inputs.forEach(function (el) {"
+              yield "    var i = Number(el.getAttribute('data-i'));"
+              yield "    el.addEventListener(el.type === 'range' ? 'input' : 'change', function (e) {"
+              yield "      send('c' + i, 'set', [i, valueOf(el)], e.timeStamp);"
+              yield "    });"
+              yield "  });"
               // D137: play advances a time control one second a second from where it was, on
               // the page's clock, and posts each frame's value as a `set` stamped with that
               // frame's time. Scrubbing the input pauses it. The value sent is the exact one; the
               // input shows it rounded to its step.
-              "  var playing = {};"
-              "  plays.forEach(function (b) {"
-              "    var i = Number(b.getAttribute('data-play')), loop = b.getAttribute('data-loop') === '1';"
-              "    var el = inputs.filter(function (x) { return Number(x.getAttribute('data-i')) === i; })[0];"
-              "    var lo = Number(el.min), hi = Number(el.max);"
-              "    function stop() { delete playing[i]; b.textContent = '\u25B6'; b.title = 'Play'; }"
-              "    function tick(now) {"
-              "      var p = playing[i];"
-              "      if (!p || closed) { return; }"
-              "      var v = p.from + (now - p.start) / 1000;"
-              "      if (v > hi) { if (loop) { v = lo + (v - lo) % (hi - lo); } else { v = hi; stop(); } }"
-              "      el.value = v;"
-              "      send('c' + i, 'set', [i, v], now);"
-              "      if (playing[i]) { requestAnimationFrame(tick); }"
-              "    }"
-              "    b.addEventListener('click', function () {"
-              "      if (playing[i]) { stop(); return; }"
-              "      var from = valueOf(el);"
-              "      if (from >= hi && !loop) { from = lo; }"
-              "      playing[i] = { start: performance.now(), from: from };"
-              "      b.textContent = '\u275A\u275A'; b.title = 'Pause';"
-              "      requestAnimationFrame(tick);"
-              "    });"
-              "    el.addEventListener('input', function (e) { if (e.isTrusted && playing[i]) { stop(); } });"
-              "  });"
-              "  var SVG = 'http://www.w3.org/2000/svg';"
-              "  function parse(text) {"
-              "    var d = new DOMParser().parseFromString('<svg xmlns=\"' + SVG + '\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">' + text + '</svg>', 'image/svg+xml');"
-              "    var el = d.documentElement.firstElementChild;"
-              "    return el && el.namespaceURI === SVG ? document.importNode(el, true) : null;"
-              "  }"
-              "  function patch(defs, parts) {"
-              "    var svg = fig.querySelector('svg');"
-              "    if (!svg) { return false; }"
-              "    for (var i = 0; i < parts.length; i += 2) { if (!document.getElementById(parts[i])) { return false; } }"
-              "    var old = svg.querySelector('defs'), fresh = defs ? parse(defs) : null;"
-              "    if (defs && !fresh) { return false; }"
-              "    if (old) { old.remove(); }"
-              "    if (fresh) { svg.insertBefore(fresh, svg.firstChild); }"
-              "    for (var j = 0; j < parts.length; j += 2) {"
-              "      var el = parse(parts[j + 1]);"
-              "      if (!el) { return false; }"
-              "      document.getElementById(parts[j]).replaceWith(el);"
-              "    }"
-              "    return true;"
-              "  }"
-              "  function hello() {"
-              "    var w = Math.round(fig.clientWidth || document.documentElement.clientWidth || 0);"
-              sprintf "    if (w > 0) { send('size', 'size', [w, Math.round(w * %s)], performance.now()); }" (exact aspect)
-              "  }"
-              "  window.addEventListener('verso:channelmessage', function (e) {"
-              "    var d = e.detail || {}, p = d.payload || {};"
-              "    if (d.type !== 'render') { return; }"
-              "    if (typeof p.svg === 'string') { fig.innerHTML = p.svg; }"
-              "    else if (p.patch && !patch(p.defs || '', p.patch)) { hello(); }"
-              "    (p.shown || []).forEach(function (s, i) {"
-              "      var o = document.getElementById('v' + i);"
-              "      if (o) { o.textContent = s; }"
-              "    });"
-              "    show(p.readout);"
-              "    busy = false;"
-              "    flush();"
-              "  });"
-              "  var stage = document.getElementById('stage'), band = document.getElementById('band');"
-              "  var readout = document.getElementById('readout');"
-              "  var drag = null, closed = false;"
-              "  function frame() {"
-              "    var svg = fig.querySelector('svg');"
-              "    if (!svg) { return null; }"
-              "    var r = svg.getBoundingClientRect(), s = stage.getBoundingClientRect();"
-              "    var vb = svg.viewBox && svg.viewBox.baseVal;"
-              "    var kx = vb && vb.width && r.width ? vb.width / r.width : 1;"
-              "    var ky = vb && vb.height && r.height ? vb.height / r.height : 1;"
-              "    return { r: r, s: s, kx: kx, ky: ky };"
-              "  }"
-              "  function at(e) {"
-              "    var f = frame();"
-              "    if (!f) { return null; }"
-              "    return { x: (e.clientX - f.r.left) * f.kx, y: (e.clientY - f.r.top) * f.ky, bx: e.clientX - f.s.left, by: e.clientY - f.s.top };"
-              "  }"
-              "  function show(r) {"
-              "    var f = frame();"
-              "    if (closed || !f || !r || r.length < 6) { readout.style.display = 'none'; return; }"
-              "    readout.textContent = '';"
-              "    r.slice(5).forEach(function (line) {"
-              "      var d = document.createElement('div');"
-              "      d.textContent = line;"
-              "      readout.appendChild(d);"
-              "    });"
-              "    var right = r[4] === 'right', x = Number(right ? r[2] : r[0]) / f.kx + f.r.left - f.s.left;"
-              "    readout.style.left = (right ? x - 4 : x + 4) + 'px';"
-              "    readout.style.top = (Number(r[1]) / f.ky + f.r.top - f.s.top + 4) + 'px';"
-              "    readout.style.transform = right ? 'translateX(-100%)' : '';"
-              "    readout.style.display = 'block';"
-              "  }"
-              "  function sum(a, b) { return [a[0], a[1], a[2] + b[2], a[3] + b[3]]; }"
-              "  fig.addEventListener('pointerdown', function (e) {"
-              "    if (e.button !== 0 || closed) { return; }"
-              "    var p = at(e);"
-              "    if (!p) { return; }"
-              "    drag = { start: p, last: p, pan: e.shiftKey };"
-              "    fig.setPointerCapture(e.pointerId);"
-              "    e.preventDefault();"
-              "  });"
-              "  fig.addEventListener('pointermove', function (e) {"
-              "    var p = at(e), a = drag && drag.start;"
-              "    if (!p || closed) { return; }"
-              "    if (drag && drag.pan) {"
-              "      send('pan', 'pan', [a.x, a.y, p.x - drag.last.x, p.y - drag.last.y], e.timeStamp, sum);"
-              "      drag.last = p;"
-              "      return;"
-              "    }"
-              "    send('hover', 'hover', [p.x, p.y], e.timeStamp);"
-              "    if (!drag) { return; }"
-              "    band.style.left = Math.min(a.bx, p.bx) + 'px';"
-              "    band.style.top = Math.min(a.by, p.by) + 'px';"
-              "    band.style.width = Math.abs(p.bx - a.bx) + 'px';"
-              "    band.style.height = Math.abs(p.by - a.by) + 'px';"
-              "    band.style.display = 'block';"
-              "  });"
-              "  function release(e) {"
-              "    if (!drag) { return; }"
-              "    var p = at(e), a = drag.start, pan = drag.pan;"
-              "    drag = null;"
-              "    band.style.display = 'none';"
-              "    if (p && !pan && e.type === 'pointerup') { send('zoom', 'zoom', [a.x, a.y, p.x, p.y], e.timeStamp); }"
-              "  }"
-              "  fig.addEventListener('pointerup', release);"
-              "  fig.addEventListener('pointercancel', release);"
-              "  fig.addEventListener('dblclick', function (e) { if (!closed) { send('reset', 'reset', [], e.timeStamp); } });"
-              "  fig.addEventListener('pointerleave', function (e) { if (!closed) { send('hover', 'leave', [], e.timeStamp); } });"
-              "  window.addEventListener('verso:channelclosed', function (e) {"
-              "    closed = true;"
-              "    show(null);"
-              "    disable((e.detail && e.detail.reason) || 'closed');"
-              "  });"
-              "  ch.ready('1.0');"
-              "  hello();"
-              "})();"
-              "//]]></script>" ]
+              yield "  var playing = {};"
+              yield "  plays.forEach(function (b) {"
+              yield "    var i = Number(b.getAttribute('data-play')), loop = b.getAttribute('data-loop') === '1';"
+              yield "    var el = inputs.filter(function (x) { return Number(x.getAttribute('data-i')) === i; })[0];"
+              yield "    var lo = Number(el.min), hi = Number(el.max);"
+              yield "    function stop() { delete playing[i]; b.textContent = '\u25B6'; b.title = 'Play'; }"
+              yield "    function tick(now) {"
+              yield "      var p = playing[i];"
+              yield "      if (!p || closed) { return; }"
+              yield "      var v = p.from + (now - p.start) / 1000;"
+              yield "      if (v > hi) { if (loop) { v = lo + (v - lo) % (hi - lo); } else { v = hi; stop(); } }"
+              yield "      el.value = v;"
+              yield "      send('c' + i, 'set', [i, v], now);"
+              yield "      if (playing[i]) { requestAnimationFrame(tick); }"
+              yield "    }"
+              yield "    b.addEventListener('click', function () {"
+              yield "      if (playing[i]) { stop(); return; }"
+              yield "      var from = valueOf(el);"
+              yield "      if (from >= hi && !loop) { from = lo; }"
+              yield "      playing[i] = { start: performance.now(), from: from };"
+              yield "      b.textContent = '\u275A\u275A'; b.title = 'Pause';"
+              yield "      requestAnimationFrame(tick);"
+              yield "    });"
+              yield "    el.addEventListener('input', function (e) { if (e.isTrusted && playing[i]) { stop(); } });"
+              yield "  });"
+              yield "  var SVG = 'http://www.w3.org/2000/svg';"
+              yield "  function parse(text) {"
+              yield "    var d = new DOMParser().parseFromString('<svg xmlns=\"' + SVG + '\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">' + text + '</svg>', 'image/svg+xml');"
+              yield "    var el = d.documentElement.firstElementChild;"
+              yield "    return el && el.namespaceURI === SVG ? document.importNode(el, true) : null;"
+              yield "  }"
+              yield "  function patch(defs, parts) {"
+              yield "    var svg = fig.querySelector('svg');"
+              yield "    if (!svg) { return false; }"
+              yield "    for (var i = 0; i < parts.length; i += 2) { if (!document.getElementById(parts[i])) { return false; } }"
+              yield "    var old = svg.querySelector('defs'), fresh = defs ? parse(defs) : null;"
+              yield "    if (defs && !fresh) { return false; }"
+              yield "    if (old) { old.remove(); }"
+              yield "    if (fresh) { svg.insertBefore(fresh, svg.firstChild); }"
+              yield "    for (var j = 0; j < parts.length; j += 2) {"
+              yield "      var el = parse(parts[j + 1]);"
+              yield "      if (!el) { return false; }"
+              yield "      document.getElementById(parts[j]).replaceWith(el);"
+              yield "    }"
+              yield "    return true;"
+              yield "  }"
+              yield "  function hello() {"
+              yield "    var w = Math.round(fig.clientWidth || document.documentElement.clientWidth || 0);"
+              yield sprintf "    if (w > 0) { send('size', 'size', [w, Math.round(w * %s)], performance.now()); }" (exact aspect)
+              yield "  }"
+              yield "  window.addEventListener('verso:channelmessage', function (e) {"
+              yield "    var d = e.detail || {}, p = d.payload || {};"
+              yield "    if (d.type !== 'render') { return; }"
+              if canvas then
+                  yield "    if (typeof p.scene === 'string') { draw(p.scene, p.w, p.h); }"
+                  yield "    else if (typeof p.wpatch === 'string' && !MareyView.patch(p.wpatch)) { hello(); }"
+              else
+                  yield "    if (typeof p.svg === 'string') { fig.innerHTML = p.svg; }"
+                  yield "    else if (p.patch && !patch(p.defs || '', p.patch)) { hello(); }"
+              yield "    (p.shown || []).forEach(function (s, i) {"
+              yield "      var o = document.getElementById('v' + i);"
+              yield "      if (o) { o.textContent = s; }"
+              yield "    });"
+              yield "    show(p.readout);"
+              yield "    busy = false;"
+              yield "    flush();"
+              yield "  });"
+              yield "  var stage = document.getElementById('stage'), band = document.getElementById('band');"
+              yield "  var readout = document.getElementById('readout');"
+              yield "  var drag = null, closed = false;"
+              yield "  function frame() {"
+              if canvas then
+                  yield "    var r = cv.getBoundingClientRect(), s = stage.getBoundingClientRect();"
+                  yield "    var w = Number(cv.getAttribute('data-w')), h = Number(cv.getAttribute('data-h'));"
+                  yield "    var kx = w && r.width ? w / r.width : 1;"
+                  yield "    var ky = h && r.height ? h / r.height : 1;"
+              else
+                  yield "    var svg = fig.querySelector('svg');"
+                  yield "    if (!svg) { return null; }"
+                  yield "    var r = svg.getBoundingClientRect(), s = stage.getBoundingClientRect();"
+                  yield "    var vb = svg.viewBox && svg.viewBox.baseVal;"
+                  yield "    var kx = vb && vb.width && r.width ? vb.width / r.width : 1;"
+                  yield "    var ky = vb && vb.height && r.height ? vb.height / r.height : 1;"
+              yield "    return { r: r, s: s, kx: kx, ky: ky };"
+              yield "  }"
+              yield "  function at(e) {"
+              yield "    var f = frame();"
+              yield "    if (!f) { return null; }"
+              yield "    return { x: (e.clientX - f.r.left) * f.kx, y: (e.clientY - f.r.top) * f.ky, bx: e.clientX - f.s.left, by: e.clientY - f.s.top };"
+              yield "  }"
+              yield "  function show(r) {"
+              yield "    var f = frame();"
+              yield "    if (closed || !f || !r || r.length < 6) { readout.style.display = 'none'; return; }"
+              yield "    readout.textContent = '';"
+              yield "    r.slice(5).forEach(function (line) {"
+              yield "      var d = document.createElement('div');"
+              yield "      d.textContent = line;"
+              yield "      readout.appendChild(d);"
+              yield "    });"
+              yield "    var right = r[4] === 'right', x = Number(right ? r[2] : r[0]) / f.kx + f.r.left - f.s.left;"
+              yield "    readout.style.left = (right ? x - 4 : x + 4) + 'px';"
+              yield "    readout.style.top = (Number(r[1]) / f.ky + f.r.top - f.s.top + 4) + 'px';"
+              yield "    readout.style.transform = right ? 'translateX(-100%)' : '';"
+              yield "    readout.style.display = 'block';"
+              yield "  }"
+              yield "  function sum(a, b) { return [a[0], a[1], a[2] + b[2], a[3] + b[3]]; }"
+              yield "  fig.addEventListener('pointerdown', function (e) {"
+              yield "    if (e.button !== 0 || closed) { return; }"
+              yield "    var p = at(e);"
+              yield "    if (!p) { return; }"
+              yield "    drag = { start: p, last: p, pan: e.shiftKey };"
+              yield "    fig.setPointerCapture(e.pointerId);"
+              yield "    e.preventDefault();"
+              yield "  });"
+              yield "  fig.addEventListener('pointermove', function (e) {"
+              yield "    var p = at(e), a = drag && drag.start;"
+              yield "    if (!p || closed) { return; }"
+              yield "    if (drag && drag.pan) {"
+              yield "      send('pan', 'pan', [a.x, a.y, p.x - drag.last.x, p.y - drag.last.y], e.timeStamp, sum);"
+              yield "      drag.last = p;"
+              yield "      return;"
+              yield "    }"
+              yield "    send('hover', 'hover', [p.x, p.y], e.timeStamp);"
+              yield "    if (!drag) { return; }"
+              yield "    band.style.left = Math.min(a.bx, p.bx) + 'px';"
+              yield "    band.style.top = Math.min(a.by, p.by) + 'px';"
+              yield "    band.style.width = Math.abs(p.bx - a.bx) + 'px';"
+              yield "    band.style.height = Math.abs(p.by - a.by) + 'px';"
+              yield "    band.style.display = 'block';"
+              yield "  });"
+              yield "  function release(e) {"
+              yield "    if (!drag) { return; }"
+              yield "    var p = at(e), a = drag.start, pan = drag.pan;"
+              yield "    drag = null;"
+              yield "    band.style.display = 'none';"
+              yield "    if (p && !pan && e.type === 'pointerup') { send('zoom', 'zoom', [a.x, a.y, p.x, p.y], e.timeStamp); }"
+              yield "  }"
+              yield "  fig.addEventListener('pointerup', release);"
+              yield "  fig.addEventListener('pointercancel', release);"
+              yield "  fig.addEventListener('dblclick', function (e) { if (!closed) { send('reset', 'reset', [], e.timeStamp); } });"
+              yield "  fig.addEventListener('pointerleave', function (e) { if (!closed) { send('hover', 'leave', [], e.timeStamp); } });"
+              yield "  window.addEventListener('verso:channelclosed', function (e) {"
+              yield "    closed = true;"
+              yield "    show(null);"
+              yield "    disable((e.detail && e.detail.reason) || 'closed');"
+              yield "  });"
+              yield "  ch.ready('1.0');"
+              yield "  hello();"
+              yield "})();"
+              yield "//]]></script>" ]
 
     /// **D157 — the script a canvas page draws a scene with**: `Marey.Core` and the canvas painter
     /// compiled by Fable from `src/Marey.Html.View`, bundled into one classic script that defines
@@ -978,10 +1008,47 @@ module Html =
              use reader = new System.IO.StreamReader(stream, Encoding.UTF8)
              reader.ReadToEnd())
 
+    /// **D161 — the drawn elements from which `RenderMode.Auto` uses a canvas.** Measured in the
+    /// built-in browser on 2026-10-11 (Chromium 152): a scatter's SVG and its canvas page, script
+    /// included, are ready in about the same time near 3000 marks, the canvas three times sooner
+    /// at 10⁴ and twenty at 10⁵. Below 5000 the SVG is never the slower.
+    [<Literal>]
+    let CanvasThreshold = 5000
+
+    /// How figures are drawn from now on; `RenderMode.Auto` unless set.
+    let mutable renderMode = RenderMode.Auto
+
+    /// Whether a scene is drawn on a canvas under the current `renderMode`.
+    let drawsOnCanvas (scene: Node) : bool =
+        match renderMode with
+        | RenderMode.Svg -> false
+        | RenderMode.Canvas -> true
+        | RenderMode.Auto -> Scene.primitiveCount scene >= CanvasThreshold
+
+    /// The measurer a live figure is laid out with (`Live.fs`, one for the whole widget), whose
+    /// metrics a canvas page draws its text with (D156).
+    let private liveMeasurer = TextMeasure.approx
+
+    /// A scene's bytes for a canvas page, as base64: the scene and its text metrics.
+    let private sceneBase64 (scene: Node) = System.Convert.ToBase64String(Wire.encodeWith liveMeasurer scene)
+
     /// A live figure's SVG at a state, drawn in the state's arrangement. What a host sends back
     /// after each step; the document embeds the same thing.
     let widgetFigure (live: Live) (state: LiveState) : string =
         guarded "live figure" (fun () -> SvgBackend.render state.Shot.Outer.Extent (Live.scene live state))
+
+    /// **D161 — whether a live figure's page is a canvas**: decided by its scene the first time it
+    /// is asked, and kept for as long as the figure lives, so a slider that carries the scene
+    /// across the threshold does not leave the page and the kernel speaking two languages.
+    let private pageKinds = System.Runtime.CompilerServices.ConditionalWeakTable<Live, obj>()
+
+    let private onCanvas (live: Live) (state: LiveState) : bool =
+        pageKinds.GetValue(live, fun l -> box (drawsOnCanvas (Live.scene l state))) |> unbox<bool>
+
+    /// The whole scene for a canvas page: `scene`, its width and height in px, and its bytes.
+    let private canvasWhole (live: Live) (state: LiveState) : string[] =
+        let e = state.Shot.Outer.Extent
+        [| "scene"; exact (float e.Width); exact (float e.Height); sceneBase64 (Live.scene live state) |]
 
     /// **A live figure as a whole page**: its controls, written from `state`, the figure at that
     /// state, and the view's script. `live = false` is the static form, for a host with nothing
@@ -993,6 +1060,19 @@ module Html =
             |> String.concat ""
 
         let aspect = float state.Size.Height / float state.Size.Width
+        let canvas = onCanvas live state
+
+        // D159: a canvas page carries its scene's bytes and the script that draws them, ahead of
+        // the widget's own script, which calls it.
+        let figure, drawing =
+            if canvas then
+                let e = state.Shot.Outer.Extent
+
+                sprintf "<canvas id=\"cv\" data-w=\"%s\" data-h=\"%s\"></canvas>" (exact (float e.Width)) (exact (float e.Height)),
+                "<script type=\"text/plain\" id=\"scene\">" + sceneBase64 (Live.scene live state) + "</script>"
+                + "<script>//<![CDATA[\n" + viewScript.Force() + "\n//]]></script>"
+            else
+                widgetFigure live state, ""
 
         String.concat
             ""
@@ -1001,9 +1081,10 @@ module Html =
               "<div id=\"controls\">" + controls + "</div>"
               "<div id=\"stage\"><div id=\"fig\""
               + (if isLive then " title=\"Drag to zoom, shift-drag to pan, double-click to reset\"" else "")
-              + ">" + widgetFigure live state + "</div><div id=\"band\"></div><div id=\"readout\"></div></div>"
+              + ">" + figure + "</div><div id=\"band\"></div><div id=\"readout\"></div></div>"
               "<div id=\"status\">" + (if isLive then "" else "Static: run the cell to move the controls.") + "</div>"
-              widgetScript aspect
+              drawing
+              widgetScript aspect canvas
               "</body></html>" ]
 
     // ======================================================================================
@@ -1190,6 +1271,35 @@ module Html =
             Array.append [| widgetFigure l s |] shown
         | _ -> [||]
 
+    /// **D159 — a step on a canvas page**: `wpatch` and a patch's bytes when the arrangement held
+    /// and the patch is at most half the whole scene's bytes (D103's rule), and the whole scene
+    /// otherwise. A view that cannot be drawn is answered `same`: a canvas page has no place for
+    /// the error box an SVG page shows, and the labels still move.
+    let private canvasAnswer (live: Live) (before: LiveState) (after: LiveState) : string[] =
+        try
+            let next = Live.scene live after
+
+            let whole () =
+                let e = after.Shot.Outer.Extent
+                [| "scene"; exact (float e.Width); exact (float e.Height); sceneBase64 next |]
+
+            if before.Shot.Outer.Extent <> after.Shot.Outer.Extent then
+                whole ()
+            else
+                match Scene.diff (Live.scene live before) next with
+                | Replace _ as p ->
+                    let bytes = Wire.encodePatchWith liveMeasurer p
+                    let all = Wire.encodeWith liveMeasurer next
+
+                    if 2 * bytes.Length <= all.Length then
+                        [| "wpatch"; System.Convert.ToBase64String bytes |]
+                    else
+                        let e = after.Shot.Outer.Extent
+                        [| "scene"; exact (float e.Width); exact (float e.Height); System.Convert.ToBase64String all |]
+                | Whole _ -> whole ()
+        with _ ->
+            [| "same" |]
+
     /// **D103 — the answer to one message**, laid out for the bridge: a kind, what the kind
     /// carries, and then each control's label.
     ///
@@ -1197,6 +1307,8 @@ module Html =
     ///   this way: it moved the pointer, which the figure is not drawn from.
     /// - `svg; document; labels…` — the whole figure.
     /// - `patch; defs; n; id₁; markup₁; … idₙ; markupₙ; labels…` — `SvgPatch`'s elements.
+    /// - on a canvas page (D159), `scene; width; height; bytes; labels…` or `wpatch; bytes;
+    ///   labels…`, the bytes `Wire`'s, as base64.
     ///
     /// Empty for anything that is not a live figure. A figure that cannot be drawn, or a patch
     /// that cannot be taken, is answered with the whole figure, which `widgetFigure` turns into
@@ -1213,6 +1325,8 @@ module Html =
             let body =
                 if obj.ReferenceEquals(b, a) || Live.drawsAlike b a then
                     [| "same" |]
+                elif onCanvas l b then
+                    canvasAnswer l b a
                 else
                     match (try Some(widgetPatch l b a) with _ -> None) with
                     | Some { Defs = defs; Elements = Some els } ->
@@ -1224,6 +1338,27 @@ module Html =
 
             Array.append body shown
         | _ -> [||]
+
+    /// **D159 — the whole figure at a state, in the page's kind**, for a view's hello (`size`):
+    /// `svg; document; labels…` on an SVG page and `scene; width; height; bytes; labels…` on a
+    /// canvas page. Empty for anything that is not a live figure.
+    let liveWholeForHost (value: obj, state: obj) : string[] =
+        match liveAt value state with
+        | Some(l, s) ->
+            let shown =
+                try
+                    Live.shown l s
+                with _ ->
+                    Array.create l.Controls.Length ""
+
+            let body =
+                if onCanvas l s then
+                    (try canvasWhole l s with _ -> [| "same" |])
+                else
+                    [| "svg"; widgetFigure l s |]
+
+            Array.append body shown
+        | None -> [||]
 
     /// **D105 — what the pointer reads**, laid out for the bridge: the plot rectangle it is over
     /// in figure px (`x0; y0; x1; y1`, round-trip exact), `left` or `right` for the corner the

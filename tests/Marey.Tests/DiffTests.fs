@@ -164,6 +164,7 @@ module ``a patch is the new scene`` =
 // Gate 9 — diffing is measured, not assumed
 // ======================================================================================
 
+[<Xunit.Collection(RenderModes.Collection)>]
 module ``diffing is measured`` =
 
     /// 50 000 scattered points that no control moves, and one marked point a slider moves along
@@ -185,15 +186,16 @@ module ``diffing is measured`` =
     /// live figure sends is that patch.
     [<Fact>]
     let ``a cursor over 50 000 points patches in under 5% of the document`` () =
-        let l = scatterWithCursor ()
-        let s0 = Live.init l
-        let s1 = Live.step l s0 (Set(0, 6.0))
-        let p = Html.widgetPatch l s0 s1
-        let els = p.Elements.Value
-        let bytes = p.Defs.Length + (els |> Array.sumBy (fun (id, m) -> id.Length + m.Length))
-        Assert.Equal<string[]>([| "figure_panel-0-0_layer-1" |], els |> Array.map fst)
-        Assert.True(bytes * 20 < p.Document.Length, sprintf "patch %d bytes of a %d-byte document" bytes p.Document.Length)
-        Assert.Equal("patch", (Html.liveAnswerForHost (box l, box s0, box s1)).[0])
+        RenderModes.withRenderMode RenderMode.Svg (fun () ->
+            let l = scatterWithCursor ()
+            let s0 = Live.init l
+            let s1 = Live.step l s0 (Set(0, 6.0))
+            let p = Html.widgetPatch l s0 s1
+            let els = p.Elements.Value
+            let bytes = p.Defs.Length + (els |> Array.sumBy (fun (id, m) -> id.Length + m.Length))
+            Assert.Equal<string[]>([| "figure_panel-0-0_layer-1" |], els |> Array.map fst)
+            Assert.True(bytes * 20 < p.Document.Length, sprintf "patch %d bytes of a %d-byte document" bytes p.Document.Length)
+            Assert.Equal("patch", (Html.liveAnswerForHost (box l, box s0, box s1)).[0]))
 
     /// What the keys below the panel are for. The cursor's legend entry names where it is, so a
     /// move changes the legend as well as the layer. With the legend under the panel's own key
@@ -214,15 +216,16 @@ module ``diffing is measured`` =
     /// whole document is sent.
     [<Fact>]
     let ``a zoom sends the whole document`` () =
-        let l = scatterWithCursor ()
-        let s0 = Live.init l
-        let v = (Live.panels l s0).[0]
-        let c = { X = (v.Plot.X0 + v.Plot.X1) / 2.0; Y = (v.Plot.Y0 + v.Plot.Y1) / 2.0 }
-        let s1 = Live.step l s0 (Zoom { X0 = c.X - 80.0<px>; Y0 = c.Y - 50.0<px>; X1 = c.X + 80.0<px>; Y1 = c.Y + 50.0<px> })
-        Assert.NotSame(s0, s1)
-        let answer = Html.liveAnswerForHost (box l, box s0, box s1)
-        Assert.Equal("svg", answer.[0])
-        Assert.Equal(Html.widgetFigure l s1, answer.[1])
+        RenderModes.withRenderMode RenderMode.Svg (fun () ->
+            let l = scatterWithCursor ()
+            let s0 = Live.init l
+            let v = (Live.panels l s0).[0]
+            let c = { X = (v.Plot.X0 + v.Plot.X1) / 2.0; Y = (v.Plot.Y0 + v.Plot.Y1) / 2.0 }
+            let s1 = Live.step l s0 (Zoom { X0 = c.X - 80.0<px>; Y0 = c.Y - 50.0<px>; X1 = c.X + 80.0<px>; Y1 = c.Y + 50.0<px> })
+            Assert.NotSame(s0, s1)
+            let answer = Html.liveAnswerForHost (box l, box s0, box s1)
+            Assert.Equal("svg", answer.[0])
+            Assert.Equal(Html.widgetFigure l s1, answer.[1]))
 
     /// An unchanged state is answered with its labels and no figure.
     [<Fact>]

@@ -757,6 +757,7 @@ module LoadContexts =
 // is where `Live.cellIdOf` finds it when the host's `IFormatterContext` does not declare one.
 // ======================================================================================
 
+[<Xunit.Collection(RenderModes.Collection)>]
 module LiveFormatter =
 
     open System.Collections.Generic
@@ -899,23 +900,51 @@ module LiveFormatter =
     /// apply a patch asks to start again.
     [<Fact>]
     let ``a local change is posted as a patch, and a hello as the figure`` () =
-        let host = FakeHost()
-        let l = Marey.Tests.DiffTests.``diffing is measured``.scatterWithCursor ()
-        format (box l) (LiveContext(host, Some cell)) |> ignore
-        let channel = host.Opened.[0]
+        RenderModes.withRenderMode RenderMode.Svg (fun () ->
+            let host = FakeHost()
+            let l = Marey.Tests.DiffTests.``diffing is measured``.scatterWithCursor ()
+            format (box l) (LiveContext(host, Some cell)) |> ignore
+            let channel = host.Opened.[0]
 
-        channel.Send("set", "[0,6]")
-        let p = payloadOf (snd channel.Posted.[0])
-        Assert.False(p.ContainsKey "svg", "a local change resent the whole figure")
-        Assert.Equal<string[]>([| "figure_panel-0-0_layer-1" |], (p.["patch"] :?> string[]) |> Array.indexed |> Array.filter (fun (i, _) -> i % 2 = 0) |> Array.map snd)
-        Assert.Contains("<defs>", p.["defs"] :?> string)
-        Assert.Equal<string[]>([| "6 s" |], p.["shown"] :?> string[])
+            channel.Send("set", "[0,6]")
+            let p = payloadOf (snd channel.Posted.[0])
+            Assert.False(p.ContainsKey "svg", "a local change resent the whole figure")
+            Assert.Equal<string[]>([| "figure_panel-0-0_layer-1" |], (p.["patch"] :?> string[]) |> Array.indexed |> Array.filter (fun (i, _) -> i % 2 = 0) |> Array.map snd)
+            Assert.Contains("<defs>", p.["defs"] :?> string)
+            Assert.Equal<string[]>([| "6 s" |], p.["shown"] :?> string[])
 
-        let s1 = Live.step l (Live.init l) (Set(0, 6.0))
-        channel.Send("size", sprintf "[%g,%g]" (float s1.Size.Width) (float s1.Size.Height))
-        let hello = payloadOf (snd channel.Posted.[1])
-        Assert.Equal(Html.widgetFigure l s1, hello.["svg"] :?> string)
-        Assert.False(hello.ContainsKey "patch")
+            let s1 = Live.step l (Live.init l) (Set(0, 6.0))
+            channel.Send("size", sprintf "[%g,%g]" (float s1.Size.Width) (float s1.Size.Height))
+            let hello = payloadOf (snd channel.Posted.[1])
+            Assert.Equal(Html.widgetFigure l s1, hello.["svg"] :?> string)
+            Assert.False(hello.ContainsKey "patch"))
+
+    /// Step F (D159) — the same figure on a canvas page: a local change is posted as a patch's
+    /// bytes, and a hello as the whole scene with its size.
+    [<Fact>]
+    let ``on a canvas page, a change is posted as patch bytes and a hello as the scene`` () =
+        RenderModes.withRenderMode RenderMode.Auto (fun () ->
+            let host = FakeHost()
+            let l = Marey.Tests.DiffTests.``diffing is measured``.scatterWithCursor ()
+            let output = format (box l) (LiveContext(host, Some cell))
+            Assert.Contains("<canvas id=\"cv\"", output.Content)
+            let channel = host.Opened.[0]
+
+            channel.Send("set", "[0,6]")
+            let p = payloadOf (snd channel.Posted.[0])
+            Assert.False(p.ContainsKey "svg" || p.ContainsKey "scene" || p.ContainsKey "patch", "a local change resent the figure, or as SVG")
+            let s0 = Live.init l
+            let s1 = Live.step l s0 (Set(0, 6.0))
+            let patch = Wire.decodePatch (Convert.FromBase64String(p.["wpatch"] :?> string))
+            Assert.True((match patch with Ok q -> Scene.apply q (Live.scene l s0) = Live.scene l s1 | Error _ -> false))
+            Assert.Equal<string[]>([| "6 s" |], p.["shown"] :?> string[])
+
+            channel.Send("size", sprintf "[%g,%g]" (float s1.Size.Width) (float s1.Size.Height))
+            let hello = payloadOf (snd channel.Posted.[1])
+            Assert.False(hello.ContainsKey "svg")
+            Assert.Equal(sprintf "%g" (float s1.Shot.Outer.Extent.Width), hello.["w"] :?> string)
+            let scene = Wire.decode (Convert.FromBase64String(hello.["scene"] :?> string))
+            Assert.True((match scene with Ok n -> n = Live.scene l s1 | Error _ -> false)))
 
     /// D105 — a hover is answered with the figure the view already has and what the pointer
     /// reads; leaving is answered with an empty readout, which takes it down.

@@ -75,6 +75,7 @@
     <Compile Include="GpuSimTests.fs" />
     <Compile Include="InteractTests.fs" />
     <Compile Include="KeyTests.fs" />
+    <Compile Include="RenderModes.fs" />
     <Compile Include="DiffTests.fs" />
     <Compile Include="WireTests.fs" />
     <Compile Include="SurfaceTests.fs" />
