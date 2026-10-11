@@ -252,6 +252,28 @@ module ``the host`` =
 
             Assert.True((differing = 0), sprintf "%d channels of the figure differ from the renderer's" differing))
 
+    /// D137 — a hidden window plays a time control on its own loop: Tab and space, and the value
+    /// moves on by the window's clock without another event, then holds once paused.
+    [<Fact>]
+    let ``a hidden window plays a time control on its frame loop`` () =
+        GpuTests.withGpu (fun _ ->
+            let l = interact {
+                        let! t = Control.time "t" 0.0<s> 100.0<s>
+                        return wave (1.0<1 / s> + t * 0.01<1 / s^2>) false
+                    }
+
+            use w = GpuWindow.Open(l, visible = false)
+            w.Post(WindowEvent.Key(WindowKey.Tab, false))
+            w.Post(WindowEvent.Key(WindowKey.Space, false))
+            Threading.Thread.Sleep 400
+            let playing = w.Session
+            Assert.True(playing.Gesture.Playing.IsSome, "the window is not playing")
+            Assert.True(playing.State.Values.[0] > 0.1, sprintf "after 0.4 s of play the time is %g s" playing.State.Values.[0])
+            w.Post(WindowEvent.Key(WindowKey.Space, false))
+            let paused = w.State.Values.[0]
+            Threading.Thread.Sleep 200
+            Assert.Equal(paused, w.State.Values.[0]))
+
     /// Closing returns from `Wait`, and a closed window refuses to be asked anything.
     [<Fact>]
     let ``close ends the wait`` () =
@@ -276,3 +298,91 @@ module ``the host`` =
               box (Recorder.stop: Recorder -> Recording<LiveMsg>) ]
 
         Assert.All(entries, (fun e -> Assert.NotNull e))
+
+/// M5.5 phase 7, gate 15 — the window plays a time control (D137): play, pause and scrub send the
+/// `Set`s the page would, stamped by the window's clock, and reach `Live.step`'s state.
+module ``gate 15`` =
+
+    let private timed () =
+        interact {
+            let! t = Control.time "t" 0.0<s> 4.0<s>
+            and! damped = Control.checkbox "damped" false
+            return wave (1.0<1 / s> + t * 0.5<1 / s^2>) damped
+        }
+
+    /// The events with their times, and the messages each must send.
+    let private script (l: Live) =
+        let size: Extent<px> = { Width = 800.0<px>; Height = 500.0<px> + WindowStrip.height l.Controls }
+        let rows = WindowStrip.rows l.Controls size.Width
+        let track = rows.[0].Widget
+        let mid = (track.Y0 + track.Y1) / 2.0
+        let along (f: float) : Vec2<px> = { X = track.X0 + f * (track.X1 - track.X0); Y = mid }
+        let button = WindowStrip.playButton rows.[0]
+        let press: Vec2<px> = { X = (button.X0 + button.X1) / 2.0; Y = (button.Y0 + button.Y1) / 2.0 }
+
+        [ 0.0<s>, WindowEvent.Resized size, [ Resize(800.0, 500.0) ]
+          // Tab to the time control and play it with the space bar at 1 s.
+          0.5<s>, WindowEvent.Key(WindowKey.Tab, false), []
+          1.0<s>, WindowEvent.Key(WindowKey.Space, false), []
+          1.5<s>, WindowEvent.Frame, [ Set(0, 0.5) ]
+          2.25<s>, WindowEvent.Frame, [ Set(0, 1.25) ]
+          // Pause: the next frame, if the host sent one, sends nothing.
+          2.5<s>, WindowEvent.Key(WindowKey.Space, false), []
+          3.0<s>, WindowEvent.Frame, []
+          // Scrub to a quarter of the track, and let go.
+          3.5<s>, WindowEvent.Pressed(along 0.25, false), [ Set(0, 1.0) ]
+          3.6<s>, WindowEvent.Released(along 0.25), []
+          // Play from there with the button; past the end it wraps to the start.
+          4.0<s>, WindowEvent.Pressed(press, false), []
+          4.1<s>, WindowEvent.Released press, []
+          6.5<s>, WindowEvent.Frame, [ Set(0, 3.5) ]
+          8.0<s>, WindowEvent.Frame, [ Set(0, 1.0) ]
+          // Scrubbing while it plays pauses it.
+          8.2<s>, WindowEvent.Pressed(along 0.5, false), [ Set(0, 2.0) ]
+          8.3<s>, WindowEvent.Released(along 0.5), []
+          9.0<s>, WindowEvent.Frame, [] ]
+
+    [<Fact>]
+    let ``play, pause and scrub send the page's messages and reach its state`` () =
+        let l = timed ()
+        let events = script l
+        let r = Live.recorder l
+        let from = r.Begin()
+        let mutable session = WindowSession.start l
+
+        for t, e, expected in events do
+            let next, msgs = WindowSession.feed l session (t, e)
+            Assert.True((msgs = expected), sprintf "at %g s, %A sent %A, not %A" (float t) e msgs expected)
+            msgs |> List.iter (fun m -> r.Note(from, Some t, m))
+            session <- next
+
+        Assert.Equal(None, session.Gesture.Playing)
+        let expected = events |> List.collect (fun (_, _, m) -> m) |> List.fold (Live.step l) (Live.init l)
+        Assert.True((session.State = expected), "the window's state is not the one the messages give")
+        Assert.Equal(2.0, session.State.Values.[0])
+
+        // And the recording is the page's, replaying to the same state.
+        let log = Recorder.stop r
+        let page = events |> List.collect (fun (t, _, msgs) -> msgs |> List.map (fun m -> t, m)) |> Array.ofList |> Recording.ofEvents
+        Assert.Equal<(float<s> * LiveMsg)[]>(page.Events, log.Events)
+        let replayed = Live.record l log
+        Assert.True((snd replayed.Events.[replayed.Events.Length - 1] = session.State))
+
+    /// A time control that stops at its end does stop there, and plays again from the start.
+    [<Fact>]
+    let ``a time control that does not loop stops at its end`` () =
+        let l = interact {
+                    let! t = Control.timeWith 10 false "t" 0.0<s> 2.0<s>
+                    return wave (1.0<1 / s> + t * 0.5<1 / s^2>) false
+                }
+
+        let feed (s, _) (t, e) = WindowSession.feed l s (t, e)
+        let s0 = WindowSession.start l
+        let s1, _ = feed (s0, []) (0.0<s>, WindowEvent.Key(WindowKey.Tab, false))
+        let s2, _ = feed (s1, []) (1.0<s>, WindowEvent.Key(WindowKey.Space, false))
+        let s3, m3 = feed (s2, []) (5.0<s>, WindowEvent.Frame)
+        Assert.Equal<LiveMsg list>([ Set(0, 2.0) ], m3)
+        Assert.Equal(None, s3.Gesture.Playing)
+        let s4, _ = feed (s3, []) (6.0<s>, WindowEvent.Key(WindowKey.Space, false))
+        let _, m5 = feed (s4, []) (6.5<s>, WindowEvent.Frame)
+        Assert.Equal<LiveMsg list>([ Set(0, 0.5) ], m5)

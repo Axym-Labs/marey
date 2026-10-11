@@ -1,0 +1,22 @@
+<Project>
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- D146 — the FSharp.Core a consumer must have, stated rather than inherited. Left implicit, the
+       SDK that packs a library writes its own bundled FSharp.Core into the nuspec as the lower
+       bound: CI's newest `10.0.x` wrote 10.1.401 into every 0.5.0 package, and a consumer on SDK
+       10.0.1xx (which bundles 10.0.1xx) restored every one of them with NU1605. The library
+       projects only: tests and examples are not packed, and keep the implicit reference.
+
+       The version is the lowest the library projects compile against, found by building at
+       descending versions. -->
+  <PropertyGroup>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+    <MareyFSharpCore Condition="'$(MareyFSharpCore)' == ''">8.0.100</MareyFSharpCore>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" Version="$(MareyFSharpCore)" />
+  </ItemGroup>
+
+</Project>

@@ -2,6 +2,7 @@ namespace Marey
 
 open System
 open System.Runtime.InteropServices
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
 // M4.5 — TYPED CONTROLS (D101)
@@ -30,6 +31,12 @@ type ControlKind =
     | Select of options: string[]
     /// 1 for on, 0 for off.
     | Checkbox
+    /// M5.5, D137 — a time in seconds from `Lo` to `Hi`, scrubbed like a slider and played by the
+    /// host on its own clock, one second a second, which posts the values as `Set`s. `Samples`
+    /// states along the range are what a live figure is arranged over, in place of the two ends,
+    /// so a view of the current state does not re-arrange as it plays. At the end, play wraps to
+    /// `Lo` when `Loop` is set and stops otherwise.
+    | Time of lo: float * hi: float * samples: int * loop: bool
 
 /// One control, with its measures spent.
 [<NoEquality; NoComparison>]
@@ -64,6 +71,7 @@ module ControlSpec =
             | Slider(lo, hi, _) -> Some(max lo (min hi v))
             | Select options -> Some(float (max 0 (min (options.Length - 1) (int (Num.roundEven v)))))
             | Checkbox -> Some(if v <> 0.0 then 1.0 else 0.0)
+            | Time(lo, hi, _, _) -> Some(max lo (min hi v))
 
 [<RequireQualifiedAccess>]
 module Control =
@@ -142,6 +150,35 @@ module Control =
                  Show = fun v -> names.[max 0 (min (names.Length - 1) (int (Num.roundEven v)))] } |]
           Read = fun vs -> snd options.[max 0 (min (options.Length - 1) (int (Num.roundEven vs.[0])))] }
 
+    /// D137 — a time control over `[lo, hi]`, starting at `lo`, arranged over `samples` states
+    /// along it, looping at the end or stopping there. The view receives `float<s>`.
+    let timeWith (samples: int) (loop: bool) (label: string) (lo: float<s>) (hi: float<s>) =
+        let lo', hi' = float lo, float hi
+
+        if not (finite lo' && finite hi' && lo' < hi') then
+            invalidArg "hi" (sprintf "a time control needs a finite range with lo < hi; got %g s to %g s" lo' hi')
+
+        if samples < 2 then
+            invalidArg "samples" (sprintf "a time control is arranged over at least its two ends; got %d samples" samples)
+
+        let u = U.second
+        let prefix = Prefix.selectForUnit u (lo', hi')
+        let decimals = decimalsFor ((hi' - lo') / 1000.0 / Prefix.factor prefix)
+
+        let show (v: float) =
+            UnitDisplay.quantityIn Unicode UnitRegistry.si prefix (Num.at decimals) u (LanguagePrimitives.FloatWithMeasure v)
+
+        { Specs =
+            [| { Label = label
+                 Kind = Time(lo', hi', samples, loop)
+                 Init = lo'
+                 Show = show } |]
+          Read = fun (vs: float[]) -> LanguagePrimitives.FloatWithMeasure<s> vs.[0] }
+
+    /// D137 — a time control over `[lo, hi]` that loops, arranged over 60 states along it.
+    let time (label: string) (lo: float<s>) (hi: float<s>) =
+        timeWith 60 true label lo hi
+
     /// On or off.
     let checkbox (label: string) (init: bool) : Control<bool> =
         { Specs =
@@ -177,4 +214,16 @@ type Control =
             [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit
         ) : Control<float> =
         Control.slider (U.erase unit) label lo hi init
+
+    /// D137 — a time control over plain seconds: `Control.Time("t", 0.0, 10.0)`. It loops, and
+    /// is arranged over 60 states along its range unless told otherwise.
+    static member Time
+        (
+            label: string,
+            lo: float,
+            hi: float,
+            [<Optional; DefaultParameterValue(60)>] samples: int,
+            [<Optional; DefaultParameterValue(true)>] loop: bool
+        ) : Control<float> =
+        Control.map float (Control.timeWith samples loop label (lo * 1.0<s>) (hi * 1.0<s>))
 

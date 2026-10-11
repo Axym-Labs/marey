@@ -40,4 +40,13 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
+  <!-- D146 — A pack with `NoBuild` packs what was built, so it must not build project
+       references either. The F# SDK hooks `PackageFSharpDesignTimeTools` into a package's content,
+       which depends on `_GetFrameworkAssemblyReferences` and so on `ResolveReferences`; on SDK
+       10.0.1xx that builds every referenced project, and each fails with NETSDK1085. Without
+       building references, `ResolveReferences` asks them for their target paths instead. -->
+  <PropertyGroup Condition="'$(NoBuild)' == 'true'">
+    <BuildProjectReferences>false</BuildProjectReferences>
+  </PropertyGroup>
+
 </Project>

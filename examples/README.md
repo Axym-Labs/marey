@@ -1,6 +1,6 @@
 # Examples
 
-Fifteen standalone scripts, one notebook, and one browser app. Start with [`reel.fsx`](reel.fsx) if you want to see what the library
+Nineteen standalone scripts, one notebook, and one browser app. Start with [`reel.fsx`](reel.fsx) if you want to see what the library
 does before reading how; start with [`free-fall.fsx`](free-fall.fsx) if you would rather read the
 smallest complete thing first.
 
@@ -31,6 +31,10 @@ static anywhere else.
 | [`fields.fsx`](fields.fsx) | Two line charges, drawn every way `Marey.Fields` draws a field: the potential and its equipotentials, field lines over filled bands, a quiver with its key, and line-integral convolution. The field comes out in V/m and its divergence in V/m², and the script checks Gauss's law on the grid. |
 | [`dipole.fsx`](dipole.fsx) | A field in motion: a rotating dipole's potential, equipotentials and field lines, recomputed every frame and encoded to `.mp4`. The panel and the colour scale stay put while the field turns, and the script checks that every frame has the same labels. |
 | [`pendulum.fsx`](pendulum.fsx) | A phase space with a different unit on each axis, radians and radians per second. The fixed points are found and classified, with eigenvalues in s⁻¹: centres hanging down, saddles standing up, stable foci once there is friction. Also checks Liouville's theorem on the grid: the flow's divergence is zero, then minus the friction. |
+| [`integrators.fsx`](integrators.fsx) | Forward Euler, RK4 and velocity Verlet on one oscillator for 100 periods, and the energy each gains or loses, in joules. Euler's grows exponentially, RK4's falls steadily, Verlet's stays in a band. The acceleration is typed in m/s², and each claim is checked. |
+| [`heat.fsx`](heat.fsx) | Heat in a steel plate, stepped by Crank–Nicolson at eight times the explicit scheme's limit, which forward Euler refuses with both numbers. The temperature is in kelvin and the diffusivity in m²/s, so the limit is a time. A film with one colour scale throughout, and the same trajectory under a time control as a live figure. |
+| [`double-gyre.fsx`](double-gyre.fsx) | A field that changes in time and what it carries: the instantaneous streamlines, three pathlines and a streak released from one point, as a film. In a steady field the three would coincide; here the streak folds into the gyres. Checks that nothing crosses the walls and that a small triangle keeps its area. |
+| [`double-pendulum.fsx`](double-pendulum.fsx) | A chaotic system, three ways: the first arm's path over a single pendulum's phase portrait, a Poincaré section of the second arm each time the first swings through the vertical, and a film of the pendulum. The state is a record of angles and rates stepped through a `Tangent`. A start a nanoradian away is a different pendulum within half a minute, which is also why a browser gives a different one. |
 | [`interact.dib`](interact.dib) | **A live figure**, in a notebook. Two line charges with a slider over the charge per length, typed `float<C/m>` and labelled `2 nC·m⁻¹`, a slider over their separation and a choice of mark. Drag to zoom onto a charge and the axes and the readout change to millimetres. A recorder keeps what the reader did and replays it as a film. |
 | [`reel.fsx`](reel.fsx) | **The demo reel.** The whole library in one shot: unit witnesses, a storyboard that is a value, one arrangement for the whole shot so the panel holds still, a mark addressed by its row, TeX-set axis titles on the poster, a flipbook that plays in a browser with no encoder installed, and an `.mp4` at the end. Written for somebody who has read none of the rest. |
 

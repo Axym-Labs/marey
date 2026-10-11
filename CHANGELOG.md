@@ -12,6 +12,79 @@ land in a minor release.
 
 ## [Unreleased]
 
+### Added
+
+- **`Marey.Sim`**, the seventeenth package: ODE integrators typed by units of measure, and a
+  simulation as a step function. `Ode.verlet` and `Ode.leapfrog` integrate a second-order state,
+  positions in one unit and velocities in that unit per second; `Ode.euler` and `Ode.rk4` a 2-D
+  flow with time (`Flow2T`); `Ode.eulerWith` and `Ode.rk4With` any state given a `Tangent`, the
+  two operations that advance it and combine its rates. An acceleration or a rate in the wrong
+  unit does not compile. `Ode.verletInPlace` steps the caller's arrays and allocates nothing.
+  `Sim.ofStep`, `Sim.run` and `Sim.states` run a step with time computed as `k · h`.
+  `Ode.dopri5` (a 2-D flow, an absolute tolerance per axis) and `Ode.dopri5With` (any state, with
+  an `ErrorNorm` that weighs each component by its own tolerance) are Dormand–Prince 4(5) with a PI
+  controller and fourth-order dense output; `Sim.ofAdaptive` runs one.
+  `Sim.trajectory every horizon` is the simulation as an `Anim`: a seek to any time replays from
+  the nearest checkpoint and gives the state a straight run reaches, bit for bit, on any thread. A
+  checkpoint table estimated over 512 MiB is refused, naming an interval that fits.
+  Events (`Event.create`, `Sim.withEvents`): a function of the state crossing zero in a stated
+  direction, located to a tolerance in time (on the dense output for `dopri5`, by re-stepping for
+  a fixed step), with a response that replaces the state or stops the run, and a minimum
+  separation that applies a rest response or stops instead of looping (Zeno). `Sim.events` lists
+  the events a run passed; `Sim.at` is the straight run to a time. `Response.reflect` for a
+  second-order state. `Ode.withMaxStep` caps an adaptive step. `Collide.step` steps hard discs
+  in free flight with every contact inside the step resolved exactly in time order, against walls,
+  on a torus or in the open, with a grid broad phase above 256 discs and a per-step contact cap
+  whose hits are counted.
+  `Poincare.stroboscopic period trajectory` is the state at every multiple of a period, each by a
+  seek; `Poincare.section direction surface horizon sim` is every crossing of a surface in a
+  direction, located by the event machinery, so each point is the integrator's own state on the
+  surface.
+  `Unsteady` is a velocity field that depends on time; `Unsteady.ofSnapshots` reads grids at
+  stated times, bilinear in space and linear in time, and `Unsteady.ofFunction` a grid built for
+  each time asked. `Particles.step` carries many particles together, stage by stage, so a field
+  built per stage time is built once per stage, not once per particle; `Particles.streakStep`
+  releases particles from seeds every step, and `Particles.pathlines` reads each particle's path
+  from a trajectory.
+  `Fdm`: finite differences on a uniform `ScalarGrid` with typed boundaries per side (`Boundary.
+  Dirichlet` in the field's unit, `Neumann` in its unit per metre, `Periodic`). `Fdm.laplacian5`
+  is the compact five-point stencil; `Fdm.heat` steps by forward Euler and refuses a step past
+  `Fdm.explicitLimit`; `Fdm.heatImplicit` is Crank–Nicolson by ADI, stable at any step;
+  `Fdm.wave` is leapfrog under `Fdm.waveLimit`; `Fdm.poisson` solves by over-relaxation and reports
+  its sweeps and residual.
+  `Sim.withInvariant` attaches a conserved quantity (with a unit witness under
+  `open Marey.UnitsOfMeasure`), `Sim.drift` samples each one's drift over a trajectory, relative
+  to its start or absolute where the start is zero, and `Drift.chart` draws them. The package
+  claims Fable.
+- **A time control**: `Control.time "t" 0.0<s> 10.0<s>` (and `Control.timeWith samples loop`,
+  `Control.Time("t", 0.0, 10.0)` over plain seconds). The notebook widget draws a range input and
+  a play button, and plays it on the page's clock; the window plays it on its frame loop, with
+  space to play and pause and a button before the track. Every frame played is an ordinary `Set`,
+  so a recording replays the playback. A live figure is arranged over 60 states along the time
+  control's range rather than its two ends, so a view whose widest state lies inside the range
+  does not re-arrange as it plays.
+- **`examples/integrators.fsx`**: Euler, RK4 and Verlet on one oscillator, and the energy drift of
+  each over 100 periods.
+- **`examples/heat.fsx`**: heat in a plate by Crank–Nicolson, as a film and as a live figure with a
+  time control.
+- **`examples/double-gyre.fsx`**: pathlines, a streakline and particles in an unsteady field, as a
+  film.
+- **`examples/double-pendulum.fsx`**: a chaotic system's path over a phase portrait, a Poincaré
+  section, and a film.
+
+### Changed
+
+- **`ControlKind` gained a case, `Time of lo * hi * samples * loop`.** A match over it that names
+  every case without a wildcard no longer compiles until it handles the new one.
+
+### Fixed
+
+- **`Field.laplacian`'s documentation says it is a display operator**: its wide stencil is zero on
+  a checkerboard, so it is not what a solver should step with.
+- **Every package requires FSharp.Core ≥ 8.0.100**, stated in the build, instead of the version
+  bundled with the SDK that packed it. Every `0.5.0` package required ≥ 10.1.401, so a project on
+  SDK 10.0.1xx restored any of them with a downgrade warning (NU1605).
+
 ## [0.5.0] — 2026-10-10
 
 **Two backends that draw pixels on a screen.** `Marey.Backend.Gpu` renders on an OpenGL 3.3

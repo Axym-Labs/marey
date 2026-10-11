@@ -732,6 +732,12 @@ module Html =
 
                 sprintf "<select data-i=\"%d\"%s>%s</select>" i disabled opts
             | Checkbox -> sprintf "<input type=\"checkbox\" data-i=\"%d\"%s%s/>" i (if v <> 0.0 then " checked=\"checked\"" else "") disabled
+            // D137 — a range input the page's script plays on its own clock: the button starts
+            // and stops it, and every frame it plays is a `set`, as a drag of the input is.
+            | Time(lo, hi, _, loop) ->
+                sprintf
+                    "<input type=\"range\" data-i=\"%d\" min=\"%s\" max=\"%s\" step=\"%s\" value=\"%s\"%s/><button type=\"button\" data-play=\"%d\" data-loop=\"%d\" title=\"Play\"%s>\u25B6</button>"
+                    i (exact lo) (exact hi) (exact ((hi - lo) / 1000.0)) (exact v) disabled i (if loop then 1 else 0) disabled
 
         sprintf "<label><span>%s</span>%s<output id=\"v%d\">%s</output></label>" (text c.Label) input i (text (c.Show v))
 
@@ -745,6 +751,7 @@ module Html =
               "#controls{" + Row + ";margin:0 0 6px}"
               "#controls label{display:inline-flex;gap:6px;align-items:center}"
               "#controls output{font-variant-numeric:tabular-nums;min-width:5em}"
+              "#controls button{font:inherit;min-width:2.2em}"
               "#stage{position:relative}"
               "#fig{max-width:100%;overflow-x:auto;touch-action:none;user-select:none;-webkit-user-select:none}"
               "#band{position:absolute;display:none;pointer-events:none;border:1px dashed currentColor;background:rgba(127,127,127,0.12)}"
@@ -791,8 +798,9 @@ module Html =
               "  var fig = document.getElementById('fig');"
               "  var status = document.getElementById('status');"
               "  var inputs = Array.prototype.slice.call(document.querySelectorAll('[data-i]'));"
+              "  var plays = Array.prototype.slice.call(document.querySelectorAll('[data-play]'));"
               "  function disable(why) {"
-              "    inputs.forEach(function (el) { el.disabled = true; });"
+              "    inputs.concat(plays).forEach(function (el) { el.disabled = true; });"
               "    if (why) { status.textContent = why; }"
               "  }"
               "  if (!ch) { disable(null); return; }"
@@ -815,6 +823,35 @@ module Html =
               "    el.addEventListener(el.type === 'range' ? 'input' : 'change', function (e) {"
               "      send('c' + i, 'set', [i, valueOf(el)], e.timeStamp);"
               "    });"
+              "  });"
+              // D137: play advances a time control one second a second from where it was, on
+              // the page's clock, and posts each frame's value as a `set` stamped with that
+              // frame's time. Scrubbing the input pauses it. The value sent is the exact one; the
+              // input shows it rounded to its step.
+              "  var playing = {};"
+              "  plays.forEach(function (b) {"
+              "    var i = Number(b.getAttribute('data-play')), loop = b.getAttribute('data-loop') === '1';"
+              "    var el = inputs.filter(function (x) { return Number(x.getAttribute('data-i')) === i; })[0];"
+              "    var lo = Number(el.min), hi = Number(el.max);"
+              "    function stop() { delete playing[i]; b.textContent = '\u25B6'; b.title = 'Play'; }"
+              "    function tick(now) {"
+              "      var p = playing[i];"
+              "      if (!p || closed) { return; }"
+              "      var v = p.from + (now - p.start) / 1000;"
+              "      if (v > hi) { if (loop) { v = lo + (v - lo) % (hi - lo); } else { v = hi; stop(); } }"
+              "      el.value = v;"
+              "      send('c' + i, 'set', [i, v], now);"
+              "      if (playing[i]) { requestAnimationFrame(tick); }"
+              "    }"
+              "    b.addEventListener('click', function () {"
+              "      if (playing[i]) { stop(); return; }"
+              "      var from = valueOf(el);"
+              "      if (from >= hi && !loop) { from = lo; }"
+              "      playing[i] = { start: performance.now(), from: from };"
+              "      b.textContent = '\u275A\u275A'; b.title = 'Pause';"
+              "      requestAnimationFrame(tick);"
+              "    });"
+              "    el.addEventListener('input', function (e) { if (e.isTrusted && playing[i]) { stop(); } });"
               "  });"
               "  var SVG = 'http://www.w3.org/2000/svg';"
               "  function parse(text) {"

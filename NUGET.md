@@ -59,6 +59,7 @@ Marey.CSharp`. A unit known only as text is read with `U.parse "V/m"`.
 | `Marey.Backend.Web` | A canvas in a browser, for a Fable app that compiles its figures in the page. |
 | `Marey.Anim` | Animation as a pure function of time: a seekable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
 | `Marey.Fields` | Fields on dimensioned planes, phase spaces included: derivatives in the units the types work out; heatmaps, contours, bands, quivers, streamlines and line-integral convolution; fixed points found and classified. |
+| `Marey.Sim` | Simulation: typed ODE integrators, trajectories that seek as animations, invariants, events and collisions, Poincaré sections, pathlines and particles, and heat, wave and Poisson solvers on a grid. |
 | `Marey.Tools.Video` | Encoding a rendered frame sequence to video with `ffmpeg`, resolved on `PATH` and reported. |
 | `Marey.Tools.Tex` | Mathematical typesetting: TeX source becomes vector outlines through `latex` and `dvisvgm`, so every backend draws it. Opt-in, and degrades to plain text. |
 | `Marey.Toolchain` | Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies. |

@@ -82,22 +82,42 @@ module internal WindowScene =
                     else
                         Scene.empty
 
+                let slider (lo: float) (hi: float) =
+                    let knob = WindowStrip.knobX (lo, hi) r.Widget v
+                    let track (x0: float<px>) (x1: float<px>) (col: Color) =
+                        Scene.rect None (Some(Solid col)) (rectOf { X0 = x0; Y0 = mid - 2.0<px>; X1 = x1; Y1 = mid + 2.0<px> })
+
+                    Scene.group
+                        [ track r.Widget.X0 r.Widget.X1 rule
+                          track r.Widget.X0 knob accent
+                          Markers
+                              { Points = [| nd knob mid |]
+                                Shape = MarkCircle
+                                Size = 14.0<px>
+                                Fill = Some(Solid accent)
+                                Stroke = Some(stroke Color.white 2.0<px>) } ]
+
                 let widget =
                     match c.Kind with
-                    | Slider(lo, hi, _) ->
-                        let knob = WindowStrip.knobX (lo, hi) r.Widget v
-                        let track (x0: float<px>) (x1: float<px>) (col: Color) =
-                            Scene.rect None (Some(Solid col)) (rectOf { X0 = x0; Y0 = mid - 2.0<px>; X1 = x1; Y1 = mid + 2.0<px> })
+                    | Slider(lo, hi, _) -> slider lo hi
+                    // D137 — a slider with a play button: a triangle, or two bars while it plays.
+                    | Time(lo, hi, _, _) ->
+                        let b = WindowStrip.playButton r
+                        let cx, cy = (b.X0 + b.X1) / 2.0, (b.Y0 + b.Y1) / 2.0
 
-                        Scene.group
-                            [ track r.Widget.X0 r.Widget.X1 rule
-                              track r.Widget.X0 knob accent
-                              Markers
-                                  { Points = [| nd knob mid |]
-                                    Shape = MarkCircle
-                                    Size = 14.0<px>
-                                    Fill = Some(Solid accent)
-                                    Stroke = Some(stroke Color.white 2.0<px>) } ]
+                        let glyph =
+                            match session.Gesture.Playing with
+                            | Some(i, _, _) when i = r.Index ->
+                                Scene.group
+                                    [ Scene.rect None (Some(Solid accent)) (rectOf { X0 = cx - 5.0<px>; Y0 = cy - 6.0<px>; X1 = cx - 1.5<px>; Y1 = cy + 6.0<px> })
+                                      Scene.rect None (Some(Solid accent)) (rectOf { X0 = cx + 1.5<px>; Y0 = cy - 6.0<px>; X1 = cx + 5.0<px>; Y1 = cy + 6.0<px> }) ]
+                            | _ ->
+                                Scene.polygon
+                                    None
+                                    (Some(Solid accent))
+                                    [| nd (cx - 4.0<px>) (cy - 6.0<px>); nd (cx + 6.0<px>) cy; nd (cx - 4.0<px>) (cy + 6.0<px>) |]
+
+                        Scene.group [ glyph; slider lo hi ]
                     | Select options ->
                         let chosen = int (Num.roundEven v)
 
@@ -392,6 +412,12 @@ type GpuWindow private (live: Live, recorder: Recorder option, title: string, si
 
             while not closing && not window.IsClosing do
                 lock GlfwLibrary.gate (fun () -> glfw.WaitEventsTimeout 0.01)
+
+                // D137 — a time control playing advances on this loop, by this clock, through
+                // the same feed as everything else, so a recording replays the playback.
+                if session.Gesture.Playing.IsSome then
+                    post WindowEvent.Frame
+
                 pump ()
                 let mutable job = Unchecked.defaultof<unit -> unit>
 

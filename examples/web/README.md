@@ -19,6 +19,12 @@ The second figure is a cloud of up to a million points, compiled in the page lik
 batch of 2000 marks or more is drawn by WebGL2 and composited into the canvas in its place; the
 checkbox turns that off, so the two can be timed against each other and compared by eye.
 
+The third is a simulation in the page: a mass on a spring stepped by velocity Verlet, played in
+phase space at one second a second. Under it are its position and velocity at 10 s to twelve
+decimals, the same digits the .NET suite prints for the same run (`tests/Marey.Tests/golden/
+sim-runs.txt`). A chaotic system would not agree with .NET after half a minute, because the
+browser's `sin` and `exp` differ in the last bit; this one has no such call in its step.
+
 The project references the Marey projects in this repository. An app of your own references the
-packages instead, `Marey.Plot` and `Marey.Backend.Web`, and Fable compiles them from the sources
-they carry.
+packages instead, `Marey.Plot`, `Marey.Backend.Web` and `Marey.Sim`, and Fable compiles them from
+the sources they carry.

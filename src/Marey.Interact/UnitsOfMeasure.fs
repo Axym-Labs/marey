@@ -24,6 +24,18 @@ module Control =
     let slider<[<Measure>] 'u> (u: U<'u>) (label: string) (lo: float<'u>) (hi: float<'u>) (init: float<'u>) =
         Marey.Control.slider u label lo hi init
 
+    /// D137 — a time control over `[lo, hi]` in seconds that loops, arranged over 60 states.
+    /// The core's, in both modes; here so that this module answers for every control.
+    let time (label: string) (lo: float<Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols.s>) (hi: float<Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols.s>) =
+        Marey.Control.time label lo hi
+
+    /// D137 — `time` with its sample count and whether it loops.
+    let timeWith (samples: int) (loop: bool) (label: string) (lo: float<Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols.s>) (hi: float<Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols.s>) =
+        Marey.Control.timeWith samples loop label lo hi
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so a time is in seconds: Control.time \"t\" 0.0<s> 10.0<s>. Control.Time(…) is the unit-optional spelling, over plain seconds, for code that does not open this namespace.", true)>]
+    let Time (_: obj) : Control<float> = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
     [<Obsolete("Marey.UnitsOfMeasure is open, so this takes a witness per unit: Control.sliderBy. Control.SliderBy(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
     let SliderBy (_: obj) : Control<float> = invalidOp "Marey: unreachable — an error-obsolete shadow."
 

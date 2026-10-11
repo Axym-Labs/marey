@@ -568,7 +568,8 @@ module Live =
     let private figureIn (live: Live) (zoom: LiveZoom[]) (values: float[]) = zoomed zoom (figureOf live values)
 
     /// **D106 — the states the controls can reach at their extremes**, the initial state first: a
-    /// slider's ends, every option of a select, both states of a checkbox. Every combination
+    /// slider's ends, every option of a select, both states of a checkbox, and a time control's
+    /// samples along its range (D137). Every combination
     /// while there are at most `MaxExtremes` of them; past that, one control at a time with the
     /// others at their initial values, which keeps the count linear in the controls.
     let extremes (live: Live) : float[][] =
@@ -579,6 +580,10 @@ module Live =
             | Slider(lo, hi, _) -> [| lo; hi |]
             | Select options -> Array.init options.Length float
             | Checkbox -> [| 0.0; 1.0 |]
+            // D137 — a time control is played, so the states it passes through are arranged
+            // for, not only its ends. Over `MaxExtremes`, the fallback below takes one control
+            // at a time, which keeps all of these.
+            | Time(lo, hi, samples, _) -> Array.init samples (fun k -> if k = samples - 1 then hi else lo + (hi - lo) * float k / float (samples - 1))
 
         let choices = live.Controls |> Array.map ends
         let product = choices |> Array.fold (fun n c -> if n > MaxExtremes then n else n * c.Length) 1

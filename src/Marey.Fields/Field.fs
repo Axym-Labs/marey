@@ -185,6 +185,11 @@ module Field =
           Values = Array.map2 (-) a.Values b.Values }
 
     /// The Laplacian, `div (grad φ)`: spatial grids only, for `curl`'s reason.
+    ///
+    /// **A display operator, not a solver's.** Two central first differences make the wide stencil
+    /// `(f₍ᵢ₋₂₎ − 2fᵢ + f₍ᵢ₊₂₎) / 4h²`, which is exactly zero on a checkerboard: it does not see the
+    /// grid's highest mode at all, so a solver stepped with it never damps odd–even noise. The
+    /// solvers in `Marey.Sim` use the compact five-point stencil, `Fdm.laplacian5`.
     let laplacian<[<Measure>] 'x, [<Measure>] 'v> (g: ScalarGrid<'x, 'x, 'v>) : ScalarGrid<'x, 'x, 'v / 'x ^ 2> =
         div (grad g)
 

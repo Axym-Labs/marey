@@ -136,7 +136,7 @@ UDUNITS-2's syntax, `U.parse "V/m"`:
 
 <img src="docs/images/co2-record.svg" alt="Atmospheric CO2 at Mauna Loa, annual means with uncertainties" width="640">
 
-The [`examples/`](examples/) directory has fifteen worked scripts, three of them on real committed
+The [`examples/`](examples/) directory has nineteen worked scripts, three of them on real committed
 datasets.
 
 ## A figure that moves
@@ -185,6 +185,30 @@ must be thread-safe and exactly one of them serves a whole film — not for spee
 resolution walks a family stack against whatever is installed, and a measurer per thread is a
 chance for one frame of a video to be set in a different typeface from the frame before it.
 
+## A simulation, as an animation
+
+A simulation is a start and a step, and its trajectory is an `Anim`: it seeks, it films, and a
+seek to any time is exactly the state a straight run reaches.
+
+```fsharp
+#r "nuget: Marey.Sim"
+
+let rate = 4.0 * System.Math.PI * System.Math.PI * 1.0</s^2>
+
+// Velocity Verlet: the acceleration is checked to be in m/s².
+let spring = Sim.ofStep 1e-3<s> (Ode.verlet (fun _ q -> q |> Array.map (fun x -> -rate * x))) (struct ([| 0.1<m> |], [| 0.0<m/s> |]))
+let orbit = Sim.trajectory 0.5<s> 100.0<s> spring
+
+let film = Film.ofFigures 32 (Chart.size 480.0 300.0) (orbit |> Anim.map (fun (struct (q, v)) -> Chart.scatter U.metre (U.div U.metre U.second) q v))
+```
+
+The integrators are typed by the shape of the state: Verlet and leapfrog over positions and
+velocities in one unit, Euler, RK4 and Dormand–Prince over a plane flow with time, and the same
+over any record given the two operations that advance it. Around them: events located in time
+(a ball bounces, and comes to rest rather than bouncing forever), hard-disc collisions, Poincaré
+sections, pathlines and particles in a field that changes, and heat, wave and Poisson solvers on
+a grid with typed boundaries. A time control plays a trajectory in a notebook or a window.
+
 ## From C#
 
 C# has the unit-optional mode, with every witness under one name and the combinators as extension
@@ -213,6 +237,7 @@ Chart.Line(ts, xs, xUnit: Units.Second, yUnit: Units.Metre)
 | `Marey.Backend.Web` | A canvas in a browser: a Fable app compiles the figure in the page and this draws it, marker batches on WebGL2. Waits for the page's fonts before measuring. Depends on `Fable.Core`. |
 | `Marey.Anim` | Animation as a pure function of time: a seekable, composable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
 | `Marey.Fields` | Scalar and vector fields on dimensioned planes, phase spaces included: grids, gradient, divergence, curl and the Jacobian in the units the types work out; heatmaps, contours, filled bands, quivers with a key, evenly spaced streamlines and line-integral convolution; phase portraits with fixed points classified and eigenvalues in `1/'t`. |
+| `Marey.Sim` | Simulation: ODE integrators typed by the shape of the state (Euler, RK4, Dormand–Prince with dense output, velocity Verlet, leapfrog), trajectories that seek as animations, invariants and their drift, events, hard-disc collisions, Poincaré sections, pathlines and particles in unsteady fields, and finite-difference heat, wave and Poisson solvers with typed boundaries. Compiles under Fable. |
 | `Marey.Tools.Video` | Encoding a rendered frame sequence to video by shelling out to `ffmpeg`, degrading to the numbered frames when it is absent. |
 | `Marey.Tools.Tex` | Mathematical typesetting: TeX source on a scene's text runs becomes vector outlines, through `latex` and `dvisvgm`, so every backend draws it. Degrades to plain text when TeX is absent. |
 | `Marey.Toolchain` | Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies. |
@@ -270,8 +295,8 @@ prints a census of all nine external dependencies and what became of them, and
 
 - **[The guide](docs/guide.md)** — everything the library does today, with a runnable example for
   each part. Every example in it is extracted and executed by the test suite.
-- **[Examples](examples/)** — fifteen standalone scripts and a notebook, also executed by the test
-  suite.
+- **[Examples](examples/)** — nineteen standalone scripts and a notebook, also executed by the
+  test suite.
   [`reel.fsx`](examples/reel.fsx) is the demo reel: the whole library in one shot, ending in an
   `.mp4`.
 - **[Why Marey is like this](docs/why.md)** — the case for a unit witness over a string label,

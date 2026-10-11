@@ -36,7 +36,7 @@ type WindowKey =
     | Home
     /// A slider to its high end, a select to its last option.
     | End
-    /// A checkbox toggled.
+    /// A checkbox toggled; a time control played or paused.
     | Space
 
 /// What the window's platform reports, in the window's px.
@@ -52,6 +52,9 @@ type WindowEvent =
     /// The pointer left the window.
     | Left
     | Key of WindowKey * shift: bool
+    /// The frame loop's tick, which advances a time control that is playing (D137). The host
+    /// sends it only while one is.
+    | Frame
 
 /// One control's row in the strip, in the window's px.
 type WindowControlRow =
@@ -85,6 +88,10 @@ module WindowStrip =
     [<Literal>]
     let ValueWidth = 120.0
 
+    /// A time control's play button, before its track.
+    [<Literal>]
+    let PlayWidth = 20.0
+
     /// The strip's height: nothing when there are no controls, so a plain figure fills the window.
     let height (controls: ControlSpec[]) : float<px> =
         if controls.Length = 0 then
@@ -114,12 +121,24 @@ module WindowStrip =
                 | Checkbox -> box x0 (mid - 8.0) (x0 + 16.0) (mid + 8.0)
                 | Select _ -> box x0 (mid - 10.0) x1 (mid + 10.0)
                 | Slider _ -> box x0 (mid - 8.0) x1 (mid + 8.0)
+                // The track starts after the play button (`playButton`).
+                | Time _ -> box (x0 + PlayWidth + Pad) (mid - 8.0) x1 (mid + 8.0)
 
             { Index = i
               Row = box (Pad / 2.0) y0 (max (x1 + Pad + ValueWidth) (w - Pad / 2.0)) (y0 + RowHeight)
               Label = { X = Pad * 1.0<px>; Y = mid * 1.0<px> }
               Widget = widget
               Value = { X = (x1 + Pad) * 1.0<px>; Y = mid * 1.0<px> } })
+
+    /// A time control's play button: the square before its track.
+    let playButton (row: WindowControlRow) : Rect<px> =
+        let mid = (row.Widget.Y0 + row.Widget.Y1) / 2.0
+        let x1 = row.Widget.X0 - Pad * 1.0<px>
+
+        { X0 = x1 - PlayWidth * 1.0<px>
+          Y0 = mid - PlayWidth / 2.0 * 1.0<px>
+          X1 = x1
+          Y1 = mid + PlayWidth / 2.0 * 1.0<px> }
 
     /// A select's option `k` of `n`: its segment of the widget.
     let segment (widget: Rect<px>) (n: int) (k: int) : Rect<px> =
@@ -161,6 +180,9 @@ type WindowGesture =
       Focus: int option
       LastPress: (float<s> * Vec2<px>) option
       Over: bool
+      /// D137 — a time control playing: its index, and the clock and the value play started
+      /// from. Its value at a frame is the start's plus the time since, never a sum of frames.
+      Playing: (int * float<s> * float) option
       /// The content area, which the strip's rows and the figure's place are laid out against.
       Window: Extent<px> }
 
@@ -189,14 +211,37 @@ module WindowSession =
               Focus = None
               LastPress = None
               Over = false
+              Playing = None
               Window = Live.DefaultSize } }
 
     /// Where the figure's px begin in the window's.
     let origin (live: Live) : Vec2<px> = { X = 0.0<px>; Y = WindowStrip.height live.Controls }
 
+    /// Play a time control from its value now, or pause it if it is playing. Neither sends
+    /// anything: the frames do. A control that stops at its end and stands there starts again
+    /// from its beginning, as the page's button does.
+    let private toggle (live: Live) (state: LiveState) (g: WindowGesture) (i: int) (t: float<s>) =
+        match g.Playing, live.Controls.[i].Kind with
+        | Some(j, _, _), _ when j = i -> { g with Playing = None }
+        | _, Time(lo, hi, _, loop) ->
+            let v = state.Values.[i]
+            { g with Playing = Some(i, t, (if v >= hi && not loop then lo else v)) }
+        | _ -> g
+
+    /// The value a playing time control has at `t`, and whether it plays on.
+    let private played (live: Live) (i: int) (t0: float<s>) (v0: float) (t: float<s>) =
+        match live.Controls.[i].Kind with
+        | Time(lo, hi, _, loop) ->
+            let v = v0 + float (t - t0)
+
+            if v <= hi then v, true
+            elif loop then lo + (v - lo) % (hi - lo), true
+            else hi, false
+        | _ -> v0, false
+
     /// The messages a key sends: the focused control moved, as the page's own input would move it
     /// under the same key, or the focus moved, which sends nothing.
-    let private key (live: Live) (state: LiveState) (g: WindowGesture) (k: WindowKey) (shift: bool) =
+    let private key (live: Live) (state: LiveState) (g: WindowGesture) (k: WindowKey) (shift: bool) (t: float<s>) =
         let n = live.Controls.Length
 
         match k, g.Focus with
@@ -209,8 +254,11 @@ module WindowSession =
 
             { g with Focus = Some next }, []
         | _, None -> g, []
+        | WindowKey.Space, Some i when (match live.Controls.[i].Kind with Time _ -> true | _ -> false) -> toggle live state g i t, []
         | k, Some i ->
             let v = state.Values.[i]
+            // A key that moves a time control pauses it, as scrubbing does.
+            let g = if (match g.Playing with Some(j, _, _) -> j = i | None -> false) then { g with Playing = None } else g
 
             let target =
                 match live.Controls.[i].Kind, k with
@@ -225,6 +273,10 @@ module WindowSession =
                 | Checkbox, WindowKey.Left -> Some 0.0
                 | Checkbox, WindowKey.Right -> Some 1.0
                 | Checkbox, WindowKey.Space -> Some(1.0 - v)
+                | Time(lo, hi, _, _), WindowKey.Left -> Some(v - (hi - lo) / 100.0)
+                | Time(lo, hi, _, _), WindowKey.Right -> Some(v + (hi - lo) / 100.0)
+                | Time(lo, _, _, _), WindowKey.Home -> Some lo
+                | Time(_, hi, _, _), WindowKey.End -> Some hi
                 | _ -> None
 
             g, (target |> Option.map (fun t -> Set(i, t)) |> Option.toList)
@@ -242,7 +294,8 @@ module WindowSession =
             let r = rows.[i]
 
             match live.Controls.[i].Kind with
-            | Slider(lo, hi, _) -> Some(Set(i, WindowStrip.sliderValue (lo, hi) r.Widget p.X))
+            | Slider(lo, hi, _)
+            | Time(lo, hi, _, _) -> Some(Set(i, WindowStrip.sliderValue (lo, hi) r.Widget p.X))
             | _ -> None
 
         match e with
@@ -282,6 +335,11 @@ module WindowSession =
 
                 match live.Controls.[i].Kind with
                 | Slider _ -> { g with Hold = Some i }, (set i p |> Option.toList)
+                | Time _ when WindowStrip.inside (WindowStrip.playButton r) p -> toggle live state g i t, []
+                // Scrubbing a time control pauses it.
+                | Time _ ->
+                    let g = if (match g.Playing with Some(j, _, _) -> j = i | None -> false) then { g with Playing = None } else g
+                    { g with Hold = Some i }, (set i p |> Option.toList)
                 | Select options when WindowStrip.inside r.Widget p ->
                     let k =
                         [ 0 .. options.Length - 1 ]
@@ -316,7 +374,13 @@ module WindowSession =
             | _ -> g', []
         | WindowEvent.Left ->
             if g.Over && g.Drag.IsNone && g.Hold.IsNone then { g with Over = false }, [ Leave ] else g, []
-        | WindowEvent.Key(k, shift) -> key live state g k shift
+        | WindowEvent.Key(k, shift) -> key live state g k shift t
+        | WindowEvent.Frame ->
+            match g.Playing with
+            | Some(i, t0, v0) ->
+                let v, on = played live i t0 v0 t
+                (if on then g else { g with Playing = None }), [ Set(i, v) ]
+            | None -> g, []
 
     /// **One event, through `Live.step`**: the session after it, and the messages it sent, in
     /// order, for a recorder to note.

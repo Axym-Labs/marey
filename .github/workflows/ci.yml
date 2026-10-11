@@ -14,15 +14,33 @@ permissions:
   contents: read
 
 jobs:
+  # D146 — two SDK legs. `10.0.1xx` is the band the repository is developed and released with,
+  # and the oldest a .NET 10 consumer can have; `10.0.x` is the newest, so a change in a newer
+  # band shows up here as a red leg rather than in a consumer's restore. Each leg pins global.json
+  # to exactly the SDK it installed: the runner image carries SDKs of its own, and `latestFeature`
+  # would otherwise pick the newest of them in both legs.
   build:
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: ['10.0.1xx', '10.0.x']
+
+    name: build (${{ matrix.sdk }})
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4
+        id: dotnet
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: ${{ matrix.sdk }}
+
+      - name: Pin the SDK the leg installed
+        run: |
+          printf '{ "sdk": { "version": "%s", "rollForward": "disable" } }\n' '${{ steps.dotnet.outputs.dotnet-version }}' > global.json
+          echo "SDK $(dotnet --version)"
 
       # The .debs, not the installed tree: apt's unpack-and-configure is only ~40s, while the
       # download was ~280s of a 366s step -- 150 MB out of azure.archive.ubuntu.com's universe
@@ -162,7 +180,7 @@ jobs:
         run: |
           set -e
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 16 ] || { echo "::error::expected 16 packages, packed $count"; exit 1; }
+          [ "$count" -eq 17 ] || { echo "::error::expected 17 packages, packed $count"; exit 1; }
           fable=0
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
@@ -179,10 +197,25 @@ jobs:
             unzip -l "$pkg" | grep -q "$readme" || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
             echo "  $(basename "$pkg"): $readme"
           done
-          [ "$fable" -eq 8 ] || { echo "::error::expected 8 packages with Fable sources, found $fable"; exit 1; }
-          echo "16 packages, each with an MIT expression and the readme it declares; 8 with Fable sources"
+          [ "$fable" -eq 9 ] || { echo "::error::expected 9 packages with Fable sources, found $fable"; exit 1; }
+          echo "17 packages, each with an MIT expression and the readme it declares; 9 with Fable sources"
+
+      # D146, gate 1: the FSharp.Core a consumer needs is the one src/Directory.Build.props states,
+      # not the one this leg's SDK bundles. 0.5.0 shipped `>= 10.1.401` because it was the latter.
+      - name: Check every package states the pinned FSharp.Core
+        run: |
+          set -e
+          want=$(sed -n 's:.*<MareyFSharpCore[^>]*>\([^<]*\)</MareyFSharpCore>.*:\1:p' src/Directory.Build.props)
+          [ -n "$want" ] || { echo "::error::no MareyFSharpCore in src/Directory.Build.props"; exit 1; }
+          for pkg in artifacts/*.nupkg; do
+            unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
+            got=$(grep -o 'id="FSharp.Core" version="[^"]*"' /tmp/nuspec.xml | sed 's:.*version="::;s:"::' | sort -u)
+            [ "$got" = "$want" ] || { echo "::error::$pkg requires FSharp.Core $got, expected $want"; exit 1; }
+          done
+          echo "every package requires FSharp.Core >= $want"
 
       - uses: actions/upload-artifact@v4
+        if: matrix.sdk == '10.0.1xx'
         with:
           name: packages
           path: artifacts/*.nupkg
@@ -199,8 +232,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4
+        id: dotnet
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '10.0.1xx'
+
+      - name: Pin the SDK
+        run: |
+          printf '{ "sdk": { "version": "%s", "rollForward": "disable" } }\n' '${{ steps.dotnet.outputs.dotnet-version }}' > global.json
+          echo "SDK $(dotnet --version)"
 
       - uses: actions/setup-node@v4
         with:
@@ -227,7 +266,7 @@ jobs:
       # a compile error here, before anything is published.
       - name: Pack the Fable projects
         run: |
-          for p in Core Units Anim Plot Fields Interact Backend.Svg Backend.Web; do
+          for p in Core Units Anim Plot Fields Interact Backend.Svg Backend.Web Sim; do
             dotnet pack src/Marey.$p --configuration Release -o fable-packages -p:Version=0.0.0-fable
           done
 
