@@ -335,6 +335,7 @@ module ``the page's script`` =
 /// gives Verso: the live and the static page, the reply after a resize, and the answers to a
 /// slider, a zoom and a hover. Recorded before phase 5 touched `Html.fs`, so a change to the SVG
 /// path shows as a changed baseline.
+[<Xunit.Collection(RenderModes.Collection)>]
 module ``the SVG path below the threshold`` =
 
     let private slider () =
@@ -385,3 +386,100 @@ module ``the SVG path below the threshold`` =
 
     [<Fact>]
     let ``two thousand points`` () = Golden.check "widget/cloud-2000.txt" (transcript (box (cloud ())))
+
+// ======================================================================================
+// Phase 5: the live widget on the canvas (D159, D161)
+// ======================================================================================
+
+[<Xunit.Collection(RenderModes.Collection)>]
+module ``the live widget on the canvas`` =
+
+    let private bytesIn (document: string) =
+        let m = Text.RegularExpressions.Regex.Match(document, "<script type=\"text/plain\" id=\"scene\">([^<]*)</script>")
+        Assert.True(m.Success, "no scene in the page")
+        Convert.FromBase64String m.Groups.[1].Value
+
+    let private big () = DiffTests.``diffing is measured``.scatterWithCursor ()
+
+    /// Above the threshold the page is a canvas carrying its scene and the script that draws it,
+    /// and it is still well-formed XML; static, the same page with its controls disabled.
+    [<Fact>]
+    let ``a live figure above the threshold is a canvas page`` () =
+        RenderModes.withRenderMode RenderMode.Auto (fun () ->
+            let l = big ()
+            let s0 = Live.init l
+
+            for isLive in [ true; false ] do
+                let doc = Html.liveDocumentForHost (box l, box s0, isLive)
+                Assert.Matches("<div id=\"fig\"[^>]*><canvas id=\"cv\"[^>]*></canvas></div>", doc)
+                Assert.Contains("var MareyView=", doc)
+                Xml.Linq.XDocument.Parse doc |> ignore
+                Assert.True(ok (Wire.decode (bytesIn doc)) = Live.scene l s0))
+
+    /// The hello is answered with the whole scene, its size and its bytes; a slider that moves one
+    /// layer with a patch that rebuilds the next scene; a zoom, which moves every tick, with the
+    /// whole scene.
+    [<Fact>]
+    let ``a canvas page is answered in bytes`` () =
+        RenderModes.withRenderMode RenderMode.Auto (fun () ->
+            let l = big ()
+            let s0 = Live.init l
+            Html.liveDocumentForHost (box l, box s0, true) |> ignore
+
+            let whole = Html.liveWholeForHost (box l, box s0)
+            Assert.Equal("scene", whole.[0])
+            let e = s0.Shot.Outer.Extent
+            Assert.Equal(float e.Width, float whole.[1])
+            Assert.Equal(float e.Height, float whole.[2])
+            Assert.True(ok (Wire.decode (Convert.FromBase64String whole.[3])) = Live.scene l s0)
+
+            let s1 = Live.step l s0 (Set(0, 6.0))
+            let answer = Html.liveAnswerForHost (box l, box s0, box s1)
+            Assert.Equal("wpatch", answer.[0])
+            let patchBytes = Convert.FromBase64String answer.[1]
+            Assert.True(patchBytes.Length * 20 < (Wire.encode (Live.scene l s1)).Length, "the patch is not small")
+            let p, _ = ok (Wire.decodePatchWith patchBytes)
+            Assert.True(Scene.apply p (Live.scene l s0) = Live.scene l s1)
+
+            let v = (Live.panels l s1).[0]
+            let c = { X = (v.Plot.X0 + v.Plot.X1) / 2.0; Y = (v.Plot.Y0 + v.Plot.Y1) / 2.0 }
+            let s2 = Live.step l s1 (Zoom { X0 = c.X - 80.0<px>; Y0 = c.Y - 50.0<px>; X1 = c.X + 80.0<px>; Y1 = c.Y + 50.0<px> })
+            let zoomed = Html.liveAnswerForHost (box l, box s1, box s2)
+            Assert.Equal("scene", zoomed.[0])
+            Assert.True(ok (Wire.decode (Convert.FromBase64String zoomed.[3])) = Live.scene l s2))
+
+    /// A page keeps the kind it was written as: a figure that a slider carries across the
+    /// threshold is still answered in the language its page speaks.
+    [<Fact>]
+    let ``a page keeps its kind`` () =
+        RenderModes.withRenderMode RenderMode.Auto (fun () ->
+            let grows =
+                interact {
+                    let! n = Control.slider U.one "n" 100.0 8000.0 100.0
+                    let rng = Random(3)
+                    let k = int n
+                    return Chart.scatter U.metre Derived.volt (Array.init k (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init k (fun _ -> rng.NextDouble() * 1.0<V>))
+                }
+
+            let s0 = Live.init grows
+            Assert.DoesNotContain("<canvas", Html.liveDocumentForHost (box grows, box s0, true))
+            let s1 = Live.step grows s0 (Set(0, 8000.0))
+            Assert.True(Scene.primitiveCount (Live.scene grows s1) >= Html.CanvasThreshold)
+            Assert.Equal("svg", (Html.liveWholeForHost (box grows, box s1)).[0]))
+
+    /// `Svg` and `Canvas` choose for every figure, whatever its size.
+    [<Fact>]
+    let ``the mode overrides the count`` () =
+        let small () =
+            interact {
+                let! f = Control.slider Derived.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
+                return Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
+            }
+
+        RenderModes.withRenderMode RenderMode.Canvas (fun () ->
+            let l = small ()
+            Assert.Contains("<canvas", Html.liveDocumentForHost (box l, box (Live.init l), true)))
+
+        RenderModes.withRenderMode RenderMode.Svg (fun () ->
+            let l = big ()
+            Assert.DoesNotContain("<canvas", Html.liveDocumentForHost (box l, box (Live.init l), true)))
