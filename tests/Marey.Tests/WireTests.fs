@@ -296,3 +296,33 @@ module ``text metrics`` =
         Assert.Equal(at 5.0, merged.Measure font "b")
         Assert.Equal(at 3.0, merged.Measure font "c")
         Assert.Equal(TextMeasure.approx.Measure font "d", merged.Measure font "d")
+
+// ======================================================================================
+// Phase 4: the page's script (D157)
+// ======================================================================================
+
+module ``the page's script`` =
+
+    let private committed =
+        lazy (IO.File.ReadAllText(IO.Path.Combine(Golden.repoRoot.Force(), "src", "Marey.Html", "view", "marey-view.js")))
+
+    /// What `Marey.Html` carries is the file CI rebuilds and compares (gate 7).
+    [<Fact>]
+    let ``Marey.Html carries the committed script`` () =
+        Assert.Equal(committed.Force(), Html.viewScript.Force())
+
+    /// It defines one global with the two calls the widget makes.
+    [<Fact>]
+    let ``it defines MareyView with show and patch`` () =
+        let s = Html.viewScript.Force()
+        Assert.Contains("var MareyView=", s)
+        Assert.Matches(@"[{,]show:", s)
+        Assert.Matches(@"[{,]patch:", s)
+
+    /// It goes inline into a page that is HTML and well-formed XML at once, inside a CDATA section,
+    /// so it may contain neither the end of a script element nor the end of a CDATA section.
+    [<Fact>]
+    let ``it can be inlined`` () =
+        let s = Html.viewScript.Force()
+        Assert.DoesNotContain("</script", s.ToLowerInvariant())
+        Assert.DoesNotContain("]]>", s)

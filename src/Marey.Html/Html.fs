@@ -969,6 +969,15 @@ module Html =
               "})();"
               "//]]></script>" ]
 
+    /// **D157 — the script a canvas page draws a scene with**: `Marey.Core` and the canvas painter
+    /// compiled by Fable from `src/Marey.Html.View`, bundled into one classic script that defines
+    /// `MareyView.show` and `MareyView.patch`. Embedded in this assembly, read once.
+    let viewScript: Lazy<string> =
+        lazy
+            (use stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream "marey-view.js"
+             use reader = new System.IO.StreamReader(stream, Encoding.UTF8)
+             reader.ReadToEnd())
+
     /// A live figure's SVG at a state, drawn in the state's arrangement. What a host sends back
     /// after each step; the document embeds the same thing.
     let widgetFigure (live: Live) (state: LiveState) : string =
