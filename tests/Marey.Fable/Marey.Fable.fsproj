@@ -15,6 +15,7 @@
     <Compile Include="../Shared/SimRuns.fs" Link="SimRuns.fs" />
     <Compile Include="CanvasLog.fs" />
     <Compile Include="FontsGate.fs" />
+    <Compile Include="WireGate.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 

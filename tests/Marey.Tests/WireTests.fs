@@ -114,6 +114,23 @@ module ``identity`` =
             Assert.True(ok (Wire.decode bytes) = scene)
 
 // ======================================================================================
+// Gate 2, .NET: the format's goldens
+// ======================================================================================
+
+/// Every golden scene's bytes, committed under `golden/wire/`. Node writes them too and checks
+/// them against the same files (`tests/Marey.Fable`), so the two runtimes agree about padding,
+/// strings and float bits, and any change to the encoding shows as a changed baseline: the version
+/// discipline, made mechanical.
+module ``the format's goldens`` =
+
+    let goldens: obj[] seq = identity.goldens
+
+    [<Theory>]
+    [<MemberData(nameof goldens)>]
+    let ``every golden scene encodes to its committed bytes`` (name: string) =
+        Golden.checkBytes ("wire/" + name + ".mrys") (Wire.encode (golden name))
+
+// ======================================================================================
 // Gate 4: versions and blocks
 // ======================================================================================
 
