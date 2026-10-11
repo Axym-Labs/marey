@@ -4,7 +4,8 @@
 /// * gate 1, Node's half: the scene compiled here comes back from the wire as itself;
 /// * gate 2: .NET's bytes decode here and re-encode to the same bytes, so the two codecs agree
 ///   about padding, strings and float bits on one scene;
-/// * gate 3: the scene decoded from .NET's bytes draws the canvas call log gate 13 committed.
+/// * gate 3: the scene decoded from .NET's bytes draws the canvas call log gate 13 committed;
+/// * D156: the scene's text metrics come back, and the table answers as the layout's measurer did.
 ///
 /// **Gate 2 compares one scene, not two.** The plan had Fable encode the scene it compiles itself
 /// and match .NET's bytes. Five goldens cannot: their geometry goes through `sin` and `cos`, which
@@ -77,6 +78,19 @@ let check (goldenDir: string) (canvasDir: string) : string list =
 
                         if not (existsSync logPath) || (readFileSync (logPath, "utf8")).Replace("\r\n", "\n") <> log then
                             yield "draws a different canvas log"
+
+                    // D156 under Node: the metrics travel, and the table answers each run as the
+                    // layout's measurer did.
+                    match Wire.decodeWith (Wire.encodeWith TextMeasure.approx node) with
+                    | Error why -> yield sprintf "with its text metrics, does not decode: %s" why
+                    | Ok(back, table) ->
+                        if back <> node then
+                            yield "with its text metrics, does not come back as itself"
+
+                        let m = table :> ITextMeasurer
+
+                        if table.Entries |> Array.exists (fun (f, t, _) -> m.Measure f t <> TextMeasure.approx.Measure f t) then
+                            yield "its text table answers a run otherwise than the measurer did"
 
                     match own = committed, platformTrig.Contains name with
                     | false, false -> yield "compiles here to other bytes than .NET's: " + firstDifference committed own

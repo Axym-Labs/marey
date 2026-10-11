@@ -101,9 +101,12 @@ module Canvas =
 
     /// Give a canvas element its size in CSS pixels, so a canvas drawn at a higher density shows
     /// at the size of its figure. An `OffscreenCanvas`, which has no style, is left alone.
+    ///
+    /// On .NET, which has no element to size, it does nothing, so the backend runs there against a
+    /// context a test supplies (step F's gate 5).
     [<Emit("if ($0.style) { $0.style.width = $1 + 'px'; $0.style.height = $2 + 'px'; }")>]
-    let setCssSize (_canvas: CanvasElement) (_width: float) (_height: float) : unit = jsNative
+    let setCssSize (_canvas: CanvasElement) (_width: float) (_height: float) : unit = ()
 
-    /// The display's device pixels per CSS pixel, 1 where there is no window.
+    /// The display's device pixels per CSS pixel, 1 where there is no window: on .NET too.
     [<Emit("(typeof window !== 'undefined' && window.devicePixelRatio) || 1")>]
-    let devicePixelRatio () : float = jsNative
+    let devicePixelRatio () : float = 1.0

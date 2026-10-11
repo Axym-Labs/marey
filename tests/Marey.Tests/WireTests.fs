@@ -174,3 +174,125 @@ module ``versions and blocks`` =
         bytes.[12] <- 1uy
         Assert.Contains("form 1", failure (Wire.decode bytes))
 
+
+// ======================================================================================
+// Gate 5: the text metrics travel with the scene (D156)
+// ======================================================================================
+
+/// A canvas that records what anchors text: the transform, the font and each `fillText`. Enough of
+/// a canvas for `CanvasBackend` to run on .NET with WebGL off, a pixel ratio given and its scratch
+/// layers made here.
+type private TextRecorder(log: ResizeArray<string>) =
+    let mutable fillStyle: obj = null
+    let mutable strokeStyle: obj = null
+    let mutable font = ""
+    let mutable width = 300.0
+    let mutable height = 150.0
+    let num (x: float) = x.ToString("R", Globalization.CultureInfo.InvariantCulture)
+
+    member this.Layer (_: int) (_: int) : CanvasContext = TextRecorder(log) :> CanvasContext
+
+    interface CanvasElement with
+        member _.width with get () = width and set v = width <- v
+        member _.height with get () = height and set v = height <- v
+        member this.getContext(_: string) = this :> CanvasContext
+
+    interface CanvasContext with
+        member this.canvas = this :> CanvasElement
+        member _.fillStyle with get () = fillStyle and set v = fillStyle <- v
+        member _.strokeStyle with get () = strokeStyle and set v = strokeStyle <- v
+        member val lineWidth = 1.0 with get, set
+        member val lineCap = "butt" with get, set
+        member val lineJoin = "miter" with get, set
+        member val miterLimit = 10.0 with get, set
+        member val lineDashOffset = 0.0 with get, set
+        member _.font with get () = font and set v = font <- v
+        member val globalAlpha = 1.0 with get, set
+        member val imageSmoothingEnabled = true with get, set
+        member _.setLineDash _ = ()
+        member _.save() = log.Add "save"
+        member _.restore() = log.Add "restore"
+        member _.setTransform(a, b, c, d, e, f) = log.Add(sprintf "setTransform %s %s %s %s %s %s" (num a) (num b) (num c) (num d) (num e) (num f))
+        member _.transform(a, b, c, d, e, f) = log.Add(sprintf "transform %s %s %s %s %s %s" (num a) (num b) (num c) (num d) (num e) (num f))
+        member _.translate(x, y) = log.Add(sprintf "translate %s %s" (num x) (num y))
+        member _.rotate a = log.Add(sprintf "rotate %s" (num a))
+        member _.clearRect(_, _, _, _) = ()
+        member _.fillRect(_, _, _, _) = ()
+        member _.beginPath() = ()
+        member _.moveTo(_, _) = ()
+        member _.lineTo(_, _) = ()
+        member _.bezierCurveTo(_, _, _, _, _, _) = ()
+        member _.arc(_, _, _, _, _) = ()
+        member _.closePath() = ()
+        member _.fill _ = ()
+        member _.stroke() = ()
+        member _.clip _ = ()
+        member _.fillText(text, x, y) = log.Add(sprintf "fillText %s at %s %s in %s" text (num x) (num y) font)
+        member _.measureText _ = null
+        member _.createLinearGradient(_, _, _, _) = { new CanvasGradient with member _.addColorStop(_, _) = () }
+        member _.createRadialGradient(_, _, _, _, _, _) = { new CanvasGradient with member _.addColorStop(_, _) = () }
+        member _.createImageData(w, h) = let d = Array.zeroCreate<byte> (int w * int h * 4) in { new CanvasImageData with member _.data = d }
+        member _.putImageData(_, _, _) = ()
+        member _.drawImage(_, _, _, _, _) = ()
+
+let private textLog (m: ITextMeasurer) (extent: Extent<px>) (scene: Node) : string list =
+    let log = ResizeArray<string>()
+    let root = TextRecorder(log)
+    CanvasBackend.Draw(root :> CanvasContext, extent, scene, measurer = m, pixelRatio = 2.0, layer = root.Layer, webgl = false)
+    List.ofSeq log
+
+module ``text metrics`` =
+
+    let private fontFile =
+        lazy (IO.Path.Combine(Golden.projectDir.Force(), "fonts", "LiberationSans-Regular.ttf"))
+
+    /// Every golden figure laid out against Skia's measurer, which a page has no copy of, drawn on
+    /// a canvas through the table its bytes carry: the same text, at the same places, as drawing
+    /// with Skia itself. And not vacuously: the default measurer would have put some of it
+    /// elsewhere.
+    [<Fact>]
+    let ``a scene laid out with Skia draws on the canvas with the kernel's anchors`` () =
+        SkiaTests.withSkia (fun () ->
+            use skia = new SkiaTextMeasurer(fontFile = fontFile.Force())
+            let m = skia :> ITextMeasurer
+            let mutable approxDiffers = 0
+
+            for name, extent, scene in GoldenScenes.scenesWith m do
+                let expected = textLog m extent scene
+                let decoded, table = ok (Wire.decodeWith (Wire.encodeWith m scene))
+                Assert.True((decoded = scene), sprintf "%s did not survive the wire" name)
+                Assert.True((textLog table extent decoded = expected), sprintf "%s: the canvas anchored its text elsewhere than Skia did" name)
+
+                if textLog TextMeasure.approx extent decoded <> expected then
+                    approxDiffers <- approxDiffers + 1
+
+            Assert.True(approxDiffers >= 10, sprintf "only %d scenes would have drawn differently without the table" approxDiffers))
+
+    /// One entry per distinct font and string, in the order the scene first uses them; the scene's
+    /// bytes without metrics are unchanged by carrying them.
+    [<Fact>]
+    let ``the table holds each run once, and leaves the scene's own bytes alone`` () =
+        let scene = golden "figure"
+        let _, table = ok (Wire.decodeWith (Wire.encodeWith TextMeasure.approx scene))
+        let keys = table.Entries |> Array.map (fun (f, t, _) -> f, t)
+        Assert.Equal(keys.Length, (Array.distinct keys).Length)
+        Assert.NotEmpty keys
+
+        for (f, t, metrics) in table.Entries do
+            Assert.Equal(TextMeasure.approx.Measure f t, metrics)
+
+        let _, none = ok (Wire.decodeWith (Wire.encode scene))
+        Assert.Empty none.Entries
+
+    /// A patch carries the metrics of what it replaces, and a page merges them over what it holds.
+    [<Fact>]
+    let ``a patch's table merges over the one the page holds`` () =
+        let font: FontSpec = { Family = "sans-serif"; Size = 9.0<pt>; Weight = 400; Italic = false }
+        let at (a: float) : TextMetrics = { Advance = a * 1.0<px>; Ascent = 9.0<px>; Descent = 2.0<px> }
+        let held = TextTable([| font, "a", at 1.0; font, "b", at 2.0 |])
+        let arriving = TextTable([| font, "b", at 5.0; font, "c", at 3.0 |])
+        let merged = held.Merge arriving :> ITextMeasurer
+        Assert.Equal(at 1.0, merged.Measure font "a")
+        Assert.Equal(at 5.0, merged.Measure font "b")
+        Assert.Equal(at 3.0, merged.Measure font "c")
+        Assert.Equal(TextMeasure.approx.Measure font "d", merged.Measure font "d")
