@@ -23,6 +23,12 @@ let private golden (name: string) =
     |> List.find (fun (n, _, _) -> n = name)
     |> fun (_, _, node) -> node
 
+/// The bytes of the scene a canvas page carries inline.
+let private bytesFrom (document: string) =
+    let m = Text.RegularExpressions.Regex.Match(document, "<script type=\"text/plain\" id=\"scene\">([^<]*)</script>")
+    Assert.True(m.Success, "no scene in the page")
+    Convert.FromBase64String m.Groups.[1].Value
+
 let private header (version: int) (body: int) (blocks: byte[] list) =
     [ yield! [| 0x4Duy; 0x52uy; 0x59uy; 0x53uy |]
       yield byte (version &&& 0xFF)
@@ -411,7 +417,7 @@ module ``the live widget on the canvas`` =
 
             for isLive in [ true; false ] do
                 let doc = Html.liveDocumentForHost (box l, box s0, isLive)
-                Assert.Matches("<div id=\"fig\"[^>]*><canvas id=\"cv\"[^>]*></canvas></div>", doc)
+                Assert.Matches("<div id=\"fig\"[^>]*><div style=\"position:relative[^\"]*\"><div id=\"poster\"><svg [\\s\\S]*</svg>\\s*</div><canvas id=\"cv\"[^>]*></canvas></div>", doc)
                 Assert.Contains("var MareyView=", doc)
                 Xml.Linq.XDocument.Parse doc |> ignore
                 Assert.True(ok (Wire.decode (bytesIn doc)) = Live.scene l s0))
@@ -483,3 +489,72 @@ module ``the live widget on the canvas`` =
         RenderModes.withRenderMode RenderMode.Svg (fun () ->
             let l = big ()
             Assert.DoesNotContain("<canvas", Html.liveDocumentForHost (box l, box (Live.init l), true)))
+
+// ======================================================================================
+// Phase 6: static figures, snapshots and the poster (D160)
+// ======================================================================================
+
+[<Xunit.Collection(RenderModes.Collection)>]
+module ``static figures and the poster`` =
+
+    let private cloud (n: int) =
+        let rng = Random(11)
+        Chart.scatter U.metre Derived.volt (Array.init n (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init n (fun _ -> rng.NextDouble() * 1.0<V>))
+        |> Chart.withTitle "A cloud"
+        |> Chart.withXLabel "x"
+
+    let private posterOf (doc: string) =
+        let m = Text.RegularExpressions.Regex.Match(doc, "<div id=\"poster\">([\\s\\S]*?</svg>)\\s*</div>")
+        Assert.True(m.Success, "no poster")
+        m.Groups.[1].Value
+
+    /// Below the threshold there is no page: the figure is markup, as it always was.
+    [<Fact>]
+    let ``a small figure has no page`` () =
+        RenderModes.withRenderMode RenderMode.Auto (fun () ->
+            Assert.Equal("", Html.documentForHost (800.0, 600.0, box (cloud 100))))
+
+    /// Above it, a page: the scene's bytes, the script, and a poster that holds the title, the axes
+    /// and no batch of the cloud's size, with a line for a reader whose viewer runs no script.
+    [<Fact>]
+    let ``a large figure is a canvas page with a poster`` () =
+        RenderModes.withRenderMode RenderMode.Auto (fun () ->
+            let fig = cloud 10000
+            let doc = Html.documentForHost (800.0, 600.0, box fig)
+            Assert.NotEqual<string>("", doc)
+            Xml.Linq.XDocument.Parse doc |> ignore
+            Assert.Contains("var MareyView=", doc)
+            Assert.True(ok (Wire.decode (bytesFrom doc)) = Chart.toSceneWith TextMeasure.approx (Html.extentForHost (800.0, 600.0)) fig)
+
+            let poster = posterOf doc
+            Assert.Contains("A cloud", poster)
+            Assert.Contains("x [m]", poster)
+            Assert.True(poster.Length * 20 < (Chart.render SvgBackend.render (Html.extentForHost (800.0, 600.0)) fig).Length, "the poster kept the cloud")
+            Assert.Contains("<noscript>", doc)
+            Assert.Contains("10000 marks are drawn by this page's script", doc))
+
+    /// A live canvas page carries the poster too, so its snapshot does; the script removes it
+    /// once it has drawn.
+    [<Fact>]
+    let ``a live canvas page and its snapshot carry the poster`` () =
+        RenderModes.withRenderMode RenderMode.Auto (fun () ->
+            let l = DiffTests.``diffing is measured``.scatterWithCursor ()
+            let s0 = Live.init l
+
+            for isLive in [ true; false ] do
+                let doc = Html.liveDocumentForHost (box l, box s0, isLive)
+                posterOf doc |> ignore
+                Assert.Contains("poster.remove()", doc))
+
+    /// Found by gate 8: a script whose CDATA marker shares its line with code puts that code in
+    /// the `//` comment, so the static page never drew. Every marker in a canvas page ends its line.
+    [<Fact>]
+    let ``every CDATA marker in a canvas page ends its line`` () =
+        RenderModes.withRenderMode RenderMode.Auto (fun () ->
+            let l = DiffTests.``diffing is measured``.scatterWithCursor ()
+
+            for doc in [ Html.documentForHost (800.0, 600.0, box (cloud 10000)); Html.liveDocumentForHost (box l, box (Live.init l), true) ] do
+                let markers = Text.RegularExpressions.Regex.Matches(doc, "//<!\\[CDATA\\[([\\s\\S])")
+                Assert.NotEmpty markers
+                for m in markers do
+                    Assert.Equal("\n", m.Groups.[1].Value))

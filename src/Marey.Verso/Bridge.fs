@@ -42,6 +42,11 @@ module internal Bridge =
     [<Literal>]
     let Render = "renderForHost"
 
+    /// Step F (D160) — a page for a frame instead of markup, for a figure drawn on a canvas.
+    /// Optional: a `Marey.Html` without it is always rendered as markup.
+    [<Literal>]
+    let Document = "documentForHost"
+
     // M4.5 — the live half. Four more signatures, optional as a set: a `Marey.Html` from before
     // 0.5 has none of them, and then a live figure is drawn as a figure and nothing is opened.
     [<Literal>]
@@ -170,6 +175,24 @@ module internal Bridge =
 
     /// Render, or `None` if anything at all goes wrong.
     ///
+    /// The page `Marey.Html.documentForHost` writes for a value it draws on a canvas, or `None`:
+    /// for a value drawn as markup, and for a `Marey.Html` without the method.
+    let document (maxWidth: float) (maxHeight: float) (value: obj) : string option =
+        if not (isMareyValue value) then
+            None
+        else
+            findRendererType value
+            |> Option.bind (fun t ->
+                match t.GetMethod(Document, BindingFlags.Public ||| BindingFlags.Static, null, [| typeof<float>; typeof<float>; typeof<obj> |], null) with
+                | null -> None
+                | m ->
+                    try
+                        match m.Invoke(null, [| box maxWidth; box maxHeight; value |]) with
+                        | :? string as doc when doc <> "" -> Some doc
+                        | _ -> None
+                    with _ ->
+                        None)
+
     /// `renderForHost` returns `""` for a value it does not know; that is folded into `None` here
     /// so the caller has one shape to handle. `Html` already guarantees the render itself cannot
     /// throw — a display formatter that throws replaces a good error message with a bad one — so

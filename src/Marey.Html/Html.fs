@@ -816,7 +816,8 @@ module Html =
 
               if canvas then
                   yield "  var cv = document.getElementById('cv');"
-                  yield "  function draw(b64, w, h) { cv.setAttribute('data-w', w); cv.setAttribute('data-h', h); var why = MareyView.show(cv, b64, Number(w), Number(h)); if (why) { status.textContent = why; } }"
+                  yield "  var poster = document.getElementById('poster');"
+                  yield "  function draw(b64, w, h) { cv.setAttribute('data-w', w); cv.setAttribute('data-h', h); var why = MareyView.show(cv, b64, Number(w), Number(h)); if (why) { status.textContent = why; } else if (poster) { poster.remove(); poster = null; } }"
                   yield "  draw(document.getElementById('scene').textContent, cv.getAttribute('data-w'), cv.getAttribute('data-h'));"
 
               yield "  function disable(why) {"
@@ -1032,6 +1033,52 @@ module Html =
     /// A scene's bytes for a canvas page, as base64: the scene and its text metrics.
     let private sceneBase64 (scene: Node) = System.Convert.ToBase64String(Wire.encodeWith liveMeasurer scene)
 
+    /// D160 — a marker batch larger than this is left out of a canvas page's poster. A legend's
+    /// swatch is a batch of one, so the poster keeps the legend.
+    [<Literal>]
+    let private PosterBatch = 16
+
+    /// The scene without its large marker batches, and how many marks that left out.
+    let private posterOf (scene: Node) : Node * int =
+        let mutable dropped = 0
+
+        let rec go (n: Node) =
+            match n with
+            | Markers m when m.Points.Length > PosterBatch ->
+                dropped <- dropped + m.Points.Length
+                Scene.empty
+            | Group cs -> Group(Array.map go cs)
+            | Transform(a, c) -> Transform(a, go c)
+            | Clip(p, c) -> Clip(p, go c)
+            | Opacity(a, c) -> Opacity(a, go c)
+            | Keyed(k, c) -> Keyed(k, go c)
+            | Annotated(a, c) -> Annotated(a, go c)
+            | Path _
+            | Text _
+            | Markers _
+            | Raster _ -> n
+
+        let poster = go scene
+        poster, dropped
+
+    /// **D160 — a canvas figure, and what stands in for it without a script**: the poster, which
+    /// is the scene's SVG without its large batches, under a canvas the page's script draws and
+    /// which then removes the poster; and a line, shown only with scripting off, saying how many
+    /// marks the poster leaves out. A reader whose viewer runs no script sees the axes, the titles
+    /// and every small layer.
+    let private canvasFigure (extent: Extent<px>) (scene: Node) : string =
+        let poster, dropped = posterOf scene
+        let w, h = exact (float extent.Width), exact (float extent.Height)
+
+        sprintf "<div style=\"position:relative;width:%spx;height:%spx\"><div id=\"poster\">%s</div>" w h (SvgBackend.render extent poster)
+        + sprintf "<canvas id=\"cv\" data-w=\"%s\" data-h=\"%s\" style=\"position:absolute;left:0;top:0\"></canvas></div>" w h
+        + sprintf "<noscript><div style=\"%s\">%s marks are drawn by this page's script, which is not running here.</div></noscript>" Muted (intText dropped)
+
+    /// The scene's bytes and the script that draws them, for a canvas page.
+    let private canvasDrawing (scene: Node) : string =
+        "<script type=\"text/plain\" id=\"scene\">" + sceneBase64 scene + "</script>"
+        + "<script>//<![CDATA[\n" + viewScript.Force() + "\n//]]></script>"
+
     /// A live figure's SVG at a state, drawn in the state's arrangement. What a host sends back
     /// after each step; the document embeds the same thing.
     let widgetFigure (live: Live) (state: LiveState) : string =
@@ -1066,11 +1113,8 @@ module Html =
         // the widget's own script, which calls it.
         let figure, drawing =
             if canvas then
-                let e = state.Shot.Outer.Extent
-
-                sprintf "<canvas id=\"cv\" data-w=\"%s\" data-h=\"%s\"></canvas>" (exact (float e.Width)) (exact (float e.Height)),
-                "<script type=\"text/plain\" id=\"scene\">" + sceneBase64 (Live.scene live state) + "</script>"
-                + "<script>//<![CDATA[\n" + viewScript.Force() + "\n//]]></script>"
+                let scene = Live.scene live state
+                canvasFigure state.Shot.Outer.Extent scene, canvasDrawing scene
             else
                 widgetFigure live state, ""
 
@@ -1165,6 +1209,48 @@ module Html =
         // in the widget's own arrangement. A host with a frame for a page uses `liveDocumentForHost`.
         | :? Live as l -> guarded "live figure" (fun () -> scroller (widgetFigure l (Live.init l)))
         | :? Recorder as r -> guarded "live figure" (fun () -> scroller (widgetFigure r.Live (Live.init r.Live)))
+        | _ -> ""
+
+    /// **D160 — a figure as a canvas page**, for a host that shows a page in a frame: the poster,
+    /// the canvas, the scene's bytes and the script that draws them, and no controls. `None` when
+    /// the figure is drawn as SVG under the current `renderMode`, which is what an `Html` output
+    /// is for, because a host inserts that as markup and never runs its scripts.
+    let figureDocument (extent: Extent<px>) (fig: Figure) : string option =
+        let scene = Chart.toSceneWith liveMeasurer extent fig
+
+        if drawsOnCanvas scene then
+            Some(
+                String.concat
+                    ""
+                    [ "<!DOCTYPE html><html><head><meta charset=\"utf-8\"/>"
+                      "<style>html,body{margin:0;padding:0}body{color:var(--verso-cell-output-foreground,inherit);"
+                      "background:var(--verso-cell-output-background,transparent);font-family:var(--verso-ui-font-family,system-ui,sans-serif)}"
+                      "#fig{max-width:100%;overflow-x:auto}</style></head><body>"
+                      "<div id=\"fig\">" + canvasFigure extent scene + "</div><div id=\"status\"></div>"
+                      canvasDrawing scene
+                      // The marker ends its line: the function after it on the same line would be
+                      // inside the `//` comment, and never run.
+                      "<script>//<![CDATA[\n"
+                      "(function () { var cv = document.getElementById('cv'), poster = document.getElementById('poster');"
+                      " var why = MareyView.show(cv, document.getElementById('scene').textContent, Number(cv.getAttribute('data-w')), Number(cv.getAttribute('data-h')));"
+                      " if (why) { document.getElementById('status').textContent = why; } else if (poster) { poster.remove(); } })();"
+                      "\n//]]></script></body></html>" ]
+            )
+        else
+            None
+
+    /// The page a host should show in a frame instead of `renderForHost`'s markup, or `""` when the
+    /// markup is right: a `Figure` drawn on a canvas (D160). Tupled for the bridge, as
+    /// `renderForHost` is.
+    let documentForHost (maxWidth: float, maxHeight: float, value: obj) : string =
+        match value with
+        // Not `guarded`: an error box is not empty, and would be shown as the page. A figure that
+        // cannot be drawn here falls through to `renderForHost`, which shows the box in place.
+        | :? Figure as f ->
+            try
+                defaultArg (figureDocument (extentForHost (maxWidth, maxHeight)) f) ""
+            with _ ->
+                ""
         | _ -> ""
 
     // ---- The live half of the bridge (M4.5, D100) ------------------------------------------
