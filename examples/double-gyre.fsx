@@ -59,9 +59,8 @@ let frameAt (t: float<s>) =
 
     let fig =
         Field.streamlines U.metre U.metre (fieldAt t)
-        // A translucent colour rather than `withOpacity`: a field mark with no colour channel paints
-        // every segment in the layer's colour, which carries no opacity.
-        |> Chart.withColor (Color.withAlpha 0.3 Color.black)
+        |> Chart.withColor Color.black
+        |> Chart.withOpacity 0.3
         |> Chart.addScatter U.metre U.metre sx sy
         |> Chart.withName "streak"
 

@@ -66,12 +66,22 @@ let trajectory = Sim.ofStep stepLength step start |> Sim.trajectory 0.2<s> horiz
 // take a shorter last step, which the lattice refuses.
 let at (t: float<s>) = trajectory.At(float (int (round (t / stepLength))) * stepLength)
 
+// The vorticity, with the flow's texture laid over it. The shear layers at the cylinder's wall
+// reach 40 rad/s and the vortices in the wake about 10, so the colours span ±10 rad/s and the
+// wall saturates rather than leaving the wake in the ramp's pale middle. `Lattice.vorticity` is
+// in s⁻¹, which a colorbar reads as a frequency, in Hz; stating the radian makes it a rotation.
+let radPerSecond = U.div Derived.radian U.second
+let vorticity l = Lattice.vorticity l |> ScalarGrid.map (fun w -> w * 1.0<rad>)
+
 let view (t: float<s>) =
     let l = at t
-    Field.licBy U.metre U.metre (U.div U.metre U.second) (Lattice.velocity l)
+    Field.heatmapWith Theme.initial.Diverging true U.metre U.metre radPerSecond (vorticity l)
+    |> Chart.withColorDomain radPerSecond -10.0<rad/s> 10.0<rad/s>
+    |> Chart.withColorLabel "ω"
+    |> Chart.overlay (Field.lic U.metre U.metre (Lattice.velocity l) |> Chart.withOpacity 0.35)
     |> Chart.withXLabel "x"
     |> Chart.withYLabel "y"
-    |> Chart.withTitle (sprintf "The flow behind a cylinder, coloured by speed, Re = 100, t = %.1f s" (float t))
+    |> Chart.withTitle (sprintf "The vorticity behind a cylinder, Re = 100, t = %.1f s" (float t))
 
 let out (file: string) = IO.Path.Combine(IO.Directory.GetCurrentDirectory(), file)
 let size = Chart.size 900.0 300.0
