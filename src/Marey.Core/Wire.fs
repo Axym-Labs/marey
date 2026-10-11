@@ -181,6 +181,41 @@ type internal WireReader(buffer: byte[]) =
 
     member this.AtEnd = pos = buffer.Length
 
+/// **D156 — the text metrics a scene's layout used**, carried with it.
+///
+/// A canvas anchors every run with its measurer's advance, ascent and descent, and that measurer
+/// must be the one layout ran against (D62). Layout runs in the kernel; the page cannot run Skia.
+/// So the scene carries, once per distinct font and string, what the kernel measured, and the page
+/// draws through this table. A run the table does not hold is measured by `TextMeasure.approx`.
+[<Sealed>]
+type TextTable(entries: (FontSpec * string * TextMetrics)[]) =
+    static let keyOf (font: FontSpec) (text: string) =
+        String.concat "\u0000" [ font.Family; Num.shortest (float font.Size); string font.Weight; (if font.Italic then "i" else "n"); text ]
+
+    let index =
+        let d = Collections.Generic.Dictionary<string, TextMetrics>()
+
+        for (font, text, m) in entries do
+            d.[keyOf font text] <- m
+
+        d
+
+    /// Every entry, in the order the scene first used it.
+    member _.Entries = entries
+
+    /// This table with `other`'s entries over it: what a page holds after applying a patch.
+    member _.Merge(other: TextTable) : TextTable =
+        let replaced = other.Entries |> Array.map (fun (f, t, _) -> keyOf f t) |> Set.ofArray
+        TextTable(Array.append (entries |> Array.filter (fun (f, t, _) -> not (replaced.Contains(keyOf f t)))) other.Entries)
+
+    static member Empty = TextTable([||])
+
+    interface ITextMeasurer with
+        member _.Measure (font: FontSpec) (text: string) =
+            match index.TryGetValue(keyOf font text) with
+            | true, m -> m
+            | _ -> TextMeasure.approx.Measure font text
+
 [<RequireQualifiedAccess>]
 module Wire =
 
@@ -409,24 +444,73 @@ module Wire =
 
             node w child
 
-    let private header (w: WireWriter) (body: int) =
+    [<Literal>]
+    let private BlockMetrics = 1uy
+
+    /// Every text run's font and string, once each, in the order a depth-first walk meets them.
+    let private runs (roots: Node seq) : (FontSpec * string)[] =
+        let seen = Collections.Generic.HashSet<string>()
+        let found = ResizeArray<FontSpec * string>()
+
+        let rec walk (n: Node) =
+            match n with
+            | Text t ->
+                if seen.Add(String.concat "\u0000" [ t.Font.Family; Num.shortest (float t.Font.Size); string t.Font.Weight; string t.Font.Italic; t.Text ]) then
+                    found.Add((t.Font, t.Text))
+            | Group cs -> Array.iter walk cs
+            | Transform(_, c)
+            | Clip(_, c)
+            | Opacity(_, c)
+            | Keyed(_, c)
+            | Annotated(_, c) -> walk c
+            | Path _
+            | Markers _
+            | Raster _ -> ()
+
+        Seq.iter walk roots
+        found.ToArray()
+
+    let private header (w: WireWriter) (body: int) (measured: (FontSpec * string * TextMetrics)[]) =
         w.Bytes magic
         w.U16 Version
         w.U16 body
-        // No header blocks in version 1's writer. D156's text metrics will be the first.
-        w.Count 0
 
-    /// A scene as bytes.
-    let encode (n: Node) : byte[] =
+        if measured.Length = 0 then
+            w.Count 0
+        else
+            w.Count 1
+            // The block is written into its own buffer first, for its length. It holds no float
+            // array, so nothing in it is aligned, and nothing after it depends on its size.
+            let b = WireWriter()
+            b.Count measured.Length
+
+            for (font, text, m) in measured do
+                b.Str font.Family
+                b.F64(float font.Size)
+                b.I32 font.Weight
+                b.Byte(if font.Italic then 1uy else 0uy)
+                b.Str text
+                b.F64(float m.Advance)
+                b.F64(float m.Ascent)
+                b.F64(float m.Descent)
+
+            let bytes = b.ToArray()
+            w.Byte BlockMetrics
+            w.Count bytes.Length
+            w.Bytes bytes
+
+    let private measure (m: ITextMeasurer) (roots: Node seq) =
+        runs roots |> Array.map (fun (font, text) -> font, text, m.Measure font text)
+
+    let private sceneBytes (measured: (FontSpec * string * TextMetrics)[]) (n: Node) =
         let w = WireWriter()
-        header w BodyScene
+        header w BodyScene measured
         node w n
         w.ToArray()
 
-    /// A patch as bytes: `Replace`'s keys and nodes in order, or `Whole`'s scene.
-    let encodePatch (p: Patch) : byte[] =
+    let private patchBytes (measured: (FontSpec * string * TextMetrics)[]) (p: Patch) =
         let w = WireWriter()
-        header w BodyPatch
+        header w BodyPatch measured
 
         match p with
         | Replace parts ->
@@ -441,6 +525,25 @@ module Wire =
             node w n
 
         w.ToArray()
+
+    let private patchRoots (p: Patch) =
+        match p with
+        | Replace parts -> parts |> Array.map snd
+        | Whole n -> [| n |]
+
+    /// A scene as bytes, with no text metrics: for a reader that lays nothing out against the
+    /// kernel's measurer. The format's goldens are these.
+    let encode (n: Node) : byte[] = sceneBytes [||] n
+
+    /// **A scene as bytes, with the metrics `m` gives each of its text runs (D156)**: what a page
+    /// that draws the scene needs, because its text was anchored against `m`.
+    let encodeWith (m: ITextMeasurer) (n: Node) : byte[] = sceneBytes (measure m [ n ]) n
+
+    /// A patch as bytes: `Replace`'s keys and nodes in order, or `Whole`'s scene.
+    let encodePatch (p: Patch) : byte[] = patchBytes [||] p
+
+    /// A patch as bytes, with the metrics of the runs its replacements carry.
+    let encodePatchWith (m: ITextMeasurer) (p: Patch) : byte[] = patchBytes (measure m (patchRoots p)) p
 
     // ---- Reading ------------------------------------------------------------------------------
 
@@ -700,8 +803,31 @@ module Wire =
             Annotated({ Role = role; Label = label; Data = data }, readNode r)
         | t -> raise (WireError(sprintf "a node of kind %d at %d" t at))
 
-    /// Reads the header, and returns the body's kind.
-    let private readHeader (r: WireReader) : int =
+    let private readMetrics (r: WireReader) : TextTable =
+        let n = r.Count "the text metrics"
+
+        TextTable(
+            Array.init n (fun _ ->
+                let family = r.Str "the text metrics"
+                let size = r.F64 "the text metrics"
+                let weight = r.I32 "the text metrics"
+                let italic = r.Byte "the text metrics" <> 0uy
+                let text = r.Str "the text metrics"
+                let advance = r.F64 "the text metrics"
+                let ascent = r.F64 "the text metrics"
+                let descent = r.F64 "the text metrics"
+
+                let font: FontSpec =
+                    { Family = family
+                      Size = LanguagePrimitives.FloatWithMeasure size
+                      Weight = weight
+                      Italic = italic }
+
+                font, text, { Advance = px advance; Ascent = px ascent; Descent = px descent })
+        )
+
+    /// Reads the header: the body's kind, and the text metrics if it carries them.
+    let private readHeader (r: WireReader) : int * TextTable =
         let m = r.Bytes 4 "the header"
 
         if m <> magic then
@@ -714,22 +840,31 @@ module Wire =
 
         let body = r.U16 "the header"
         let blocks = r.Count "the header"
+        let mutable table = TextTable.Empty
 
-        // D154: header blocks this version does not know are read past.
         for _ in 1..blocks do
-            r.Byte "a header block" |> ignore
+            let id = r.Byte "a header block"
             let n = r.Count "a header block"
-            r.Bytes n "a header block" |> ignore
 
-        body
+            if id = BlockMetrics then
+                let start = r.Position
+                table <- readMetrics r
 
-    let private run (bytes: byte[]) (expect: int) (body: WireReader -> 'a) : Result<'a, string> =
+                if r.Position <> start + n then
+                    raise (WireError(sprintf "the text metrics block says %d bytes and holds %d" n (r.Position - start)))
+            else
+                // D154: a header block this version does not know is read past.
+                r.Bytes n "a header block" |> ignore
+
+        body, table
+
+    let private run (bytes: byte[]) (expect: int) (body: WireReader -> 'a) : Result<'a * TextTable, string> =
         if isNull bytes then
             Error "no bytes"
         else
             try
                 let r = WireReader bytes
-                let kind = readHeader r
+                let kind, table = readHeader r
 
                 if kind <> expect then
                     Error(
@@ -742,27 +877,35 @@ module Wire =
                     let v = body r
 
                     if r.AtEnd then
-                        Ok v
+                        Ok(v, table)
                     else
                         Error(sprintf "%d bytes after the end of the %s" (bytes.Length - r.Position) (if expect = BodyPatch then "patch" else "scene"))
             with
             | WireError why -> Error why
 
-    /// A scene back from `encode`'s bytes. `Error` says what is wrong: not a Marey scene, a format
-    /// version this build does not read (naming both), or where the bytes ended early.
-    let decode (bytes: byte[]) : Result<Node, string> = run bytes BodyScene readNode
+    /// **A scene back from its bytes, and the text metrics it carries** (`TextTable.Empty` when it
+    /// carries none). `Error` says what is wrong: not a Marey scene, a format version this build
+    /// does not read (naming both), or where the bytes ended early.
+    let decodeWith (bytes: byte[]) : Result<Node * TextTable, string> = run bytes BodyScene readNode
+
+    let private readPatch (r: WireReader) : Patch =
+        match r.Byte "a patch" with
+        | 0uy ->
+            let n = r.Count "a patch"
+
+            Replace(
+                Array.init n (fun _ ->
+                    let k = r.Str "a patch"
+                    Key k, readNode r)
+            )
+        | 1uy -> Whole(readNode r)
+        | b -> raise (WireError(sprintf "a patch of kind %d" b))
+
+    /// A patch back from `encodePatchWith`'s bytes, and the text metrics it carries.
+    let decodePatchWith (bytes: byte[]) : Result<Patch * TextTable, string> = run bytes BodyPatch readPatch
+
+    /// A scene back from its bytes, its text metrics, if any, set aside.
+    let decode (bytes: byte[]) : Result<Node, string> = decodeWith bytes |> Result.map fst
 
     /// A patch back from `encodePatch`'s bytes.
-    let decodePatch (bytes: byte[]) : Result<Patch, string> =
-        run bytes BodyPatch (fun r ->
-            match r.Byte "a patch" with
-            | 0uy ->
-                let n = r.Count "a patch"
-
-                Replace(
-                    Array.init n (fun _ ->
-                        let k = r.Str "a patch"
-                        Key k, readNode r)
-                )
-            | 1uy -> Whole(readNode r)
-            | b -> raise (WireError(sprintf "a patch of kind %d" b)))
+    let decodePatch (bytes: byte[]) : Result<Patch, string> = decodePatchWith bytes |> Result.map fst
