@@ -12,6 +12,38 @@ land in a minor release.
 
 ## [Unreleased]
 
+### Added
+
+- **`Wire`** in `Marey.Core`: a scene (`Wire.encode`, `decode`) or a patch (`encodePatch`,
+  `decodePatch`) as bytes and back, field for field. Little-endian float64 throughout, float arrays
+  aligned to 8 bytes, a header with a format version that a newer reader refuses by name, and
+  blocks a reader skips, so the format can grow without a new version. `Wire.encodeWith` carries
+  the text metrics the scene was laid out with, and `decodeWith` returns them as a `TextTable`, a
+  measurer that answers from them: a page anchors text as the kernel measured it. It compiles under
+  Fable.
+- **A large figure in a notebook is drawn on a canvas.** `RenderMode` (`Svg`, `Canvas`, `Auto`),
+  `Html.renderMode`, and `Html.CanvasThreshold`, 5000 drawn elements, measured. Above it a live
+  figure's page holds a `<canvas>`, the scene's bytes and `Html.viewScript`, Marey's canvas backend
+  compiled by Fable into one script that `Marey.Html` embeds, and each step is answered with a
+  patch's bytes or the whole scene's. A 10⁵-point scatter is 2.1 MB rather than 6.4 MB of SVG, and
+  a step takes tens of milliseconds rather than about a second. `Html.documentForHost` writes a
+  figure without controls the same way; `Marey.Verso` shows it as a page, because an HTML output
+  runs no script. Every canvas page carries the figure's SVG without its large marker batches,
+  for a viewer that runs no script.
+- `Html.liveWholeForHost`, the whole figure in its page's kind, which `Marey.Verso` asks for a
+  view's first message.
+- **`examples/interact.dib`** gains a live figure of 10⁵ points.
+
+### Changed
+
+- **A `Figure` above 5000 drawn elements displays in Verso as a page in a frame**, not as inline
+  SVG. `Html.renderMode <- RenderMode.Svg` restores the SVG for every figure.
+
+### Fixed
+
+- `Canvas.setCssSize` and `Canvas.devicePixelRatio` in `Marey.Backend.Web` threw on .NET; they do
+  nothing and return 1 there, so `CanvasBackend` draws on a context a .NET caller supplies.
+
 ## [0.6.0] — 2026-10-11
 
 **Simulation.** `Marey.Sim` steps a physical system with its units checked: ODE integrators,

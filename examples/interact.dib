@@ -117,6 +117,33 @@ printfn "zoomed onto the charge, the axes read in millimetres: %b" ((Html.widget
 
 #!markdown
 
+## A hundred thousand points
+
+A figure with more than `Html.CanvasThreshold` drawn elements, 5000, is drawn on a canvas: the
+kernel sends the scene as bytes, a quarter of its SVG, and the page draws them with the same code
+that draws a figure in a browser app. A slider that moves one mark sends only that mark. Set
+`Html.renderMode` to `RenderMode.Svg` or `RenderMode.Canvas` to choose for every figure.
+
+#!fsharp
+
+let crowdTimes = Array.init 100_000 (fun i -> float i / 100_000.0 * 10.0<s>)
+let crowdValues = crowdTimes |> Array.mapi (fun i t -> (sin (float t) + 0.3 * sin (float i * 12.9898)) * 1.0<m>)
+
+let crowd =
+    interact {
+        let! at = Control.slider U.second "t" 1.0<s> 9.0<s> 5.0<s>
+        return
+            Chart.scatter U.second U.metre crowdTimes crowdValues
+            |> Chart.addScatter U.second U.metre [| at |] [| sin (float at) * 1.0<m> |]
+            |> Chart.withStyle (Geom.withMarkerSize 10.0<px>)
+    }
+
+printfn "drawn on a canvas: %b" (Html.drawsOnCanvas (Live.scene crowd (Live.init crowd)))
+
+crowd
+
+#!markdown
+
 ## Keeping what the reader did
 
 A recorder displays as the same figure and keeps every message the reader sends, with the page's
