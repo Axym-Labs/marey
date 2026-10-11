@@ -1,0 +1,613 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"/><style>html,body{margin:0;padding:0}body{color:var(--verso-cell-output-foreground,inherit);background:var(--verso-cell-output-background,transparent);font-family:var(--verso-ui-font-family,system-ui,sans-serif);font-size:var(--verso-ui-font-size,14px)}#controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 6px}#controls label{display:inline-flex;gap:6px;align-items:center}#controls output{font-variant-numeric:tabular-nums;min-width:5em}#controls button{font:inherit;min-width:2.2em}#stage{position:relative}#fig{max-width:100%;overflow-x:auto;touch-action:none;user-select:none;-webkit-user-select:none}#band{position:absolute;display:none;pointer-events:none;border:1px dashed currentColor;background:rgba(127,127,127,0.12)}#readout{position:absolute;display:none;pointer-events:none;padding:2px 6px;border-radius:3px;border:1px solid rgba(128,128,128,0.45);background:linear-gradient(rgba(127,127,127,0.14),rgba(127,127,127,0.14)),var(--verso-cell-output-background,transparent);font-size:0.85em;font-variant-numeric:tabular-nums;white-space:nowrap}#status{font-size:0.85em;opacity:0.7}</style></head><body><div id="controls"><label><span>t</span><input type="range" data-i="0" min="0" max="10" step="0.01" value="0"/><button type="button" data-play="0" data-loop="1" title="Play">▶</button><output id="v0">0 s</output></label></div><div id="stage"><div id="fig" title="Drag to zoom, shift-drag to pan, double-click to reset"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="640" height="400" viewBox="0 0 640 400">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M61.009 348.567L619.328 348.567L619.328 49.55L61.009 49.55Z"/></clipPath>
+  </defs>
+  <g id="figure">
+    <path d="M0 400L640 400L640 0L0 0Z" fill="#ffffff"/>
+    <g id="figure_panel-0-0">
+      <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="1" data-x-tick-rule="all" data-y-tick-rule="all">
+        <g id="figure_panel-0-0_grid">
+          <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="5">
+            <path d="M61.009 335.497L619.328 335.497M61.009 267.394L619.328 267.394M61.009 199.29L619.328 199.29M61.009 131.187L619.328 131.187M61.009 63.084L619.328 63.084" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+          </g>
+        </g>
+        <g clip-path="url(#qc)">
+          <g id="figure_panel-0-0_layer-0">
+            <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="50">
+              <path d="M86.387 199.29L96.746 172.23L107.104 146.249L117.463 122.382L127.821 101.582L138.18 84.676L148.538 72.34L158.896 65.065L169.255 63.142L179.613 66.646L189.972 75.438L200.33 89.168L210.688 107.288L221.047 129.076L231.405 153.663L241.764 180.069L252.122 207.241L262.481 234.097L272.839 259.565L283.197 282.63L293.556 302.372L303.914 318.005L314.273 328.905L324.631 334.638L334.989 334.975L345.348 329.903L355.706 319.623L366.065 304.546L376.423 285.273L386.782 262.573L397.14 237.349L407.498 210.608L417.857 183.416L428.215 156.856L438.574 131.989L448.932 109.804L459.29 91.187L469.649 76.88L480.007 67.453L490.366 63.282L500.724 64.533L511.083 71.156L521.441 82.888L531.799 99.261L542.158 119.621L552.516 143.157L562.875 168.931L573.233 195.916L583.591 223.035L593.95 249.207" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="bottom" data-unit="s" data-prefix="" data-ticks="6" data-tick-rule="all">
+            <path d="M61.009 348.567L619.328 348.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M86.387 348.567L86.387 351.567M189.972 348.567L189.972 351.567M293.556 348.567L293.556 351.567M397.14 348.567L397.14 351.567M500.724 348.567L500.724 351.567M604.308 348.567L604.308 351.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="86.387" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+            <text x="189.972" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
+            <text x="293.556" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
+            <text x="397.14" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">6</text>
+            <text x="500.724" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">8</text>
+            <text x="604.308" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">10</text>
+            <text x="340.169" y="373.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">t [s]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="left" data-unit="m" data-prefix="" data-ticks="5" data-tick-rule="all">
+            <path d="M61.009 348.567L61.009 49.55" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M61.009 335.497L58.009 335.497M61.009 267.394L58.009 267.394M61.009 199.29L58.009 199.29M61.009 131.187L58.009 131.187M61.009 63.084L58.009 63.084" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="54.009" y="335.497" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-1.0</text>
+            <text x="54.009" y="267.394" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-0.5</text>
+            <text x="54.009" y="199.29" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.0</text>
+            <text x="54.009" y="131.187" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.5</text>
+            <text x="54.009" y="63.084" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.0</text>
+            <text x="26.333" y="199.058" transform="rotate(-90 26.333 199.058)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">x [m]</text>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
+</div><div id="band"></div><div id="readout"></div></div><div id="status"></div><script>//<![CDATA[
+(function () {
+  var ch = window.versoChannel;
+  var fig = document.getElementById('fig');
+  var status = document.getElementById('status');
+  var inputs = Array.prototype.slice.call(document.querySelectorAll('[data-i]'));
+  var plays = Array.prototype.slice.call(document.querySelectorAll('[data-play]'));
+  function disable(why) {
+    inputs.concat(plays).forEach(function (el) { el.disabled = true; });
+    if (why) { status.textContent = why; }
+  }
+  if (!ch) { disable(null); return; }
+  var busy = false, waiting = {}, order = [];
+  function flush() {
+    if (busy || order.length === 0) { return; }
+    var key = order.shift(), m = waiting[key];
+    delete waiting[key];
+    busy = ch.post(m.type, m.payload.concat([m.t]));
+  }
+  function send(key, type, payload, t, merge) {
+    if (!(key in waiting)) { order.push(key); }
+    else if (merge) { payload = merge(waiting[key].payload, payload); }
+    waiting[key] = { type: type, payload: payload, t: t };
+    flush();
+  }
+  function valueOf(el) { return el.type === 'checkbox' ? (el.checked ? 1 : 0) : Number(el.value); }
+  inputs.forEach(function (el) {
+    var i = Number(el.getAttribute('data-i'));
+    el.addEventListener(el.type === 'range' ? 'input' : 'change', function (e) {
+      send('c' + i, 'set', [i, valueOf(el)], e.timeStamp);
+    });
+  });
+  var playing = {};
+  plays.forEach(function (b) {
+    var i = Number(b.getAttribute('data-play')), loop = b.getAttribute('data-loop') === '1';
+    var el = inputs.filter(function (x) { return Number(x.getAttribute('data-i')) === i; })[0];
+    var lo = Number(el.min), hi = Number(el.max);
+    function stop() { delete playing[i]; b.textContent = '▶'; b.title = 'Play'; }
+    function tick(now) {
+      var p = playing[i];
+      if (!p || closed) { return; }
+      var v = p.from + (now - p.start) / 1000;
+      if (v > hi) { if (loop) { v = lo + (v - lo) % (hi - lo); } else { v = hi; stop(); } }
+      el.value = v;
+      send('c' + i, 'set', [i, v], now);
+      if (playing[i]) { requestAnimationFrame(tick); }
+    }
+    b.addEventListener('click', function () {
+      if (playing[i]) { stop(); return; }
+      var from = valueOf(el);
+      if (from >= hi && !loop) { from = lo; }
+      playing[i] = { start: performance.now(), from: from };
+      b.textContent = '❚❚'; b.title = 'Pause';
+      requestAnimationFrame(tick);
+    });
+    el.addEventListener('input', function (e) { if (e.isTrusted && playing[i]) { stop(); } });
+  });
+  var SVG = 'http://www.w3.org/2000/svg';
+  function parse(text) {
+    var d = new DOMParser().parseFromString('<svg xmlns="' + SVG + '" xmlns:xlink="http://www.w3.org/1999/xlink">' + text + '</svg>', 'image/svg+xml');
+    var el = d.documentElement.firstElementChild;
+    return el && el.namespaceURI === SVG ? document.importNode(el, true) : null;
+  }
+  function patch(defs, parts) {
+    var svg = fig.querySelector('svg');
+    if (!svg) { return false; }
+    for (var i = 0; i < parts.length; i += 2) { if (!document.getElementById(parts[i])) { return false; } }
+    var old = svg.querySelector('defs'), fresh = defs ? parse(defs) : null;
+    if (defs && !fresh) { return false; }
+    if (old) { old.remove(); }
+    if (fresh) { svg.insertBefore(fresh, svg.firstChild); }
+    for (var j = 0; j < parts.length; j += 2) {
+      var el = parse(parts[j + 1]);
+      if (!el) { return false; }
+      document.getElementById(parts[j]).replaceWith(el);
+    }
+    return true;
+  }
+  function hello() {
+    var w = Math.round(fig.clientWidth || document.documentElement.clientWidth || 0);
+    if (w > 0) { send('size', 'size', [w, Math.round(w * 0.625)], performance.now()); }
+  }
+  window.addEventListener('verso:channelmessage', function (e) {
+    var d = e.detail || {}, p = d.payload || {};
+    if (d.type !== 'render') { return; }
+    if (typeof p.svg === 'string') { fig.innerHTML = p.svg; }
+    else if (p.patch && !patch(p.defs || '', p.patch)) { hello(); }
+    (p.shown || []).forEach(function (s, i) {
+      var o = document.getElementById('v' + i);
+      if (o) { o.textContent = s; }
+    });
+    show(p.readout);
+    busy = false;
+    flush();
+  });
+  var stage = document.getElementById('stage'), band = document.getElementById('band');
+  var readout = document.getElementById('readout');
+  var drag = null, closed = false;
+  function frame() {
+    var svg = fig.querySelector('svg');
+    if (!svg) { return null; }
+    var r = svg.getBoundingClientRect(), s = stage.getBoundingClientRect();
+    var vb = svg.viewBox && svg.viewBox.baseVal;
+    var kx = vb && vb.width && r.width ? vb.width / r.width : 1;
+    var ky = vb && vb.height && r.height ? vb.height / r.height : 1;
+    return { r: r, s: s, kx: kx, ky: ky };
+  }
+  function at(e) {
+    var f = frame();
+    if (!f) { return null; }
+    return { x: (e.clientX - f.r.left) * f.kx, y: (e.clientY - f.r.top) * f.ky, bx: e.clientX - f.s.left, by: e.clientY - f.s.top };
+  }
+  function show(r) {
+    var f = frame();
+    if (closed || !f || !r || r.length < 6) { readout.style.display = 'none'; return; }
+    readout.textContent = '';
+    r.slice(5).forEach(function (line) {
+      var d = document.createElement('div');
+      d.textContent = line;
+      readout.appendChild(d);
+    });
+    var right = r[4] === 'right', x = Number(right ? r[2] : r[0]) / f.kx + f.r.left - f.s.left;
+    readout.style.left = (right ? x - 4 : x + 4) + 'px';
+    readout.style.top = (Number(r[1]) / f.ky + f.r.top - f.s.top + 4) + 'px';
+    readout.style.transform = right ? 'translateX(-100%)' : '';
+    readout.style.display = 'block';
+  }
+  function sum(a, b) { return [a[0], a[1], a[2] + b[2], a[3] + b[3]]; }
+  fig.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0 || closed) { return; }
+    var p = at(e);
+    if (!p) { return; }
+    drag = { start: p, last: p, pan: e.shiftKey };
+    fig.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  fig.addEventListener('pointermove', function (e) {
+    var p = at(e), a = drag && drag.start;
+    if (!p || closed) { return; }
+    if (drag && drag.pan) {
+      send('pan', 'pan', [a.x, a.y, p.x - drag.last.x, p.y - drag.last.y], e.timeStamp, sum);
+      drag.last = p;
+      return;
+    }
+    send('hover', 'hover', [p.x, p.y], e.timeStamp);
+    if (!drag) { return; }
+    band.style.left = Math.min(a.bx, p.bx) + 'px';
+    band.style.top = Math.min(a.by, p.by) + 'px';
+    band.style.width = Math.abs(p.bx - a.bx) + 'px';
+    band.style.height = Math.abs(p.by - a.by) + 'px';
+    band.style.display = 'block';
+  });
+  function release(e) {
+    if (!drag) { return; }
+    var p = at(e), a = drag.start, pan = drag.pan;
+    drag = null;
+    band.style.display = 'none';
+    if (p && !pan && e.type === 'pointerup') { send('zoom', 'zoom', [a.x, a.y, p.x, p.y], e.timeStamp); }
+  }
+  fig.addEventListener('pointerup', release);
+  fig.addEventListener('pointercancel', release);
+  fig.addEventListener('dblclick', function (e) { if (!closed) { send('reset', 'reset', [], e.timeStamp); } });
+  fig.addEventListener('pointerleave', function (e) { if (!closed) { send('hover', 'leave', [], e.timeStamp); } });
+  window.addEventListener('verso:channelclosed', function (e) {
+    closed = true;
+    show(null);
+    disable((e.detail && e.detail.reason) || 'closed');
+  });
+  ch.ready('1.0');
+  hello();
+})();
+//]]></script></body></html>
+----
+<!DOCTYPE html><html><head><meta charset="utf-8"/><style>html,body{margin:0;padding:0}body{color:var(--verso-cell-output-foreground,inherit);background:var(--verso-cell-output-background,transparent);font-family:var(--verso-ui-font-family,system-ui,sans-serif);font-size:var(--verso-ui-font-size,14px)}#controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 6px}#controls label{display:inline-flex;gap:6px;align-items:center}#controls output{font-variant-numeric:tabular-nums;min-width:5em}#controls button{font:inherit;min-width:2.2em}#stage{position:relative}#fig{max-width:100%;overflow-x:auto;touch-action:none;user-select:none;-webkit-user-select:none}#band{position:absolute;display:none;pointer-events:none;border:1px dashed currentColor;background:rgba(127,127,127,0.12)}#readout{position:absolute;display:none;pointer-events:none;padding:2px 6px;border-radius:3px;border:1px solid rgba(128,128,128,0.45);background:linear-gradient(rgba(127,127,127,0.14),rgba(127,127,127,0.14)),var(--verso-cell-output-background,transparent);font-size:0.85em;font-variant-numeric:tabular-nums;white-space:nowrap}#status{font-size:0.85em;opacity:0.7}</style></head><body><div id="controls"><label><span>t</span><input type="range" data-i="0" min="0" max="10" step="0.01" value="0" disabled="disabled"/><button type="button" data-play="0" data-loop="1" title="Play" disabled="disabled">▶</button><output id="v0">0 s</output></label></div><div id="stage"><div id="fig"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="640" height="400" viewBox="0 0 640 400">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M61.009 348.567L619.328 348.567L619.328 49.55L61.009 49.55Z"/></clipPath>
+  </defs>
+  <g id="figure">
+    <path d="M0 400L640 400L640 0L0 0Z" fill="#ffffff"/>
+    <g id="figure_panel-0-0">
+      <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="1" data-x-tick-rule="all" data-y-tick-rule="all">
+        <g id="figure_panel-0-0_grid">
+          <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="5">
+            <path d="M61.009 335.497L619.328 335.497M61.009 267.394L619.328 267.394M61.009 199.29L619.328 199.29M61.009 131.187L619.328 131.187M61.009 63.084L619.328 63.084" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+          </g>
+        </g>
+        <g clip-path="url(#qc)">
+          <g id="figure_panel-0-0_layer-0">
+            <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="50">
+              <path d="M86.387 199.29L96.746 172.23L107.104 146.249L117.463 122.382L127.821 101.582L138.18 84.676L148.538 72.34L158.896 65.065L169.255 63.142L179.613 66.646L189.972 75.438L200.33 89.168L210.688 107.288L221.047 129.076L231.405 153.663L241.764 180.069L252.122 207.241L262.481 234.097L272.839 259.565L283.197 282.63L293.556 302.372L303.914 318.005L314.273 328.905L324.631 334.638L334.989 334.975L345.348 329.903L355.706 319.623L366.065 304.546L376.423 285.273L386.782 262.573L397.14 237.349L407.498 210.608L417.857 183.416L428.215 156.856L438.574 131.989L448.932 109.804L459.29 91.187L469.649 76.88L480.007 67.453L490.366 63.282L500.724 64.533L511.083 71.156L521.441 82.888L531.799 99.261L542.158 119.621L552.516 143.157L562.875 168.931L573.233 195.916L583.591 223.035L593.95 249.207" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="bottom" data-unit="s" data-prefix="" data-ticks="6" data-tick-rule="all">
+            <path d="M61.009 348.567L619.328 348.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M86.387 348.567L86.387 351.567M189.972 348.567L189.972 351.567M293.556 348.567L293.556 351.567M397.14 348.567L397.14 351.567M500.724 348.567L500.724 351.567M604.308 348.567L604.308 351.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="86.387" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+            <text x="189.972" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
+            <text x="293.556" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
+            <text x="397.14" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">6</text>
+            <text x="500.724" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">8</text>
+            <text x="604.308" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">10</text>
+            <text x="340.169" y="373.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">t [s]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="left" data-unit="m" data-prefix="" data-ticks="5" data-tick-rule="all">
+            <path d="M61.009 348.567L61.009 49.55" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M61.009 335.497L58.009 335.497M61.009 267.394L58.009 267.394M61.009 199.29L58.009 199.29M61.009 131.187L58.009 131.187M61.009 63.084L58.009 63.084" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="54.009" y="335.497" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-1.0</text>
+            <text x="54.009" y="267.394" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-0.5</text>
+            <text x="54.009" y="199.29" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.0</text>
+            <text x="54.009" y="131.187" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.5</text>
+            <text x="54.009" y="63.084" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.0</text>
+            <text x="26.333" y="199.058" transform="rotate(-90 26.333 199.058)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">x [m]</text>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
+</div><div id="band"></div><div id="readout"></div></div><div id="status">Static: run the cell to move the controls.</div><script>//<![CDATA[
+(function () {
+  var ch = window.versoChannel;
+  var fig = document.getElementById('fig');
+  var status = document.getElementById('status');
+  var inputs = Array.prototype.slice.call(document.querySelectorAll('[data-i]'));
+  var plays = Array.prototype.slice.call(document.querySelectorAll('[data-play]'));
+  function disable(why) {
+    inputs.concat(plays).forEach(function (el) { el.disabled = true; });
+    if (why) { status.textContent = why; }
+  }
+  if (!ch) { disable(null); return; }
+  var busy = false, waiting = {}, order = [];
+  function flush() {
+    if (busy || order.length === 0) { return; }
+    var key = order.shift(), m = waiting[key];
+    delete waiting[key];
+    busy = ch.post(m.type, m.payload.concat([m.t]));
+  }
+  function send(key, type, payload, t, merge) {
+    if (!(key in waiting)) { order.push(key); }
+    else if (merge) { payload = merge(waiting[key].payload, payload); }
+    waiting[key] = { type: type, payload: payload, t: t };
+    flush();
+  }
+  function valueOf(el) { return el.type === 'checkbox' ? (el.checked ? 1 : 0) : Number(el.value); }
+  inputs.forEach(function (el) {
+    var i = Number(el.getAttribute('data-i'));
+    el.addEventListener(el.type === 'range' ? 'input' : 'change', function (e) {
+      send('c' + i, 'set', [i, valueOf(el)], e.timeStamp);
+    });
+  });
+  var playing = {};
+  plays.forEach(function (b) {
+    var i = Number(b.getAttribute('data-play')), loop = b.getAttribute('data-loop') === '1';
+    var el = inputs.filter(function (x) { return Number(x.getAttribute('data-i')) === i; })[0];
+    var lo = Number(el.min), hi = Number(el.max);
+    function stop() { delete playing[i]; b.textContent = '▶'; b.title = 'Play'; }
+    function tick(now) {
+      var p = playing[i];
+      if (!p || closed) { return; }
+      var v = p.from + (now - p.start) / 1000;
+      if (v > hi) { if (loop) { v = lo + (v - lo) % (hi - lo); } else { v = hi; stop(); } }
+      el.value = v;
+      send('c' + i, 'set', [i, v], now);
+      if (playing[i]) { requestAnimationFrame(tick); }
+    }
+    b.addEventListener('click', function () {
+      if (playing[i]) { stop(); return; }
+      var from = valueOf(el);
+      if (from >= hi && !loop) { from = lo; }
+      playing[i] = { start: performance.now(), from: from };
+      b.textContent = '❚❚'; b.title = 'Pause';
+      requestAnimationFrame(tick);
+    });
+    el.addEventListener('input', function (e) { if (e.isTrusted && playing[i]) { stop(); } });
+  });
+  var SVG = 'http://www.w3.org/2000/svg';
+  function parse(text) {
+    var d = new DOMParser().parseFromString('<svg xmlns="' + SVG + '" xmlns:xlink="http://www.w3.org/1999/xlink">' + text + '</svg>', 'image/svg+xml');
+    var el = d.documentElement.firstElementChild;
+    return el && el.namespaceURI === SVG ? document.importNode(el, true) : null;
+  }
+  function patch(defs, parts) {
+    var svg = fig.querySelector('svg');
+    if (!svg) { return false; }
+    for (var i = 0; i < parts.length; i += 2) { if (!document.getElementById(parts[i])) { return false; } }
+    var old = svg.querySelector('defs'), fresh = defs ? parse(defs) : null;
+    if (defs && !fresh) { return false; }
+    if (old) { old.remove(); }
+    if (fresh) { svg.insertBefore(fresh, svg.firstChild); }
+    for (var j = 0; j < parts.length; j += 2) {
+      var el = parse(parts[j + 1]);
+      if (!el) { return false; }
+      document.getElementById(parts[j]).replaceWith(el);
+    }
+    return true;
+  }
+  function hello() {
+    var w = Math.round(fig.clientWidth || document.documentElement.clientWidth || 0);
+    if (w > 0) { send('size', 'size', [w, Math.round(w * 0.625)], performance.now()); }
+  }
+  window.addEventListener('verso:channelmessage', function (e) {
+    var d = e.detail || {}, p = d.payload || {};
+    if (d.type !== 'render') { return; }
+    if (typeof p.svg === 'string') { fig.innerHTML = p.svg; }
+    else if (p.patch && !patch(p.defs || '', p.patch)) { hello(); }
+    (p.shown || []).forEach(function (s, i) {
+      var o = document.getElementById('v' + i);
+      if (o) { o.textContent = s; }
+    });
+    show(p.readout);
+    busy = false;
+    flush();
+  });
+  var stage = document.getElementById('stage'), band = document.getElementById('band');
+  var readout = document.getElementById('readout');
+  var drag = null, closed = false;
+  function frame() {
+    var svg = fig.querySelector('svg');
+    if (!svg) { return null; }
+    var r = svg.getBoundingClientRect(), s = stage.getBoundingClientRect();
+    var vb = svg.viewBox && svg.viewBox.baseVal;
+    var kx = vb && vb.width && r.width ? vb.width / r.width : 1;
+    var ky = vb && vb.height && r.height ? vb.height / r.height : 1;
+    return { r: r, s: s, kx: kx, ky: ky };
+  }
+  function at(e) {
+    var f = frame();
+    if (!f) { return null; }
+    return { x: (e.clientX - f.r.left) * f.kx, y: (e.clientY - f.r.top) * f.ky, bx: e.clientX - f.s.left, by: e.clientY - f.s.top };
+  }
+  function show(r) {
+    var f = frame();
+    if (closed || !f || !r || r.length < 6) { readout.style.display = 'none'; return; }
+    readout.textContent = '';
+    r.slice(5).forEach(function (line) {
+      var d = document.createElement('div');
+      d.textContent = line;
+      readout.appendChild(d);
+    });
+    var right = r[4] === 'right', x = Number(right ? r[2] : r[0]) / f.kx + f.r.left - f.s.left;
+    readout.style.left = (right ? x - 4 : x + 4) + 'px';
+    readout.style.top = (Number(r[1]) / f.ky + f.r.top - f.s.top + 4) + 'px';
+    readout.style.transform = right ? 'translateX(-100%)' : '';
+    readout.style.display = 'block';
+  }
+  function sum(a, b) { return [a[0], a[1], a[2] + b[2], a[3] + b[3]]; }
+  fig.addEventListener('pointerdown', function (e) {
+    if (e.button !== 0 || closed) { return; }
+    var p = at(e);
+    if (!p) { return; }
+    drag = { start: p, last: p, pan: e.shiftKey };
+    fig.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  fig.addEventListener('pointermove', function (e) {
+    var p = at(e), a = drag && drag.start;
+    if (!p || closed) { return; }
+    if (drag && drag.pan) {
+      send('pan', 'pan', [a.x, a.y, p.x - drag.last.x, p.y - drag.last.y], e.timeStamp, sum);
+      drag.last = p;
+      return;
+    }
+    send('hover', 'hover', [p.x, p.y], e.timeStamp);
+    if (!drag) { return; }
+    band.style.left = Math.min(a.bx, p.bx) + 'px';
+    band.style.top = Math.min(a.by, p.by) + 'px';
+    band.style.width = Math.abs(p.bx - a.bx) + 'px';
+    band.style.height = Math.abs(p.by - a.by) + 'px';
+    band.style.display = 'block';
+  });
+  function release(e) {
+    if (!drag) { return; }
+    var p = at(e), a = drag.start, pan = drag.pan;
+    drag = null;
+    band.style.display = 'none';
+    if (p && !pan && e.type === 'pointerup') { send('zoom', 'zoom', [a.x, a.y, p.x, p.y], e.timeStamp); }
+  }
+  fig.addEventListener('pointerup', release);
+  fig.addEventListener('pointercancel', release);
+  fig.addEventListener('dblclick', function (e) { if (!closed) { send('reset', 'reset', [], e.timeStamp); } });
+  fig.addEventListener('pointerleave', function (e) { if (!closed) { send('hover', 'leave', [], e.timeStamp); } });
+  window.addEventListener('verso:channelclosed', function (e) {
+    closed = true;
+    show(null);
+    disable((e.detail && e.detail.reason) || 'closed');
+  });
+  ch.ready('1.0');
+  hello();
+})();
+//]]></script></body></html>
+----
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="640" height="400" viewBox="0 0 640 400">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M61.009 348.567L619.328 348.567L619.328 49.55L61.009 49.55Z"/></clipPath>
+  </defs>
+  <g id="figure">
+    <path d="M0 400L640 400L640 0L0 0Z" fill="#ffffff"/>
+    <g id="figure_panel-0-0">
+      <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="1" data-x-tick-rule="all" data-y-tick-rule="all">
+        <g id="figure_panel-0-0_grid">
+          <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="5">
+            <path d="M61.009 335.497L619.328 335.497M61.009 267.394L619.328 267.394M61.009 199.29L619.328 199.29M61.009 131.187L619.328 131.187M61.009 63.084L619.328 63.084" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+          </g>
+        </g>
+        <g clip-path="url(#qc)">
+          <g id="figure_panel-0-0_layer-0">
+            <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="50">
+              <path d="M86.387 199.29L96.746 172.23L107.104 146.249L117.463 122.382L127.821 101.582L138.18 84.676L148.538 72.34L158.896 65.065L169.255 63.142L179.613 66.646L189.972 75.438L200.33 89.168L210.688 107.288L221.047 129.076L231.405 153.663L241.764 180.069L252.122 207.241L262.481 234.097L272.839 259.565L283.197 282.63L293.556 302.372L303.914 318.005L314.273 328.905L324.631 334.638L334.989 334.975L345.348 329.903L355.706 319.623L366.065 304.546L376.423 285.273L386.782 262.573L397.14 237.349L407.498 210.608L417.857 183.416L428.215 156.856L438.574 131.989L448.932 109.804L459.29 91.187L469.649 76.88L480.007 67.453L490.366 63.282L500.724 64.533L511.083 71.156L521.441 82.888L531.799 99.261L542.158 119.621L552.516 143.157L562.875 168.931L573.233 195.916L583.591 223.035L593.95 249.207" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="bottom" data-unit="s" data-prefix="" data-ticks="6" data-tick-rule="all">
+            <path d="M61.009 348.567L619.328 348.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M86.387 348.567L86.387 351.567M189.972 348.567L189.972 351.567M293.556 348.567L293.556 351.567M397.14 348.567L397.14 351.567M500.724 348.567L500.724 351.567M604.308 348.567L604.308 351.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="86.387" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+            <text x="189.972" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
+            <text x="293.556" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
+            <text x="397.14" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">6</text>
+            <text x="500.724" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">8</text>
+            <text x="604.308" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">10</text>
+            <text x="340.169" y="373.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">t [s]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="left" data-unit="m" data-prefix="" data-ticks="5" data-tick-rule="all">
+            <path d="M61.009 348.567L61.009 49.55" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M61.009 335.497L58.009 335.497M61.009 267.394L58.009 267.394M61.009 199.29L58.009 199.29M61.009 131.187L58.009 131.187M61.009 63.084L58.009 63.084" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="54.009" y="335.497" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-1.0</text>
+            <text x="54.009" y="267.394" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-0.5</text>
+            <text x="54.009" y="199.29" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.0</text>
+            <text x="54.009" y="131.187" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.5</text>
+            <text x="54.009" y="63.084" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.0</text>
+            <text x="26.333" y="199.058" transform="rotate(-90 26.333 199.058)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">x [m]</text>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
+
+0 s
+----
+svg
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="640" height="400" viewBox="0 0 640 400">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M61.009 348.567L619.328 348.567L619.328 49.55L61.009 49.55Z"/></clipPath>
+  </defs>
+  <g id="figure">
+    <path d="M0 400L640 400L640 0L0 0Z" fill="#ffffff"/>
+    <g id="figure_panel-0-0">
+      <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="1" data-x-tick-rule="all" data-y-tick-rule="all">
+        <g id="figure_panel-0-0_grid">
+          <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="5">
+            <path d="M61.009 334.985L619.328 334.985M61.009 266.989L619.328 266.989M61.009 198.992L619.328 198.992M61.009 130.995L619.328 130.995M61.009 62.998L619.328 62.998" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+          </g>
+        </g>
+        <g clip-path="url(#qc)">
+          <g id="figure_panel-0-0_layer-0">
+            <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="50">
+              <path d="M86.387 334.645L96.746 330.03L107.104 320.19L117.463 305.519L127.821 286.601L138.18 264.191L148.538 239.181L158.896 212.568L169.255 185.415L179.613 158.803L189.972 133.793L200.33 111.382L210.688 92.464L221.047 77.793L231.405 67.954L241.764 63.338L252.122 64.131L262.481 70.301L272.839 81.6L283.197 97.58L293.556 117.603L303.914 140.871L314.273 166.455L324.631 193.337L334.989 220.444L345.348 246.696L355.706 271.046L366.065 292.524L376.423 310.272L386.782 323.585L397.14 331.93L407.498 334.975L417.857 332.599L428.215 324.897L438.574 312.175L448.932 294.941L459.29 273.881L469.649 249.837L480.007 223.765L490.366 196.705L500.724 169.737L511.083 143.934L521.441 120.327L531.799 99.856L542.158 83.337L552.516 71.429L562.875 64.607L573.233 63.142L583.591 67.092L593.95 76.302" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="bottom" data-unit="s" data-prefix="" data-ticks="6" data-tick-rule="all">
+            <path d="M61.009 348.567L619.328 348.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M86.387 348.567L86.387 351.567M189.972 348.567L189.972 351.567M293.556 348.567L293.556 351.567M397.14 348.567L397.14 351.567M500.724 348.567L500.724 351.567M604.308 348.567L604.308 351.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="86.387" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+            <text x="189.972" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
+            <text x="293.556" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
+            <text x="397.14" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">6</text>
+            <text x="500.724" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">8</text>
+            <text x="604.308" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">10</text>
+            <text x="340.169" y="373.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">t [s]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="left" data-unit="m" data-prefix="" data-ticks="5" data-tick-rule="all">
+            <path d="M61.009 348.567L61.009 49.55" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M61.009 334.985L58.009 334.985M61.009 266.989L58.009 266.989M61.009 198.992L58.009 198.992M61.009 130.995L58.009 130.995M61.009 62.998L58.009 62.998" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="54.009" y="334.985" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-1.0</text>
+            <text x="54.009" y="266.989" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-0.5</text>
+            <text x="54.009" y="198.992" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.0</text>
+            <text x="54.009" y="130.995" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.5</text>
+            <text x="54.009" y="62.998" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.0</text>
+            <text x="26.333" y="199.058" transform="rotate(-90 26.333 199.058)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">x [m]</text>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
+
+1.5 s
+----
+svg
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="640" height="400" viewBox="0 0 640 400">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M64.345 348.567L622.664 348.567L622.664 49.55L64.345 49.55Z"/></clipPath>
+  </defs>
+  <g id="figure">
+    <path d="M0 400L640 400L640 0L0 0Z" fill="#ffffff"/>
+    <g id="figure_panel-0-0">
+      <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="1" data-x-tick-rule="all" data-y-tick-rule="all">
+        <g id="figure_panel-0-0_grid">
+          <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="7">
+            <path d="M64.345 319.544L622.664 319.544M64.345 278.88L622.664 278.88M64.345 238.215L622.664 238.215M64.345 197.551L622.664 197.551M64.345 156.886L622.664 156.886M64.345 116.222L622.664 116.222M64.345 75.557L622.664 75.557" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+          </g>
+        </g>
+        <g clip-path="url(#qc)">
+          <g id="figure_panel-0-0_layer-0">
+            <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="50">
+              <path d="M-77.719 400.363L-54.586 393.463L-31.453 378.753L-8.319 356.818L14.814 328.534L37.947 295.028L61.08 257.636L84.213 217.849L107.347 177.252L130.48 137.465L153.613 100.073L176.746 66.567L199.879 38.283L223.013 16.348L246.146 1.638L269.279 -5.262L292.412 -4.077L315.545 5.147L338.678 22.041L361.812 45.932L384.945 75.868L408.078 110.655L431.211 148.906L454.344 189.096L477.478 229.624L500.611 268.873L523.744 305.278L546.877 337.389L570.01 363.925L593.144 383.827L616.277 396.304L639.41 400.857L662.543 397.305L685.676 385.789L708.81 366.769L731.943 341.003L755.076 309.517L778.209 273.568L801.342 234.588L824.475 194.132L847.609 153.812L870.742 115.236L893.875 79.941L917.008 49.335L940.141 24.638L963.275 6.834L986.408 -3.366L1009.541 -5.556L1032.674 0.351L1055.807 14.119" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="bottom" data-unit="s" data-prefix="" data-ticks="5" data-tick-rule="all">
+            <path d="M64.345 348.567L622.664 348.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M153.613 348.567L153.613 351.567M269.279 348.567L269.279 351.567M384.945 348.567L384.945 351.567M500.611 348.567L500.611 351.567M616.277 348.567L616.277 351.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="153.613" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
+            <text x="269.279" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">3</text>
+            <text x="384.945" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
+            <text x="500.611" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">5</text>
+            <text x="616.277" y="355.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">6</text>
+            <text x="343.505" y="373.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">t [s]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="x [mm]" data-side="left" data-unit="mm" data-prefix="milli" data-ticks="7" data-tick-rule="all">
+            <path d="M64.345 348.567L64.345 49.55" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M64.345 319.544L61.345 319.544M64.345 278.88L61.345 278.88M64.345 238.215L61.345 238.215M64.345 197.551L61.345 197.551M64.345 156.886L61.345 156.886M64.345 116.222L61.345 116.222M64.345 75.557L61.345 75.557" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="57.345" y="319.544" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-600</text>
+            <text x="57.345" y="278.88" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-400</text>
+            <text x="57.345" y="238.215" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">-200</text>
+            <text x="57.345" y="197.551" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0</text>
+            <text x="57.345" y="156.886" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">200</text>
+            <text x="57.345" y="116.222" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">400</text>
+            <text x="57.345" y="75.557" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">600</text>
+            <text x="26.333" y="199.058" transform="rotate(-90 26.333 199.058)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">x [mm]</text>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
+
+1.5 s
+----
+same
+1.5 s
+----
+64.34533333333334
+49.55
+622.664
+348.56666666666666
+left
+t = 3.266 s
+x = -12 mm

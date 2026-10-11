@@ -326,3 +326,62 @@ module ``the page's script`` =
         let s = Html.viewScript.Force()
         Assert.DoesNotContain("</script", s.ToLowerInvariant())
         Assert.DoesNotContain("]]>", s)
+
+// ======================================================================================
+// Gate 9: below the threshold, the SVG path is as 0.6.0 drew it
+// ======================================================================================
+
+/// Three live figures under the canvas threshold, each written out as everything the host bridge
+/// gives Verso: the live and the static page, the reply after a resize, and the answers to a
+/// slider, a zoom and a hover. Recorded before phase 5 touched `Html.fs`, so a change to the SVG
+/// path shows as a changed baseline.
+module ``the SVG path below the threshold`` =
+
+    let private slider () =
+        interact {
+            let! f = Control.slider Derived.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
+            return Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
+        }
+
+    let private time () =
+        interact {
+            let! t = Control.time "t" 0.0<s> 10.0<s>
+            let ts = Array.init 50 (fun i -> float i * 0.2<s>)
+            return Chart.line U.second U.metre ts (ts |> Array.map (fun s -> sin (float (s - t)) * 1.0<m>))
+        }
+
+    let private cloud () =
+        interact {
+            let! k = Control.slider U.one "spread" 0.1 2.0 1.0
+            let rng = Random(7)
+            let x = Array.init 2000 (fun _ -> rng.NextDouble() * 1.0<m>)
+            let y = Array.init 2000 (fun _ -> (rng.NextDouble() - 0.5) * k * 1.0<V>)
+            return Chart.scatter U.metre Derived.volt x y
+        }
+
+    let private transcript (value: obj) =
+        let s0 = Html.liveInitForHost value
+        let step (state: obj) (kind: string) (payload: string) = Html.liveStepForHost (value, state, kind, payload)
+        let sized = step s0 "size" "[640,400]"
+        let set = step sized "set" "[0,1.5]"
+        let zoomed = step set "zoom" "[150,100,400,300]"
+        let hovered = step zoomed "hover" "[300,200]"
+
+        String.concat
+            "\n----\n"
+            [ Html.liveDocumentForHost (value, s0, true)
+              Html.liveDocumentForHost (value, s0, false)
+              String.concat "\n" (Html.liveReplyForHost (value, sized))
+              String.concat "\n" (Html.liveAnswerForHost (value, sized, set))
+              String.concat "\n" (Html.liveAnswerForHost (value, set, zoomed))
+              String.concat "\n" (Html.liveAnswerForHost (value, zoomed, hovered))
+              String.concat "\n" (Html.liveReadoutForHost (value, hovered)) ]
+
+    [<Fact>]
+    let ``a slider figure`` () = Golden.check "widget/slider.txt" (transcript (box (slider ())))
+
+    [<Fact>]
+    let ``a time control`` () = Golden.check "widget/time.txt" (transcript (box (time ())))
+
+    [<Fact>]
+    let ``two thousand points`` () = Golden.check "widget/cloud-2000.txt" (transcript (box (cloud ())))
