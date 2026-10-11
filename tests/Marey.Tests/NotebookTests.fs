@@ -919,6 +919,23 @@ module LiveFormatter =
             Assert.Equal(Html.widgetFigure l s1, hello.["svg"] :?> string)
             Assert.False(hello.ContainsKey "patch"))
 
+    /// Step F (D160) — a figure above the threshold is a page in a frame, with no channel, because a
+    /// host inserts an `Html` output as markup and runs none of its scripts; one below it is markup.
+    [<Fact>]
+    let ``a large figure is formatted as a page, a small one as markup`` () =
+        RenderModes.withRenderMode RenderMode.Auto (fun () ->
+            let host = FakeHost()
+            let rng = Random(5)
+            let big = Chart.scatter U.metre U.metre (Array.init 8000 (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init 8000 (fun _ -> rng.NextDouble() * 1.0<m>))
+            let output = format (box big) (LiveContext(host, Some cell))
+            Assert.Equal(CellOutput.WidgetMimeType, output.MimeType)
+            Assert.Contains("<canvas id=\"cv\"", output.Content)
+            Assert.Empty(host.Opened)
+
+            let small = Chart.scatter U.metre U.metre [| 0.0<m>; 1.0<m> |] [| 0.0<m>; 1.0<m> |]
+            let output = format (box small) (LiveContext(host, Some cell))
+            Assert.Equal("text/html", output.MimeType))
+
     /// Step F (D159) — the same figure on a canvas page: a local change is posted as a patch's
     /// bytes, and a hello as the whole scene with its size.
     [<Fact>]

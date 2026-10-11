@@ -99,6 +99,11 @@ type MareyFormatter() =
             match Live.format value context with
             | Some output -> output
             | None ->
+            // Step F (D160) — a figure drawn on a canvas is a page in a frame, because an `Html`
+            // output is inserted as markup and its script would never run.
+            match Bridge.document context.MaxWidth context.MaxHeight value with
+            | Some doc -> Task.FromResult(CellOutput.Widget doc)
+            | None ->
                 // `CanFormat` said yes, but it said yes a moment ago and against a probe. If the
                 // render comes back empty the honest move is an empty HTML output rather than a
                 // throw: the resolver treats a throwing formatter as broken and skips it for the rest
