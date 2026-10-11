@@ -20,6 +20,7 @@
     <Compile Include="GpuMarkers.fs" />
     <Compile Include="GpuCompute.fs" />
     <Compile Include="GpuContext.fs" />
+    <Compile Include="GpuLic.fs" />
     <Compile Include="GpuRenderer.fs" />
     <Compile Include="GpuSim.fs" />
     <Compile Include="WindowInput.fs" />

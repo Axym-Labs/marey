@@ -839,7 +839,7 @@ module ``line-integral convolution`` =
     let private white (v: float) = if Double.IsNaN v then None else Some Color.white
 
     let private image (options: LicOptions) (f: FieldPayload<nd>) =
-        match FieldMarks.licImage plot white options f with
+        match FieldMarks.licImage TextMeasure.approx plot white options f with
         | Some(img, _) -> img
         | None -> failwith "no image"
 

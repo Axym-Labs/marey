@@ -41,6 +41,37 @@ type TextMetrics =
 type ITextMeasurer =
     abstract Measure: FontSpec -> string -> TextMetrics
 
+/// D150 — a line integral convolution, posed for a backend to compute: a vector field on a
+/// rectilinear grid in panel units, a raster over the grid, one noise value per raster pixel, and
+/// the kernel. Raster rows run from the bottom, x fastest.
+type LicJob =
+    { /// Node coordinates in panel units, strictly increasing.
+      Xs: float[]
+      Ys: float[]
+      /// The components at the nodes, rows x fastest, in panel units per unit of time.
+      U: float[]
+      W: float[]
+      /// The raster, in pixels, covering the grid's extent.
+      Width: int
+      Height: int
+      /// One value per raster pixel.
+      Noise: float[]
+      /// Samples each way from a pixel's centre, `Step` raster pixels apart, by RK4 on the unit
+      /// direction.
+      HalfLength: int
+      Step: float
+      /// A speed, in raster pixels per unit of time, at or below which the field has no direction.
+      Slowest: float }
+
+/// D150 — what a measurer offers when the backend it measures for can convolve. A figure is
+/// compiled with its backend's measurer (D62), so the measurer is how compilation reaches the
+/// backend: `FieldMarks` asks the compile measurer for this, and a measurer that wraps another
+/// forwards it.
+type ILicConvolver =
+    /// Each raster pixel's mean of the noise along the streamline through its centre, NaN where
+    /// the field has no direction there; `ValueNone` when this measurer cannot.
+    abstract Convolve: LicJob -> float[] voption
+
 /// §5 — "`Capabilities` matters because TikZ and SVG have genuinely different power. The
 /// compiler layer queries caps and *degrades* rather than silently producing wrong output."
 ///

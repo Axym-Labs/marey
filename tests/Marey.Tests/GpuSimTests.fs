@@ -163,3 +163,148 @@ module ``LBM on the GPU is LBM on the CPU`` =
         GpuTests.withGpu (fun gpu ->
             let e = Assert.Throws<ArgumentException>(fun () -> GpuSim.lbmWith 2 gpu cylinderOptions 0.0<s> dt (cylinder ()) |> ignore)
             Assert.Contains("0.0005 s", e.Message))
+
+// ======================================================================================
+// Gate 9 — GPU LIC (phase 5)
+// ======================================================================================
+
+/// The per-pixel LIC the shader computes, on the CPU in float64: the oracle (D140), and an
+/// `ILicConvolver` like the GPU's, so `FieldMarks` runs it through the same stretch and colour.
+type private PerPixelLic() =
+    interface ITextMeasurer with
+        member _.Measure spec text = TextMeasure.approx.Measure spec text
+
+    interface ILicConvolver with
+        member _.Convolve(job: LicJob) =
+            let nx, ny = job.Xs.Length, job.Ys.Length
+            let rw, rh = job.Width, job.Height
+
+            let locate (cs: float[]) (c: float) =
+                if c < cs.[0] || c > cs.[cs.Length - 1] then
+                    ValueNone
+                else
+                    let mutable lo = 0
+                    let mutable hi = cs.Length - 1
+
+                    while hi - lo > 1 do
+                        let mid = (lo + hi) / 2
+                        if cs.[mid] <= c then lo <- mid else hi <- mid
+
+                    ValueSome(struct (lo, (c - cs.[lo]) / (cs.[lo + 1] - cs.[lo])))
+
+            let field (t: float[]) i j fx fy =
+                let a = t.[j * nx + i] + (t.[j * nx + i + 1] - t.[j * nx + i]) * fx
+                let b = t.[(j + 1) * nx + i] + (t.[(j + 1) * nx + i + 1] - t.[(j + 1) * nx + i]) * fx
+                a + (b - a) * fy
+
+            let dir (rx: float) (ry: float) =
+                if rx < 0.0 || rx > float rw || ry < 0.0 || ry > float rh then
+                    ValueNone
+                else
+                    let x = job.Xs.[0] + rx / float rw * (job.Xs.[nx - 1] - job.Xs.[0])
+                    let y = job.Ys.[0] + ry / float rh * (job.Ys.[ny - 1] - job.Ys.[0])
+
+                    match locate job.Xs x, locate job.Ys y with
+                    | ValueSome(struct (i, fx)), ValueSome(struct (j, fy)) ->
+                        let u = field job.U i j fx fy
+                        let v = field job.W i j fx fy
+                        let s = sqrt (u * u + v * v)
+                        if Double.IsFinite s && s > job.Slowest then ValueSome(struct (u / s, v / s)) else ValueNone
+                    | _ -> ValueNone
+
+            let rk4 (x: float) (y: float) (s: float) =
+                match dir x y with
+                | ValueNone -> ValueNone
+                | ValueSome(struct (ax, ay)) ->
+                    match dir (x + s / 2.0 * ax) (y + s / 2.0 * ay) with
+                    | ValueNone -> ValueNone
+                    | ValueSome(struct (bx, by)) ->
+                        match dir (x + s / 2.0 * bx) (y + s / 2.0 * by) with
+                        | ValueNone -> ValueNone
+                        | ValueSome(struct (cx, cy)) ->
+                            match dir (x + s * cx) (y + s * cy) with
+                            | ValueNone -> ValueNone
+                            | ValueSome(struct (dx, dy)) ->
+                                if ax * bx + ay * by < 0.0 || bx * cx + by * cy < 0.0 || cx * dx + cy * dy < 0.0 then ValueNone
+                                else ValueSome(struct (x + s / 6.0 * (ax + 2.0 * bx + 2.0 * cx + dx), y + s / 6.0 * (ay + 2.0 * by + 2.0 * cy + dy)))
+
+            let noise (x: float) (y: float) =
+                job.Noise.[(min (rh - 1) (max 0 (int (floor y)))) * rw + min (rw - 1) (max 0 (int (floor x)))]
+
+            ValueSome(
+                Array.Parallel.init (rw * rh) (fun k ->
+                    let sx, sy = float (k % rw) + 0.5, float (k / rw) + 0.5
+
+                    if (dir sx sy).IsNone then
+                        nan
+                    else
+                        let mutable sum = noise sx sy
+                        let mutable count = 1.0
+
+                        for sign in [ 1.0; -1.0 ] do
+                            let mutable x, y, go, m = sx, sy, true, 0
+
+                            while go && m < job.HalfLength do
+                                match rk4 x y (sign * job.Step) with
+                                | ValueSome(struct (a, b)) ->
+                                    x <- a
+                                    y <- b
+                                    sum <- sum + noise x y
+                                    count <- count + 1.0
+                                    m <- m + 1
+                                | ValueNone -> go <- false
+
+                        sum / count)
+            )
+
+module ``GPU LIC is the per-pixel convolution`` =
+
+    /// A spiral on a grid uneven in x, as a log axis makes it, with a hole of missing values.
+    let private payload: FieldPayload<nd> =
+        let g = 41
+        let xs = Array.init g (fun i -> (float i / float (g - 1)) ** 1.3 * 1.0<nd>)
+        let ys = Array.init g (fun j -> float j / float (g - 1) * 1.0<nd>)
+
+        let at (k: int) =
+            let x, y = float xs.[k % g] - 0.5, float ys.[k / g] - 0.5
+            if x * x + y * y < 0.003 then nan, nan else -y + 0.2 * x, x + 0.2 * y
+
+        { Xs = xs
+          Ys = ys
+          Values = Array.create (g * g) 1.0
+          U = Array.init (g * g) (at >> fst)
+          W = Array.init (g * g) (at >> snd) }
+
+    let private plot: Extent<px> = { Width = 600.0<px>; Height = 400.0<px> }
+    let private white (_: float) = Some Color.white
+    let private image (m: ITextMeasurer) = (FieldMarks.licImage m plot white Field.licDefaults payload).Value |> fst
+
+    let private brightness (i: Image) = Array.init (i.Width * i.Height) (fun k -> float i.Rgba.[4 * k])
+
+    let private correlation (a: float[]) (b: float[]) =
+        let ma, mb = Array.average a, Array.average b
+        let c = Array.map2 (fun x y -> (x - ma) * (y - mb)) a b |> Array.sum
+        c / sqrt ((a |> Array.sumBy (fun x -> (x - ma) ** 2.0)) * (b |> Array.sumBy (fun y -> (y - mb) ** 2.0)))
+
+    [<Fact>]
+    let ``the GPU's image is the CPU per-pixel image, 99% of pixels within 2 of 255`` () =
+        GpuTests.withGpu (fun gpu ->
+            let g = image gpu.Measurer
+            let c = image (PerPixelLic())
+            let off = Array.map2 (fun (a: byte) (b: byte) -> abs (int a - int b)) g.Rgba c.Rgba |> Array.chunkBySize 4 |> Array.filter (Array.exists (fun d -> d > 2)) |> Array.length
+            let share = float off / float (g.Width * g.Height)
+            Console.WriteLine(sprintf "GPU LIC against the CPU per-pixel LIC: %.3f%% of pixels more than 2 apart (%s)" (100.0 * share) gpu.Description)
+            Assert.True(share < 0.01, sprintf "%.2f%% of pixels differ by more than 2" (100.0 * share)))
+
+    [<Fact>]
+    let ``the GPU's image correlates with fast LIC's at 0.85 or more`` () =
+        GpuTests.withGpu (fun gpu ->
+            let r = correlation (brightness (image gpu.Measurer)) (brightness (image TextMeasure.approx))
+            Console.WriteLine(sprintf "GPU LIC against fast LIC: correlation %.3f" r)
+            Assert.True(r >= 0.85, sprintf "correlation %g" r))
+
+    [<Fact>]
+    let ``a memoising measurer forwards the convolution, and the approximate one does not convolve`` () =
+        GpuTests.withGpu (fun gpu ->
+            Assert.Equal<byte[]>((image gpu.Measurer).Rgba, (image (MemoTextMeasurer gpu.Measurer)).Rgba)
+            Assert.NotEqual<byte[]>((image gpu.Measurer).Rgba, (image TextMeasure.approx).Rgba))

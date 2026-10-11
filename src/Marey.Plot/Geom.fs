@@ -553,7 +553,7 @@ module Geom =
         | FieldQuiver key -> FieldMarks.arrows mapPt measurer plotSize background stroke st.Font colourOf false key field
         | FieldDirections -> FieldMarks.arrows mapPt measurer plotSize background stroke st.Font colourOf true None field
         | FieldStreamlines separation -> FieldMarks.streamlines mapPt plotSize stroke colourOf separation field
-        | FieldLic options -> FieldMarks.lic plotSize colourOf options field
+        | FieldLic options -> FieldMarks.lic measurer plotSize colourOf options field
         | FieldHeatmap smooth -> FieldMarks.heatmap colourOf smooth field
         | FieldContours levels ->
             FieldMarks.contours

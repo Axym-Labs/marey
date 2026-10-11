@@ -66,11 +66,23 @@ type GpuRenderer(?options: SkiaOptions, ?instancedMarkers: bool) =
                 )
             )
 
-    let measurer = shaping :> ITextMeasurer
+    let mutable disposed = false
+
+    // The measurer to lay out with is also the way compilation reaches this GPU (D150): a LIC
+    // compiled against it is convolved here, per pixel, rather than traced on the CPU.
+    let measurer =
+        { new ITextMeasurer with
+            member _.Measure spec text = (shaping :> ITextMeasurer).Measure spec text
+          interface ILicConvolver with
+              member _.Convolve job =
+                  if disposed then
+                      ValueNone
+                  else
+                      match thread.Invoke(fun () -> context.Compute(fun c -> GpuLic.run c job)) with
+                      | Some intensities -> ValueSome intensities
+                      | None -> ValueNone }
 
     let caps = GpuContext.Capabilities
-
-    let mutable disposed = false
 
     /// Draw on the render thread and read the pixels back, RGBA8 premultiplied, top row first.
     let draw (extent: Extent<px>) (node: Node) : int * int * byte[] =
@@ -102,7 +114,8 @@ type GpuRenderer(?options: SkiaOptions, ?instancedMarkers: bool) =
     /// The capabilities the renderer draws with. `Degrade.forCaps` is applied for the caller.
     member _.Caps: Capabilities = caps
 
-    /// The measurer to lay out with: the one the renderer draws text with. Thread-safe (D77).
+    /// The measurer to lay out with: the one the renderer draws text with. Thread-safe (D77). A
+    /// figure compiled with it has its LIC convolved on this GPU, per pixel (D150).
     member _.Measurer: ITextMeasurer = measurer
 
     /// Every font the renderer has opened, as `SkiaBackend.ResolvedFaces` reports it.
