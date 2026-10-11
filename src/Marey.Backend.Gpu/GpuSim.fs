@@ -446,6 +446,159 @@ void main() {
 
         c.Read u, c.Read v, c.Read d, c.Read "stam.p"
 
+module internal GpuLbm =
+
+    /// `Lbm.step` for one cell, as its CPU loop has it: gather with bounce-back and the edges'
+    /// rules, then BGK in deviation form. Populations 1–4 in A, 5–8 in B, the rest population in
+    /// C's first channel.
+    let step =
+        """#version 330 core
+uniform sampler2D A; uniform sampler2D B; uniform sampler2D C; uniform sampler2D S;
+uniform int nx; uniform int ny; uniform ivec4 edges; uniform vec4 inLR; uniform vec4 inBT;
+uniform float tau; uniform float fx; uniform float fy;
+layout(location = 0) out vec4 oA; layout(location = 1) out vec4 oB; layout(location = 2) out vec4 oC;
+const int cx[9] = int[9](0, 1, 0, -1, 0, 1, -1, -1, 1);
+const int cy[9] = int[9](0, 0, 1, 0, -1, 1, 1, -1, -1);
+const int opp[9] = int[9](0, 3, 4, 1, 2, 7, 8, 5, 6);
+const float w[9] = float[9](4.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0, 1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0);
+float pop(int p, int i, int j) {
+    ivec2 q = ivec2(i, j);
+    if (p == 0) return texelFetch(C, q, 0).x;
+    if (p <= 4) return texelFetch(A, q, 0)[p - 1];
+    return texelFetch(B, q, 0)[p - 5];
+}
+bool solid(int i, int j) { return texelFetch(S, ivec2(i, j), 0).x > 0.5; }
+float equilibrium(int p, float dr, float ux, float uy) {
+    float cu = 3.0 * (float(cx[p]) * ux + float(cy[p]) * uy);
+    return w[p] * (dr + (1.0 + dr) * (cu + 0.5 * cu * cu - 1.5 * (ux * ux + uy * uy)));
+}
+void main() {
+    ivec2 q = ivec2(gl_FragCoord.xy);
+    int i = q.x; int j = q.y;
+    float f[9];
+    if (solid(i, j)) {
+        for (int p = 0; p < 9; p++) f[p] = pop(p, i, j);
+    } else {
+        float er = 0.0; float eu = 0.0; float ev = 0.0;
+        if (i == 0 || j == 0 || i == nx - 1 || j == ny - 1) {
+            float mx = 0.0; float my = 0.0;
+            for (int p = 0; p < 9; p++) {
+                float v = pop(p, i, j);
+                er += v; mx += float(cx[p]) * v; my += float(cy[p]) * v;
+            }
+            eu = mx / (1.0 + er);
+            ev = my / (1.0 + er);
+        }
+        for (int p = 0; p < 9; p++) {
+            int si = i - cx[p];
+            int sj = j - cy[p];
+            int xe = -1; float xu = 0.0; float xv = 0.0;
+            if (si < 0) { xe = edges.x; xu = inLR.x; xv = inLR.y; } else if (si >= nx) { xe = edges.y; xu = inLR.z; xv = inLR.w; }
+            int ye = -1; float yu = 0.0; float yv = 0.0;
+            if (sj < 0) { ye = edges.z; yu = inBT.x; yv = inBT.y; } else if (sj >= ny) { ye = edges.w; yu = inBT.z; yv = inBT.w; }
+            float v;
+            if (xe == 1 || ye == 1) v = pop(opp[p], i, j);
+            else if (xe == 2) v = equilibrium(p, er, xu, xv);
+            else if (ye == 2) v = equilibrium(p, er, yu, yv);
+            else if (xe == 3 || ye == 3) v = equilibrium(p, 0.0, eu, ev);
+            else {
+                int ci = xe == 0 ? (si + nx) % nx : si;
+                int cj = ye == 0 ? (sj + ny) % ny : sj;
+                v = solid(ci, cj) ? pop(opp[p], i, j) : pop(p, ci, cj);
+            }
+            f[p] = v;
+        }
+        float dr = 0.0; float mx = 0.0; float my = 0.0;
+        for (int p = 0; p < 9; p++) { dr += f[p]; mx += float(cx[p]) * f[p]; my += float(cy[p]) * f[p]; }
+        float rho = 1.0 + dr;
+        float ux = (mx + tau * fx) / rho;
+        float uy = (my + tau * fy) / rho;
+        for (int p = 0; p < 9; p++) f[p] = f[p] - (f[p] - equilibrium(p, dr, ux, uy)) / tau;
+    }
+    oA = vec4(f[1], f[2], f[3], f[4]);
+    oB = vec4(f[5], f[6], f[7], f[8]);
+    oC = vec4(f[0], 0.0, 0.0, 0.0);
+}
+"""
+
+    /// One call: upload, `substeps` ticks, read back. `edges` as `Lbm` codes them (0 periodic,
+    /// 1 wall, 2 inflow, 3 outflow), left, right, bottom, top, with each inflow's lattice velocity.
+    let run
+        (c: GpuCompute)
+        (nx: int)
+        (ny: int)
+        (populations: float[])
+        (solid: bool[])
+        (edges: (int * float * float)[])
+        (tau: float)
+        (fx: float)
+        (fy: float)
+        (substeps: int)
+        =
+        let gl = c.GL
+        let n = nx * ny
+
+        for set in [ "a"; "b" ] do
+            for part in [ "1"; "5"; "0" ] do
+                c.Surface(sprintf "lbm.%s.%s" set part, nx, ny, true) |> ignore
+
+            c.Group("lbm." + set, [ "lbm." + set + ".1"; "lbm." + set + ".5"; "lbm." + set + ".0" ])
+
+        c.Surface("lbm.solid", nx, ny, false) |> ignore
+
+        let plane (first: int) (count: int) =
+            Array.init (4 * n) (fun m ->
+                let ch, k = m % 4, m / 4
+                if ch < count then populations.[(first + ch) * n + k] else 0.0)
+
+        c.Upload("lbm.a.1", plane 1 4)
+        c.Upload("lbm.a.5", plane 5 4)
+        c.Upload("lbm.a.0", plane 0 1)
+        c.Upload("lbm.solid", solid |> Array.map (fun b -> if b then 1.0 else 0.0))
+
+        let program = c.Program("lbm.step", step)
+        let code k = let e, _, _ = edges.[k] in e
+        let vel k = let _, u, v = edges.[k] in float32 u, float32 v
+        let mutable cur, next = "lbm.a", "lbm.b"
+
+        for _ in 1..substeps do
+            c.Pass(
+                program,
+                next,
+                [ "A", cur + ".1"; "B", cur + ".5"; "C", cur + ".0"; "S", "lbm.solid" ],
+                fun p ->
+                    gl.Uniform1(c.Uniform(p, "nx"), nx)
+                    gl.Uniform1(c.Uniform(p, "ny"), ny)
+                    gl.Uniform4(c.Uniform(p, "edges"), code 0, code 1, code 2, code 3)
+                    let lu, lv = vel 0
+                    let ru, rv = vel 1
+                    let bu, bv = vel 2
+                    let tu, tv = vel 3
+                    gl.Uniform4(c.Uniform(p, "inLR"), lu, lv, ru, rv)
+                    gl.Uniform4(c.Uniform(p, "inBT"), bu, bv, tu, tv)
+                    gl.Uniform1(c.Uniform(p, "tau"), float32 tau)
+                    gl.Uniform1(c.Uniform(p, "fx"), float32 fx)
+                    gl.Uniform1(c.Uniform(p, "fy"), float32 fy)
+            )
+
+            let t = cur
+            cur <- next
+            next <- t
+
+        let out = Array.zeroCreate (9 * n)
+        let a = c.Read(cur + ".1")
+        let b = c.Read(cur + ".5")
+        let z = c.Read(cur + ".0")
+
+        for k in 0 .. n - 1 do
+            out.[k] <- z.[4 * k]
+
+            for ch in 0..3 do
+                out.[(1 + ch) * n + k] <- a.[4 * k + ch]
+                out.[(5 + ch) * n + k] <- b.[4 * k + ch]
+
+        out
+
 /// D147 — GPU twins of `Marey.Sim`'s grid solvers, stepping the same states on a renderer's GPU.
 ///
 /// ```fsharp
@@ -528,3 +681,33 @@ module GpuSim =
     /// `Stam.step` on the GPU of a renderer: the same `Fluid`, the same options, one step a call.
     let stam<[<Measure>] 'x, [<Measure>] 'q> (gpu: GpuRenderer) (options: StamOptions<'x, 'q>) : Step<Fluid<'x, 'q>, s> =
         stamWith 1 gpu options
+
+    /// `Lbm.step` on the GPU, `substeps` ticks for each call: a call steps `substeps` times the
+    /// lattice's tick, with one upload and one read-back.
+    let lbmWith<[<Measure>] 'x> (substeps: int) (gpu: GpuRenderer) (options: LbmOptions<'x>) : Step<Lattice<'x>, s> =
+        if substeps < 1 then
+            invalidArg "substeps" (sprintf "Marey: a GPU step runs at least one step a call; got %d." substeps)
+
+        fun _ h l ->
+            let tau = Lbm.validate options l (h / float substeps)
+            let scale = float l.Tick / float l.Spacing
+            let toLattice = float l.Tick * float l.Tick / float l.Spacing
+
+            let edge (e: LatticeEdge<'x>) =
+                match e with
+                | LatticeEdge.Periodic -> 0, 0.0, 0.0
+                | LatticeEdge.Wall -> 1, 0.0, 0.0
+                | LatticeEdge.Inflow(u, v) -> 2, float u * scale, float v * scale
+                | LatticeEdge.Outflow -> 3, 0.0, 0.0
+
+            let edges = [| edge options.Left; edge options.Right; edge options.Bottom; edge options.Top |]
+            let fx = float (fst options.Force) * toLattice
+            let fy = float (snd options.Force) * toLattice
+
+            let f =
+                gpu.Compute(fun c -> GpuLbm.run c l.Nx l.Ny l.Populations l.Solid edges tau fx fy substeps)
+
+            { l with Populations = f }
+
+    /// `Lbm.step` on the GPU of a renderer: the same `Lattice`, the same options, one tick a call.
+    let lbm<[<Measure>] 'x> (gpu: GpuRenderer) (options: LbmOptions<'x>) : Step<Lattice<'x>, s> = lbmWith 1 gpu options

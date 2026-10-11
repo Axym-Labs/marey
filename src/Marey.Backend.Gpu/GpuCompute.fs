@@ -36,6 +36,7 @@ void main() {
     let programs = Dictionary<string, uint32>()
     let locations = Dictionary<uint32, Dictionary<string, int>>()
     let textures = Dictionary<string, uint32 * uint32 * int * int * bool>()
+    let groups = Dictionary<string, uint32 * string list * int * int>()
 
     let compileShader (kind: ShaderType) (name: string) (source: string) =
         let shader = gl.CreateShader kind
@@ -93,6 +94,14 @@ void main() {
                 let t, f, _, _, _ = old
                 gl.DeleteFramebuffer f
                 gl.DeleteTexture t
+
+                // A group over the old texture would keep writing it: GL may give the new texture
+                // the old one's name, so a group is dropped with any surface under it, not
+                // checked by name.
+                for g in [ for KeyValue(g, (_, under, _, _)) in groups do if List.contains name under then yield g ] do
+                    let gf, _, _, _ = groups.[g]
+                    gl.DeleteFramebuffer gf
+                    groups.Remove g |> ignore
 
             let t = gl.GenTexture()
             gl.BindTexture(TextureTarget.Texture2D, t)
@@ -156,10 +165,46 @@ void main() {
         gl.ClearColor(0.0f, 0.0f, 0.0f, 0.0f)
         gl.Clear ClearBufferMask.ColorBufferBit
 
-    /// One pass: `program` drawn over all of `target`, with `inputs` bound as samplers by name and
-    /// `set` given the chance to set the other uniforms.
+    /// A framebuffer over several surfaces of one size, by name, for a pass with as many outputs:
+    /// `layout(location = k)` writes the k-th. Dropped when a surface under it is rebuilt.
+    member this.Group(name: string, surfaces: string list) =
+        let entries = surfaces |> List.map this.Entry
+        let ids = entries |> List.map (fun (t, _, _, _, _) -> t)
+        let _, _, w, h, _ = List.head entries
+
+        match groups.TryGetValue name with
+        | true, (_, under, _, _) when under = surfaces -> ()
+        | found, old ->
+            if found then
+                let f, _, _, _ = old
+                gl.DeleteFramebuffer f
+
+            let f = gl.GenFramebuffer()
+            gl.BindFramebuffer(FramebufferTarget.Framebuffer, f)
+
+            ids
+            |> List.iteri (fun k t ->
+                gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, enum<FramebufferAttachment> (int FramebufferAttachment.ColorAttachment0 + k), TextureTarget.Texture2D, t, 0))
+
+            let buffers = Array.init ids.Length (fun k -> enum<GLEnum> (int GLEnum.ColorAttachment0 + k))
+            gl.DrawBuffers(uint32 buffers.Length, ReadOnlySpan<GLEnum>(buffers))
+            let status = gl.CheckFramebufferStatus FramebufferTarget.Framebuffer
+
+            if status <> GLEnum.FramebufferComplete then
+                invalidOp (sprintf "Marey.GpuCompute: a group of %d float targets is incomplete here (%A)." ids.Length status)
+
+            groups.[name] <- (f, surfaces, w, h)
+
+    /// One pass: `program` drawn over all of `target`, a surface or a group, with `inputs` bound as
+    /// samplers by name and `set` given the chance to set the other uniforms.
     member this.Pass(program: uint32, target: string, inputs: (string * string) list, set: uint32 -> unit) =
-        let _, f, w, h, _ = this.Entry target
+        let f, w, h =
+            match groups.TryGetValue target with
+            | true, (f, _, w, h) -> f, w, h
+            | _ ->
+                let _, f, w, h, _ = this.Entry target
+                f, w, h
+
         gl.UseProgram program
 
         inputs
@@ -197,6 +242,9 @@ void main() {
 
     interface IDisposable with
         member _.Dispose() =
+            for f, _, _, _ in groups.Values do
+                gl.DeleteFramebuffer f
+
             for t, f, _, _, _ in textures.Values do
                 gl.DeleteFramebuffer f
                 gl.DeleteTexture t

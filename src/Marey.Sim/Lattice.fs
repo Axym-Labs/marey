@@ -241,8 +241,9 @@ module Lbm =
         | LatticeEdge.Inflow(u, v) -> struct (2, float u * scale, float v * scale)
         | LatticeEdge.Outflow -> struct (3, 0.0, 0.0)
 
-    /// The checks a step makes before it runs, shared with the GPU's.
-    let internal check<[<Measure>] 'x> (options: LbmOptions<'x>) (l: Lattice<'x>) (h: float<s>) =
+    /// The checks a step makes before it runs, refusing with the numbers, and the relaxation time
+    /// it will use. Public for a step of one's own on these states, as `GpuSim.lbm` is.
+    let validate<[<Measure>] 'x> (options: LbmOptions<'x>) (l: Lattice<'x>) (h: float<s>) : float =
         if abs (float h - float l.Tick) > 1e-12 * float l.Tick then
             invalidArg
                 "h"
@@ -289,7 +290,7 @@ module Lbm =
     /// solid, takes an edge's populations by its rule, and relaxes towards the equilibrium.
     let step<[<Measure>] 'x> (options: LbmOptions<'x>) : Step<Lattice<'x>, s> =
         fun _ h l ->
-            let t = check options l h
+            let t = validate options l h
             let nx, ny = l.Nx, l.Ny
             let n = nx * ny
             let scale = float l.Tick / float l.Spacing

@@ -83,3 +83,83 @@ module ``a GPU trajectory seeks to what a run reaches`` =
                     (bits s.UFaces = bits run.[k].UFaces && bits s.VFaces = bits run.[k].VFaces && bits s.Dye = bits run.[k].Dye),
                     sprintf "the seek to step %d differs from the run" k
                 ))
+
+// ======================================================================================
+// Gates 6, 7 and 8 for lattice Boltzmann (phase 4)
+// ======================================================================================
+
+module ``LBM on the GPU is LBM on the CPU`` =
+
+    let private dx = 1e-3<m>
+    let private dt = 1e-3<s>
+
+    let private finite (xs: float<'u>[]) = xs |> Array.filter (fun v -> not (Double.IsNaN(float v)))
+
+    /// Flow past a cylinder: an inflow, an outflow, walls, and a kick to break the symmetry.
+    let private cylinder () =
+        Lattice.create dx dt 120 40
+        |> Lattice.withObstacle (fun x y -> (x - 0.03<m>) * (x - 0.03<m>) + (y - 0.021<m>) * (y - 0.021<m>) <= 0.005<m> * 0.005<m>)
+        |> Lattice.withVelocity (fun x _ -> struct (0.05<m/s>, (if x > 0.035<m> && x < 0.05<m> then 0.005<m/s> else 0.0<m/s>)))
+
+    let private cylinderOptions =
+        { Lbm.defaults (0.02 * dx * dx / dt) with
+            Left = LatticeEdge.Inflow(0.05<m/s>, 0.0<m/s>)
+            Right = LatticeEdge.Outflow
+            Bottom = LatticeEdge.Wall
+            Top = LatticeEdge.Wall }
+
+    /// A periodic channel with walls, driven by a body force across an obstacle.
+    let private channel () =
+        Lattice.create dx dt 100 30
+        |> Lattice.withObstacle (fun x y -> (x - 0.03<m>) * (x - 0.03<m>) + (y - 0.016<m>) * (y - 0.016<m>) <= 0.005<m> * 0.005<m>)
+
+    let private channelOptions =
+        { Lbm.defaults (0.02 * dx * dx / dt) with Force = (2e-3<m/s^2>, 1e-3<m/s^2>); Bottom = LatticeEdge.Wall; Top = LatticeEdge.Wall }
+
+    [<Theory>]
+    [<InlineData(true)>]
+    [<InlineData(false)>]
+    let ``after 200 steps every cell is within 1e-3 of the largest velocity`` (cylindrical: bool) =
+        GpuTests.withGpu (fun gpu ->
+            let l0, o = if cylindrical then cylinder (), cylinderOptions else channel (), channelOptions
+            let cpu = Sim.ofStep dt (Lbm.step o) l0 |> Sim.run 200 |> Lattice.velocityUnder o.Force
+            let gpuRun = Sim.ofStep dt (GpuSim.lbm gpu o) l0 |> Sim.run 200 |> Lattice.velocityUnder o.Force
+
+            for name, e in [ "u", relative (finite cpu.U) (finite gpuRun.U); "v", relative (finite cpu.W) (finite gpuRun.W) ] do
+                Console.WriteLine(sprintf "LBM GPU against CPU, %s, %s: %.2e (%s)" (if cylindrical then "cylinder" else "channel") name e gpu.Description)
+                Assert.True(e < 1e-3, sprintf "%s differs by %g of its largest after 200 steps" name e))
+
+    /// Gate 8. Measured: 1.0e-10 on radeonsi and 4.0e-10 on llvmpipe in the deviation form, and
+    /// 1.5e-6 with the collision computed raw, which the plan's bound of 1e-6 caught by a margin of
+    /// a half; 1e-8 is a hundred times inside the raw form and twenty-five outside llvmpipe.
+    [<Fact>]
+    let ``a closed channel keeps its mass to 1e-8 over ten thousand steps`` () =
+        GpuTests.withGpu (fun gpu ->
+            let l0 = channel ()
+            let l = Sim.ofStep (100.0 * dt) (GpuSim.lbmWith 100 gpu channelOptions) l0 |> Sim.run 100
+            let drift = abs ((Lattice.mass l - Lattice.mass l0) / Lattice.mass l0)
+            let fastest = (Lattice.velocityUnder channelOptions.Force l).U |> finite |> Array.max
+            Console.WriteLine(sprintf "LBM GPU mass drift over 1e4 steps: %.2e, fastest %.4f m/s (%s)" drift (float fastest) gpu.Description)
+            Assert.True(fastest > 1e-3<m/s>, "the force moved nothing, so the mass was never at risk")
+            Assert.True(drift < 1e-8, sprintf "the mass drifted by %g" drift))
+
+    [<Fact>]
+    let ``k ticks a call are k calls of a tick, and seeks are runs`` () =
+        GpuTests.withGpu (fun gpu ->
+            let l0 = cylinder ()
+            let one = Sim.ofStep dt (GpuSim.lbm gpu cylinderOptions) l0 |> Sim.run 5
+            let five = GpuSim.lbmWith 5 gpu cylinderOptions 0.0<s> (5.0 * dt) l0
+            Assert.Equal<float[]>(one.Populations, five.Populations)
+
+            let sim = Sim.ofStep dt (GpuSim.lbm gpu cylinderOptions) l0
+            let run = Sim.states 30 sim
+            let traj = Sim.trajectory 0.01<s> 0.03<s> sim
+
+            for k, s in [| 4; 13; 22; 30; 9 |] |> Array.Parallel.map (fun k -> k, traj.At(float k * dt)) do
+                Assert.True((s.Populations = run.[k].Populations), sprintf "the seek to step %d differs from the run" k))
+
+    [<Fact>]
+    let ``a step that is not k ticks is refused as the CPU refuses it`` () =
+        GpuTests.withGpu (fun gpu ->
+            let e = Assert.Throws<ArgumentException>(fun () -> GpuSim.lbmWith 2 gpu cylinderOptions 0.0<s> dt (cylinder ()) |> ignore)
+            Assert.Contains("0.0005 s", e.Message))
