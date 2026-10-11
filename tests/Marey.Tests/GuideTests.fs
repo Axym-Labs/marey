@@ -65,10 +65,11 @@ let private assemblies =
       "Marey.Html"
       // M4 phase 9, with the fields chapter.
       "Marey.Fields"
+      // M5.5 phase 12, with the simulation chapter. Before the GPU backend since M5.6, whose
+      // solvers step its states.
+      "Marey.Sim"
       // M5 phase 10, with the GPU and window chapter.
-      "Marey.Backend.Gpu"
-      // M5.5 phase 12, with the simulation chapter.
-      "Marey.Sim" ]
+      "Marey.Backend.Gpu" ]
 
 let private guidePath =
     lazy (Path.Combine(Golden.repoRoot.Force(), "docs", "guide.md"))

@@ -2496,6 +2496,81 @@ sweeps and residual. All of them use `Fdm.laplacian5`, the compact five-point st
 `Field.laplacian`, whose wide stencil is zero on a checkerboard and would never damp one. The grid
 must be uniform.
 
+### Fluids
+
+`Stam.step` is Stam's stable fluids: incompressible flow in a box of square cells, stable at any
+step. The velocity lives on the cells' faces and the dye at their centres (a staggered grid), so
+the projection that makes the flow divergence-free leaves only its solver's residual. The dye has
+a unit of its own, and a buoyancy lifts the fluid where it is:
+
+```fsharp
+// Air in a 1 m box with a warm patch at its floor; a buoyancy of g/T per kelvin.
+let smoke =
+    Fluid.box FluidEdge.Wall FluidEdge.Wall 0.02<m> 48 48
+    |> Fluid.withDye (fun x y -> if abs (x - 0.48<m>) < 0.1<m> && y < 0.2<m> then 30.0<K> else 0.0<K>)
+
+let air = { Stam.defaults<m, K> with Viscosity = 1.5e-5<m^2/s>; Buoyancy = 0.033<m/s^2/K> }
+let rising = Sim.ofStep 0.05<s> (Stam.step air) smoke |> Sim.trajectory 1.0<s> 5.0<s>
+let smokeFigure = Field.heatmap U.metre U.metre U.kelvin (Fluid.dye (rising.At 5.0<s>))
+```
+
+An edge is a wall (no flow through it) or periodic. `Fluid.velocity` reads the flow at the cells'
+centres as a `VectorGrid`, so every field mark draws it; `Fluid.divergence`, `Fluid.vorticity`
+and `Fluid.pressure` read the rest. The pressure is solved by multigrid, `Cycles` V-cycles a step
+from the last step's pressure (two hold a running flow to about 10⁻⁷ of its scale), and
+viscosity and the dye's diffusion by `Sweeps` Gauss–Seidel sweeps.
+
+`Lbm.step` is lattice Boltzmann (D2Q9): weakly compressible, explicit, and good at flow around
+obstacles. A lattice is built for a spacing and a tick, and the viscosity sets its relaxation time,
+which must exceed ½:
+
+```fsharp
+let channel =
+    Lattice.create 1e-3<m> 1e-3<s> 120 40
+    |> Lattice.withObstacle (fun x y -> (x - 0.03<m>) * (x - 0.03<m>) + (y - 0.02<m>) * (y - 0.02<m>) < 25e-6<m^2>)
+
+let water =
+    { Lbm.defaults 1e-5<m^2/s> with
+        Left = LatticeEdge.Inflow(0.05<m/s>, 0.0<m/s>)
+        Right = LatticeEdge.Outflow
+        Bottom = LatticeEdge.Wall
+        Top = LatticeEdge.Wall }
+
+printfn "relaxation time %.2f" (Lbm.tau water.Viscosity channel)
+let past = Sim.ofStep 1e-3<s> (Lbm.step water) channel |> Sim.run 500
+let wakeFigure = Field.licBy U.metre U.metre (U.div U.metre U.second) (Lattice.velocity past)
+```
+
+A step other than the tick is refused, and so is a viscosity that puts τ at or below ½ and an
+inflow past 0.3 of the lattice's speed, each with the numbers. So a trajectory over a lattice is
+read at whole steps: between two, a fixed-step trajectory takes a shorter last step. An inflow
+fixes the velocity and an outflow the pressure; mass is conserved to rounding when neither is
+there.
+
+### On the GPU
+
+`GpuSim.stam` and `GpuSim.lbm` are the same steps on a `GpuRenderer`'s GPU, over the same states,
+so `Sim`, `trajectory` and films take them unchanged:
+
+```fsharp
+let gpuSmoke =
+    match GpuBackend.probe () with
+    | Ok _ ->
+        use gpu = new GpuRenderer()
+        Some(Sim.ofStep 0.05<s> (GpuSim.stam gpu air) smoke |> Sim.run 20)
+    | Error _ -> None
+```
+
+A call uploads the state, steps it in float32 by fragment shaders, and reads it back. The GPU
+computes the CPU step's expressions in the same order, so the CPU step is its reference: after 200
+steps they agree to a few parts in a million of the field's largest value, on a desktop GPU and on
+Mesa's software driver alike. Two drivers do not agree with each other to the bit, so a GPU result
+is checked against the CPU, never against stored bytes; one device repeats itself exactly, so a
+trajectory seeks as it does on the CPU. `GpuSim.stamWith k` and `GpuSim.lbmWith k` run k steps a
+call, one transfer for k. A figure compiled with the renderer's measurer, `gpu.Measurer`, has its
+LIC convolved on the GPU too, one streamline per pixel: the same texture as the CPU's fast LIC,
+not the same pixels.
+
 ### Playing a simulation
 
 A trajectory is an `Anim`, so `Anim.map view trajectory` is a film (§19). In a live figure, a

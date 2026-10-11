@@ -56,6 +56,23 @@ land in a minor release.
   `open Marey.UnitsOfMeasure`), `Sim.drift` samples each one's drift over a trajectory, relative
   to its start or absolute where the start is zero, and `Drift.chart` draws them. The package
   claims Fable.
+- **Fluids in `Marey.Sim`.** `Stam.step` is Stam's stable fluids on a staggered grid (`Fluid`):
+  semi-Lagrangian advection, implicit viscosity and dye diffusion, a buoyancy per unit of dye, a
+  steady force and source, and a projection by multigrid that leaves only its solver's residual.
+  `Fluid.box`, `withVelocity`, `withDye`, and `velocity`, `dye`, `divergence`, `vorticity`,
+  `pressure` to read it. `Lbm.step` is lattice Boltzmann D2Q9 (`Lattice`) in deviation form, with
+  obstacles and per side a periodic edge, a wall, an inflow or an outflow; `Lbm.validate` refuses a
+  relaxation time at or below ½, an inflow past 0.3 of the lattice's speed and a step other than
+  the tick, with the numbers. Both compile under Fable.
+- **`GpuSim` in `Marey.Backend.Gpu`**: `GpuSim.stam` and `GpuSim.lbm` step the same `Fluid` and
+  `Lattice` on a `GpuRenderer`'s GPU by fragment shaders in OpenGL 3.3, agreeing with the CPU steps
+  to a few parts in a million after 200 steps; `stamWith` and `lbmWith` run several steps a call.
+  `Marey.Backend.Gpu` now references `Marey.Sim`.
+- **LIC on the GPU.** A figure compiled with `GpuRenderer.Measurer` has its LIC convolved on the
+  GPU, one streamline per pixel. `LicJob` and `ILicConvolver` in `Marey.Core` are how a measurer
+  offers it; `MemoTextMeasurer` forwards it. Any other measurer draws LIC as before, to the byte.
+- **`examples/fluid.fsx`** (warm air rising in a box) and **`examples/cylinder.fsx`** (a Kármán
+  street at Re 100), each on the GPU when there is one and on the CPU otherwise.
 - **A time control**: `Control.time "t" 0.0<s> 10.0<s>` (and `Control.timeWith samples loop`,
   `Control.Time("t", 0.0, 10.0)` over plain seconds). The notebook widget draws a range input and
   a play button, and plays it on the page's clock; the window plays it on its frame loop, with
@@ -76,6 +93,8 @@ land in a minor release.
 
 - **`ControlKind` gained a case, `Time of lo * hi * samples * loop`.** A match over it that names
   every case without a wildcard no longer compiles until it handles the new one.
+- **`FieldMarks.licImage` and `FieldMarks.lic` take the compile measurer first**, so a backend's
+  measurer can convolve.
 
 ### Fixed
 

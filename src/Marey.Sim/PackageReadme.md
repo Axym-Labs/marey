@@ -41,6 +41,10 @@ Chart.line Derived.radian (U.div Derived.radian U.second) (path |> Array.map (fu
 - **Grid solvers.** `Fdm.heat` (explicit, with its stability limit refused in seconds),
   `Fdm.heatImplicit` (Crank–Nicolson by ADI), `Fdm.wave`, `Fdm.poisson`, on the compact five-point
   stencil with Dirichlet, Neumann and periodic sides.
+- **Fluids.** `Stam.step`, stable fluids on a staggered grid with the pressure by multigrid, walls
+  or periodic edges, viscosity, a dye in its own unit and a buoyancy per unit of it; `Lbm.step`,
+  lattice Boltzmann D2Q9 with obstacles, walls, an inflow and an outflow, refusing a relaxation
+  time at or below ½ with the numbers. `Marey.Backend.Gpu` steps both on a GPU (`GpuSim`).
 
 Compiles under Fable. A chaotic system run in a browser and the same one under .NET are different
 trajectories after tens of seconds, because JavaScript's `sin` and `exp` differ in the last bit;
@@ -48,4 +52,4 @@ both are correct to the integrator's order.
 
 - [The guide's chapter](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md#25-simulation)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples): `integrators.fsx`,
-  `double-pendulum.fsx`, `double-gyre.fsx`, `heat.fsx`
+  `double-pendulum.fsx`, `double-gyre.fsx`, `heat.fsx`, `fluid.fsx`, `cylinder.fsx`
