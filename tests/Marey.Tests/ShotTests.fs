@@ -218,6 +218,22 @@ module PrefixDoesNotStep =
 
         Assert.Equal("x [mm]", title)
 
+    /// A wave that starts flat. Its first frame is a constant at zero, which a still figure pads
+    /// to ±1 m so that it has an axis at all; taken into the union as data, that padding pinned
+    /// every frame of a millimetre wave to `x [m]`.
+    [<Fact>]
+    let ``a flat frame at zero does not pin the prefix of a millimetre wave`` () =
+        let wave (u: float) =
+            let xs = Array.init 24 (fun i -> float i / 23.0 * 10.0<s>)
+            Chart.line U.second U.metre xs (xs |> Array.map (fun t -> u * 1e-3<m> * sin (float t)))
+
+        Assert.Contains("x [m]", titles (Chart.toScene surface (wave 0.0)))
+
+        let shot = Chart.arrangeUnion 32 measurer surface wave
+
+        for u in frames do
+            Assert.Contains("x [mm]", titles (Chart.toSceneIn measurer shot (wave u)))
+
     /// A still figure pins nothing, which is what keeps every existing baseline byte-identical.
     [<Fact>]
     let ``a still figure chooses its prefix per figure, as it always has`` () =

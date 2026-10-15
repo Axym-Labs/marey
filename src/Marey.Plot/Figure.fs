@@ -521,6 +521,19 @@ module Figure =
 
                     point s.XScale s.X, point s.YScale s.Y }
 
+    /// A unified panel's `pointsOf`: the constant on each axis when every layer is that same
+    /// constant and the axis is only its padding. `unify` has given every layer the panel's
+    /// domain, so one layer with a real span is enough to make the axis a span.
+    let private panelPoints (p: Panel) : float option * float option =
+        let points = p.Layers |> Array.map (fun l -> pointsOf l.Data)
+
+        let shared pick =
+            match pick points.[0] with
+            | Some v when points |> Array.forall (fun q -> pick q = Some v) -> Some v
+            | _ -> None
+
+        shared fst, shared snd
+
     /// **The check, once.** Whether a set of things can share one axis, and what domain they
     /// share if they can.
     ///
@@ -1515,18 +1528,23 @@ module Figure =
             |> Array.map (fun (key, es) ->
                 let drawn = es |> Array.map (fun (_, (_, _, u)) -> u) |> Array.filter (fun p -> p.Layers.Length > 0)
 
-                let pinFor (packedOf: Panel -> PackedScale) =
+                // A state whose panel is one constant contributes the constant and not its
+                // padding, by the rule `agreeOn` uses across layers: a wave that starts flat at
+                // zero is padded to ±1 m in its first frame, and that is not a number of the shot.
+                let pinFor (packedOf: Panel -> PackedScale) (pointOf: Panel -> float option) =
                     if drawn.Length = 0 then
                         None
                     else
-                        let domains = drawn |> Array.map (packedOf >> Axis.domainOfPacked)
-                        let lo = domains |> Array.map fst |> Array.min
-                        let hi = domains |> Array.map snd |> Array.max
+                        let lo, hi =
+                            drawn
+                            |> Array.map (fun p -> Axis.domainOfPacked (packedOf p), pointOf p)
+                            |> Scale.shareDomain autoPadding
+
                         Some(Axis.prefixForPacked (lo, hi) (packedOf drawn.[0]))
 
                 key,
-                (pinFor (fun p -> fst (axisScales p)),
-                 pinFor (fun p -> snd (axisScales p))))
+                (pinFor (fun p -> fst (axisScales p)) (panelPoints >> fst),
+                 pinFor (fun p -> snd (axisScales p)) (panelPoints >> snd)))
             |> dict
 
         let panels =
