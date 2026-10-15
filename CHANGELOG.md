@@ -78,6 +78,13 @@ land in a minor release.
   own layers; `toRightAxis`, `withRightYDomain`, `withRightYLabel`. A side with one series is drawn
   in its colour. The pointer reads the second axis too, and a zoom or a pan moves it with the
   first. `Panel.Y2Axis`, `Layer.SecondaryY`, `PanelView.Y2`, `ZoomAxis.Y2`, `Keys.axisY2`.
+- **Secondary axes** (D178): `Chart.withTopAxisIn` and `withRightAxisIn` read an axis in another
+  unit of its dimension (°C over kelvin), converted by the units; `withTopAxisMapped` and
+  `withRightAxisMapped` through a map and its inverse (photon energy over wavelength), typed in
+  both directions under `Marey.UnitsOfMeasure` and checked on the domain when drawn: finite,
+  monotone, and inverse to each other. Ticks are chosen in the secondary unit and placed through
+  the inverse. `withTopAxisLabel`; `AxisConfig.Secondary`, `SecondaryAxis`, `SecondaryMap`,
+  `Keys.axisX2`.
 - C# extensions for every verb above, and `Figures.Mosaic`.
 - **`examples/paper-figure.fsx`**: a fit over its residuals, and a spectrum with its lines marked.
 
@@ -108,7 +115,7 @@ land in a minor release.
   `ShowMinor`), and `Theme` (`TickDirection`, `MirrorTicks`, `MinorTicks`, `MinorTickLength`).
   M9 adds `Layer.SecondaryY`, `Panel` (`RowSpan`, `ColSpan`, `XShare`, `YShare`, `Y2Axis`), `Figure` (`RowWeights`,
   `ColWeights`), `AxisConfig.ShowTickLabels` and `PanelLayout` (`SlackLeft`, `SlackRight`,
-  `SlackTop`, `SlackBottom`, `Y2TicksW`, `Y2TitleW`, `Y2Prefix`), `PanelView` (`Y2`, `Y2Axis`),
+  `SlackTop`, `SlackBottom`, `Y2TicksW`, `Y2TitleW`, `Y2Prefix`, `X2TicksH`, `X2TitleH`), `AxisConfig.Secondary`, `PanelView` (`Y2`, `Y2Axis`),
   and `ZoomAxis.Y2`, which breaks an exhaustive `match` over it. `LegendPlacement` gains three cases, which breaks an exhaustive `match` over it, and `Geom` two
   (`GeomRule`, `GeomAnnotation`).
 

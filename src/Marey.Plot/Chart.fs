@@ -1528,9 +1528,59 @@ module Chart =
             let p = fig.Panels.[lastPanel fig]
             Figure.withPanelDomainY2 (p.Row, p.Col) (lo, hi) fig
 
-    /// D177 — the last panel's right y axis's name, in place of the one its unit suggests.
+    /// D177 / D178 — the last panel's right y axis's name, in place of the one its unit suggests:
+    /// the secondary axis's when it has one, otherwise the second y axis's.
     let withRightYLabel (label: string) (fig: Figure) : Figure =
-        mapLast (fun p -> { p with Y2Axis = Some { (defaultArg p.Y2Axis Figure.axisConfig) with Label = Some label } }) fig
+        mapLast
+            (fun p ->
+                match p.YAxis.Secondary with
+                | Some sa -> { p with YAxis = { p.YAxis with Secondary = Some { sa with Label = Some label } } }
+                | None -> { p with Y2Axis = Some { (defaultArg p.Y2Axis Figure.axisConfig) with Label = Some label } })
+            fig
+
+    // ---- D178: secondary axes -------------------------------------------------------------
+
+    let internal withSecondary (onX: bool) (u: U<1>) (map: SecondaryMap option) (fig: Figure) : Figure =
+        let sa: SecondaryAxis = { Unit = u; Map = map; Label = None }
+
+        mapLast
+            (fun p ->
+                if onX then
+                    { p with XAxis = { p.XAxis with Secondary = Some sa } }
+                else
+                    { p with YAxis = { p.YAxis with Secondary = Some sa } })
+            fig
+
+    /// D178 — **the x axis again along the top, in another unit of its dimension**: inches over
+    /// millimetres, °C over kelvin. The conversion is the units' own, offset included, so nothing
+    /// is trusted; another dimension is refused when the figure is drawn, naming both. The ticks
+    /// are chosen in the new unit.
+    let withTopAxisIn (u: U<'v>) (fig: Figure) : Figure = withSecondary true (U.erase u) None fig
+
+    /// D178 — the y axis again along the right, in another unit of its dimension.
+    let withRightAxisIn (u: U<'v>) (fig: Figure) : Figure = withSecondary false (U.erase u) None fig
+
+    /// D178 — **the x axis read along the top through a map**: photon energy over wavelength,
+    /// period over frequency. `forward` takes the x axis's raw numbers to `u`'s and `inverse` takes
+    /// them back. When the figure is drawn the pair is checked on 257 points of the domain —
+    /// finite, strictly monotone, and `inverse (forward x)` back at `x` — and refused at the first
+    /// point that fails. The ticks are chosen evenly in `u` and placed through `inverse`, so they
+    /// fall unevenly along a reciprocal.
+    let withTopAxisMapped (u: U<'v>) (forward: float -> float) (inverse: float -> float) (fig: Figure) : Figure =
+        withSecondary true (U.erase u) (Some(SecondaryMap(forward, inverse))) fig
+
+    /// D178 — the y axis read along the right through a map. See `withTopAxisMapped`.
+    let withRightAxisMapped (u: U<'v>) (forward: float -> float) (inverse: float -> float) (fig: Figure) : Figure =
+        withSecondary false (U.erase u) (Some(SecondaryMap(forward, inverse))) fig
+
+    /// D178 — the secondary top axis's name, in place of the one its unit suggests.
+    let withTopAxisLabel (label: string) (fig: Figure) : Figure =
+        mapLast
+            (fun p ->
+                match p.XAxis.Secondary with
+                | Some sa -> { p with XAxis = { p.XAxis with Secondary = Some { sa with Label = Some label } } }
+                | None -> p)
+            fig
 
     /// D176 — **share the x axis of every panel the figure has now**, as a facet does: one
     /// domain, checked here for one dimension, and kept one afterwards. Only the outermost panel

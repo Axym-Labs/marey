@@ -55,6 +55,27 @@ type Layer =
       /// (`Panel.Y2Axis`). Its y unit is checked against the other layers on that side only.
       SecondaryY: bool }
 
+/// D178 — a secondary axis's map from the primary axis's numbers to its own and back, kept out
+/// of structural equality as `TickFormatter` is: it compares by reference.
+[<Sealed>]
+type SecondaryMap(forward: float -> float, inverse: float -> float) =
+    member _.Forward(value: float) = forward value
+    member _.Inverse(value: float) = inverse value
+    override _.ToString() = "function"
+
+/// D178 — **an axis that reads the primary one in other numbers**: photon energy over a
+/// wavelength, Celsius over kelvin, period over frequency. It draws on the opposite side and owns
+/// no data: it joins no domain and no layer is drawn against it.
+[<NoComparison>]
+type SecondaryAxis =
+    { /// The unit its numbers are in.
+      Unit: U<1>
+      /// `None` for another unit of the primary's dimension, converted by the witnesses, offset
+      /// included; otherwise the map, checked on the domain when the figure is drawn.
+      Map: SecondaryMap option
+      /// The quantity's name; `None` takes the conventional symbol for the unit's dimension.
+      Label: string option }
+
 /// Per-axis configuration. Every field has a defensible default, which is what "no
 /// configuration" in §9 has to mean in practice.
 [<NoComparison>]
@@ -92,7 +113,10 @@ type AxisConfig =
       Format: TickFormat
       /// D176 — whether the tick labels are written. The ticks stay either way. Off on a panel
       /// whose shared axis is labelled by the panel beyond it (matplotlib's `label_outer`).
-      ShowTickLabels: bool }
+      ShowTickLabels: bool
+      /// D178 — an axis on the opposite side reading this one in other numbers: the top for x,
+      /// the right for y.
+      Secondary: SecondaryAxis option }
 
 [<NoComparison>]
 type Panel =
@@ -235,7 +259,10 @@ type PanelLayout =
       Y2TicksW: float<px>
       Y2TitleW: float<px>
       /// D177 — the prefix the second y axis is pinned to, as `YPrefix` is for the first.
-      Y2Prefix: Prefix option }
+      Y2Prefix: Prefix option
+      /// D178 — a secondary x axis's tick labels and title, above the plot.
+      X2TicksH: float<px>
+      X2TitleH: float<px> }
 
 [<RequireQualifiedAccess>]
 module PanelLayout =
@@ -263,7 +290,9 @@ module PanelLayout =
           SlackBottom = 0.0<px>
           Y2TicksW = 0.0<px>
           Y2TitleW = 0.0<px>
-          Y2Prefix = None }
+          Y2Prefix = None
+          X2TicksH = 0.0<px>
+          X2TitleH = 0.0<px> }
 
     /// D72's union, and the whole rule is one sentence: **every size is the largest any sampled
     /// frame needed.**
@@ -306,7 +335,9 @@ module PanelLayout =
           SlackBottom = max a.SlackBottom b.SlackBottom
           Y2TicksW = max a.Y2TicksW b.Y2TicksW
           Y2TitleW = max a.Y2TitleW b.Y2TitleW
-          Y2Prefix = a.Y2Prefix }
+          Y2Prefix = a.Y2Prefix
+          X2TicksH = max a.X2TicksH b.X2TicksH
+          X2TitleH = max a.X2TitleH b.X2TitleH }
 
     /// D173 — the room a panel's gutters take on each side of its plot, slack included: what the
     /// outer grid's gutter tracks are sized from.
@@ -315,7 +346,7 @@ module PanelLayout =
     let right (g: PanelLayout) =
         g.Y2TicksW + g.Y2TitleW + g.RightPad + g.BarGap + g.BarW + (if g.LegendW > 0.0<px> then g.LegendGap + g.LegendW else 0.0<px>) + g.SlackRight
 
-    let top (g: PanelLayout) = g.SlackTop + g.TitleH + g.TopPad
+    let top (g: PanelLayout) = g.SlackTop + g.TitleH + g.TopPad + g.X2TitleH + g.X2TicksH
 
     let bottom (g: PanelLayout) =
         g.XTicksH + g.XTitleH + (if g.LegendH > 0.0<px> then g.LegendGap + g.LegendH else 0.0<px>) + g.SlackBottom
@@ -673,7 +704,8 @@ module Figure =
           Reversed = false
           Minor = MinorAuto
           Format = FormatAuto
-          ShowTickLabels = true }
+          ShowTickLabels = true
+          Secondary = None }
 
     let panelOf (layers: Layer[]) : Panel =
         { Title = ""
@@ -1269,6 +1301,8 @@ module Figure =
             [| Track.Content g.SlackTop
                Track.Content g.TitleH
                Track.Content g.TopPad
+               Track.Content g.X2TitleH
+               Track.Content g.X2TicksH
                Track.Frac 1.0
                Track.Content g.XTicksH
                Track.Content g.XTitleH
@@ -1280,22 +1314,24 @@ module Figure =
             Layout.cell key row col (fun _ -> { Width = w; Height = h })
 
         let cells =
-            [| fixedCell "ytitle" 3 1 g.YTitleW 0.0<px>
-               fixedCell "yticks" 3 2 g.YTicksW 0.0<px>
-               Layout.fill "plot" 3 3
-               fixedCell "y2ticks" 3 4 g.Y2TicksW 0.0<px>
-               fixedCell "y2title" 3 5 g.Y2TitleW 0.0<px>
-               fixedCell "rightpad" 3 6 g.RightPad 0.0<px>
-               fixedCell "bargap" 3 7 g.BarGap 0.0<px>
-               fixedCell "colorbar" 3 8 g.BarW 0.0<px>
-               fixedCell "legendgap" 3 9 gapRight 0.0<px>
-               fixedCell "legend" 3 10 g.LegendW 0.0<px>
+            [| fixedCell "ytitle" 5 1 g.YTitleW 0.0<px>
+               fixedCell "yticks" 5 2 g.YTicksW 0.0<px>
+               Layout.fill "plot" 5 3
+               fixedCell "y2ticks" 5 4 g.Y2TicksW 0.0<px>
+               fixedCell "y2title" 5 5 g.Y2TitleW 0.0<px>
+               fixedCell "rightpad" 5 6 g.RightPad 0.0<px>
+               fixedCell "bargap" 5 7 g.BarGap 0.0<px>
+               fixedCell "colorbar" 5 8 g.BarW 0.0<px>
+               fixedCell "legendgap" 5 9 gapRight 0.0<px>
+               fixedCell "legend" 5 10 g.LegendW 0.0<px>
                fixedCell "ptitle" 1 1 0.0<px> g.TitleH |> Layout.spanning 1 10
                fixedCell "toppad" 2 1 0.0<px> g.TopPad |> Layout.spanning 1 10
-               fixedCell "xticks" 4 3 0.0<px> g.XTicksH
-               fixedCell "xtitle" 5 3 0.0<px> g.XTitleH
-               fixedCell "legendgapb" 6 3 0.0<px> gapBelow
-               fixedCell "legendb" 7 3 0.0<px> g.LegendH |]
+               fixedCell "x2title" 3 3 0.0<px> g.X2TitleH
+               fixedCell "x2ticks" 4 3 0.0<px> g.X2TicksH
+               fixedCell "xticks" 6 3 0.0<px> g.XTicksH
+               fixedCell "xtitle" 7 3 0.0<px> g.XTitleH
+               fixedCell "legendgapb" 8 3 0.0<px> gapBelow
+               fixedCell "legendb" 9 3 0.0<px> g.LegendH |]
 
         Layout.arrangeIn m extent region (Layout.grid rows cols cells)
 
@@ -1427,6 +1463,88 @@ module Figure =
 
             let y2 = second |> Option.map (fun sp -> sp.YAxis, snd (axisSpecs theme (pinX, pinY2) sp))
 
+            // D178 — an axis reading the primary one in other numbers. Its ticks are chosen in its
+            // own numbers over the image of the primary's domain, then placed through the inverse
+            // and the primary's scale, so a reciprocal map puts evenly spaced energies unevenly
+            // along a wavelength. The map is checked on the domain before anything is drawn.
+            let secondaryOn (axis: string) (cfg: AxisConfig) (side: AxisSide) (primary: IScaleErased) : AxisSpec option =
+                match cfg.Secondary with
+                | None -> None
+                | Some sa ->
+                    let u = sa.Unit
+
+                    let unitText (dim: Dim) symbol factors toSI offset =
+                        UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none symbol factors dim toSI offset
+
+                    match primary.Kind with
+                    | ScaleKind.Ordinal _ -> failwithf "Marey: a categorical %s axis has no numbers for a secondary axis to read." axis
+                    | _ -> ()
+
+                    let forward, inverse =
+                        match sa.Map with
+                        | Some map -> map.Forward, map.Inverse
+                        | None ->
+                            if primary.Stated && u.Dim <> primary.Dim then
+                                failwithf
+                                    "Marey: the secondary %s axis is in %s but the %s axis is in %s. Two dimensions need a map between them (`withTopAxisMapped`, `withRightAxisMapped`)."
+                                    axis
+                                    (unitText u.Dim u.Symbol u.Factors u.ToSI u.OffsetSI)
+                                    axis
+                                    (unitText primary.Dim primary.Symbol primary.Factors primary.ToSI primary.OffsetSI)
+
+                            (fun v -> (v * primary.ToSI + primary.OffsetSI - u.OffsetSI) / u.ToSI),
+                            (fun w -> (w * u.ToSI + u.OffsetSI - primary.OffsetSI) / primary.ToSI)
+
+                    let finite (v: float) = not (System.Double.IsNaN v || System.Double.IsInfinity v)
+                    let lo, hi = primary.Domain
+                    let n = 256
+                    let xs = Array.init (n + 1) (fun i -> lo + (hi - lo) * float i / float n)
+                    let ws = xs |> Array.map forward
+                    let tolerance = 1e-9 * abs (hi - lo)
+
+                    for i in 0..n do
+                        let x, w = xs.[i], ws.[i]
+
+                        if not (finite w) then
+                            failwithf "Marey: the secondary %s axis's map is not finite at %g." axis x
+
+                        let back = inverse w
+
+                        if not (finite back) || abs (back - x) > tolerance + 1e-12 * abs x then
+                            failwithf "Marey: the secondary %s axis's map and its inverse disagree at %g: it maps to %g, which comes back as %g." axis x w back
+
+                        if i > 0 && (w = ws.[i - 1] || sign (w - ws.[i - 1]) <> sign (ws.[1] - ws.[0])) then
+                            failwithf "Marey: the secondary %s axis's map turns back at %g. A secondary axis must read each point of the primary once." axis x
+
+                    let lo2, hi2 = min ws.[0] ws.[n], max ws.[0] ws.[n]
+                    let packed = Erase.packScale (Scale.linear u (LanguagePrimitives.FloatWithMeasure lo2, LanguagePrimitives.FloatWithMeasure hi2))
+                    let spec = Axes.specTicked TicksAuto cfg.Minor FormatAuto None (defaultArg cfg.Style theme.UnitStyle) cfg.TickCount sa.Label side packed
+                    let factor = Prefix.factor spec.Prefix
+                    let at (w: float) = primary.Project(inverse w)
+
+                    Some
+                        { spec with
+                            Ticks = spec.Ticks |> Array.map (fun t -> { t with Position = at (t.Value * factor) })
+                            Minor = spec.Minor |> Array.map (fun q -> at (lo2 + float q * (hi2 - lo2))) }
+
+            // What a secondary axis is drawn with: shown, labelled, with the primary's minor ticks.
+            let shown (cfg: AxisConfig) = { axisConfig with Minor = cfg.Minor }
+            let primaryX, primaryY = axisScalesErased p
+
+            let x2 =
+                secondaryOn "x" p.XAxis AxisTop primaryX |> Option.map (fun spec -> shown p.XAxis, spec)
+
+            let ySecondary = secondaryOn "y" p.YAxis AxisRight primaryY
+
+            if ySecondary.IsSome && y2.IsSome then
+                failwith "Marey: a panel has one right side, and this one has both a second y axis and a secondary one."
+
+            // The right side: a second y axis (D177) or a secondary one (D178), laid out alike.
+            let right =
+                match y2 with
+                | Some _ -> y2
+                | None -> ySecondary |> Option.map (fun spec -> shown p.YAxis, spec)
+
             // D165 — a lettered figure's panels keep a title row for the letter, which stands at
             // the row's left, above the axis title, clear of the data and of the legend.
             let titleH =
@@ -1548,13 +1666,20 @@ module Figure =
 
             // D177 — the second axis's plan, against the plot's height as the first's is.
             let planY2 (h: float<px>) =
-                y2 |> Option.map (fun (cfg, spec) -> keepNamed cfg spec (Axes.planTicks m theme.TickFont theme.LabelGap h AxisRight spec.Ticks))
+                right |> Option.map (fun (cfg, spec) -> keepNamed cfg spec (Axes.planTicks m theme.TickFont theme.LabelGap h AxisRight spec.Ticks))
 
             let gutters (xPlan: TickPlan) (yPlan: TickPlan) (barPlan: TickPlan option) (probe: Extent<px>) : PanelLayout =
                 let legendScores = scores probe
 
+                let x2Ticks, x2Title, x2Overhang =
+                    match x2 with
+                    | Some(_, spec) ->
+                        let plan = Axes.planTicks m theme.TickFont theme.LabelGap probe.Width AxisTop spec.Ticks
+                        Axes.tickExtent m theme AxisTop spec plan, Axes.titleExtent m theme spec.Title, Axes.labelOverhang m theme AxisTop spec plan
+                    | None -> 0.0<px>, 0.0<px>, 0.0<px>
+
                 let y2Ticks, y2Title, y2Overhang =
-                    match y2, planY2 probe.Height with
+                    match right, planY2 probe.Height with
                     | Some(cfg, spec), Some plan when cfg.Visible ->
                         (if cfg.ShowTickLabels then Axes.tickExtent m theme AxisRight spec plan else marksOnly),
                         (if cfg.ShowTitle then Axes.titleExtent m theme spec.Title else 0.0<px>),
@@ -1607,17 +1732,25 @@ module Figure =
                   // only what still sticks out past them is reserved.
                   RightPad =
                     if p.XAxis.Visible && p.XAxis.ShowTickLabels then
-                        max 0.0<px> (Axes.labelOverhang m theme AxisBottom xSpec xPlan - y2Ticks - y2Title)
+                        max 0.0<px> (max (Axes.labelOverhang m theme AxisBottom xSpec xPlan) x2Overhang - y2Ticks - y2Title)
                     else
-                        0.0<px>
+                        max 0.0<px> (x2Overhang - y2Ticks - y2Title)
 
+                  // Likewise a secondary x axis's labels stand where the top y label hangs.
                   TopPad =
                     max
-                        y2Overhang
-                        (if p.YAxis.Visible && p.YAxis.ShowTickLabels then
-                             Axes.labelOverhang m theme AxisLeft ySpec yPlan
-                         else
-                             0.0<px>)
+                        0.0<px>
+                        (max
+                            y2Overhang
+                            (if p.YAxis.Visible && p.YAxis.ShowTickLabels then
+                                 Axes.labelOverhang m theme AxisLeft ySpec yPlan
+                             else
+                                 0.0<px>)
+                         - x2Ticks
+                         - x2Title)
+
+                  X2TicksH = x2Ticks
+                  X2TitleH = x2Title
 
                   Y2TicksW = y2Ticks
                   Y2TitleW = y2Title
@@ -1867,8 +2000,6 @@ module Figure =
                                 | MinorEvery _
                                 | MinorCount _ -> true }
 
-                let axisNode = axisNodeIn theme true
-
                 // D177 — on a panel with two y axes, each takes the colour of its series when it
                 // has exactly one, so the reader can tell which curve is read against which side
                 // without a legend. With several on a side, that side keeps the axis colour.
@@ -1968,12 +2099,17 @@ module Figure =
                                 [| Axes.panelBackground theme p.Coord plotNd
                                    Keyed(Keys.grid panelKey, Axes.gridlines theme p.Coord plotNd gridX gridY)
                                    data
-                                   Keyed(Keys.axisX panelKey, axisNode AxisBottom p.XAxis xSpec xPlan)
-                                   Keyed(Keys.axisY panelKey, axisNodeIn (tint (primaryLayers p)) y2.IsNone AxisLeft p.YAxis ySpec yPlan)
-                                   match y2, planY2 layout.Probe.Height with
+                                   Keyed(Keys.axisX panelKey, axisNodeIn theme x2.IsNone AxisBottom p.XAxis xSpec xPlan)
+                                   Keyed(Keys.axisY panelKey, axisNodeIn (tint (primaryLayers p)) right.IsNone AxisLeft p.YAxis ySpec yPlan)
+                                   match right, planY2 layout.Probe.Height with
                                    | Some(cfg, spec), Some plan ->
                                        Keyed(Keys.axisY2 panelKey, axisNodeIn (tint (p.Layers |> Array.filter (onSecond p))) false AxisRight cfg spec plan)
                                    | _ -> ()
+                                   match x2 with
+                                   | Some(cfg, spec) ->
+                                       let plan = Axes.planTicks m theme.TickFont theme.LabelGap layout.Probe.Width AxisTop spec.Ticks
+                                       Keyed(Keys.axisX2 panelKey, axisNodeIn theme false AxisTop cfg spec plan)
+                                   | None -> ()
                                    Axes.panelFrame theme p.Coord plotNd
                                    panelTitle
                                    Keyed(Keys.legend panelKey, legend)
@@ -2587,6 +2723,8 @@ module Figure =
                     && within n.BarW f.BarW
                     && within n.Y2TicksW f.Y2TicksW
                     && within n.Y2TitleW f.Y2TitleW
+                    && within n.X2TicksH f.X2TicksH
+                    && within n.X2TitleH f.X2TitleH
                 | _ -> false
 
         within (headHeight m fig) headRoom && Array.forall panelFits fig.Panels

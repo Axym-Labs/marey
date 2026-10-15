@@ -464,6 +464,28 @@ let twinFigure: Figure =
 
 let twinSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
 
+/// D178 — P2's spectrum with photon energy along the top, through E = hc/λ, beside a temperature
+/// with °C along the right. Lorentzian lines, rational (D141).
+let secondaryFigure: Figure =
+    let nm = 1e-9<m>
+    let hc = 1.239841984e-6<eV * m>
+    let lam = Array.init 301 (fun i -> (400.0 + float i) * nm)
+    let line (centre: float) (height: float) (l: float<m>) = height / (1.0 + ((float (l / nm) - centre) / 1.5) ** 2.0)
+
+    let spectrum =
+        Chart.line U.metre U.one lam (lam |> Array.map (fun l -> 0.03 + line 486.1 0.55 l + line 656.3 1.0 l))
+        |> Chart.withTopAxisMapped NonSi.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
+
+    let ts = Array.init 21 (fun i -> float i * 30.0<s>)
+
+    let warming =
+        Chart.line U.second U.kelvin ts (ts |> Array.map (fun t -> 280.0<K> + 50.0<K> * (t / (t + 150.0<s>))))
+        |> Chart.withRightAxisIn NonSi.degreeCelsius
+
+    spectrum |> Chart.beside warming |> Chart.withTheme Theme.publication
+
+let secondarySurface: Extent<px> = { Width = 760.0<px>; Height = 300.0<px> }
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
@@ -1254,7 +1276,8 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-legend-shared" sharedLegendSurface sharedLegendFigure
         fig "figure-mosaic" mosaicSurface mosaicFigure
         fig "figure-shared" sharedSurface sharedFigure
-        fig "figure-twin" twinSurface twinFigure ]
+        fig "figure-twin" twinSurface twinFigure
+        fig "figure-secondary" secondarySurface secondaryFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1282,4 +1305,5 @@ let svg: (string * (unit -> string)) list =
         "figure-legend-shared", figureAt sharedLegendSurface sharedLegendFigure
         "figure-mosaic", figureAt mosaicSurface mosaicFigure
         "figure-shared", figureAt sharedSurface sharedFigure
-        "figure-twin", figureAt twinSurface twinFigure ]
+        "figure-twin", figureAt twinSurface twinFigure
+        "figure-secondary", figureAt secondarySurface secondaryFigure ]

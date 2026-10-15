@@ -129,7 +129,10 @@ module Keys =
 
     let axisY (panelKey: Key) = child panelKey "axis-y"
 
-    /// D177 — a panel's second y axis, on its right.
+    /// D178 — a panel's secondary x axis, on its top.
+    let axisX2 (panelKey: Key) = child panelKey "axis-x2"
+
+    /// D177 — a panel's second y axis, on its right, or D178's secondary y axis.
     let axisY2 (panelKey: Key) = child panelKey "axis-y2"
 
     let grid (panelKey: Key) = child panelKey "grid"

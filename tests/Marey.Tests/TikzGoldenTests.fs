@@ -347,6 +347,11 @@ module Figures =
     let ``a twin y`` () =
         check "figure-twin.tex" (Chart.render TikzBackend.render twinSurface twinFigure)
 
+    /// D178 — secondary axes, through a map and through a unit.
+    [<Fact>]
+    let ``secondary axes`` () =
+        check "figure-secondary.tex" (Chart.render TikzBackend.render secondarySurface secondaryFigure)
+
     /// Gate 6 meets gate 7. A baseline can be byte-stable, valid TeX and *blank* — that is
     /// precisely the failure this milestone already shipped once. So the committed figure is also
     /// compiled and looked at, which is what makes it a record of a picture rather than of a
