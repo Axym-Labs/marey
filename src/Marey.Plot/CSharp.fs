@@ -237,6 +237,24 @@ type FigureExtensions =
     [<Extension>]
     static member WithRightYLabel(fig: Figure, label: string) = Chart.withRightYLabel label fig
 
+    /// D178 — the x axis again along the top, in another unit of its dimension.
+    [<Extension>]
+    static member WithTopAxisIn(fig: Figure, unit: IUnit) = Chart.withSecondary true (U.erase unit) None fig
+
+    /// D178 — the y axis again along the right, in another unit of its dimension.
+    [<Extension>]
+    static member WithRightAxisIn(fig: Figure, unit: IUnit) = Chart.withSecondary false (U.erase unit) None fig
+
+    /// D178 — the x axis read along the top through a map and its inverse, in raw numbers.
+    [<Extension>]
+    static member WithTopAxisMapped(fig: Figure, unit: IUnit, forward: System.Func<float, float>, inverse: System.Func<float, float>) =
+        Chart.withSecondary true (U.erase unit) (Some(SecondaryMap(forward.Invoke, inverse.Invoke))) fig
+
+    /// D178 — the y axis read along the right through a map and its inverse.
+    [<Extension>]
+    static member WithRightAxisMapped(fig: Figure, unit: IUnit, forward: System.Func<float, float>, inverse: System.Func<float, float>) =
+        Chart.withSecondary false (U.erase unit) (Some(SecondaryMap(forward.Invoke, inverse.Invoke))) fig
+
     /// D176 — one x axis for every panel the figure has now, labelled on the outermost.
     [<Extension>]
     static member ShareX(fig: Figure) = Chart.shareX fig

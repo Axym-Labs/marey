@@ -475,3 +475,93 @@ module ``D177 a twin y`` =
         let views = viewsOf (Chart.size 800.0 300.0) fig
         Assert.Equal(2, views.Length)
         Assert.Equal(views.[0].Y.Domain, views.[1].Y.Domain)
+
+module ``D178 secondary axes`` =
+
+    let private nm = 1e-9<m>
+    let private hc = 1.239841984e-6<eV * m>
+    let private lam = Array.init 301 (fun i -> (400.0 + float i) * nm)
+    let private spectrum = Chart.line U.metre U.one lam (lam |> Array.map (fun l -> 1.0 / (1.0 + ((float (l / nm) - 656.3) / 2.0) ** 2.0)))
+    let private extent = Chart.size 600.0 320.0
+
+    let rec private textsWithAt (n: Node) : (string * Vec2<nd>) list =
+        match n with
+        | Text t -> [ t.Text, t.At ]
+        | Group ns -> ns |> List.ofArray |> List.collect textsWithAt
+        | Transform(_, c)
+        | Clip(_, c)
+        | Opacity(_, c)
+        | Keyed(_, c)
+        | Annotated(_, c) -> textsWithAt c
+        | _ -> []
+
+    let rec private keyed (k: Key) (n: Node) : Node option =
+        match n with
+        | Keyed(k', c) when k' = k -> Some c
+        | Group ns -> ns |> Array.tryPick (keyed k)
+        | Transform(_, c)
+        | Clip(_, c)
+        | Opacity(_, c)
+        | Keyed(_, c)
+        | Annotated(_, c) -> keyed k c
+        | _ -> None
+
+    /// The px a secondary axis's label is anchored at, along the axis.
+    let private labelAt (fig: Figure) (key: Key -> Key) (label: string) =
+        let scene = Chart.toSceneWith measurer extent fig
+        let axis = (keyed (key (Keys.panel 0 0)) scene).Value
+        let _, at = textsWithAt axis |> List.find (fun (s, _) -> s = label)
+        float at.X * float extent.Width, (1.0 - float at.Y) * float extent.Height
+
+    [<Fact>]
+    let ``P2's top axis puts 2.0 eV at 619.92 nm (gate 6)`` () =
+        let fig =
+            spectrum
+            |> Chart.withTopAxisMapped NonSi.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
+
+        let v = (viewsOf extent fig).[0]
+        let expected = float v.Plot.X0 + float (v.X.Project 619.9209920e-9) * float (v.Plot.X1 - v.Plot.X0)
+        let x, _ = labelAt fig Keys.axisX2 "2.0"
+        Assert.True(abs (x - expected) < 0.1, sprintf "2.0 eV drawn at %g px, 619.92 nm is at %g px" x expected)
+        Assert.Contains("E [eV]", texts (Chart.toSceneWith measurer extent fig))
+
+    [<Fact>]
+    let ``a right axis in °C reads 30 at 303.15 K (gate 6)`` () =
+        let fig =
+            Chart.line U.second U.kelvin [| 0.0<s>; 10.0<s> |] [| 280.0<K>; 330.0<K> |]
+            |> Chart.withRightAxisIn NonSi.degreeCelsius
+
+        let v = (viewsOf extent fig).[0]
+        let expected = float v.Plot.Y1 - float (v.Y.Project 303.15) * float (v.Plot.Y1 - v.Plot.Y0)
+        let _, y = labelAt fig Keys.axisY2 "30"
+        Assert.True(abs (y - expected) < 0.1, sprintf "30 °C drawn at %g px, 303.15 K is at %g px" y expected)
+
+    [<Fact>]
+    let ``a map that turns back is refused at the first point it does (gate 6)`` () =
+        let xs = Array.init 21 (fun i -> float i / 10.0 - 1.0)
+        let fig = Chart.line U.one U.one xs xs |> Chart.withTopAxisMapped U.one (fun x -> x * x) sqrt
+        let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
+        Assert.Contains("secondary x axis's map", e.Message)
+
+    [<Fact>]
+    let ``a map whose inverse is wrong is refused`` () =
+        let fig = spectrum |> Chart.withTopAxisMapped NonSi.electronvolt (fun l -> 1.24e-6 / l) (fun e -> 1.0e-6 / e)
+        let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
+        Assert.Contains("inverse disagree", e.Message)
+
+    [<Fact>]
+    let ``another dimension without a map is refused, naming both`` () =
+        let fig = Chart.line U.second U.kelvin [| 0.0<s>; 10.0<s> |] [| 280.0<K>; 330.0<K> |] |> Chart.withRightAxisIn U.metre
+        let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
+        Assert.Contains("secondary y axis is in m", e.Message)
+        Assert.Contains("y axis is in K", e.Message)
+
+    [<Fact>]
+    let ``a twin and a secondary axis on one side are refused`` () =
+        let ts = [| 0.0<s>; 10.0<s> |]
+        let fig =
+            Chart.line U.second U.kelvin ts [| 280.0<K>; 330.0<K> |]
+            |> Chart.withRightAxis (Chart.line U.second U.metre ts [| 1.0<m>; 2.0<m> |])
+            |> Chart.withRightAxisIn NonSi.degreeCelsius
+        let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
+        Assert.Contains("one right side", e.Message)
