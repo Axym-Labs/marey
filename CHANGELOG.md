@@ -73,6 +73,11 @@ land in a minor release.
 - **Shared axes on any composition** (D176): `Chart.shareX`, `shareY` and `shareAxes` share the
   axes of every panel the figure has, checked for one dimension at the call and kept shared: a
   domain stated on one of the panels, or a zoom of one, is the group's. `AxisConfig.ShowTickLabels`.
+- **A second y axis** (D177): `Chart.withRightAxis right` draws a one-panel figure's layers on
+  the right of the last panel, against a y axis of their own, each side's unit checked among its
+  own layers; `toRightAxis`, `withRightYDomain`, `withRightYLabel`. A side with one series is drawn
+  in its colour. The pointer reads the second axis too, and a zoom or a pan moves it with the
+  first. `Panel.Y2Axis`, `Layer.SecondaryY`, `PanelView.Y2`, `ZoomAxis.Y2`, `Keys.axisY2`.
 - C# extensions for every verb above, and `Figures.Mosaic`.
 - **`examples/paper-figure.fsx`**: a fit over its residuals, and a spectrum with its lines marked.
 
@@ -101,9 +106,10 @@ land in a minor release.
   `Panel` (`LegendColumns`, `LegendFrame`), `Figure` (`Letters`, `Legend`), `PanelLayout`
   (`LegendGap`, `LegendW`, `LegendH`, `LegendScores`), `AxisRender` (`Direction`, `Mirror`,
   `ShowMinor`), and `Theme` (`TickDirection`, `MirrorTicks`, `MinorTicks`, `MinorTickLength`).
-  M9 adds `Panel` (`RowSpan`, `ColSpan`, `XShare`, `YShare`), `Figure` (`RowWeights`,
+  M9 adds `Layer.SecondaryY`, `Panel` (`RowSpan`, `ColSpan`, `XShare`, `YShare`, `Y2Axis`), `Figure` (`RowWeights`,
   `ColWeights`), `AxisConfig.ShowTickLabels` and `PanelLayout` (`SlackLeft`, `SlackRight`,
-  `SlackTop`, `SlackBottom`). `LegendPlacement` gains three cases, which breaks an exhaustive `match` over it, and `Geom` two
+  `SlackTop`, `SlackBottom`, `Y2TicksW`, `Y2TitleW`, `Y2Prefix`), `PanelView` (`Y2`, `Y2Axis`),
+  and `ZoomAxis.Y2`, which breaks an exhaustive `match` over it. `LegendPlacement` gains three cases, which breaks an exhaustive `match` over it, and `Geom` two
   (`GeomRule`, `GeomAnnotation`).
 
 ### Fixed

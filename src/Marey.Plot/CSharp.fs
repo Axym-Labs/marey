@@ -227,6 +227,16 @@ type FigureExtensions =
     [<Extension>]
     static member Above(fig: Figure, below: Figure) = Chart.above below fig
 
+    /// D177 — `right`'s layers on this figure's last panel, against a y axis on its right.
+    [<Extension>]
+    static member WithRightAxis(fig: Figure, right: Figure) = Chart.withRightAxis right fig
+
+    [<Extension>]
+    static member WithRightYDomain(fig: Figure, lo: float, hi: float) = Chart.withRightYDomain lo hi fig
+
+    [<Extension>]
+    static member WithRightYLabel(fig: Figure, label: string) = Chart.withRightYLabel label fig
+
     /// D176 — one x axis for every panel the figure has now, labelled on the outermost.
     [<Extension>]
     static member ShareX(fig: Figure) = Chart.shareX fig

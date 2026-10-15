@@ -342,6 +342,11 @@ module Figures =
     let ``a shared axis over ratios`` () =
         check "figure-shared.tex" (Chart.render TikzBackend.render sharedSurface sharedFigure)
 
+    /// D177 — two y axes, each in its series' colour.
+    [<Fact>]
+    let ``a twin y`` () =
+        check "figure-twin.tex" (Chart.render TikzBackend.render twinSurface twinFigure)
+
     /// Gate 6 meets gate 7. A baseline can be byte-stable, valid TeX and *blank* — that is
     /// precisely the failure this milestone already shipped once. So the committed figure is also
     /// compiled and looked at, which is what makes it a record of a picture rather than of a

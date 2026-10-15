@@ -129,6 +129,9 @@ module Keys =
 
     let axisY (panelKey: Key) = child panelKey "axis-y"
 
+    /// D177 — a panel's second y axis, on its right.
+    let axisY2 (panelKey: Key) = child panelKey "axis-y2"
+
     let grid (panelKey: Key) = child panelKey "grid"
 
     let legend (panelKey: Key) = child panelKey "legend"

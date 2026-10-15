@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="480" height="300" viewBox="0 0 480 300">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M48.748 258.567L431.252 258.567L431.252 41.55L48.748 41.55Z"/></clipPath>
+  </defs>
+  <g id="figure">
+    <path d="M0 300L480 300L480 0L0 0Z" fill="#ffffff"/>
+    <g id="figure_panel-0-0">
+      <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="2" data-x-tick-rule="all" data-y-tick-rule="all">
+        <g clip-path="url(#qc)">
+          <g id="figure_panel-0-0_layer-0">
+            <g role="graphics-object" data-marey-role="series" aria-label="temperature" data-series="temperature" data-points="41">
+              <path d="M66.135 248.702L74.828 226.283L83.521 207.601L92.214 191.792L100.908 178.242L109.601 166.499L118.294 156.224L126.987 147.157L135.681 139.098L144.374 131.887L153.067 125.397L161.761 119.526L170.454 114.188L179.147 109.314L187.84 104.847L196.534 100.736L205.227 96.942L213.92 93.429L222.613 90.167L231.307 87.13L240 84.296L248.693 81.644L257.387 79.158L266.08 76.823L274.773 74.625L283.466 72.552L292.16 70.595L300.853 68.744L309.546 66.99L318.239 65.326L326.933 63.745L335.626 62.241L344.319 60.809L353.013 59.444L361.706 58.14L370.399 56.895L379.092 55.703L387.786 54.563L396.479 53.469L405.172 52.421L413.865 51.414" fill="none" stroke="#0072b2" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="figure_panel-0-0_layer-1">
+            <g role="graphics-object" data-marey-role="series" aria-label="pressure" data-series="pressure" data-points="41">
+              <path d="M66.135 248.702L74.828 231.551L83.521 204.943L92.214 192.969L100.908 181.307L109.601 171.95L118.294 154.771L126.987 147.615L135.681 142.94L144.374 129.82L153.067 127.212L161.761 125.225L170.454 113.987L179.147 108.599L187.84 109.492L196.534 97.531L205.227 97.632L213.92 96.059L222.613 95.227L231.307 85.323L240 84.431L248.693 85.192L257.387 76.82L266.08 78.388L274.773 80.094L283.466 72.138L292.16 69.682L300.853 73.204L309.546 63.611L318.239 65.853L326.933 66.222L335.626 67.158L344.319 58.867L353.013 59.452L361.706 61.567L370.399 54.443L379.092 57.16L387.786 59.929L396.479 52.958L405.172 51.414L413.865 55.786" fill="none" stroke="#d55e00" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="bottom" data-unit="s" data-prefix="" data-ticks="7" data-tick-rule="all">
+            <path d="M66.135 255.067L66.135 258.567M124.09 255.067L124.09 258.567M182.045 255.067L182.045 258.567M240 255.067L240 258.567M297.955 255.067L297.955 258.567M355.91 255.067L355.91 258.567M413.865 255.067L413.865 258.567M54.544 256.567L54.544 258.567M77.726 256.567L77.726 258.567M89.317 256.567L89.317 258.567M100.908 256.567L100.908 258.567M112.499 256.567L112.499 258.567M135.681 256.567L135.681 258.567M147.272 256.567L147.272 258.567M158.863 256.567L158.863 258.567M170.454 256.567L170.454 258.567M193.636 256.567L193.636 258.567M205.227 256.567L205.227 258.567M216.818 256.567L216.818 258.567M228.409 256.567L228.409 258.567M251.591 256.567L251.591 258.567M263.182 256.567L263.182 258.567M274.773 256.567L274.773 258.567M286.364 256.567L286.364 258.567M309.546 256.567L309.546 258.567M321.137 256.567L321.137 258.567M332.728 256.567L332.728 258.567M344.319 256.567L344.319 258.567M367.501 256.567L367.501 258.567M379.092 256.567L379.092 258.567M390.683 256.567L390.683 258.567M402.274 256.567L402.274 258.567M425.456 256.567L425.456 258.567M66.135 45.05L66.135 41.55M124.09 45.05L124.09 41.55M182.045 45.05L182.045 41.55M240 45.05L240 41.55M297.955 45.05L297.955 41.55M355.91 45.05L355.91 41.55M413.865 45.05L413.865 41.55M54.544 43.55L54.544 41.55M77.726 43.55L77.726 41.55M89.317 43.55L89.317 41.55M100.908 43.55L100.908 41.55M112.499 43.55L112.499 41.55M135.681 43.55L135.681 41.55M147.272 43.55L147.272 41.55M158.863 43.55L158.863 41.55M170.454 43.55L170.454 41.55M193.636 43.55L193.636 41.55M205.227 43.55L205.227 41.55M216.818 43.55L216.818 41.55M228.409 43.55L228.409 41.55M251.591 43.55L251.591 41.55M263.182 43.55L263.182 41.55M274.773 43.55L274.773 41.55M286.364 43.55L286.364 41.55M309.546 43.55L309.546 41.55M321.137 43.55L321.137 41.55M332.728 43.55L332.728 41.55M344.319 43.55L344.319 41.55M367.501 43.55L367.501 41.55M379.092 43.55L379.092 41.55M390.683 43.55L390.683 41.55M402.274 43.55L402.274 41.55M425.456 43.55L425.456 41.55" fill="none" stroke="#101010" stroke-width="0.8"/>
+            <text x="66.135" y="261.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#101010">0</text>
+            <text x="124.09" y="261.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#101010">100</text>
+            <text x="182.045" y="261.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#101010">200</text>
+            <text x="240" y="261.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#101010">300</text>
+            <text x="297.955" y="261.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#101010">400</text>
+            <text x="355.91" y="261.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#101010">500</text>
+            <text x="413.865" y="261.567" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#101010">600</text>
+            <text x="240" y="277.667" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="13.333" text-anchor="middle" dominant-baseline="hanging" fill="#101010">t [s]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="T [K]" data-side="left" data-unit="K" data-prefix="" data-ticks="6" data-tick-rule="all">
+            <path d="M52.248 248.702L48.748 248.702M52.248 207.601L48.748 207.601M52.248 166.499L48.748 166.499M52.248 125.397L48.748 125.397M52.248 84.296L48.748 84.296M52.248 43.194L48.748 43.194M50.748 256.923L48.748 256.923M50.748 240.482L48.748 240.482M50.748 232.262L48.748 232.262M50.748 224.041L48.748 224.041M50.748 215.821L48.748 215.821M50.748 199.38L48.748 199.38M50.748 191.16L48.748 191.16M50.748 182.94L48.748 182.94M50.748 174.719L48.748 174.719M50.748 158.279L48.748 158.279M50.748 150.058L48.748 150.058M50.748 141.838L48.748 141.838M50.748 133.618L48.748 133.618M50.748 117.177L48.748 117.177M50.748 108.957L48.748 108.957M50.748 100.736L48.748 100.736M50.748 92.516L48.748 92.516M50.748 76.075L48.748 76.075M50.748 67.855L48.748 67.855M50.748 59.635L48.748 59.635M50.748 51.414L48.748 51.414" fill="none" stroke="#0072b2" stroke-width="0.8"/>
+            <text x="45.748" y="248.702" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#0072b2">300</text>
+            <text x="45.748" y="207.601" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#0072b2">310</text>
+            <text x="45.748" y="166.499" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#0072b2">320</text>
+            <text x="45.748" y="125.397" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#0072b2">330</text>
+            <text x="45.748" y="84.296" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#0072b2">340</text>
+            <text x="45.748" y="43.194" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#0072b2">350</text>
+            <text x="22.333" y="150.058" transform="rotate(-90 22.333 150.058)" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="13.333" text-anchor="middle" fill="#0072b2">T [K]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-y2">
+          <g role="graphics-object" data-marey-role="axis" aria-label="p [kPa]" data-side="right" data-unit="kPa" data-prefix="kilo" data-ticks="3" data-tick-rule="all">
+            <path d="M427.752 205.392L431.252 205.392M427.752 144.218L431.252 144.218M427.752 83.045L431.252 83.045M429.252 254.33L431.252 254.33M429.252 242.096L431.252 242.096M429.252 229.861L431.252 229.861M429.252 217.626L431.252 217.626M429.252 193.157L431.252 193.157M429.252 180.922L431.252 180.922M429.252 168.687L431.252 168.687M429.252 156.453L431.252 156.453M429.252 131.983L431.252 131.983M429.252 119.749L431.252 119.749M429.252 107.514L431.252 107.514M429.252 95.279L431.252 95.279M429.252 70.81L431.252 70.81M429.252 58.575L431.252 58.575M429.252 46.341L431.252 46.341" fill="none" stroke="#d55e00" stroke-width="0.8"/>
+            <text x="434.252" y="205.392" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#d55e00">105</text>
+            <text x="434.252" y="144.218" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#d55e00">110</text>
+            <text x="434.252" y="83.045" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#d55e00">115</text>
+            <text x="457.667" y="150.058" transform="rotate(90 457.667 150.058)" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="13.333" text-anchor="middle" fill="#d55e00">p [kPa]</text>
+          </g>
+        </g>
+        <g role="presentation" data-marey-role="decoration" aria-hidden="true">
+          <path d="M48.748 258.567L431.252 258.567L431.252 41.55L48.748 41.55Z" fill="none" stroke="#101010" stroke-width="0.8"/>
+        </g>
+        <g id="figure_panel-0-0_legend">
+          <g role="group" data-marey-role="legend" aria-label="legend" data-entries="2">
+            <path d="M327.735 252.567L425.252 252.567L425.252 214.367L327.735 214.367Z" fill="#ffffff" fill-opacity="0.85" stroke="#b0b0b0" stroke-width="0.6"/>
+            <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="temperature" data-series="temperature" data-color="#0072b2">
+              <path d="M333.735 225.917L353.735 225.917" fill="none" stroke="#0072b2" stroke-width="1.4" stroke-linecap="round"/>
+              <text x="359.735" y="225.917" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#101010">temperature</text>
+            </g>
+            <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="pressure" data-series="pressure" data-color="#d55e00">
+              <path d="M333.735 241.017L353.735 241.017" fill="none" stroke="#d55e00" stroke-width="1.4" stroke-linecap="round"/>
+              <text x="359.735" y="241.017" font-family="Times New Roman, Nimbus Roman, Liberation Serif, serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#101010">pressure</text>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
