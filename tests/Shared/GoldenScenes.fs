@@ -515,6 +515,27 @@ let aspectFigure: Figure =
 
 let aspectSurface: Extent<px> = { Width = 760.0<px>; Height = 300.0<px> }
 
+/// D180 — a resonance with its peak drawn again in an inset, the zoom marked on the host. A
+/// Lorentzian, rational (D141).
+let insetFigure: Figure =
+    let hz = U.div U.one U.second
+    let fs = Array.init 401 (fun i -> float i * 0.05<s^-1>)
+    // A product rather than `** 2.0`: `Math.Pow` is not correctly rounded on every platform, and
+    // under Node two of the inset's points came out a bit apart from .NET's.
+    let resonance (f: float<s^-1>) =
+        let d = (f - 10.0<s^-1>) / 0.3<s^-1>
+        1e-3<m> / (1.0 + d * d)
+
+    let peak = fs |> Array.filter (fun f -> f >= 9.0<s^-1> && f <= 11.0<s^-1>)
+
+    Chart.line hz U.metre fs (fs |> Array.map resonance)
+    |> Chart.withYLabel "amplitude"
+    |> Chart.withInset (0.58, 0.45, 0.96, 0.95) (Chart.line hz U.metre peak (peak |> Array.map resonance) |> Chart.withXLabel "" |> Chart.withYLabel "")
+    |> Chart.withInsetZoom
+    |> Chart.withTheme Theme.publication
+
+let insetSurface: Extent<px> = { Width = 560.0<px>; Height = 360.0<px> }
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
@@ -1307,7 +1328,8 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-shared" sharedSurface sharedFigure
         fig "figure-twin" twinSurface twinFigure
         fig "figure-secondary" secondarySurface secondaryFigure
-        fig "figure-aspect" aspectSurface aspectFigure ]
+        fig "figure-aspect" aspectSurface aspectFigure
+        fig "figure-inset" insetSurface insetFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1337,4 +1359,5 @@ let svg: (string * (unit -> string)) list =
         "figure-shared", figureAt sharedSurface sharedFigure
         "figure-twin", figureAt twinSurface twinFigure
         "figure-secondary", figureAt secondarySurface secondaryFigure
-        "figure-aspect", figureAt aspectSurface aspectFigure ]
+        "figure-aspect", figureAt aspectSurface aspectFigure
+        "figure-inset", figureAt insetSurface insetFigure ]

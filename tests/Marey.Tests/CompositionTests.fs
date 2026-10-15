@@ -653,3 +653,96 @@ module ``D179 aspect`` =
             let v = (Chart.panelsIn measurer shot (frame (float k / 7.0))).[0]
             Assert.Equal(first.Plot, v.Plot)
             Assert.True(equalTo 1e-6 v, sprintf "frame %d: %A px per m" k (pxPerMetre v))
+
+module ``D180 insets`` =
+
+    let private fs = Array.init 401 (fun i -> float i * 0.05<s^-1>)
+    let private resonance (f: float<s^-1>) = 1e-3<m> / (1.0 + ((f - 10.0<s^-1>) / 0.3<s^-1>) ** 2.0)
+    let private host = Chart.line (U.div U.one U.second) U.metre fs (fs |> Array.map resonance)
+    let private peak = fs |> Array.filter (fun f -> f >= 9.0<s^-1> && f <= 11.0<s^-1>)
+    let private zoom = Chart.line (U.div U.one U.second) U.metre peak (peak |> Array.map resonance)
+    let private fig = host |> Chart.withInset (0.6, 0.55, 0.95, 0.95) zoom |> Chart.withInsetZoom
+    let private extent = Chart.size 600.0 400.0
+
+    let rec private keys (n: Node) : Key list =
+        match n with
+        | Keyed(k, c) -> k :: keys c
+        | Group ns -> ns |> List.ofArray |> List.collect keys
+        | Transform(_, c)
+        | Clip(_, c)
+        | Opacity(_, c)
+        | Annotated(_, c) -> keys c
+        | _ -> []
+
+    let rec private labels (n: Node) : string list =
+        match n with
+        | Annotated(s, c) -> s.Label :: labels c
+        | Group ns -> ns |> List.ofArray |> List.collect labels
+        | Transform(_, c)
+        | Clip(_, c)
+        | Opacity(_, c)
+        | Keyed(_, c) -> labels c
+        | _ -> []
+
+    [<Fact>]
+    let ``the inset's plot is where it was placed on the host's (gate 8)`` () =
+        let views = viewsOf extent fig
+        Assert.Equal(2, views.Length)
+        let inset, hostView = views.[0], views.[1]
+        Assert.Equal(Some 0, inset.Inset)
+        Assert.Equal(None, hostView.Inset)
+        let hp = hostView.Plot
+        let w, h = hp.X1 - hp.X0, hp.Y1 - hp.Y0
+        let close (a: float<px>) (b: float<px>) = abs (float (a - b)) < 1e-6
+        Assert.True(close inset.Plot.X0 (hp.X0 + 0.6 * w) && close inset.Plot.X1 (hp.X0 + 0.95 * w))
+        Assert.True(close inset.Plot.Y0 (hp.Y1 - 0.95 * h) && close inset.Plot.Y1 (hp.Y1 - 0.55 * h))
+        // Its own axes: the zoom's x runs 9 … 11, the host's 0 … 20.
+        Assert.True(snd inset.X.Domain < 12.0 && snd hostView.X.Domain > 19.0)
+
+    [<Fact>]
+    let ``the inset is keyed under its host, and its zoom drawn (gate 8)`` () =
+        let scene = Chart.toSceneWith measurer extent fig
+        let ks = keys scene
+        let insetKey = Keys.inset (Keys.panel 0 0) 0
+        Assert.Contains(insetKey, ks)
+        Assert.Contains(Keys.layer insetKey 0, ks)
+        Assert.Contains("inset zoom", labels scene)
+
+    [<Fact>]
+    let ``a drag inside the inset zooms the inset and not the host (gate 8)`` () =
+        let l: Live = interact { return fig }
+        let s0 = Live.init l
+        let insetOf (vs: PanelView[]) = vs |> Array.find (fun v -> v.Inset = Some 0)
+        let hostOf (vs: PanelView[]) = vs |> Array.find (fun v -> v.Inset.IsNone)
+        let views0 = Live.panels l s0
+        let p = (insetOf views0).Plot
+        let s1 = Live.step l s0 (Zoom { X0 = p.X0 + 10.0<px>; Y0 = p.Y0 + 10.0<px>; X1 = p.X0 + 60.0<px>; Y1 = p.Y1 - 10.0<px> })
+        let views1 = Live.panels l s1
+        Assert.NotEqual((insetOf views0).X.Domain, (insetOf views1).X.Domain)
+        Assert.Equal((hostOf views0).X.Domain, (hostOf views1).X.Domain)
+        Assert.Equal((hostOf views0).Y.Domain, (hostOf views1).Y.Domain)
+
+    [<Fact>]
+    let ``an inset moves with its host when composed`` () =
+        let composed = fit |> Chart.beside fig
+        let ks = keys (Chart.toSceneWith measurer (Chart.size 900.0 400.0) composed)
+        Assert.Contains(Keys.inset (Keys.panel 0 1) 0, ks)
+
+    [<Fact>]
+    let ``an inset in another dimension cannot show its zoom`` () =
+        let other = Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 1e-3<m> |]
+        let bad = host |> Chart.withInset (0.6, 0.55, 0.95, 0.95) other |> Chart.withInsetZoom
+        let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent bad |> ignore)
+        Assert.Contains("host's dimensions", e.Message)
+
+    [<Fact>]
+    let ``what an inset cannot be is refused at the call`` () =
+        let refused (f: unit -> Figure) (needle: string) =
+            let e = Assert.ThrowsAny<exn>(fun () -> f () |> ignore)
+            Assert.Contains(needle, e.Message)
+
+        refused (fun () -> host |> Chart.withInset (0.6, 0.6, 0.9, 0.9) (zoom |> Chart.beside zoom)) "one-panel figure"
+        refused (fun () -> host |> Chart.withInset (0.6, 0.6, 0.9, 0.9) (zoom |> Chart.withLegend LegendOutsideRight)) "outside"
+        refused (fun () -> host |> Chart.withInset (0.6, 0.6, 1.2, 0.9) zoom) "within 0"
+        refused (fun () -> host |> Chart.withInset (0.6, 0.6, 0.9, 0.9) (zoom |> Chart.withInset (0.1, 0.1, 0.2, 0.2) zoom)) "no insets of its own"
+        refused (fun () -> host |> Chart.withInsetZoom) "has none"

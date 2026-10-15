@@ -237,6 +237,14 @@ type FigureExtensions =
     [<Extension>]
     static member WithRightYLabel(fig: Figure, label: string) = Chart.withRightYLabel label fig
 
+    /// D180 — a one-panel figure drawn over this figure's last panel, at fractions of its plot.
+    [<Extension>]
+    static member WithInset(fig: Figure, x0: float, y0: float, x1: float, y1: float, inset: Figure) = Chart.withInset (x0, y0, x1, y1) inset fig
+
+    /// D180 — the last inset's domain drawn on its host.
+    [<Extension>]
+    static member WithInsetZoom(fig: Figure) = Chart.withInsetZoom fig
+
     /// D179 — one unit as long on y as on x.
     [<Extension>]
     static member WithEqualAspect(fig: Figure) = Chart.withEqualAspect fig

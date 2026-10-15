@@ -91,6 +91,12 @@ land in a minor release.
   domain to it; a live zoom is widened to the plot's shape, so the plot does not move.
   `withBoxAspect` states the plot's height over width. `Panel.Aspect`, `PanelView.EqualAspect`,
   `PanelView.fitEqual`.
+- **Insets** (D180): `Chart.withInset (x0, y0, x1, y1) inset` draws a one-panel figure over the
+  last panel's plot, its own plot at those fractions of the host's, its axes its own;
+  `withInsetZoom` draws its domain on the host as a rectangle joined to it by the two corner lines
+  that cross neither. A pointer over an inset reads and zooms the inset. Keyed under its host,
+  `panel-r-c/inset-i`. `Panel.Insets`, `Inset`, `PanelView.Inset`, `LiveZoom.Inset`, `Keys.inset`,
+  `Figure.withInsetDomains`.
 - C# extensions for every verb above, and `Figures.Mosaic`.
 - **`examples/paper-figure.fsx`**: a fit over its residuals, and a spectrum with its lines marked.
 
@@ -119,9 +125,9 @@ land in a minor release.
   `Panel` (`LegendColumns`, `LegendFrame`), `Figure` (`Letters`, `Legend`), `PanelLayout`
   (`LegendGap`, `LegendW`, `LegendH`, `LegendScores`), `AxisRender` (`Direction`, `Mirror`,
   `ShowMinor`), and `Theme` (`TickDirection`, `MirrorTicks`, `MinorTicks`, `MinorTickLength`).
-  M9 adds `Layer.SecondaryY`, `Panel` (`RowSpan`, `ColSpan`, `XShare`, `YShare`, `Y2Axis`, `Aspect`), `Figure` (`RowWeights`,
+  M9 adds `Layer.SecondaryY`, `Panel` (`RowSpan`, `ColSpan`, `XShare`, `YShare`, `Y2Axis`, `Aspect`, `Insets`), `Figure` (`RowWeights`,
   `ColWeights`), `AxisConfig.ShowTickLabels` and `PanelLayout` (`SlackLeft`, `SlackRight`,
-  `SlackTop`, `SlackBottom`, `Y2TicksW`, `Y2TitleW`, `Y2Prefix`, `X2TicksH`, `X2TitleH`), `AxisConfig.Secondary`, `PanelView` (`Y2`, `Y2Axis`, `EqualAspect`),
+  `SlackTop`, `SlackBottom`, `Y2TicksW`, `Y2TitleW`, `Y2Prefix`, `X2TicksH`, `X2TitleH`), `AxisConfig.Secondary`, `PanelView` (`Y2`, `Y2Axis`, `EqualAspect`, `Inset`), `LiveZoom.Inset`,
   and `ZoomAxis.Y2`, which breaks an exhaustive `match` over it. `LegendPlacement` gains three cases, which breaks an exhaustive `match` over it, and `Geom` two
   (`GeomRule`, `GeomAnnotation`).
 
