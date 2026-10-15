@@ -111,6 +111,15 @@ type FigureExtensions =
     static member WithYMinorTicks(fig: Figure, minor: MinorSpec) = Chart.withYMinorTicks minor fig
 
     [<Extension>]
+    static member WithLegendColumns(fig: Figure, columns: int) = Chart.withLegendColumns columns fig
+
+    [<Extension>]
+    static member WithLegendFrame(fig: Figure, framed: bool) = Chart.withLegendFrame framed fig
+
+    [<Extension>]
+    static member WithFigureLegend(fig: Figure, placement: FigureLegend) = Chart.withFigureLegend placement fig
+
+    [<Extension>]
     static member WithXTickFormat(fig: Figure, format: TickFormat) = Chart.withXTickFormat format fig
 
     [<Extension>]

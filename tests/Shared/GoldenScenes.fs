@@ -381,6 +381,35 @@ let publicationFigure: Figure =
 
 let publicationSurface: Extent<px> = { Width = 480.0<px>; Height = 420.0<px> }
 
+/// D171 — legends. Three warming curves (rational, not `exp`, D141) four ways: a legend in its own
+/// column, one in its own row in three columns, the emptiest corner, and a corner without a frame.
+let private warming (title: string) =
+    let ts = Array.init 31 (fun i -> float i * 20.0<s>)
+    let curve (offset: float<K>) = ts |> Array.map (fun t -> 300.0<K> - offset + 60.0<K> * (t / (t + 150.0<s>)))
+
+    Chart.line U.second U.kelvin ts (curve 0.0<K>)
+    |> Chart.withName "chamber"
+    |> Chart.addLine U.second U.kelvin ts (curve 4.0<K>)
+    |> Chart.withName "probe"
+    |> Chart.addLine U.second U.kelvin ts (curve 10.0<K>)
+    |> Chart.withName "wall"
+    |> Chart.withPanelTitle title
+
+let legendsFigure: Figure =
+    let right = warming "outside right" |> Chart.withLegend LegendOutsideRight
+    let below = warming "below, three columns" |> Chart.withLegend LegendOutsideBottom |> Chart.withLegendColumns 3
+    let best = warming "best" |> Chart.withLegend LegendBest
+    let bare = warming "no frame" |> Chart.withLegendFrame false
+    (right |> Chart.beside below) |> Chart.above (best |> Chart.beside bare) |> Chart.withTheme Theme.publication
+
+let legendsSurface: Extent<px> = { Width = 760.0<px>; Height = 560.0<px> }
+
+/// D171 — one legend for three panels, beside them.
+let sharedLegendFigure: Figure =
+    warming "one" |> Chart.beside (warming "two") |> Chart.beside (warming "three") |> Chart.withFigureLegend FigureLegendRight
+
+let sharedLegendSurface: Extent<px> = { Width = 760.0<px>; Height = 280.0<px> }
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
@@ -1166,7 +1195,9 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-rules" rulesSurface rulesFigure
         fig "figure-annotate" annotateSurface annotateFigure
         fig "figure-ticks" ticksSurface ticksFigure
-        fig "figure-publication" publicationSurface publicationFigure ]
+        fig "figure-publication" publicationSurface publicationFigure
+        fig "figure-legends" legendsSurface legendsFigure
+        fig "figure-legend-shared" sharedLegendSurface sharedLegendFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1189,4 +1220,6 @@ let svg: (string * (unit -> string)) list =
         "figure-rules", figureAt rulesSurface rulesFigure
         "figure-annotate", figureAt annotateSurface annotateFigure
         "figure-ticks", figureAt ticksSurface ticksFigure
-        "figure-publication", figureAt publicationSurface publicationFigure ]
+        "figure-publication", figureAt publicationSurface publicationFigure
+        "figure-legends", figureAt legendsSurface legendsFigure
+        "figure-legend-shared", figureAt sharedLegendSurface sharedLegendFigure ]

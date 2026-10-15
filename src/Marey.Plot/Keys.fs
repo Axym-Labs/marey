@@ -57,6 +57,9 @@ module Keys =
     /// The root of every figure. The one key that existed before D68.
     let figure = Key "figure"
 
+    /// D171 — the legend a figure shares among its panels.
+    let figureLegend = child figure "legend"
+
     /// A panel, by its grid position. Not by its index in `Figure.Panels`: a panel's identity is
     /// where it sits, and `Chart.facet` may add or reorder the array without moving any panel.
     let panel (row: int) (col: int) =

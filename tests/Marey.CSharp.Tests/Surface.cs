@@ -162,6 +162,18 @@ public class Surface
         Assert.Contains("&lt;", svg);
     }
 
+    /// D171 — legends outside, in columns, without a frame, and shared by a figure, from C#.
+    [Fact]
+    public void Legends()
+    {
+        var one = Chart.Line(X, Y, yUnit: Units.Metre).WithName("model")
+            .Add(Chart.Scatter(X, Y, yUnit: Units.Metre)).WithName("measured");
+
+        Assert.Contains("measured", Svg(one.WithLegend(LegendPlacement.LegendOutsideBottom).WithLegendColumns(2).WithLegendFrame(false)));
+        Assert.Contains("measured", Svg(one.WithLegend(LegendPlacement.LegendBest)));
+        Assert.Contains("measured", Svg(one.Beside(one).WithFigureLegend(FigureLegend.FigureLegendRight)));
+    }
+
     [Fact]
     public void TheCategoricalConstructors()
     {

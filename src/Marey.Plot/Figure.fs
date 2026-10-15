@@ -97,7 +97,11 @@ type Panel =
       YAxis: AxisConfig
       /// §4 — cartesian is the identity. Nothing else in this file knows polar exists.
       Coord: Coord
-      Legend: LegendPlacement }
+      Legend: LegendPlacement
+      /// D171 — the legend's columns, filled down then across.
+      LegendColumns: int
+      /// D171 — the legend's frame, overriding the theme's `ShowLegendFrame`.
+      LegendFrame: bool option }
 
 /// D165 — how `Chart.withPanelLetters` writes a panel's letter.
 type LetterStyle =
@@ -123,7 +127,10 @@ type Figure =
       Theme: Theme
       /// D165 — letters for the panels, assigned in reading order when the figure is drawn, so a
       /// panel added by `beside` after the call is lettered too. `None` writes none.
-      Letters: PanelLetters option }
+      Letters: PanelLetters option
+      /// D171 — one legend for every panel, beside or below the grid of them, in place of each
+      /// panel's own.
+      Legend: FigureLegend option }
 
 /// §9 / D48 — **which axes the panels of a composed figure share.**
 ///
@@ -173,6 +180,14 @@ type PanelLayout =
       RightPad: float<px>
       BarGap: float<px>
       BarW: float<px>
+      /// D171 — an outside legend's column (right) or row (bottom), and the gap before it.
+      LegendGap: float<px>
+      LegendW: float<px>
+      LegendH: float<px>
+      /// D171 — for `LegendBest`, the share of the panel's drawn samples under the legend's box
+      /// in each inside corner (top right, top left, bottom left, bottom right). A shot keeps the
+      /// largest each corner had in any frame, and the legend goes where that is least.
+      LegendScores: float[]
       /// The plot rectangle the tick plan is measured against.
       Probe: Extent<px>
       /// D73 — the prefix the x axis is pinned to. `None` chooses one from this figure's own
@@ -193,6 +208,10 @@ module PanelLayout =
           RightPad = 0.0<px>
           BarGap = 0.0<px>
           BarW = 0.0<px>
+          LegendGap = 0.0<px>
+          LegendW = 0.0<px>
+          LegendH = 0.0<px>
+          LegendScores = [||]
           Probe = { Width = 0.0<px>; Height = 0.0<px> }
           XPrefix = None
           YPrefix = None }
@@ -220,6 +239,13 @@ module PanelLayout =
           RightPad = max a.RightPad b.RightPad
           BarGap = max a.BarGap b.BarGap
           BarW = max a.BarW b.BarW
+          LegendGap = max a.LegendGap b.LegendGap
+          LegendW = max a.LegendW b.LegendW
+          LegendH = max a.LegendH b.LegendH
+          LegendScores =
+            if a.LegendScores.Length = 0 then b.LegendScores
+            elif b.LegendScores.Length = 0 then a.LegendScores
+            else Array.map2 max a.LegendScores b.LegendScores
           Probe =
             { Width = max a.Probe.Width b.Probe.Width
               Height = max a.Probe.Height b.Probe.Height }
@@ -538,7 +564,9 @@ module Figure =
           XAxis = axisConfig
           YAxis = axisConfig
           Coord = Coord.cartesian
-          Legend = LegendTopRight }
+          Legend = LegendTopRight
+          LegendColumns = 1
+          LegendFrame = None }
 
     let create (panels: Panel[]) : Figure =
         { Title = ""
@@ -547,7 +575,8 @@ module Figure =
           Cols = (if panels.Length = 0 then 1 else 1 + (panels |> Array.map (fun p -> p.Col) |> Array.max))
           Panels = panels
           Theme = Theme.initial
-          Letters = None }
+          Letters = None
+          Legend = None }
 
     // ---- Sharing an axis: the one runtime dimensional check --------------------------------
 
@@ -944,20 +973,29 @@ module Figure =
     /// in from outside and produce the same rectangle every time. The drawing pass and
     /// `panelsIn` both take the plot rectangle from here, so there is one of it.
     let private innerGrid (m: ITextMeasurer) (extent: Extent<px>) (region: Rect<px>) (g: PanelLayout) =
+        // D171 — an outside legend's gap and column to the right of the colorbar, or its gap and
+        // row below the x title. A panel without one has them at zero, which changes nothing.
+        let gapRight = if g.LegendW > 0.0<px> then g.LegendGap else 0.0<px>
+        let gapBelow = if g.LegendH > 0.0<px> then g.LegendGap else 0.0<px>
+
         let cols =
             [| Track.Content g.YTitleW
                Track.Content g.YTicksW
                Track.Frac 1.0
                Track.Content g.RightPad
                Track.Content g.BarGap
-               Track.Content g.BarW |]
+               Track.Content g.BarW
+               Track.Content gapRight
+               Track.Content g.LegendW |]
 
         let rows =
             [| Track.Content g.TitleH
                Track.Content g.TopPad
                Track.Frac 1.0
                Track.Content g.XTicksH
-               Track.Content g.XTitleH |]
+               Track.Content g.XTitleH
+               Track.Content gapBelow
+               Track.Content g.LegendH |]
 
         let fixedCell key row col (w: float<px>) (h: float<px>) =
             Layout.cell key row col (fun _ -> { Width = w; Height = h })
@@ -969,10 +1007,14 @@ module Figure =
                fixedCell "rightpad" 2 3 g.RightPad 0.0<px>
                fixedCell "bargap" 2 4 g.BarGap 0.0<px>
                fixedCell "colorbar" 2 5 g.BarW 0.0<px>
-               fixedCell "ptitle" 0 0 0.0<px> g.TitleH |> Layout.spanning 1 6
-               fixedCell "toppad" 1 0 0.0<px> g.TopPad |> Layout.spanning 1 6
+               fixedCell "legendgap" 2 6 gapRight 0.0<px>
+               fixedCell "legend" 2 7 g.LegendW 0.0<px>
+               fixedCell "ptitle" 0 0 0.0<px> g.TitleH |> Layout.spanning 1 8
+               fixedCell "toppad" 1 0 0.0<px> g.TopPad |> Layout.spanning 1 8
                fixedCell "xticks" 3 2 0.0<px> g.XTicksH
-               fixedCell "xtitle" 4 2 0.0<px> g.XTitleH |]
+               fixedCell "xtitle" 4 2 0.0<px> g.XTitleH
+               fixedCell "legendgapb" 5 2 0.0<px> gapBelow
+               fixedCell "legendb" 6 2 0.0<px> g.LegendH |]
 
         Layout.arrangeIn m extent region (Layout.grid rows cols cells)
 
@@ -1130,14 +1172,85 @@ module Figure =
                 | Some _ -> theme.PanelGap
                 | None -> 0.0<px>
 
+            // D171 — the legend: its entries and box, whether it sits outside, and for
+            // `LegendBest` the share of the panel's drawn samples under each inside corner.
+            let entries = legendEntries theme p
+            let hasLegend = p.Legend <> LegendNone && entries.Length > 0
+            let legendSize = Legend.measureIn p.LegendColumns m theme entries
+
+            // The panel's marks as sampled points in panel nd: a line's vertices and 200 points
+            // across the panel along each of its segments, every other geom's points.
+            let samples =
+                lazy
+                    (p.Layers
+                     |> Array.collect (fun l ->
+                         let pts =
+                             Erase.projectXY l.Data
+                             |> Array.filter (fun v -> not (System.Double.IsNaN(float v.X) || System.Double.IsNaN(float v.Y)))
+                             |> Array.map (fun v -> if Coord.isIdentity p.Coord then v else p.Coord.ToPanel v)
+
+                         match l.Geom with
+                         | GeomLine
+                         | GeomStep _
+                         | GeomArea _ ->
+                             [| for i in 0 .. pts.Length - 2 do
+                                    let a, b = pts.[i], pts.[i + 1]
+                                    let n = max 1 (int (200.0 * sqrt (float ((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y)))))
+
+                                    for k in 0 .. n - 1 do
+                                        let t = float k / float n
+                                        yield struct (float a.X + t * float (b.X - a.X), float a.Y + t * float (b.Y - a.Y))
+                                if pts.Length > 0 then
+                                    yield struct (float pts.[pts.Length - 1].X, float pts.[pts.Length - 1].Y) |]
+                         | _ -> pts |> Array.map (fun v -> struct (float v.X, float v.Y))))
+
+            // The four inside corners, in the order `PanelLayout.LegendScores` keeps them.
+            let corners = [| LegendTopRight; LegendTopLeft; LegendBottomLeft; LegendBottomRight |]
+
+            let scores (probe: Extent<px>) =
+                if p.Legend <> LegendBest || not hasLegend || probe.Width <= 0.0<px> || probe.Height <= 0.0<px> then
+                    [||]
+                else
+                    let plot: Rect<px> = { X0 = 0.0<px>; Y0 = 0.0<px>; X1 = probe.Width; Y1 = probe.Height }
+                    let all = samples.Force()
+
+                    corners
+                    |> Array.map (fun corner ->
+                        // `cornerBox` is in px with y down; the samples are in nd with y up.
+                        let b = Legend.cornerBox theme plot legendSize corner
+                        let x0, x1 = float (b.X0 / probe.Width), float (b.X1 / probe.Width)
+                        let y0, y1 = 1.0 - float (b.Y1 / probe.Height), 1.0 - float (b.Y0 / probe.Height)
+
+                        if all.Length = 0 then
+                            0.0
+                        else
+                            let under =
+                                all |> Array.sumBy (fun (struct (x, y)) -> if x >= x0 && x <= x1 && y >= y0 && y <= y1 then 1 else 0)
+
+                            float under / float all.Length)
+
+            // A corner more than 2% covered is a corner the legend would hide data in.
+            let crowded (s: float[]) = s.Length = 4 && Array.min s > 0.02
+
             // D72 — the gutters, measured. This is the half of the panel that depends on the
             // data: how tall the surviving x labels are, how wide the widest y label is, how
             // much the outermost label hangs past the end of its axis, how wide the colorbar
             // needs to be. Every one of them is a `Track.Content` size below, and every one of
             // them moves when the numbers move.
             let gutters (xPlan: TickPlan) (yPlan: TickPlan) (barPlan: TickPlan option) (probe: Extent<px>) : PanelLayout =
+                let legendScores = scores probe
+
+                let outsideRight =
+                    hasLegend && (p.Legend = LegendOutsideRight || (p.Legend = LegendBest && crowded legendScores))
+
+                let outsideBelow = hasLegend && p.Legend = LegendOutsideBottom
+
                 { TitleH = titleH
                   BarGap = barGap
+                  LegendGap = (if outsideRight || outsideBelow then theme.PanelGap else 0.0<px>)
+                  LegendW = (if outsideRight then legendSize.Width else 0.0<px>)
+                  LegendH = (if outsideBelow then legendSize.Height else 0.0<px>)
+                  LegendScores = legendScores
 
                   BarW =
                     match colorbar, barPlan with
@@ -1452,8 +1565,46 @@ module Figure =
                               Baseline = BaselineHanging
                               Rotation = 0.0<rad> }
 
+                // D171 — the legend where it was put: a corner, outside, or the corner the frozen
+                // scores make least covered.
                 let legend =
-                    Legend.compile m theme extent plotNd p.Legend (legendEntries theme p)
+                    let framed = defaultArg p.LegendFrame theme.ShowLegendFrame
+                    let draw (box: Rect<px>) = Legend.compileIn m theme extent box p.LegendColumns framed entries
+
+                    // Through nd and back, as the legend has always been placed: the round trip is
+                    // a last-bit change against `plotPx`, and the baselines record it.
+                    let plotPx = Layout.pxRect extent plotNd
+
+                    let at (x0: float<px>) (y0: float<px>) : Rect<px> =
+                        { X0 = x0; Y0 = y0; X1 = x0 + legendSize.Width; Y1 = y0 + legendSize.Height }
+
+                    let placement =
+                        match p.Legend with
+                        | LegendBest when layout.LegendScores.Length = 4 ->
+                            if crowded layout.LegendScores && layout.LegendW > 0.0<px> then
+                                LegendOutsideRight
+                            else
+                                let least = Array.min layout.LegendScores
+                                corners.[Array.findIndex (fun v -> v = least) layout.LegendScores]
+                        | LegendBest -> LegendTopRight
+                        | other -> other
+
+                    if not hasLegend then
+                        Scene.empty
+                    else
+                        match placement with
+                        | LegendNone
+                        | LegendBest -> Scene.empty
+                        | LegendOutsideRight ->
+                            match Layout.tryFindPx "legend" arrangement with
+                            | Some cell when layout.LegendW > 0.0<px> -> draw (at cell.X0 plotPx.Y0)
+                            | _ -> draw (Legend.cornerBox theme plotPx legendSize LegendTopRight)
+                        | LegendOutsideBottom ->
+                            match Layout.tryFindPx "legendb" arrangement with
+                            | Some cell when layout.LegendH > 0.0<px> ->
+                                draw (at ((plotPx.X0 + plotPx.X1 - legendSize.Width) / 2.0) cell.Y0)
+                            | _ -> draw (Legend.cornerBox theme plotPx legendSize LegendBottomRight)
+                        | corner -> draw (Legend.cornerBox theme plotPx legendSize corner)
 
                 let colorbarNode =
                     match colorbar, barPlan with
@@ -1514,10 +1665,25 @@ module Figure =
     ///
     /// `head` overrides the measured head height when it is `Some`, which is how the union takes
     /// the tallest head of the shot rather than each frame's own.
+    /// D171 — every panel's legend entries, once each, for a figure's shared legend.
+    let private figureEntries (fig: Figure) =
+        fig.Panels |> Array.collect (legendEntries fig.Theme) |> Array.distinct
+
+    /// D171 — the shared legend, when there is one and it has something to say.
+    let private sharedLegend (fig: Figure) =
+        match fig.Legend with
+        | Some placement when (figureEntries fig).Length > 0 -> Some placement
+        | _ -> None
+
+    /// A panel as it is drawn: without its own legend when the figure has a shared one.
+    let private ownLegend (fig: Figure) (p: Panel) =
+        if fig.Legend.IsSome then { p with Legend = LegendNone } else p
+
     let private outerGrid (head: float<px> option) (fig: Figure) =
         let theme = fig.Theme
         let rows = max 1 fig.Rows
         let cols = max 1 fig.Cols
+        let shared = sharedLegend fig
 
         let headHeight (measurer: ITextMeasurer) =
             match head with
@@ -1537,17 +1703,30 @@ module Figure =
 
                 a + b
 
+        // D171 — a shared legend is one more column, or one more row, of the figure's own grid.
+        // A figure without one keeps the grid it had: a track of zero would still take a gap.
         let trackRows =
-            Array.append [| Track.Content 0.0<px> |] (Array.create rows (Track.Frac 1.0))
+            Array.concat
+                [ [| Track.Content 0.0<px> |]
+                  Array.create rows (Track.Frac 1.0)
+                  (if shared = Some FigureLegendBottom then [| Track.Content 0.0<px> |] else [||]) ]
 
-        let trackCols = Array.create cols (Track.Frac 1.0)
+        let trackCols =
+            Array.append (Array.create cols (Track.Frac 1.0)) (if shared = Some FigureLegendRight then [| Track.Content 0.0<px> |] else [||])
+
+        let legendSize (mm: ITextMeasurer) = Legend.measure mm theme (figureEntries fig)
 
         let cells =
             [| yield Layout.cell "head" 0 0 (fun mm -> { Width = 0.0<px>; Height = headHeight mm })
                    |> Layout.spanning 1 cols
 
                for p in fig.Panels do
-                   yield Layout.fill (sprintf "panel-%d-%d" p.Row p.Col) (1 + max 0 p.Row) (max 0 p.Col) |]
+                   yield Layout.fill (sprintf "panel-%d-%d" p.Row p.Col) (1 + max 0 p.Row) (max 0 p.Col)
+
+               match shared with
+               | Some FigureLegendRight -> yield Layout.cell "flegend" 1 cols legendSize |> Layout.spanning rows 1
+               | Some FigureLegendBottom -> yield Layout.cell "flegend" (1 + rows) 0 legendSize |> Layout.spanning 1 cols
+               | None -> () |]
 
         Layout.grid trackRows trackCols cells
         |> Layout.withGaps theme.PanelGap theme.PanelGap
@@ -1657,7 +1836,7 @@ module Figure =
                 match Layout.tryFindPx key outer with
                 | None -> None
                 | Some region ->
-                    let layout, _, _ = compilePanel m fig.Theme extent region None (None, None) (letterHeight m fig) (unify p)
+                    let layout, _, _ = compilePanel m fig.Theme extent region None (None, None) (letterHeight m fig) (unify (ownLegend fig p))
                     Some(key, layout))
 
         { Outer = outer
@@ -1734,7 +1913,7 @@ module Figure =
                     let key = sprintf "panel-%d-%d" p.Row p.Col
 
                     Layout.tryFindPx key outer
-                    |> Option.map (fun region -> key, (fig, region, unify p))))
+                    |> Option.map (fun region -> key, (fig, region, unify (ownLegend fig p)))))
 
         // D73 — the prefix, chosen once from the union of every frame's domain rather than per
         // frame from its own. This is the same mechanism as the gutters and not a second one:
@@ -1861,7 +2040,7 @@ module Figure =
                 match Layout.tryFindPx key shot.Outer, frozen with
                 | Some region, Some f ->
                     let _, needed, _ =
-                        compilePanel m fig.Theme extent region (Some f) (None, None) (letterHeight m fig) (unify (pinned shot.ColourDomains shot.QuiverKeys p))
+                        compilePanel m fig.Theme extent region (Some f) (None, None) (letterHeight m fig) (unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p)))
 
                     let n = needed ()
 
@@ -1990,7 +2169,7 @@ module Figure =
                 | None -> Scene.empty
                 | Some region ->
                     let frozen = shot.Panels |> Array.tryPick (fun (k, l) -> if k = key then Some l else None)
-                    let _, _, draw = compilePanel m theme extent region frozen (None, None) (letterHeight m fig) (unify (pinned shot.ColourDomains shot.QuiverKeys p))
+                    let _, _, draw = compilePanel m theme extent region frozen (None, None) (letterHeight m fig) (unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p)))
                     draw ())
 
         // D165 — the panels' letters, in reading order, at the top left of each panel's region,
@@ -2039,10 +2218,26 @@ module Figure =
                     |> Option.map (letterAt i p))
                 |> Array.choose id
 
+        // D171 — the figure's shared legend, in the column or row the outer grid kept for it.
+        let shared =
+            match sharedLegend fig, Layout.tryFindPx "flegend" shot.Outer with
+            | Some placement, Some cell ->
+                let entries = figureEntries fig
+                let size = Legend.measure m theme entries
+
+                let x0 =
+                    match placement with
+                    | FigureLegendRight -> cell.X0
+                    | FigureLegendBottom -> (cell.X0 + cell.X1 - size.Width) / 2.0
+
+                let box: Rect<px> = { X0 = x0; Y0 = cell.Y0; X1 = x0 + size.Width; Y1 = cell.Y0 + size.Height }
+                [| Keyed(Keys.figureLegend, Legend.compileIn m theme extent box 1 theme.ShowLegendFrame entries) |]
+            | _ -> [||]
+
         Scene.prune (
             Keyed(
                 Keys.figure,
-                Group(Array.concat [ [| background; head |]; panels; letters ])
+                Group(Array.concat [ [| background; head |]; panels; letters; shared ])
             )
         )
 

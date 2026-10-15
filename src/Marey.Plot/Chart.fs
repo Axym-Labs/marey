@@ -1380,6 +1380,17 @@ module Chart =
 
     let withLegend (placement: LegendPlacement) (fig: Figure) = mapLast (fun p -> { p with Legend = placement }) fig
 
+    /// D171 — lay the last panel's legend out in `columns` columns, filled down then across.
+    let withLegendColumns (columns: int) (fig: Figure) = mapLast (fun p -> { p with LegendColumns = max 1 columns }) fig
+
+    /// D171 — draw the last panel's legend with or without its frame, whatever the theme says.
+    let withLegendFrame (framed: bool) (fig: Figure) = mapLast (fun p -> { p with LegendFrame = Some framed }) fig
+
+    /// D171 — **one legend for the whole figure**, beside or below its panels, gathering every
+    /// panel's entries once each, in place of the panels' own. Applied when the figure is drawn,
+    /// so panels added afterwards are gathered too.
+    let withFigureLegend (placement: FigureLegend) (fig: Figure) = { fig with Legend = Some placement }
+
     /// §4 — swap the coordinate system. `Coord.polar` turns every geom on the panel polar and no
     /// geom finds out.
     let withCoord (c: Coord) (fig: Figure) = mapLast (fun p -> { p with Coord = c }) fig

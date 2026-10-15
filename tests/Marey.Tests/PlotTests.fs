@@ -979,6 +979,142 @@ module TickFormats =
         Assert.NotEqual(a, TickFormat.custom string)
 
 // ======================================================================================
+// D171 — legends
+// ======================================================================================
+
+module Legends =
+
+    let private surface = Chart.size 480.0 300.0
+    let private m = TextMeasure.approx
+
+    let rec private annotated (n: Node) : (Semantics * Node) list =
+        match n with
+        | Annotated(s, inner) -> (s, inner) :: annotated inner
+        | Group ns -> ns |> Array.toList |> List.collect annotated
+        | Transform(_, c)
+        | Clip(_, c)
+        | Opacity(_, c)
+        | Keyed(_, c) -> annotated c
+        | _ -> []
+
+    /// Every legend's box, in px with y down, read off its frame.
+    let private legendBoxes (scene: Node) =
+        scene
+        |> annotated
+        |> List.filter (fun (s, _) -> s.Role = RoleLegend)
+        |> List.choose (fun (_, inner) ->
+            match inner with
+            | Group nodes ->
+                match nodes.[0] with
+                | Path(segs, _, _, _) ->
+                    let pts = segs |> Array.choose (function MoveTo p | LineTo p -> Some p | _ -> None)
+                    let xs = pts |> Array.map (fun p -> float p.X * float surface.Width)
+                    let ys = pts |> Array.map (fun p -> (1.0 - float p.Y) * float surface.Height)
+                    Some(Array.min xs, Array.min ys, Array.max xs, Array.max ys)
+                | _ -> None
+            | _ -> None)
+
+    /// Three curves rising from the bottom left to the top right, which leave the top left empty.
+    let private curves () =
+        let ts = Array.init 31 (fun i -> float i * 20.0<s>)
+        let curve (offset: float<K>) = ts |> Array.map (fun t -> 300.0<K> - offset + 60.0<K> * (t / (t + 150.0<s>)))
+
+        Chart.line U.second U.kelvin ts (curve 0.0<K>)
+        |> Chart.withName "a"
+        |> Chart.addLine U.second U.kelvin ts (curve 4.0<K>)
+        |> Chart.withName "b"
+        |> Chart.addLine U.second U.kelvin ts (curve 10.0<K>)
+        |> Chart.withName "c"
+
+    let private plot (fig: Figure) =
+        let shot = Chart.arrangeFor m surface fig
+        (Chart.panelsIn m shot fig).[0].Plot
+
+    /// G9 — the emptiest corner: the curves leave the top left empty, and the top right, the
+    /// default, is where they end.
+    [<Fact>]
+    let ``LegendBest finds the empty corner`` () =
+        let fig = curves () |> Chart.withLegend LegendBest
+        let p = plot fig
+
+        match legendBoxes (Chart.toScene surface fig) with
+        | [ (x0, y0, x1, y1) ] ->
+            Assert.True((x0 + x1) / 2.0 < float (p.X0 + p.X1) / 2.0, "left half")
+            Assert.True((y0 + y1) / 2.0 < float (p.Y0 + p.Y1) / 2.0, "top half")
+        | other -> failwithf "%d legends" other.Length
+
+    /// G9 — with every corner covered, the legend goes outside on the right, and the plot gives
+    /// up the room for it.
+    [<Fact>]
+    let ``LegendBest goes outside when every corner is covered`` () =
+        let xs = Array.init 400 (fun i -> float (i % 20) * 1.0<s>)
+        let ys = Array.init 400 (fun i -> float (i / 20) * 1.0<m>)
+        let cloud = Chart.scatter U.second U.metre xs ys |> Chart.withName "everywhere"
+        let best = cloud |> Chart.withLegend LegendBest
+        let inside = plot (cloud |> Chart.withLegend LegendTopRight)
+        let p = plot best
+        Assert.True(p.X1 < inside.X1, "the plot gave up room")
+
+        match legendBoxes (Chart.toScene surface best) with
+        | [ (x0, _, _, _) ] -> Assert.True(x0 > float p.X1, "outside the plot")
+        | other -> failwithf "%d legends" other.Length
+
+    /// The two outside placements take their room beside and below the plot, not over it.
+    [<Fact>]
+    let ``outside legends are beside and below the plot`` () =
+        let right = curves () |> Chart.withLegend LegendOutsideRight
+        let below = curves () |> Chart.withLegend LegendOutsideBottom
+
+        match legendBoxes (Chart.toScene surface right), legendBoxes (Chart.toScene surface below) with
+        | [ (rx0, _, _, _) ], [ (_, by0, _, _) ] ->
+            Assert.True(rx0 > float (plot right).X1)
+            Assert.True(by0 > float (plot below).Y1)
+        | a, b -> failwithf "%d and %d legends" a.Length b.Length
+
+    /// Columns are filled down then across: three entries in three columns are one row, wider
+    /// than tall.
+    [<Fact>]
+    let ``a legend in three columns is one row`` () =
+        let fig = curves () |> Chart.withLegend LegendOutsideBottom |> Chart.withLegendColumns 3
+
+        match legendBoxes (Chart.toScene surface fig) with
+        | [ (x0, y0, x1, y1) ] -> Assert.True(x1 - x0 > 3.0 * (y1 - y0))
+        | other -> failwithf "%d legends" other.Length
+
+    /// One legend for a figure, with each entry once, and no panel's own.
+    [<Fact>]
+    let ``a figure legend replaces the panels' own`` () =
+        let fig = curves () |> Chart.beside (curves ()) |> Chart.withFigureLegend FigureLegendRight
+        let legends = Chart.toScene surface fig |> annotated |> List.filter (fun (s, _) -> s.Role = RoleLegend)
+        Assert.Equal(1, legends.Length)
+        Assert.Contains(("entries", "3"), (fst legends.Head).Data)
+
+    /// G8 — over an animation, the legend is placed once: the frames' corners are scored together,
+    /// so a legend does not jump from corner to corner, and the plot does not breathe.
+    [<Fact>]
+    let ``an animated legend is placed once`` () =
+        let frame (k: float) =
+            let ts = Array.init 31 (fun i -> float i * 20.0<s>)
+            // The curves swing from rising to falling across the shot, which moves the empty corner.
+            let curve (offset: float<K>) = ts |> Array.map (fun t -> 300.0<K> - offset + k * 60.0<K> * (t / (t + 150.0<s>)))
+
+            Chart.line U.second U.kelvin ts (curve 0.0<K>)
+            |> Chart.withName "a"
+            |> Chart.addLine U.second U.kelvin ts (curve 4.0<K>)
+            |> Chart.withName "b"
+            |> Chart.withYDomain 230.0 370.0
+            |> Chart.withLegend LegendBest
+
+        let states = [| frame 1.0; frame -1.0 |]
+        let shot = Chart.arrangeOver m surface states
+        let boxes = states |> Array.map (fun s -> legendBoxes (Chart.toSceneIn m shot s))
+        Assert.Equal<(float * float * float * float) list>(boxes.[0], boxes.[1])
+
+        // And each frame alone would have put it elsewhere: the union is what holds it.
+        let alone = states |> Array.map (fun s -> legendBoxes (Chart.toScene surface s))
+        Assert.NotEqual<(float * float * float * float) list>(alone.[0], alone.[1])
+
+// ======================================================================================
 // D45 — the level set, and the categorical front door
 // ======================================================================================
 
