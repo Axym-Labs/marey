@@ -32,13 +32,41 @@ let private residuals (scale: float) =
     |> Chart.addHLine U.metre 0.0<m>
     |> Chart.withYLabel "residual"
 
+let rec private texts (n: Node) : string list =
+    match n with
+    | Text t -> [ t.Text ]
+    | Group ns -> ns |> List.ofArray |> List.collect texts
+    | Transform(_, c)
+    | Clip(_, c)
+    | Opacity(_, c)
+    | Keyed(_, c)
+    | Annotated(_, c) -> texts c
+    | _ -> []
+
 let private viewsOf (extent: Extent<px>) (fig: Figure) =
     Chart.panelsIn measurer (Chart.arrangeFor measurer extent fig) fig
 
-/// Every pair of panels in one column has one plot x0 and x1, and in one row one y0 and y1.
-let private assertAligned (views: PanelView[]) =
-    let close (a: float<px>) (b: float<px>) = abs (float (a - b)) < 0.01
+let private close (a: float<px>) (b: float<px>) = abs (float (a - b)) < 0.01
 
+/// Every two panels that start in one column share a plot x0, and that end in one share an x1;
+/// likewise rows and y. A panel's span is read off the figure.
+let private assertAlignedIn (fig: Figure) (views: PanelView[]) =
+    let spanOf (v: PanelView) =
+        fig.Panels |> Array.find (fun p -> p.Row = v.Row && p.Col = v.Col) |> fun p -> p.RowSpan, p.ColSpan
+
+    for a in views do
+        let ar, ac = spanOf a
+
+        for b in views do
+            let br, bc = spanOf b
+            let pair = sprintf "panels %d,%d and %d,%d" a.Row a.Col b.Row b.Col
+
+            if a.Col = b.Col then Assert.True(close a.Plot.X0 b.Plot.X0, pair + ": x0")
+            if a.Col + ac = b.Col + bc then Assert.True(close a.Plot.X1 b.Plot.X1, pair + ": x1")
+            if a.Row = b.Row then Assert.True(close a.Plot.Y0 b.Plot.Y0, pair + ": y0")
+            if a.Row + ar = b.Row + br then Assert.True(close a.Plot.Y1 b.Plot.Y1, pair + ": y1")
+
+let private assertAligned (views: PanelView[]) =
     for a in views do
         for b in views do
             if a.Col = b.Col then
@@ -114,3 +142,87 @@ module ``D173 panels line up`` =
             for v, f in Array.zip views first do
                 Assert.Equal(float f.Plot.X0, float v.Plot.X0, 9)
                 Assert.Equal(float f.Plot.Y1, float v.Plot.Y1, 9)
+
+module ``D174 spans`` =
+
+    let private single = Chart.scatter U.metre U.metre x (Array.map2 (fun xi ti -> xi - model ti) x t)
+    let private extent = Chart.size 700.0 420.0
+
+    let private find (fig: Figure) (row, col) =
+        fig.Panels |> Array.find (fun p -> p.Row = row && p.Col = col)
+
+    [<Fact>]
+    let ``a panel beside a stack of two spans both rows (gate 3, C5)`` () =
+        let fig = (fit |> Chart.above (residuals 1.0)) |> Chart.beside single
+        Assert.Equal((2, 2), (fig.Rows, fig.Cols))
+        Assert.Equal((2, 1), (let p = find fig (0, 1) in p.RowSpan, p.ColSpan))
+
+        let views = viewsOf extent fig
+        let at r c = views |> Array.find (fun v -> v.Row = r && v.Col = c)
+        Assert.True(close (at 0 1).Plot.Y0 (at 0 0).Plot.Y0)
+        Assert.True(close (at 0 1).Plot.Y1 (at 1 0).Plot.Y1)
+        assertAlignedIn fig views
+
+    [<Fact>]
+    let ``a spanning panel ends on its last row's line, not its first's (gate 3)`` () =
+        // A legend below the top-left panel makes row 0's bottom gutter taller than row 1's, so a
+        // span measured against the wrong row would stop short of (or past) the lower panel.
+        let fig = (fit |> Chart.withLegend LegendOutsideBottom |> Chart.above (residuals 1.0)) |> Chart.beside single
+        let views = viewsOf extent fig
+        let at r c = views |> Array.find (fun v -> v.Row = r && v.Col = c)
+        Assert.True(close (at 0 1).Plot.Y1 (at 1 0).Plot.Y1)
+        assertAlignedIn fig views
+
+    [<Fact>]
+    let ``equal counts compose exactly as before`` () =
+        let fig = (fit |> Chart.beside fit) |> Chart.above (fit |> Chart.beside fit)
+        Assert.Equal((2, 2), (fig.Rows, fig.Cols))
+        Assert.True(fig.Panels |> Array.forall (fun p -> p.RowSpan = 1 && p.ColSpan = 1))
+        Assert.Equal<(int * int)[]>([| 0, 0; 0, 1; 1, 0; 1, 1 |], fig.Panels |> Array.map (fun p -> p.Row, p.Col))
+
+    [<Fact>]
+    let ``three beside two takes six rows`` () =
+        let three = fit |> Chart.above fit |> Chart.above fit
+        let two = fit |> Chart.above fit
+        let fig = three |> Chart.beside two
+        Assert.Equal(6, fig.Rows)
+        Assert.Equal<(int * int * int)[]>([| 0, 0, 2; 2, 0, 2; 4, 0, 2; 0, 1, 3; 3, 1, 3 |], fig.Panels |> Array.map (fun p -> p.Row, p.Col, p.RowSpan))
+        assertAlignedIn fig (viewsOf extent fig)
+
+    [<Fact>]
+    let ``a mosaic places each part on its rectangle (gate 3)`` () =
+        // A pinwheel, which no nesting of `beside` and `above` reaches.
+        let fig = Chart.mosaic "AAB;DEB;DCC" [ 'A', fit; 'B', single; 'C', residuals 1.0; 'D', single; 'E', fit ]
+        Assert.Equal((3, 3), (fig.Rows, fig.Cols))
+
+        Assert.Equal<(int * int * int * int)[]>(
+            [| 0, 0, 1, 2; 0, 2, 2, 1; 1, 0, 2, 1; 1, 1, 1, 1; 2, 1, 1, 2 |],
+            fig.Panels |> Array.map (fun p -> p.Row, p.Col, p.RowSpan, p.ColSpan)
+        )
+
+        assertAlignedIn fig (viewsOf extent fig)
+
+    [<Fact>]
+    let ``a mosaic takes newlines and empty cells`` () =
+        let fig = Chart.mosaic "A.\nAB" [ 'A', fit; 'B', single ]
+        Assert.Equal(2, fig.Panels.Length)
+        Assert.Equal((2, 1), (let p = find fig (0, 0) in p.RowSpan, p.ColSpan))
+
+    [<Fact>]
+    let ``a mosaic refuses what it cannot place, naming it (gate 3)`` () =
+        let refused (f: unit -> Figure) (needle: string) =
+            let e = Assert.ThrowsAny<exn>(fun () -> f () |> ignore)
+            Assert.Contains(needle, e.Message)
+
+        refused (fun () -> Chart.mosaic "AB;BA" [ 'A', fit; 'B', single ]) "'A' does not cover a rectangle"
+        refused (fun () -> Chart.mosaic "AB;A" [ 'A', fit; 'B', single ]) "row 1"
+        refused (fun () -> Chart.mosaic "AB" [ 'A', fit ]) "'B' has no part"
+        refused (fun () -> Chart.mosaic "A" [ 'A', fit; 'Z', single ]) "'Z' has no cell"
+        refused (fun () -> Chart.mosaic "AB" [ 'A', fit |> Chart.beside fit; 'B', single ]) "'A' is a 2-panel figure"
+
+    [<Fact>]
+    let ``letters follow the reading order of top-left cells`` () =
+        let fig = Chart.mosaic "AB;AC" [ 'A', fit; 'B', single; 'C', residuals 1.0 ] |> Chart.withPanelLetters LetterParen
+        let scene = Chart.toSceneWith measurer extent fig
+        let letters = texts scene |> List.filter (fun s -> s.StartsWith "(")
+        Assert.Equal<string list>([ "(a)"; "(b)"; "(c)" ], letters)

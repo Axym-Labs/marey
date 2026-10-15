@@ -1399,20 +1399,124 @@ module Chart =
 
     // ---- Multi-panel ---------------------------------------------------------------------------
 
+    let rec private gcd (a: int) (b: int) = if b = 0 then a else gcd b (a % b)
+    let private lcm (a: int) (b: int) = a / gcd a b * b
+
+    /// D174 — a figure's rows stretched by `k`: each panel starts `k` times lower and spans `k`
+    /// times as many rows.
+    let private stretchRows (k: int) (f: Figure) =
+        if k = 1 then
+            f
+        else
+            { f with
+                Rows = f.Rows * k
+                Panels = f.Panels |> Array.map (fun p -> { p with Row = p.Row * k; RowSpan = max 1 p.RowSpan * k }) }
+
+    let private stretchCols (k: int) (f: Figure) =
+        if k = 1 then
+            f
+        else
+            { f with
+                Cols = f.Cols * k
+                Panels = f.Panels |> Array.map (fun p -> { p with Col = p.Col * k; ColSpan = max 1 p.ColSpan * k }) }
+
     /// Put `b`'s panels to the right of `a`'s. `b`'s figure-level title is dropped; use
     /// `withPanelTitle` for per-panel headings.
+    ///
+    /// D174 — when the two have different numbers of rows, the grid takes the least common
+    /// multiple and each side's panels span what their share covers, so a single panel beside
+    /// a stack of two runs the height of both, and no cell is left empty.
     let beside (b: Figure) (a: Figure) : Figure =
+        let rows = lcm (max 1 a.Rows) (max 1 b.Rows)
+        let a = stretchRows (rows / max 1 a.Rows) a
+        let b = stretchRows (rows / max 1 b.Rows) b
+
         { a with
             Cols = a.Cols + b.Cols
-            Rows = max a.Rows b.Rows
+            Rows = rows
             Panels = Array.append a.Panels (b.Panels |> Array.map (fun p -> { p with Col = p.Col + a.Cols })) }
 
-    /// Put `b`'s panels below `a`'s.
+    /// Put `b`'s panels below `a`'s, across the least common multiple of their columns (D174).
     let above (b: Figure) (a: Figure) : Figure =
+        let cols = lcm (max 1 a.Cols) (max 1 b.Cols)
+        let a = stretchCols (cols / max 1 a.Cols) a
+        let b = stretchCols (cols / max 1 b.Cols) b
+
         { a with
             Rows = a.Rows + b.Rows
-            Cols = max a.Cols b.Cols
+            Cols = cols
             Panels = Array.append a.Panels (b.Panels |> Array.map (fun p -> { p with Row = p.Row + a.Rows })) }
+
+    /// D174 — **panels laid out by a picture of the grid.** Each character of `layout` is a cell,
+    /// rows separated by `;` or a newline, `.` an empty cell; every other character names a
+    /// part, whose single panel covers the rectangle of cells that carry its character.
+    /// `"AAB;DEB;DCC"` is a pinwheel of four panels around a fifth, a shape `beside` and `above`
+    /// cannot nest into.
+    ///
+    /// Refused when a character's cells are not one rectangle, when the rows are not all the
+    /// same length, when a character has no part or a part has no character, and when a part
+    /// holds more than one panel.
+    let mosaic (layout: string) (parts: (char * Figure) list) : Figure =
+        let rows =
+            layout.Split([| ';'; '\n' |], System.StringSplitOptions.RemoveEmptyEntries)
+            |> Array.map (fun r -> r.Trim())
+            |> Array.filter (fun r -> r.Length > 0)
+
+        if rows.Length = 0 then
+            failwith "Marey: a mosaic needs at least one row."
+
+        let width = rows.[0].Length
+
+        rows
+        |> Array.iteri (fun i r ->
+            if r.Length <> width then
+                failwithf "Marey: mosaic row %d ('%s') has %d cells and row 0 ('%s') has %d. Every row needs the same number." i r r.Length rows.[0] width)
+
+        let labels =
+            rows |> Array.collect (fun r -> r.ToCharArray()) |> Array.filter (fun c -> c <> '.') |> Array.distinct
+
+        let parts = Map.ofList parts
+
+        for c in labels do
+            if not (parts.ContainsKey c) then
+                failwithf "Marey: mosaic cell '%c' has no part. Give one as ('%c', figure)." c c
+
+        for KeyValue(c, f) in parts do
+            if not (Array.contains c labels) then
+                failwithf "Marey: the part '%c' has no cell in the mosaic \"%s\"." c layout
+
+            if f.Panels.Length <> 1 then
+                failwithf
+                    "Marey: mosaic part '%c' is a %d-panel figure, and a mosaic cell holds one panel. Compose it with `beside` or `above` instead."
+                    c
+                    f.Panels.Length
+
+        let panels =
+            labels
+            |> Array.map (fun c ->
+                let cells =
+                    [| for r in 0 .. rows.Length - 1 do
+                           for k in 0 .. width - 1 do
+                               if rows.[r].[k] = c then yield r, k |]
+
+                let r0 = cells |> Array.map fst |> Array.min
+                let r1 = cells |> Array.map fst |> Array.max
+                let c0 = cells |> Array.map snd |> Array.min
+                let c1 = cells |> Array.map snd |> Array.max
+
+                if cells.Length <> (r1 - r0 + 1) * (c1 - c0 + 1) then
+                    failwithf "Marey: mosaic cell '%c' does not cover a rectangle in \"%s\". A panel spans whole rows and columns." c layout
+
+                { parts.[c].Panels.[0] with
+                    Row = r0
+                    Col = c0
+                    RowSpan = r1 - r0 + 1
+                    ColSpan = c1 - c0 + 1 })
+
+        { Figure.create panels with
+            Rows = rows.Length
+            Cols = width
+            Theme = parts.[labels.[0]].Theme }
 
     // ---- Facets (§9, D48) ----------------------------------------------------------------------
 
