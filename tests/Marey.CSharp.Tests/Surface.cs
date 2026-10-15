@@ -135,6 +135,20 @@ public class Surface
         Assert.ThrowsAny<Exception>(() => Svg(fig.WithXTicksEvery(1.0, Units.Second)));
     }
 
+    /// D167 / D168 — minor ticks and the tick conventions of a theme, from C#.
+    [Fact]
+    public void MinorTicksAndTickDirection()
+    {
+        var screen = ThemeModule.withMinorTicks(true, ThemeModule.withTickDirection(TickDirection.TickIn, ThemeModule.modern));
+        var fig = Chart.Line(X, Y, yUnit: Units.Metre)
+            .WithXMinorTicks(MinorSpec.NewMinorCount(4))
+            .WithYMinorTicks(MinorSpec.MinorOff)
+            .WithTheme(screen);
+
+        Assert.Contains("[m]", Svg(fig));
+        Assert.Contains("[m]", Svg(Chart.Line(X, Y, yUnit: Units.Metre).WithTheme(ThemeModule.publication)));
+    }
+
     [Fact]
     public void TheCategoricalConstructors()
     {

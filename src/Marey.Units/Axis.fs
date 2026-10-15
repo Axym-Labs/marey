@@ -43,7 +43,9 @@ type AxisSpec =
       /// prints** — 1.0 for a tick at 1 nm, not 1e-9 — so that `Value` and `Label` can never
       /// disagree. `Position` is untouched normalized panel space: rescaling is a relabelling,
       /// it never moves a tick.
-      Ticks: TickLabel[] }
+      Ticks: TickLabel[]
+      /// D167 — the minor ticks' positions, in normalized panel space, none on a major tick.
+      Minor: float<nd>[] }
 
 /// D166 — where an axis's ticks go: chosen, or stated.
 ///
@@ -61,6 +63,19 @@ type TickSpec =
     /// These values, each with the label given — `X`, `Γ`, `X` under a wave-vector axis. The
     /// title keeps its unit; the collision ladder may tilt them and never drops one.
     | TicksNamed of ticks: (float * string)[]
+
+/// D167 — where an axis's minor ticks go. They carry no labels and never take part in the
+/// collision ladder.
+type MinorSpec =
+    /// Each major interval in 5 when the major step's mantissa is 1 or 5, in 4 otherwise
+    /// (matplotlib's `AutoMinorLocator`), and 2 … 9 in each decade of a log axis. None between
+    /// stated or named ticks, which have no interval to divide. Drawn where the theme says so.
+    | MinorAuto
+    | MinorOff
+    /// Every multiple of `step`, in the axis's own numbers.
+    | MinorEvery of step: float
+    /// Each major interval in `count`.
+    | MinorCount of count: int
 
 /// §9 — the axis compiler. Turns a `Scale<'u>` into an `AxisSpec` with no configuration.
 ///
@@ -232,8 +247,65 @@ module Axis =
             kept, minGap kept
 
     /// D166 — `ofScalePinnedWith` with the ticks stated. `TicksAuto` is that function exactly.
+    /// The most minor ticks an axis draws. Past it a minor step is so fine against the domain that
+    /// the ticks are a grey bar, and none are drawn.
+    [<Literal>]
+    let private MaxMinorTicks = 500
+
+    /// D167 — the minor values inside the domain, none on a major one. `majors` are the major
+    /// values and `step` the major step, when the majors are a regular step apart.
+    let private minorValues (minor: MinorSpec) (kind: ScaleKind) (domain: float * float) (majors: float[]) (step: float option) : float[] =
+        let lo, hi = min (fst domain) (snd domain), max (fst domain) (snd domain)
+        let span = hi - lo
+        let slack = 1e-9 * span
+
+        let notMajor (v: float) (sub: float) =
+            majors |> Array.forall (fun m -> abs (v - m) > 1e-6 * sub)
+
+        let multiples (sub: float) =
+            if not (sub > 0.0) || System.Double.IsInfinity sub then
+                [||]
+            else
+                let first = ceil (lo / sub - 1e-9)
+                let last = floor (hi / sub + 1e-9)
+                let count = int (last - first) + 1
+
+                if count <= 0 || count > MaxMinorTicks then
+                    [||]
+                else
+                    Array.init count (fun k -> (first + float k) * sub) |> Array.filter (fun v -> notMajor v sub)
+
+        // Matplotlib's rule: an interval whose step reads 1 or 5 is cut in five, any other in four.
+        let divisions (major: float) =
+            let mantissa = major / 10.0 ** floor (log10 major)
+            let near (x: float) = abs (mantissa - x) < 1e-6
+            if near 1.0 || near 5.0 || near 10.0 then 5 else 4
+
+        match minor, kind, step with
+        | MinorOff, _, _
+        | _, ScaleKind.Ordinal _, _ -> [||]
+        | MinorEvery sub, _, _ -> multiples sub
+        | (MinorAuto | MinorCount _), ScaleKind.Log b, _ when b = 10.0 && lo > 0.0 ->
+            // 2 … 9 in each decade, up to twelve decades.
+            let d0 = floor (log10 lo)
+            let d1 = ceil (log10 hi)
+
+            if d1 - d0 > 12.0 then
+                [||]
+            else
+                [| for d in d0..d1 do
+                       for m in 2.0..9.0 do
+                           let v = m * 10.0 ** d
+                           if v >= lo - slack && v <= hi + slack && notMajor v v then
+                               yield v |]
+        | _, ScaleKind.Log _, _ -> [||]
+        | MinorAuto, _, Some major -> multiples (major / float (divisions major))
+        | MinorCount n, _, Some major when n > 1 -> multiples (major / float n)
+        | _ -> [||]
+
     let ofScaleTicked<[<Measure>] 'u>
         (ticks: TickSpec)
+        (minor: MinorSpec)
         (pin: Prefix option)
         (style: UnitStyle)
         (registry: UnitRegistry)
@@ -275,6 +347,21 @@ module Axis =
                     | None -> formatted.[i])
             | _ -> formatted
 
+        let majors = raw |> Array.map float
+
+        // The step the majors are apart: stated, or read off the chosen ladder. Stated or named
+        // values have none, so `MinorAuto` divides nothing between them.
+        let majorStep =
+            match ticks, step with
+            | TicksEvery _, Some s -> Some s
+            | TicksAuto, _ when majors.Length >= 2 -> Some(abs (majors.[1] - majors.[0]))
+            | TicksAuto, _ -> Some(float (Ticks.linearStep tickCount scale.Domain))
+            | _ -> None
+
+        let minorPositions =
+            minorValues minor scale.Kind domain majors majorStep
+            |> Array.map (fun v -> scale.Forward(LanguagePrimitives.FloatWithMeasure<'u> v))
+
         let ticks =
             Array.init raw.Length (fun i ->
                 { Value = rescaled.[i]
@@ -297,7 +384,8 @@ module Axis =
           TitleTex = unitTextTex |> Option.map (title (Tex.escape label))
           UnitTextTex = unitTextTex
           Prefix = prefix
-          Ticks = ticks }
+          Ticks = ticks
+          Minor = minorPositions }
 
     /// The full form, with the prefix decided somewhere else — D73.
     ///
@@ -323,7 +411,7 @@ module Axis =
         (label: string)
         (scale: Scale<'u>)
         : AxisSpec =
-        ofScaleTicked TicksAuto pin style registry tickCount label scale
+        ofScaleTicked TicksAuto MinorAuto pin style registry tickCount label scale
 
     /// The full form: choose the registry, the style, the tick count and the label.
     let ofScaleWith<[<Measure>] 'u>
@@ -371,6 +459,7 @@ module Axis =
     /// D166 — `ofPackedPinnedWith` with the ticks stated.
     let ofPackedTicked
         (ticks: TickSpec)
+        (minor: MinorSpec)
         (pin: Prefix option)
         (style: UnitStyle)
         (registry: UnitRegistry)
@@ -381,7 +470,7 @@ module Axis =
         packed.Accept
             { new IScaleConsumer<AxisSpec> with
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) =
-                    ofScaleTicked ticks pin style registry tickCount label s }
+                    ofScaleTicked ticks minor pin style registry tickCount label s }
 
     /// The domain a packed scale covers, as plain floats — the half of D73 that has to be
     /// unioned across an animation's frames before a prefix can be chosen for all of them.
@@ -472,7 +561,8 @@ module Axis =
           TitleTex = unitTextTex |> Option.map (title (Tex.escape label))
           UnitTextTex = unitTextTex
           Prefix = prefix
-          Ticks = ticks }
+          Ticks = ticks
+          Minor = [||] }
 
     let ofErased (style: UnitStyle) (label: string) (scale: IScaleErased) =
         ofErasedWith style UnitRegistry.si DefaultTickCount label scale

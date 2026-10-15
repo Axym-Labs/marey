@@ -1356,6 +1356,13 @@ module Chart =
     /// D170 — the y axis from its high end down: a depth below a surface, a magnitude.
     let withYReversed (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Reversed = true } }) fig
 
+    /// D167 — the x axis's minor ticks: `MinorOff`, `MinorCount 5`, `MinorEvery step` in the axis's
+    /// own numbers, or `MinorAuto` to follow the theme. A stated step or count draws them under
+    /// any theme.
+    let withXMinorTicks (minor: MinorSpec) (fig: Figure) = mapLast (fun p -> { p with XAxis = { p.XAxis with Minor = minor } }) fig
+
+    let withYMinorTicks (minor: MinorSpec) (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Minor = minor } }) fig
+
     let withGrid (x: bool) (y: bool) (fig: Figure) =
         mapLast
             (fun p ->

@@ -805,6 +805,101 @@ module StatedTicks =
         Assert.Equal("x", (yAxis fall).Label)
 
 // ======================================================================================
+// D167 / D168 — minor ticks, tick direction, the publication box
+// ======================================================================================
+
+module PublicationTicks =
+
+    let private surface = Chart.size 480.0 300.0
+
+    let private axes (fig: Figure) =
+        let m = TextMeasure.approx
+        let shot = Chart.arrangeFor m surface fig
+        let v = (Chart.panelsIn m shot fig).[0]
+        v.XAxis, v.YAxis, v.Plot
+
+    let private line (lo: float) (hi: float) =
+        Chart.line U.second U.metre [| lo * 1.0<s>; hi * 1.0<s> |] [| 0.0<m>; 1.0<m> |] |> Chart.withXDomain lo hi
+
+    let private minorValues (spec: AxisSpec) (lo: float) (hi: float) =
+        spec.Minor |> Array.map (fun p -> lo + float p * (hi - lo)) |> Array.map (fun v -> System.Math.Round(v, 9))
+
+    /// D167 — a step reading 1 or 5 is cut in five, one reading 2 in four.
+    [<Fact>]
+    let ``minor ticks divide a major interval by its step`` () =
+        let x1, _, _ = axes (line 0.0 4.0 |> Chart.withXTicksEvery U.second 1.0<s>)
+        Assert.Equal<float[]>([| 0.2; 0.4; 0.6; 0.8 |], minorValues x1 0.0 4.0 |> Array.take 4)
+        let x2, _, _ = axes (line 0.0 8.0 |> Chart.withXTicksEvery U.second 2.0<s>)
+        Assert.Equal<float[]>([| 0.5; 1.0; 1.5 |], minorValues x2 0.0 8.0 |> Array.take 3)
+
+    /// None on a major tick; 2 … 9 per decade on a log axis; none between named ticks.
+    [<Fact>]
+    let ``minor ticks avoid the majors, fill decades, and leave named ticks alone`` () =
+        let x, _, _ = axes (line 0.0 4.0 |> Chart.withXTicksEvery U.second 1.0<s>)
+        Assert.DoesNotContain(1.0, minorValues x 0.0 4.0)
+
+        let log =
+            Chart.line U.second U.metre [| 1.0<s>; 100.0<s> |] [| 0.0<m>; 1.0<m> |] |> Chart.withXLog |> Chart.withXDomain 1.0 100.0
+
+        let lx, _, _ = axes log
+        Assert.Equal(16, lx.Minor.Length)
+
+        let named, _, _ = axes (line 0.0 4.0 |> Chart.withXTicksNamed U.second [| 0.0<s>, "a"; 3.0<s>, "b" |])
+        Assert.Empty named.Minor
+
+    /// G12 — an inward tick gives its length back to the plot, on each labelled side.
+    [<Fact>]
+    let ``inward ticks give their length back to the plot`` () =
+        let outward = { Theme.publication with TickDirection = TickOut }
+        let _, _, inPlot = axes (line 0.0 4.0 |> Chart.withTheme Theme.publication)
+        let _, _, outPlot = axes (line 0.0 4.0 |> Chart.withTheme outward)
+        let width (r: Rect<px>) = float (r.X1 - r.X0)
+        let height (r: Rect<px>) = float (r.Y1 - r.Y0)
+        let tick = float Theme.publication.TickLength
+        Assert.Equal(width outPlot + tick, width inPlot, 6)
+        Assert.Equal(height outPlot + tick, height inPlot, 6)
+
+    /// D168 — the publication box: a frame, ticks on four sides, minor ticks. Counted in the
+    /// tick path of the bottom axis.
+    [<Fact>]
+    let ``publication draws mirrored and minor ticks, modern neither`` () =
+        let rec tickPaths (n: Node) =
+            match n with
+            | Annotated(s, inner) when s.Role = RoleAxis -> [ inner ]
+            | Annotated(_, c)
+            | Transform(_, c)
+            | Clip(_, c)
+            | Opacity(_, c)
+            | Keyed(_, c) -> tickPaths c
+            | Group ns -> ns |> Array.toList |> List.collect tickPaths
+            | _ -> []
+
+        let segments (theme: Theme) =
+            let scene = Chart.toScene surface (line 0.0 4.0 |> Chart.withXTicksEvery U.second 1.0<s> |> Chart.withTheme theme)
+
+            match tickPaths scene with
+            | bottom :: _ ->
+                let rec moves (n: Node) =
+                    match n with
+                    | Path(segs, Some _, None, _) -> segs |> Array.sumBy (function MoveTo _ -> 1 | _ -> 0)
+                    | Group ns -> ns |> Array.sumBy moves
+                    | _ -> 0
+
+                moves bottom
+            | [] -> 0
+
+        // Five majors, and modern's spine; publication's frame replaces the spine, it adds 4 × 4
+        // minors, and mirrors both onto the top.
+        Assert.Equal(5 + 1, segments Theme.modern)
+        Assert.Equal(2 * (5 + 16), segments Theme.publication)
+
+    /// G13 — the publication box still passes the theme validator, and so does TikZ's.
+    [<Fact>]
+    let ``publication and tikz still validate`` () =
+        Assert.True((Theme.validate Theme.publication).Ok)
+        Assert.True((Theme.validate Theme.tikz).Ok)
+
+// ======================================================================================
 // D45 — the level set, and the categorical front door
 // ======================================================================================
 

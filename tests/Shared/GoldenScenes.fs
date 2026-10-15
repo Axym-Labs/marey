@@ -349,6 +349,38 @@ let ticksFigure: Figure =
 
 let ticksSurface: Extent<px> = { Width = 760.0<px>; Height = 520.0<px> }
 
+/// D167 / D168 — P1 of the M8 port: a fit over measurements with a residual panel below it,
+/// under `Theme.publication` — framed, ticks inside on four sides, minor ticks — lettered, with a
+/// rule at zero and an axis stated every second. The model is a polynomial over exact values.
+let publicationFigure: Figure =
+    let ts = Array.init 13 (fun i -> float i * 0.5<s>)
+    let model (t: float<s>) = 1.0e-3<m> * (float t - 3.0) * (float t - 3.0) - 4.0e-3<m>
+    let wobble = [| 0.4; -0.7; 0.9; 0.1; -0.3; -0.8; 0.6; 0.2; -0.5; 0.7; -0.1; -0.9; 0.3 |]
+    let measured = Array.mapi (fun i t -> model t + wobble.[i] * 0.4e-3<m>) ts
+    let sigma = Array.create ts.Length 0.4e-3<m>
+    let fine = Array.init 61 (fun i -> float i * 0.1<s>)
+
+    let fit =
+        Chart.errorbar U.second U.metre ts measured sigma
+        |> Chart.withName "measured"
+        |> Chart.addLine U.second U.metre fine (fine |> Array.map model)
+        |> Chart.withName "model"
+        |> Chart.withXTicksEvery U.second 1.0<s>
+        |> Chart.withLegend LegendBottomRight
+
+    let residual =
+        Chart.errorbar U.second U.metre ts (Array.map2 (-) measured (ts |> Array.map model)) sigma
+        |> Chart.addHLine U.metre 0.0<m>
+        |> Chart.withXTicksEvery U.second 1.0<s>
+        |> Chart.withYLabel "residual"
+
+    fit
+    |> Chart.above residual
+    |> Chart.withPanelLetters LetterParen
+    |> Chart.withTheme Theme.publication
+
+let publicationSurface: Extent<px> = { Width = 480.0<px>; Height = 420.0<px> }
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
@@ -1133,7 +1165,8 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-field-portrait" wide Fields.phasePortrait
         fig "figure-rules" rulesSurface rulesFigure
         fig "figure-annotate" annotateSurface annotateFigure
-        fig "figure-ticks" ticksSurface ticksFigure ]
+        fig "figure-ticks" ticksSurface ticksFigure
+        fig "figure-publication" publicationSurface publicationFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1155,4 +1188,5 @@ let svg: (string * (unit -> string)) list =
         "figure-field-portrait", figureAt wide Fields.phasePortrait
         "figure-rules", figureAt rulesSurface rulesFigure
         "figure-annotate", figureAt annotateSurface annotateFigure
-        "figure-ticks", figureAt ticksSurface ticksFigure ]
+        "figure-ticks", figureAt ticksSurface ticksFigure
+        "figure-publication", figureAt publicationSurface publicationFigure ]

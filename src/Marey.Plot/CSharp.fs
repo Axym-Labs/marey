@@ -105,6 +105,12 @@ type FigureExtensions =
     static member WithXReversed(fig: Figure) = Chart.withXReversed fig
 
     [<Extension>]
+    static member WithXMinorTicks(fig: Figure, minor: MinorSpec) = Chart.withXMinorTicks minor fig
+
+    [<Extension>]
+    static member WithYMinorTicks(fig: Figure, minor: MinorSpec) = Chart.withYMinorTicks minor fig
+
+    [<Extension>]
     static member WithYReversed(fig: Figure) = Chart.withYReversed fig
 
     [<Extension>]

@@ -18,6 +18,16 @@ namespace Marey
 /// So a theme contains no `nd` at all. Turning a `px` gap into the `nd` offset the IR wants is
 /// the layout layer's job and needs the figure's `Extent(px)`; see `Layout.ndX`/`Layout.ndY`.
 /// Doing that conversion here would bake a resolution into the theme.
+/// D168 — which way tick marks point from the spine.
+type TickDirection =
+    /// Away from the plot area: the screen convention.
+    | TickOut
+    /// Into the plot area: the physics-journal convention, where the tick gives its length back
+    /// to the plot.
+    | TickIn
+    /// Across the spine, both ways.
+    | TickInOut
+
 [<NoComparison>]
 type Theme =
     { Name: string
@@ -104,7 +114,16 @@ type Theme =
       /// Marker shapes, cycled alongside `Categorical`. Shape is the redundant encoding channel
       /// that makes a scatter readable in greyscale and under CVD — which is the whole reason
       /// D5 put a shape field on `MarkerBatch`.
-      MarkerShapes: MarkerShape[] }
+      MarkerShapes: MarkerShape[]
+
+      // ---- Ticks (D167, D168) ---------------------------------------------------------
+      TickDirection: TickDirection
+      /// Ticks on the top and right of the frame as well, unlabelled. Drawn only where the frame
+      /// is (`PanelFrame`).
+      MirrorTicks: bool
+      /// Minor ticks wherever an axis's `MinorSpec` is `MinorAuto`.
+      MinorTicks: bool
+      MinorTickLength: float<px> }
 
 /// What `Theme.validate` measured. Contrast ratios, nothing asserted.
 [<NoComparison>]
@@ -156,8 +175,14 @@ module Theme =
 
     /// §9 — "serif, thin rules, no chartjunk, colour-blind-safe."
     ///
-    /// No gridlines, no panel box, hairline spines, and a palette that has been measured under
-    /// three dichromacies. This is the theme a figure goes into a paper in.
+    /// No gridlines, hairline rules, and a palette that has been measured under three
+    /// dichromacies. This is the theme a figure goes into a paper in.
+    ///
+    /// **D168: the box of a physics journal.** Since M8 it is framed, with ticks pointing into the
+    /// plot on all four sides and minor ticks between them — the convention of the journals it is
+    /// for, and pgfplots' own default, so a `Theme.tikz` figure matches the document around it.
+    /// Until 0.6 it was an open L with outward ticks; that figure is `Theme.publication` with
+    /// `PanelFrame = false`, `TickDirection = TickOut`, `MirrorTicks = false`, `MinorTicks = false`.
     let publication: Theme =
         { Name = "publication"
 
@@ -203,11 +228,18 @@ module Theme =
 
           ShowGridX = false
           ShowGridY = false
-          PanelFrame = false
+          PanelFrame = true
           ShowLegendFrame = true
           FillOpacity = 0.25
           TickCount = Axis.DefaultTickCount
-          MarkerShapes = defaultShapes }
+          MarkerShapes = defaultShapes
+
+          // D168 — the physics-journal convention: a framed box, ticks inside on all four sides,
+          // minor ticks between them.
+          TickDirection = TickIn
+          MirrorTicks = true
+          MinorTicks = true
+          MinorTickLength = 2.0<px> }
 
     /// **The default.** A figure you have not themed is this one.
     ///
@@ -278,6 +310,10 @@ module Theme =
             ShowGridY = true
             PanelFrame = false
             ShowLegendFrame = false
+            TickDirection = TickOut
+            MirrorTicks = false
+            MinorTicks = false
+            MinorTickLength = 1.8<px>
             FillOpacity = 0.18 }
 
     /// The theme a `Figure` is born with, named so that the two places that must agree about it
@@ -416,6 +452,18 @@ module Theme =
     // that its styling functions mutate). ------------------------------------------------
 
     let withPalette (cs: Color[]) (t: Theme) = { t with Categorical = cs }
+
+    /// D168 — which way the ticks point: `TickIn` is the physics-journal convention.
+    let withTickDirection (d: TickDirection) (t: Theme) = { t with TickDirection = d }
+
+    /// D168 — ticks repeated, unlabelled, on the top and right of the frame; turns the frame on.
+    let withMirrorTicks (on: bool) (t: Theme) =
+        { t with
+            MirrorTicks = on
+            PanelFrame = t.PanelFrame || on }
+
+    /// D167 — minor ticks on every axis whose `MinorSpec` is `MinorAuto`.
+    let withMinorTicks (on: bool) (t: Theme) = { t with MinorTicks = on }
     let withSequential (r: Ramp) (t: Theme) = { t with Sequential = r }
     let withDiverging (r: Ramp) (t: Theme) = { t with Diverging = r }
 

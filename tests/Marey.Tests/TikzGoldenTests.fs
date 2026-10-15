@@ -321,6 +321,11 @@ module Figures =
     let ``stated ticks`` () =
         check "figure-ticks.tex" (Chart.render TikzBackend.render ticksSurface ticksFigure)
 
+    /// D167 / D168 — the publication box: frame, inward and mirrored ticks, minor ticks.
+    [<Fact>]
+    let ``the publication theme`` () =
+        check "figure-publication.tex" (Chart.render TikzBackend.render publicationSurface publicationFigure)
+
     /// Gate 6 meets gate 7. A baseline can be byte-stable, valid TeX and *blank* — that is
     /// precisely the failure this milestone already shipped once. So the committed figure is also
     /// compiled and looked at, which is what makes it a record of a picture rather than of a

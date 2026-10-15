@@ -35,7 +35,7 @@ module Colorbar =
     let measure (m: ITextMeasurer) (theme: Theme) (spec: AxisSpec) (plan: TickPlan) : float<px> =
         theme.ColorbarWidth
         + theme.LabelGap
-        + Axes.tickExtent m theme AxisRight spec plan
+        + Axes.tickExtentWith TickOut m theme AxisRight spec plan
         + Axes.titleExtent m theme spec.Title
 
     /// The quantity name a colour channel puts in front of its unit.
@@ -138,7 +138,12 @@ module Colorbar =
                       ShowTicks = true
                       ShowLabels = true
                       ShowTitle = true
-                      TitleOffset = Axes.tickExtent m theme AxisRight spec plan + theme.TitleGap }
+                      TitleOffset = Axes.tickExtentWith TickOut m theme AxisRight spec plan + theme.TitleGap
+                      // A colorbar's ticks point out of the strip whatever the panels do: an inward
+                      // tick would draw over the colours it labels.
+                      Direction = TickOut
+                      Mirror = false
+                      ShowMinor = false }
 
             Annotated(
                 { Role = RoleOther "colorbar"

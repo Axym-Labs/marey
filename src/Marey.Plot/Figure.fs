@@ -80,7 +80,10 @@ type AxisConfig =
       Prefix: Prefix option
       /// D170 — the axis runs from its high end to its low end, over the domain it would have
       /// had: a depth below a surface, a magnitude, a Hertzsprung–Russell diagram.
-      Reversed: bool }
+      Reversed: bool
+      /// D167 — the minor ticks. `MinorAuto` draws them where the theme does (`MinorTicks`); a
+      /// stated step or count draws them whatever the theme.
+      Minor: MinorSpec }
 
 [<NoComparison>]
 type Panel =
@@ -521,7 +524,8 @@ module Figure =
           Ticks = TicksAuto
           TickUnit = U.unspecified
           Prefix = None
-          Reversed = false }
+          Reversed = false
+          Minor = MinorAuto }
 
     let panelOf (layers: Layer[]) : Panel =
         { Title = ""
@@ -1026,8 +1030,8 @@ module Figure =
 
         let xErased, yErased = axisScalesErased p
 
-        Axes.specTicked (ticksOf "x" p.XAxis xErased) (pin p.XAxis pinX) (unitStyle p.XAxis) p.XAxis.TickCount (label p.XAxis "x") AxisBottom xPacked,
-        Axes.specTicked (ticksOf "y" p.YAxis yErased) (pin p.YAxis pinY) (unitStyle p.YAxis) p.YAxis.TickCount (label p.YAxis "y") AxisLeft yPacked
+        Axes.specTicked (ticksOf "x" p.XAxis xErased) p.XAxis.Minor (pin p.XAxis pinX) (unitStyle p.XAxis) p.XAxis.TickCount (label p.XAxis "x") AxisBottom xPacked,
+        Axes.specTicked (ticksOf "y" p.YAxis yErased) p.YAxis.Minor (pin p.YAxis pinY) (unitStyle p.YAxis) p.YAxis.TickCount (label p.YAxis "y") AxisLeft yPacked
 
     /// D165 — the panel letters' face, and the height of the row they need: none without letters.
     let private letterFont (theme: Theme) (letters: PanelLetters) =
@@ -1413,7 +1417,17 @@ module Figure =
                               ShowTicks = true
                               ShowLabels = true
                               ShowTitle = cfg.ShowTitle
-                              TitleOffset = Axes.tickExtent m theme side spec tickPlan + theme.TitleGap }
+                              TitleOffset = Axes.tickExtent m theme side spec tickPlan + theme.TitleGap
+                              Direction = theme.TickDirection
+                              // Mirrored onto the frame, so only where a frame is drawn, and only
+                              // around a rectangle.
+                              Mirror = theme.MirrorTicks && theme.PanelFrame && Coord.isIdentity p.Coord
+                              ShowMinor =
+                                match cfg.Minor with
+                                | MinorOff -> false
+                                | MinorAuto -> theme.MinorTicks
+                                | MinorEvery _
+                                | MinorCount _ -> true }
 
                 let panelTitle =
                     if isEmpty p.Title then
