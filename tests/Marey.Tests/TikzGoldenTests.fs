@@ -332,6 +332,11 @@ module Figures =
         check "figure-legends.tex" (Chart.render TikzBackend.render legendsSurface legendsFigure)
         check "figure-legend-shared.tex" (Chart.render TikzBackend.render sharedLegendSurface sharedLegendFigure)
 
+    /// D174 — a panel spanning two rows of a mosaic.
+    [<Fact>]
+    let ``a mosaic`` () =
+        check "figure-mosaic.tex" (Chart.render TikzBackend.render mosaicSurface mosaicFigure)
+
     /// Gate 6 meets gate 7. A baseline can be byte-stable, valid TeX and *blank* — that is
     /// precisely the failure this milestone already shipped once. So the committed figure is also
     /// compiled and looked at, which is what makes it a record of a picture rather than of a

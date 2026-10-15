@@ -90,8 +90,14 @@ type AxisConfig =
 [<NoComparison>]
 type Panel =
     { Title: string
+      /// The panel's top-left cell, and its name (D68): `panel-<row>-<col>`.
       Row: int
       Col: int
+      /// D174 — how many rows and columns of the grid the panel covers, from its top-left cell.
+      /// 1 and 1 for a panel in one cell, which is every panel `beside` and `above` make when
+      /// the two sides have the same number of rows or columns.
+      RowSpan: int
+      ColSpan: int
       Layers: Layer[]
       XAxis: AxisConfig
       YAxis: AxisConfig
@@ -587,6 +593,8 @@ module Figure =
         { Title = ""
           Row = 0
           Col = 0
+          RowSpan = 1
+          ColSpan = 1
           Layers = layers
           XAxis = axisConfig
           YAxis = axisConfig
@@ -598,8 +606,8 @@ module Figure =
     let create (panels: Panel[]) : Figure =
         { Title = ""
           Subtitle = ""
-          Rows = (if panels.Length = 0 then 1 else 1 + (panels |> Array.map (fun p -> p.Row) |> Array.max))
-          Cols = (if panels.Length = 0 then 1 else 1 + (panels |> Array.map (fun p -> p.Col) |> Array.max))
+          Rows = (if panels.Length = 0 then 1 else panels |> Array.map (fun p -> p.Row + max 1 p.RowSpan) |> Array.max)
+          Cols = (if panels.Length = 0 then 1 else panels |> Array.map (fun p -> p.Col + max 1 p.ColSpan) |> Array.max)
           Panels = panels
           Theme = Theme.initial
           Letters = None
@@ -1759,7 +1767,9 @@ module Figure =
                    |> Layout.spanning 1 cols
 
                for p in fig.Panels do
-                   yield Layout.fill (sprintf "panel-%d-%d" p.Row p.Col) (1 + max 0 p.Row) (max 0 p.Col)
+                   yield
+                       Layout.fill (sprintf "panel-%d-%d" p.Row p.Col) (1 + max 0 p.Row) (max 0 p.Col)
+                       |> Layout.spanning p.RowSpan p.ColSpan
 
                match shared with
                | Some FigureLegendRight -> yield Layout.cell "flegend" 1 cols legendSize |> Layout.spanning rows 1
@@ -1801,22 +1811,24 @@ module Figure =
                 |> Array.filter (fun (_, p, _) -> at p = i)
                 |> Array.fold (fun acc (_, _, l) -> max acc (size l)) 0.0<px>)
 
+        // D174 — a spanning panel's gutters sit on the outer lines of its span: its top on its
+        // first row's, its bottom on its last row's.
+        let lastRow (p: Panel) = min (rows - 1) (max 0 p.Row + max 1 p.RowSpan - 1)
+        let lastCol (p: Panel) = min (cols - 1) (max 0 p.Col + max 1 p.ColSpan - 1)
         let lefts = line cols (fun p -> max 0 p.Col) PanelLayout.left
-        let rights = line cols (fun p -> max 0 p.Col) PanelLayout.right
+        let rights = line cols lastCol PanelLayout.right
         let tops = line rows (fun p -> max 0 p.Row) PanelLayout.top
-        let bottoms = line rows (fun p -> max 0 p.Row) PanelLayout.bottom
+        let bottoms = line rows lastRow PanelLayout.bottom
 
         let slackened =
             placed
             |> Array.map (fun (key, p, l) ->
-                let r, c = max 0 p.Row, max 0 p.Col
-
                 key,
                 { l with
-                    SlackLeft = lefts.[c] - PanelLayout.left l
-                    SlackRight = rights.[c] - PanelLayout.right l
-                    SlackTop = tops.[r] - PanelLayout.top l
-                    SlackBottom = bottoms.[r] - PanelLayout.bottom l })
+                    SlackLeft = lefts.[max 0 p.Col] - PanelLayout.left l
+                    SlackRight = rights.[lastCol p] - PanelLayout.right l
+                    SlackTop = tops.[max 0 p.Row] - PanelLayout.top l
+                    SlackBottom = bottoms.[lastRow p] - PanelLayout.bottom l })
 
         (lefts, rights, tops, bottoms), slackened
 
@@ -1879,7 +1891,7 @@ module Figure =
                for p in fig.Panels do
                    yield
                        Layout.fill (sprintf "panel-%d-%d" p.Row p.Col) (2 + 4 * max 0 p.Row) (4 * max 0 p.Col)
-                       |> Layout.spanning 3 3
+                       |> Layout.spanning (4 * max 1 p.RowSpan - 1) (4 * max 1 p.ColSpan - 1)
 
                match shared with
                | Some FigureLegendRight -> yield Layout.cell "flegend" 2 (panelCols + 1) legendSize |> Layout.spanning panelRows 1

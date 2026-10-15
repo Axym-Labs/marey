@@ -410,6 +410,23 @@ let sharedLegendFigure: Figure =
 
 let sharedLegendSurface: Extent<px> = { Width = 760.0<px>; Height = 280.0<px> }
 
+/// D174 — a mosaic: one panel down the left, two stacked beside it whose y labels differ in
+/// width, lettered in reading order. The spanning panel's plot runs from the top of (b)'s to the
+/// bottom of (c)'s.
+let mosaicFigure: Figure =
+    let ts = Array.init 31 (fun i -> float i * 20.0<s>)
+    let rise (k: float) = ts |> Array.map (fun t -> k * 1e-3<m> * (t / (t + 150.0<s>)))
+
+    Chart.mosaic
+        "AB;AC"
+        [ 'A', warming "a panel over two rows"
+          'B', Chart.line U.second U.metre ts (rise 1.0)
+          'C', Chart.line U.second U.metre ts (rise 100.0) |> Chart.withYLabel "deflection" ]
+    |> Chart.withPanelLetters LetterParen
+    |> Chart.withTheme Theme.publication
+
+let mosaicSurface: Extent<px> = { Width = 760.0<px>; Height = 420.0<px> }
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
@@ -1197,7 +1214,8 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-ticks" ticksSurface ticksFigure
         fig "figure-publication" publicationSurface publicationFigure
         fig "figure-legends" legendsSurface legendsFigure
-        fig "figure-legend-shared" sharedLegendSurface sharedLegendFigure ]
+        fig "figure-legend-shared" sharedLegendSurface sharedLegendFigure
+        fig "figure-mosaic" mosaicSurface mosaicFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1222,4 +1240,5 @@ let svg: (string * (unit -> string)) list =
         "figure-ticks", figureAt ticksSurface ticksFigure
         "figure-publication", figureAt publicationSurface publicationFigure
         "figure-legends", figureAt legendsSurface legendsFigure
-        "figure-legend-shared", figureAt sharedLegendSurface sharedLegendFigure ]
+        "figure-legend-shared", figureAt sharedLegendSurface sharedLegendFigure
+        "figure-mosaic", figureAt mosaicSurface mosaicFigure ]

@@ -269,6 +269,14 @@ type Figures =
     static member FacetWith(mode: FacetScales, cols: int, titles: string[], parts: Figure[]) =
         Chart.facetWith mode cols (Figures.Parts(titles, parts))
 
+    /// D174 — panels laid out by a picture of the grid: `Figures.Mosaic("AB;AC", "ABC", a, b, c)`,
+    /// where the i-th character of `names` names the i-th figure.
+    static member Mosaic(layout: string, names: string, [<System.ParamArray>] parts: Figure[]) =
+        if names.Length <> parts.Length then
+            invalidArg "parts" (sprintf "Marey: %d names and %d figures." names.Length parts.Length)
+
+        Chart.mosaic layout (List.zip (List.ofSeq names) (List.ofArray parts))
+
 /// D124 — the categorical front door for C#. F# writes `Chart.Category.Bar(…)`, a type nested in
 /// `module Chart`, which C# can only reach as `ChartModule.Category`; this is the same members
 /// under a name C# reads.
