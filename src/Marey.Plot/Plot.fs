@@ -375,7 +375,8 @@ module private PlotCompile =
                   // D104 — every layer of the block draws the same rows, so every layer names
                   // them the same way. The fit below draws two points of its own and has none.
                   RowKeys = defaultArg spec.Keys [||]
-                  InDomain = (true, true) })
+                  InDomain = (true, true)
+                  SecondaryY = false })
 
         // **The fitted line is a layer, and it is appended — the order is load-bearing** (D47).
         //
@@ -398,7 +399,8 @@ module private PlotCompile =
                       ShowInLegend = false
                       Addressed = [||]
                       RowKeys = [||]
-                      InDomain = (true, true) } ]
+                      InDomain = (true, true)
+                      SecondaryY = false } ]
             | _ -> layers
 
         let panel =

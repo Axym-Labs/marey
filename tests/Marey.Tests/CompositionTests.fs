@@ -361,3 +361,117 @@ module ``D176 sharing`` =
         Assert.Equal(2, groups.Length)
         // Two columns, each labelled once at its foot.
         Assert.Equal(2, count "t [s]" fig)
+
+module ``D177 a twin y`` =
+
+    let private ts = Array.init 61 (fun i -> float i * 10.0<s>)
+    let private temperature = ts |> Array.map (fun t -> 300.0<K> + 60.0<K> * (t / (t + 150.0<s>)))
+    let private pressure = temperature |> Array.mapi (fun i tk -> (101.3 * float tk / 300.0 + 0.4 * wobble i) * 1e3<Pa>)
+    let private left = Chart.line U.second U.kelvin ts temperature |> Chart.withName "temperature"
+    let private right = Chart.line U.second Derived.pascal ts pressure |> Chart.withName "pressure"
+    let private twin = left |> Chart.withRightAxis right
+    let private extent = Chart.size 500.0 300.0
+
+    let rec private keyed (k: Key) (n: Node) : Node option =
+        match n with
+        | Keyed(k', c) when k' = k -> Some c
+        | Group ns -> ns |> Array.tryPick (keyed k)
+        | Transform(_, c)
+        | Clip(_, c)
+        | Opacity(_, c)
+        | Keyed(_, c)
+        | Annotated(_, c) -> keyed k c
+        | _ -> None
+
+    let rec private paints (n: Node) : Color list =
+        match n with
+        | Text t -> (match t.Paint with Solid c -> [ c ] | _ -> [])
+        | Group ns -> ns |> List.ofArray |> List.collect paints
+        | Transform(_, c)
+        | Clip(_, c)
+        | Opacity(_, c)
+        | Keyed(_, c)
+        | Annotated(_, c) -> paints c
+        | _ -> []
+
+    [<Fact>]
+    let ``P3 draws two y axes, each over its own layers (gate 5)`` () =
+        let v = (viewsOf extent twin).[0]
+        Assert.True(v.Y2.IsSome)
+        let lo, hi = v.Y.Domain
+        Assert.True(lo > 290.0 && hi < 370.0, sprintf "left y %g..%g" lo hi)
+        let lo2, hi2 = v.Y2.Value.Domain
+        Assert.True(lo2 > 9e4 && hi2 < 1.3e5, sprintf "right y %g..%g" lo2 hi2)
+        let shown = texts (Chart.toSceneWith measurer extent twin)
+        Assert.Contains("T [K]", shown)
+        Assert.Contains("p [kPa]", shown)
+
+    [<Fact>]
+    let ``each side is drawn in its one series' colour (gate 5)`` () =
+        let scene = Chart.toSceneWith measurer extent twin
+        let colourOf (fig: Figure) = fig.Panels.[0].Layers |> Array.last |> fun l -> l.Style.Color
+        let rightAxis = keyed (Keys.axisY2 (Keys.panel 0 0)) scene
+        let leftAxis = keyed (Keys.axisY (Keys.panel 0 0)) scene
+        Assert.True(rightAxis.IsSome && leftAxis.IsSome)
+        Assert.True(paints rightAxis.Value |> List.forall ((=) (colourOf twin)))
+        Assert.True(paints leftAxis.Value |> List.forall ((=) (colourOf left)))
+        // And the right series did not take the left's palette slot.
+        Assert.NotEqual(colourOf left, colourOf twin)
+
+    [<Fact>]
+    let ``a pressure added to the kelvin side is refused, naming both units (gate 5)`` () =
+        let fig = twin |> Chart.addLine U.second Derived.pascal ts pressure
+        let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
+        Assert.Contains("y axis in K", e.Message)
+        Assert.Contains("kg·m^-1·s^-2", e.Message)
+
+    [<Fact>]
+    let ``in the unit-optional mode the same refusal comes from the same check (gate 5)`` () =
+        let raw (xs: float<'u>[]) = xs |> Array.map float
+        let left' = Marey.Chart.Line(raw ts, raw temperature, xUnit = U.second, yUnit = U.kelvin)
+        let right' = Marey.Chart.Line(raw ts, raw pressure, xUnit = U.second, yUnit = Derived.pascal)
+        let fig = left' |> Chart.withRightAxis right' |> Chart.add (Marey.Chart.Line(raw ts, raw pressure, xUnit = U.second, yUnit = Derived.pascal))
+        let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
+        Assert.Contains("y axis in K", e.Message)
+
+    [<Fact>]
+    let ``two sides that disagree on x are refused at the call`` () =
+        let metres = Chart.line U.metre Derived.pascal (ts |> Array.map (fun t -> float t * 1.0<m>)) pressure
+        let e = Assert.ThrowsAny<exn>(fun () -> left |> Chart.withRightAxis metres |> ignore)
+        Assert.Contains("x axis", e.Message)
+
+    [<Fact>]
+    let ``the pointer reads three lines over a twin`` () =
+        let v = (viewsOf extent twin).[0]
+        let mid: Vec2<px> = { X = (v.Plot.X0 + v.Plot.X1) / 2.0; Y = (v.Plot.Y0 + v.Plot.Y1) / 2.0 }
+        let lines = (PanelView.read mid v).Value
+        Assert.Equal(3, lines.Length)
+        Assert.StartsWith("p = ", lines.[2])
+        Assert.EndsWith("kPa", lines.[2])
+
+    [<Fact>]
+    let ``a live zoom moves both y axes in proportion, and a pan both (gate 5)`` () =
+        let l: Live = interact { return twin }
+        let s0 = Live.init l
+        let v = (Live.panels l s0).[0]
+        let h = v.Plot.Y1 - v.Plot.Y0
+        let w = v.Plot.X1 - v.Plot.X0
+        // The middle half of the plot, both ways.
+        let s1 = Live.step l s0 (Zoom { X0 = v.Plot.X0 + w / 4.0; Y0 = v.Plot.Y0 + h / 4.0; X1 = v.Plot.X1 - w / 4.0; Y1 = v.Plot.Y1 - h / 4.0 })
+        let v1 = (Live.panels l s1).[0]
+        let span (lo: float, hi: float) = hi - lo
+        Assert.Equal(0.5, span v1.Y.Domain / span v.Y.Domain, 6)
+        Assert.Equal(0.5, span v1.Y2.Value.Domain / span v.Y2.Value.Domain, 6)
+
+        let s2 = Live.step l s1 (Pan({ X = v1.Plot.X0 + 10.0<px>; Y = v1.Plot.Y0 + 10.0<px> }, { X = 0.0<px>; Y = 20.0<px> }))
+        let v2 = (Live.panels l s2).[0]
+        Assert.NotEqual(fst v1.Y.Domain, fst v2.Y.Domain)
+        Assert.NotEqual(fst v1.Y2.Value.Domain, fst v2.Y2.Value.Domain)
+
+    [<Fact>]
+    let ``a facet sharing y leaves each panel's second axis its own`` () =
+        let other = left |> Chart.withRightAxis (Chart.line U.second U.metre ts (ts |> Array.map (fun t -> float t * 1e-3<m>)))
+        let fig = Chart.facetWith ShareY 2 [| "a", twin; "b", other |]
+        let views = viewsOf (Chart.size 800.0 300.0) fig
+        Assert.Equal(2, views.Length)
+        Assert.Equal(views.[0].Y.Domain, views.[1].Y.Domain)

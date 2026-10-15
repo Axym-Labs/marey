@@ -448,6 +448,22 @@ let sharedFigure: Figure =
 
 let sharedSurface: Extent<px> = { Width = 480.0<px>; Height = 420.0<px> }
 
+/// D177 — P3: a chamber's temperature on the left and its pressure on the right, against one
+/// time. Each axis in its series' colour; one legend. Rational, with a stated wobble (D141).
+let twinFigure: Figure =
+    let ts = Array.init 41 (fun i -> float i * 15.0<s>)
+    let wobble = [| 0.4; -0.7; 0.9; 0.1; -0.3; -0.8; 0.6; 0.2; -0.5; 0.7; -0.1; -0.9; 0.3 |]
+    let temperature = ts |> Array.map (fun t -> 300.0<K> + 60.0<K> * (t / (t + 150.0<s>)))
+    let pressure = temperature |> Array.mapi (fun i tk -> (101.3 * float tk / 300.0 + 0.4 * wobble.[i % wobble.Length]) * 1e3<Pa>)
+
+    Chart.line U.second U.kelvin ts temperature
+    |> Chart.withName "temperature"
+    |> Chart.withRightAxis (Chart.line U.second Derived.pascal ts pressure |> Chart.withName "pressure")
+    |> Chart.withLegend LegendBottomRight
+    |> Chart.withTheme Theme.publication
+
+let twinSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
@@ -1237,7 +1253,8 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-legends" legendsSurface legendsFigure
         fig "figure-legend-shared" sharedLegendSurface sharedLegendFigure
         fig "figure-mosaic" mosaicSurface mosaicFigure
-        fig "figure-shared" sharedSurface sharedFigure ]
+        fig "figure-shared" sharedSurface sharedFigure
+        fig "figure-twin" twinSurface twinFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1264,4 +1281,5 @@ let svg: (string * (unit -> string)) list =
         "figure-legends", figureAt legendsSurface legendsFigure
         "figure-legend-shared", figureAt sharedLegendSurface sharedLegendFigure
         "figure-mosaic", figureAt mosaicSurface mosaicFigure
-        "figure-shared", figureAt sharedSurface sharedFigure ]
+        "figure-shared", figureAt sharedSurface sharedFigure
+        "figure-twin", figureAt twinSurface twinFigure ]

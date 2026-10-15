@@ -34,6 +34,8 @@ type Live =
 type ZoomAxis =
     | X
     | Y
+    /// D177 — a panel's second y axis, on its right.
+    | Y2
 
 /// D105 — one axis the reader has zoomed or panned: the panel it was done on, which axis, and the
 /// domain, raw, in that axis's own unit.
@@ -518,7 +520,8 @@ module Live =
     let private axisOf (axis: ZoomAxis) (sx: IScaleErased, sy: IScaleErased) =
         match axis with
         | ZoomAxis.X -> sx
-        | ZoomAxis.Y -> sy
+        | ZoomAxis.Y
+        | ZoomAxis.Y2 -> sy
 
     /// **D105 — a zoom applied to a figure.** Each entry states its axis on the panel it was made
     /// on, and on every panel whose same axis the view drew identically: the same domain in the
@@ -548,6 +551,8 @@ module Live =
                 (fun fig z ->
                     match axes |> Array.tryFind (fun (k, _) -> k = (z.Row, z.Col)) with
                     | None -> fig
+                    // D177 — a second y axis is the panel's own, and joins no other.
+                    | Some _ when z.Axis = ZoomAxis.Y2 -> Figure.withPanelDomainY2 (z.Row, z.Col) (z.Lo, z.Hi) fig
                     | Some(_, target) ->
                         let t = axisOf z.Axis target
                         let d = Some(z.Lo, z.Hi)
@@ -559,6 +564,7 @@ module Live =
                                     match z.Axis with
                                     | ZoomAxis.X -> Chart.withPanelDomains k d None fig
                                     | ZoomAxis.Y -> Chart.withPanelDomains k None d fig
+                                    | ZoomAxis.Y2 -> fig
                                 else
                                     fig)
                             fig)
@@ -711,7 +717,12 @@ module Live =
     /// taken. `None` when no axis is left.
     let private withEntries (zoom: LiveZoom[]) (v: PanelView) (entries: (ZoomAxis * (float * float)) list) =
         let usable (axis: ZoomAxis) (lo: float, hi: float) =
-            match (axisOf axis (v.X, v.Y)).Kind with
+            let scale =
+                match axis, v.Y2 with
+                | ZoomAxis.Y2, Some s -> s
+                | _ -> axisOf axis (v.X, v.Y)
+
+            match scale.Kind with
             | ScaleKind.Ordinal _ -> false
             | _ -> finite lo && finite hi && hi - lo > 1e-9 * max (abs lo) (abs hi)
 
@@ -779,7 +790,12 @@ module Live =
                 | Some(dx, dy) ->
                     let entries =
                         [ if x1 - x0 >= MinDrag * 1.0<px> then ZoomAxis.X, dx
-                          if y1 - y0 >= MinDrag * 1.0<px> then ZoomAxis.Y, dy ]
+                          if y1 - y0 >= MinDrag * 1.0<px> then
+                              ZoomAxis.Y, dy
+                              // D177 — the same rows of the plot, read on the right axis.
+                              match PanelView.y2DomainOf { X0 = x0; Y0 = y0; X1 = x1; Y1 = y1 } v with
+                              | Some d2 -> ZoomAxis.Y2, d2
+                              | None -> () ]
 
                     match withEntries state.Zoom v entries with
                     | Some zoom ->
@@ -804,7 +820,12 @@ module Live =
 
                     let entries =
                         [ if b.X <> a.X then ZoomAxis.X, slide v.X (b.X - a.X)
-                          if b.Y <> a.Y then ZoomAxis.Y, slide v.Y (b.Y - a.Y) ]
+                          if b.Y <> a.Y then
+                              ZoomAxis.Y, slide v.Y (b.Y - a.Y)
+
+                              match v.Y2 with
+                              | Some s2 -> ZoomAxis.Y2, slide s2 (b.Y - a.Y)
+                              | None -> () ]
 
                     match withEntries state.Zoom v entries with
                     // A pan is continuous, so it keeps the arrangement until a label overflows it.

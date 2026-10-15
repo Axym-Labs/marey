@@ -90,7 +90,8 @@ module Chart =
           ShowInLegend = not (System.String.IsNullOrEmpty name)
           Addressed = [||]
           RowKeys = [||]
-          InDomain = (true, true) }
+          InDomain = (true, true)
+          SecondaryY = false }
 
     // ---- Constructors ------------------------------------------------------------------------
 
@@ -416,7 +417,8 @@ module Chart =
     let private ruleLayer (theme: Theme) (i: int) (rule: RuleSpec<1>) (data: PackedSeries) : Layer =
         { layerOf "" theme i (GeomRule rule) data with
             Style = Geom.ruleStyle theme rule
-            InDomain = (false, false) }
+            InDomain = (false, false)
+            SecondaryY = false }
 
     let private ruleFigure (rule: RuleSpec<1>) (s: Series<'ux, 'uy>) : Figure =
         figureOf [| ruleLayer Theme.initial 0 rule (Erase.packSeries s) |]
@@ -997,7 +999,8 @@ module Chart =
     let private annotationLayer (theme: Theme) (i: int) (text: string) (placement: TextPlacement<1>) (data: PackedSeries) : Layer =
         { layerOf "" theme i (GeomAnnotation(text, placement, ArrowNone)) data with
             Style = Geom.annotationStyle theme
-            InDomain = (false, false) }
+            InDomain = (false, false)
+            SecondaryY = false }
 
     let private besidePoint: TextPlacement<1> = TextOffset { X = 6.0<px>; Y = 6.0<px> }
 
@@ -1482,6 +1485,52 @@ module Chart =
             ColWeights = shared a.ColWeights b.ColWeights
             RowWeights = joined (max 1 a.Rows) a.RowWeights (max 1 b.Rows) b.RowWeights
             Panels = Array.append a.Panels (b.Panels |> Array.map (fun p -> { p with Row = p.Row + a.Rows })) }
+
+    /// D177 — **a second y axis, on the right**: `left |> Chart.withRightAxis right` draws
+    /// `right`'s layers on the last panel of `left`, against a y axis of their own on the right,
+    /// titled from `right`'s y config. Each side is built as a figure of its own, in either mode.
+    /// The two must agree on x, and each side's layers on their y; both are checked here, at the
+    /// call, and a layer added to a side later is checked against that side when it is drawn.
+    ///
+    /// A side with exactly one series has its axis drawn in that series' colour, which is how a
+    /// reader tells which curve belongs to which side. `right`'s layers take the next palette
+    /// slots of `left`, unless their style was set.
+    let withRightAxis (right: Figure) (fig: Figure) : Figure =
+        if right.Panels.Length <> 1 then
+            failwithf "Marey: the right axis takes a one-panel figure; this one has %d panels." right.Panels.Length
+
+        let rp = right.Panels.[0]
+
+        let merged =
+            fig
+            |> addLayers (fun i ->
+                rp.Layers
+                |> Array.mapi (fun j l ->
+                    let style = if l.Style = Geom.styleOf right.Theme j l.Geom then Geom.styleOf fig.Theme (i + j) l.Geom else l.Style
+                    { l with SecondaryY = true; Style = style }))
+            |> mapLast (fun p -> { p with Y2Axis = Some rp.YAxis })
+
+        Figure.unify merged.Panels.[lastPanel merged] |> ignore
+        merged
+
+    /// D177 — move the last layer to the last panel's right y axis, giving the panel one if it
+    /// has none.
+    let toRightAxis (fig: Figure) : Figure =
+        fig
+        |> mapLastLayer (fun l -> { l with SecondaryY = true })
+        |> mapLast (fun p -> { p with Y2Axis = Some(defaultArg p.Y2Axis Figure.axisConfig) })
+
+    /// D177 — the last panel's right y domain, raw, in that axis's unit.
+    let withRightYDomain (lo: float) (hi: float) (fig: Figure) : Figure =
+        if fig.Panels.Length = 0 then
+            fig
+        else
+            let p = fig.Panels.[lastPanel fig]
+            Figure.withPanelDomainY2 (p.Row, p.Col) (lo, hi) fig
+
+    /// D177 — the last panel's right y axis's name, in place of the one its unit suggests.
+    let withRightYLabel (label: string) (fig: Figure) : Figure =
+        mapLast (fun p -> { p with Y2Axis = Some { (defaultArg p.Y2Axis Figure.axisConfig) with Label = Some label } }) fig
 
     /// D176 — **share the x axis of every panel the figure has now**, as a facet does: one
     /// domain, checked here for one dimension, and kept one afterwards. Only the outermost panel
