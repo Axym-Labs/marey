@@ -163,7 +163,8 @@ module CategoricalAxes =
           Channels = [||]
           ShowInLegend = false
           Addressed = [||]
-          RowKeys = [||] }
+          RowKeys = [||]
+          InDomain = (true, true) }
 
     /// The whole point of D45, rendered: a bar per level, a named tick per band, and no
     /// configuration beyond the level set.
@@ -292,6 +293,113 @@ module SharedDomains =
             |> Chart.withYDomain -2.0 2.0
 
         Assert.Equal((-2.0, 2.0), yDomain fig)
+
+// ======================================================================================
+// D163 — which layers join the domain
+// ======================================================================================
+
+[<Properties(Arbitrary = [| typeof<Marey.Tests.Generators.MareyArbs> |], MaxTest = 300, Replay = Marey.Tests.Generators.Seed, QuietOnSuccess = true)>]
+module DomainParticipation =
+
+    open Marey.Tests.Generators
+
+    let private t = [| 0.0<s>; 1.0<s>; 2.0<s> |]
+
+    let private out (fig: Figure) =
+        let p = fig.Panels.[fig.Panels.Length - 1]
+        let i = p.Layers.Length - 1
+
+        { fig with
+            Panels =
+                fig.Panels
+                |> Array.mapi (fun j q ->
+                    if j <> fig.Panels.Length - 1 then
+                        q
+                    else
+                        { q with
+                            Layers = q.Layers |> Array.mapi (fun k l -> if k = i then { l with InDomain = (false, false) } else l) }) }
+
+    let private domains (fig: Figure) =
+        let unified = Figure.unify fig.Panels.[0]
+        let sx, sy = Erase.seriesScales unified.Layers.[0].Data
+        sx.Domain, sy.Domain
+
+    let private data (LinearDomain(lo, hi)) =
+        [| lo * 1.0<m>; (lo + hi) / 2.0 * 1.0<m>; hi * 1.0<m> |]
+
+    /// The law the whole decision is for: a layer that is out on both axes never changes the
+    /// domain, wherever its own values lie.
+    [<Property>]
+    let ``a layer out of the domain does not change it`` (d: LinearDomain) (FiniteFloat a) (FiniteFloat b) (FiniteFloat c) =
+        let alone = Chart.line U.second U.metre t (data d)
+
+        let withOut =
+            alone
+            |> Chart.addLine U.second U.metre [| 5.0<s>; -9.0<s>; 0.5<s> |] [| a * 1.0<m>; b * 1.0<m>; c * 1.0<m> |]
+            |> out
+
+        domains withOut = domains alone
+
+    /// And one that is in can only widen it.
+    [<Property>]
+    let ``a layer in the domain never shrinks it`` (d: LinearDomain) (FiniteFloat a) (FiniteFloat b) =
+        let alone = Chart.line U.second U.metre t (data d)
+        let both = alone |> Chart.addLine U.second U.metre t [| a * 1.0<m>; b * 1.0<m>; a * 1.0<m> |]
+        let (_, (lo0, hi0)), (_, (lo1, hi1)) = domains alone, domains both
+        lo1 <= lo0 && hi1 >= hi0
+
+    /// The check follows the axis, not the domain: a rule in kelvin is wrong on a metre axis
+    /// whether or not it moves it.
+    [<Fact>]
+    let ``a layer out of the domain still has its unit checked`` () =
+        let fig =
+            Chart.line U.second U.metre t [| 1.0<m>; 2.0<m>; 3.0<m> |]
+            |> Chart.addLine U.second U.kelvin t [| 1.0<K>; 1.0<K>; 1.0<K> |]
+            |> out
+
+        let e = Assert.ThrowsAny<exn>(fun () -> Figure.unify fig.Panels.[0] |> ignore)
+        Assert.Contains("cannot share an axis", e.Message)
+
+    /// A panel of marks that are all out still has axes: their own extent.
+    [<Fact>]
+    let ``a panel whose every layer is out takes their extent`` () =
+        let fig =
+            Chart.line U.second U.metre t [| 1.0<m>; 2.0<m>; 3.0<m> |]
+            |> out
+            |> Chart.addLine U.second U.metre t [| 7.0<m>; 8.0<m>; 9.0<m> |]
+            |> out
+
+        let _, (lo, hi) = domains fig
+        Assert.True(lo < 1.0 && hi > 9.0, sprintf "(%g, %g)" lo hi)
+
+    /// `withDomainIncluded` puts a layer back.
+    [<Fact>]
+    let ``withDomainIncluded lets a layer move the axes again`` () =
+        let fig =
+            Chart.line U.second U.metre t [| 1.0<m>; 2.0<m>; 3.0<m> |]
+            |> Chart.addLine U.second U.metre t [| 9.0<m>; 9.0<m>; 9.0<m> |]
+            |> out
+
+        let _, (_, hiOut) = domains fig
+        let _, (_, hiIn) = domains (fig |> Chart.withDomainIncluded)
+        Assert.True(hiOut < 9.0, sprintf "out: %g" hiOut)
+        Assert.True(hiIn > 9.0, sprintf "in: %g" hiIn)
+
+    /// Facets share by the same rule: a layer that is out in one panel does not widen the
+    /// others.
+    [<Fact>]
+    let ``a facet shares only the layers that are in`` () =
+        let a = Chart.line U.second U.metre t [| 1.0<m>; 2.0<m>; 3.0<m> |]
+
+        let b =
+            Chart.line U.second U.metre t [| 1.5<m>; 2.0<m>; 2.5<m> |]
+            |> Chart.addLine U.second U.metre t [| 50.0<m>; 50.0<m>; 50.0<m> |]
+            |> out
+
+        let fig = Chart.facet [| "a", a; "b", b |]
+        let _, sy = Erase.seriesScales fig.Panels.[0].Layers.[0].Data
+        let _, hi = sy.Domain
+        Assert.True(hi < 4.0, sprintf "hi = %g" hi)
 
 // ======================================================================================
 // D45 — the level set, and the categorical front door

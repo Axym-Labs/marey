@@ -38,7 +38,18 @@ type Layer =
       /// A mark is then keyed `Keys.datum` rather than `Keys.mark`, so it keeps its name when an
       /// earlier row is removed, and a morph pairs it with the datum of the same name rather than
       /// with whatever sits at the same row. Empty is the common case and keeps the ordinals.
-      RowKeys: string[] }
+      RowKeys: string[]
+
+      /// D163 — whether this layer's extent joins the panel's domain, on x and on y.
+      ///
+      /// `true, true` for data, which is every layer that existed before M8. A rule, a span or an
+      /// annotation is `false, false`: it marks a place on the axes the data chose, and an
+      /// `axhline` at zero that dragged a millimetre panel out to its own position would be
+      /// deciding the figure rather than marking it. The unit is still checked against the axis
+      /// either way, because a rule in seconds on a metre axis is wrong whether or not it moves
+      /// the domain. A panel whose every layer is out takes their extents anyway, so a figure of
+      /// rules alone still has axes.
+      InDomain: bool * bool }
 
 /// Per-axis configuration. Every field has a defensible default, which is what "no
 /// configuration" in §9 has to mean in practice.
@@ -521,18 +532,29 @@ module Figure =
 
                     point s.XScale s.X, point s.YScale s.Y }
 
+    /// D163 — the entries whose layer joins the domain, or all of them when none does, so that a
+    /// panel of rules alone still has an axis. `included` is one flag per entry.
+    let private joining (included: bool[]) (entries: 'a[]) : 'a[] =
+        if Array.exists id included then
+            Array.zip entries included |> Array.filter snd |> Array.map fst
+        else
+            entries
+
     /// A unified panel's `pointsOf`: the constant on each axis when every layer is that same
     /// constant and the axis is only its padding. `unify` has given every layer the panel's
     /// domain, so one layer with a real span is enough to make the axis a span.
     let private panelPoints (p: Panel) : float option * float option =
-        let points = p.Layers |> Array.map (fun l -> pointsOf l.Data)
+        let shared pick (inDomain: Layer -> bool) =
+            let points =
+                p.Layers
+                |> Array.map (fun l -> pick (pointsOf l.Data))
+                |> joining (p.Layers |> Array.map inDomain)
 
-        let shared pick =
-            match pick points.[0] with
-            | Some v when points |> Array.forall (fun q -> pick q = Some v) -> Some v
+            match points.[0] with
+            | Some v when points |> Array.forall (fun q -> q = Some v) -> Some v
             | _ -> None
 
-        shared fst, shared snd
+        shared fst (fun l -> fst l.InDomain), shared snd (fun l -> snd l.InDomain)
 
     /// **The check, once.** Whether a set of things can share one axis, and what domain they
     /// share if they can.
@@ -549,8 +571,15 @@ module Figure =
     /// so it is the one whose message has to work hardest.
     ///
     /// `points` is each thing's `pointsOf` on this axis, so that a constant's padding can be told
-    /// from a domain.
-    let private agreeOn (describe: int -> string) (axis: string) (scales: IScaleErased[]) (points: float option[]) : float * float =
+    /// from a domain. `included` is whether each thing joins the domain (D163): every one is
+    /// checked, and only those that join are shared.
+    let private agreeOn
+        (describe: int -> string)
+        (axis: string)
+        (scales: IScaleErased[])
+        (points: float option[])
+        (included: bool[])
+        : float * float =
         let s0 = scales.[0]
 
         let reference =
@@ -624,6 +653,7 @@ module Figure =
         // at zero is padded to ±1 in its own unit, and taking that as data turned a ±1 mm axis
         // into a ±1 m one.
         Array.zip (scales |> Array.map (fun s -> s.Domain)) points
+        |> joining included
         |> Scale.shareDomain autoPadding
 
     /// Give every layer on a panel the same x and y domains.
@@ -649,8 +679,10 @@ module Figure =
                     sprintf "layer %d ('%s')" i name
 
             let points = p.Layers |> Array.map (fun l -> pointsOf l.Data)
-            let dx = agreeOn describe "x" (scales |> Array.map fst) (points |> Array.map fst)
-            let dy = agreeOn describe "y" (scales |> Array.map snd) (points |> Array.map snd)
+            let inX = p.Layers |> Array.map (fun l -> fst l.InDomain)
+            let inY = p.Layers |> Array.map (fun l -> snd l.InDomain)
+            let dx = agreeOn describe "x" (scales |> Array.map fst) (points |> Array.map fst) inX
+            let dy = agreeOn describe "y" (scales |> Array.map snd) (points |> Array.map snd) inY
 
             { p with
                 Layers =
@@ -708,16 +740,19 @@ module Figure =
             let pointsOn pick =
                 entries |> Array.map (fun (_, p: Panel, li, _) -> pick (pointsOf p.Layers.[li].Data))
 
+            let includedOn pick =
+                entries |> Array.map (fun (_, p: Panel, li, _) -> pick p.Layers.[li].InDomain)
+
             let dx =
                 match mode with
                 | ShareBoth
-                | ShareX -> Some(agreeOn describe "x" (scalesOf fst) (pointsOn fst))
+                | ShareX -> Some(agreeOn describe "x" (scalesOf fst) (pointsOn fst) (includedOn fst))
                 | ShareY -> None
 
             let dy =
                 match mode with
                 | ShareBoth
-                | ShareY -> Some(agreeOn describe "y" (scalesOf snd) (pointsOn snd))
+                | ShareY -> Some(agreeOn describe "y" (scalesOf snd) (pointsOn snd) (includedOn snd))
                 | ShareX -> None
 
             { fig with

@@ -89,7 +89,8 @@ module Chart =
           Channels = [||]
           ShowInLegend = not (System.String.IsNullOrEmpty name)
           Addressed = [||]
-          RowKeys = [||] }
+          RowKeys = [||]
+          InDomain = (true, true) }
 
     // ---- Constructors ------------------------------------------------------------------------
 
@@ -895,6 +896,13 @@ module Chart =
 
     let withOpacity (o: float) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withOpacity o l.Style }) fig
+
+    /// D163 — **let the most recently added layer move the axes.** A rule, a span or an
+    /// annotation marks a place on the domain the data chose and stays out of it; this puts it
+    /// back in, for the figure that must show the rule ("the panel must reach y = 0"). A data
+    /// layer is in already, so on one this changes nothing.
+    let withDomainIncluded (fig: Figure) =
+        mapLastLayer (fun l -> { l with InDomain = (true, true) }) fig
 
     /// Label the points of the most recently added series, one string per point.
     ///

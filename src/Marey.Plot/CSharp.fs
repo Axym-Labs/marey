@@ -69,6 +69,9 @@ type FigureExtensions =
     static member WithOpacity(fig: Figure, opacity: float) = Chart.withOpacity opacity fig
 
     [<Extension>]
+    static member WithDomainIncluded(fig: Figure) = Chart.withDomainIncluded fig
+
+    [<Extension>]
     static member WithMarker(fig: Figure, shape: MarkerShape) = Chart.withMarker shape fig
 
     /// Dash lengths in device pixels.
