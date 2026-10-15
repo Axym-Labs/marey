@@ -352,7 +352,8 @@ let ticksSurface: Extent<px> = { Width = 760.0<px>; Height = 520.0<px> }
 /// D167 / D168 — P1 of the M8 port: a fit over measurements with a residual panel below it,
 /// under `Theme.publication` — framed, ticks inside on four sides, minor ticks — lettered, with a
 /// rule at zero and an axis stated every second. The model is a polynomial over exact values.
-let publicationFigure: Figure =
+/// P1's fit and its residuals, without `exp` (D141).
+let private fitAndResiduals =
     let ts = Array.init 13 (fun i -> float i * 0.5<s>)
     let model (t: float<s>) = 1.0e-3<m> * (float t - 3.0) * (float t - 3.0) - 4.0e-3<m>
     let wobble = [| 0.4; -0.7; 0.9; 0.1; -0.3; -0.8; 0.6; 0.2; -0.5; 0.7; -0.1; -0.9; 0.3 |]
@@ -373,6 +374,11 @@ let publicationFigure: Figure =
         |> Chart.addHLine U.metre 0.0<m>
         |> Chart.withXTicksEvery U.second 1.0<s>
         |> Chart.withYLabel "residual"
+
+    fit, residual
+
+let publicationFigure: Figure =
+    let fit, residual = fitAndResiduals
 
     fit
     |> Chart.above residual
@@ -426,6 +432,21 @@ let mosaicFigure: Figure =
     |> Chart.withTheme Theme.publication
 
 let mosaicSurface: Extent<px> = { Width = 760.0<px>; Height = 420.0<px> }
+
+/// D173, D175, D176 — P1 as matplotlib draws it: `subplots(2, 1, sharex=True,
+/// height_ratios=[3, 1])`. One x, labelled under the residuals; the plots three to one and lined
+/// up; the fit's x ticks kept, inside, without their labels.
+let sharedFigure: Figure =
+    let fit, residual = fitAndResiduals
+
+    fit
+    |> Chart.above residual
+    |> Chart.shareX
+    |> Chart.withRowHeights [| 3.0; 1.0 |]
+    |> Chart.withPanelLetters LetterParen
+    |> Chart.withTheme Theme.publication
+
+let sharedSurface: Extent<px> = { Width = 480.0<px>; Height = 420.0<px> }
 
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
@@ -1215,7 +1236,8 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-publication" publicationSurface publicationFigure
         fig "figure-legends" legendsSurface legendsFigure
         fig "figure-legend-shared" sharedLegendSurface sharedLegendFigure
-        fig "figure-mosaic" mosaicSurface mosaicFigure ]
+        fig "figure-mosaic" mosaicSurface mosaicFigure
+        fig "figure-shared" sharedSurface sharedFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1241,4 +1263,5 @@ let svg: (string * (unit -> string)) list =
         "figure-publication", figureAt publicationSurface publicationFigure
         "figure-legends", figureAt legendsSurface legendsFigure
         "figure-legend-shared", figureAt sharedLegendSurface sharedLegendFigure
-        "figure-mosaic", figureAt mosaicSurface mosaicFigure ]
+        "figure-mosaic", figureAt mosaicSurface mosaicFigure
+        "figure-shared", figureAt sharedSurface sharedFigure ]

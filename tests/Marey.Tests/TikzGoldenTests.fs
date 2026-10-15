@@ -337,6 +337,11 @@ module Figures =
     let ``a mosaic`` () =
         check "figure-mosaic.tex" (Chart.render TikzBackend.render mosaicSurface mosaicFigure)
 
+    /// D173, D175, D176 — P1 with one x, three to one.
+    [<Fact>]
+    let ``a shared axis over ratios`` () =
+        check "figure-shared.tex" (Chart.render TikzBackend.render sharedSurface sharedFigure)
+
     /// Gate 6 meets gate 7. A baseline can be byte-stable, valid TeX and *blank* — that is
     /// precisely the failure this milestone already shipped once. So the committed figure is also
     /// compiled and looked at, which is what makes it a record of a picture rather than of a

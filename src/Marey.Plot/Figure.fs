@@ -85,7 +85,10 @@ type AxisConfig =
       /// stated step or count draws them whatever the theme.
       Minor: MinorSpec
       /// D169 — how the tick numbers are written.
-      Format: TickFormat }
+      Format: TickFormat
+      /// D176 — whether the tick labels are written. The ticks stay either way. Off on a panel
+      /// whose shared axis is labelled by the panel beyond it (matplotlib's `label_outer`).
+      ShowTickLabels: bool }
 
 [<NoComparison>]
 type Panel =
@@ -98,6 +101,13 @@ type Panel =
       /// the two sides have the same number of rows or columns.
       RowSpan: int
       ColSpan: int
+      /// D176 — the group of panels this one shares its x axis with, or 0 for none. A group is
+      /// made by `Chart.shareX` (or a facet) over the panels the figure has at that moment, once
+      /// their units have been checked, and it is renumbered when figures are composed, so a
+      /// panel composed in later never joins it.
+      XShare: int
+      /// D176 — the same for y.
+      YShare: int
       Layers: Layer[]
       XAxis: AxisConfig
       YAxis: AxisConfig
@@ -593,7 +603,8 @@ module Figure =
           Prefix = None
           Reversed = false
           Minor = MinorAuto
-          Format = FormatAuto }
+          Format = FormatAuto
+          ShowTickLabels = true }
 
     let panelOf (layers: Layer[]) : Panel =
         { Title = ""
@@ -601,6 +612,8 @@ module Figure =
           Col = 0
           RowSpan = 1
           ColSpan = 1
+          XShare = 0
+          YShare = 0
           Layers = layers
           XAxis = axisConfig
           YAxis = axisConfig
@@ -897,6 +910,117 @@ module Figure =
                                 |> Array.map (fun l ->
                                     { l with
                                         Data = withDomains dx dy l.Data }) }) }
+
+    // ---- D176: share groups ------------------------------------------------------------------
+
+    let private sharesX (mode: FacetScales) = mode <> ShareY
+    let private sharesY (mode: FacetScales) = mode <> ShareX
+
+    /// D176 — **share the axes of every panel the figure has now, and remember it.** The check is
+    /// `shareScales`', made here, at the call, so a dimensional mismatch is reported by the call
+    /// that asked for the sharing (D48). Only when it passes is the sharing recorded, as a group
+    /// on each panel, and the group is what keeps the axis shared afterwards: a domain stated on
+    /// one of its panels is stated on all of them, and the compiled figure shares them again.
+    let shareRecorded (mode: FacetScales) (fig: Figure) : Figure =
+        let shared = shareScales mode fig
+        let next (pick: Panel -> int) = 1 + (fig.Panels |> Array.fold (fun acc p -> max acc (pick p)) 0)
+        let gx = next (fun p -> p.XShare)
+        let gy = next (fun p -> p.YShare)
+
+        { shared with
+            Panels =
+                shared.Panels
+                |> Array.map (fun p ->
+                    { p with
+                        XShare = (if sharesX mode then gx else p.XShare)
+                        YShare = (if sharesY mode then gy else p.YShare) }) }
+
+    /// D176 — the panels in `p`'s x group (or `p` alone when it has none), as a predicate.
+    let private inXGroup (p: Panel) (q: Panel) = (p.XShare <> 0 && q.XShare = p.XShare) || (q.Row = p.Row && q.Col = p.Col)
+    let private inYGroup (p: Panel) (q: Panel) = (p.YShare <> 0 && q.YShare = p.YShare) || (q.Row = p.Row && q.Col = p.Col)
+
+    /// D176 — a domain stated on one panel, stated on every panel its axis is shared with.
+    let withDomainsShared (target: Panel -> bool) (dx: (float * float) option) (dy: (float * float) option) (fig: Figure) : Figure =
+        let targets = fig.Panels |> Array.filter target
+        let onX (q: Panel) = dx.IsSome && targets |> Array.exists (fun p -> inXGroup p q)
+        let onY (q: Panel) = dy.IsSome && targets |> Array.exists (fun p -> inYGroup p q)
+
+        { fig with
+            Panels =
+                fig.Panels
+                |> Array.map (fun q ->
+                    let x = if onX q then dx else None
+                    let y = if onY q then dy else None
+
+                    if x.IsNone && y.IsNone then
+                        q
+                    else
+                        { q with Layers = q.Layers |> Array.map (fun l -> { l with Data = withDomains x y l.Data }) }) }
+
+    /// D176 — renumber `b`'s share groups past `a`'s, so composing two figures never merges a
+    /// group of one with a group of the other.
+    let offsetShares (a: Figure) (b: Figure) : Figure =
+        let top (pick: Panel -> int) = a.Panels |> Array.fold (fun acc p -> max acc (pick p)) 0
+        let dx, dy = top (fun p -> p.XShare), top (fun p -> p.YShare)
+
+        { b with
+            Panels =
+                b.Panels
+                |> Array.map (fun p ->
+                    { p with
+                        XShare = (if p.XShare = 0 then 0 else p.XShare + dx)
+                        YShare = (if p.YShare = 0 then 0 else p.YShare + dy) }) }
+
+    /// D176 — the figure as it is compiled: every share group shared again, which is idempotent
+    /// for a group whose domains nothing has touched since and puts back one that something has;
+    /// then the inner tick labels and titles off. A shared x is labelled only on a panel with no
+    /// panel of its group directly below it over the same columns, a shared y only on one with
+    /// none directly to its left over the same rows.
+    let private prepare (fig: Figure) : Figure =
+        if fig.Panels |> Array.forall (fun p -> p.XShare = 0 && p.YShare = 0) then
+            fig
+        else
+            let regroup (pick: Panel -> int) (mode: FacetScales) (f: Figure) =
+                let groups = f.Panels |> Array.map pick |> Array.filter (fun g -> g <> 0) |> Array.distinct
+
+                groups
+                |> Array.fold
+                    (fun (f: Figure) g ->
+                        let members = f.Panels |> Array.filter (fun p -> pick p = g)
+                        let shared = shareScales mode { f with Panels = members }
+                        let mutable k = 0
+
+                        { f with
+                            Panels =
+                                f.Panels
+                                |> Array.map (fun p ->
+                                    if pick p = g then
+                                        let q = shared.Panels.[k]
+                                        k <- k + 1
+                                        q
+                                    else
+                                        p) })
+                    f
+
+            let shared = fig |> regroup (fun p -> p.XShare) ShareX |> regroup (fun p -> p.YShare) ShareY
+            let drawn = shared.Panels |> Array.filter (fun p -> p.Layers.Length > 0)
+
+            let below (p: Panel) =
+                p.XShare <> 0
+                && drawn
+                   |> Array.exists (fun q -> q.XShare = p.XShare && q.Row = p.Row + max 1 p.RowSpan && q.Col = p.Col && q.ColSpan = p.ColSpan)
+
+            let left (p: Panel) =
+                p.YShare <> 0
+                && drawn
+                   |> Array.exists (fun q -> q.YShare = p.YShare && q.Col + max 1 q.ColSpan = p.Col && q.Row = p.Row && q.RowSpan = p.RowSpan)
+
+            { shared with
+                Panels =
+                    shared.Panels
+                    |> Array.map (fun p ->
+                        let p = if below p then { p with XAxis = { p.XAxis with ShowTickLabels = false; ShowTitle = false } } else p
+                        if left p then { p with YAxis = { p.YAxis with ShowTickLabels = false; ShowTitle = false } } else p) }
 
     // ---- Compilation -----------------------------------------------------------------------
 
@@ -1287,6 +1411,14 @@ module Figure =
             // much the outermost label hangs past the end of its axis, how wide the colorbar
             // needs to be. Every one of them is a `Track.Content` size below, and every one of
             // them moves when the numbers move.
+            // D176 — an axis whose labels are off keeps its marks, and an outward mark still takes
+            // its length outside the plot.
+            let marksOnly =
+                match theme.TickDirection with
+                | TickIn -> 0.0<px>
+                | TickOut
+                | TickInOut -> theme.TickLength
+
             let gutters (xPlan: TickPlan) (yPlan: TickPlan) (barPlan: TickPlan option) (probe: Extent<px>) : PanelLayout =
                 let legendScores = scores probe
 
@@ -1308,16 +1440,14 @@ module Figure =
                     | _ -> 0.0<px>
 
                   XTicksH =
-                    if p.XAxis.Visible then
-                        Axes.tickExtent m theme AxisBottom xSpec xPlan
-                    else
-                        0.0<px>
+                    if not p.XAxis.Visible then 0.0<px>
+                    elif p.XAxis.ShowTickLabels then Axes.tickExtent m theme AxisBottom xSpec xPlan
+                    else marksOnly
 
                   YTicksW =
-                    if p.YAxis.Visible then
-                        Axes.tickExtent m theme AxisLeft ySpec yPlan
-                    else
-                        0.0<px>
+                    if not p.YAxis.Visible then 0.0<px>
+                    elif p.YAxis.ShowTickLabels then Axes.tickExtent m theme AxisLeft ySpec yPlan
+                    else marksOnly
 
                   XTitleH =
                     if p.XAxis.Visible && p.XAxis.ShowTitle then
@@ -1335,13 +1465,13 @@ module Figure =
                   // it is half of §13's "labels inside bounds"; without it the right-hand x
                   // label and the top y label are clipped by the figure edge.
                   RightPad =
-                    if p.XAxis.Visible then
+                    if p.XAxis.Visible && p.XAxis.ShowTickLabels then
                         Axes.labelOverhang m theme AxisBottom xSpec xPlan
                     else
                         0.0<px>
 
                   TopPad =
-                    if p.YAxis.Visible then
+                    if p.YAxis.Visible && p.YAxis.ShowTickLabels then
                         Axes.labelOverhang m theme AxisLeft ySpec yPlan
                     else
                         0.0<px>
@@ -1585,7 +1715,7 @@ module Figure =
                               Theme = theme
                               ShowSpine = not theme.PanelFrame
                               ShowTicks = true
-                              ShowLabels = true
+                              ShowLabels = cfg.ShowTickLabels
                               ShowTitle = cfg.ShowTitle
                               TitleOffset = Axes.tickExtent m theme side spec tickPlan + theme.TitleGap
                               Direction = theme.TickDirection
@@ -2044,6 +2174,7 @@ module Figure =
     /// `toScene` computed its arrangement internally and `arrangement` computed a *second* one
     /// for inspection. Both are now this function.
     let arrangeFor (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Shot =
+        let fig = prepare fig
         let outer = Layout.arrange m extent (outerGrid None fig)
 
         let panels =
@@ -2102,6 +2233,7 @@ module Figure =
         if raw.Length = 0 then
             invalidArg "raw" "Marey: a shot needs at least one state."
 
+        let raw = raw |> Array.map prepare
         let colourDomains = colourDomainsOf raw
         let quiverKeys = quiverKeysOf raw
 
@@ -2265,6 +2397,7 @@ module Figure =
     /// are compared with the frozen ones. A panel at a grid position the shot has no region for
     /// does not fit; a panel with no layers needs nothing.
     let fitsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : bool =
+        let fig = prepare fig
         let extent = shot.Outer.Extent
         let within (a: float<px>) (b: float<px>) = a <= b + 1e-9<px>
 
@@ -2305,6 +2438,7 @@ module Figure =
     /// drawing pass takes it from, and the scales from the panel after `unify`. A panel with no
     /// layers, or one the shot has no layout for, has nothing to point at and is left out.
     let panelsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : PanelView[] =
+        let fig = prepare fig
         fig.Panels
         |> Array.choose (fun p ->
             let key = sprintf "panel-%d-%d" p.Row p.Col
@@ -2337,14 +2471,8 @@ module Figure =
         (dy: (float * float) option)
         (fig: Figure)
         : Figure =
-        { fig with
-            Panels =
-                fig.Panels
-                |> Array.map (fun p ->
-                    if p.Row = row && p.Col = col then
-                        { p with Layers = p.Layers |> Array.map (fun l -> { l with Data = withDomains dx dy l.Data }) }
-                    else
-                        p) }
+        // D176 — on a shared axis, the domain is the group's.
+        withDomainsShared (fun p -> p.Row = row && p.Col = col) dx dy fig
 
     /// **`Shot -> Figure -> Node`.** Draw this figure inside a layout that has already been
     /// decided — the frame renderer's entry point.
@@ -2354,6 +2482,7 @@ module Figure =
     /// second chance to be inconsistent with no way to detect it. An arrangement is in device
     /// pixels for one surface; it does not travel to another.
     let toSceneIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : Node =
+        let fig = prepare fig
         let theme = fig.Theme
         let extent = shot.Outer.Extent
 
