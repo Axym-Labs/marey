@@ -227,6 +227,14 @@ type FigureExtensions =
     [<Extension>]
     static member Above(fig: Figure, below: Figure) = Chart.above below fig
 
+    /// D175 — the rows' plot heights, relative: `fig.WithRowHeights(3, 1)`.
+    [<Extension>]
+    static member WithRowHeights(fig: Figure, [<System.ParamArray>] heights: float[]) = Chart.withRowHeights heights fig
+
+    /// D175 — the columns' plot widths, relative.
+    [<Extension>]
+    static member WithColWidths(fig: Figure, [<System.ParamArray>] widths: float[]) = Chart.withColWidths widths fig
+
     // ---- Output ----------------------------------------------------------------------------------
 
     /// The figure as a scene, at a size in device pixels.

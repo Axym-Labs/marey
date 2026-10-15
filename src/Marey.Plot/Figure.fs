@@ -136,7 +136,13 @@ type Figure =
       Letters: PanelLetters option
       /// D171 — one legend for every panel, beside or below the grid of them, in place of each
       /// panel's own.
-      Legend: FigureLegend option }
+      Legend: FigureLegend option
+      /// D175 — the rows' plot heights and the columns' plot widths, relative, one weight per row
+      /// or column and averaging 1. Empty for equal ones, which is every figure that does not
+      /// state them. Under D173 they share out the plots, not the cells, so `[3; 1]` draws a plot
+      /// three times as tall as the one below it whatever their gutters.
+      RowWeights: float[]
+      ColWeights: float[] }
 
 /// §9 / D48 — **which axes the panels of a composed figure share.**
 ///
@@ -611,7 +617,9 @@ module Figure =
           Panels = panels
           Theme = Theme.initial
           Letters = None
-          Legend = None }
+          Legend = None
+          RowWeights = [||]
+          ColWeights = [||] }
 
     // ---- Sharing an axis: the one runtime dimensional check --------------------------------
 
@@ -1725,6 +1733,9 @@ module Figure =
     ///
     /// `head` overrides the measured head height when it is `Some`, which is how the union takes
     /// the tallest head of the shot rather than each frame's own.
+    /// D175 — a row's or column's weight, 1 where none is stated.
+    let private weightOf (weights: float[]) (i: int) = if i < weights.Length then weights.[i] else 1.0
+
     let private outerGrid (head: float<px> option) (fig: Figure) =
         let theme = fig.Theme
         let rows = max 1 fig.Rows
@@ -1754,11 +1765,11 @@ module Figure =
         let trackRows =
             Array.concat
                 [ [| Track.Content 0.0<px> |]
-                  Array.create rows (Track.Frac 1.0)
+                  Array.init rows (fun i -> Track.Frac(weightOf fig.RowWeights i))
                   (if shared = Some FigureLegendBottom then [| Track.Content 0.0<px> |] else [||]) ]
 
         let trackCols =
-            Array.append (Array.create cols (Track.Frac 1.0)) (if shared = Some FigureLegendRight then [| Track.Content 0.0<px> |] else [||])
+            Array.append (Array.init cols (fun i -> Track.Frac(weightOf fig.ColWeights i))) (if shared = Some FigureLegendRight then [| Track.Content 0.0<px> |] else [||])
 
         let legendSize (mm: ITextMeasurer) = Legend.measure mm theme (figureEntries fig)
 
@@ -1862,11 +1873,11 @@ module Figure =
 
                 a + b
 
-        let lanes (count: int) (before: float<px>[]) (after: float<px>[]) =
+        let lanes (count: int) (weights: float[]) (before: float<px>[]) (after: float<px>[]) =
             [| for i in 0 .. count - 1 do
                    if i > 0 then yield gap
                    yield Track.Fixed before.[i]
-                   yield Track.Frac 1.0
+                   yield Track.Frac(weightOf weights i)
                    yield Track.Fixed after.[i] |]
 
         // Row tracks: the head and its gap, then 4 per panel row less the last gap; column tracks
@@ -1874,11 +1885,11 @@ module Figure =
         let trackRows =
             Array.concat
                 [ [| Track.Content 0.0<px>; gap |]
-                  lanes rows tops bottoms
+                  lanes rows fig.RowWeights tops bottoms
                   (if shared = Some FigureLegendBottom then [| gap; Track.Content 0.0<px> |] else [||]) ]
 
         let trackCols =
-            Array.append (lanes cols lefts rights) (if shared = Some FigureLegendRight then [| gap; Track.Content 0.0<px> |] else [||])
+            Array.append (lanes cols fig.ColWeights lefts rights) (if shared = Some FigureLegendRight then [| gap; Track.Content 0.0<px> |] else [||])
 
         let legendSize (mm: ITextMeasurer) = Legend.measure mm theme (figureEntries fig)
         let panelRows = 4 * rows - 1

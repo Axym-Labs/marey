@@ -1404,12 +1404,18 @@ module Chart =
 
     /// D174 — a figure's rows stretched by `k`: each panel starts `k` times lower and spans `k`
     /// times as many rows.
+    /// D175 — a row's stated weight given to each of the `k` rows it becomes. Every row is split
+    /// alike, so every proportion holds and the mean stays 1.
+    let private split (k: int) (weights: float[]) =
+        weights |> Array.collect (fun w -> Array.create k w)
+
     let private stretchRows (k: int) (f: Figure) =
         if k = 1 then
             f
         else
             { f with
                 Rows = f.Rows * k
+                RowWeights = split k f.RowWeights
                 Panels = f.Panels |> Array.map (fun p -> { p with Row = p.Row * k; RowSpan = max 1 p.RowSpan * k }) }
 
     let private stretchCols (k: int) (f: Figure) =
@@ -1418,7 +1424,21 @@ module Chart =
         else
             { f with
                 Cols = f.Cols * k
+                ColWeights = split k f.ColWeights
                 Panels = f.Panels |> Array.map (fun p -> { p with Col = p.Col * k; ColSpan = max 1 p.ColSpan * k }) }
+
+    /// D175 — two figures' weights along the axis they are joined on: each side's, or ones where
+    /// it states none, so a stated pair keeps its proportion beside an unstated panel.
+    let private joined (aCount: int) (a: float[]) (bCount: int) (b: float[]) =
+        if a.Length = 0 && b.Length = 0 then
+            [||]
+        else
+            let fill n (ws: float[]) = if ws.Length = 0 then Array.create n 1.0 else ws
+            Array.append (fill aCount a) (fill bCount b)
+
+    /// D175 — the weights two figures share along the axis they stand side by side on: the
+    /// first's where it states them, otherwise the second's.
+    let private shared (a: float[]) (b: float[]) = if a.Length > 0 then a else b
 
     /// Put `b`'s panels to the right of `a`'s. `b`'s figure-level title is dropped; use
     /// `withPanelTitle` for per-panel headings.
@@ -1434,6 +1454,8 @@ module Chart =
         { a with
             Cols = a.Cols + b.Cols
             Rows = rows
+            RowWeights = shared a.RowWeights b.RowWeights
+            ColWeights = joined (max 1 a.Cols) a.ColWeights (max 1 b.Cols) b.ColWeights
             Panels = Array.append a.Panels (b.Panels |> Array.map (fun p -> { p with Col = p.Col + a.Cols })) }
 
     /// Put `b`'s panels below `a`'s, across the least common multiple of their columns (D174).
@@ -1445,7 +1467,30 @@ module Chart =
         { a with
             Rows = a.Rows + b.Rows
             Cols = cols
+            ColWeights = shared a.ColWeights b.ColWeights
+            RowWeights = joined (max 1 a.Rows) a.RowWeights (max 1 b.Rows) b.RowWeights
             Panels = Array.append a.Panels (b.Panels |> Array.map (fun p -> { p with Row = p.Row + a.Rows })) }
+
+    /// D175 — weights to the mean of 1, refused unless there is one per track and each is positive.
+    let private weights (what: string) (count: int) (ws: float[]) =
+        if ws.Length <> count then
+            failwithf "Marey: %d %s weights for a figure of %d %s. Give one per %s." ws.Length what count what (what.TrimEnd 's')
+
+        if ws |> Array.exists (fun w -> not (w > 0.0) || System.Double.IsInfinity w) then
+            failwithf "Marey: %s weights must be positive and finite; got %s." what (ws |> Array.map string |> String.concat ", ")
+
+        let mean = Array.average ws
+        ws |> Array.map (fun w -> w / mean)
+
+    /// D175 — **the rows' plot heights, relative**: `withRowHeights [| 3.0; 1.0 |]` draws the first
+    /// row's plots three times as tall as the second's, whatever their gutters (matplotlib's
+    /// `height_ratios`). One weight per row of the figure as composed so far.
+    let withRowHeights (heights: float[]) (fig: Figure) =
+        { fig with RowWeights = weights "rows" (max 1 fig.Rows) heights }
+
+    /// D175 — the columns' plot widths, relative (matplotlib's `width_ratios`).
+    let withColWidths (widths: float[]) (fig: Figure) =
+        { fig with ColWeights = weights "columns" (max 1 fig.Cols) widths }
 
     /// D174 — **panels laid out by a picture of the grid.** Each character of `layout` is a cell,
     /// rows separated by `;` or a newline, `.` an empty cell; every other character names a
