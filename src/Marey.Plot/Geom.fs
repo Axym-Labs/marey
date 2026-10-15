@@ -67,6 +67,27 @@ type ViolinProfile<[<Measure>] 'p> =
     { At: float<'p>[]
       Width: float[] }
 
+/// D162 — a mark across the whole panel: `axhline`, `axvline`, `axline`, `axhspan`, `axvspan`.
+///
+/// Each says where it is on **one** axis (or through two points), and nothing about where it
+/// ends, because it ends where the panel does. That is only known once the panel's domain is
+/// final — after `unify`, a facet's sharing, a stated domain, the union over a shot, a zoom — so
+/// a rule is carried in data space like every geom here (D97) and laid across the panel when it
+/// is compiled.
+[<NoComparison>]
+type RuleSpec<[<Measure>] 'p> =
+    /// Constant y, across the panel.
+    | RuleH of y: float<'p>
+    /// Constant x, up the panel.
+    | RuleV of x: float<'p>
+    /// The line through two points, to both edges of the panel. On a log axis it is straight on
+    /// the page between where the two points land, as matplotlib's `axline` is.
+    | RuleThrough of x0: float<'p> * y0: float<'p> * x1: float<'p> * y1: float<'p>
+    /// The band between two y values, across the panel.
+    | SpanH of lo: float<'p> * hi: float<'p>
+    /// The band between two x values, up the panel.
+    | SpanV of lo: float<'p> * hi: float<'p>
+
 /// M0's geoms (§16: "line/scatter/errorbar" by name), and M2 phase 6's.
 ///
 /// **`'p` is the space the numeric payloads live in**, and there are exactly two. A `Geom` —
@@ -143,6 +164,10 @@ type GeomOf<[<Measure>] 'p> =
     /// points are the nodes, so the axes cover the grid and a colour channel over the values
     /// gets its colorbar exactly as a scatter's would.
     | GeomField of field: FieldPayload<'p> * mark: FieldMark
+    /// D162 — a rule or a span, laid across the panel when it is compiled. The layer's points
+    /// are not drawn; they are there so that its unit is checked against the axes like any
+    /// layer's, and so that `withDomainIncluded` has a value to put in the domain.
+    | GeomRule of RuleSpec<'p>
 
 /// A geom in the series' data space — what every constructor returns and every `Layer` holds.
 type Geom = GeomOf<1>
@@ -201,6 +226,28 @@ module Geom =
                     MarkCircle
                 else
                     theme.MarkerShapes.[((i % theme.MarkerShapes.Length) + theme.MarkerShapes.Length) % theme.MarkerShapes.Length] }
+
+    /// D162 — the style a rule or a span starts with. It is furniture rather than data, so it
+    /// takes no palette colour: a rule is drawn in the theme's axis colour at the axis's width,
+    /// dashed, and a span is the foreground at a tenth of its strength.
+    let ruleStyle (theme: Theme) (rule: RuleSpec<'p>) : GeomStyle =
+        match rule with
+        | SpanH _
+        | SpanV _ -> { style theme theme.Foreground with FillOpacity = 0.1 }
+        | RuleH _
+        | RuleV _
+        | RuleThrough _ ->
+            { style theme theme.AxisColor with
+                Width = theme.AxisWidth
+                Dash = [| 4.0<px>; 3.0<px> |]
+                Cap = Butt }
+
+    /// The style a layer drawing `geom` starts with in palette slot `i`: what a constructor gives
+    /// it, and what `Chart.withTheme` compares against to tell a default from a choice.
+    let styleOf (theme: Theme) (i: int) (geom: GeomOf<'p>) : GeomStyle =
+        match geom with
+        | GeomRule r -> ruleStyle theme r
+        | _ -> styleFor theme i
 
     let withColor (c: Color) (s: GeomStyle) = { s with Color = c }
     let withWidth (w: float<px>) (s: GeomStyle) = { s with Width = w }
@@ -508,6 +555,15 @@ module Geom =
                   W = w },
                 mark
             )
+        | GeomRule r ->
+            GeomRule(
+                match r with
+                | RuleH y -> RuleH(fy y)
+                | RuleV x -> RuleV(fx x)
+                | RuleThrough(x0, y0, x1, y1) -> RuleThrough(fx x0, fy y0, fx x1, fy y1)
+                | SpanH(lo, hi) -> SpanH(fy lo, fy hi)
+                | SpanV(lo, hi) -> SpanV(fx lo, fx hi)
+            )
 
     /// A geom put on the panel its **own** series' scales describe — what a figure would give it
     /// if nothing else shared the panel. For drawing a geom outside a figure; inside one,
@@ -629,6 +685,72 @@ module Geom =
             else
                 let sorted = Array.sort gaps
                 sorted.[sorted.Length / 2]
+
+    /// D162 — lay a rule across the panel, or `None` when it falls outside it, which the caller
+    /// counts (D52). The rule has been put on the panel by `project`, so the panel is the unit
+    /// square here. Under a coord that is not the identity the path is sampled before it is
+    /// warped, so a horizontal rule under `Coord.polar` is a circle rather than a chord.
+    let compileRule (coord: Coord) (st: GeomStyle) (rule: RuleSpec<nd>) : Node option =
+        let edge = 1e-9
+        let inside (v: float) = v >= -edge && v <= 1.0 + edge
+        let pt (x: float) (y: float) : Vec2<nd> = at (nd x) (nd y)
+
+        let segs (closed: bool) (pts: Vec2<nd>[]) =
+            let pts = if closed then Array.append pts [| pts.[0] |] else pts
+            let w = if Coord.isIdentity coord then pts else Coord.warpPolyline coord 64 pts
+
+            [| yield MoveTo w.[0]
+               for i in 1 .. w.Length - 1 do
+                   yield LineTo w.[i]
+               if closed then
+                   yield ClosePath |]
+
+        let line (pts: Vec2<nd>[]) =
+            Some(Path(segs false pts, Some(strokeOf st), None, NonZero))
+
+        // A band clamped to the panel, or nothing when no part of it is inside.
+        let band (a: float) (b: float) (corners: float -> float -> Vec2<nd>[]) =
+            if not (finiteNum a && finiteNum b) then
+                None
+            else
+                let lo = max 0.0 (min a b)
+                let hi = min 1.0 (max a b)
+
+                if lo > hi then
+                    None
+                else
+                    Some(Path(segs true (corners lo hi), None, Some(fillOf st), NonZero))
+
+        match rule with
+        | RuleH y when inside (float y) -> line [| pt 0.0 (float y); pt 1.0 (float y) |]
+        | RuleV x when inside (float x) -> line [| pt (float x) 0.0; pt (float x) 1.0 |]
+        | RuleH _
+        | RuleV _ -> None
+        | SpanH(a, b) -> band (float a) (float b) (fun lo hi -> [| pt 0.0 lo; pt 1.0 lo; pt 1.0 hi; pt 0.0 hi |])
+        | SpanV(a, b) -> band (float a) (float b) (fun lo hi -> [| pt lo 0.0; pt hi 0.0; pt hi 1.0; pt lo 1.0 |])
+        | RuleThrough(x0, y0, x1, y1) ->
+            let x0, y0 = float x0, float y0
+            let dx, dy = float x1 - x0, float y1 - y0
+
+            if not (finiteNum x0 && finiteNum y0 && finiteNum dx && finiteNum dy) || (dx = 0.0 && dy = 0.0) then
+                None
+            else
+                // Liang–Barsky on the infinite line: the parameter range inside 0 ≤ x, y ≤ 1.
+                let range (p: float) (d: float) =
+                    if d = 0.0 then
+                        if inside p then -infinity, infinity else infinity, -infinity
+                    else
+                        let a, b = (0.0 - p) / d, (1.0 - p) / d
+                        min a b, max a b
+
+                let ax, bx = range x0 dx
+                let ay, by = range y0 dy
+                let t0, t1 = max ax ay, min bx by
+
+                if t1 - t0 < edge then
+                    None
+                else
+                    line [| pt (x0 + t0 * dx) (y0 + t0 * dy); pt (x0 + t1 * dx) (y0 + t1 * dy) |]
 
     /// The body of `compile`, with two parameters `compile` does not expose.
     ///
@@ -1175,6 +1297,10 @@ module Geom =
                 // it is drawn once rather than once per colour batch.
                 compileField coord plotSize TextMeasure.approx Color.white st (fun v -> if finiteNum v then Some st.Color else None) field mark
 
+            // `Figure.fs` draws a rule layer through `compileRule` itself, to count one that
+            // falls outside the panel; this is the same drawing for a geom compiled alone.
+            | GeomRule rule -> compileRule coord st rule |> Option.defaultValue Scene.empty
+
             | GeomViolin(profiles, widthFraction) ->
                 let half = (defaultArg spacing (medianSpacing pts)) * widthFraction * 0.5
 
@@ -1266,7 +1392,8 @@ module Geom =
                 // An image occupies a stated box and has no rhythm to read, and a field is drawn
                 // from its grid rather than from its points.
                 | GeomImage _
-                | GeomField _ -> None
+                | GeomField _
+                | GeomRule _ -> None
 
             compileWith address spacing (Some ix) coord plotSize st geom (ix |> Array.map (fun i -> all.[i]))
 
@@ -1323,3 +1450,7 @@ module Geom =
         | GeomField(_, FieldDirections)
         | GeomField(_, FieldStreamlines _) -> LegendLine st.Dash
         | GeomField _ -> LegendSwatch
+        // A rule is a line and a span is an area, whichever way they run.
+        | GeomRule(SpanH _)
+        | GeomRule(SpanV _) -> LegendSwatch
+        | GeomRule _ -> LegendLine st.Dash

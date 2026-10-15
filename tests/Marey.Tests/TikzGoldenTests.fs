@@ -305,6 +305,12 @@ module Figures =
     let ``a wide log axis under Theme tikz`` () =
         check "figure-log-siunitx.tex" (logFigure |> Chart.withTheme Theme.tikz |> Chart.render TikzBackend.render figureSurface)
 
+    /// D162 — rules, spans and a polar circle in TeX: dashed strokes, a filled band at a tenth,
+    /// and the sampled arc.
+    [<Fact>]
+    let ``rules and spans`` () =
+        check "figure-rules.tex" (Chart.render TikzBackend.render rulesSurface rulesFigure)
+
     /// Gate 6 meets gate 7. A baseline can be byte-stable, valid TeX and *blank* — that is
     /// precisely the failure this milestone already shipped once. So the committed figure is also
     /// compiled and looked at, which is what makes it a record of a picture rather than of a

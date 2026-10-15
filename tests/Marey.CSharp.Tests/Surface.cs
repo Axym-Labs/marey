@@ -77,6 +77,25 @@ public class Surface
         Assert.Equal(2, facet.Panels.Length);
     }
 
+    /// D162 — rules and spans from C#: built as figures and added, checked against the axis.
+    [Fact]
+    public void RulesAndSpans()
+    {
+        var fig = Chart.Line(X, Y, yUnit: Units.Metre)
+            .Add(Chart.HLine(0.0, Units.Metre))
+            .Add(Chart.VLine(1.0))
+            .Add(Chart.HSpan(0.1, 0.2, Units.Metre))
+            .WithName("band")
+            .Add(Chart.VSpan(0.5, 0.7))
+            .Add(Chart.LineThrough(0.0, 0.0, 1.0, yUnit: Units.Metre))
+            .Add(Chart.HLine(100.0, Units.Metre))
+            .WithDomainIncluded();
+
+        Assert.Contains("[m]", Svg(fig));
+        Assert.Contains("band", Svg(fig));
+        Assert.ThrowsAny<Exception>(() => Svg(Chart.Line(X, Y, yUnit: Units.Metre).Add(Chart.HLine(1.0, Units.Second))));
+    }
+
     [Fact]
     public void TheCategoricalConstructors()
     {

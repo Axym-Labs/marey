@@ -402,6 +402,170 @@ module DomainParticipation =
         Assert.True(hi < 4.0, sprintf "hi = %g" hi)
 
 // ======================================================================================
+// D162 — rules and spans
+// ======================================================================================
+
+module Rules =
+
+    let private t = [| 0.0<s>; 1.0<s>; 2.0<s> |]
+    let private small = [| -1e-3<m>; 0.5e-3<m>; 1e-3<m> |]
+    let private surface = Chart.size 400.0 300.0
+
+    /// Every `Annotated` node in a scene, outermost first.
+    let rec private annotated (n: Node) : (Semantics * Node) list =
+        match n with
+        | Annotated(s, inner) -> (s, inner) :: annotated inner
+        | Group ns -> ns |> Array.toList |> List.collect annotated
+        | Transform(_, c)
+        | Clip(_, c)
+        | Opacity(_, c)
+        | Keyed(_, c) -> annotated c
+        | _ -> []
+
+    /// The layers drawn as annotations: the rules, by the role their layer carries.
+    let private rules (fig: Figure) =
+        Chart.toScene surface fig
+        |> annotated
+        |> List.filter (fun (s, _) -> s.Role = RoleAnnotation && s.Data |> Array.exists (fun (k, _) -> k = "points"))
+
+    let private pathPoints (n: Node) : Vec2<nd>[] =
+        match n with
+        | Path(segs, _, _, _) ->
+            segs
+            |> Array.choose (function
+                | MoveTo p
+                | LineTo p -> Some p
+                | _ -> None)
+        | _ -> [||]
+
+    /// The extent of a rule's path along x, in panel space: (0, 1) when it crosses the panel.
+    let private xExtent (n: Node) =
+        let xs = pathPoints n |> Array.map (fun p -> float p.X)
+        Array.min xs, Array.max xs
+
+    let private yDomain (fig: Figure) =
+        let unified = Figure.unify fig.Panels.[0]
+        (snd (Erase.seriesScales unified.Layers.[0].Data)).Domain
+
+    /// G1 — the case D163 exists for: `axhline(0)` on residuals in millimetres.
+    [<Fact>]
+    let ``a rule at zero leaves a millimetre axis alone`` () =
+        let fig = Chart.line U.second U.metre t small |> Chart.addHLine U.metre 0.0<m>
+        let lo, hi = yDomain fig
+        Assert.Equal(-1.1e-3, lo, 12)
+        Assert.Equal(1.1e-3, hi, 12)
+        Assert.Contains(">x [mm]<", renderFig surface fig)
+
+        // Zero is inside the data, which a constant's point (D172) would also have kept. A rule
+        // past the data is the case only D163 keeps out.
+        let far = Chart.line U.second U.metre t small |> Chart.addHLine U.metre 5e-3<m>
+        Assert.Equal((lo, hi), yDomain far)
+
+    /// G1 — and one asked in reaches the axis on its own axis only.
+    [<Fact>]
+    let ``withDomainIncluded brings a rule's value into its axis and no other`` () =
+        let fig =
+            Chart.line U.second U.metre t small
+            |> Chart.addHLine U.metre 5e-3<m>
+            |> Chart.withDomainIncluded
+
+        let unified = Figure.unify fig.Panels.[0]
+        let sx, sy = Erase.seriesScales unified.Layers.[0].Data
+        Assert.True(snd sy.Domain > 5e-3, sprintf "y: %A" sy.Domain)
+        Assert.Equal((-0.1, 2.1), sx.Domain)
+
+    /// G2 — a rule past the panel is not drawn, and the layer says so.
+    [<Fact>]
+    let ``a rule outside the domain is counted, not drawn`` () =
+        let fig = Chart.line U.second U.metre t small |> Chart.addVLine U.second 9.0<s>
+        Assert.Empty(rules fig)
+
+        let panel =
+            Chart.toScene surface fig
+            |> annotated
+            |> List.find (fun (s, _) -> s.Role = RoleOther "panel")
+            |> fst
+
+        Assert.Contains(("dropped-marks", "1"), panel.Data)
+
+        // And a figure that drops nothing says nothing.
+        let quiet = Chart.line U.second U.metre t small |> Chart.addVLine U.second 1.0<s>
+
+        Chart.toScene surface quiet
+        |> annotated
+        |> List.iter (fun (s, _) -> Assert.DoesNotContain(s.Data, fun (k, _) -> k = "dropped-marks"))
+
+    /// G3 — a rule spans the panel whatever the panel's domain is when it is drawn: two stated
+    /// domains, a facet's sharing, and the domain a zoom gives a panel.
+    [<Fact>]
+    let ``a rule follows the panel's final domain`` () =
+        let ruled = Chart.line U.second U.metre t small |> Chart.addHLine U.metre 0.5e-3<m>
+
+        // The rule's height on the panel, against the y domain that panel ends up with.
+        let figures =
+            [ ruled |> Chart.withXDomain 0.0 2.0, (-1.1e-3, 1.1e-3)
+              ruled |> Chart.withXDomain -50.0 3.0, (-1.1e-3, 1.1e-3)
+              Chart.facet [| "a", ruled; "b", Chart.line U.second U.metre [| 5.0<s>; 8.0<s> |] [| -3e-3<m>; 0.0<m> |] |],
+              (-3.15e-3, 1.1e-3)
+              ruled |> Chart.withPanelDomains (0, 0) (Some(0.5, 1.0)) (Some(-2e-4, 6e-4)), (-2e-4, 6e-4) ]
+
+        for fig, (lo, hi) in figures do
+            match rules fig with
+            | (_, inner) :: _ ->
+                Assert.Equal((0.0, 1.0), xExtent inner)
+                let y = float (pathPoints inner).[0].Y
+                Assert.Equal((0.5e-3 - lo) / (hi - lo), y, 9)
+            | [] -> failwith "no rule drawn"
+
+    /// G4 at run time: a stated unit on a rule is checked against the axis, as a layer's is.
+    [<Fact>]
+    let ``a rule in the wrong unit is refused, with both units named`` () =
+        let fig =
+            Marey.Chart.Line([| 0.0; 1.0 |], [| 1.0; 2.0 |], yUnit = U.metre)
+            |> Chart.add (Marey.Chart.HLine(1.0, U.second))
+
+        let e = Assert.ThrowsAny<exn>(fun () -> renderFig surface fig |> ignore)
+        Assert.Contains("cannot share an axis", e.Message)
+
+    /// A rule is furniture: the theme's axis colour, recoloured by a theme change, unless it
+    /// was coloured by hand.
+    [<Fact>]
+    let ``a rule takes the theme's axis colour and follows a retheme`` () =
+        let ruled = Chart.line U.second U.metre t small |> Chart.addHLine U.metre 0.0<m>
+        let dark = ruled |> Chart.withTheme Theme.dark
+        Assert.Equal(Theme.dark.AxisColor, dark.Panels.[0].Layers.[1].Style.Color)
+
+        let chosen = ruled |> Chart.withColor Palette.vermillion |> Chart.withTheme Theme.dark
+        Assert.Equal(Palette.vermillion, chosen.Panels.[0].Layers.[1].Style.Color)
+
+    /// Under polar a horizontal rule is a circle, sampled before the warp rather than a chord.
+    [<Fact>]
+    let ``a rule under a polar coord is sampled`` () =
+        let fig =
+            Chart.line U.second U.metre t small
+            |> Chart.addHLine U.metre 0.0<m>
+            |> Chart.withCoord Coord.polar
+
+        match rules fig with
+        | (_, inner) :: _ -> Assert.True((pathPoints inner).Length > 60)
+        | [] -> failwith "no rule drawn"
+
+    /// The line through a point is cut where it leaves the panel, at both ends.
+    [<Fact>]
+    let ``a slope rule is clipped to the panel's edges`` () =
+        let fig =
+            Chart.line U.second U.metre t small
+            |> Chart.addLineThrough U.second U.metre 1.0<s> 0.0<m> 1e-3<m / s>
+
+        match rules fig with
+        | (_, inner) :: _ ->
+            let onEdge (v: float<nd>) = abs (float v) < 1e-9 || abs (float v - 1.0) < 1e-9
+
+            for p in pathPoints inner do
+                Assert.True(onEdge p.X || onEdge p.Y, sprintf "(%g, %g)" (float p.X) (float p.Y))
+        | [] -> failwith "no rule drawn"
+
+// ======================================================================================
 // D45 — the level set, and the categorical front door
 // ======================================================================================
 

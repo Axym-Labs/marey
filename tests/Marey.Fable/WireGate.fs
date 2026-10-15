@@ -8,10 +8,10 @@
 /// * D156: the scene's text metrics come back, and the table answers as the layout's measurer did.
 ///
 /// **Gate 2 compares one scene, not two.** The plan had Fable encode the scene it compiles itself
-/// and match .NET's bytes. Five goldens cannot: their geometry goes through `sin` and `cos`, which
+/// and match .NET's bytes. Six goldens cannot: their geometry goes through `sin` and `cos`, which
 /// differ between Node and .NET in the last bit (D141), so the two runtimes compile two scenes
 /// that agree to the three decimals every golden prints and not to the bit. The kernel compiles,
-/// and the page decodes and never recomputes, so that is not the wire's concern. Those five are
+/// and the page decodes and never recomputes, so that is not the wire's concern. Those six are
 /// named below, so a sixth fails here rather than passing quietly.
 module Marey.Fable.WireGate
 
@@ -42,10 +42,11 @@ let private firstDifference (a: byte[]) (b: byte[]) =
     sprintf "first difference at byte %d of %d (Fable wrote %d)\n      .NET  %s\n      Fable %s" i a.Length b.Length (window a) (window b)
 
 /// The goldens whose scene Node compiles differently in the last bit of a coordinate, from
-/// `sin` and `cos` (D141): the star and the arc in `paths` and `clipping`, and the fields sampled
-/// from trigonometric functions.
+/// `sin` and `cos` (D141): the star and the arc in `paths` and `clipping`, the fields sampled
+/// from trigonometric functions, and the circle and the wedge `figure-rules` lays across a polar
+/// panel.
 let private platformTrig =
-    set [ "paths"; "clipping"; "figure-field-heatmap"; "figure-field-quiver"; "figure-field-streamlines" ]
+    set [ "paths"; "clipping"; "figure-field-heatmap"; "figure-field-quiver"; "figure-field-streamlines"; "figure-rules" ]
 
 /// The names that fail any of the three, with why.
 let check (goldenDir: string) (canvasDir: string) : string list =

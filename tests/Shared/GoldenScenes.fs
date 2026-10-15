@@ -230,6 +230,40 @@ let logFigure: Figure =
     |> Chart.withTitle "Energy drift"
     |> Chart.withLegend LegendTopLeft
 
+/// D162 — rules and spans, out of the domain (D163). A residual panel in millimetres with a rule
+/// at zero, a named band, a slope rule and a vertical rule past the data that is counted and
+/// not drawn; and beside it a polar panel, where a horizontal rule is a circle and a vertical
+/// span a wedge. The residuals are exact decimals rather than `sin` (D141).
+let rulesFigure: Figure =
+    let ts = Array.init 13 (fun i -> float i * 0.5<s>)
+
+    let residuals =
+        [| 0.4; -0.7; 0.9; 0.1; -0.3; -0.8; 0.6; 0.2; -0.5; 0.7; -0.1; -0.9; 0.3 |]
+        |> Array.map (fun v -> v * 1e-3<m>)
+
+    let left =
+        Chart.scatter U.second U.metre ts residuals
+        |> Chart.withName "residual"
+        |> Chart.addHSpan U.metre -0.5e-3<m> 0.5e-3<m>
+        |> Chart.withName "±0.5 mm"
+        |> Chart.addHLine U.metre 0.0<m>
+        |> Chart.addLineThrough U.second U.metre 0.0<s> -1e-3<m> 0.25e-3<m / s>
+        |> Chart.addVLine U.second 9.0<s>
+        |> Chart.withLegend LegendTopLeft
+        |> Chart.withPanelTitle "rules"
+
+    let right =
+        Chart.line Derived.radian U.metre [| 0.0<rad>; 6.0<rad> |] [| 1.0<m>; 3.0<m> |]
+        |> Chart.addHLine U.metre 2.0<m>
+        |> Chart.addVSpan Derived.radian 1.0<rad> 1.5<rad>
+        |> Chart.withCoord Coord.polar
+        |> Chart.withPanelTitle "polar"
+
+    left |> Chart.beside right |> Chart.withTitle "Rules and spans"
+
+/// Two panels side by side.
+let rulesSurface: Extent<px> = { Width = 760.0<px>; Height = 320.0<px> }
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
@@ -1011,7 +1045,8 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-field-heatmap" wide Fields.heatmapFigure
         fig "figure-field-quiver" wide Fields.quiverFigure
         fig "figure-field-streamlines" wide Fields.streamlinePortrait
-        fig "figure-field-portrait" wide Fields.phasePortrait ]
+        fig "figure-field-portrait" wide Fields.phasePortrait
+        fig "figure-rules" rulesSurface rulesFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1030,4 +1065,5 @@ let svg: (string * (unit -> string)) list =
         "figure-field-heatmap", figureAt wide Fields.heatmapFigure
         "figure-field-quiver", figureAt wide Fields.quiverFigure
         "figure-field-streamlines", figureAt wide Fields.streamlinePortrait
-        "figure-field-portrait", figureAt wide Fields.phasePortrait ]
+        "figure-field-portrait", figureAt wide Fields.phasePortrait
+        "figure-rules", figureAt rulesSurface rulesFigure ]

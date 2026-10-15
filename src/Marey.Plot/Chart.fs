@@ -344,7 +344,7 @@ module Chart =
         | None -> fig
         | Some p ->
             fig
-            |> addLayers (fun i -> p.Layers |> Array.map (fun l -> { l with Style = Geom.styleFor fig.Theme i }))
+            |> addLayers (fun i -> p.Layers |> Array.map (fun l -> { l with Style = Geom.styleOf fig.Theme i l.Geom }))
 
     let internal addLine (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
         fig
@@ -405,6 +405,77 @@ module Chart =
 
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i (Geom.segment s x1 y1) (Erase.packSeries s) |])
+
+    // ---- Rules and spans (D162) ----------------------------------------------------------------
+
+    /// A rule's layer. Its data is one point, or two for a span, on the axis it marks and NaN
+    /// on the other: enough for `unify` to check its unit against the axis and for
+    /// `withDomainIncluded` to have a value to put in, and nothing for an axis it does not
+    /// constrain. Out of the domain on both axes (D163), in the rule's own style, and in the
+    /// legend only once it is named.
+    let private ruleLayer (theme: Theme) (i: int) (rule: RuleSpec<1>) (data: PackedSeries) : Layer =
+        { layerOf "" theme i (GeomRule rule) data with
+            Style = Geom.ruleStyle theme rule
+            InDomain = (false, false) }
+
+    let private ruleFigure (rule: RuleSpec<1>) (s: Series<'ux, 'uy>) : Figure =
+        figureOf [| ruleLayer Theme.initial 0 rule (Erase.packSeries s) |]
+
+    let private addRule (rule: RuleSpec<1>) (s: Series<'ux, 'uy>) (fig: Figure) : Figure =
+        fig |> addLayers (fun i -> [| ruleLayer fig.Theme i rule (Erase.packSeries s) |])
+
+    let private hRule (uy: U<'uy>) (y: float<'uy>) =
+        RuleH(float y), series "" U.unspecified uy [| nan |] [| y |]
+
+    let private vRule (ux: U<'ux>) (x: float<'ux>) =
+        RuleV(float x), series "" ux U.unspecified [| x |] [| nan |]
+
+    let private spanH (uy: U<'uy>) (lo: float<'uy>) (hi: float<'uy>) =
+        SpanH(float lo, float hi), series "" U.unspecified uy [| nan; nan |] [| lo; hi |]
+
+    let private spanV (ux: U<'ux>) (lo: float<'ux>) (hi: float<'ux>) =
+        SpanV(float lo, float hi), series "" ux U.unspecified [| lo; hi |] [| nan; nan |]
+
+    /// The second point is a run of `|x|` away (1 at zero), which on linear axes gives the slope
+    /// exactly, whatever the run, and on a log axis a line that is straight on the page.
+    let private throughRule (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (slope: float<'uy / 'ux>) =
+        let run = if float x = 0.0 then tag<'ux> 1.0 else abs x
+        RuleThrough(float x, float y, float (x + run), float (y + slope * run)), series "" ux uy [| x |] [| y |]
+
+    let internal hLine (uy: U<'uy>) (y: float<'uy>) : Figure = hRule uy y ||> ruleFigure
+    let internal vLine (ux: U<'ux>) (x: float<'ux>) : Figure = vRule ux x ||> ruleFigure
+    let internal hSpan (uy: U<'uy>) (lo: float<'uy>) (hi: float<'uy>) : Figure = spanH uy lo hi ||> ruleFigure
+    let internal vSpan (ux: U<'ux>) (lo: float<'ux>) (hi: float<'ux>) : Figure = spanV ux lo hi ||> ruleFigure
+
+    let internal lineThrough (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (slope: float<'uy / 'ux>) : Figure =
+        throughRule ux uy x y slope ||> ruleFigure
+
+    let internal addHLine (uy: U<'uy>) (y: float<'uy>) (fig: Figure) : Figure =
+        let rule, s = hRule uy y
+        addRule rule s fig
+
+    let internal addVLine (ux: U<'ux>) (x: float<'ux>) (fig: Figure) : Figure =
+        let rule, s = vRule ux x
+        addRule rule s fig
+
+    let internal addHSpan (uy: U<'uy>) (lo: float<'uy>) (hi: float<'uy>) (fig: Figure) : Figure =
+        let rule, s = spanH uy lo hi
+        addRule rule s fig
+
+    let internal addVSpan (ux: U<'ux>) (lo: float<'ux>) (hi: float<'ux>) (fig: Figure) : Figure =
+        let rule, s = spanV ux lo hi
+        addRule rule s fig
+
+    let internal addLineThrough
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (x: float<'ux>)
+        (y: float<'uy>)
+        (slope: float<'uy / 'ux>)
+        (fig: Figure)
+        : Figure =
+        let rule, s = throughRule ux uy x y slope
+        addRule rule s fig
 
     // ---- Stats (§9, D47) ----------------------------------------------------------------------
 
@@ -832,8 +903,8 @@ module Chart =
                                     { l with
                                         Channels = l.Channels |> Array.map retheme }
 
-                                if l.Style = Geom.styleFor old i then
-                                    { l with Style = Geom.styleFor t i }
+                                if l.Style = Geom.styleOf old i l.Geom then
+                                    { l with Style = Geom.styleOf t i l.Geom }
                                 else
                                     l) }) }
 
@@ -901,8 +972,22 @@ module Chart =
     /// annotation marks a place on the domain the data chose and stays out of it; this puts it
     /// back in, for the figure that must show the rule ("the panel must reach y = 0"). A data
     /// layer is in already, so on one this changes nothing.
+    ///
+    /// A rule joins on the axis it marks and only that one: a horizontal rule says nothing about
+    /// x.
     let withDomainIncluded (fig: Figure) =
-        mapLastLayer (fun l -> { l with InDomain = (true, true) }) fig
+        mapLastLayer
+            (fun l ->
+                let inDomain =
+                    match l.Geom with
+                    | GeomRule(RuleH _)
+                    | GeomRule(SpanH _) -> false, true
+                    | GeomRule(RuleV _)
+                    | GeomRule(SpanV _) -> true, false
+                    | _ -> true, true
+
+                { l with InDomain = inDomain })
+            fig
 
     /// Label the points of the most recently added series, one string per point.
     ///
@@ -1551,6 +1636,34 @@ type Chart =
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure =
         Chart.text (U.erase xUnit) (U.erase yUnit) x y labels
+
+    /// D162 — a horizontal rule at `y`, across whatever panel it is `add`ed to, without moving
+    /// that panel's domain. `unit` is checked against the y axis when the figure is compiled.
+    static member HLine(y: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.hLine (U.erase unit) y
+
+    /// A vertical rule at `x`. See `HLine`.
+    static member VLine(x: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.vLine (U.erase unit) x
+
+    /// A horizontal band between `lo` and `hi`. See `HLine`.
+    static member HSpan(lo: float, hi: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.hSpan (U.erase unit) lo hi
+
+    /// A vertical band between `lo` and `hi`. See `HLine`.
+    static member VSpan(lo: float, hi: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.vSpan (U.erase unit) lo hi
+
+    /// The line through (`x`, `y`) with `slope`, in y's unit per x's, to both edges of the panel.
+    static member LineThrough
+        (
+            x: float,
+            y: float,
+            slope: float,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.lineThrough (U.erase xUnit) (U.erase yUnit) x y slope
 
     /// A least-squares line, to `add` over the data it was fitted to.
     static member Fit

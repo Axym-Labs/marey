@@ -330,7 +330,57 @@ module Chart =
     let sizeBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
         Marey.Chart.sizeBy u values fig
 
+    // ---- Rules and spans (D162) ----------------------------------------------------------------
+
+    /// A horizontal rule at `y`, across the last panel wherever its domain ends up, and without
+    /// moving that domain (D163; `withDomainIncluded` lets it). The witness is the y axis's, so a
+    /// rule at `9.81<m/s^2>` on a metre axis does not compile. Unnamed it is furniture and stays
+    /// out of the legend; `withName` puts it in.
+    let addHLine (uy: U<'uy>) (y: float<'uy>) (fig: Figure) : Figure = Marey.Chart.addHLine uy y fig
+
+    /// A vertical rule at `x`. See `addHLine`.
+    let addVLine (ux: U<'ux>) (x: float<'ux>) (fig: Figure) : Figure = Marey.Chart.addVLine ux x fig
+
+    /// A horizontal band between `lo` and `hi`, across the panel. See `addHLine`.
+    let addHSpan (uy: U<'uy>) (lo: float<'uy>) (hi: float<'uy>) (fig: Figure) : Figure = Marey.Chart.addHSpan uy lo hi fig
+
+    /// A vertical band between `lo` and `hi`, up the panel. See `addHLine`.
+    let addVSpan (ux: U<'ux>) (lo: float<'ux>) (hi: float<'ux>) (fig: Figure) : Figure = Marey.Chart.addVSpan ux lo hi fig
+
+    /// The line through (`x`, `y`) with `slope`, to both edges of the panel. The slope is in the
+    /// y unit per x unit, so a speed is the slope of a line of metres against seconds and a
+    /// slope in the wrong units does not compile. On a log axis it is straight on the page.
+    let addLineThrough (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (slope: float<'uy / 'ux>) (fig: Figure) : Figure =
+        Marey.Chart.addLineThrough ux uy x y slope fig
+
+    /// A figure that is only a horizontal rule, for `Chart.add` or `Chart.overlay`.
+    let hLine (uy: U<'uy>) (y: float<'uy>) : Figure = Marey.Chart.hLine uy y
+
+    let vLine (ux: U<'ux>) (x: float<'ux>) : Figure = Marey.Chart.vLine ux x
+
+    let hSpan (uy: U<'uy>) (lo: float<'uy>) (hi: float<'uy>) : Figure = Marey.Chart.hSpan uy lo hi
+
+    let vSpan (ux: U<'ux>) (lo: float<'ux>) (hi: float<'ux>) : Figure = Marey.Chart.vSpan ux lo hi
+
+    let lineThrough (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (slope: float<'uy / 'ux>) : Figure =
+        Marey.Chart.lineThrough ux uy x y slope
+
     // ---- The shadows -------------------------------------------------------------------------
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so a rule takes a witness: Chart.addHLine or Chart.hLine. Chart.HLine(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+    let HLine (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so a rule takes a witness: Chart.addVLine or Chart.vLine. Chart.VLine(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+    let VLine (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so a span takes a witness: Chart.addHSpan or Chart.hSpan. Chart.HSpan(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+    let HSpan (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so a span takes a witness: Chart.addVSpan or Chart.vSpan. Chart.VSpan(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+    let VSpan (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so a rule takes a witness per axis: Chart.addLineThrough or Chart.lineThrough. Chart.LineThrough(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+    let LineThrough (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
 
     [<Obsolete("Marey.UnitsOfMeasure is open, so a chart takes a witness per axis: Chart.line. Chart.Line(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
     let Line (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."

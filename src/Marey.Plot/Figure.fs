@@ -853,7 +853,13 @@ module Figure =
         let own =
             if l.ShowInLegend && not (isEmpty l.Name) && levelEntries.Length = 0 then
                 [| { Name = l.Name
-                     Color = l.Style.Color
+                     Color =
+                        // D162 — a span is a tint over the panel, and a swatch at full strength
+                        // would name a colour the figure never shows.
+                        (match l.Geom with
+                         | GeomRule(SpanH _)
+                         | GeomRule(SpanV _) -> Color.withAlpha (l.Style.Color.A * l.Style.FillOpacity) l.Style.Color
+                         | _ -> l.Style.Color)
                      Mark = Geom.legendMark l.Geom l.Style } |]
             else
                 [||]
@@ -1122,6 +1128,10 @@ module Figure =
                 // One Transform for the panel, one Clip inside it. D9: `Scale.Forward` does not
                 // clamp, so out-of-domain data projects outside [0,1] and this Clip is what removes
                 // it. That is also why a backend without clipping still gets the common case right.
+                // D52 / D163 — marks that fell outside the panel, counted on the panel. A dropped
+                // rule's layer is empty and is pruned with its key, so the count cannot live on it.
+                let dropped = ref 0
+
                 let data =
                     let layers =
                         p.Layers
@@ -1177,6 +1187,14 @@ module Figure =
                                         | None -> fun v -> if System.Double.IsNaN v || System.Double.IsInfinity v then None else Some l.Style.Color
 
                                     Geom.compileField p.Coord plotSize m theme.PanelBackground l.Style colourOf field mark, [||]
+                                | GeomRule rule ->
+                                    // D162 / D163 — laid across the panel's final domain. One that
+                                    // misses the panel is not drawn and says so, on D52's rule.
+                                    match Geom.compileRule p.Coord l.Style rule with
+                                    | Some node -> node, [||]
+                                    | None ->
+                                        dropped.Value <- dropped.Value + 1
+                                        Scene.empty, [||]
                                 | _ ->
                                     if l.Channels.Length = 0 then
                                         // No channels, no counts: an unchannelled layer's annotation is
@@ -1215,7 +1233,11 @@ module Figure =
                             Keyed(
                                 layerKey,
                                 Annotated(
-                                    { Role = RoleSeries
+                                    { Role =
+                                        // D162 — a rule marks the axes rather than carrying data.
+                                        (match l.Geom with
+                                         | GeomRule _ -> RoleAnnotation
+                                         | _ -> RoleSeries)
                                       Label = (if isEmpty l.Name then "series" else l.Name)
                                       Data = Array.append [| "series", l.Name; "points", string pts.Length |] counts },
                                     body
@@ -1281,7 +1303,11 @@ module Figure =
                                "col", string p.Col
                                "layers", string p.Layers.Length
                                "x-tick-rule", xPlan.Rule
-                               "y-tick-rule", yPlan.Rule |] },
+                               "y-tick-rule", yPlan.Rule
+                               // Written only when there is something to say, so that every
+                               // figure without a dropped mark keeps its baseline.
+                               if dropped.Value > 0 then
+                                   "dropped-marks", string dropped.Value |] },
                         // D103 — everything but the background, the frame and the title is
                         // keyed below the panel, so a change to one part replaces that part.
                         // An empty part is pruned with its key, so a panel with no legend
