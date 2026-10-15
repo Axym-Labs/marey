@@ -42,6 +42,8 @@ type ZoomAxis =
 type LiveZoom =
     { Row: int
       Col: int
+      /// D180 — the inset of that panel the zoom was made in, or `None` for the panel.
+      Inset: int option
       Axis: ZoomAxis
       Lo: float
       Hi: float }
@@ -551,6 +553,14 @@ module Live =
                 (fun fig z ->
                     match axes |> Array.tryFind (fun (k, _) -> k = (z.Row, z.Col)) with
                     | None -> fig
+                    // D180 — an inset's axes are its own, and join no other.
+                    | Some _ when z.Inset.IsSome ->
+                        let d = Some(z.Lo, z.Hi)
+
+                        match z.Axis with
+                        | ZoomAxis.X -> Figure.withInsetDomains (z.Row, z.Col, z.Inset.Value) d None fig
+                        | ZoomAxis.Y -> Figure.withInsetDomains (z.Row, z.Col, z.Inset.Value) None d fig
+                        | ZoomAxis.Y2 -> fig
                     // D177 — a second y axis is the panel's own, and joins no other.
                     | Some _ when z.Axis = ZoomAxis.Y2 -> Figure.withPanelDomainY2 (z.Row, z.Col) (z.Lo, z.Hi) fig
                     | Some(_, target) ->
@@ -733,9 +743,10 @@ module Live =
             |> List.fold
                 (fun (z: LiveZoom[]) (axis, (lo, hi)) ->
                     Array.append
-                        (z |> Array.filter (fun e -> not (e.Row = v.Row && e.Col = v.Col && e.Axis = axis)))
+                        (z |> Array.filter (fun e -> not (e.Row = v.Row && e.Col = v.Col && e.Inset = v.Inset && e.Axis = axis)))
                         [| { Row = v.Row
                              Col = v.Col
+                             Inset = v.Inset
                              Axis = axis
                              Lo = lo
                              Hi = hi } |])

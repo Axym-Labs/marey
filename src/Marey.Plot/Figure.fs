@@ -150,6 +150,8 @@ type Panel =
       Y2Axis: AxisConfig option
       /// D179 — the shape the plot is held to, or `None` for whatever its region gives it.
       Aspect: Aspect option
+      /// D180 — panels drawn over this one's plot, in order.
+      Insets: Inset[]
       Layers: Layer[]
       XAxis: AxisConfig
       YAxis: AxisConfig
@@ -160,6 +162,17 @@ type Panel =
       LegendColumns: int
       /// D171 — the legend's frame, overriding the theme's `ShowLegendFrame`.
       LegendFrame: bool option }
+
+/// D180 — **a panel drawn over another's plot** (matplotlib's `inset_axes`), at a rectangle in
+/// fractions of the host's plot, y up. The rectangle is the inset's own plot; its tick labels and
+/// titles stand round it, over the host, where the caller put it. It shares nothing with its
+/// host: its axes are its own, and a zoom inside it zooms it.
+and [<NoComparison>] Inset =
+    { Panel: Panel
+      At: Rect<nd>
+      /// The inset's domain drawn as a rectangle on the host, joined to the inset by two lines
+      /// (matplotlib's `indicate_inset_zoom`).
+      Indicate: bool }
 
 /// D165 — how `Chart.withPanelLetters` writes a panel's letter.
 type LetterStyle =
@@ -416,7 +429,9 @@ type PanelView =
       Y2: IScaleErased option
       Y2Axis: AxisSpec option
       /// D179 — the panel holds one unit as long on y as on x.
-      EqualAspect: bool }
+      EqualAspect: bool
+      /// D180 — which of the panel at `Row`, `Col`'s insets this is, or `None` for the panel.
+      Inset: int option }
 
 [<RequireQualifiedAccess>]
 module PanelView =
@@ -751,6 +766,7 @@ module Figure =
           YShare = 0
           Y2Axis = None
           Aspect = None
+          Insets = [||]
           Layers = layers
           XAxis = axisConfig
           YAxis = axisConfig
@@ -1527,7 +1543,8 @@ module Figure =
     /// `frozen = None` measures the panel from its own data, which is every still figure.
     /// `Some layout` skips the measuring pass and uses the layout given — the animation path,
     /// where the layout is a union over the whole shot and no single frame may move it.
-    let private compilePanel
+    let private compilePanelKeyed
+        (panelKey: Key)
         (m: ITextMeasurer)
         (theme: Theme)
         (extent: Extent<px>)
@@ -1540,11 +1557,10 @@ module Figure =
         if p.Layers.Length = 0 then
             PanelLayout.empty, (fun () -> PanelLayout.empty), (fun () -> Scene.empty)
         else
-            // D68 — this panel's name, from the grid position it already writes into the
-            // `Annotated` node at the end of this function. `Keyed` says *which* panel; the
-            // `Annotated` beside it says that it is a panel. Both, because §5.2 and §5.3 are
+            // D68 — `panelKey` is this panel's name: its grid position for a panel, its host's
+            // and its index for an inset (D180). `Keyed` says *which* panel; the `Annotated` at
+            // the end of this function says that it is a panel. Both, because §5.2 and §5.3 are
             // different questions.
-            let panelKey = Keys.panel p.Row p.Col
 
             // D73 — the prefix comes from the frozen layout when there is one. A still figure
             // pins nothing and chooses per figure, which is what it has always done; an
@@ -2237,6 +2253,10 @@ module Figure =
 
             layout, needed, draw
 
+    /// A panel at its own cell, keyed by it (D68).
+    let private compilePanel m theme extent region frozen pins letterH (p: Panel) =
+        compilePanelKeyed (Keys.panel p.Row p.Col) m theme extent region frozen pins letterH p
+
     /// D171 — every panel's legend entries, once each, for a figure's shared legend.
     let private figureEntries (fig: Figure) =
         fig.Panels |> Array.collect (legendEntries fig.Theme) |> Array.distinct
@@ -2466,6 +2486,123 @@ module Figure =
                     key, (if shaped.LegendScores.Length = 4 then { shaped with LegendScores = rescore key region shaped } else shaped)
             | _ -> key, l)
 
+    // ---- D180: insets ------------------------------------------------------------------------
+
+    /// An inset's name in a shot: its host's, and its index.
+    let private insetKey (p: Panel) (i: int) = sprintf "panel-%d-%d/inset-%d" p.Row p.Col i
+
+    /// An inset's plot on the surface, from the host's plot and the fractions it was placed at.
+    let private insetRect (hostPlot: Rect<px>) (at: Rect<nd>) : Rect<px> =
+        let w = Rect.width hostPlot
+        let h = Rect.height hostPlot
+
+        { X0 = hostPlot.X0 + float at.X0 * w
+          X1 = hostPlot.X0 + float at.X1 * w
+          Y0 = hostPlot.Y1 - float at.Y1 * h
+          Y1 = hostPlot.Y1 - float at.Y0 * h }
+
+    /// The region an inset is compiled in: its plot with its gutters round it, so that its inner
+    /// grid puts the plot exactly where it was placed.
+    let private insetRegion (rect: Rect<px>) (l: PanelLayout) : Rect<px> =
+        { X0 = rect.X0 - PanelLayout.left l
+          X1 = rect.X1 + PanelLayout.right l
+          Y0 = rect.Y0 - PanelLayout.top l
+          Y1 = rect.Y1 + PanelLayout.bottom l }
+
+    /// An inset's gutters, measured at the plot it will have.
+    let private measureInset (m: ITextMeasurer) (theme: Theme) (extent: Extent<px>) (key: Key) (rect: Rect<px>) (ip: Panel) : PanelLayout =
+        let first, _, _ = compilePanelKeyed key m theme extent rect None (None, None, None) 0.0<px> ip
+        let probe: Extent<px> = { Width = Rect.width rect; Height = Rect.height rect }
+        let _, needed, _ = compilePanelKeyed key m theme extent (insetRegion rect first) (Some { first with Probe = probe }) (None, None, None) 0.0<px> ip
+        let l = needed ()
+
+        if l.BarW > 0.0<px> || l.LegendW > 0.0<px> || l.LegendH > 0.0<px> then
+            failwith "Marey: an inset draws no colorbar and no legend outside itself; give it an inside corner, or no colour scale."
+
+        { l with Probe = probe }
+
+    /// D180 — every inset's layout, measured over its host's frozen plot.
+    let private insetLayouts (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) (outer: Arrangement) (hosts: (string * PanelLayout)[]) =
+        [| for p in fig.Panels do
+               if p.Insets.Length > 0 && p.Layers.Length > 0 then
+                   let key = sprintf "panel-%d-%d" p.Row p.Col
+
+                   match Layout.tryFindPx key outer, hosts |> Array.tryPick (fun (k, l) -> if k = key then Some l else None) with
+                   | Some region, Some host ->
+                       let hostPlot = Layout.findPx "plot" (innerGrid m extent region host)
+
+                       for i in 0 .. p.Insets.Length - 1 do
+                           let inset = p.Insets.[i]
+
+                           if inset.Panel.Layers.Length > 0 then
+                               yield
+                                   insetKey p i,
+                                   measureInset m fig.Theme extent (Keys.inset (Keys.panel p.Row p.Col) i) (insetRect hostPlot inset.At) (unify inset.Panel)
+                   | _ -> () |]
+
+    /// D180 — the inset's domain on its host, as a rectangle, and two lines from its corners to
+    /// the inset's nearest ones. Both must be cartesian, with the inset's axes in the host's
+    /// dimensions.
+    let private indicator (theme: Theme) (extent: Extent<px>) (host: Panel) (hostPlot: Rect<px>) (inset: Panel) (rect: Rect<px>) : Node =
+        if not (Coord.isIdentity host.Coord && Coord.isIdentity inset.Coord) then
+            failwith "Marey: an inset's zoom is drawn on cartesian panels only."
+
+        let hx, hy = axisScalesErased host
+        let ix, iy = axisScalesErased inset
+
+        if (hx.Stated && ix.Stated && hx.Dim <> ix.Dim) || (hy.Stated && iy.Stated && hy.Dim <> iy.Dim) then
+            failwith "Marey: an inset's zoom needs the inset's axes in the host's dimensions."
+
+        // The inset's domain, through each scale's SI, into the host's numbers.
+        let toHost (h: IScaleErased) (i: IScaleErased) (v: float) = (v * i.ToSI + i.OffsetSI - h.OffsetSI) / h.ToSI
+        let (x0, x1), (y0, y1) = ix.Domain, iy.Domain
+        let px (v: float) = hostPlot.X0 + float (hx.Project(toHost hx ix v)) * Rect.width hostPlot
+        let py (v: float) = hostPlot.Y1 - float (hy.Project(toHost hy iy v)) * Rect.height hostPlot
+
+        let source: Rect<px> =
+            { X0 = min (px x0) (px x1)
+              X1 = max (px x0) (px x1)
+              Y0 = min (py y0) (py y1)
+              Y1 = max (py y0) (py y1) }
+
+        let corners (r: Rect<px>) : Vec2<px>[] =
+            [| { X = r.X0; Y = r.Y0 }; { X = r.X1; Y = r.Y0 }; { X = r.X1; Y = r.Y1 }; { X = r.X0; Y = r.Y1 } |]
+
+        let length (a: Vec2<px>) (b: Vec2<px>) = sqrt (float ((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y)))
+
+        // The joins are like corner to like corner, and only those that cross neither rectangle,
+        // so the lines frame the zoom rather than strike through it.
+        let inside (r: Rect<px>) (v: Vec2<px>) =
+            let e = 1e-6<px>
+            v.X > r.X0 + e && v.X < r.X1 - e && v.Y > r.Y0 + e && v.Y < r.Y1 - e
+
+        let crosses (a: Vec2<px>, b: Vec2<px>) =
+            [ 1..63 ]
+            |> List.exists (fun k ->
+                let t = float k / 64.0
+                let v: Vec2<px> = { X = a.X + t * (b.X - a.X); Y = a.Y + t * (b.Y - a.Y) }
+                inside source v || inside rect v)
+
+        let pairs = Array.zip (corners source) (corners rect) |> Array.sortBy (fun (a, b) -> length a b)
+
+        let joins =
+            match pairs |> Array.filter (crosses >> not) with
+            | clear when clear.Length >= 2 -> Array.take 2 clear
+            | _ -> Array.take 2 pairs
+
+        let stroke = Stroke.solid theme.AxisColor theme.AxisWidth
+        let nd (v: Vec2<px>) = Layout.ndPoint extent v
+
+        Annotated(
+            { Role = RoleAnnotation
+              Label = "inset zoom"
+              Data = [||] },
+            Group
+                [| yield Scene.rect (Some stroke) None (Layout.ndRect extent source)
+                   for a, b in joins do
+                       yield Scene.polyline stroke [| nd a; nd b |] |]
+        )
+
     /// D173 — pass 2: the measured layouts lined up, the outer grid rebuilt around their gutters,
     /// and each panel's probe set to the plot it now has. A figure of one panel has nothing to
     /// line up with and keeps pass 1 exactly.
@@ -2632,6 +2769,7 @@ module Figure =
             |> aspectOf
 
         let panels = withAspects outer ratioOf rescore panels
+        let panels = Array.append panels (insetLayouts m extent fig outer panels)
 
         { Outer = outer
           Panels = panels
@@ -2784,6 +2922,15 @@ module Figure =
 
         let panels = withAspects outer ratioOf rescore panels
 
+        // D180 — every state's insets, unioned by key as the panels are.
+        let insets =
+            states
+            |> Array.collect (fun fig -> insetLayouts m extent fig outer panels)
+            |> Array.groupBy fst
+            |> Array.map (fun (key, ls) -> key, ls |> Array.map snd |> Array.reduce PanelLayout.union)
+
+        let panels = Array.append panels insets
+
         { Outer = outer
           Panels = panels
           Samples = raw.Length
@@ -2886,6 +3033,44 @@ module Figure =
     /// layers, or one the shot has no layout for, has nothing to point at and is left out.
     let panelsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : PanelView[] =
         let fig = prepare fig
+
+        let viewOf (row: int, col: int) (inset: int option) (p: Panel) (plot: Rect<px>) (f: PanelLayout) =
+            let unified = fitAspect f (unify p)
+            let sx, sy = axisScalesErased unified
+            let ax, ay = axisSpecs fig.Theme (f.XPrefix, f.YPrefix) unified
+            let second = secondaryOf unified
+
+            { Row = row
+              Col = col
+              Plot = plot
+              Coord = p.Coord
+              X = sx
+              Y = sy
+              XAxis = ax
+              YAxis = ay
+              EqualAspect = (p.Aspect = Some Aspect.Equal)
+              Inset = inset
+              Y2 = second |> Option.map (fun sp -> snd (axisScalesErased sp))
+              Y2Axis = second |> Option.map (fun sp -> snd (axisSpecs fig.Theme (f.XPrefix, f.Y2Prefix) sp)) }
+
+        // D180 — the insets first, so a pointer over one finds it before the host beneath.
+        let insets =
+            fig.Panels
+            |> Array.collect (fun p ->
+                let key = sprintf "panel-%d-%d" p.Row p.Col
+
+                match Layout.tryFindPx key shot.Outer, shot.Panels |> Array.tryPick (fun (k, l) -> if k = key then Some l else None) with
+                | Some region, Some hf when p.Insets.Length > 0 && p.Layers.Length > 0 ->
+                    let hostPlot = Layout.findPx "plot" (innerGrid m shot.Outer.Extent region hf)
+
+                    p.Insets
+                    |> Array.mapi (fun i inset ->
+                        shot.Panels
+                        |> Array.tryPick (fun (k, l) -> if k = insetKey p i then Some l else None)
+                        |> Option.map (fun l -> viewOf (p.Row, p.Col) (Some i) inset.Panel (insetRect hostPlot inset.At) l))
+                    |> Array.choose id
+                | _ -> [||])
+
         fig.Panels
         |> Array.choose (fun p ->
             let key = sprintf "panel-%d-%d" p.Row p.Col
@@ -2895,24 +3080,28 @@ module Figure =
             | 0, _, _ -> None
             | _, Some region, Some f ->
                 let plot = Layout.findPx "plot" (innerGrid m shot.Outer.Extent region f)
-                let unified = fitAspect f (unify p)
-                let sx, sy = axisScalesErased unified
-                let ax, ay = axisSpecs fig.Theme (f.XPrefix, f.YPrefix) unified
-                let second = secondaryOf unified
-
-                Some
-                    { Row = p.Row
-                      Col = p.Col
-                      Plot = plot
-                      Coord = p.Coord
-                      X = sx
-                      Y = sy
-                      XAxis = ax
-                      YAxis = ay
-                      EqualAspect = (p.Aspect = Some Aspect.Equal)
-                      Y2 = second |> Option.map (fun sp -> snd (axisScalesErased sp))
-                      Y2Axis = second |> Option.map (fun sp -> snd (axisSpecs fig.Theme (f.XPrefix, f.Y2Prefix) sp)) }
+                Some(viewOf (p.Row, p.Col) None p plot f)
             | _ -> None)
+        |> Array.append insets
+
+    /// D180 — one inset's domains, stated, raw, in each axis's own unit; `None` leaves an axis.
+    let withInsetDomains (row: int, col: int, inset: int) (dx: (float * float) option) (dy: (float * float) option) (fig: Figure) : Figure =
+        { fig with
+            Panels =
+                fig.Panels
+                |> Array.map (fun p ->
+                    if p.Row = row && p.Col = col && inset >= 0 && inset < p.Insets.Length then
+                        { p with
+                            Insets =
+                                p.Insets
+                                |> Array.mapi (fun i ins ->
+                                    if i = inset then
+                                        { ins with
+                                            Panel = { ins.Panel with Layers = ins.Panel.Layers |> Array.map (fun l -> { l with Data = withDomains dx dy l.Data }) } }
+                                    else
+                                        ins) }
+                    else
+                        p) }
 
     /// D177 — one panel's second y domain, stated, raw, in that axis's unit.
     let withPanelDomainY2 (row: int, col: int) (lo: float, hi: float) (fig: Figure) : Figure =
@@ -3009,7 +3198,28 @@ module Figure =
                     let unified = unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p))
                     let unified = match frozen with Some f -> fitAspect f unified | None -> unified
                     let _, _, draw = compilePanel m theme extent region frozen (None, None, None) (letterHeight m fig) unified
-                    draw ())
+
+                    // D180 — the insets over the host's plot, each with its zoom drawn first.
+                    let insets =
+                        match frozen with
+                        | Some hf when p.Insets.Length > 0 && p.Layers.Length > 0 ->
+                            let hostPlot = Layout.findPx "plot" (innerGrid m extent region hf)
+
+                            p.Insets
+                            |> Array.mapi (fun i inset ->
+                                match shot.Panels |> Array.tryPick (fun (k, l) -> if k = insetKey p i then Some l else None) with
+                                | Some l ->
+                                    let rect = insetRect hostPlot inset.At
+                                    let ip = fitAspect l (unify inset.Panel)
+                                    let _, _, drawInset = compilePanelKeyed (Keys.inset (Keys.panel p.Row p.Col) i) m theme extent (insetRegion rect l) (Some l) (None, None, None) 0.0<px> ip
+
+                                    Group
+                                        [| (if inset.Indicate then indicator theme extent unified hostPlot ip rect else Scene.empty)
+                                           drawInset () |]
+                                | None -> Scene.empty)
+                        | _ -> [||]
+
+                    if insets.Length = 0 then draw () else Group(Array.append [| draw () |] insets))
 
         // D165 — the panels' letters, in reading order, at the top left of each panel's region,
         // in the title row `compilePanel` keeps for them: above the axis title, clear of the data

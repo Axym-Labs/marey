@@ -129,6 +129,9 @@ module Keys =
 
     let axisY (panelKey: Key) = child panelKey "axis-y"
 
+    /// D180 — a panel's `i`th inset, under the panel it is drawn over.
+    let inset (panelKey: Key) (i: int) = child panelKey (sprintf "inset-%d" i)
+
     /// D178 — a panel's secondary x axis, on its top.
     let axisX2 (panelKey: Key) = child panelKey "axis-x2"
 

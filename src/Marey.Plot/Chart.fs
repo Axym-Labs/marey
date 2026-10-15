@@ -1568,6 +1568,56 @@ module Chart =
 
         mapLast (fun p -> { p with Aspect = Some(Aspect.Box heightOverWidth) }) fig
 
+    // ---- D180: insets ------------------------------------------------------------------------
+
+    /// D180 — **a one-panel figure drawn over the last panel's plot**, its own plot at
+    /// `(x0, y0, x1, y1)` in fractions of the host's plot, y up (matplotlib's `inset_axes`). Its
+    /// tick labels and titles stand round that rectangle, over the host. Its axes are its own, a
+    /// zoom inside it zooms it, and its key is the host's with `inset-<i>` under it. It draws no
+    /// colorbar. Refused for a figure of several panels, one with insets of its own, and one
+    /// whose legend is outside.
+    let withInset (x0: float, y0: float, x1: float, y1: float) (inset: Figure) (fig: Figure) : Figure =
+        if inset.Panels.Length <> 1 then
+            failwithf "Marey: an inset is a one-panel figure; this one has %d panels." inset.Panels.Length
+
+        let ip = inset.Panels.[0]
+
+        if ip.Insets.Length > 0 then
+            failwith "Marey: an inset has no insets of its own."
+
+        match ip.Legend with
+        | LegendOutsideRight
+        | LegendOutsideBottom -> failwith "Marey: an inset draws its legend in a corner; this one's is outside."
+        | _ -> ()
+
+        let inside (v: float) = v >= 0.0 && v <= 1.0
+
+        if not (inside x0 && inside x1 && inside y0 && inside y1 && x1 > x0 && y1 > y0) then
+            failwithf "Marey: an inset is placed at fractions of the host's plot, low before high, within 0 … 1; got (%g, %g, %g, %g)." x0 y0 x1 y1
+
+        let at: Rect<nd> = { X0 = x0 * 1.0<nd>; Y0 = y0 * 1.0<nd>; X1 = x1 * 1.0<nd>; Y1 = y1 * 1.0<nd> }
+        // An inset has no room for a colorbar: its colour keys leave the key, and its colours are
+        // read against the host's bar when its domain is stated to match (`withColorDomain`).
+        let quiet = ip.Layers |> Array.map (fun l -> if l.Channels.Length > 0 then { l with ShowInLegend = false } else l)
+
+        let entry: Inset =
+            { Panel = { ip with Layers = quiet; Legend = (if ip.Legend = LegendBest then LegendTopRight else ip.Legend) }
+              At = at
+              Indicate = false }
+        mapLast (fun p -> { p with Insets = Array.append p.Insets [| entry |] }) fig
+
+    /// D180 — draw the last inset's domain on its host as a rectangle, joined to the inset by two
+    /// lines (matplotlib's `indicate_inset_zoom`). The inset's axes must be in the host's
+    /// dimensions; checked when the figure is drawn.
+    let withInsetZoom (fig: Figure) : Figure =
+        mapLast
+            (fun p ->
+                if p.Insets.Length = 0 then
+                    failwith "Marey: `withInsetZoom` marks the last panel's last inset, and it has none."
+
+                { p with Insets = p.Insets |> Array.mapi (fun i ins -> if i = p.Insets.Length - 1 then { ins with Indicate = true } else ins) })
+            fig
+
     // ---- D178: secondary axes -------------------------------------------------------------
 
     let internal withSecondary (onX: bool) (u: U<1>) (map: SecondaryMap option) (fig: Figure) : Figure =
