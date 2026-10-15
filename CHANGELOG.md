@@ -43,6 +43,15 @@ land in a minor release.
 
 - `Canvas.setCssSize` and `Canvas.devicePixelRatio` in `Marey.Backend.Web` threw on .NET; they do
   nothing and return 1 there, so `CanvasBackend` draws on a context a .NET caller supplies.
+- **A flat series at zero widened every other layer's axis to ±1.** A constant series is padded
+  so that it has an axis of its own, and at zero that padding is ±1 in the axis's unit. Layers on
+  one panel, and panels sharing a facet axis, took the union of their padded domains, so a
+  reference line at y = 0 beside data spanning ±1 mm turned the axis from `x [mm]` at ±1.1 mm into
+  `x [m]` at ±1 m. A constant now contributes its value to a shared axis and not its padding. A
+  value outside the other layers' span gets 5 % of the shared span as room. A panel whose layers
+  are all constant keeps the padded axis it had. A domain set with `Chart.withYDomain` or its
+  siblings is kept as it was. The same applies across the states of a shot: a wave that starts
+  flat at zero pinned every frame of `Chart.arrangeUnion` to `x [m]`, and now pins `x [mm]`.
 
 ## [0.6.0] — 2026-10-11
 

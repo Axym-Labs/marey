@@ -191,6 +191,35 @@ module Combinators =
         | Some(lo, hi) -> float hi > float lo
 
     [<Property>]
+    let ``pointOf recognises paddedDomain's widening of a constant, and nothing else`` (FiniteFloat a) (LinearDomain(lo, hi)) =
+        let xs = [| a; nan; a |]
+        let widened = Scale.paddedDomain 0.05 xs |> Option.get
+
+        Scale.pointOf 0.05 widened xs = Some a
+        && Scale.pointOf 0.05 (lo, hi) xs = None
+        && Scale.pointOf 0.05 widened [| lo; hi |] = None
+
+    /// The 0.6.0 bug as a law: a constant inside a real span adds nothing to it, however large
+    /// its own padding is — ±1 at zero, against a span that may be a millionth of that.
+    [<Property>]
+    let ``a widened point inside a span does not widen it`` (LinearDomain(lo, hi)) (UnitT p) =
+        let v = min hi (lo + p * (hi - lo))
+        let widened = Scale.paddedDomain 0.05 [| v |] |> Option.get
+        Scale.shareDomain 0.05 [| (lo, hi), None; widened, Some v |] = (lo, hi)
+
+    [<Property>]
+    let ``a widened point outside the spans is inside the shared domain`` (LinearDomain(lo, hi)) (FiniteFloat v) =
+        let widened = Scale.paddedDomain 0.05 [| v |] |> Option.get
+        let slo, shi = Scale.shareDomain 0.05 [| (lo, hi), None; widened, Some v |]
+        slo <= lo && shi >= hi && (v > slo || v = lo) && (v < shi || v = hi)
+
+    [<Fact>]
+    let ``points alone share paddedDomain's axis`` () =
+        let widened v = Scale.paddedDomain 0.05 [| v |] |> Option.get
+        Assert.Equal((-1.0, 1.0), Scale.shareDomain 0.05 [| widened 0.0, Some 0.0; widened 0.0, Some 0.0 |])
+        Assert.Equal((-0.25, 5.25), Scale.shareDomain 0.05 [| widened 0.0, Some 0.0; widened 5.0, Some 5.0 |])
+
+    [<Property>]
     let ``niceDomain contains the original domain`` (LinearDomain(lo, hi)) =
         let s = Scale.niceDomain 5 (Scale.linear U.one (lo, hi))
         let nlo, nhi = s.Domain
