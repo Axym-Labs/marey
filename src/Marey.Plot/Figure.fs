@@ -83,7 +83,9 @@ type AxisConfig =
       Reversed: bool
       /// D167 — the minor ticks. `MinorAuto` draws them where the theme does (`MinorTicks`); a
       /// stated step or count draws them whatever the theme.
-      Minor: MinorSpec }
+      Minor: MinorSpec
+      /// D169 — how the tick numbers are written.
+      Format: TickFormat }
 
 [<NoComparison>]
 type Panel =
@@ -525,7 +527,8 @@ module Figure =
           TickUnit = U.unspecified
           Prefix = None
           Reversed = false
-          Minor = MinorAuto }
+          Minor = MinorAuto
+          Format = FormatAuto }
 
     let panelOf (layers: Layer[]) : Panel =
         { Title = ""
@@ -1030,8 +1033,8 @@ module Figure =
 
         let xErased, yErased = axisScalesErased p
 
-        Axes.specTicked (ticksOf "x" p.XAxis xErased) p.XAxis.Minor (pin p.XAxis pinX) (unitStyle p.XAxis) p.XAxis.TickCount (label p.XAxis "x") AxisBottom xPacked,
-        Axes.specTicked (ticksOf "y" p.YAxis yErased) p.YAxis.Minor (pin p.YAxis pinY) (unitStyle p.YAxis) p.YAxis.TickCount (label p.YAxis "y") AxisLeft yPacked
+        Axes.specTicked (ticksOf "x" p.XAxis xErased) p.XAxis.Minor p.XAxis.Format (pin p.XAxis pinX) (unitStyle p.XAxis) p.XAxis.TickCount (label p.XAxis "x") AxisBottom xPacked,
+        Axes.specTicked (ticksOf "y" p.YAxis yErased) p.YAxis.Minor p.YAxis.Format (pin p.YAxis pinY) (unitStyle p.YAxis) p.YAxis.TickCount (label p.YAxis "y") AxisLeft yPacked
 
     /// D165 — the panel letters' face, and the height of the row they need: none without letters.
     let private letterFont (theme: Theme) (letters: PanelLetters) =

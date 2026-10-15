@@ -1363,6 +1363,13 @@ module Chart =
 
     let withYMinorTicks (minor: MinorSpec) (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Minor = minor } }) fig
 
+    /// D169 — how the x axis's tick numbers are written: `FormatFixed 2`, `FormatPercent`,
+    /// `FormatScientific` (a power of ten in the title, `x [10⁻³ m]`), or `TickFormat.custom f` of
+    /// the number the label would show. Named ticks keep their names.
+    let withXTickFormat (format: TickFormat) (fig: Figure) = mapLast (fun p -> { p with XAxis = { p.XAxis with Format = format } }) fig
+
+    let withYTickFormat (format: TickFormat) (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Format = format } }) fig
+
     let withGrid (x: bool) (y: bool) (fig: Figure) =
         mapLast
             (fun p ->

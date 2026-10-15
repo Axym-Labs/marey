@@ -149,6 +149,19 @@ public class Surface
         Assert.Contains("[m]", Svg(Chart.Line(X, Y, yUnit: Units.Metre).WithTheme(ThemeModule.publication)));
     }
 
+    /// D169 — tick formats from C#, a custom one from a lambda.
+    [Fact]
+    public void TickFormats()
+    {
+        var fig = Chart.Line(X, new[] { 0.0, 0.001, 0.004, 0.002, 0.003 }, yUnit: Units.Metre)
+            .WithYTickFormat(TickFormat.FormatScientific)
+            .WithXTickFormat(v => $"<{v}>");
+
+        var svg = Svg(fig);
+        Assert.Contains("10⁻³·m", svg);
+        Assert.Contains("&lt;", svg);
+    }
+
     [Fact]
     public void TheCategoricalConstructors()
     {

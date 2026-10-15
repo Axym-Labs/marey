@@ -152,6 +152,7 @@ module Axes =
     let specTicked
         (ticks: TickSpec)
         (minor: MinorSpec)
+        (format: TickFormat)
         (pin: Prefix option)
         (style: UnitStyle)
         (tickCount: int)
@@ -164,7 +165,7 @@ module Axes =
             | Some l -> l
             | None -> defaultLabelFor side (angleOf packed) (dimOf packed)
 
-        Axis.ofPackedTicked ticks minor pin style UnitRegistry.si tickCount name packed
+        Axis.ofPackedTicked ticks minor format pin style UnitRegistry.si tickCount name packed
 
     let specOfPinned
         (pin: Prefix option)
@@ -174,7 +175,7 @@ module Axes =
         (side: AxisSide)
         (packed: PackedScale)
         : AxisSpec =
-        specTicked TicksAuto MinorAuto pin style tickCount label side packed
+        specTicked TicksAuto MinorAuto FormatAuto pin style tickCount label side packed
 
     let specOf (style: UnitStyle) (tickCount: int) (label: string option) (side: AxisSide) (packed: PackedScale) : AxisSpec =
         specOfPinned None style tickCount label side packed

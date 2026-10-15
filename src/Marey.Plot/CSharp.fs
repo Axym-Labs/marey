@@ -111,6 +111,21 @@ type FigureExtensions =
     static member WithYMinorTicks(fig: Figure, minor: MinorSpec) = Chart.withYMinorTicks minor fig
 
     [<Extension>]
+    static member WithXTickFormat(fig: Figure, format: TickFormat) = Chart.withXTickFormat format fig
+
+    [<Extension>]
+    static member WithYTickFormat(fig: Figure, format: TickFormat) = Chart.withYTickFormat format fig
+
+    /// A format from a C# function of the number the label would show.
+    [<Extension>]
+    static member WithXTickFormat(fig: Figure, format: Func<float, string>) =
+        Chart.withXTickFormat (TickFormat.custom (fun v -> format.Invoke v)) fig
+
+    [<Extension>]
+    static member WithYTickFormat(fig: Figure, format: Func<float, string>) =
+        Chart.withYTickFormat (TickFormat.custom (fun v -> format.Invoke v)) fig
+
+    [<Extension>]
     static member WithYReversed(fig: Figure) = Chart.withYReversed fig
 
     [<Extension>]

@@ -900,6 +900,85 @@ module PublicationTicks =
         Assert.True((Theme.validate Theme.tikz).Ok)
 
 // ======================================================================================
+// D169 — tick label formats
+// ======================================================================================
+
+[<Properties(Arbitrary = [| typeof<Marey.Tests.Generators.MareyArbs> |], MaxTest = 200, Replay = Marey.Tests.Generators.Seed, QuietOnSuccess = true)>]
+module TickFormats =
+
+    open Marey.Tests.Generators
+
+    let private surface = Chart.size 480.0 300.0
+
+    let private yAxis (fig: Figure) =
+        let m = TextMeasure.approx
+        let shot = Chart.arrangeFor m surface fig
+        (Chart.panelsIn m shot fig).[0].YAxis
+
+    let private over (lo: float) (hi: float) =
+        Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| lo * 1.0<m>; hi * 1.0<m> |] |> Chart.withYDomain lo hi
+
+    let private number (label: string) =
+        System.Double.Parse(label.Replace("−", "-").TrimEnd('%'), System.Globalization.CultureInfo.InvariantCulture)
+
+    /// The law: a format other than a custom one writes the number it was given, to its own
+    /// precision — fixed to its decimals, a percentage to a hundredth of its step, a scientific
+    /// axis once its power is put back.
+    [<Property>]
+    let ``every format but a custom one writes the tick's value`` (LinearDomain(lo, hi)) =
+        let check (format: TickFormat) (tolerance: AxisSpec -> float) (read: AxisSpec -> string -> float) =
+            let axis = yAxis (over lo hi |> Chart.withYTickFormat format)
+            axis.Ticks |> Array.forall (fun t -> abs (read axis t.Label - t.Value) <= tolerance axis)
+
+        let exponentOf (axis: AxisSpec) =
+            match axis.UnitText.IndexOf "·" with
+            | -1 -> 0.0
+            | _ -> log10 (axis.Ticks |> Array.map (fun t -> abs t.Value) |> Array.max) |> floor
+
+        check (FormatFixed 3) (fun _ -> 5e-4) (fun _ l -> number l)
+        && check FormatPercent (fun a -> 0.5 * abs (a.Ticks.[1].Value - a.Ticks.[0].Value)) (fun _ l -> number l / 100.0)
+        && check FormatScientific (fun a -> 1e-9 * (a.Ticks |> Array.map (fun t -> abs t.Value) |> Array.max) + 1e-12) (fun a l -> number l * 10.0 ** exponentOf a)
+
+    /// A scientific axis carries its power in the title, beside the unit, and writes small numbers.
+    [<Fact>]
+    let ``a scientific axis puts its power in the title`` () =
+        let axis = yAxis (over 0.0 0.004 |> Chart.withYTickFormat FormatScientific)
+        Assert.Equal("10⁻³·m", axis.UnitText)
+        Assert.Equal<string[]>([| "0"; "1"; "2"; "3"; "4" |], axis.Ticks |> Array.map (fun t -> t.Label))
+
+    /// The power is a prefix by another name, so pinning a prefix as well is refused.
+    [<Fact>]
+    let ``a scientific axis refuses a pinned prefix`` () =
+        let fig = over 0.0 0.004 |> Chart.withYTickFormat FormatScientific |> Chart.withYPrefix Prefix.milli
+        let e = Assert.ThrowsAny<exn>(fun () -> yAxis fig |> ignore)
+        Assert.Contains("powers of ten", e.Message)
+
+    /// A custom format sees the number the label would have shown: after the prefix.
+    [<Fact>]
+    let ``a custom format sees the rescaled number`` () =
+        let axis = yAxis (over 0.0 0.004 |> Chart.withYTickFormat (TickFormat.custom (sprintf "<%g>")))
+        Assert.Equal("mm", axis.UnitText)
+        Assert.Contains("<4>", axis.Ticks |> Array.map (fun t -> t.Label))
+
+    /// Named ticks keep their names whatever the format.
+    [<Fact>]
+    let ``named ticks keep their names under a format`` () =
+        let axis =
+            yAxis (over 0.0 4.0 |> Chart.withYTicksNamed U.metre [| 1.0<m>, "low"; 3.0<m>, "high" |] |> Chart.withYTickFormat FormatPercent)
+
+        Assert.Equal<string[]>([| "low"; "high" |], axis.Ticks |> Array.map (fun t -> t.Label))
+
+    /// A custom format compares by reference, so a figure carrying one is still a value: equal
+    /// to itself, and not to a figure with another function.
+    [<Fact>]
+    let ``a figure with a custom format still has equality`` () =
+        let format = TickFormat.custom string
+        let a = (over 0.0 1.0 |> Chart.withYTickFormat format).Panels.[0].YAxis.Format
+        let b = (over 0.0 1.0 |> Chart.withYTickFormat format).Panels.[0].YAxis.Format
+        Assert.Equal(a, b)
+        Assert.NotEqual(a, TickFormat.custom string)
+
+// ======================================================================================
 // D45 — the level set, and the categorical front door
 // ======================================================================================
 

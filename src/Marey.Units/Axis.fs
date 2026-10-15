@@ -77,6 +77,36 @@ type MinorSpec =
     /// Each major interval in `count`.
     | MinorCount of count: int
 
+/// D169 — a tick label written by the caller's own function, kept out of structural equality so
+/// that a figure carrying one is still a value. It compares by reference, and it does not survive
+/// a figure written to bytes, which is why the formats beside it are data.
+[<Sealed>]
+type TickFormatter(format: float -> string) =
+    member _.Format(value: float) = format value
+    override _.ToString() = "custom"
+
+/// D169 — how tick numbers are written, after the prefix has rescaled them.
+[<NoComparison>]
+type TickFormat =
+    /// The decimals the step needs: what every axis did before M8.
+    | FormatAuto
+    /// This many decimals.
+    | FormatFixed of decimals: int
+    /// Times a hundred, with a percent sign: a fraction written as a percentage.
+    | FormatPercent
+    /// A common power of ten taken into the title beside the unit, `x [10⁻³ m]`, and the ticks
+    /// written as small numbers — matplotlib's offset text. The power replaces the prefix, so it
+    /// is refused on an axis whose prefix is pinned to one.
+    | FormatScientific
+    /// The caller's function, of the number the label would show (after the prefix).
+    | FormatCustom of TickFormatter
+
+[<RequireQualifiedAccess; CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module TickFormat =
+
+    /// A format from a function of the number the label would show.
+    let custom (format: float -> string) = FormatCustom(TickFormatter format)
+
 /// §9 — the axis compiler. Turns a `Scale<'u>` into an `AxisSpec` with no configuration.
 ///
 /// ### Why the input is `Scale<'u>` and not `IScaleErased`
@@ -306,6 +336,7 @@ module Axis =
     let ofScaleTicked<[<Measure>] 'u>
         (ticks: TickSpec)
         (minor: MinorSpec)
+        (format: TickFormat)
         (pin: Prefix option)
         (style: UnitStyle)
         (registry: UnitRegistry)
@@ -317,9 +348,15 @@ module Axis =
         let domain = float lo, float hi
 
         let prefix =
-            match pin with
-            | Some p -> p
-            | None -> prefixFor scale.Kind (Prefix.selectForUnit scale.Unit) domain
+            match pin, format with
+            | Some p, FormatScientific when p <> Prefix.none ->
+                failwithf
+                    "Marey: the axis '%s' is pinned to the prefix %s and written in powers of ten. The two are one scaling of the same number; pin Prefix.none or use another format."
+                    label
+                    p.Name
+            | Some p, _ -> p
+            | None, FormatScientific -> Prefix.none
+            | None, _ -> prefixFor scale.Kind (Prefix.selectForUnit scale.Unit) domain
 
         let factor = Prefix.factor prefix
 
@@ -332,9 +369,32 @@ module Axis =
 
         let rescaled = raw |> Array.map (fun v -> float v / factor)
 
+        let labelStep = (defaultArg step (float (Ticks.linearStep tickCount scale.Domain))) / factor
+
+        // D169 — the common power of ten a scientific axis takes into its title.
+        let exponent =
+            match format with
+            | FormatScientific ->
+                let largest = rescaled |> Array.fold (fun m v -> max m (abs v)) 0.0
+                if largest > 0.0 then int (floor (log10 largest)) else 0
+            | _ -> 0
+
         let labels =
-            let step = (defaultArg step (float (Ticks.linearStep tickCount scale.Domain))) / factor
-            let formatted = tickLabels style scale.Kind domain step rescaled
+            let step = labelStep
+
+            let formatted =
+                match format, scale.Kind with
+                | FormatAuto, _
+                | _, ScaleKind.Ordinal _ -> tickLabels style scale.Kind domain step rescaled
+                | FormatFixed decimals, _ -> rescaled |> Array.map (fun v -> Ticks.format decimals v, None)
+                | FormatPercent, _ ->
+                    let decimals = Ticks.decimalsFor (step * 100.0)
+                    rescaled |> Array.map (fun v -> Ticks.format decimals (v * 100.0) + "%", None)
+                | FormatScientific, _ ->
+                    let power = 10.0 ** float exponent
+                    let decimals = Ticks.decimalsFor (step / power)
+                    rescaled |> Array.map (fun v -> Ticks.format decimals (v / power), None)
+                | FormatCustom f, _ -> rescaled |> Array.map (fun v -> f.Format v, None)
 
             match ticks with
             | TicksNamed named ->
@@ -369,12 +429,28 @@ module Axis =
                   Label = fst labels.[i]
                   LabelTex = snd labels.[i] })
 
+        // A scientific axis's power stands in front of the unit, as a prefix would: `10⁻³·m`.
+        let withPower (style: UnitStyle) (unit: string) =
+            if exponent = 0 then
+                unit
+            else
+                let power = powerText style (10.0 ** float exponent)
+
+                if System.String.IsNullOrEmpty unit then power
+                else
+                    match style with
+                    | Unicode -> power + "·" + unit
+                    | Ascii -> power + "." + unit
+                    | Latex
+                    | Siunitx -> power + "\\," + unit
+
         let unitText =
             UnitDisplay.unitText (plainCounterpart style) registry prefix scale.Unit
+            |> withPower (plainCounterpart style)
 
         let unitTextTex =
             if isTexStyle style then
-                Some(UnitDisplay.unitText style registry prefix scale.Unit)
+                Some(UnitDisplay.unitText style registry prefix scale.Unit |> withPower style)
             else
                 None
 
@@ -411,7 +487,7 @@ module Axis =
         (label: string)
         (scale: Scale<'u>)
         : AxisSpec =
-        ofScaleTicked TicksAuto MinorAuto pin style registry tickCount label scale
+        ofScaleTicked TicksAuto MinorAuto FormatAuto pin style registry tickCount label scale
 
     /// The full form: choose the registry, the style, the tick count and the label.
     let ofScaleWith<[<Measure>] 'u>
@@ -460,6 +536,7 @@ module Axis =
     let ofPackedTicked
         (ticks: TickSpec)
         (minor: MinorSpec)
+        (format: TickFormat)
         (pin: Prefix option)
         (style: UnitStyle)
         (registry: UnitRegistry)
@@ -470,7 +547,7 @@ module Axis =
         packed.Accept
             { new IScaleConsumer<AxisSpec> with
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) =
-                    ofScaleTicked ticks minor pin style registry tickCount label s }
+                    ofScaleTicked ticks minor format pin style registry tickCount label s }
 
     /// The domain a packed scale covers, as plain floats — the half of D73 that has to be
     /// unioned across an animation's frames before a prefix can be chosen for all of them.
