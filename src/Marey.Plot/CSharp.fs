@@ -227,6 +227,16 @@ type FigureExtensions =
     [<Extension>]
     static member Above(fig: Figure, below: Figure) = Chart.above below fig
 
+    /// D176 — one x axis for every panel the figure has now, labelled on the outermost.
+    [<Extension>]
+    static member ShareX(fig: Figure) = Chart.shareX fig
+
+    [<Extension>]
+    static member ShareY(fig: Figure) = Chart.shareY fig
+
+    [<Extension>]
+    static member ShareAxes(fig: Figure) = Chart.shareAxes fig
+
     /// D175 — the rows' plot heights, relative: `fig.WithRowHeights(3, 1)`.
     [<Extension>]
     static member WithRowHeights(fig: Figure, [<System.ParamArray>] heights: float[]) = Chart.withRowHeights heights fig

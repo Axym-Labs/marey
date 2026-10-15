@@ -285,3 +285,79 @@ module ``D175 ratios`` =
         Assert.Contains("1 rows weights for a figure of 2 rows", e.Message)
         let e = Assert.ThrowsAny<exn>(fun () -> fit |> Chart.beside fit |> Chart.withColWidths [| 1.0; 0.0 |] |> ignore)
         Assert.Contains("positive", e.Message)
+
+module ``D176 sharing`` =
+
+    let private extent = Chart.size 500.0 420.0
+    let private count (s: string) (fig: Figure) = texts (Chart.toSceneWith measurer extent fig) |> List.filter ((=) s) |> List.length
+
+    let private heat =
+        let ts = Array.init 21 (fun i -> float i * 10.0<s>)
+        Chart.line U.second U.kelvin ts (ts |> Array.map (fun t -> 300.0<K> + t * 0.1<K/s>))
+
+    [<Fact>]
+    let ``a shared x is labelled once, under the lowest panel (gate 4)`` () =
+        let fig = fit |> Chart.above (residuals 1.0) |> Chart.shareX
+        Assert.Equal(1, count "t [s]" fig)
+        let unshared = fit |> Chart.above (residuals 1.0)
+        Assert.Equal(2, count "t [s]" unshared)
+
+        // The inner panel keeps its ticks and gives up its labels' room: its plot grows.
+        let h (f: Figure) = let v = (viewsOf extent f).[0] in float (v.Plot.Y1 - v.Plot.Y0)
+        Assert.True(h fig > h unshared + 10.0)
+        assertAligned (viewsOf extent fig)
+
+    [<Fact>]
+    let ``a facet sharing x drops its inner labels too (gate 4)`` () =
+        let fig = Chart.facetWith ShareX 1 [| "", fit; "", residuals 1.0 |]
+        Assert.Equal(1, count "t [s]" fig)
+
+    [<Fact>]
+    let ``a shared y is labelled once, at the leftmost panel`` () =
+        let fig = fit |> Chart.beside fit |> Chart.shareY
+        Assert.Equal(1, count "x [mm]" fig)
+
+    [<Fact>]
+    let ``in a mosaic, only a panel with a group member directly below gives up its x labels`` () =
+        let fig = Chart.mosaic "AB;AC" [ 'A', fit; 'B', fit; 'C', fit ] |> Chart.shareX
+        Assert.Equal(2, count "t [s]" fig)
+
+    [<Fact>]
+    let ``two dimensions are refused at the call, naming both panels (gate 4)`` () =
+        let e = Assert.ThrowsAny<exn>(fun () -> fit |> Chart.above (heat |> Chart.withPanelTitle "heating") |> Chart.shareY |> ignore)
+        Assert.Contains("panel 0", e.Message)
+        Assert.Contains("panel 1 ('heating')", e.Message)
+
+    [<Fact>]
+    let ``a domain stated on one panel of a shared axis is the group's`` () =
+        let fig = fit |> Chart.above (residuals 1.0) |> Chart.shareX |> Chart.withXDomain 1.0 4.0
+        for v in viewsOf extent fig do
+            Assert.Equal((1.0, 4.0), v.X.Domain)
+
+    [<Fact>]
+    let ``a zoom of one panel of a facet zooms the shared axis`` () =
+        let fig = Chart.facetWith ShareX 1 [| "", fit; "", residuals 1.0 |] |> Chart.withPanelDomains (0, 0) (Some(2.0, 3.0)) (Some(-1e-3, 1e-3))
+        let views = viewsOf extent fig
+        Assert.True(views |> Array.forall (fun v -> v.X.Domain = (2.0, 3.0)))
+        // y is not shared, so only the zoomed panel's y moved.
+        Assert.Equal((-1e-3, 1e-3), views.[0].Y.Domain)
+        Assert.NotEqual((-1e-3, 1e-3), views.[1].Y.Domain)
+
+    [<Fact>]
+    let ``a panel composed in after the sharing is not part of it`` () =
+        // A kelvin panel beside a shared stack: shared y would refuse it, and nothing asks.
+        let stack = fit |> Chart.above (residuals 1.0) |> Chart.shareAxes
+        let fig = stack |> Chart.beside heat
+        let views = viewsOf (Chart.size 700.0 420.0) fig
+        Assert.Equal(3, views.Length)
+        Assert.Equal(1, count "T [K]" fig)
+
+    [<Fact>]
+    let ``composing two shared figures keeps their groups apart`` () =
+        let a = fit |> Chart.above fit |> Chart.shareX
+        let b = heat |> Chart.above heat |> Chart.shareX
+        let fig = a |> Chart.beside b
+        let groups = fig.Panels |> Array.map (fun p -> p.XShare) |> Array.distinct
+        Assert.Equal(2, groups.Length)
+        // Two columns, each labelled once at its foot.
+        Assert.Equal(2, count "t [s]" fig)

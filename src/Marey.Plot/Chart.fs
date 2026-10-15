@@ -1307,11 +1307,21 @@ module Chart =
     /// Set the x domain in raw numeric values of the axis's own unit. Raw because the measure
     /// has already been erased into the figure; use `Chart.ofSeries` with a hand-built scale
     /// when you want the domain checked.
+    /// The last panel's x domain, raw, in the axis's own unit. On a shared x (D176) it is the
+    /// group's: every panel the axis is shared with takes it.
     let withXDomain (lo: float) (hi: float) (fig: Figure) =
-        mapLayers (Figure.withDomains (Some(lo, hi)) None) fig
+        if fig.Panels.Length = 0 then
+            fig
+        else
+            let last = fig.Panels.[lastPanel fig]
+            Figure.withDomainsShared (fun p -> p.Row = last.Row && p.Col = last.Col) (Some(lo, hi)) None fig
 
     let withYDomain (lo: float) (hi: float) (fig: Figure) =
-        mapLayers (Figure.withDomains None (Some(lo, hi))) fig
+        if fig.Panels.Length = 0 then
+            fig
+        else
+            let last = fig.Panels.[lastPanel fig]
+            Figure.withDomainsShared (fun p -> p.Row = last.Row && p.Col = last.Col) None (Some(lo, hi)) fig
 
     // ---- Stated ticks, the prefix, reversal (D166, D169, D170) ------------------------------
 
@@ -1447,6 +1457,7 @@ module Chart =
     /// multiple and each side's panels span what their share covers, so a single panel beside
     /// a stack of two runs the height of both, and no cell is left empty.
     let beside (b: Figure) (a: Figure) : Figure =
+        let b = Figure.offsetShares a b
         let rows = lcm (max 1 a.Rows) (max 1 b.Rows)
         let a = stretchRows (rows / max 1 a.Rows) a
         let b = stretchRows (rows / max 1 b.Rows) b
@@ -1460,6 +1471,7 @@ module Chart =
 
     /// Put `b`'s panels below `a`'s, across the least common multiple of their columns (D174).
     let above (b: Figure) (a: Figure) : Figure =
+        let b = Figure.offsetShares a b
         let cols = lcm (max 1 a.Cols) (max 1 b.Cols)
         let a = stretchCols (cols / max 1 a.Cols) a
         let b = stretchCols (cols / max 1 b.Cols) b
@@ -1470,6 +1482,18 @@ module Chart =
             ColWeights = shared a.ColWeights b.ColWeights
             RowWeights = joined (max 1 a.Rows) a.RowWeights (max 1 b.Rows) b.RowWeights
             Panels = Array.append a.Panels (b.Panels |> Array.map (fun p -> { p with Row = p.Row + a.Rows })) }
+
+    /// D176 — **share the x axis of every panel the figure has now**, as a facet does: one
+    /// domain, checked here for one dimension, and kept one afterwards. Only the outermost panel
+    /// of each column writes its x tick labels and title. A panel composed in later is not part
+    /// of the sharing; call `shareX` again to take it in.
+    let shareX (fig: Figure) = Figure.shareRecorded ShareX fig
+
+    /// D176 — `shareX` for y: only the leftmost panel of each row is labelled.
+    let shareY (fig: Figure) = Figure.shareRecorded ShareY fig
+
+    /// D176 — `shareX` and `shareY` at once.
+    let shareAxes (fig: Figure) = Figure.shareRecorded ShareBoth fig
 
     /// D175 — weights to the mean of 1, refused unless there is one per track and each is positive.
     let private weights (what: string) (count: int) (ws: float[]) =
@@ -1553,6 +1577,8 @@ module Chart =
                     failwithf "Marey: mosaic cell '%c' does not cover a rectangle in \"%s\". A panel spans whole rows and columns." c layout
 
                 { parts.[c].Panels.[0] with
+                    XShare = 0
+                    YShare = 0
                     Row = r0
                     Col = c0
                     RowSpan = r1 - r0 + 1
@@ -1625,13 +1651,15 @@ module Chart =
             parts
             |> Array.mapi (fun i (title, f) ->
                 { f.Panels.[0] with
+                    XShare = 0
+                    YShare = 0
                     Title = title
                     Row = i / cols
                     Col = i % cols })
 
         { Figure.create panels with
             Theme = (snd parts.[0]).Theme }
-        |> Figure.shareScales mode
+        |> Figure.shareRecorded mode
         |> keyOnFirstPanelOnly
 
     /// `facetWith` sharing both axes — what a facet means — over an automatic wrap width.

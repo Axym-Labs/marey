@@ -66,7 +66,14 @@ land in a minor release.
 - **Legends** (D171): `LegendOutsideRight`, `LegendOutsideBottom` and `LegendBest` (the emptiest
   corner, chosen once for an animation); `withLegendColumns`, `withLegendFrame`, and
   `withFigureLegend` for one legend shared by every panel.
-- C# extensions for every verb above.
+- **Spans** (D174): `Panel.RowSpan` and `ColSpan`; `Chart.mosaic "AB;AC" [ 'A', a; … ]` lays
+  single-panel figures out by a picture of the grid, `.` for an empty cell.
+- **Row and column ratios** (D175): `Chart.withRowHeights` and `withColWidths`, as ratios of the
+  plots rather than of the cells.
+- **Shared axes on any composition** (D176): `Chart.shareX`, `shareY` and `shareAxes` share the
+  axes of every panel the figure has, checked for one dimension at the call and kept shared: a
+  domain stated on one of the panels, or a zoom of one, is the group's. `AxisConfig.ShowTickLabels`.
+- C# extensions for every verb above, and `Figures.Mosaic`.
 - **`examples/paper-figure.fsx`**: a fit over its residuals, and a spectrum with its lines marked.
 
 ### Changed
@@ -79,12 +86,24 @@ land in a minor release.
   `TickDirection = TickOut`, `MirrorTicks = false` and `MinorTicks = false`.
 - **A panel whose two axes are both lengths titles them `x` and `y`**, by side; both were `x`. A
   length against anything else is still `x`.
+- **The plots of a multi-panel figure line up** (D173): every panel in a column has one left and
+  one right plot edge, every panel in a row one top and one bottom, and equal rows or columns get
+  equal plots rather than equal cells. A panel next to one with a colorbar or an outside legend
+  gives up that room too. A figure of one panel is placed as before.
+- **`beside` and `above` no longer leave empty cells** (D174): two figures with different numbers
+  of rows (or columns) are composed over the least common multiple, and each side's panels span
+  their share. Figures with equal counts compose as before.
+- **A facet labels a shared axis once** (D176): only the panels at the foot of each column write
+  their x tick labels and title, and only those at the left of each row their y ones. The ticks
+  stay. A zoom or a stated domain on one panel of a facet now applies to its shared axis.
 - New record fields, which break a record built without `with`: `AxisConfig` (`Ticks`,
   `TickUnit`, `Prefix`, `Reversed`, `Minor`, `Format`), `AxisSpec.Minor`, `Layer.InDomain`,
   `Panel` (`LegendColumns`, `LegendFrame`), `Figure` (`Letters`, `Legend`), `PanelLayout`
   (`LegendGap`, `LegendW`, `LegendH`, `LegendScores`), `AxisRender` (`Direction`, `Mirror`,
   `ShowMinor`), and `Theme` (`TickDirection`, `MirrorTicks`, `MinorTicks`, `MinorTickLength`).
-  `LegendPlacement` gains three cases, which breaks an exhaustive `match` over it, and `Geom` two
+  M9 adds `Panel` (`RowSpan`, `ColSpan`, `XShare`, `YShare`), `Figure` (`RowWeights`,
+  `ColWeights`), `AxisConfig.ShowTickLabels` and `PanelLayout` (`SlackLeft`, `SlackRight`,
+  `SlackTop`, `SlackBottom`). `LegendPlacement` gains three cases, which breaks an exhaustive `match` over it, and `Geom` two
   (`GeomRule`, `GeomAnnotation`).
 
 ### Fixed
