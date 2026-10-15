@@ -117,6 +117,24 @@ public class Surface
         Assert.Contains("(b)", svg);
     }
 
+    /// D166 / D169 / D170 — stated ticks, a prefix and reversal from C#.
+    [Fact]
+    public void StatedTicks()
+    {
+        var fig = Chart.Line(new[] { 400e-9, 700e-9 }, new[] { 0.1, 0.9 }, xUnit: Units.Metre)
+            .WithXDomain(400e-9, 700e-9)
+            .WithXTicksEvery(50e-9, Units.Metre)
+            .WithYTicksNamed(new[] { 0.1, 0.9 }, new[] { "low", "high" })
+            .WithYReversed();
+
+        var svg = Svg(fig);
+        Assert.Contains("[nm]", svg);
+        Assert.Contains(">450<", svg);
+        Assert.Contains(">high<", svg);
+        Assert.Contains("[m]", Svg(Chart.Line(X, Y, yUnit: Units.Metre).WithYPrefix(PrefixModule.none)));
+        Assert.ThrowsAny<Exception>(() => Svg(fig.WithXTicksEvery(1.0, Units.Second)));
+    }
+
     [Fact]
     public void TheCategoricalConstructors()
     {

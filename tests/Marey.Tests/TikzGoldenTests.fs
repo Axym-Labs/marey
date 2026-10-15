@@ -316,6 +316,11 @@ module Figures =
     let ``annotations and panel letters`` () =
         check "figure-annotate.tex" (Chart.render TikzBackend.render annotateSurface annotateFigure)
 
+    /// D166 / D169 / D170 — a stated step, named ticks, a reversed axis and a pinned prefix.
+    [<Fact>]
+    let ``stated ticks`` () =
+        check "figure-ticks.tex" (Chart.render TikzBackend.render ticksSurface ticksFigure)
+
     /// Gate 6 meets gate 7. A baseline can be byte-stable, valid TeX and *blank* — that is
     /// precisely the failure this milestone already shipped once. So the committed figure is also
     /// compiled and looked at, which is what makes it a record of a picture rather than of a

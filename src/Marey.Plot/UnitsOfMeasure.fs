@@ -382,6 +382,33 @@ module Chart =
     let withTextAt (_ux: U<'ux>) (_uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (fig: Figure) : Figure =
         Marey.Chart.withTextAt (float x) (float y) fig
 
+    // ---- Stated ticks (D166) -------------------------------------------------------------------
+
+    let private erased (u: U<'u>) : U<1> = U.erase (u :> IUnit)
+
+    /// A tick at every multiple of `step` on the x axis. The step is checked against the axis's
+    /// unit when the figure is compiled, and converted when it is another unit of the same
+    /// dimension: `withXTicksEvery Derived.kilometre 0.5<km>` on a metre axis ticks every 500 m.
+    let withXTicksEvery (u: U<'u>) (step: float<'u>) (fig: Figure) : Figure =
+        Marey.Chart.withXTickSpec (TicksEvery(float step)) (erased u) fig
+
+    let withYTicksEvery (u: U<'u>) (step: float<'u>) (fig: Figure) : Figure =
+        Marey.Chart.withYTickSpec (TicksEvery(float step)) (erased u) fig
+
+    /// Ticks at these values on the x axis, labelled as chosen ticks would be.
+    let withXTicksAt (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
+        Marey.Chart.withXTickSpec (TicksAt(values |> Array.map float)) (erased u) fig
+
+    let withYTicksAt (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
+        Marey.Chart.withYTickSpec (TicksAt(values |> Array.map float)) (erased u) fig
+
+    /// Ticks at these values on the x axis, each with its own label — `X`, `Γ`, `X`.
+    let withXTicksNamed (u: U<'u>) (ticks: (float<'u> * string)[]) (fig: Figure) : Figure =
+        Marey.Chart.withXTickSpec (TicksNamed(ticks |> Array.map (fun (v, n) -> float v, n))) (erased u) fig
+
+    let withYTicksNamed (u: U<'u>) (ticks: (float<'u> * string)[]) (fig: Figure) : Figure =
+        Marey.Chart.withYTickSpec (TicksNamed(ticks |> Array.map (fun (v, n) -> float v, n))) (erased u) fig
+
     // ---- The shadows -------------------------------------------------------------------------
 
     [<Obsolete("Marey.UnitsOfMeasure is open, so an annotation takes a witness per axis: Chart.annotate or Chart.annotation. Chart.Annotation(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]

@@ -1313,6 +1313,49 @@ module Chart =
     let withYDomain (lo: float) (hi: float) (fig: Figure) =
         mapLayers (Figure.withDomains None (Some(lo, hi))) fig
 
+    // ---- Stated ticks, the prefix, reversal (D166, D169, D170) ------------------------------
+
+    let internal withXTickSpec (ticks: TickSpec) (unit: U<1>) (fig: Figure) =
+        mapLast (fun p -> { p with XAxis = { p.XAxis with Ticks = ticks; TickUnit = unit } }) fig
+
+    let internal withYTickSpec (ticks: TickSpec) (unit: U<1>) (fig: Figure) =
+        mapLast (fun p -> { p with YAxis = { p.YAxis with Ticks = ticks; TickUnit = unit } }) fig
+
+    /// D166 — a tick at every multiple of `step` on the x axis, in the axis's own numbers (the
+    /// unit its data is in, not the prefix it is labelled in): `withXTicksEvery 50e-9` on a
+    /// wavelength axis in metres gives 400, 450, … under `λ [nm]`. More than 50 ticks is refused.
+    /// `Marey.UnitsOfMeasure` has the spelling that takes a witness and checks it.
+    let withXTicksEvery (step: float) (fig: Figure) = withXTickSpec (TicksEvery step) U.unspecified fig
+
+    let withYTicksEvery (step: float) (fig: Figure) = withYTickSpec (TicksEvery step) U.unspecified fig
+
+    /// D166 — ticks at these values on the x axis, labelled as chosen ticks would be. Values
+    /// outside the domain are left out.
+    let withXTicksAt (values: float[]) (fig: Figure) = withXTickSpec (TicksAt(Array.copy values)) U.unspecified fig
+
+    let withYTicksAt (values: float[]) (fig: Figure) = withYTickSpec (TicksAt(Array.copy values)) U.unspecified fig
+
+    /// D166 — ticks at these values on the x axis, each with its own label: the high-symmetry
+    /// points of a band structure, `X`, `Γ`, `X`. The title keeps its unit, and a named tick is
+    /// never dropped to make room (it may be tilted).
+    let withXTicksNamed (ticks: (float * string)[]) (fig: Figure) = withXTickSpec (TicksNamed(Array.copy ticks)) U.unspecified fig
+
+    let withYTicksNamed (ticks: (float * string)[]) (fig: Figure) = withYTickSpec (TicksNamed(Array.copy ticks)) U.unspecified fig
+
+    /// D169 — write the x axis in `prefix` rather than the one its domain selects (D19):
+    /// `withXPrefix Prefix.none` for an axis in plain metres, `Prefix.milli` for millimetres
+    /// whatever the data's range.
+    let withXPrefix (prefix: Prefix) (fig: Figure) = mapLast (fun p -> { p with XAxis = { p.XAxis with Prefix = Some prefix } }) fig
+
+    let withYPrefix (prefix: Prefix) (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Prefix = Some prefix } }) fig
+
+    /// D170 — run the x axis from its high end to its low end, over the domain it would have had.
+    /// `withXDomain hi lo` reverses an axis too, over numbers you state.
+    let withXReversed (fig: Figure) = mapLast (fun p -> { p with XAxis = { p.XAxis with Reversed = true } }) fig
+
+    /// D170 — the y axis from its high end down: a depth below a surface, a magnitude.
+    let withYReversed (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Reversed = true } }) fig
+
     let withGrid (x: bool) (y: bool) (fig: Figure) =
         mapLast
             (fun p ->

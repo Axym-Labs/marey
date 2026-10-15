@@ -69,7 +69,18 @@ type AxisConfig =
       /// `None` defers to the theme.
       Grid: bool option
       Visible: bool
-      ShowTitle: bool }
+      ShowTitle: bool
+      /// D166 — the ticks, chosen (`TicksAuto`) or stated, in the axis's own numbers.
+      Ticks: TickSpec
+      /// The unit `Ticks` was stated in: checked against the axis, and converted into its numbers
+      /// when it is another unit of the same dimension. `U.unspecified` claims nothing.
+      TickUnit: U<1>
+      /// D169 — the prefix the axis is written in, instead of the one its domain selects (D19).
+      /// `Some Prefix.none` writes an unprefixed axis.
+      Prefix: Prefix option
+      /// D170 — the axis runs from its high end to its low end, over the domain it would have
+      /// had: a depth below a surface, a magnitude, a Hertzsprung–Russell diagram.
+      Reversed: bool }
 
 [<NoComparison>]
 type Panel =
@@ -506,7 +517,11 @@ module Figure =
           TickCount = Axis.DefaultTickCount
           Grid = None
           Visible = true
-          ShowTitle = true }
+          ShowTitle = true
+          Ticks = TicksAuto
+          TickUnit = U.unspecified
+          Prefix = None
+          Reversed = false }
 
     let panelOf (layers: Layer[]) : Panel =
         { Title = ""
@@ -680,7 +695,7 @@ module Figure =
     /// accumulates layers after it is built — `Chart.add` is one call — so there is no moment
     /// before rendering at which its layer set is known to be complete. `shareScales` below makes
     /// the opposite choice, for the opposite reason.
-    let unify (p: Panel) : Panel =
+    let private share (p: Panel) : Panel =
         if p.Layers.Length < 2 then
             p
         else
@@ -708,6 +723,26 @@ module Figure =
                     |> Array.map (fun l ->
                         { l with
                             Data = withDomains (Some dx) (Some dy) l.Data }) }
+
+    /// D170 — run a reversed axis from its high end to its low end, over the domain it would
+    /// have had. After the sharing, so the padding and the union are the ones a forward axis gets.
+    let private orient (p: Panel) : Panel =
+        if not (p.XAxis.Reversed || p.YAxis.Reversed) then
+            p
+        else
+            let flip (reversed: bool) (lo: float, hi: float) =
+                if reversed then Some(max lo hi, min lo hi) else None
+
+            { p with
+                Layers =
+                    p.Layers
+                    |> Array.map (fun l ->
+                        let sx, sy = Erase.seriesScales l.Data
+                        { l with Data = withDomains (flip p.XAxis.Reversed sx.Domain) (flip p.YAxis.Reversed sy.Domain) l.Data }) }
+
+    /// Give every layer on a panel the same x and y domains, and run a reversed axis backwards.
+    /// See `share`; every reader of a panel's axes goes through here.
+    let unify (p: Panel) : Panel = p |> share |> orient
 
     /// §9 / D48 — **give every panel of a figure the same axes.** What makes a grid of panels a
     /// facet rather than a page of unrelated charts.
@@ -945,8 +980,54 @@ module Figure =
         // changes its axis titles — which is what `Chart.withTheme Theme.tikz` has to do.
         let unitStyle (cfg: AxisConfig) = defaultArg cfg.Style theme.UnitStyle
 
-        Axes.specOfPinned pinX (unitStyle p.XAxis) p.XAxis.TickCount p.XAxis.Label AxisBottom xPacked,
-        Axes.specOfPinned pinY (unitStyle p.YAxis) p.YAxis.TickCount p.YAxis.Label AxisLeft yPacked
+        // D166 — stated ticks, checked against the axis and brought into its numbers when they were
+        // stated in another unit of its dimension: kilometres on a metre axis, °C on a kelvin one.
+        let ticksOf (axis: string) (cfg: AxisConfig) (scale: IScaleErased) =
+            let t = cfg.TickUnit
+
+            if not t.Stated then
+                cfg.Ticks
+            else
+                let name (u: IUnit) =
+                    UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none u.Symbol u.Factors u.Dim u.ToSI u.OffsetSI
+
+                if scale.Stated && scale.Dim <> t.Dim then
+                    failwithf
+                        "Marey: the %s ticks are stated in %s but the %s axis is in %s. Two physical dimensions cannot share an axis."
+                        axis
+                        (name t)
+                        axis
+                        (UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none scale.Symbol scale.Factors scale.Dim scale.ToSI scale.OffsetSI)
+
+                let at (v: float) = (v * t.ToSI + t.OffsetSI - scale.OffsetSI) / scale.ToSI
+
+                match cfg.Ticks with
+                | TicksAuto -> TicksAuto
+                | TicksEvery step -> TicksEvery(step * t.ToSI / scale.ToSI)
+                | TicksAt values -> TicksAt(Array.map at values)
+                | TicksNamed named -> TicksNamed(named |> Array.map (fun (v, n) -> at v, n))
+
+        // A stated prefix is the axis's, in a still figure and across a shot alike (D169).
+        let pin (cfg: AxisConfig) (chosen: Prefix option) =
+            match cfg.Prefix with
+            | Some _ -> cfg.Prefix
+            | None -> chosen
+
+        // A map's two axes are both lengths, and naming both `x` would say they were one
+        // quantity. Each is named by its side then; a length against anything else stays `x`.
+        let lengths =
+            let isLength (packed: PackedScale) = Axes.dimOf packed = Dim.length && Axes.angleOf packed = 0
+            isLength xPacked && isLength yPacked
+
+        let label (cfg: AxisConfig) (positional: string) =
+            match cfg.Label with
+            | None when lengths -> Some positional
+            | l -> l
+
+        let xErased, yErased = axisScalesErased p
+
+        Axes.specTicked (ticksOf "x" p.XAxis xErased) (pin p.XAxis pinX) (unitStyle p.XAxis) p.XAxis.TickCount (label p.XAxis "x") AxisBottom xPacked,
+        Axes.specTicked (ticksOf "y" p.YAxis yErased) (pin p.YAxis pinY) (unitStyle p.YAxis) p.YAxis.TickCount (label p.YAxis "y") AxisLeft yPacked
 
     /// D165 — the panel letters' face, and the height of the row they need: none without letters.
     let private letterFont (theme: Theme) (letters: PanelLetters) =
@@ -1105,9 +1186,19 @@ module Figure =
             // sits in the plot's row. That is why `Legend.fs`'s objection to outside placement
             // does not transfer: the width this adds is settled by a vertical measurement, so
             // nothing here is circular and the loop is still the same two passes.
+            // D166 — a reader who asked for Γ sees Γ: named ticks may be tilted by the ladder,
+            // and are never thinned.
+            let keepNamed (cfg: AxisConfig) (spec: AxisSpec) (plan: TickPlan) =
+                match cfg.Ticks with
+                | TicksNamed _ when plan.Kept.Length < spec.Ticks.Length ->
+                    { plan with
+                        Kept = Array.init spec.Ticks.Length id
+                        Rule = plan.Rule + ", named ticks kept" }
+                | _ -> plan
+
             let plan (w: float<px>) (h: float<px>) =
-                Axes.planTicks m theme.TickFont theme.LabelGap w AxisBottom xSpec.Ticks,
-                Axes.planTicks m theme.TickFont theme.LabelGap h AxisLeft ySpec.Ticks,
+                keepNamed p.XAxis xSpec (Axes.planTicks m theme.TickFont theme.LabelGap w AxisBottom xSpec.Ticks),
+                keepNamed p.YAxis ySpec (Axes.planTicks m theme.TickFont theme.LabelGap h AxisLeft ySpec.Ticks),
                 colorbar |> Option.map (fun (spec, _) -> Colorbar.planTicks m theme h spec)
 
             let layout =

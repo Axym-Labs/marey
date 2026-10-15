@@ -72,6 +72,42 @@ type FigureExtensions =
     static member WithDomainIncluded(fig: Figure) = Chart.withDomainIncluded fig
 
     [<Extension>]
+    static member WithXTicksEvery(fig: Figure, step: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withXTickSpec (TicksEvery step) (U.erase unit) fig
+
+    [<Extension>]
+    static member WithYTicksEvery(fig: Figure, step: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withYTickSpec (TicksEvery step) (U.erase unit) fig
+
+    [<Extension>]
+    static member WithXTicksAt(fig: Figure, values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withXTickSpec (TicksAt(Array.copy values)) (U.erase unit) fig
+
+    [<Extension>]
+    static member WithYTicksAt(fig: Figure, values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withYTickSpec (TicksAt(Array.copy values)) (U.erase unit) fig
+
+    [<Extension>]
+    static member WithXTicksNamed(fig: Figure, values: float[], labels: string[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withXTickSpec (TicksNamed(Array.zip values labels)) (U.erase unit) fig
+
+    [<Extension>]
+    static member WithYTicksNamed(fig: Figure, values: float[], labels: string[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withYTickSpec (TicksNamed(Array.zip values labels)) (U.erase unit) fig
+
+    [<Extension>]
+    static member WithXPrefix(fig: Figure, prefix: Prefix) = Chart.withXPrefix prefix fig
+
+    [<Extension>]
+    static member WithYPrefix(fig: Figure, prefix: Prefix) = Chart.withYPrefix prefix fig
+
+    [<Extension>]
+    static member WithXReversed(fig: Figure) = Chart.withXReversed fig
+
+    [<Extension>]
+    static member WithYReversed(fig: Figure) = Chart.withYReversed fig
+
+    [<Extension>]
     static member WithTextOffset(fig: Figure, dx: float, dy: float) = Chart.withTextOffset (dx * 1.0<px>) (dy * 1.0<px>) fig
 
     [<Extension>]

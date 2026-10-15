@@ -142,7 +142,9 @@ module Axes =
     /// D73 — the prefix may be decided elsewhere. The only caller that passes anything but
     /// `None` is the one laying out a whole animation against a union domain; see
     /// `Axis.ofScalePinnedWith` for why an animation needs it.
-    let specOfPinned
+    /// D166 — `specOfPinned` with the ticks stated, in the axis's own numbers.
+    let specTicked
+        (ticks: TickSpec)
         (pin: Prefix option)
         (style: UnitStyle)
         (tickCount: int)
@@ -155,7 +157,17 @@ module Axes =
             | Some l -> l
             | None -> defaultLabelFor side (angleOf packed) (dimOf packed)
 
-        Axis.ofPackedPinnedWith pin style UnitRegistry.si tickCount name packed
+        Axis.ofPackedTicked ticks pin style UnitRegistry.si tickCount name packed
+
+    let specOfPinned
+        (pin: Prefix option)
+        (style: UnitStyle)
+        (tickCount: int)
+        (label: string option)
+        (side: AxisSide)
+        (packed: PackedScale)
+        : AxisSpec =
+        specTicked TicksAuto pin style tickCount label side packed
 
     let specOf (style: UnitStyle) (tickCount: int) (label: string option) (side: AxisSide) (packed: PackedScale) : AxisSpec =
         specOfPinned None style tickCount label side packed

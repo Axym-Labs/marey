@@ -310,6 +310,45 @@ let annotateFigure: Figure =
 
 let annotateSurface: Extent<px> = { Width = 760.0<px>; Height = 320.0<px> }
 
+/// D166 / D169 / D170 — stated ticks. A wavelength axis ticked every 50 nm, stated in metres
+/// and labelled in nanometres; a band, as a parabola over exact values, under the named ticks
+/// X, Γ, X; a depth profile on a reversed axis; and an axis pinned to plain metres.
+let ticksFigure: Figure =
+    let nm = 1e-9<m>
+
+    let spectrum =
+        Chart.line U.metre U.one [| 400.0 * nm; 550.0 * nm; 700.0 * nm |] [| 0.1; 0.7; 0.4 |]
+        |> Chart.withXTicksEvery U.metre (50.0 * nm)
+        |> Chart.withXDomain 400e-9 700e-9
+        |> Chart.withXLabel "λ"
+        |> Chart.withPanelTitle "every 50 nm"
+
+    let edge = 8.0e9</m>
+    let k = Array.init 17 (fun i -> -edge + float i * edge / 8.0)
+    let energy = k |> Array.map (fun k -> 2.0<eV> * (k / edge) * (k / edge) - 1.0<eV>)
+
+    let band =
+        Chart.line (U.recip U.metre) NonSi.electronvolt k energy
+        |> Chart.withXTicksNamed (U.recip U.metre) [| -edge, "X"; 0.0</m>, "Γ"; edge, "X" |]
+        |> Chart.withXDomain (float -edge) (float edge)
+        |> Chart.withXLabel "k"
+        |> Chart.withPanelTitle "named"
+
+    let depth =
+        Chart.line U.kelvin U.metre [| 290.0<K>; 284.0<K>; 277.0<K>; 276.0<K> |] [| 0.0<m>; 100.0<m>; 400.0<m>; 800.0<m> |]
+        |> Chart.withYReversed
+        |> Chart.withYLabel "depth"
+        |> Chart.withPanelTitle "reversed"
+
+    let pinned =
+        Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 0.002<m> |]
+        |> Chart.withYPrefix Prefix.none
+        |> Chart.withPanelTitle "plain metres"
+
+    (spectrum |> Chart.beside band) |> Chart.above (depth |> Chart.beside pinned)
+
+let ticksSurface: Extent<px> = { Width = 760.0<px>; Height = 520.0<px> }
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
@@ -1093,7 +1132,8 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-field-streamlines" wide Fields.streamlinePortrait
         fig "figure-field-portrait" wide Fields.phasePortrait
         fig "figure-rules" rulesSurface rulesFigure
-        fig "figure-annotate" annotateSurface annotateFigure ]
+        fig "figure-annotate" annotateSurface annotateFigure
+        fig "figure-ticks" ticksSurface ticksFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1114,4 +1154,5 @@ let svg: (string * (unit -> string)) list =
         "figure-field-streamlines", figureAt wide Fields.streamlinePortrait
         "figure-field-portrait", figureAt wide Fields.phasePortrait
         "figure-rules", figureAt rulesSurface rulesFigure
-        "figure-annotate", figureAt annotateSurface annotateFigure ]
+        "figure-annotate", figureAt annotateSurface annotateFigure
+        "figure-ticks", figureAt ticksSurface ticksFigure ]

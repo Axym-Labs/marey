@@ -696,6 +696,115 @@ module Annotations =
         Assert.Equal<string list>([ "A" ], upper)
 
 // ======================================================================================
+// D166 / D169 / D170 — stated ticks, the prefix, reversal
+// ======================================================================================
+
+module StatedTicks =
+
+    let private nm = 1e-9<m>
+    let private surface = Chart.size 480.0 300.0
+
+    let private spectrum () =
+        Chart.line U.metre U.one [| 400.0 * nm; 700.0 * nm |] [| 0.1; 0.9 |] |> Chart.withXDomain 400e-9 700e-9
+
+    /// The x axis as it is drawn: its spec, through the same path as the renderer.
+    let private xAxis (fig: Figure) =
+        let m = TextMeasure.approx
+        let shot = Chart.arrangeFor m surface fig
+        (Chart.panelsIn m shot fig).[0].XAxis
+
+    let private yAxis (fig: Figure) =
+        let m = TextMeasure.approx
+        let shot = Chart.arrangeFor m surface fig
+        (Chart.panelsIn m shot fig).[0].YAxis
+
+    /// G5 — a step stated in metres keeps the derived prefix: `λ [nm]`, 400, 450 … 700.
+    [<Fact>]
+    let ``a stated step keeps the prefix`` () =
+        let axis = xAxis (spectrum () |> Chart.withXTicksEvery U.metre (50.0 * nm))
+        Assert.Equal("nm", axis.UnitText)
+        Assert.Equal<string[]>([| "400"; "450"; "500"; "550"; "600"; "650"; "700" |], axis.Ticks |> Array.map (fun t -> t.Label))
+
+    /// The step may be stated in another unit of the dimension, and is converted.
+    [<Fact>]
+    let ``ticks in another unit of the dimension are converted`` () =
+        // Every half minute on a seconds axis.
+        let fig =
+            Chart.line U.second U.metre [| 0.0<s>; 120.0<s> |] [| 0.0<m>; 1.0<m> |]
+            |> Chart.withXTicksEvery NonSi.minute 0.5<minute>
+            |> Chart.withXDomain 0.0 120.0
+
+        Assert.Equal<float[]>([| 0.0; 30.0; 60.0; 90.0; 120.0 |], (xAxis fig).Ticks |> Array.map (fun t -> t.Value))
+
+        // And an affine one: 0 °C and 10 °C on a kelvin axis.
+        let warm =
+            Chart.line U.second U.kelvin [| 0.0<s>; 1.0<s> |] [| 270.0<K>; 290.0<K> |]
+            |> Chart.withYTicksAt NonSi.degreeCelsius [| 0.0<degC>; 10.0<degC> |]
+
+        let values = (yAxis warm).Ticks |> Array.map (fun t -> t.Value)
+        Assert.Equal(273.15, values.[0], 9)
+        Assert.Equal(283.15, values.[1], 9)
+
+    /// G6 — named ticks replace the numbers and not the title, and none is dropped.
+    [<Fact>]
+    let ``named ticks replace labels, keep the unit, and are all drawn`` () =
+        let edge = 8.0e9</m>
+
+        let fig =
+            Chart.line (U.recip U.metre) U.one [| -edge; edge |] [| 0.0; 1.0 |]
+            |> Chart.withXTicksNamed (U.recip U.metre) [| -edge, "X"; 0.0</m>, "Γ"; edge, "X" |]
+            |> Chart.withXDomain (float -edge) (float edge)
+
+        let axis = xAxis fig
+        Assert.Equal<string[]>([| "X"; "Γ"; "X" |], axis.Ticks |> Array.map (fun t -> t.Label))
+        Assert.False(System.String.IsNullOrEmpty axis.UnitText)
+
+        // In a figure too narrow for three labels, still three.
+        let svg = fig |> Chart.render SvgBackend.render (Chart.size 90.0 200.0)
+        Assert.Equal(2, svg.Split(">X<").Length - 1)
+        Assert.Contains(">Γ<", svg)
+
+    /// G7 — a step stated in the wrong prefix is refused, with the step and the domain named,
+    /// rather than drawn as a solid bar.
+    [<Fact>]
+    let ``a step that would make too many ticks is refused`` () =
+        let e = Assert.ThrowsAny<exn>(fun () -> xAxis (spectrum () |> Chart.withXTicksEvery U.metre 50e-12<m>) |> ignore)
+        Assert.Contains("5e-11", e.Message)
+        Assert.Contains("4e-07", e.Message)
+
+    /// G4 for ticks — a step in the wrong dimension is refused with both units named.
+    [<Fact>]
+    let ``a step in the wrong unit is refused`` () =
+        let e = Assert.ThrowsAny<exn>(fun () -> xAxis (spectrum () |> Chart.withXTicksEvery U.second 1.0<s>) |> ignore)
+        Assert.Contains("stated in s", e.Message)
+        Assert.Contains("axis is in m", e.Message)
+
+    /// D169 — a stated prefix wins over the one the domain selects.
+    [<Fact>]
+    let ``a stated prefix is the axis's`` () =
+        let fig = Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 0.002<m> |]
+        Assert.Equal("mm", (yAxis fig).UnitText)
+        Assert.Equal("m", (yAxis (fig |> Chart.withYPrefix Prefix.none)).UnitText)
+
+    /// D170 — a reversed axis runs over the domain it would have had, backwards.
+    [<Fact>]
+    let ``a reversed axis keeps its derived domain`` () =
+        let fig = Chart.line U.kelvin U.metre [| 290.0<K>; 276.0<K> |] [| 0.0<m>; 800.0<m> |]
+        let forward = (Figure.unify fig.Panels.[0]).Layers.[0].Data |> Erase.seriesScales |> snd
+        let reversed = (Figure.unify (fig |> Chart.withYReversed).Panels.[0]).Layers.[0].Data |> Erase.seriesScales |> snd
+        let lo, hi = forward.Domain
+        Assert.Equal((hi, lo), reversed.Domain)
+
+    /// A map's two lengths are named by side; a length against time stays `x`.
+    [<Fact>]
+    let ``two lengths are named by their sides`` () =
+        let map = Chart.line U.metre U.metre [| 0.0<m>; 1.0<m> |] [| 0.0<m>; 1.0<m> |]
+        Assert.Equal("x", (xAxis map).Label)
+        Assert.Equal("y", (yAxis map).Label)
+        let fall = Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 1.0<m> |]
+        Assert.Equal("x", (yAxis fall).Label)
+
+// ======================================================================================
 // D45 — the level set, and the categorical front door
 // ======================================================================================
 

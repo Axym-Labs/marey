@@ -45,6 +45,23 @@ type AxisSpec =
       /// it never moves a tick.
       Ticks: TickLabel[] }
 
+/// D166 — where an axis's ticks go: chosen, or stated.
+///
+/// Values are in the axis's own numbers, the ones its data is written in (a nanometre axis over
+/// metres takes `50e-9`, not `50`). They are stated in the data's unit and never in the prefix the
+/// axis happens to pick, so a step cannot be right on one figure and a thousand times wrong on
+/// the next. The prefix and the unit in the title are still chosen as for any axis.
+type TickSpec =
+    /// The 1-2-5 ladder at the tick target: what every axis did before M8.
+    | TicksAuto
+    /// Every multiple of `step` inside the domain — matplotlib's `MultipleLocator`.
+    | TicksEvery of step: float
+    /// These values, labelled as chosen ticks would be.
+    | TicksAt of values: float[]
+    /// These values, each with the label given — `X`, `Γ`, `X` under a wave-vector axis. The
+    /// title keeps its unit; the collision ladder may tilt them and never drops one.
+    | TicksNamed of ticks: (float * string)[]
+
 /// §9 — the axis compiler. Turns a `Scale<'u>` into an `AxisSpec` with no configuration.
 ///
 /// ### Why the input is `Scale<'u>` and not `IScaleErased`
@@ -170,23 +187,53 @@ module Axis =
             let decimals = Ticks.decimalsFor step
             values |> Array.map (fun v -> Ticks.format decimals v, None)
 
-    /// The full form, with the prefix decided somewhere else — D73.
-    ///
-    /// `pin = None` is `ofScaleWith` exactly: the prefix comes from this scale's own domain.
-    /// `Some p` uses `p` instead, and everything downstream of the choice is unchanged — the
-    /// tick values are still rescaled to the prefix and the labels still formatted from the
-    /// rescaled values, because rescaling is not the part being pinned.
-    ///
-    /// **Only an animation needs this.** Which decade a prefix is chosen from is a property of
-    /// "the numbers" (D19), and across a shot the numbers are the union of every frame's domain
-    /// rather than the instantaneous one. Without the pin a zoom crossing a decade steps
-    /// `mm → µm` mid-shot: the axis *title* changes while the data is the thing supposed to be
-    /// moving, and `10⁻¹⁸·m²` can appear and disappear between two frames.
-    ///
-    /// It is deliberately not a `Prefix` with a "none means auto" convention, because
-    /// `Prefix.none` is a real prefix — an axis pinned to unprefixed metres is a thing a caller
-    /// may want, and it must not read as "choose for me".
-    let ofScalePinnedWith<[<Measure>] 'u>
+    /// The most ticks a stated step may produce. A step given in the wrong prefix — 50 for 50 nm
+    /// on a metre axis — would otherwise draw a solid bar of a hundred million of them.
+    [<Literal>]
+    let MaxStatedTicks = 50
+
+    /// D166 — the stated values inside the domain, in order, and the step their labels need.
+    let private statedTicks (ticks: TickSpec) (domain: float * float) (axisUnit: string) : float[] * float option =
+        let lo, hi = min (fst domain) (snd domain), max (fst domain) (snd domain)
+        let slack = 1e-9 * (hi - lo)
+        let within (v: float) = v >= lo - slack && v <= hi + slack
+
+        // The smallest gap between stated values sets the decimals their labels need.
+        let minGap (sorted: float[]) =
+            let gaps = sorted |> Array.pairwise |> Array.map (fun (a, b) -> b - a) |> Array.filter (fun g -> g > 0.0)
+            if gaps.Length = 0 then None else Some(Array.min gaps)
+
+        match ticks with
+        | TicksAuto -> [||], None
+        | TicksEvery step ->
+            if not (step > 0.0) || System.Double.IsInfinity step then
+                invalidArg "step" (sprintf "Marey: a tick step must be a positive finite number, and %g is not." step)
+
+            let first = ceil (lo / step - 1e-9)
+            let last = floor (hi / step + 1e-9)
+            let count = int (last - first) + 1
+
+            if count > MaxStatedTicks then
+                failwithf
+                    "Marey: a tick every %g on an axis over %g … %g%s would be %d ticks, more than %d. The step is in the axis's own numbers, the unit its data is in, not the prefix it is labelled in."
+                    step
+                    lo
+                    hi
+                    (if System.String.IsNullOrEmpty axisUnit then "" else " " + axisUnit)
+                    count
+                    MaxStatedTicks
+
+            Array.init (max 0 count) (fun k -> (first + float k) * step), Some step
+        | TicksAt values ->
+            let kept = values |> Array.filter within |> Array.sort
+            kept, minGap kept
+        | TicksNamed named ->
+            let kept = named |> Array.map fst |> Array.filter within |> Array.sort
+            kept, minGap kept
+
+    /// D166 — `ofScalePinnedWith` with the ticks stated. `TicksAuto` is that function exactly.
+    let ofScaleTicked<[<Measure>] 'u>
+        (ticks: TickSpec)
         (pin: Prefix option)
         (style: UnitStyle)
         (registry: UnitRegistry)
@@ -204,11 +251,29 @@ module Axis =
 
         let factor = Prefix.factor prefix
 
-        let raw = scale.TickHint tickCount
+        let raw, step =
+            match ticks with
+            | TicksAuto -> scale.TickHint tickCount, None
+            | stated ->
+                let values, step = statedTicks stated domain (UnitDisplay.unitText Unicode registry Prefix.none scale.Unit)
+                values |> Array.map (fun v -> LanguagePrimitives.FloatWithMeasure<'u> v), step
+
         let rescaled = raw |> Array.map (fun v -> float v / factor)
 
         let labels =
-            tickLabels style scale.Kind domain (Ticks.linearStep tickCount scale.Domain / factor) rescaled
+            let step = (defaultArg step (float (Ticks.linearStep tickCount scale.Domain))) / factor
+            let formatted = tickLabels style scale.Kind domain step rescaled
+
+            match ticks with
+            | TicksNamed named ->
+                // A stated name replaces the number and has no TeX form of its own: it is the
+                // caller's prose, escaped by a TeX backend as a title is.
+                raw
+                |> Array.mapi (fun i v ->
+                    match named |> Array.tryFind (fun (value, _) -> value = float v) with
+                    | Some(_, name) -> name, None
+                    | None -> formatted.[i])
+            | _ -> formatted
 
         let ticks =
             Array.init raw.Length (fun i ->
@@ -233,6 +298,32 @@ module Axis =
           UnitTextTex = unitTextTex
           Prefix = prefix
           Ticks = ticks }
+
+    /// The full form, with the prefix decided somewhere else — D73.
+    ///
+    /// `pin = None` is `ofScaleWith` exactly: the prefix comes from this scale's own domain.
+    /// `Some p` uses `p` instead, and everything downstream of the choice is unchanged — the
+    /// tick values are still rescaled to the prefix and the labels still formatted from the
+    /// rescaled values, because rescaling is not the part being pinned.
+    ///
+    /// **Only an animation needs this.** Which decade a prefix is chosen from is a property of
+    /// "the numbers" (D19), and across a shot the numbers are the union of every frame's domain
+    /// rather than the instantaneous one. Without the pin a zoom crossing a decade steps
+    /// `mm → µm` mid-shot: the axis *title* changes while the data is the thing supposed to be
+    /// moving, and `10⁻¹⁸·m²` can appear and disappear between two frames.
+    ///
+    /// It is deliberately not a `Prefix` with a "none means auto" convention, because
+    /// `Prefix.none` is a real prefix — an axis pinned to unprefixed metres is a thing a caller
+    /// may want, and it must not read as "choose for me".
+    let ofScalePinnedWith<[<Measure>] 'u>
+        (pin: Prefix option)
+        (style: UnitStyle)
+        (registry: UnitRegistry)
+        (tickCount: int)
+        (label: string)
+        (scale: Scale<'u>)
+        : AxisSpec =
+        ofScaleTicked TicksAuto pin style registry tickCount label scale
 
     /// The full form: choose the registry, the style, the tick count and the label.
     let ofScaleWith<[<Measure>] 'u>
@@ -276,6 +367,21 @@ module Axis =
             { new IScaleConsumer<AxisSpec> with
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) =
                     ofScalePinnedWith pin style registry tickCount label s }
+
+    /// D166 — `ofPackedPinnedWith` with the ticks stated.
+    let ofPackedTicked
+        (ticks: TickSpec)
+        (pin: Prefix option)
+        (style: UnitStyle)
+        (registry: UnitRegistry)
+        (tickCount: int)
+        (label: string)
+        (packed: PackedScale)
+        =
+        packed.Accept
+            { new IScaleConsumer<AxisSpec> with
+                member _.Apply<[<Measure>] 'u>(s: Scale<'u>) =
+                    ofScaleTicked ticks pin style registry tickCount label s }
 
     /// The domain a packed scale covers, as plain floats — the half of D73 that has to be
     /// unioned across an animation's frames before a prefix can be chosen for all of them.
