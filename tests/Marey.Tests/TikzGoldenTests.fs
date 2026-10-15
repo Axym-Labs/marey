@@ -352,6 +352,11 @@ module Figures =
     let ``secondary axes`` () =
         check "figure-secondary.tex" (Chart.render TikzBackend.render secondarySurface secondaryFigure)
 
+    /// D179 — equal aspect beside a panel that keeps its rectangle.
+    [<Fact>]
+    let ``equal aspect`` () =
+        check "figure-aspect.tex" (Chart.render TikzBackend.render aspectSurface aspectFigure)
+
     /// Gate 6 meets gate 7. A baseline can be byte-stable, valid TeX and *blank* — that is
     /// precisely the failure this milestone already shipped once. So the committed figure is also
     /// compiled and looked at, which is what makes it a record of a picture rather than of a

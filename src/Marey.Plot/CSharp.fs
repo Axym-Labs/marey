@@ -237,6 +237,14 @@ type FigureExtensions =
     [<Extension>]
     static member WithRightYLabel(fig: Figure, label: string) = Chart.withRightYLabel label fig
 
+    /// D179 — one unit as long on y as on x.
+    [<Extension>]
+    static member WithEqualAspect(fig: Figure) = Chart.withEqualAspect fig
+
+    /// D179 — the plot at this height over its width.
+    [<Extension>]
+    static member WithBoxAspect(fig: Figure, heightOverWidth: float) = Chart.withBoxAspect heightOverWidth fig
+
     /// D178 — the x axis again along the top, in another unit of its dimension.
     [<Extension>]
     static member WithTopAxisIn(fig: Figure, unit: IUnit) = Chart.withSecondary true (U.erase unit) None fig

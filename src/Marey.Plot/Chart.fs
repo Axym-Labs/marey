@@ -1538,6 +1538,36 @@ module Chart =
                 | None -> { p with Y2Axis = Some { (defaultArg p.Y2Axis Figure.axisConfig) with Label = Some label } })
             fig
 
+    // ---- D179: aspect ----------------------------------------------------------------------
+
+    /// D179 — **one unit as long on y as on x** on the last panel: the plot is shrunk to the
+    /// domain's shape and centred in its cell. A frame of an animation or a zoom whose domains have
+    /// another shape is widened to the plot's, so the plot does not move. Both axes must be linear
+    /// and of one dimension, compared in SI; checked here and again when the figure is drawn.
+    let withEqualAspect (fig: Figure) : Figure =
+        let shaped = mapLast (fun p -> { p with Aspect = Some Aspect.Equal }) fig
+
+        if shaped.Panels.Length > 0 then
+            let p = Figure.unify shaped.Panels.[lastPanel shaped]
+
+            if p.Layers.Length > 0 then
+                let sx, sy = Figure.axisScalesErased p
+
+                if sx.Dim <> sy.Dim then
+                    failwithf
+                        "Marey: equal aspect needs one dimension on both axes; this panel's x is in %s and its y in %s."
+                        (Dim.show sx.Dim)
+                        (Dim.show sy.Dim)
+
+        shaped
+
+    /// D179 — the last panel's plot at this height over its width, whatever its domains.
+    let withBoxAspect (heightOverWidth: float) (fig: Figure) : Figure =
+        if not (heightOverWidth > 0.0) || System.Double.IsInfinity heightOverWidth then
+            failwithf "Marey: a box aspect is a positive height over width; got %g." heightOverWidth
+
+        mapLast (fun p -> { p with Aspect = Some(Aspect.Box heightOverWidth) }) fig
+
     // ---- D178: secondary axes -------------------------------------------------------------
 
     let internal withSecondary (onX: bool) (u: U<1>) (map: SecondaryMap option) (fig: Figure) : Figure =

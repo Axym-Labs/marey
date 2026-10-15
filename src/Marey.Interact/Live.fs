@@ -787,6 +787,20 @@ module Live =
 
                 match PanelView.domainsOf { X0 = x0; Y0 = y0; X1 = x1; Y1 = y1 } v with
                 | None -> state
+                | Some(dx, dy) when v.EqualAspect ->
+                    // D179 — both axes, widened to the plot's shape, so equal aspect holds and
+                    // re-arranging keeps the box.
+                    if x1 - x0 < MinDrag * 1.0<px> && y1 - y0 < MinDrag * 1.0<px> then
+                        state
+                    else
+                        let dx, dy = PanelView.fitEqual v (dx, dy)
+
+                        match withEntries state.Zoom v [ ZoomAxis.X, dx; ZoomAxis.Y, dy ] with
+                        | Some zoom ->
+                            { state with
+                                Zoom = zoom
+                                Shot = arrange live state.Size state.Grown zoom }
+                        | None -> state
                 | Some(dx, dy) ->
                     let entries =
                         [ if x1 - x0 >= MinDrag * 1.0<px> then ZoomAxis.X, dx
