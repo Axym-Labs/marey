@@ -193,7 +193,14 @@ type PanelLayout =
       /// D73 — the prefix the x axis is pinned to. `None` chooses one from this figure's own
       /// domain, which is what a still figure does and has always done.
       XPrefix: Prefix option
-      YPrefix: Prefix option }
+      YPrefix: Prefix option
+      /// D173 — room left empty at each outer edge of the panel's region, so that its gutters
+      /// add up to those of the widest panel on the same grid line and the plot rectangles line
+      /// up. Zero until the figure's panels are aligned, and always zero for a panel alone.
+      SlackLeft: float<px>
+      SlackRight: float<px>
+      SlackTop: float<px>
+      SlackBottom: float<px> }
 
 [<RequireQualifiedAccess>]
 module PanelLayout =
@@ -214,7 +221,11 @@ module PanelLayout =
           LegendScores = [||]
           Probe = { Width = 0.0<px>; Height = 0.0<px> }
           XPrefix = None
-          YPrefix = None }
+          YPrefix = None
+          SlackLeft = 0.0<px>
+          SlackRight = 0.0<px>
+          SlackTop = 0.0<px>
+          SlackBottom = 0.0<px> }
 
     /// D72's union, and the whole rule is one sentence: **every size is the largest any sampled
     /// frame needed.**
@@ -250,7 +261,23 @@ module PanelLayout =
             { Width = max a.Probe.Width b.Probe.Width
               Height = max a.Probe.Height b.Probe.Height }
           XPrefix = a.XPrefix
-          YPrefix = a.YPrefix }
+          YPrefix = a.YPrefix
+          SlackLeft = max a.SlackLeft b.SlackLeft
+          SlackRight = max a.SlackRight b.SlackRight
+          SlackTop = max a.SlackTop b.SlackTop
+          SlackBottom = max a.SlackBottom b.SlackBottom }
+
+    /// D173 — the room a panel's gutters take on each side of its plot, slack included: what the
+    /// outer grid's gutter tracks are sized from.
+    let left (g: PanelLayout) = g.SlackLeft + g.YTitleW + g.YTicksW
+
+    let right (g: PanelLayout) =
+        g.RightPad + g.BarGap + g.BarW + (if g.LegendW > 0.0<px> then g.LegendGap + g.LegendW else 0.0<px>) + g.SlackRight
+
+    let top (g: PanelLayout) = g.SlackTop + g.TitleH + g.TopPad
+
+    let bottom (g: PanelLayout) =
+        g.XTicksH + g.XTitleH + (if g.LegendH > 0.0<px> then g.LegendGap + g.LegendH else 0.0<px>) + g.SlackBottom
 
 /// D72 — **the layout of one shot**: everything every frame of an animation shares, and nothing
 /// a frame is allowed to recompute.
@@ -978,43 +1005,50 @@ module Figure =
         let gapRight = if g.LegendW > 0.0<px> then g.LegendGap else 0.0<px>
         let gapBelow = if g.LegendH > 0.0<px> then g.LegendGap else 0.0<px>
 
+        // D173 — the slack sits outside everything else, so a title stays beside its ticks and
+        // only the plot rectangle moves into line. Zero tracks add exactly nothing, so a panel
+        // alone is placed as it always was.
         let cols =
-            [| Track.Content g.YTitleW
+            [| Track.Content g.SlackLeft
+               Track.Content g.YTitleW
                Track.Content g.YTicksW
                Track.Frac 1.0
                Track.Content g.RightPad
                Track.Content g.BarGap
                Track.Content g.BarW
                Track.Content gapRight
-               Track.Content g.LegendW |]
+               Track.Content g.LegendW
+               Track.Content g.SlackRight |]
 
         let rows =
-            [| Track.Content g.TitleH
+            [| Track.Content g.SlackTop
+               Track.Content g.TitleH
                Track.Content g.TopPad
                Track.Frac 1.0
                Track.Content g.XTicksH
                Track.Content g.XTitleH
                Track.Content gapBelow
-               Track.Content g.LegendH |]
+               Track.Content g.LegendH
+               Track.Content g.SlackBottom |]
 
         let fixedCell key row col (w: float<px>) (h: float<px>) =
             Layout.cell key row col (fun _ -> { Width = w; Height = h })
 
         let cells =
-            [| fixedCell "ytitle" 2 0 g.YTitleW 0.0<px>
-               fixedCell "yticks" 2 1 g.YTicksW 0.0<px>
-               Layout.fill "plot" 2 2
-               fixedCell "rightpad" 2 3 g.RightPad 0.0<px>
-               fixedCell "bargap" 2 4 g.BarGap 0.0<px>
-               fixedCell "colorbar" 2 5 g.BarW 0.0<px>
-               fixedCell "legendgap" 2 6 gapRight 0.0<px>
-               fixedCell "legend" 2 7 g.LegendW 0.0<px>
-               fixedCell "ptitle" 0 0 0.0<px> g.TitleH |> Layout.spanning 1 8
-               fixedCell "toppad" 1 0 0.0<px> g.TopPad |> Layout.spanning 1 8
-               fixedCell "xticks" 3 2 0.0<px> g.XTicksH
-               fixedCell "xtitle" 4 2 0.0<px> g.XTitleH
-               fixedCell "legendgapb" 5 2 0.0<px> gapBelow
-               fixedCell "legendb" 6 2 0.0<px> g.LegendH |]
+            [| fixedCell "ytitle" 3 1 g.YTitleW 0.0<px>
+               fixedCell "yticks" 3 2 g.YTicksW 0.0<px>
+               Layout.fill "plot" 3 3
+               fixedCell "rightpad" 3 4 g.RightPad 0.0<px>
+               fixedCell "bargap" 3 5 g.BarGap 0.0<px>
+               fixedCell "colorbar" 3 6 g.BarW 0.0<px>
+               fixedCell "legendgap" 3 7 gapRight 0.0<px>
+               fixedCell "legend" 3 8 g.LegendW 0.0<px>
+               fixedCell "ptitle" 1 1 0.0<px> g.TitleH |> Layout.spanning 1 8
+               fixedCell "toppad" 2 1 0.0<px> g.TopPad |> Layout.spanning 1 8
+               fixedCell "xticks" 4 3 0.0<px> g.XTicksH
+               fixedCell "xtitle" 5 3 0.0<px> g.XTitleH
+               fixedCell "legendgapb" 6 3 0.0<px> gapBelow
+               fixedCell "legendb" 7 3 0.0<px> g.LegendH |]
 
         Layout.arrangeIn m extent region (Layout.grid rows cols cells)
 
@@ -1298,7 +1332,11 @@ module Figure =
 
                   Probe = probe
                   XPrefix = pinX
-                  YPrefix = pinY }
+                  YPrefix = pinY
+                  SlackLeft = 0.0<px>
+                  SlackRight = 0.0<px>
+                  SlackTop = 0.0<px>
+                  SlackBottom = 0.0<px> }
 
             let build (g: PanelLayout) = innerGrid m extent region g
 
@@ -1659,12 +1697,6 @@ module Figure =
 
             layout, needed, draw
 
-    /// The figure's own outer grid: one content row for the head, then one row of tracks per
-    /// panel row. Split out of `toScene` by D72 so that `arrangeFor` and the renderer cannot be
-    /// looking at two different grids — which they were, for two milestones. See `Shot`.
-    ///
-    /// `head` overrides the measured head height when it is `Some`, which is how the union takes
-    /// the tallest head of the shot rather than each frame's own.
     /// D171 — every panel's legend entries, once each, for a figure's shared legend.
     let private figureEntries (fig: Figure) =
         fig.Panels |> Array.collect (legendEntries fig.Theme) |> Array.distinct
@@ -1679,6 +1711,12 @@ module Figure =
     let private ownLegend (fig: Figure) (p: Panel) =
         if fig.Legend.IsSome then { p with Legend = LegendNone } else p
 
+    /// The figure's own outer grid: one content row for the head, then one row of tracks per
+    /// panel row. Split out of `toScene` by D72 so that `arrangeFor` and the renderer cannot be
+    /// looking at two different grids — which they were, for two milestones. See `Shot`.
+    ///
+    /// `head` overrides the measured head height when it is `Some`, which is how the union takes
+    /// the tallest head of the shot rather than each frame's own.
     let private outerGrid (head: float<px> option) (fig: Figure) =
         let theme = fig.Theme
         let rows = max 1 fig.Rows
@@ -1731,6 +1769,163 @@ module Figure =
         Layout.grid trackRows trackCols cells
         |> Layout.withGaps theme.PanelGap theme.PanelGap
         |> Layout.withPadding theme.FigurePadding
+
+    /// D173 — whether a figure's panels have anything to line up with: more than one cell.
+    let private isGrid (fig: Figure) = max 1 fig.Rows * max 1 fig.Cols > 1
+
+    /// D173 — **the panels lined up.** Every panel on one grid line is given the gutters of the
+    /// widest one there, as slack at its outer edge: the left gutters of the panels in a column
+    /// all add up to the column's largest, and so on for right, top and bottom. It is D72's
+    /// union again, componentwise and taken along a grid line instead of over frames, and it
+    /// is what puts the plot rectangles of a column at one x and of a row at one y.
+    ///
+    /// Returns the gutter sizes per grid line with the slackened layouts: the tracks of
+    /// `alignedGrid` are those sizes.
+    let private align (fig: Figure) (layouts: (string * PanelLayout)[]) =
+        let rows = max 1 fig.Rows
+        let cols = max 1 fig.Cols
+        let fresh (l: PanelLayout) = { l with SlackLeft = 0.0<px>; SlackRight = 0.0<px>; SlackTop = 0.0<px>; SlackBottom = 0.0<px> }
+
+        let placed =
+            fig.Panels
+            |> Array.choose (fun p ->
+                let key = sprintf "panel-%d-%d" p.Row p.Col
+
+                layouts
+                |> Array.tryPick (fun (k, l) -> if k = key then Some(key, p, fresh l) else None))
+            |> Array.distinctBy (fun (k, _, _) -> k)
+
+        let line (count: int) (at: Panel -> int) (size: PanelLayout -> float<px>) =
+            Array.init count (fun i ->
+                placed
+                |> Array.filter (fun (_, p, _) -> at p = i)
+                |> Array.fold (fun acc (_, _, l) -> max acc (size l)) 0.0<px>)
+
+        let lefts = line cols (fun p -> max 0 p.Col) PanelLayout.left
+        let rights = line cols (fun p -> max 0 p.Col) PanelLayout.right
+        let tops = line rows (fun p -> max 0 p.Row) PanelLayout.top
+        let bottoms = line rows (fun p -> max 0 p.Row) PanelLayout.bottom
+
+        let slackened =
+            placed
+            |> Array.map (fun (key, p, l) ->
+                let r, c = max 0 p.Row, max 0 p.Col
+
+                key,
+                { l with
+                    SlackLeft = lefts.[c] - PanelLayout.left l
+                    SlackRight = rights.[c] - PanelLayout.right l
+                    SlackTop = tops.[r] - PanelLayout.top l
+                    SlackBottom = bottoms.[r] - PanelLayout.bottom l })
+
+        (lefts, rights, tops, bottoms), slackened
+
+    /// D173 — the outer grid once the gutters are known: each panel row is three tracks, its top
+    /// gutters, its plot and its bottom gutters, and each panel column three likewise, so a
+    /// panel's region is the span of its three and its plot lands on the middle one. The gaps
+    /// between panels become tracks of their own, since `Layout`'s gap would also fall between a
+    /// gutter and its plot.
+    let private alignedGrid (head: float<px> option) (fig: Figure) (lefts: float<px>[], rights: float<px>[], tops: float<px>[], bottoms: float<px>[]) =
+        let theme = fig.Theme
+        let rows = max 1 fig.Rows
+        let cols = max 1 fig.Cols
+        let shared = sharedLegend fig
+        let gap = Track.Fixed theme.PanelGap
+
+        let headHeight (measurer: ITextMeasurer) =
+            match head with
+            | Some h -> h
+            | None ->
+                let a =
+                    if isEmpty fig.Title then
+                        0.0<px>
+                    else
+                        Rect.height (textBox measurer theme.TitleFont fig.Title) + theme.TitleGap
+
+                let b =
+                    if isEmpty fig.Subtitle then
+                        0.0<px>
+                    else
+                        Rect.height (textBox measurer theme.SubtitleFont fig.Subtitle) + theme.TitleGap
+
+                a + b
+
+        let lanes (count: int) (before: float<px>[]) (after: float<px>[]) =
+            [| for i in 0 .. count - 1 do
+                   if i > 0 then yield gap
+                   yield Track.Fixed before.[i]
+                   yield Track.Frac 1.0
+                   yield Track.Fixed after.[i] |]
+
+        // Row tracks: the head and its gap, then 4 per panel row less the last gap; column tracks
+        // 4 per panel column less the last gap. A panel at (r, c) starts at row 2 + 4r, column 4c.
+        let trackRows =
+            Array.concat
+                [ [| Track.Content 0.0<px>; gap |]
+                  lanes rows tops bottoms
+                  (if shared = Some FigureLegendBottom then [| gap; Track.Content 0.0<px> |] else [||]) ]
+
+        let trackCols =
+            Array.append (lanes cols lefts rights) (if shared = Some FigureLegendRight then [| gap; Track.Content 0.0<px> |] else [||])
+
+        let legendSize (mm: ITextMeasurer) = Legend.measure mm theme (figureEntries fig)
+        let panelRows = 4 * rows - 1
+        let panelCols = 4 * cols - 1
+
+        let cells =
+            [| yield Layout.cell "head" 0 0 (fun mm -> { Width = 0.0<px>; Height = headHeight mm })
+                   |> Layout.spanning 1 panelCols
+
+               for p in fig.Panels do
+                   yield
+                       Layout.fill (sprintf "panel-%d-%d" p.Row p.Col) (2 + 4 * max 0 p.Row) (4 * max 0 p.Col)
+                       |> Layout.spanning 3 3
+
+               match shared with
+               | Some FigureLegendRight -> yield Layout.cell "flegend" 2 (panelCols + 1) legendSize |> Layout.spanning panelRows 1
+               | Some FigureLegendBottom -> yield Layout.cell "flegend" (2 + panelRows + 1) 0 legendSize |> Layout.spanning 1 panelCols
+               | None -> () |]
+
+        Layout.grid trackRows trackCols cells |> Layout.withPadding theme.FigurePadding
+
+    /// D173 — pass 2: the measured layouts lined up, the outer grid rebuilt around their gutters,
+    /// and each panel's probe set to the plot it now has. A figure of one panel has nothing to
+    /// line up with and keeps pass 1 exactly.
+    ///
+    /// `rescore` gives a `LegendBest` panel its corner scores again over the plot it now has
+    /// (D171): a panel that gave up width to line up with a neighbour's outside legend has a
+    /// different emptiest corner. The gutters are not re-measured, so whether the legend went
+    /// outside, which is a gutter, stays as pass 1 decided it.
+    let private placeAligned
+        (m: ITextMeasurer)
+        (extent: Extent<px>)
+        (head: float<px> option)
+        (fig: Figure)
+        (outer: Arrangement)
+        (rescore: string -> Rect<px> -> PanelLayout -> float[])
+        (layouts: (string * PanelLayout)[])
+        : Arrangement * (string * PanelLayout)[] =
+        if not (isGrid fig) then
+            outer, layouts
+        else
+            let gutters, slackened = align fig layouts
+            let outer2 = Layout.arrange m extent (alignedGrid head fig gutters)
+
+            let probed =
+                slackened
+                |> Array.map (fun (key, l) ->
+                    match Layout.tryFindPx key outer2 with
+                    | Some r ->
+                        let l2 =
+                            { l with
+                                Probe =
+                                    { Width = max 0.0<px> (Rect.width r - PanelLayout.left l - PanelLayout.right l)
+                                      Height = max 0.0<px> (Rect.height r - PanelLayout.top l - PanelLayout.bottom l) } }
+
+                        key, (if l2.LegendScores.Length = 4 then { l2 with LegendScores = rescore key r l2 } else l2)
+                    | None -> key, l)
+
+            outer2, probed
 
     // ---- D94: what a shot pins besides the gutters -------------------------------------------
     //
@@ -1838,6 +2033,18 @@ module Figure =
                 | Some region ->
                     let layout, _, _ = compilePanel m fig.Theme extent region None (None, None) (letterHeight m fig) (unify (ownLegend fig p))
                     Some(key, layout))
+
+        let rescore (key: string) (region: Rect<px>) (l: PanelLayout) =
+            fig.Panels
+            |> Array.filter (fun p -> sprintf "panel-%d-%d" p.Row p.Col = key)
+            |> Array.map (fun p ->
+                let _, needed, _ = compilePanel m fig.Theme extent region (Some l) (None, None) (letterHeight m fig) (unify (ownLegend fig p))
+                (needed ()).LegendScores)
+            |> Array.filter (fun s -> s.Length = 4)
+            |> Array.fold (fun acc s -> if acc = [||] then s else Array.map2 max acc s) [||]
+            |> fun s -> if s.Length = 4 then s else l.LegendScores
+
+        let outer, panels = placeAligned m extent None fig outer rescore panels
 
         { Outer = outer
           Panels = panels
@@ -1965,6 +2172,19 @@ module Figure =
                 let merged = measured |> Array.map snd |> Array.reduce PanelLayout.union
                 let pinX, pinY = pins.[key]
                 key, { merged with XPrefix = pinX; YPrefix = pinY })
+
+        // Every state's scores over the new plot, and the largest each corner had, as `union` does.
+        let rescore (key: string) (region: Rect<px>) (l: PanelLayout) =
+            entries
+            |> Array.filter (fun (k, _) -> k = key)
+            |> Array.map (fun (_, (fig, _, unified)) ->
+                let _, needed, _ = compilePanel m fig.Theme extent region (Some l) (None, None) (letterHeight m fig) unified
+                (needed ()).LegendScores)
+            |> Array.filter (fun s -> s.Length = 4)
+            |> Array.fold (fun acc s -> if acc = [||] then s else Array.map2 max acc s) [||]
+            |> fun s -> if s.Length = 4 then s else l.LegendScores
+
+        let outer, panels = placeAligned m extent (Some head) template outer rescore panels
 
         { Outer = outer
           Panels = panels
