@@ -527,6 +527,59 @@ what makes `withTheme` safe to apply last:
 let rethemed = styled |> Chart.withTheme Theme.dark
 ```
 
+### Rules, spans and annotations
+
+A **rule** crosses the panel at a place on one axis, wherever the panel ends up: after other
+layers widen it, after a facet shares it, after a zoom. A **span** shades the band between two
+values. Neither moves the domain — a rule at zero on residuals in millimetres leaves the axis in
+millimetres — and one that falls outside the panel is not drawn and is counted on the panel's
+annotation as `dropped-marks`.
+
+```fsharp
+let residual = x |> Array.mapi (fun i v -> v * 0.0 + (if i % 2 = 0 then 0.4e-3<m> else -0.3e-3<m>))
+
+let ruled =
+    Chart.scatter U.second U.metre t residual
+    |> Chart.addHLine U.metre 0.0<m>
+    |> Chart.addHSpan U.metre -0.2e-3<m> 0.2e-3<m>
+    |> Chart.withName "tolerance"
+    |> Chart.addVLine U.second 4.0<s>
+    |> Chart.addLineThrough U.second U.metre 0.0<s> -0.4e-3<m> 0.1e-3<m/s>
+
+let ruledSvg = ruled |> Chart.render SvgBackend.render (Chart.size 480.0 300.0)
+printfn "still in µm: %b" (ruledSvg.Contains "[µm]")
+```
+
+The rule takes the witness of the axis it marks, so a rule in the wrong unit does not compile,
+and `addLineThrough`'s slope is in the y unit per x unit:
+
+```fsharp-error
+// error FS0001: The unit of measure 's' does not match the unit of measure 'm'
+Chart.scatter U.second U.metre t residual |> Chart.addHLine U.second 1.0<s>
+```
+
+`withDomainIncluded` lets the last rule move its axis after all ("the panel must show zero").
+A rule is furniture: it is drawn in the theme's axis colour, dashed, and stays out of the legend
+until `withName` puts it in.
+
+An **annotation** marks a point with text, by default 6 px up and to the right of it, and
+`withArrow` draws an arrow from the text to the point:
+
+```fsharp
+let marked =
+    fall
+    |> Chart.annotate U.second U.metre 4.0<s> (0.5 * 9.81<m/s^2> * 16.0<s^2>) "t = 4 s"
+    |> Chart.withTextOffset -40.0<px> 30.0<px>
+    |> Chart.withArrow ArrowStraight
+    |> Chart.addPanelText 0.02 0.98 "g = 9.81 m/s²"
+```
+
+`withTextOffset` places the text in px from its point, which survives a zoom; `withTextAt` places
+it in data space; `ArrowArc bend` curves the arrow. The text is anchored on the side facing the
+point, it takes the theme's foreground colour rather than a series colour, and it is drawn outside
+the plot's clip, so a label above a peak at the top of the panel is not cut off. `addPanelText`
+places text by fractions of the plot area, for a note in a corner.
+
 ---
 
 ## 6. Layers and the legend
@@ -546,6 +599,26 @@ let twoSeries =
 
 Placements: `LegendTopLeft`, `LegendTopRight`, `LegendBottomLeft`, `LegendBottomRight`,
 `LegendNone`.
+
+Outside the plot: `LegendOutsideRight` takes a column of its own beside the plot (and beside a
+colorbar), `LegendOutsideBottom` a row below the x axis. `LegendBest` takes the inside corner
+that covers the fewest drawn marks, or goes outside when every corner is covered; in an animation
+it is chosen once, over every frame, so the legend does not jump. `withLegendColumns` lays the
+entries out in columns, and `withLegendFrame` turns one legend's frame on or off.
+
+```fsharp
+let outside =
+    twoSeries
+    |> Chart.withLegend LegendOutsideBottom
+    |> Chart.withLegendColumns 2
+    |> Chart.withLegendFrame false
+
+let shared =
+    twoSeries |> Chart.beside twoSeries |> Chart.withFigureLegend FigureLegendRight
+```
+
+`withFigureLegend` gathers every panel's entries, once each, into one legend beside or below the
+figure, in place of the panels' own.
 
 Adding a layer unifies the domains across the panel, so the series share axes rather than each
 drawing its own.
@@ -582,6 +655,44 @@ let axisWork =
     |> Chart.withYDomain 0.0 1.2
 ```
 
+### Ticks
+
+Ticks are chosen on a 1-2-5 ladder unless they are stated. A stated step, list or set of named
+ticks is in the **axis's own numbers** — the unit its data is in, not the prefix it is labelled
+in — so it means the same on every figure, and the axis still chooses its prefix:
+
+```fsharp
+let nmAxis = [| 400e-9<m>; 700e-9<m> |]
+
+let spectrumAxis =
+    Chart.line U.metre U.one nmAxis [| 0.2; 0.8 |]
+    |> Chart.withXDomain 400e-9 700e-9
+    |> Chart.withXTicksEvery U.metre 50e-9<m>
+    |> Chart.withXMinorTicks (MinorEvery 10e-9)
+
+let spectrumSvg = spectrumAxis |> Chart.render SvgBackend.render (Chart.size 480.0 300.0)
+printfn "ticks in nm: %b" (spectrumSvg.Contains ">450<" && spectrumSvg.Contains "[nm]")
+```
+
+A step that would give more than 50 ticks is refused, naming the step and the domain — it is
+almost always a step stated in the wrong prefix. A step in another unit of the axis's dimension
+is converted (`withXTicksEvery NonSi.minute 0.5<minute>` on a seconds axis ticks every 30 s).
+`withXTicksAt` states the values, and `withXTicksNamed` states each label too, which is how a band
+structure's axis reads `X Γ X`; named ticks keep the unit in the title and are never dropped
+to make room.
+
+The rest of an axis's numbers:
+
+| | |
+|---|---|
+| `withXMinorTicks` | `MinorAuto` (the theme decides), `MinorOff`, `MinorCount n`, `MinorEvery step`. Automatic minor ticks cut an interval whose step reads 1 or 5 in five and any other in four, and fill each decade of a log axis with 2 … 9 |
+| `withXPrefix` | Write the axis in this prefix rather than the one its data selects: `Prefix.none` for plain metres |
+| `withXTickFormat` | `FormatFixed n`, `FormatPercent`, `FormatScientific` (a power of ten in the title, `x [10⁻³·m]`), or `TickFormat.custom f` of the number the label would show |
+| `withXReversed` | Run the axis from its high end to its low end over the domain it would have had: a depth, a magnitude |
+
+Each has a `Y` form. When both axes of a panel are lengths, as on a map, they are titled `x` and
+`y` by side; a length against anything else is `x`, as in `x [m]` against `t [s]`.
+
 ---
 
 ## 8. Panels
@@ -601,6 +712,14 @@ let stacked =
 printfn "panels: %d, rows: %d, cols: %d" stacked.Panels.Length stacked.Rows stacked.Cols
 ```
 
+`withPanelLetters LetterParen` letters the panels "(a)", "(b)", … in reading order, at the top
+left of each panel above its axis title. It is applied when the figure is drawn, so panels added
+afterwards are lettered too:
+
+```fsharp
+let lettered = stacked |> Chart.withPanelLetters LetterParen
+```
+
 Layout is a measure–arrange constraint grid, so a panel gets the space its contents need rather
 than an equal share of the surface.
 
@@ -614,11 +733,11 @@ missing one is a build error.
 | Theme | For |
 |---|---|
 | `Theme.modern` | **The default.** Screen-first: sans, flat panel, horizontal gridlines, no frames. |
-| `Theme.publication` | A paper. Serif, hairline rules, no gridlines, no chartjunk. |
+| `Theme.publication` | A paper. Serif, hairline rules, no gridlines; framed, with ticks inside on all four sides and minor ticks between them, as physics journals print a figure. |
 | `Theme.notebook` | `modern` with a tinted panel and vertical gridlines, so a figure reads as an object inside a cell. |
 | `Theme.presentation` | Large type, for projection. |
 | `Theme.dark` | Not an inversion — `#E8E8E8` on `#16181C`, and the palette swaps so Okabe–Ito's black is not invisible. |
-| `Theme.tikz` | Serif metrics and `Siunitx` unit spelling. Selecting it is the whole configuration. |
+| `Theme.tikz` | `publication` with serif metrics and `Siunitx` unit spelling — the box pgfplots draws by default. Selecting it is the whole configuration. |
 
 ```fsharp
 let onDark = fall |> Chart.withTheme Theme.dark

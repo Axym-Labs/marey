@@ -33,11 +33,59 @@ land in a minor release.
 - `Html.liveWholeForHost`, the whole figure in its page's kind, which `Marey.Verso` asks for a
   view's first message.
 - **`examples/interact.dib`** gains a live figure of 10⁵ points.
+- **Rules and spans** (D162): `Chart.addHLine`, `addVLine`, `addHSpan`, `addVSpan` and
+  `addLineThrough`, whose slope is in the y unit per x unit; `hLine` … `lineThrough` as figures;
+  `Chart.HLine(y, ?unit)` and its siblings in the unit-optional mode. A rule is laid across the
+  panel when the figure is drawn, so it spans it after a facet's sharing, a stated domain or a
+  zoom, and under `Coord.polar` a horizontal rule is a circle. It stays out of the domain, is
+  drawn in the theme's axis colour, dashed, and joins the legend only when named. One that falls
+  outside the panel is not drawn and is counted on the panel as `dropped-marks`.
+- **Layers that stay out of the domain** (D163): `Layer.InDomain`, and `Chart.withDomainIncluded`
+  to bring the last layer back in. Its unit is still checked against the axis.
+- **Annotations** (D164): `Chart.annotate` marks a point with text; `withTextOffset` (px),
+  `withTextAt` (data space) and `withArrow` (`ArrowStraight`, `ArrowArc bend`) place it and point
+  at the point. In the theme's foreground, out of the domain, and not clipped to the plot.
+  `Chart.Annotation(…)` in the unit-optional mode.
+- **Panel text and panel letters** (D165): `Chart.addPanelText` by fractions of the plot area;
+  `Chart.withPanelLetters LetterParen` letters the panels (a), (b), … in reading order, above each
+  panel's top left, when the figure is drawn.
+- **Stated ticks** (D166): `withXTicksEvery`, `withXTicksAt` and `withXTicksNamed`, and their `Y`
+  forms, in the axis's own numbers; the prefix and the unit in the title are still chosen. A step
+  that would give more than 50 ticks is refused, a step in another unit of the dimension is
+  converted, and named ticks are never dropped to make room. `TickSpec` and `Axis.ofScaleTicked`
+  in `Marey.Units`.
+- **Minor ticks** (D167): `withXMinorTicks` (`MinorAuto`, `MinorOff`, `MinorCount`, `MinorEvery`)
+  and `AxisSpec.Minor`.
+- **Tick direction and mirrored ticks** (D168): `Theme.TickDirection` (`TickOut`, `TickIn`,
+  `TickInOut`), `MirrorTicks`, `MinorTicks`, `MinorTickLength`, and `Theme.withTickDirection`,
+  `withMirrorTicks`, `withMinorTicks`. An inward tick gives its length back to the plot.
+- **Tick formats and a stated prefix** (D169): `withXTickFormat` (`FormatFixed`, `FormatPercent`,
+  `FormatScientific`, `TickFormat.custom`) and `withXPrefix`.
+- **Reversed axes** (D170): `withXReversed` and `withYReversed`, over the domain the axis would
+  have had.
+- **Legends** (D171): `LegendOutsideRight`, `LegendOutsideBottom` and `LegendBest` (the emptiest
+  corner, chosen once for an animation); `withLegendColumns`, `withLegendFrame`, and
+  `withFigureLegend` for one legend shared by every panel.
+- C# extensions for every verb above.
+- **`examples/paper-figure.fsx`**: a fit over its residuals, and a spectrum with its lines marked.
 
 ### Changed
 
 - **A `Figure` above 5000 drawn elements displays in Verso as a page in a frame**, not as inline
   SVG. `Html.renderMode <- RenderMode.Svg` restores the SVG for every figure.
+- **`Theme.publication` is the box physics journals print** (D168): framed, with ticks inside on
+  all four sides and minor ticks between them. `Theme.tikz` is `publication` and follows it, which
+  is also pgfplots' default. The previous look is `Theme.publication` with `PanelFrame = false`,
+  `TickDirection = TickOut`, `MirrorTicks = false` and `MinorTicks = false`.
+- **A panel whose two axes are both lengths titles them `x` and `y`**, by side; both were `x`. A
+  length against anything else is still `x`.
+- New record fields, which break a record built without `with`: `AxisConfig` (`Ticks`,
+  `TickUnit`, `Prefix`, `Reversed`, `Minor`, `Format`), `AxisSpec.Minor`, `Layer.InDomain`,
+  `Panel` (`LegendColumns`, `LegendFrame`), `Figure` (`Letters`, `Legend`), `PanelLayout`
+  (`LegendGap`, `LegendW`, `LegendH`, `LegendScores`), `AxisRender` (`Direction`, `Mirror`,
+  `ShowMinor`), and `Theme` (`TickDirection`, `MirrorTicks`, `MinorTicks`, `MinorTickLength`).
+  `LegendPlacement` gains three cases, which breaks an exhaustive `match` over it, and `Geom` two
+  (`GeomRule`, `GeomAnnotation`).
 
 ### Fixed
 
