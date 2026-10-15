@@ -118,6 +118,15 @@ type AxisConfig =
       /// the right for y.
       Secondary: SecondaryAxis option }
 
+/// D179 — the shape a panel's plot is held to.
+[<RequireQualifiedAccess>]
+type Aspect =
+    /// One unit of the data is as long on y as on x (matplotlib's `set_aspect('equal')`). Both axes
+    /// must have one dimension, compared in SI, and be linear.
+    | Equal
+    /// The plot's height over its width (matplotlib's `set_box_aspect`).
+    | Box of heightOverWidth: float
+
 [<NoComparison>]
 type Panel =
     { Title: string
@@ -139,6 +148,8 @@ type Panel =
       /// D177 — the second y axis, on the right, for the layers marked `SecondaryY`; `None` for a
       /// panel with one y axis.
       Y2Axis: AxisConfig option
+      /// D179 — the shape the plot is held to, or `None` for whatever its region gives it.
+      Aspect: Aspect option
       Layers: Layer[]
       XAxis: AxisConfig
       YAxis: AxisConfig
@@ -403,7 +414,9 @@ type PanelView =
       YAxis: AxisSpec
       /// D177 — the second y axis's scale and spec, for a panel that has one.
       Y2: IScaleErased option
-      Y2Axis: AxisSpec option }
+      Y2Axis: AxisSpec option
+      /// D179 — the panel holds one unit as long on y as on x.
+      EqualAspect: bool }
 
 [<RequireQualifiedAccess>]
 module PanelView =
@@ -434,6 +447,27 @@ module PanelView =
     /// The data domains a px rectangle covers, each ascending: the box around its four corners'
     /// inverses, which under a cartesian coord is the rectangle itself. `None` when a corner has
     /// no inverse.
+    /// D179 — two domains widened about their centres until one unit is as long on y as on x
+    /// over this panel's plot, or as they were for a panel without equal aspect. What a zoom of
+    /// such a panel states, so that re-arranging it keeps the plot's shape.
+    let fitEqual (v: PanelView) (dx: float * float, dy: float * float) : (float * float) * (float * float) =
+        let w = v.Plot.X1 - v.Plot.X0
+        let h = v.Plot.Y1 - v.Plot.Y0
+        let xs = abs (snd dx - fst dx) * v.X.ToSI
+        let ys = abs (snd dy - fst dy) * v.Y.ToSI
+
+        if not v.EqualAspect || w <= 0.0<px> || h <= 0.0<px> || xs = 0.0 || ys = 0.0 then
+            dx, dy
+        else
+            let want = float (h / w)
+            let have = ys / xs
+            let grow (lo: float, hi: float) (k: float) =
+                let c = (lo + hi) / 2.0
+                let half = (hi - lo) / 2.0 * k
+                c - half, c + half
+
+            if have < want then dx, grow dy (want / have) else grow dx (have / want), dy
+
     /// D177 — the second y axis's value under a surface point, raw, in its own unit.
     let toY2 (p: Vec2<px>) (v: PanelView) : float option =
         match v.Y2 with
@@ -716,6 +750,7 @@ module Figure =
           XShare = 0
           YShare = 0
           Y2Axis = None
+          Aspect = None
           Layers = layers
           XAxis = axisConfig
           YAxis = axisConfig
@@ -960,6 +995,77 @@ module Figure =
     /// Give every layer on a panel the same x and y domains, and run a reversed axis backwards.
     /// See `share`; every reader of a panel's axes goes through here.
     let unify (p: Panel) : Panel = p |> share |> orient
+
+    /// D179 — **the plot's height over its width that a panel asks for**, over the states of it a
+    /// shot holds (one for a still figure), unified. Equal aspect takes the union of their domains,
+    /// so the box is the one every state fits in; it needs one dimension on both axes, compared in
+    /// SI, and linear scales.
+    let private aspectOf (states: Panel[]) : float option =
+        let drawn = states |> Array.filter (fun p -> p.Layers.Length > 0)
+
+        if drawn.Length = 0 then
+            None
+        else
+            match drawn.[0].Aspect with
+            | None -> None
+            | Some(Aspect.Box r) ->
+                if not (r > 0.0) || System.Double.IsInfinity r then
+                    failwithf "Marey: a box aspect is a positive height over width; got %g." r
+
+                Some r
+            | Some Aspect.Equal ->
+                let scales = drawn |> Array.map axisScalesErased
+                let sx, sy = scales.[0]
+
+                let text (u: IScaleErased) =
+                    UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none u.Symbol u.Factors u.Dim u.ToSI u.OffsetSI
+
+                if sx.Dim <> sy.Dim then
+                    failwithf
+                        "Marey: equal aspect needs one dimension on both axes; this panel's x is in %s and its y in %s."
+                        (text sx)
+                        (text sy)
+
+                match sx.Kind, sy.Kind with
+                | ScaleKind.Linear, ScaleKind.Linear -> ()
+                | _ -> failwith "Marey: equal aspect needs two linear axes; this panel has a log, power or categorical one."
+
+                let span (pick: IScaleErased * IScaleErased -> IScaleErased) =
+                    let ds = scales |> Array.map (fun pair -> (pick pair).Domain)
+                    let lo = ds |> Array.map (fun (a, b) -> min a b) |> Array.min
+                    let hi = ds |> Array.map (fun (a, b) -> max a b) |> Array.max
+                    hi - lo
+
+                let xs = span fst * sx.ToSI
+                let ys = span snd * sy.ToSI
+                if xs > 0.0 && ys > 0.0 then Some(ys / xs) else None
+
+    /// D179 — a frame whose domains do not have the frozen plot's shape, widened about their
+    /// centres until they do, so equal aspect holds in a box that does not move. A still figure's
+    /// domains already have it and pass through.
+    let private fitAspect (f: PanelLayout) (p: Panel) : Panel =
+        match p.Aspect with
+        | Some Aspect.Equal when p.Layers.Length > 0 && f.Probe.Width > 0.0<px> && f.Probe.Height > 0.0<px> ->
+            let sx, sy = axisScalesErased p
+            let (x0, x1), (y0, y1) = sx.Domain, sy.Domain
+            let xs = abs (x1 - x0) * sx.ToSI
+            let ys = abs (y1 - y0) * sy.ToSI
+            let want = float (f.Probe.Height / f.Probe.Width)
+
+            if xs = 0.0 || ys = 0.0 || abs (ys / xs / want - 1.0) < 1e-9 then
+                p
+            else
+                let grow (lo: float, hi: float) (k: float) =
+                    let c = (lo + hi) / 2.0
+                    let half = (hi - lo) / 2.0 * k
+                    c - half, c + half
+
+                let dx, dy =
+                    if ys / xs < want then None, Some(grow (y0, y1) (want / (ys / xs)))
+                    else Some(grow (x0, x1) ((ys / xs) / want)), None
+
+                { p with Layers = p.Layers |> Array.map (fun l -> { l with Data = withDomains dx (if onSecond p l then None else dy) l.Data }) }
+        | _ -> p
 
     /// §9 / D48 — **give every panel of a figure the same axes.** What makes a grid of panels a
     /// facet rather than a page of unrelated charts.
@@ -2329,6 +2435,37 @@ module Figure =
 
         Layout.grid trackRows trackCols cells |> Layout.withPadding theme.FigurePadding
 
+    /// D179 — **the plot held to its shape**: a panel that asks for one has its plot shrunk to it
+    /// inside its region and centred, as slack on the two sides that give way. Applied last, after
+    /// the panels are lined up, so a neighbour keeps its rectangle and only this panel's plot moves
+    /// out of line. The probe becomes the plot's exact size, which `fitAspect` holds each frame to.
+    let private withAspects
+        (outer: Arrangement)
+        (ratioOf: string -> float option)
+        (rescore: string -> Rect<px> -> PanelLayout -> float[])
+        (layouts: (string * PanelLayout)[])
+        : (string * PanelLayout)[] =
+        layouts
+        |> Array.map (fun (key, l) ->
+            match ratioOf key, Layout.tryFindPx key outer with
+            | Some r, Some region ->
+                let w = Rect.width region - PanelLayout.left l - PanelLayout.right l
+                let h = Rect.height region - PanelLayout.top l - PanelLayout.bottom l
+
+                if w <= 0.0<px> || h <= 0.0<px> then
+                    key, l
+                else
+                    let shaped =
+                        if h > r * w then
+                            let d = (h - r * w) / 2.0
+                            { l with SlackTop = l.SlackTop + d; SlackBottom = l.SlackBottom + d; Probe = { Width = w; Height = r * w } }
+                        else
+                            let d = (w - h / r) / 2.0
+                            { l with SlackLeft = l.SlackLeft + d; SlackRight = l.SlackRight + d; Probe = { Width = h / r; Height = h } }
+
+                    key, (if shaped.LegendScores.Length = 4 then { shaped with LegendScores = rescore key region shaped } else shaped)
+            | _ -> key, l)
+
     /// D173 — pass 2: the measured layouts lined up, the outer grid rebuilt around their gutters,
     /// and each panel's probe set to the plot it now has. A figure of one panel has nothing to
     /// line up with and keeps pass 1 exactly.
@@ -2488,6 +2625,14 @@ module Figure =
 
         let outer, panels = placeAligned m extent None fig outer rescore panels
 
+        let ratioOf (key: string) =
+            fig.Panels
+            |> Array.filter (fun p -> sprintf "panel-%d-%d" p.Row p.Col = key)
+            |> Array.map (fun p -> unify p)
+            |> aspectOf
+
+        let panels = withAspects outer ratioOf rescore panels
+
         { Outer = outer
           Panels = panels
           Samples = 1
@@ -2633,6 +2778,12 @@ module Figure =
 
         let outer, panels = placeAligned m extent (Some head) template outer rescore panels
 
+        // D179 — the box from the union of every state's domains, so each fits it.
+        let ratioOf (key: string) =
+            entries |> Array.filter (fun (k, _) -> k = key) |> Array.map (fun (_, (_, _, unified)) -> unified) |> aspectOf
+
+        let panels = withAspects outer ratioOf rescore panels
+
         { Outer = outer
           Panels = panels
           Samples = raw.Length
@@ -2708,7 +2859,7 @@ module Figure =
                 match Layout.tryFindPx key shot.Outer, frozen with
                 | Some region, Some f ->
                     let _, needed, _ =
-                        compilePanel m fig.Theme extent region (Some f) (None, None, None) (letterHeight m fig) (unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p)))
+                        compilePanel m fig.Theme extent region (Some f) (None, None, None) (letterHeight m fig) (fitAspect f (unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p))))
 
                     let n = needed ()
 
@@ -2744,7 +2895,7 @@ module Figure =
             | 0, _, _ -> None
             | _, Some region, Some f ->
                 let plot = Layout.findPx "plot" (innerGrid m shot.Outer.Extent region f)
-                let unified = unify p
+                let unified = fitAspect f (unify p)
                 let sx, sy = axisScalesErased unified
                 let ax, ay = axisSpecs fig.Theme (f.XPrefix, f.YPrefix) unified
                 let second = secondaryOf unified
@@ -2758,6 +2909,7 @@ module Figure =
                       Y = sy
                       XAxis = ax
                       YAxis = ay
+                      EqualAspect = (p.Aspect = Some Aspect.Equal)
                       Y2 = second |> Option.map (fun sp -> snd (axisScalesErased sp))
                       Y2Axis = second |> Option.map (fun sp -> snd (axisSpecs fig.Theme (f.XPrefix, f.Y2Prefix) sp)) }
             | _ -> None)
@@ -2854,7 +3006,9 @@ module Figure =
                 | None -> Scene.empty
                 | Some region ->
                     let frozen = shot.Panels |> Array.tryPick (fun (k, l) -> if k = key then Some l else None)
-                    let _, _, draw = compilePanel m theme extent region frozen (None, None, None) (letterHeight m fig) (unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p)))
+                    let unified = unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p))
+                    let unified = match frozen with Some f -> fitAspect f unified | None -> unified
+                    let _, _, draw = compilePanel m theme extent region frozen (None, None, None) (letterHeight m fig) unified
                     draw ())
 
         // D165 — the panels' letters, in reading order, at the top left of each panel's region,

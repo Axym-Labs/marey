@@ -486,6 +486,35 @@ let secondaryFigure: Figure =
 
 let secondarySurface: Extent<px> = { Width = 760.0<px>; Height = 300.0<px> }
 
+/// D179 — a circle of 2 mm round an ellipse, drawn round because one millimetre is as long on y
+/// as on x, beside a panel that keeps its rectangle. The rational parametrisation of the circle
+/// (D141).
+let aspectFigure: Figure =
+    let ts = Array.init 41 (fun i -> -1.0 + 2.0 * float i / 40.0)
+
+    // t from −1 to 1 is the right half, from the bottom round to the top; mirrored, the left half
+    // comes back down to where it started.
+    let circle (rx: float<m>) (ry: float<m>) =
+        let right = ts |> Array.map (fun t -> rx * (1.0 - t * t) / (1.0 + t * t), ry * 2.0 * t / (1.0 + t * t))
+        Array.append right (right |> Array.rev |> Array.map (fun (x, y) -> -x, y))
+
+    let c = circle 2e-3<m> 2e-3<m>
+    let e = circle 1.5e-3<m> 0.6e-3<m>
+
+    let orbit =
+        Chart.line U.metre U.metre (Array.map fst c) (Array.map snd c)
+        |> Chart.withName "circle"
+        |> Chart.addLine U.metre U.metre (Array.map fst e) (Array.map snd e)
+        |> Chart.withName "ellipse"
+        |> Chart.withLegend LegendOutsideRight
+        |> Chart.withEqualAspect
+
+    let ts2 = Array.init 21 (fun i -> float i * 30.0<s>)
+    let warming = Chart.line U.second U.kelvin ts2 (ts2 |> Array.map (fun t -> 280.0<K> + 50.0<K> * (t / (t + 150.0<s>))))
+    orbit |> Chart.beside warming |> Chart.withTheme Theme.publication
+
+let aspectSurface: Extent<px> = { Width = 760.0<px>; Height = 300.0<px> }
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
@@ -1277,7 +1306,8 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-mosaic" mosaicSurface mosaicFigure
         fig "figure-shared" sharedSurface sharedFigure
         fig "figure-twin" twinSurface twinFigure
-        fig "figure-secondary" secondarySurface secondaryFigure ]
+        fig "figure-secondary" secondarySurface secondaryFigure
+        fig "figure-aspect" aspectSurface aspectFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1306,4 +1336,5 @@ let svg: (string * (unit -> string)) list =
         "figure-mosaic", figureAt mosaicSurface mosaicFigure
         "figure-shared", figureAt sharedSurface sharedFigure
         "figure-twin", figureAt twinSurface twinFigure
-        "figure-secondary", figureAt secondarySurface secondaryFigure ]
+        "figure-secondary", figureAt secondarySurface secondaryFigure
+        "figure-aspect", figureAt aspectSurface aspectFigure ]

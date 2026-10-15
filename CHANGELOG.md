@@ -85,6 +85,12 @@ land in a minor release.
   monotone, and inverse to each other. Ticks are chosen in the secondary unit and placed through
   the inverse. `withTopAxisLabel`; `AxisConfig.Secondary`, `SecondaryAxis`, `SecondaryMap`,
   `Keys.axisX2`.
+- **Equal aspect** (D179): `Chart.withEqualAspect` holds one unit as long on y as on x, the plot
+  shrunk to the domain's shape and centred in its cell; both axes linear and of one dimension,
+  compared in SI. An animation keeps one box over the union of its frames and widens each frame's
+  domain to it; a live zoom is widened to the plot's shape, so the plot does not move.
+  `withBoxAspect` states the plot's height over width. `Panel.Aspect`, `PanelView.EqualAspect`,
+  `PanelView.fitEqual`.
 - C# extensions for every verb above, and `Figures.Mosaic`.
 - **`examples/paper-figure.fsx`**: a fit over its residuals, and a spectrum with its lines marked.
 
@@ -113,9 +119,9 @@ land in a minor release.
   `Panel` (`LegendColumns`, `LegendFrame`), `Figure` (`Letters`, `Legend`), `PanelLayout`
   (`LegendGap`, `LegendW`, `LegendH`, `LegendScores`), `AxisRender` (`Direction`, `Mirror`,
   `ShowMinor`), and `Theme` (`TickDirection`, `MirrorTicks`, `MinorTicks`, `MinorTickLength`).
-  M9 adds `Layer.SecondaryY`, `Panel` (`RowSpan`, `ColSpan`, `XShare`, `YShare`, `Y2Axis`), `Figure` (`RowWeights`,
+  M9 adds `Layer.SecondaryY`, `Panel` (`RowSpan`, `ColSpan`, `XShare`, `YShare`, `Y2Axis`, `Aspect`), `Figure` (`RowWeights`,
   `ColWeights`), `AxisConfig.ShowTickLabels` and `PanelLayout` (`SlackLeft`, `SlackRight`,
-  `SlackTop`, `SlackBottom`, `Y2TicksW`, `Y2TitleW`, `Y2Prefix`, `X2TicksH`, `X2TitleH`), `AxisConfig.Secondary`, `PanelView` (`Y2`, `Y2Axis`),
+  `SlackTop`, `SlackBottom`, `Y2TicksW`, `Y2TitleW`, `Y2Prefix`, `X2TicksH`, `X2TitleH`), `AxisConfig.Secondary`, `PanelView` (`Y2`, `Y2Axis`, `EqualAspect`),
   and `ZoomAxis.Y2`, which breaks an exhaustive `match` over it. `LegendPlacement` gains three cases, which breaks an exhaustive `match` over it, and `Geom` two
   (`GeomRule`, `GeomAnnotation`).
 

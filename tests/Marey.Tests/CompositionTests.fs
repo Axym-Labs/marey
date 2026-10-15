@@ -565,3 +565,91 @@ module ``D178 secondary axes`` =
             |> Chart.withRightAxisIn NonSi.degreeCelsius
         let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
         Assert.Contains("one right side", e.Message)
+
+module ``D179 aspect`` =
+
+    let private square (half: float<m>) (halfY: float<m>) =
+        let xs = Array.init 41 (fun i -> -half + 2.0 * half * float i / 40.0)
+        let ys = Array.init 41 (fun i -> -halfY + 2.0 * halfY * float i / 40.0)
+        Chart.scatter U.metre U.metre xs ys
+
+    let private pxPerMetre (v: PanelView) =
+        let (x0, x1), (y0, y1) = v.X.Domain, v.Y.Domain
+        float (v.Plot.X1 - v.Plot.X0) / abs (x1 - x0), float (v.Plot.Y1 - v.Plot.Y0) / abs (y1 - y0)
+
+    let private equalTo (tolerance: float) (v: PanelView) =
+        let px, py = pxPerMetre v
+        abs (px / py - 1.0) < tolerance
+
+    [<Fact>]
+    let ``C6's maps have one millimetre as long on y as on x (gate 7)`` () =
+        let map = square 4e-3<m> 4e-3<m> |> Chart.withEqualAspect
+        let views = map |> Chart.beside map |> viewsOf (Chart.size 750.0 340.0)
+        for v in views do
+            Assert.True(equalTo 1e-3 v, sprintf "%A px per m" (pxPerMetre v))
+
+    [<Fact>]
+    let ``an 8 mm by 2 mm domain draws a plot four times as wide as tall (gate 7)`` () =
+        let v = (square 4e-3<m> 1e-3<m> |> Chart.withEqualAspect |> viewsOf (Chart.size 600.0 400.0)).[0]
+        let w, h = float (v.Plot.X1 - v.Plot.X0), float (v.Plot.Y1 - v.Plot.Y0)
+        let (x0, x1), (y0, y1) = v.X.Domain, v.Y.Domain
+        Assert.Equal((x1 - x0) / (y1 - y0), w / h, 6)
+        Assert.True(equalTo 1e-6 v)
+
+    [<Fact>]
+    let ``ångström against metres are one dimension, compared in SI`` () =
+        let xs = Array.init 11 (fun i -> float i * 1e-9<m>)
+        let ys = Array.init 11 (fun i -> float (i * i) * 0.5<angstrom>)
+        let fig = Chart.scatter U.metre NonSi.angstrom xs ys |> Chart.withEqualAspect
+        let v = (viewsOf (Chart.size 500.0 400.0) fig).[0]
+        let w, h = float (v.Plot.X1 - v.Plot.X0), float (v.Plot.Y1 - v.Plot.Y0)
+        let (x0, x1), (y0, y1) = v.X.Domain, v.Y.Domain
+        Assert.Equal(((y1 - y0) * 1e-10) / (x1 - x0), h / w, 6)
+
+    [<Fact>]
+    let ``two dimensions are refused, at the call and when drawn (gate 7)`` () =
+        let e = Assert.ThrowsAny<exn>(fun () -> fit |> Chart.withEqualAspect |> ignore)
+        Assert.Contains("one dimension on both axes", e.Message)
+
+    [<Fact>]
+    let ``a log axis is refused`` () =
+        let fig = square 4e-3<m> 4e-3<m> |> Chart.withEqualAspect |> Chart.withXLog
+        let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer (Chart.size 500.0 400.0) fig |> ignore)
+        Assert.Contains("two linear axes", e.Message)
+
+    [<Fact>]
+    let ``a stated box aspect holds whatever the domains`` () =
+        let v = (fit |> Chart.withBoxAspect 0.5 |> viewsOf (Chart.size 600.0 500.0)).[0]
+        Assert.Equal(0.5, float ((v.Plot.Y1 - v.Plot.Y0) / (v.Plot.X1 - v.Plot.X0)), 6)
+
+    [<Fact>]
+    let ``a neighbour keeps its rectangle`` () =
+        let map = square 4e-3<m> 4e-3<m>
+        let plain = viewsOf (Chart.size 750.0 340.0) (fit |> Chart.beside map)
+        let shaped = viewsOf (Chart.size 750.0 340.0) (fit |> Chart.beside (map |> Chart.withEqualAspect))
+        Assert.Equal(plain.[0].Plot, shaped.[0].Plot)
+
+    [<Fact>]
+    let ``a live zoom to a tall rectangle keeps the plot and equal aspect (gate 7)`` () =
+        let l: Live = interact { return square 4e-3<m> 4e-3<m> |> Chart.withEqualAspect }
+        let s0 = Live.init l
+        let v = (Live.panels l s0).[0]
+        let w = v.Plot.X1 - v.Plot.X0
+        // A drag a fifth as wide as it is tall.
+        let s1 = Live.step l s0 (Zoom { X0 = v.Plot.X0 + 0.4 * w; Y0 = v.Plot.Y0 + 10.0<px>; X1 = v.Plot.X0 + 0.5 * w; Y1 = v.Plot.Y1 - 10.0<px> })
+        let v1 = (Live.panels l s1).[0]
+        Assert.NotEqual(v.X.Domain, v1.X.Domain)
+        Assert.True(abs (float ((v1.Plot.X1 - v1.Plot.X0) - w)) < 1.0, sprintf "plot width %g against %g" (float (v1.Plot.X1 - v1.Plot.X0)) (float w))
+        Assert.True(equalTo 1e-3 v1, sprintf "%A px per m" (pxPerMetre v1))
+
+    [<Fact>]
+    let ``an animation whose domain changes shape keeps one box, equal on every frame (gate 9)`` () =
+        let frame (u: float) = square 4e-3<m> ((1.0 + 3.0 * u) * 1e-3<m>) |> Chart.withEqualAspect
+        let extent = Chart.size 600.0 400.0
+        let shot = Figure.arrangeUnion 8 measurer extent frame
+        let first = (Chart.panelsIn measurer shot (frame 0.0)).[0]
+
+        for k in 0..7 do
+            let v = (Chart.panelsIn measurer shot (frame (float k / 7.0))).[0]
+            Assert.Equal(first.Plot, v.Plot)
+            Assert.True(equalTo 1e-6 v, sprintf "frame %d: %A px per m" k (pxPerMetre v))
