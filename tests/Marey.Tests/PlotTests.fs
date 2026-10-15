@@ -566,6 +566,136 @@ module Rules =
         | [] -> failwith "no rule drawn"
 
 // ======================================================================================
+// D164 / D165 — annotations, panel text and panel letters
+// ======================================================================================
+
+module Annotations =
+
+    let private t = [| 0.0<s>; 1.0<s>; 2.0<s> |]
+    let private x = [| 1.0<m>; 2.0<m>; 3.0<m> |]
+    let private surface = Chart.size 400.0 300.0
+
+    let rec private annotated (n: Node) : (Semantics * Node) list =
+        match n with
+        | Annotated(s, inner) -> (s, inner) :: annotated inner
+        | Group ns -> ns |> Array.toList |> List.collect annotated
+        | Transform(_, c)
+        | Clip(_, c)
+        | Opacity(_, c)
+        | Keyed(_, c) -> annotated c
+        | _ -> []
+
+    let rec private texts (n: Node) : TextRun list =
+        match n with
+        | Text r -> [ r ]
+        | Group ns -> ns |> Array.toList |> List.collect texts
+        | Transform(_, c)
+        | Clip(_, c)
+        | Opacity(_, c)
+        | Keyed(_, c)
+        | Annotated(_, c) -> texts c
+        | _ -> []
+
+    /// The annotation layers, by their role and the `points` every layer writes.
+    let private notes (fig: Figure) =
+        Chart.toScene surface fig
+        |> annotated
+        |> List.filter (fun (s, _) -> s.Role = RoleAnnotation && s.Data |> Array.exists (fun (k, _) -> k = "points"))
+
+    let private textOf (fig: Figure) (label: string) =
+        notes fig |> List.collect (snd >> texts) |> List.find (fun r -> r.Text = label)
+
+    let private peak () =
+        Chart.line U.second U.metre t x |> Chart.annotate U.second U.metre 1.0<s> 2.0<m> "peak"
+
+    /// Labelling a point never moves the axes, and labelling one off the panel draws nothing and
+    /// counts it.
+    [<Fact>]
+    let ``an annotation stays out of the domain, and one off the panel is counted`` () =
+        let alone = Figure.unify (Chart.line U.second U.metre t x).Panels.[0]
+        let marked = Figure.unify (peak () |> Chart.annotate U.second U.metre 9.0<s> 9.0<m> "far").Panels.[0]
+        let domains (p: Panel) =
+            let sx, sy = Erase.seriesScales p.Layers.[0].Data
+            sx.Domain, sy.Domain
+
+        Assert.Equal(domains alone, domains marked)
+
+        let panel =
+            Chart.toScene surface (peak () |> Chart.annotate U.second U.metre 9.0<s> 9.0<m> "far")
+            |> annotated
+            |> List.find (fun (s, _) -> s.Role = RoleOther "panel")
+            |> fst
+
+        Assert.Contains(("dropped-marks", "1"), panel.Data)
+
+    /// G11 — an annotation is read with the axes: the theme's foreground, recoloured by a
+    /// retheme, unless it was coloured by hand.
+    [<Fact>]
+    let ``an annotation takes the theme's foreground and follows a retheme`` () =
+        Assert.Equal(Solid Theme.modern.Foreground, (textOf (peak ()) "peak").Paint)
+        Assert.Equal(Solid Theme.dark.Foreground, (textOf (peak () |> Chart.withTheme Theme.dark) "peak").Paint)
+
+        let chosen = peak () |> Chart.withColor Palette.vermillion |> Chart.withTheme Theme.dark
+        Assert.Equal(Solid Palette.vermillion, (textOf chosen "peak").Paint)
+
+    /// G3 — the text moves with its point under a zoom; text placed in the panel does not.
+    [<Fact>]
+    let ``an annotation follows its point and panel text stays put`` () =
+        let fig = peak () |> Chart.addPanelText 0.98 0.98 "note"
+        let zoomed = fig |> Chart.withPanelDomains (0, 0) (Some(0.0, 1.5)) (Some(1.0, 2.8))
+        Assert.NotEqual((textOf fig "peak").At, (textOf zoomed "peak").At)
+        Assert.Equal((textOf fig "note").At, (textOf zoomed "note").At)
+        Assert.Equal(AnchorEnd, (textOf fig "note").Anchor)
+        Assert.Equal(BaselineHanging, (textOf fig "note").Baseline)
+
+    /// The text is anchored on the side facing its point, and an arrow is drawn with a head.
+    [<Fact>]
+    let ``an arrow leaves the text toward its point and ends in a head`` () =
+        let fig = peak () |> Chart.withTextOffset 20.0<px> 20.0<px> |> Chart.withArrow ArrowStraight
+        let run = textOf fig "peak"
+        Assert.Equal(AnchorStart, run.Anchor)
+        Assert.Equal(BaselineAlphabetic, run.Baseline)
+
+        let paths =
+            notes fig
+            |> List.collect (fun (_, n) ->
+                let rec walk n =
+                    match n with
+                    | Path(segs, stroke, fill, _) -> [ segs, stroke.IsSome, fill.IsSome ]
+                    | Group ns -> ns |> Array.toList |> List.collect walk
+                    | _ -> []
+
+                walk n)
+
+        Assert.Contains(paths, fun (_, stroked, filled) -> stroked && not filled)
+        Assert.Contains(paths, fun (segs, stroked, filled) -> filled && not stroked && segs.Length = 4)
+
+        let arced = peak () |> Chart.withTextOffset 20.0<px> 20.0<px> |> Chart.withArrow (ArrowArc 0.3)
+        let curved = notes arced |> List.exists (fun (_, n) -> (sprintf "%A" n).Contains "CubicTo")
+        Assert.True curved
+
+    /// Panel letters in reading order, assigned when the figure is drawn, so a panel added after
+    /// the call is lettered too.
+    [<Fact>]
+    let ``panel letters go in reading order and reach panels added later`` () =
+        let one = Chart.line U.second U.metre t x
+        let fig = (one |> Chart.withPanelLetters LetterParen |> Chart.beside one) |> Chart.above (one |> Chart.beside one)
+
+        let letters =
+            Chart.toScene surface fig
+            |> annotated
+            |> List.choose (fun (s, _) -> s.Data |> Array.tryPick (fun (k, v) -> if k = "letter" then Some v else None))
+
+        Assert.Equal<string list>([ "(a)"; "(b)"; "(c)"; "(d)" ], letters)
+
+        let upper =
+            Chart.toScene surface (one |> Chart.withPanelLetters LetterUpper)
+            |> annotated
+            |> List.choose (fun (s, _) -> s.Data |> Array.tryPick (fun (k, v) -> if k = "letter" then Some v else None))
+
+        Assert.Equal<string list>([ "A" ], upper)
+
+// ======================================================================================
 // D45 — the level set, and the categorical front door
 // ======================================================================================
 

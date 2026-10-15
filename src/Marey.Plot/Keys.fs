@@ -132,6 +132,9 @@ module Keys =
 
     let colorbar (panelKey: Key) = child panelKey "colorbar"
 
+    /// D165 — the panel's letter, "(a)", a sibling of its axes rather than one of its layers.
+    let letter (panelKey: Key) = child panelKey "letter"
+
     /// Does `ancestor` name `key`, or something `key` sits under?
     ///
     /// A key is a path, so this is a prefix test — but on *segments*, not on characters.

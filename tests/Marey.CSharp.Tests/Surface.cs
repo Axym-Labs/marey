@@ -96,6 +96,27 @@ public class Surface
         Assert.ThrowsAny<Exception>(() => Svg(Chart.Line(X, Y, yUnit: Units.Metre).Add(Chart.HLine(1.0, Units.Second))));
     }
 
+    /// D164 / D165 — annotations, panel text and letters from C#.
+    [Fact]
+    public void AnnotationsAndLetters()
+    {
+        var fig = Chart.Line(X, Y, yUnit: Units.Metre)
+            .Add(Chart.Annotation(X[1], Y[1], "peak", yUnit: Units.Metre))
+            .WithTextOffset(12.0, 16.0)
+            .WithArrow(ArrowStyle.ArrowStraight)
+            .Add(Chart.Annotation(X[2], Y[2], "edge"))
+            .WithTextAt(X[0], Y[0])
+            .WithArrow(ArrowStyle.NewArrowArc(0.3))
+            .AddPanelText(0.98, 0.98, "note")
+            .Beside(Chart.Line(X, Y))
+            .WithPanelLetters(LetterStyle.LetterParen);
+
+        var svg = Svg(fig);
+        Assert.Contains("peak", svg);
+        Assert.Contains("note", svg);
+        Assert.Contains("(b)", svg);
+    }
+
     [Fact]
     public void TheCategoricalConstructors()
     {

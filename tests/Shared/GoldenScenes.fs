@@ -264,6 +264,52 @@ let rulesFigure: Figure =
 /// Two panels side by side.
 let rulesSurface: Extent<px> = { Width = 760.0<px>; Height = 320.0<px> }
 
+/// D164 / D165 — annotations and panel letters. Four emission lines marked with straight arrows
+/// (one label above the plot area, unclipped), one with an arc to a place in data space, a note
+/// in a corner, and the two panels lettered "(a)", "(b)" in reading order. The lines are drawn
+/// as triangles over exact values, not Gaussians, so Node compiles the same scene (D141).
+let annotateFigure: Figure =
+    let nm = 1e-9<m>
+    let lines = [| "Hδ", 410.0, 0.2; "Hγ", 434.0, 0.3; "Hβ", 486.0, 0.55; "Hα", 656.0, 1.0 |]
+
+    let lam, intensity =
+        [| yield 400.0, 0.03
+           for _, c, h in lines do
+               yield c - 2.0, 0.03
+               yield c, h
+               yield c + 2.0, 0.03
+           yield 700.0, 0.03 |]
+        |> Array.unzip
+
+    let mutable spectrum =
+        Chart.line U.metre U.one (lam |> Array.map (fun l -> l * nm)) intensity
+        |> Chart.withName "observed"
+        |> Chart.withLegend LegendTopLeft
+
+    for name, c, h in lines do
+        spectrum <-
+            spectrum
+            |> Chart.annotate U.metre U.one (c * nm) h name
+            |> Chart.withTextOffset 10.0<px> 16.0<px>
+            |> Chart.withArrow ArrowStraight
+
+    let spectrum =
+        spectrum
+        |> Chart.annotate U.metre U.one (486.0 * nm) 0.3 "filter edge"
+        |> Chart.withTextAt U.metre U.one (560.0 * nm) 0.6
+        |> Chart.withArrow (ArrowArc 0.3)
+        |> Chart.addPanelText 0.98 0.5 "T = 10⁴ K"
+
+    let decay =
+        Chart.scatter U.second U.metre [| 0.0<s>; 1.0<s>; 2.0<s>; 3.0<s> |] [| 4.0<m>; 2.0<m>; 1.0<m>; 0.5<m> |]
+        |> Chart.annotate U.second U.metre 2.0<s> 1.0<m> "half-life"
+        |> Chart.withTextOffset 12.0<px> 12.0<px>
+        |> Chart.withArrow ArrowStraight
+
+    spectrum |> Chart.withPanelLetters LetterParen |> Chart.beside decay
+
+let annotateSurface: Extent<px> = { Width = 760.0<px>; Height = 320.0<px> }
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
@@ -1046,7 +1092,8 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-field-quiver" wide Fields.quiverFigure
         fig "figure-field-streamlines" wide Fields.streamlinePortrait
         fig "figure-field-portrait" wide Fields.phasePortrait
-        fig "figure-rules" rulesSurface rulesFigure ]
+        fig "figure-rules" rulesSurface rulesFigure
+        fig "figure-annotate" annotateSurface annotateFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1066,4 +1113,5 @@ let svg: (string * (unit -> string)) list =
         "figure-field-quiver", figureAt wide Fields.quiverFigure
         "figure-field-streamlines", figureAt wide Fields.streamlinePortrait
         "figure-field-portrait", figureAt wide Fields.phasePortrait
-        "figure-rules", figureAt rulesSurface rulesFigure ]
+        "figure-rules", figureAt rulesSurface rulesFigure
+        "figure-annotate", figureAt annotateSurface annotateFigure ]

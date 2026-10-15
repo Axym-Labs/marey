@@ -989,6 +989,65 @@ module Chart =
                 { l with InDomain = inDomain })
             fig
 
+    // ---- Annotations (D164, D165) ------------------------------------------------------------
+
+    /// An annotation's layer: one point, the place it marks, out of the domain on both axes
+    /// (D163), so labelling a point never moves the axes. The theme's foreground, not a palette
+    /// colour. Text starts 6 px up and to the right of the point, so it does not cover the mark.
+    let private annotationLayer (theme: Theme) (i: int) (text: string) (placement: TextPlacement<1>) (data: PackedSeries) : Layer =
+        { layerOf "" theme i (GeomAnnotation(text, placement, ArrowNone)) data with
+            Style = Geom.annotationStyle theme
+            InDomain = (false, false) }
+
+    let private besidePoint: TextPlacement<1> = TextOffset { X = 6.0<px>; Y = 6.0<px> }
+
+    let internal annotation (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (text: string) : Figure =
+        figureOf [| annotationLayer Theme.initial 0 text besidePoint (Erase.packSeries (series "" ux uy [| x |] [| y |])) |]
+
+    let internal annotate (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (text: string) (fig: Figure) : Figure =
+        fig
+        |> addLayers (fun i -> [| annotationLayer fig.Theme i text besidePoint (Erase.packSeries (series "" ux uy [| x |] [| y |])) |])
+
+    let private mapAnnotation (f: string * TextPlacement<1> * ArrowStyle -> string * TextPlacement<1> * ArrowStyle) (fig: Figure) =
+        mapLastLayer
+            (fun l ->
+                match l.Geom with
+                | GeomAnnotation(text, placement, arrow) -> { l with Geom = GeomAnnotation(f (text, placement, arrow)) }
+                | _ -> l)
+            fig
+
+    /// D164 — put the most recent annotation's text `dx`, `dy` px from its point, y up. A device
+    /// offset is the default kind, because it stays put under a zoom and a change of figure size.
+    let withTextOffset (dx: float<px>) (dy: float<px>) (fig: Figure) : Figure =
+        mapAnnotation (fun (text, _, arrow) -> text, TextOffset { X = dx; Y = dy }, arrow) fig
+
+    /// D164 — put the most recent annotation's text at a place in data space, in the axes' units.
+    /// `Marey.UnitsOfMeasure` has the spelling that takes a witness per axis.
+    let withTextAt (x: float) (y: float) (fig: Figure) : Figure =
+        mapAnnotation (fun (text, _, arrow) -> text, TextAt(x, y), arrow) fig
+
+    /// D164 — an arrow from the most recent annotation's text to its point: `ArrowStraight`, or
+    /// `ArrowArc bend` for a curve bent `bend` times its length to the left.
+    let withArrow (arrow: ArrowStyle) (fig: Figure) : Figure =
+        mapAnnotation (fun (text, placement, _) -> text, placement, arrow) fig
+
+    /// D165 — text in the last panel's plot area at (`x`, `y`), as fractions of its width and
+    /// height from the bottom left: a note in a corner. It is anchored on the side it is near, so
+    /// `(0.98, 0.98)` hangs from the top right corner. For panel letters, `withPanelLetters`.
+    let addPanelText (x: float) (y: float) (text: string) (fig: Figure) : Figure =
+        let data = Erase.packSeries (series "" U.unspecified U.unspecified [| nan |] [| nan |])
+        fig |> addLayers (fun i -> [| annotationLayer fig.Theme i text (TextInPanel(x, y)) data |])
+
+    /// D165 — **letter the panels**, "(a)", "(b)", … in reading order (row, then column), at the
+    /// top left of each plot area in the panel-title face, bold. Assigned when the figure is
+    /// drawn, so a panel added afterwards by `beside` or `above` is lettered too.
+    let withPanelLetters (letter: LetterStyle) (fig: Figure) : Figure =
+        { fig with Letters = Some { Letter = letter; Bold = true } }
+
+    /// `withPanelLetters`, saying whether the letters are bold.
+    let withPanelLettersWith (letter: LetterStyle) (bold: bool) (fig: Figure) : Figure =
+        { fig with Letters = Some { Letter = letter; Bold = bold } }
+
     /// Label the points of the most recently added series, one string per point.
     ///
     /// **It reuses that layer's own data and style**, which is the whole reason it is a
@@ -1664,6 +1723,18 @@ type Chart =
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure =
         Chart.lineThrough (U.erase xUnit) (U.erase yUnit) x y slope
+
+    /// D164 — text marking the point (`x`, `y`), to `add` over a figure, without moving its
+    /// domain. Offset, arrow and placement are `Chart.withTextOffset`, `withArrow`, `withTextAt`.
+    static member Annotation
+        (
+            x: float,
+            y: float,
+            text: string,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.annotation (U.erase xUnit) (U.erase yUnit) x y text
 
     /// A least-squares line, to `add` over the data it was fitted to.
     static member Fit

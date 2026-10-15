@@ -365,7 +365,27 @@ module Chart =
     let lineThrough (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (slope: float<'uy / 'ux>) : Figure =
         Marey.Chart.lineThrough ux uy x y slope
 
+    // ---- Annotations (D164) -------------------------------------------------------------------
+
+    /// Text marking the point (`x`, `y`) on the last panel, 6 px up and to the right of it,
+    /// without moving the domain. `withTextOffset`, `withTextAt` and `withArrow` place it and
+    /// point at the point; `withColor` and `withStyle` restyle it.
+    let annotate (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (text: string) (fig: Figure) : Figure =
+        Marey.Chart.annotate ux uy x y text fig
+
+    /// A figure that is only an annotation, for `Chart.add`.
+    let annotation (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (text: string) : Figure =
+        Marey.Chart.annotation ux uy x y text
+
+    /// Put the most recent annotation's text at a place in data space, checked against the axes'
+    /// witnesses.
+    let withTextAt (_ux: U<'ux>) (_uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (fig: Figure) : Figure =
+        Marey.Chart.withTextAt (float x) (float y) fig
+
     // ---- The shadows -------------------------------------------------------------------------
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so an annotation takes a witness per axis: Chart.annotate or Chart.annotation. Chart.Annotation(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+    let Annotation (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
 
     [<Obsolete("Marey.UnitsOfMeasure is open, so a rule takes a witness: Chart.addHLine or Chart.hLine. Chart.HLine(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
     let HLine (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."

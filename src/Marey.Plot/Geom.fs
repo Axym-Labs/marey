@@ -88,6 +88,27 @@ type RuleSpec<[<Measure>] 'p> =
     /// The band between two x values, up the panel.
     | SpanV of lo: float<'p> * hi: float<'p>
 
+/// D164 — where an annotation's text stands.
+[<NoComparison>]
+type TextPlacement<[<Measure>] 'p> =
+    /// A device offset from the point it marks, y up — matplotlib's `textcoords='offset
+    /// points'`, and the default, because it survives a zoom and a change of figure size where
+    /// a place in data space drifts across the label.
+    | TextOffset of Vec2<px>
+    /// A second place in data space.
+    | TextAt of x: float<'p> * y: float<'p>
+    /// D165 — a place in the plot area, as fractions of its width and height from the bottom
+    /// left, with no point to mark: a panel's "(a)", a note in a corner. It ignores the coord.
+    | TextInPanel of x: float * y: float
+
+/// D164 — the arrow from an annotation's text to the point it marks.
+type ArrowStyle =
+    | ArrowNone
+    | ArrowStraight
+    /// A quadratic arc bent by `bend` times the arrow's length to its left, as matplotlib's
+    /// `connectionstyle="arc3,rad=…"`.
+    | ArrowArc of bend: float
+
 /// M0's geoms (§16: "line/scatter/errorbar" by name), and M2 phase 6's.
 ///
 /// **`'p` is the space the numeric payloads live in**, and there are exactly two. A `Geom` —
@@ -168,6 +189,9 @@ type GeomOf<[<Measure>] 'p> =
     /// are not drawn; they are there so that its unit is checked against the axes like any
     /// layer's, and so that `withDomainIncluded` has a value to put in the domain.
     | GeomRule of RuleSpec<'p>
+    /// D164 / D165 — one piece of text, at a place relative to the layer's one point (the
+    /// point it marks) or in the plot area, with an optional arrow to the point.
+    | GeomAnnotation of text: string * placement: TextPlacement<'p> * arrow: ArrowStyle
 
 /// A geom in the series' data space — what every constructor returns and every `Layer` holds.
 type Geom = GeomOf<1>
@@ -242,11 +266,20 @@ module Geom =
                 Dash = [| 4.0<px>; 3.0<px> |]
                 Cap = Butt }
 
+    /// D164 — the style an annotation starts with: the theme's foreground, in the tick face, its
+    /// arrow as wide as the axis. An annotation is read with the axes, not as a series, so it
+    /// takes no palette colour.
+    let annotationStyle (theme: Theme) : GeomStyle =
+        { style theme theme.Foreground with
+            Width = theme.AxisWidth
+            Cap = Butt }
+
     /// The style a layer drawing `geom` starts with in palette slot `i`: what a constructor gives
     /// it, and what `Chart.withTheme` compares against to tell a default from a choice.
     let styleOf (theme: Theme) (i: int) (geom: GeomOf<'p>) : GeomStyle =
         match geom with
         | GeomRule r -> ruleStyle theme r
+        | GeomAnnotation _ -> annotationStyle theme
         | _ -> styleFor theme i
 
     let withColor (c: Color) (s: GeomStyle) = { s with Color = c }
@@ -555,6 +588,14 @@ module Geom =
                   W = w },
                 mark
             )
+        | GeomAnnotation(text, placement, arrow) ->
+            let placement =
+                match placement with
+                | TextAt(x, y) -> TextAt(fx x, fy y)
+                | TextOffset o -> TextOffset o
+                | TextInPanel(x, y) -> TextInPanel(x, y)
+
+            GeomAnnotation(text, placement, arrow)
         | GeomRule r ->
             GeomRule(
                 match r with
@@ -751,6 +792,112 @@ module Geom =
                     None
                 else
                     line [| pt (x0 + t0 * dx) (y0 + t0 * dy); pt (x0 + t1 * dx) (y0 + t1 * dy) |]
+
+    /// D164 / D165 — one annotation: its text, and an arrow from the text to the point it marks,
+    /// or `None` when that point is outside the panel (counted by the caller, D52). Text placed
+    /// in the panel (`TextInPanel`) marks no point and is always drawn.
+    ///
+    /// The text is anchored on the side facing the point: offset up and to the right, it starts
+    /// at its place and sits on it, so the place is the corner of its box nearest the point and
+    /// the arrow can leave from there without measuring the text. The arrow stops 3 px short of
+    /// the point, and its head is the streamlines' (`FieldMarks.arrowhead`).
+    let compileAnnotation
+        (coord: Coord)
+        (plotSize: Extent<px>)
+        (st: GeomStyle)
+        (text: string)
+        (placement: TextPlacement<nd>)
+        (arrow: ArrowStyle)
+        (anchor: Vec2<nd>)
+        : Node option =
+        let w, h = float plotSize.Width, float plotSize.Height
+        let paint = Solid(Color.withAlpha (st.Color.A * st.Opacity) st.Color)
+
+        let label (at: Vec2<nd>) (anchor: TextAnchor) (baseline: TextBaseline) =
+            Text
+                { Text = text
+                  Tex = None
+                  At = at
+                  Font = st.Font
+                  Paint = paint
+                  Anchor = anchor
+                  Baseline = baseline
+                  Rotation = 0.0<rad> }
+
+        let side (v: float) (low: 'a) (middle: 'a) (high: 'a) =
+            if v < 1.0 / 3.0 then low elif v > 2.0 / 3.0 then high else middle
+
+        let inside (p: Vec2<nd>) =
+            let x, y = float p.X, float p.Y
+            x >= -1e-9 && x <= 1.0 + 1e-9 && y >= -1e-9 && y <= 1.0 + 1e-9
+
+        match placement with
+        | TextInPanel(x, y) ->
+            Some(label (at (nd x) (nd y)) (side x AnchorStart AnchorMiddle AnchorEnd) (side y BaselineAlphabetic BaselineMiddle BaselineHanging))
+        | _ when not (finite anchor) || not (inside anchor) || w <= 0.0 || h <= 0.0 -> None
+        | _ ->
+            let mapPt (v: Vec2<nd>) = if Coord.isIdentity coord then v else coord.ToPanel v
+            let toPx (v: Vec2<nd>) = float v.X * w, float v.Y * h
+            let toNd (x: float, y: float) = at (nd (x / w)) (nd (y / h))
+            let ax, ay = toPx (mapPt anchor)
+
+            let tx, ty =
+                match placement with
+                | TextOffset o -> ax + float o.X, ay + float o.Y
+                | TextAt(x, y) -> toPx (mapPt (at x y))
+                | TextInPanel _ -> ax, ay
+
+            let dx, dy = tx - ax, ty - ay
+            let d = sqrt (dx * dx + dy * dy)
+
+            let anchorH =
+                if d = 0.0 then AnchorMiddle
+                elif dx > 0.25 * d then AnchorStart
+                elif dx < -0.25 * d then AnchorEnd
+                else AnchorMiddle
+
+            let baselineV =
+                if d = 0.0 then BaselineMiddle
+                elif dy > 0.25 * d then BaselineAlphabetic
+                elif dy < -0.25 * d then BaselineHanging
+                else BaselineMiddle
+
+            let text = label (toNd (tx, ty)) anchorH baselineV
+            let head = FieldMarks.arrowheadLength st.Width
+
+            match arrow with
+            | ArrowNone -> Some text
+            | _ when d < 2.0 + 3.0 + 1.5 * head -> Some text
+            | _ ->
+                let ux, uy = -dx / d, -dy / d
+                let sx, sy = tx + 2.0 * ux, ty + 2.0 * uy
+                let ex, ey = ax - 3.0 * ux, ay - 3.0 * uy
+
+                // The shaft, and the direction it arrives in.
+                let shaft, (hx, hy) =
+                    match arrow with
+                    | ArrowArc bend ->
+                        let cx = (sx + ex) / 2.0 - bend * (ey - sy)
+                        let cy = (sy + ey) / 2.0 + bend * (ex - sx)
+                        let c1 = toNd (sx + 2.0 / 3.0 * (cx - sx), sy + 2.0 / 3.0 * (cy - sy))
+                        let c2 = toNd (ex + 2.0 / 3.0 * (cx - ex), ey + 2.0 / 3.0 * (cy - ey))
+                        let n = sqrt ((ex - cx) ** 2.0 + (ey - cy) ** 2.0)
+                        [| MoveTo(toNd (sx, sy)); CubicTo(c1, c2, toNd (ex, ey)) |], ((ex - cx) / n, (ey - cy) / n)
+                    | _ ->
+                        // Stopped at the middle of the head, so a butt end cannot show past its tip.
+                        [| MoveTo(toNd (sx, sy)); LineTo(toNd (ex - ux * head / 2.0, ey - uy * head / 2.0)) |], (ux, uy)
+
+                let corners = FieldMarks.arrowhead head (ex, ey) (hx, hy)
+                let struct (x0, y0) = corners.[0]
+                let struct (x1, y1) = corners.[1]
+                let struct (x2, y2) = corners.[2]
+
+                Some(
+                    Group
+                        [| Path(shaft, Some { strokeOf st with Dash = [||] }, None, NonZero)
+                           Path([| MoveTo(toNd (x0, y0)); LineTo(toNd (x1, y1)); LineTo(toNd (x2, y2)); ClosePath |], None, Some paint, NonZero)
+                           text |]
+                )
 
     /// The body of `compile`, with two parameters `compile` does not expose.
     ///
@@ -1301,6 +1448,9 @@ module Geom =
             // falls outside the panel; this is the same drawing for a geom compiled alone.
             | GeomRule rule -> compileRule coord st rule |> Option.defaultValue Scene.empty
 
+            | GeomAnnotation(text, placement, arrow) ->
+                compileAnnotation coord plotSize st text placement arrow pts.[0] |> Option.defaultValue Scene.empty
+
             | GeomViolin(profiles, widthFraction) ->
                 let half = (defaultArg spacing (medianSpacing pts)) * widthFraction * 0.5
 
@@ -1393,7 +1543,8 @@ module Geom =
                 // from its grid rather than from its points.
                 | GeomImage _
                 | GeomField _
-                | GeomRule _ -> None
+                | GeomRule _
+                | GeomAnnotation _ -> None
 
             compileWith address spacing (Some ix) coord plotSize st geom (ix |> Array.map (fun i -> all.[i]))
 
@@ -1454,3 +1605,5 @@ module Geom =
         | GeomRule(SpanH _)
         | GeomRule(SpanV _) -> LegendSwatch
         | GeomRule _ -> LegendLine st.Dash
+        // Unnamed and out of the legend unless a caller names it, as a text layer is.
+        | GeomAnnotation _ -> LegendSwatch

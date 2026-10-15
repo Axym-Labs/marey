@@ -83,6 +83,20 @@ type Panel =
       Coord: Coord
       Legend: LegendPlacement }
 
+/// D165 — how `Chart.withPanelLetters` writes a panel's letter.
+type LetterStyle =
+    /// (a), (b), (c) — the usual one in physics.
+    | LetterParen
+    /// a, b, c
+    | LetterPlain
+    /// a), b), c)
+    | LetterRightParen
+    /// A, B, C
+    | LetterUpper
+
+[<NoComparison>]
+type PanelLetters = { Letter: LetterStyle; Bold: bool }
+
 [<NoComparison>]
 type Figure =
     { Title: string
@@ -90,7 +104,10 @@ type Figure =
       Rows: int
       Cols: int
       Panels: Panel[]
-      Theme: Theme }
+      Theme: Theme
+      /// D165 — letters for the panels, assigned in reading order when the figure is drawn, so a
+      /// panel added by `beside` after the call is lettered too. `None` writes none.
+      Letters: PanelLetters option }
 
 /// §9 / D48 — **which axes the panels of a composed figure share.**
 ///
@@ -507,7 +524,8 @@ module Figure =
           Rows = (if panels.Length = 0 then 1 else 1 + (panels |> Array.map (fun p -> p.Row) |> Array.max))
           Cols = (if panels.Length = 0 then 1 else 1 + (panels |> Array.map (fun p -> p.Col) |> Array.max))
           Panels = panels
-          Theme = Theme.initial }
+          Theme = Theme.initial
+          Letters = None }
 
     // ---- Sharing an axis: the one runtime dimensional check --------------------------------
 
@@ -930,6 +948,16 @@ module Figure =
         Axes.specOfPinned pinX (unitStyle p.XAxis) p.XAxis.TickCount p.XAxis.Label AxisBottom xPacked,
         Axes.specOfPinned pinY (unitStyle p.YAxis) p.YAxis.TickCount p.YAxis.Label AxisLeft yPacked
 
+    /// D165 — the panel letters' face, and the height of the row they need: none without letters.
+    let private letterFont (theme: Theme) (letters: PanelLetters) =
+        { theme.PanelTitleFont with
+            Weight = (if letters.Bold then 700 else theme.PanelTitleFont.Weight) }
+
+    let private letterHeight (m: ITextMeasurer) (fig: Figure) : float<px> =
+        match fig.Letters with
+        | None -> 0.0<px>
+        | Some letters -> Rect.height (textBox m (letterFont fig.Theme letters) "(a)")
+
     /// Compile one panel into a device-space region.
     /// D72 — one function, two answers: the panel's frozen inner grid, and a thunk that draws
     /// the panel inside it.
@@ -953,6 +981,7 @@ module Figure =
         (region: Rect<px>)
         (frozen: PanelLayout option)
         (pins: Prefix option * Prefix option)
+        (letterH: float<px>)
         (p: Panel)
         : PanelLayout * (unit -> PanelLayout) * (unit -> Node) =
         if p.Layers.Length = 0 then
@@ -977,11 +1006,16 @@ module Figure =
 
             let xSpec, ySpec = axisSpecs theme (pinX, pinY) p
 
+            // D165 — a lettered figure's panels keep a title row for the letter, which stands at
+            // the row's left, above the axis title, clear of the data and of the legend.
             let titleH =
-                if isEmpty p.Title then
-                    0.0<px>
-                else
-                    Rect.height (textBox m theme.PanelTitleFont p.Title) + theme.TitleGap
+                let title =
+                    if isEmpty p.Title then
+                        0.0<px>
+                    else
+                        Rect.height (textBox m theme.PanelTitleFont p.Title) + theme.TitleGap
+
+                max title (if letterH > 0.0<px> then letterH + theme.TitleGap else 0.0<px>)
 
             // D49 — a continuous colour channel gets a colorbar, and the bar is a column of the
             // panel's own grid. The first one on the panel wins: two different colour scales on
@@ -1195,6 +1229,13 @@ module Figure =
                                     | None ->
                                         dropped.Value <- dropped.Value + 1
                                         Scene.empty, [||]
+                                | GeomAnnotation(text, placement, arrow) ->
+                                    // D164 — and an annotation whose point is off the panel.
+                                    match Geom.compileAnnotation p.Coord plotSize l.Style text placement arrow pts.[0] with
+                                    | Some node -> node, [||]
+                                    | None ->
+                                        dropped.Value <- dropped.Value + 1
+                                        Scene.empty, [||]
                                 | _ ->
                                     if l.Channels.Length = 0 then
                                         // No channels, no counts: an unchannelled layer's annotation is
@@ -1236,7 +1277,8 @@ module Figure =
                                     { Role =
                                         // D162 — a rule marks the axes rather than carrying data.
                                         (match l.Geom with
-                                         | GeomRule _ -> RoleAnnotation
+                                         | GeomRule _
+                                         | GeomAnnotation _ -> RoleAnnotation
                                          | _ -> RoleSeries)
                                       Label = (if isEmpty l.Name then "series" else l.Name)
                                       Data = Array.append [| "series", l.Name; "points", string pts.Length |] counts },
@@ -1244,7 +1286,25 @@ module Figure =
                                 )
                             ))
 
-                    Transform(Axes.panelTransform plotNd, Clip(Axes.panelShape p.Coord, Group layers))
+                    // D164 — an annotation's point is in the panel (one outside is dropped above),
+                    // but its text and arrow may reach past the plot area, as matplotlib's do, so
+                    // annotations are drawn after the data and outside its clip. A panel without
+                    // one keeps the single clipped group it has always had.
+                    let isAnnotation (l: Layer) =
+                        match l.Geom with
+                        | GeomAnnotation _ -> true
+                        | _ -> false
+
+                    let free = Array.zip p.Layers layers |> Array.filter (fst >> isAnnotation) |> Array.map snd
+
+                    if free.Length = 0 then
+                        Transform(Axes.panelTransform plotNd, Clip(Axes.panelShape p.Coord, Group layers))
+                    else
+                        let clipped = Array.zip p.Layers layers |> Array.filter (fst >> isAnnotation >> not) |> Array.map snd
+
+                        Group
+                            [| Transform(Axes.panelTransform plotNd, Clip(Axes.panelShape p.Coord, Group clipped))
+                               Transform(Axes.panelTransform plotNd, Group free) |]
 
                 // ---- axes -----------------------------------------------------------------------
                 let axisNode (side: AxisSide) (cfg: AxisConfig) (spec: AxisSpec) (tickPlan: TickPlan) =
@@ -1489,7 +1549,7 @@ module Figure =
                 match Layout.tryFindPx key outer with
                 | None -> None
                 | Some region ->
-                    let layout, _, _ = compilePanel m fig.Theme extent region None (None, None) (unify p)
+                    let layout, _, _ = compilePanel m fig.Theme extent region None (None, None) (letterHeight m fig) (unify p)
                     Some(key, layout))
 
         { Outer = outer
@@ -1611,7 +1671,7 @@ module Figure =
         let panels =
             entries
             |> Array.map (fun (key, (fig, region, unified)) ->
-                let layout, _, _ = compilePanel m fig.Theme extent region None pins.[key] unified
+                let layout, _, _ = compilePanel m fig.Theme extent region None pins.[key] (letterHeight m fig) unified
                 key, layout)
             |> Array.groupBy fst
             |> Array.map (fun (key, measured) ->
@@ -1693,7 +1753,7 @@ module Figure =
                 match Layout.tryFindPx key shot.Outer, frozen with
                 | Some region, Some f ->
                     let _, needed, _ =
-                        compilePanel m fig.Theme extent region (Some f) (None, None) (unify (pinned shot.ColourDomains shot.QuiverKeys p))
+                        compilePanel m fig.Theme extent region (Some f) (None, None) (letterHeight m fig) (unify (pinned shot.ColourDomains shot.QuiverKeys p))
 
                     let n = needed ()
 
@@ -1822,13 +1882,59 @@ module Figure =
                 | None -> Scene.empty
                 | Some region ->
                     let frozen = shot.Panels |> Array.tryPick (fun (k, l) -> if k = key then Some l else None)
-                    let _, _, draw = compilePanel m theme extent region frozen (None, None) (unify (pinned shot.ColourDomains shot.QuiverKeys p))
+                    let _, _, draw = compilePanel m theme extent region frozen (None, None) (letterHeight m fig) (unify (pinned shot.ColourDomains shot.QuiverKeys p))
                     draw ())
+
+        // D165 — the panels' letters, in reading order, at the top left of each panel's region,
+        // in the title row `compilePanel` keeps for them: above the axis title, clear of the data
+        // and of a legend in the corner. Drawn here rather than by `compilePanel` because the
+        // order is the figure's.
+        let letters =
+            match fig.Letters with
+            | None -> [||]
+            | Some letters ->
+                let font = letterFont theme letters
+
+                let name (i: int) =
+                    let c = string (char (int 'a' + i % 26))
+
+                    match letters.Letter with
+                    | LetterParen -> "(" + c + ")"
+                    | LetterPlain -> c
+                    | LetterRightParen -> c + ")"
+                    | LetterUpper -> c.ToUpperInvariant()
+
+                let letterAt (i: int) (p: Panel) (region: Rect<px>) =
+                    Keyed(
+                        Keys.letter (Keys.panel p.Row p.Col),
+                        Annotated(
+                            { Role = RoleAnnotation
+                              Label = name i
+                              Data = [| "letter", name i |] },
+                            Text
+                                { Text = name i
+                                  Tex = None
+                                  At = Layout.ndPoint extent { X = region.X0; Y = region.Y0 }
+                                  Font = font
+                                  Paint = Solid theme.Foreground
+                                  Anchor = AnchorStart
+                                  Baseline = BaselineHanging
+                                  Rotation = 0.0<rad> }
+                        )
+                    )
+
+                fig.Panels
+                |> Array.filter (fun p -> p.Layers.Length > 0)
+                |> Array.sortBy (fun p -> p.Row, p.Col)
+                |> Array.mapi (fun i p ->
+                    Layout.tryFindPx (sprintf "panel-%d-%d" p.Row p.Col) shot.Outer
+                    |> Option.map (letterAt i p))
+                |> Array.choose id
 
         Scene.prune (
             Keyed(
                 Keys.figure,
-                Group(Array.append [| background; head |] panels)
+                Group(Array.concat [ [| background; head |]; panels; letters ])
             )
         )
 

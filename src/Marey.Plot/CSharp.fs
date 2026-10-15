@@ -72,6 +72,22 @@ type FigureExtensions =
     static member WithDomainIncluded(fig: Figure) = Chart.withDomainIncluded fig
 
     [<Extension>]
+    static member WithTextOffset(fig: Figure, dx: float, dy: float) = Chart.withTextOffset (dx * 1.0<px>) (dy * 1.0<px>) fig
+
+    [<Extension>]
+    static member WithTextAt(fig: Figure, x: float, y: float) = Chart.withTextAt x y fig
+
+    [<Extension>]
+    static member WithArrow(fig: Figure, arrow: ArrowStyle) = Chart.withArrow arrow fig
+
+    [<Extension>]
+    static member AddPanelText(fig: Figure, x: float, y: float, text: string) = Chart.addPanelText x y text fig
+
+    [<Extension>]
+    static member WithPanelLetters(fig: Figure, letter: LetterStyle, [<Optional; DefaultParameterValue(true)>] bold: bool) =
+        Chart.withPanelLettersWith letter bold fig
+
+    [<Extension>]
     static member WithMarker(fig: Figure, shape: MarkerShape) = Chart.withMarker shape fig
 
     /// Dash lengths in device pixels.

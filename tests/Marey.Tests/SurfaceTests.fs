@@ -384,7 +384,9 @@ module Coverage =
     /// unit-optional mode (D125).
     let private curriedOnly =
         set [ "addLine"; "addScatter"; "addArea"; "addErrorbar"; "addStep"; "addRibbon"; "addSegment"; "addFit"; "addLoess"; "addLoessWith"
-              "addHLine"; "addVLine"; "addHSpan"; "addVSpan"; "addLineThrough" ]
+              "addHLine"; "addVLine"; "addHSpan"; "addVSpan"; "addLineThrough"
+              // An annotation is added like a series; its text placed by a modifier of the last layer.
+              "annotate"; "withTextAt" ]
 
     let private pairs: (Type * Type) list =
         let plot = typeof<Marey.Figure>.Assembly
