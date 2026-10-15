@@ -293,3 +293,41 @@ module Scale =
             // A single distinct value still needs a non-degenerate axis around it.
             let pad = if span = 0.0 then (if float lo = 0.0 then 1.0 else abs (float lo) * fraction) else span * fraction
             tag<'u> (float lo - pad), tag<'u> (float hi + pad))
+
+    /// The value `domain` is `paddedDomain`'s widening of, or `None` when it is a real span.
+    ///
+    /// The widening around a single value is there so that a constant has an axis at all, and it
+    /// says nothing about the data: at zero it is ±1 in whatever unit the axis is in. `Some v`
+    /// exactly when `xs` has the one distinct finite value `v` and `domain` is still the padding
+    /// `paddedDomain fraction` gives it, so a domain that was stated or widened since is a span.
+    let pointOf (fraction: float) (domain: float<'u> * float<'u>) (xs: float<'u>[]) : float<'u> option =
+        match domainOf xs with
+        | Some(lo, hi) when lo = hi && paddedDomain fraction [| lo |] = Some domain -> Some lo
+        | _ -> None
+
+    /// The domain several series share on one axis, from each one's domain and its `pointOf`.
+    ///
+    /// A real span enters as it is, padding included. A widened point enters as its value only,
+    /// so a flat reference line at zero cannot stretch a millimetre axis to ±1 m; a value outside
+    /// every span gets `fraction` of the shared span as room, so it is not drawn on the edge of
+    /// the panel. With no real span on the axis the points are padded among themselves, which is
+    /// `paddedDomain` again and what keeps a panel of one constant on a non-degenerate axis.
+    let shareDomain (fraction: float) (entries: ((float<'u> * float<'u>) * float<'u> option)[]) : float<'u> * float<'u> =
+        let spans = entries |> Array.choose (fun (d, point) -> if point.IsNone then Some d else None)
+        let points = entries |> Array.choose snd
+
+        if spans.Length = 0 then
+            match paddedDomain fraction points with
+            | Some d -> d
+            | None -> invalidArg "entries" "Marey: no domains to share."
+        else
+            let lo = spans |> Array.map fst |> Array.min
+            let hi = spans |> Array.map snd |> Array.max
+
+            if points.Length = 0 then
+                lo, hi
+            else
+                let plo = Array.min points
+                let phi = Array.max points
+                let room = (max hi phi - min lo plo) * fraction
+                (if plo < lo then plo - room else lo), (if phi > hi then phi + room else hi)

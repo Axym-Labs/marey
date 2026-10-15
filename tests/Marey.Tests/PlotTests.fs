@@ -223,6 +223,77 @@ module CategoricalAxes =
         Assert.Equal((-0.5, 3.5), x.Domain)
 
 // ======================================================================================
+// `Figure.unify` — the domain layers share
+// ======================================================================================
+
+module SharedDomains =
+
+    let private t = [| 0.0<s>; 1.0<s>; 2.0<s> |]
+    let private small = [| -1e-3<m>; 0.5e-3<m>; 1e-3<m> |]
+    let private flat (v: float<m>) = Array.create 3 v
+
+    let private yDomain (fig: Figure) =
+        let unified = Figure.unify fig.Panels.[0]
+        (snd (Erase.seriesScales unified.Layers.[0].Data)).Domain
+
+    /// Found in 0.6.0: a constant series at exactly zero is padded to ±1 in its own unit, so
+    /// that it has an axis at all, and the union across layers then took that ±1 m as data — a
+    /// reference line at y = 0 turned a ±1 mm axis into a ±1 m one, titled `x [m]`.
+    [<Fact>]
+    let ``a flat line at zero does not widen a millimetre axis`` () =
+        let fig =
+            Chart.line U.second U.metre t small
+            |> Chart.addLine U.second U.metre t (flat 0.0<m>)
+
+        let lo, hi = yDomain fig
+        Assert.Equal(-1.1e-3, lo, 12)
+        Assert.Equal(1.1e-3, hi, 12)
+
+        let svg = renderFig (Chart.size 400.0 300.0) fig
+        Assert.Contains(">x [mm]<", svg)
+        Assert.DoesNotContain(">x [m]<", svg)
+
+    /// The point is still on the axis when it lies outside the other layers' span, with room
+    /// around it rather than on the edge of the panel.
+    [<Fact>]
+    let ``a flat line outside the span is on the axis, inside the panel`` () =
+        let fig =
+            Chart.line U.second U.metre t small
+            |> Chart.addLine U.second U.metre t (flat 5e-3<m>)
+
+        let lo, hi = yDomain fig
+        Assert.Equal(-1.1e-3, lo, 12)
+        Assert.True(hi > 5e-3 && hi < 6e-3, sprintf "hi = %g" hi)
+
+    /// A panel whose only data is constant still needs a non-degenerate axis, and keeps the one
+    /// it always had.
+    [<Fact>]
+    let ``a panel of flat lines alone keeps its padded axis`` () =
+        let zeros =
+            Chart.line U.second U.metre t (flat 0.0<m>)
+            |> Chart.addLine U.second U.metre t (flat 0.0<m>)
+
+        Assert.Equal((-1.0, 1.0), yDomain zeros)
+
+        let fives =
+            Chart.line U.second U.metre t (flat 5.0<m>)
+            |> Chart.addLine U.second U.metre t (flat 5.0<m>)
+
+        let lo, hi = yDomain fives
+        Assert.Equal(4.75, lo, 12)
+        Assert.Equal(5.25, hi, 12)
+
+    /// A stated domain is not padding, and a flat layer under it keeps it.
+    [<Fact>]
+    let ``a stated domain is kept`` () =
+        let fig =
+            Chart.line U.second U.metre t small
+            |> Chart.addLine U.second U.metre t (flat 0.0<m>)
+            |> Chart.withYDomain -2.0 2.0
+
+        Assert.Equal((-2.0, 2.0), yDomain fig)
+
+// ======================================================================================
 // D45 — the level set, and the categorical front door
 // ======================================================================================
 
