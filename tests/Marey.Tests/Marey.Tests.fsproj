@@ -67,6 +67,7 @@
     <Compile Include="ChannelTests.fs" />
     <Compile Include="StatTests.fs" />
     <Compile Include="FacetTests.fs" />
+    <Compile Include="CompositionTests.fs" />
     <Compile Include="GeomTests.fs" />
     <Compile Include="FieldTests.fs" />
     <Compile Include="../Shared/SimRuns.fs" Link="SimRuns.fs" />

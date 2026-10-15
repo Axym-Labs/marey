@@ -14,17 +14,17 @@ fillStyle = rgba(255,255,255,1)
 fill nonzero
 beginPath
 moveTo 57.013 265.104
-lineTo 354.992 265.104
+lineTo 360.83 265.104
 moveTo 57.013 227.676
-lineTo 354.992 227.676
+lineTo 360.83 227.676
 moveTo 57.013 190.247
-lineTo 354.992 190.247
+lineTo 360.83 190.247
 moveTo 57.013 152.818
-lineTo 354.992 152.818
+lineTo 360.83 152.818
 moveTo 57.013 115.389
-lineTo 354.992 115.389
+lineTo 360.83 115.389
 moveTo 57.013 77.96
-lineTo 354.992 77.96
+lineTo 360.83 77.96
 strokeStyle = rgba(231,233,237,1)
 lineWidth = 1
 miterLimit = 4
@@ -36,26 +36,26 @@ stroke
 save
 beginPath
 moveTo 57.013 268.567
-lineTo 354.992 268.567
-lineTo 354.992 68.883
+lineTo 360.83 268.567
+lineTo 360.83 68.883
 lineTo 57.013 68.883
 closePath
 clip nonzero
 beginPath
-moveTo 70.558 259.49
-lineTo 77.782 259.49
-lineTo 79.587 227.676
-lineTo 81.393 259.49
-lineTo 99.453 259.49
-lineTo 101.259 208.961
-lineTo 103.065 259.49
-lineTo 146.407 259.49
-lineTo 148.213 162.175
-lineTo 150.019 259.49
-lineTo 299.911 259.49
-lineTo 301.717 77.96
-lineTo 303.523 259.49
-lineTo 341.448 259.49
+moveTo 70.823 259.49
+lineTo 78.188 259.49
+lineTo 80.03 227.676
+lineTo 81.871 259.49
+lineTo 100.284 259.49
+lineTo 102.126 208.961
+lineTo 103.967 259.49
+lineTo 148.158 259.49
+lineTo 150 162.175
+lineTo 151.841 259.49
+lineTo 304.67 259.49
+lineTo 306.511 77.96
+lineTo 308.353 259.49
+lineTo 347.02 259.49
 strokeStyle = rgba(0,114,178,1)
 lineWidth = 2
 miterLimit = 4
@@ -66,8 +66,8 @@ lineDashOffset = 0
 stroke
 restore
 beginPath
-moveTo 88.527 213.372
-lineTo 82.449 223.096
+moveTo 88.97 213.372
+lineTo 82.892 223.096
 strokeStyle = rgba(20,24,31,1)
 lineWidth = 0.9
 miterLimit = 4
@@ -77,20 +77,20 @@ setLineDash []
 lineDashOffset = 0
 stroke
 beginPath
-moveTo 81.177 225.132
-lineTo 85.35 222.079
-lineTo 82.093 220.044
+moveTo 81.62 225.132
+lineTo 85.792 222.079
+lineTo 82.536 220.044
 closePath
 fillStyle = rgba(20,24,31,1)
 fill nonzero
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 89.587 211.676 "Hδ"
+fillText 90.03 211.676 "Hδ"
 restore
 beginPath
-moveTo 110.199 194.657
-lineTo 104.121 204.382
+moveTo 111.066 194.657
+lineTo 104.987 204.382
 strokeStyle = rgba(20,24,31,1)
 lineWidth = 0.9
 miterLimit = 4
@@ -100,20 +100,20 @@ setLineDash []
 lineDashOffset = 0
 stroke
 beginPath
-moveTo 102.849 206.417
-lineTo 107.021 203.364
-lineTo 103.764 201.329
+moveTo 103.716 206.417
+lineTo 107.888 203.364
+lineTo 104.631 201.329
 closePath
 fillStyle = rgba(20,24,31,1)
 fill nonzero
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 111.259 192.961 "Hγ"
+fillText 112.126 192.961 "Hγ"
 restore
 beginPath
-moveTo 157.153 147.871
-lineTo 151.075 157.596
+moveTo 158.94 147.871
+lineTo 152.862 157.596
 strokeStyle = rgba(20,24,31,1)
 lineWidth = 0.9
 miterLimit = 4
@@ -123,20 +123,20 @@ setLineDash []
 lineDashOffset = 0
 stroke
 beginPath
-moveTo 149.803 159.631
-lineTo 153.975 156.578
-lineTo 150.719 154.543
+moveTo 151.59 159.631
+lineTo 155.762 156.578
+lineTo 152.505 154.543
 closePath
 fillStyle = rgba(20,24,31,1)
 fill nonzero
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 158.213 146.175 "Hβ"
+fillText 160 146.175 "Hβ"
 restore
 beginPath
-moveTo 310.657 63.656
-lineTo 304.579 73.381
+moveTo 315.451 63.656
+lineTo 309.373 73.381
 strokeStyle = rgba(20,24,31,1)
 lineWidth = 0.9
 miterLimit = 4
@@ -146,20 +146,20 @@ setLineDash []
 lineDashOffset = 0
 stroke
 beginPath
-moveTo 303.307 75.416
-lineTo 307.479 72.363
-lineTo 304.223 70.328
+moveTo 308.101 75.416
+lineTo 312.273 72.363
+lineTo 309.017 70.328
 closePath
 fillStyle = rgba(20,24,31,1)
 fill nonzero
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 311.717 61.96 "Hα"
+fillText 316.511 61.96 "Hα"
 restore
 beginPath
-moveTo 213.501 154.104
-bezierCurveTo 203.089 184.345 182.092 201.987 150.51 207.031
+moveTo 216.585 154.09
+bezierCurveTo 205.754 184.598 184.331 202.253 152.315 207.053
 strokeStyle = rgba(20,24,31,1)
 lineWidth = 0.9
 miterLimit = 4
@@ -169,25 +169,25 @@ setLineDash []
 lineDashOffset = 0
 stroke
 beginPath
-moveTo 150.51 207.031
-lineTo 155.552 208.17
-lineTo 154.947 204.378
+moveTo 152.315 207.053
+lineTo 157.346 208.24
+lineTo 156.777 204.443
 closePath
 fillStyle = rgba(20,24,31,1)
 fill nonzero
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 215.032 152.818 "filter edge"
+fillText 218.128 152.818 "filter edge"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 299.34 171.791 "T = 10⁴ K"
+fillText 305.062 171.791 "T = 10⁴ K"
 restore
 beginPath
 moveTo 57.013 268.567
-lineTo 354.992 268.567
+lineTo 360.83 268.567
 strokeStyle = rgba(57,65,77,1)
 lineWidth = 0.9
 miterLimit = 4
@@ -197,20 +197,20 @@ setLineDash []
 lineDashOffset = 0
 stroke
 beginPath
-moveTo 70.558 268.567
-lineTo 70.558 271.567
-moveTo 115.706 268.567
-lineTo 115.706 271.567
-moveTo 160.854 268.567
-lineTo 160.854 271.567
-moveTo 206.003 268.567
-lineTo 206.003 271.567
-moveTo 251.151 268.567
-lineTo 251.151 271.567
-moveTo 296.299 268.567
-lineTo 296.299 271.567
-moveTo 341.448 268.567
-lineTo 341.448 271.567
+moveTo 70.823 268.567
+lineTo 70.823 271.567
+moveTo 116.856 268.567
+lineTo 116.856 271.567
+moveTo 162.889 268.567
+lineTo 162.889 271.567
+moveTo 208.922 268.567
+lineTo 208.922 271.567
+moveTo 254.954 268.567
+lineTo 254.954 271.567
+moveTo 300.987 268.567
+lineTo 300.987 271.567
+moveTo 347.02 268.567
+lineTo 347.02 271.567
 strokeStyle = rgba(57,65,77,1)
 lineWidth = 0.9
 miterLimit = 4
@@ -222,42 +222,42 @@ stroke
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 60.55 284.183 "400"
+fillText 60.815 284.183 "400"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 105.698 284.183 "450"
+fillText 106.848 284.183 "450"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 150.846 284.183 "500"
+fillText 152.881 284.183 "500"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 195.995 284.183 "550"
+fillText 198.914 284.183 "550"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 241.143 284.183 "600"
+fillText 244.946 284.183 "600"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 286.291 284.183 "650"
+fillText 290.979 284.183 "650"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 331.44 284.183 "700"
+fillText 337.012 284.183 "700"
 restore
 save
 font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 187.849 303.24 "x [nm]"
+fillText 190.768 303.24 "x [nm]"
 restore
 beginPath
 moveTo 57.013 268.567
@@ -354,13 +354,13 @@ fillStyle = rgba(20,24,31,1)
 fillText 97.013 91.978 "observed"
 restore
 beginPath
-moveTo 428.005 233.557
+moveTo 433.843 233.557
 lineTo 737.66 233.557
-moveTo 428.005 181.691
+moveTo 433.843 181.691
 lineTo 737.66 181.691
-moveTo 428.005 129.826
+moveTo 433.843 129.826
 lineTo 737.66 129.826
-moveTo 428.005 77.96
+moveTo 433.843 77.96
 lineTo 737.66 77.96
 strokeStyle = rgba(231,233,237,1)
 lineWidth = 1
@@ -372,31 +372,31 @@ lineDashOffset = 0
 stroke
 save
 beginPath
-moveTo 428.005 268.567
+moveTo 433.843 268.567
 lineTo 737.66 268.567
 lineTo 737.66 68.883
-lineTo 428.005 68.883
+lineTo 433.843 68.883
 closePath
 clip nonzero
 save
 fillStyle = rgba(0,114,178,1)
 beginPath
-arc 442.081 77.96 2.5 0 6.283
+arc 447.653 77.96 2.5 0 6.283
 fill nonzero
 beginPath
-arc 535.915 181.691 2.5 0 6.283
+arc 539.719 181.691 2.5 0 6.283
 fill nonzero
 beginPath
-arc 629.75 233.557 2.5 0 6.283
+arc 631.784 233.557 2.5 0 6.283
 fill nonzero
 beginPath
-arc 723.585 259.49 2.5 0 6.283
+arc 723.85 259.49 2.5 0 6.283
 fill nonzero
 restore
 restore
 beginPath
-moveTo 640.336 222.971
-lineTo 633.568 229.739
+moveTo 642.37 222.971
+lineTo 635.603 229.739
 strokeStyle = rgba(20,24,31,1)
 lineWidth = 0.9
 miterLimit = 4
@@ -406,19 +406,19 @@ setLineDash []
 lineDashOffset = 0
 stroke
 beginPath
-moveTo 631.871 231.436
-lineTo 636.623 229.399
-lineTo 633.908 226.684
+moveTo 633.906 231.436
+lineTo 638.658 229.399
+lineTo 635.942 226.684
 closePath
 fillStyle = rgba(20,24,31,1)
 fill nonzero
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 641.75 221.557 "half-life"
+fillText 643.784 221.557 "half-life"
 restore
 beginPath
-moveTo 428.005 268.567
+moveTo 433.843 268.567
 lineTo 737.66 268.567
 strokeStyle = rgba(57,65,77,1)
 lineWidth = 0.9
@@ -429,20 +429,20 @@ setLineDash []
 lineDashOffset = 0
 stroke
 beginPath
-moveTo 442.081 268.567
-lineTo 442.081 271.567
-moveTo 488.998 268.567
-lineTo 488.998 271.567
-moveTo 535.915 268.567
-lineTo 535.915 271.567
-moveTo 582.833 268.567
-lineTo 582.833 271.567
-moveTo 629.75 268.567
-lineTo 629.75 271.567
-moveTo 676.667 268.567
-lineTo 676.667 271.567
-moveTo 723.585 268.567
-lineTo 723.585 271.567
+moveTo 447.653 268.567
+lineTo 447.653 271.567
+moveTo 493.686 268.567
+lineTo 493.686 271.567
+moveTo 539.719 268.567
+lineTo 539.719 271.567
+moveTo 585.752 268.567
+lineTo 585.752 271.567
+moveTo 631.784 268.567
+lineTo 631.784 271.567
+moveTo 677.817 268.567
+lineTo 677.817 271.567
+moveTo 723.85 268.567
+lineTo 723.85 271.567
 strokeStyle = rgba(57,65,77,1)
 lineWidth = 0.9
 miterLimit = 4
@@ -454,46 +454,46 @@ stroke
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 433.741 284.183 "0.0"
+fillText 439.313 284.183 "0.0"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 480.658 284.183 "0.5"
+fillText 485.346 284.183 "0.5"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 527.575 284.183 "1.0"
+fillText 531.379 284.183 "1.0"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 574.493 284.183 "1.5"
+fillText 577.412 284.183 "1.5"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 621.41 284.183 "2.0"
+fillText 623.444 284.183 "2.0"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 668.327 284.183 "2.5"
+fillText 669.477 284.183 "2.5"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 715.245 284.183 "3.0"
+fillText 715.51 284.183 "3.0"
 restore
 save
 font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 572.086 303.24 "t [s]"
+fillText 575.005 303.24 "t [s]"
 restore
 beginPath
-moveTo 428.005 268.567
-lineTo 428.005 68.883
+moveTo 433.843 268.567
+lineTo 433.843 68.883
 strokeStyle = rgba(57,65,77,1)
 lineWidth = 0.9
 miterLimit = 4
@@ -503,14 +503,14 @@ setLineDash []
 lineDashOffset = 0
 stroke
 beginPath
-moveTo 428.005 233.557
-lineTo 425.005 233.557
-moveTo 428.005 181.691
-lineTo 425.005 181.691
-moveTo 428.005 129.826
-lineTo 425.005 129.826
-moveTo 428.005 77.96
-lineTo 425.005 77.96
+moveTo 433.843 233.557
+lineTo 430.843 233.557
+moveTo 433.843 181.691
+lineTo 430.843 181.691
+moveTo 433.843 129.826
+lineTo 430.843 129.826
+moveTo 433.843 77.96
+lineTo 430.843 77.96
 strokeStyle = rgba(57,65,77,1)
 lineWidth = 0.9
 miterLimit = 4
@@ -522,30 +522,30 @@ stroke
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 414.333 236.623 "1"
+fillText 420.171 236.623 "1"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 414.333 184.757 "2"
+fillText 420.171 184.757 "2"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 414.333 132.892 "3"
+fillText 420.171 132.892 "3"
 restore
 save
 font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 414.333 81.026 "4"
+fillText 420.171 81.026 "4"
 restore
 save
-translate 407.333 168.725
+translate 413.171 168.725
 rotate -1.571
-translate -407.333 -168.725
+translate -413.171 -168.725
 font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 392.887 168.725 "x [m]"
+fillText 398.725 168.725 "x [m]"
 restore
 save
 font = 700 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
@@ -555,5 +555,5 @@ restore
 save
 font = 700 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 395 53.573 "(b)"
+fillText 400.838 53.573 "(b)"
 restore
