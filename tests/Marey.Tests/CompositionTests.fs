@@ -226,3 +226,62 @@ module ``D174 spans`` =
         let scene = Chart.toSceneWith measurer extent fig
         let letters = texts scene |> List.filter (fun s -> s.StartsWith "(")
         Assert.Equal<string list>([ "(a)"; "(b)"; "(c)" ], letters)
+
+module ``D175 ratios`` =
+
+    let private h (v: PanelView) = float (v.Plot.Y1 - v.Plot.Y0)
+    let private w (v: PanelView) = float (v.Plot.X1 - v.Plot.X0)
+    let private at (views: PanelView[]) r c = views |> Array.find (fun v -> v.Row = r && v.Col = c)
+    let private within (expected: float) (actual: float) = abs (actual / expected - 1.0) < 0.005
+
+    [<Fact>]
+    let ``three to one gives plots three to one, whatever their gutters (gate 2)`` () =
+        // The lower panel draws a taller x gutter than the upper one would without a title, and a
+        // legend below the upper one makes their gutters differ more.
+        let fig = fit |> Chart.withLegend LegendOutsideBottom |> Chart.above (residuals 1.0) |> Chart.withRowHeights [| 3.0; 1.0 |]
+        let views = viewsOf (Chart.size 500.0 480.0) fig
+        let ratio = h (at views 0 0) / h (at views 1 0)
+        Assert.True(within 3.0 ratio, sprintf "plot heights %g : 1" ratio)
+
+    [<Fact>]
+    let ``nested inside a beside, still three to one (gate 2)`` () =
+        let pair = fit |> Chart.above (residuals 1.0) |> Chart.withRowHeights [| 3.0; 1.0 |]
+        let fig = pair |> Chart.beside fit
+        let views = viewsOf (Chart.size 700.0 480.0) fig
+        Assert.True(within 3.0 (h (at views 0 0) / h (at views 1 0)))
+        assertAlignedIn fig views
+
+    [<Fact>]
+    let ``stretched by a beside of three rows, the proportion is only approximate`` () =
+        // Known limitation, recorded in m9-plan.md: the LCM grid gives each of the pair's panels
+        // three rows, and one of the other side's row lines falls inside each of them with its
+        // gutters and gap. Those add the same length to both plots, so 3 : 1 comes out near 1.7.
+        // The order and the alignment hold.
+        let pair = fit |> Chart.above (residuals 1.0) |> Chart.withRowHeights [| 3.0; 1.0 |]
+        let three = fit |> Chart.above fit |> Chart.above fit
+        let fig = pair |> Chart.beside three
+        Assert.Equal(6, fig.Rows)
+        let views = viewsOf (Chart.size 700.0 600.0) fig
+        let ratio = h (at views 0 0) / h (at views 3 0)
+        Assert.True(ratio > 1.5 && ratio < 3.0, sprintf "ratio %g" ratio)
+        assertAlignedIn fig views
+
+    [<Fact>]
+    let ``column widths share out the plots`` () =
+        let fig = fit |> Chart.beside (residuals 1.0) |> Chart.withColWidths [| 1.0; 2.0 |]
+        let views = viewsOf (Chart.size 700.0 300.0) fig
+        Assert.True(within 2.0 (w (at views 0 1) / w (at views 0 0)))
+
+    [<Fact>]
+    let ``a stated pair keeps its proportion above an unstated panel`` () =
+        let pair = fit |> Chart.above (residuals 1.0) |> Chart.withRowHeights [| 3.0; 1.0 |]
+        let fig = pair |> Chart.above fit
+        // Stored to a mean of 1: 1.5 and 0.5, then 1 for the panel added below.
+        Assert.Equal<float[]>([| 1.5; 0.5; 1.0 |], fig.RowWeights)
+
+    [<Fact>]
+    let ``weights are refused unless there is one per row and each is positive (gate 2)`` () =
+        let e = Assert.ThrowsAny<exn>(fun () -> fit |> Chart.above fit |> Chart.withRowHeights [| 1.0 |] |> ignore)
+        Assert.Contains("1 rows weights for a figure of 2 rows", e.Message)
+        let e = Assert.ThrowsAny<exn>(fun () -> fit |> Chart.beside fit |> Chart.withColWidths [| 1.0; 0.0 |] |> ignore)
+        Assert.Contains("positive", e.Message)
