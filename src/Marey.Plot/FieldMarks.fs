@@ -88,6 +88,17 @@ module FieldMarks =
 
     let private finite (v: float) = not (Double.IsNaN v || Double.IsInfinity v)
 
+    /// How long a filled arrowhead is, in px, on a stroke `width` wide.
+    let arrowheadLength (width: float<px>) = 3.0 + 2.0 * float width
+
+    /// A filled arrowhead's three corners, in px: the tip at (`tx`, `ty`), pointing along the unit
+    /// direction (`dx`, `dy`), `head` long and 0.8 × `head` across its base. The streamlines' heads
+    /// and an annotation's arrow (D164) are this one shape.
+    let arrowhead (head: float) (tx: float, ty: float) (dx: float, dy: float) : struct (float * float)[] =
+        let baseX, baseY = tx - dx * head, ty - dy * head
+        let nx, ny = -dy * head * 0.4, dx * head * 0.4
+        [| struct (tx, ty); struct (baseX + nx, baseY + ny); struct (baseX - nx, baseY - ny) |]
+
     /// The grid as drawn: finite node coordinates, strictly increasing, values permuted to match.
     /// A reversed scale projects coordinates decreasing, and a log scale projects a non-positive
     /// coordinate to NaN; both are normalised here, the second by dropping that row or column.
@@ -892,7 +903,7 @@ module FieldMarks =
             let w, h = float plot.Width, float plot.Height
             let toNd (x: float) (y: float) : Vec2<nd> = mapPt { X = x / w * 1.0<nd>; Y = y / h * 1.0<nd> }
             let dSep = max 2.0 (float separation)
-            let head = 3.0 + 2.0 * float stroke.Width
+            let head = arrowheadLength stroke.Width
             let groups = Dictionary<Color, ResizeArray<PathSeg>>()
             let heads = Dictionary<Color, ResizeArray<PathSeg>>()
 
@@ -952,14 +963,12 @@ module FieldMarks =
                             if len > 0.0 then
                                 let dx, dy = (bx - ax) / len, (by - ay) / len
                                 let tx, ty = ax + dx * head / 2.0, ay + dy * head / 2.0
-                                let baseX, baseY = tx - dx * head, ty - dy * head
-                                let nx, ny = -dy * head * 0.4, dx * head * 0.4
+                                let corners = arrowhead head (tx, ty) (dx, dy)
+                                let struct (x0, y0) = corners.[0]
+                                let struct (x1, y1) = corners.[1]
+                                let struct (x2, y2) = corners.[2]
 
-                                hs.AddRange
-                                    [| MoveTo(toNd tx ty)
-                                       LineTo(toNd (baseX + nx) (baseY + ny))
-                                       LineTo(toNd (baseX - nx) (baseY - ny))
-                                       ClosePath |]
+                                hs.AddRange [| MoveTo(toNd x0 y0); LineTo(toNd x1 y1); LineTo(toNd x2 y2); ClosePath |]
 
             Group
                 [| for KeyValue(c, segs) in groups do

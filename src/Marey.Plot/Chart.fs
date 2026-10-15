@@ -89,7 +89,8 @@ module Chart =
           Channels = [||]
           ShowInLegend = not (System.String.IsNullOrEmpty name)
           Addressed = [||]
-          RowKeys = [||] }
+          RowKeys = [||]
+          InDomain = (true, true) }
 
     // ---- Constructors ------------------------------------------------------------------------
 
@@ -343,7 +344,7 @@ module Chart =
         | None -> fig
         | Some p ->
             fig
-            |> addLayers (fun i -> p.Layers |> Array.map (fun l -> { l with Style = Geom.styleFor fig.Theme i }))
+            |> addLayers (fun i -> p.Layers |> Array.map (fun l -> { l with Style = Geom.styleOf fig.Theme i l.Geom }))
 
     let internal addLine (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
         fig
@@ -404,6 +405,77 @@ module Chart =
 
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i (Geom.segment s x1 y1) (Erase.packSeries s) |])
+
+    // ---- Rules and spans (D162) ----------------------------------------------------------------
+
+    /// A rule's layer. Its data is one point, or two for a span, on the axis it marks and NaN
+    /// on the other: enough for `unify` to check its unit against the axis and for
+    /// `withDomainIncluded` to have a value to put in, and nothing for an axis it does not
+    /// constrain. Out of the domain on both axes (D163), in the rule's own style, and in the
+    /// legend only once it is named.
+    let private ruleLayer (theme: Theme) (i: int) (rule: RuleSpec<1>) (data: PackedSeries) : Layer =
+        { layerOf "" theme i (GeomRule rule) data with
+            Style = Geom.ruleStyle theme rule
+            InDomain = (false, false) }
+
+    let private ruleFigure (rule: RuleSpec<1>) (s: Series<'ux, 'uy>) : Figure =
+        figureOf [| ruleLayer Theme.initial 0 rule (Erase.packSeries s) |]
+
+    let private addRule (rule: RuleSpec<1>) (s: Series<'ux, 'uy>) (fig: Figure) : Figure =
+        fig |> addLayers (fun i -> [| ruleLayer fig.Theme i rule (Erase.packSeries s) |])
+
+    let private hRule (uy: U<'uy>) (y: float<'uy>) =
+        RuleH(float y), series "" U.unspecified uy [| nan |] [| y |]
+
+    let private vRule (ux: U<'ux>) (x: float<'ux>) =
+        RuleV(float x), series "" ux U.unspecified [| x |] [| nan |]
+
+    let private spanH (uy: U<'uy>) (lo: float<'uy>) (hi: float<'uy>) =
+        SpanH(float lo, float hi), series "" U.unspecified uy [| nan; nan |] [| lo; hi |]
+
+    let private spanV (ux: U<'ux>) (lo: float<'ux>) (hi: float<'ux>) =
+        SpanV(float lo, float hi), series "" ux U.unspecified [| lo; hi |] [| nan; nan |]
+
+    /// The second point is a run of `|x|` away (1 at zero), which on linear axes gives the slope
+    /// exactly, whatever the run, and on a log axis a line that is straight on the page.
+    let private throughRule (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (slope: float<'uy / 'ux>) =
+        let run = if float x = 0.0 then tag<'ux> 1.0 else abs x
+        RuleThrough(float x, float y, float (x + run), float (y + slope * run)), series "" ux uy [| x |] [| y |]
+
+    let internal hLine (uy: U<'uy>) (y: float<'uy>) : Figure = hRule uy y ||> ruleFigure
+    let internal vLine (ux: U<'ux>) (x: float<'ux>) : Figure = vRule ux x ||> ruleFigure
+    let internal hSpan (uy: U<'uy>) (lo: float<'uy>) (hi: float<'uy>) : Figure = spanH uy lo hi ||> ruleFigure
+    let internal vSpan (ux: U<'ux>) (lo: float<'ux>) (hi: float<'ux>) : Figure = spanV ux lo hi ||> ruleFigure
+
+    let internal lineThrough (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (slope: float<'uy / 'ux>) : Figure =
+        throughRule ux uy x y slope ||> ruleFigure
+
+    let internal addHLine (uy: U<'uy>) (y: float<'uy>) (fig: Figure) : Figure =
+        let rule, s = hRule uy y
+        addRule rule s fig
+
+    let internal addVLine (ux: U<'ux>) (x: float<'ux>) (fig: Figure) : Figure =
+        let rule, s = vRule ux x
+        addRule rule s fig
+
+    let internal addHSpan (uy: U<'uy>) (lo: float<'uy>) (hi: float<'uy>) (fig: Figure) : Figure =
+        let rule, s = spanH uy lo hi
+        addRule rule s fig
+
+    let internal addVSpan (ux: U<'ux>) (lo: float<'ux>) (hi: float<'ux>) (fig: Figure) : Figure =
+        let rule, s = spanV ux lo hi
+        addRule rule s fig
+
+    let internal addLineThrough
+        (ux: U<'ux>)
+        (uy: U<'uy>)
+        (x: float<'ux>)
+        (y: float<'uy>)
+        (slope: float<'uy / 'ux>)
+        (fig: Figure)
+        : Figure =
+        let rule, s = throughRule ux uy x y slope
+        addRule rule s fig
 
     // ---- Stats (§9, D47) ----------------------------------------------------------------------
 
@@ -831,8 +903,8 @@ module Chart =
                                     { l with
                                         Channels = l.Channels |> Array.map retheme }
 
-                                if l.Style = Geom.styleFor old i then
-                                    { l with Style = Geom.styleFor t i }
+                                if l.Style = Geom.styleOf old i l.Geom then
+                                    { l with Style = Geom.styleOf t i l.Geom }
                                 else
                                     l) }) }
 
@@ -895,6 +967,86 @@ module Chart =
 
     let withOpacity (o: float) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withOpacity o l.Style }) fig
+
+    /// D163 — **let the most recently added layer move the axes.** A rule, a span or an
+    /// annotation marks a place on the domain the data chose and stays out of it; this puts it
+    /// back in, for the figure that must show the rule ("the panel must reach y = 0"). A data
+    /// layer is in already, so on one this changes nothing.
+    ///
+    /// A rule joins on the axis it marks and only that one: a horizontal rule says nothing about
+    /// x.
+    let withDomainIncluded (fig: Figure) =
+        mapLastLayer
+            (fun l ->
+                let inDomain =
+                    match l.Geom with
+                    | GeomRule(RuleH _)
+                    | GeomRule(SpanH _) -> false, true
+                    | GeomRule(RuleV _)
+                    | GeomRule(SpanV _) -> true, false
+                    | _ -> true, true
+
+                { l with InDomain = inDomain })
+            fig
+
+    // ---- Annotations (D164, D165) ------------------------------------------------------------
+
+    /// An annotation's layer: one point, the place it marks, out of the domain on both axes
+    /// (D163), so labelling a point never moves the axes. The theme's foreground, not a palette
+    /// colour. Text starts 6 px up and to the right of the point, so it does not cover the mark.
+    let private annotationLayer (theme: Theme) (i: int) (text: string) (placement: TextPlacement<1>) (data: PackedSeries) : Layer =
+        { layerOf "" theme i (GeomAnnotation(text, placement, ArrowNone)) data with
+            Style = Geom.annotationStyle theme
+            InDomain = (false, false) }
+
+    let private besidePoint: TextPlacement<1> = TextOffset { X = 6.0<px>; Y = 6.0<px> }
+
+    let internal annotation (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (text: string) : Figure =
+        figureOf [| annotationLayer Theme.initial 0 text besidePoint (Erase.packSeries (series "" ux uy [| x |] [| y |])) |]
+
+    let internal annotate (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (text: string) (fig: Figure) : Figure =
+        fig
+        |> addLayers (fun i -> [| annotationLayer fig.Theme i text besidePoint (Erase.packSeries (series "" ux uy [| x |] [| y |])) |])
+
+    let private mapAnnotation (f: string * TextPlacement<1> * ArrowStyle -> string * TextPlacement<1> * ArrowStyle) (fig: Figure) =
+        mapLastLayer
+            (fun l ->
+                match l.Geom with
+                | GeomAnnotation(text, placement, arrow) -> { l with Geom = GeomAnnotation(f (text, placement, arrow)) }
+                | _ -> l)
+            fig
+
+    /// D164 — put the most recent annotation's text `dx`, `dy` px from its point, y up. A device
+    /// offset is the default kind, because it stays put under a zoom and a change of figure size.
+    let withTextOffset (dx: float<px>) (dy: float<px>) (fig: Figure) : Figure =
+        mapAnnotation (fun (text, _, arrow) -> text, TextOffset { X = dx; Y = dy }, arrow) fig
+
+    /// D164 — put the most recent annotation's text at a place in data space, in the axes' units.
+    /// `Marey.UnitsOfMeasure` has the spelling that takes a witness per axis.
+    let withTextAt (x: float) (y: float) (fig: Figure) : Figure =
+        mapAnnotation (fun (text, _, arrow) -> text, TextAt(x, y), arrow) fig
+
+    /// D164 — an arrow from the most recent annotation's text to its point: `ArrowStraight`, or
+    /// `ArrowArc bend` for a curve bent `bend` times its length to the left.
+    let withArrow (arrow: ArrowStyle) (fig: Figure) : Figure =
+        mapAnnotation (fun (text, placement, _) -> text, placement, arrow) fig
+
+    /// D165 — text in the last panel's plot area at (`x`, `y`), as fractions of its width and
+    /// height from the bottom left: a note in a corner. It is anchored on the side it is near, so
+    /// `(0.98, 0.98)` hangs from the top right corner. For panel letters, `withPanelLetters`.
+    let addPanelText (x: float) (y: float) (text: string) (fig: Figure) : Figure =
+        let data = Erase.packSeries (series "" U.unspecified U.unspecified [| nan |] [| nan |])
+        fig |> addLayers (fun i -> [| annotationLayer fig.Theme i text (TextInPanel(x, y)) data |])
+
+    /// D165 — **letter the panels**, "(a)", "(b)", … in reading order (row, then column), at the
+    /// top left of each plot area in the panel-title face, bold. Assigned when the figure is
+    /// drawn, so a panel added afterwards by `beside` or `above` is lettered too.
+    let withPanelLetters (letter: LetterStyle) (fig: Figure) : Figure =
+        { fig with Letters = Some { Letter = letter; Bold = true } }
+
+    /// `withPanelLetters`, saying whether the letters are bold.
+    let withPanelLettersWith (letter: LetterStyle) (bold: bool) (fig: Figure) : Figure =
+        { fig with Letters = Some { Letter = letter; Bold = bold } }
 
     /// Label the points of the most recently added series, one string per point.
     ///
@@ -1161,6 +1313,63 @@ module Chart =
     let withYDomain (lo: float) (hi: float) (fig: Figure) =
         mapLayers (Figure.withDomains None (Some(lo, hi))) fig
 
+    // ---- Stated ticks, the prefix, reversal (D166, D169, D170) ------------------------------
+
+    let internal withXTickSpec (ticks: TickSpec) (unit: U<1>) (fig: Figure) =
+        mapLast (fun p -> { p with XAxis = { p.XAxis with Ticks = ticks; TickUnit = unit } }) fig
+
+    let internal withYTickSpec (ticks: TickSpec) (unit: U<1>) (fig: Figure) =
+        mapLast (fun p -> { p with YAxis = { p.YAxis with Ticks = ticks; TickUnit = unit } }) fig
+
+    /// D166 — a tick at every multiple of `step` on the x axis, in the axis's own numbers (the
+    /// unit its data is in, not the prefix it is labelled in): `withXTicksEvery 50e-9` on a
+    /// wavelength axis in metres gives 400, 450, … under `λ [nm]`. More than 50 ticks is refused.
+    /// `Marey.UnitsOfMeasure` has the spelling that takes a witness and checks it.
+    let withXTicksEvery (step: float) (fig: Figure) = withXTickSpec (TicksEvery step) U.unspecified fig
+
+    let withYTicksEvery (step: float) (fig: Figure) = withYTickSpec (TicksEvery step) U.unspecified fig
+
+    /// D166 — ticks at these values on the x axis, labelled as chosen ticks would be. Values
+    /// outside the domain are left out.
+    let withXTicksAt (values: float[]) (fig: Figure) = withXTickSpec (TicksAt(Array.copy values)) U.unspecified fig
+
+    let withYTicksAt (values: float[]) (fig: Figure) = withYTickSpec (TicksAt(Array.copy values)) U.unspecified fig
+
+    /// D166 — ticks at these values on the x axis, each with its own label: the high-symmetry
+    /// points of a band structure, `X`, `Γ`, `X`. The title keeps its unit, and a named tick is
+    /// never dropped to make room (it may be tilted).
+    let withXTicksNamed (ticks: (float * string)[]) (fig: Figure) = withXTickSpec (TicksNamed(Array.copy ticks)) U.unspecified fig
+
+    let withYTicksNamed (ticks: (float * string)[]) (fig: Figure) = withYTickSpec (TicksNamed(Array.copy ticks)) U.unspecified fig
+
+    /// D169 — write the x axis in `prefix` rather than the one its domain selects (D19):
+    /// `withXPrefix Prefix.none` for an axis in plain metres, `Prefix.milli` for millimetres
+    /// whatever the data's range.
+    let withXPrefix (prefix: Prefix) (fig: Figure) = mapLast (fun p -> { p with XAxis = { p.XAxis with Prefix = Some prefix } }) fig
+
+    let withYPrefix (prefix: Prefix) (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Prefix = Some prefix } }) fig
+
+    /// D170 — run the x axis from its high end to its low end, over the domain it would have had.
+    /// `withXDomain hi lo` reverses an axis too, over numbers you state.
+    let withXReversed (fig: Figure) = mapLast (fun p -> { p with XAxis = { p.XAxis with Reversed = true } }) fig
+
+    /// D170 — the y axis from its high end down: a depth below a surface, a magnitude.
+    let withYReversed (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Reversed = true } }) fig
+
+    /// D167 — the x axis's minor ticks: `MinorOff`, `MinorCount 5`, `MinorEvery step` in the axis's
+    /// own numbers, or `MinorAuto` to follow the theme. A stated step or count draws them under
+    /// any theme.
+    let withXMinorTicks (minor: MinorSpec) (fig: Figure) = mapLast (fun p -> { p with XAxis = { p.XAxis with Minor = minor } }) fig
+
+    let withYMinorTicks (minor: MinorSpec) (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Minor = minor } }) fig
+
+    /// D169 — how the x axis's tick numbers are written: `FormatFixed 2`, `FormatPercent`,
+    /// `FormatScientific` (a power of ten in the title, `x [10⁻³ m]`), or `TickFormat.custom f` of
+    /// the number the label would show. Named ticks keep their names.
+    let withXTickFormat (format: TickFormat) (fig: Figure) = mapLast (fun p -> { p with XAxis = { p.XAxis with Format = format } }) fig
+
+    let withYTickFormat (format: TickFormat) (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Format = format } }) fig
+
     let withGrid (x: bool) (y: bool) (fig: Figure) =
         mapLast
             (fun p ->
@@ -1170,6 +1379,17 @@ module Chart =
             fig
 
     let withLegend (placement: LegendPlacement) (fig: Figure) = mapLast (fun p -> { p with Legend = placement }) fig
+
+    /// D171 — lay the last panel's legend out in `columns` columns, filled down then across.
+    let withLegendColumns (columns: int) (fig: Figure) = mapLast (fun p -> { p with LegendColumns = max 1 columns }) fig
+
+    /// D171 — draw the last panel's legend with or without its frame, whatever the theme says.
+    let withLegendFrame (framed: bool) (fig: Figure) = mapLast (fun p -> { p with LegendFrame = Some framed }) fig
+
+    /// D171 — **one legend for the whole figure**, beside or below its panels, gathering every
+    /// panel's entries once each, in place of the panels' own. Applied when the figure is drawn,
+    /// so panels added afterwards are gathered too.
+    let withFigureLegend (placement: FigureLegend) (fig: Figure) = { fig with Legend = Some placement }
 
     /// §4 — swap the coordinate system. `Coord.polar` turns every geom on the panel polar and no
     /// geom finds out.
@@ -1543,6 +1763,46 @@ type Chart =
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure =
         Chart.text (U.erase xUnit) (U.erase yUnit) x y labels
+
+    /// D162 — a horizontal rule at `y`, across whatever panel it is `add`ed to, without moving
+    /// that panel's domain. `unit` is checked against the y axis when the figure is compiled.
+    static member HLine(y: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.hLine (U.erase unit) y
+
+    /// A vertical rule at `x`. See `HLine`.
+    static member VLine(x: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.vLine (U.erase unit) x
+
+    /// A horizontal band between `lo` and `hi`. See `HLine`.
+    static member HSpan(lo: float, hi: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.hSpan (U.erase unit) lo hi
+
+    /// A vertical band between `lo` and `hi`. See `HLine`.
+    static member VSpan(lo: float, hi: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.vSpan (U.erase unit) lo hi
+
+    /// The line through (`x`, `y`) with `slope`, in y's unit per x's, to both edges of the panel.
+    static member LineThrough
+        (
+            x: float,
+            y: float,
+            slope: float,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.lineThrough (U.erase xUnit) (U.erase yUnit) x y slope
+
+    /// D164 — text marking the point (`x`, `y`), to `add` over a figure, without moving its
+    /// domain. Offset, arrow and placement are `Chart.withTextOffset`, `withArrow`, `withTextAt`.
+    static member Annotation
+        (
+            x: float,
+            y: float,
+            text: string,
+            [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
+            [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
+        ) : Figure =
+        Chart.annotation (U.erase xUnit) (U.erase yUnit) x y text
 
     /// A least-squares line, to `add` over the data it was fitted to.
     static member Fit

@@ -41,8 +41,13 @@ out — and plotting metres against metres on these axes is a compile error.
 - **Statistics** — histogram, kernel density, ECDF, least-squares fit, and a five-number summary.
   The measures carry through: a fit of metres against seconds has a slope of type `float<m/s>`.
 - **Facets.** `facetWrap` gives one panel per level of a key, over shared axes.
-- **Themes.** Six, all measured against the colour validator below. `Theme.tikz` inherits the host
-  LaTeX document's fonts.
+- **What a paper figure adds last.** Rules and spans across a panel, annotations with arrows,
+  panel letters, ticks stated by step, value or name in the axis's own unit, minor ticks, tick
+  formats, reversed axes, and legends outside the plot, in the emptiest corner, in columns, or
+  shared by every panel. None of them moves the axes the data chose.
+- **Themes.** Six, all measured against the colour validator below. `Theme.publication` is the box
+  physics journals print, framed with ticks inside; `Theme.tikz` inherits the host LaTeX
+  document's fonts.
 - **Palettes** — Okabe–Ito, viridis, cividis, magma and an Oklab diverging ramp, with a
   colour-vision-deficiency and contrast validator that every shipped theme is checked against.
 - **A measure–arrange constraint layout**, and the axis and legend compilers.

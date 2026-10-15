@@ -77,6 +77,103 @@ public class Surface
         Assert.Equal(2, facet.Panels.Length);
     }
 
+    /// D162 — rules and spans from C#: built as figures and added, checked against the axis.
+    [Fact]
+    public void RulesAndSpans()
+    {
+        var fig = Chart.Line(X, Y, yUnit: Units.Metre)
+            .Add(Chart.HLine(0.0, Units.Metre))
+            .Add(Chart.VLine(1.0))
+            .Add(Chart.HSpan(0.1, 0.2, Units.Metre))
+            .WithName("band")
+            .Add(Chart.VSpan(0.5, 0.7))
+            .Add(Chart.LineThrough(0.0, 0.0, 1.0, yUnit: Units.Metre))
+            .Add(Chart.HLine(100.0, Units.Metre))
+            .WithDomainIncluded();
+
+        Assert.Contains("[m]", Svg(fig));
+        Assert.Contains("band", Svg(fig));
+        Assert.ThrowsAny<Exception>(() => Svg(Chart.Line(X, Y, yUnit: Units.Metre).Add(Chart.HLine(1.0, Units.Second))));
+    }
+
+    /// D164 / D165 — annotations, panel text and letters from C#.
+    [Fact]
+    public void AnnotationsAndLetters()
+    {
+        var fig = Chart.Line(X, Y, yUnit: Units.Metre)
+            .Add(Chart.Annotation(X[1], Y[1], "peak", yUnit: Units.Metre))
+            .WithTextOffset(12.0, 16.0)
+            .WithArrow(ArrowStyle.ArrowStraight)
+            .Add(Chart.Annotation(X[2], Y[2], "edge"))
+            .WithTextAt(X[0], Y[0])
+            .WithArrow(ArrowStyle.NewArrowArc(0.3))
+            .AddPanelText(0.98, 0.98, "note")
+            .Beside(Chart.Line(X, Y))
+            .WithPanelLetters(LetterStyle.LetterParen);
+
+        var svg = Svg(fig);
+        Assert.Contains("peak", svg);
+        Assert.Contains("note", svg);
+        Assert.Contains("(b)", svg);
+    }
+
+    /// D166 / D169 / D170 — stated ticks, a prefix and reversal from C#.
+    [Fact]
+    public void StatedTicks()
+    {
+        var fig = Chart.Line(new[] { 400e-9, 700e-9 }, new[] { 0.1, 0.9 }, xUnit: Units.Metre)
+            .WithXDomain(400e-9, 700e-9)
+            .WithXTicksEvery(50e-9, Units.Metre)
+            .WithYTicksNamed(new[] { 0.1, 0.9 }, new[] { "low", "high" })
+            .WithYReversed();
+
+        var svg = Svg(fig);
+        Assert.Contains("[nm]", svg);
+        Assert.Contains(">450<", svg);
+        Assert.Contains(">high<", svg);
+        Assert.Contains("[m]", Svg(Chart.Line(X, Y, yUnit: Units.Metre).WithYPrefix(PrefixModule.none)));
+        Assert.ThrowsAny<Exception>(() => Svg(fig.WithXTicksEvery(1.0, Units.Second)));
+    }
+
+    /// D167 / D168 — minor ticks and the tick conventions of a theme, from C#.
+    [Fact]
+    public void MinorTicksAndTickDirection()
+    {
+        var screen = ThemeModule.withMinorTicks(true, ThemeModule.withTickDirection(TickDirection.TickIn, ThemeModule.modern));
+        var fig = Chart.Line(X, Y, yUnit: Units.Metre)
+            .WithXMinorTicks(MinorSpec.NewMinorCount(4))
+            .WithYMinorTicks(MinorSpec.MinorOff)
+            .WithTheme(screen);
+
+        Assert.Contains("[m]", Svg(fig));
+        Assert.Contains("[m]", Svg(Chart.Line(X, Y, yUnit: Units.Metre).WithTheme(ThemeModule.publication)));
+    }
+
+    /// D169 — tick formats from C#, a custom one from a lambda.
+    [Fact]
+    public void TickFormats()
+    {
+        var fig = Chart.Line(X, new[] { 0.0, 0.001, 0.004, 0.002, 0.003 }, yUnit: Units.Metre)
+            .WithYTickFormat(TickFormat.FormatScientific)
+            .WithXTickFormat(v => $"<{v}>");
+
+        var svg = Svg(fig);
+        Assert.Contains("10⁻³·m", svg);
+        Assert.Contains("&lt;", svg);
+    }
+
+    /// D171 — legends outside, in columns, without a frame, and shared by a figure, from C#.
+    [Fact]
+    public void Legends()
+    {
+        var one = Chart.Line(X, Y, yUnit: Units.Metre).WithName("model")
+            .Add(Chart.Scatter(X, Y, yUnit: Units.Metre)).WithName("measured");
+
+        Assert.Contains("measured", Svg(one.WithLegend(LegendPlacement.LegendOutsideBottom).WithLegendColumns(2).WithLegendFrame(false)));
+        Assert.Contains("measured", Svg(one.WithLegend(LegendPlacement.LegendBest)));
+        Assert.Contains("measured", Svg(one.Beside(one).WithFigureLegend(FigureLegend.FigureLegendRight)));
+    }
+
     [Fact]
     public void TheCategoricalConstructors()
     {

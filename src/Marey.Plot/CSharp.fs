@@ -69,6 +69,91 @@ type FigureExtensions =
     static member WithOpacity(fig: Figure, opacity: float) = Chart.withOpacity opacity fig
 
     [<Extension>]
+    static member WithDomainIncluded(fig: Figure) = Chart.withDomainIncluded fig
+
+    [<Extension>]
+    static member WithXTicksEvery(fig: Figure, step: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withXTickSpec (TicksEvery step) (U.erase unit) fig
+
+    [<Extension>]
+    static member WithYTicksEvery(fig: Figure, step: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withYTickSpec (TicksEvery step) (U.erase unit) fig
+
+    [<Extension>]
+    static member WithXTicksAt(fig: Figure, values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withXTickSpec (TicksAt(Array.copy values)) (U.erase unit) fig
+
+    [<Extension>]
+    static member WithYTicksAt(fig: Figure, values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withYTickSpec (TicksAt(Array.copy values)) (U.erase unit) fig
+
+    [<Extension>]
+    static member WithXTicksNamed(fig: Figure, values: float[], labels: string[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withXTickSpec (TicksNamed(Array.zip values labels)) (U.erase unit) fig
+
+    [<Extension>]
+    static member WithYTicksNamed(fig: Figure, values: float[], labels: string[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withYTickSpec (TicksNamed(Array.zip values labels)) (U.erase unit) fig
+
+    [<Extension>]
+    static member WithXPrefix(fig: Figure, prefix: Prefix) = Chart.withXPrefix prefix fig
+
+    [<Extension>]
+    static member WithYPrefix(fig: Figure, prefix: Prefix) = Chart.withYPrefix prefix fig
+
+    [<Extension>]
+    static member WithXReversed(fig: Figure) = Chart.withXReversed fig
+
+    [<Extension>]
+    static member WithXMinorTicks(fig: Figure, minor: MinorSpec) = Chart.withXMinorTicks minor fig
+
+    [<Extension>]
+    static member WithYMinorTicks(fig: Figure, minor: MinorSpec) = Chart.withYMinorTicks minor fig
+
+    [<Extension>]
+    static member WithLegendColumns(fig: Figure, columns: int) = Chart.withLegendColumns columns fig
+
+    [<Extension>]
+    static member WithLegendFrame(fig: Figure, framed: bool) = Chart.withLegendFrame framed fig
+
+    [<Extension>]
+    static member WithFigureLegend(fig: Figure, placement: FigureLegend) = Chart.withFigureLegend placement fig
+
+    [<Extension>]
+    static member WithXTickFormat(fig: Figure, format: TickFormat) = Chart.withXTickFormat format fig
+
+    [<Extension>]
+    static member WithYTickFormat(fig: Figure, format: TickFormat) = Chart.withYTickFormat format fig
+
+    /// A format from a C# function of the number the label would show.
+    [<Extension>]
+    static member WithXTickFormat(fig: Figure, format: Func<float, string>) =
+        Chart.withXTickFormat (TickFormat.custom (fun v -> format.Invoke v)) fig
+
+    [<Extension>]
+    static member WithYTickFormat(fig: Figure, format: Func<float, string>) =
+        Chart.withYTickFormat (TickFormat.custom (fun v -> format.Invoke v)) fig
+
+    [<Extension>]
+    static member WithYReversed(fig: Figure) = Chart.withYReversed fig
+
+    [<Extension>]
+    static member WithTextOffset(fig: Figure, dx: float, dy: float) = Chart.withTextOffset (dx * 1.0<px>) (dy * 1.0<px>) fig
+
+    [<Extension>]
+    static member WithTextAt(fig: Figure, x: float, y: float) = Chart.withTextAt x y fig
+
+    [<Extension>]
+    static member WithArrow(fig: Figure, arrow: ArrowStyle) = Chart.withArrow arrow fig
+
+    [<Extension>]
+    static member AddPanelText(fig: Figure, x: float, y: float, text: string) = Chart.addPanelText x y text fig
+
+    [<Extension>]
+    static member WithPanelLetters(fig: Figure, letter: LetterStyle, [<Optional; DefaultParameterValue(true)>] bold: bool) =
+        Chart.withPanelLettersWith letter bold fig
+
+    [<Extension>]
     static member WithMarker(fig: Figure, shape: MarkerShape) = Chart.withMarker shape fig
 
     /// Dash lengths in device pixels.

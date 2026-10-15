@@ -230,6 +230,186 @@ let logFigure: Figure =
     |> Chart.withTitle "Energy drift"
     |> Chart.withLegend LegendTopLeft
 
+/// D162 — rules and spans, out of the domain (D163). A residual panel in millimetres with a rule
+/// at zero, a named band, a slope rule and a vertical rule past the data that is counted and
+/// not drawn; and beside it a polar panel, where a horizontal rule is a circle and a vertical
+/// span a wedge. The residuals are exact decimals rather than `sin` (D141).
+let rulesFigure: Figure =
+    let ts = Array.init 13 (fun i -> float i * 0.5<s>)
+
+    let residuals =
+        [| 0.4; -0.7; 0.9; 0.1; -0.3; -0.8; 0.6; 0.2; -0.5; 0.7; -0.1; -0.9; 0.3 |]
+        |> Array.map (fun v -> v * 1e-3<m>)
+
+    let left =
+        Chart.scatter U.second U.metre ts residuals
+        |> Chart.withName "residual"
+        |> Chart.addHSpan U.metre -0.5e-3<m> 0.5e-3<m>
+        |> Chart.withName "±0.5 mm"
+        |> Chart.addHLine U.metre 0.0<m>
+        |> Chart.addLineThrough U.second U.metre 0.0<s> -1e-3<m> 0.25e-3<m / s>
+        |> Chart.addVLine U.second 9.0<s>
+        |> Chart.withLegend LegendTopLeft
+        |> Chart.withPanelTitle "rules"
+
+    let right =
+        Chart.line Derived.radian U.metre [| 0.0<rad>; 6.0<rad> |] [| 1.0<m>; 3.0<m> |]
+        |> Chart.addHLine U.metre 2.0<m>
+        |> Chart.addVSpan Derived.radian 1.0<rad> 1.5<rad>
+        |> Chart.withCoord Coord.polar
+        |> Chart.withPanelTitle "polar"
+
+    left |> Chart.beside right |> Chart.withTitle "Rules and spans"
+
+/// Two panels side by side.
+let rulesSurface: Extent<px> = { Width = 760.0<px>; Height = 320.0<px> }
+
+/// D164 / D165 — annotations and panel letters. Four emission lines marked with straight arrows
+/// (one label above the plot area, unclipped), one with an arc to a place in data space, a note
+/// in a corner, and the two panels lettered "(a)", "(b)" in reading order. The lines are drawn
+/// as triangles over exact values, not Gaussians, so Node compiles the same scene (D141).
+let annotateFigure: Figure =
+    let nm = 1e-9<m>
+    let lines = [| "Hδ", 410.0, 0.2; "Hγ", 434.0, 0.3; "Hβ", 486.0, 0.55; "Hα", 656.0, 1.0 |]
+
+    let lam, intensity =
+        [| yield 400.0, 0.03
+           for _, c, h in lines do
+               yield c - 2.0, 0.03
+               yield c, h
+               yield c + 2.0, 0.03
+           yield 700.0, 0.03 |]
+        |> Array.unzip
+
+    let mutable spectrum =
+        Chart.line U.metre U.one (lam |> Array.map (fun l -> l * nm)) intensity
+        |> Chart.withName "observed"
+        |> Chart.withLegend LegendTopLeft
+
+    for name, c, h in lines do
+        spectrum <-
+            spectrum
+            |> Chart.annotate U.metre U.one (c * nm) h name
+            |> Chart.withTextOffset 10.0<px> 16.0<px>
+            |> Chart.withArrow ArrowStraight
+
+    let spectrum =
+        spectrum
+        |> Chart.annotate U.metre U.one (486.0 * nm) 0.3 "filter edge"
+        |> Chart.withTextAt U.metre U.one (560.0 * nm) 0.6
+        |> Chart.withArrow (ArrowArc 0.3)
+        |> Chart.addPanelText 0.98 0.5 "T = 10⁴ K"
+
+    let decay =
+        Chart.scatter U.second U.metre [| 0.0<s>; 1.0<s>; 2.0<s>; 3.0<s> |] [| 4.0<m>; 2.0<m>; 1.0<m>; 0.5<m> |]
+        |> Chart.annotate U.second U.metre 2.0<s> 1.0<m> "half-life"
+        |> Chart.withTextOffset 12.0<px> 12.0<px>
+        |> Chart.withArrow ArrowStraight
+
+    spectrum |> Chart.withPanelLetters LetterParen |> Chart.beside decay
+
+let annotateSurface: Extent<px> = { Width = 760.0<px>; Height = 320.0<px> }
+
+/// D166 / D169 / D170 — stated ticks. A wavelength axis ticked every 50 nm, stated in metres
+/// and labelled in nanometres; a band, as a parabola over exact values, under the named ticks
+/// X, Γ, X; a depth profile on a reversed axis; and an axis pinned to plain metres.
+let ticksFigure: Figure =
+    let nm = 1e-9<m>
+
+    let spectrum =
+        Chart.line U.metre U.one [| 400.0 * nm; 550.0 * nm; 700.0 * nm |] [| 0.1; 0.7; 0.4 |]
+        |> Chart.withXTicksEvery U.metre (50.0 * nm)
+        |> Chart.withXDomain 400e-9 700e-9
+        |> Chart.withXLabel "λ"
+        |> Chart.withPanelTitle "every 50 nm"
+
+    let edge = 8.0e9</m>
+    let k = Array.init 17 (fun i -> -edge + float i * edge / 8.0)
+    let energy = k |> Array.map (fun k -> 2.0<eV> * (k / edge) * (k / edge) - 1.0<eV>)
+
+    let band =
+        Chart.line (U.recip U.metre) NonSi.electronvolt k energy
+        |> Chart.withXTicksNamed (U.recip U.metre) [| -edge, "X"; 0.0</m>, "Γ"; edge, "X" |]
+        |> Chart.withXDomain (float -edge) (float edge)
+        |> Chart.withXLabel "k"
+        |> Chart.withPanelTitle "named"
+
+    let depth =
+        Chart.line U.kelvin U.metre [| 290.0<K>; 284.0<K>; 277.0<K>; 276.0<K> |] [| 0.0<m>; 100.0<m>; 400.0<m>; 800.0<m> |]
+        |> Chart.withYReversed
+        |> Chart.withYLabel "depth"
+        |> Chart.withPanelTitle "reversed"
+
+    let pinned =
+        Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 0.002<m> |]
+        |> Chart.withYPrefix Prefix.none
+        |> Chart.withPanelTitle "plain metres"
+
+    (spectrum |> Chart.beside band) |> Chart.above (depth |> Chart.beside pinned)
+
+let ticksSurface: Extent<px> = { Width = 760.0<px>; Height = 520.0<px> }
+
+/// D167 / D168 — P1 of the M8 port: a fit over measurements with a residual panel below it,
+/// under `Theme.publication` — framed, ticks inside on four sides, minor ticks — lettered, with a
+/// rule at zero and an axis stated every second. The model is a polynomial over exact values.
+let publicationFigure: Figure =
+    let ts = Array.init 13 (fun i -> float i * 0.5<s>)
+    let model (t: float<s>) = 1.0e-3<m> * (float t - 3.0) * (float t - 3.0) - 4.0e-3<m>
+    let wobble = [| 0.4; -0.7; 0.9; 0.1; -0.3; -0.8; 0.6; 0.2; -0.5; 0.7; -0.1; -0.9; 0.3 |]
+    let measured = Array.mapi (fun i t -> model t + wobble.[i] * 0.4e-3<m>) ts
+    let sigma = Array.create ts.Length 0.4e-3<m>
+    let fine = Array.init 61 (fun i -> float i * 0.1<s>)
+
+    let fit =
+        Chart.errorbar U.second U.metre ts measured sigma
+        |> Chart.withName "measured"
+        |> Chart.addLine U.second U.metre fine (fine |> Array.map model)
+        |> Chart.withName "model"
+        |> Chart.withXTicksEvery U.second 1.0<s>
+        |> Chart.withLegend LegendBottomRight
+
+    let residual =
+        Chart.errorbar U.second U.metre ts (Array.map2 (-) measured (ts |> Array.map model)) sigma
+        |> Chart.addHLine U.metre 0.0<m>
+        |> Chart.withXTicksEvery U.second 1.0<s>
+        |> Chart.withYLabel "residual"
+
+    fit
+    |> Chart.above residual
+    |> Chart.withPanelLetters LetterParen
+    |> Chart.withTheme Theme.publication
+
+let publicationSurface: Extent<px> = { Width = 480.0<px>; Height = 420.0<px> }
+
+/// D171 — legends. Three warming curves (rational, not `exp`, D141) four ways: a legend in its own
+/// column, one in its own row in three columns, the emptiest corner, and a corner without a frame.
+let private warming (title: string) =
+    let ts = Array.init 31 (fun i -> float i * 20.0<s>)
+    let curve (offset: float<K>) = ts |> Array.map (fun t -> 300.0<K> - offset + 60.0<K> * (t / (t + 150.0<s>)))
+
+    Chart.line U.second U.kelvin ts (curve 0.0<K>)
+    |> Chart.withName "chamber"
+    |> Chart.addLine U.second U.kelvin ts (curve 4.0<K>)
+    |> Chart.withName "probe"
+    |> Chart.addLine U.second U.kelvin ts (curve 10.0<K>)
+    |> Chart.withName "wall"
+    |> Chart.withPanelTitle title
+
+let legendsFigure: Figure =
+    let right = warming "outside right" |> Chart.withLegend LegendOutsideRight
+    let below = warming "below, three columns" |> Chart.withLegend LegendOutsideBottom |> Chart.withLegendColumns 3
+    let best = warming "best" |> Chart.withLegend LegendBest
+    let bare = warming "no frame" |> Chart.withLegendFrame false
+    (right |> Chart.beside below) |> Chart.above (best |> Chart.beside bare) |> Chart.withTheme Theme.publication
+
+let legendsSurface: Extent<px> = { Width = 760.0<px>; Height = 560.0<px> }
+
+/// D171 — one legend for three panels, beside them.
+let sharedLegendFigure: Figure =
+    warming "one" |> Chart.beside (warming "two") |> Chart.beside (warming "three") |> Chart.withFigureLegend FigureLegendRight
+
+let sharedLegendSurface: Extent<px> = { Width = 760.0<px>; Height = 280.0<px> }
+
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
 let figureSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
@@ -1011,7 +1191,13 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-field-heatmap" wide Fields.heatmapFigure
         fig "figure-field-quiver" wide Fields.quiverFigure
         fig "figure-field-streamlines" wide Fields.streamlinePortrait
-        fig "figure-field-portrait" wide Fields.phasePortrait ]
+        fig "figure-field-portrait" wide Fields.phasePortrait
+        fig "figure-rules" rulesSurface rulesFigure
+        fig "figure-annotate" annotateSurface annotateFigure
+        fig "figure-ticks" ticksSurface ticksFigure
+        fig "figure-publication" publicationSurface publicationFigure
+        fig "figure-legends" legendsSurface legendsFigure
+        fig "figure-legend-shared" sharedLegendSurface sharedLegendFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1030,4 +1216,10 @@ let svg: (string * (unit -> string)) list =
         "figure-field-heatmap", figureAt wide Fields.heatmapFigure
         "figure-field-quiver", figureAt wide Fields.quiverFigure
         "figure-field-streamlines", figureAt wide Fields.streamlinePortrait
-        "figure-field-portrait", figureAt wide Fields.phasePortrait ]
+        "figure-field-portrait", figureAt wide Fields.phasePortrait
+        "figure-rules", figureAt rulesSurface rulesFigure
+        "figure-annotate", figureAt annotateSurface annotateFigure
+        "figure-ticks", figureAt ticksSurface ticksFigure
+        "figure-publication", figureAt publicationSurface publicationFigure
+        "figure-legends", figureAt legendsSurface legendsFigure
+        "figure-legend-shared", figureAt sharedLegendSurface sharedLegendFigure ]

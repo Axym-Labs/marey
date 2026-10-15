@@ -40,7 +40,13 @@ type AxisRender =
       ShowTitle: bool
       /// Distance from the panel edge to the title anchor, in device px. Layout computes it
       /// from the measured tick labels; the axis compiler does not guess.
-      TitleOffset: float<px> }
+      TitleOffset: float<px>
+      /// D168 — which way the marks point, and whether they are repeated, unlabelled, on the
+      /// opposite side of the frame.
+      Direction: TickDirection
+      Mirror: bool
+      /// D167 — whether `Spec.Minor` is drawn.
+      ShowMinor: bool }
 
 /// §5.5 — **an axis is compiled into `Path` and `Text`. There is no `Axis` node and there never
 /// will be.**
@@ -142,7 +148,11 @@ module Axes =
     /// D73 — the prefix may be decided elsewhere. The only caller that passes anything but
     /// `None` is the one laying out a whole animation against a union domain; see
     /// `Axis.ofScalePinnedWith` for why an animation needs it.
-    let specOfPinned
+    /// D166 — `specOfPinned` with the ticks stated, in the axis's own numbers.
+    let specTicked
+        (ticks: TickSpec)
+        (minor: MinorSpec)
+        (format: TickFormat)
         (pin: Prefix option)
         (style: UnitStyle)
         (tickCount: int)
@@ -155,7 +165,17 @@ module Axes =
             | Some l -> l
             | None -> defaultLabelFor side (angleOf packed) (dimOf packed)
 
-        Axis.ofPackedPinnedWith pin style UnitRegistry.si tickCount name packed
+        Axis.ofPackedTicked ticks minor format pin style UnitRegistry.si tickCount name packed
+
+    let specOfPinned
+        (pin: Prefix option)
+        (style: UnitStyle)
+        (tickCount: int)
+        (label: string option)
+        (side: AxisSide)
+        (packed: PackedScale)
+        : AxisSpec =
+        specTicked TicksAuto MinorAuto FormatAuto pin style tickCount label side packed
 
     let specOf (style: UnitStyle) (tickCount: int) (label: string option) (side: AxisSide) (packed: PackedScale) : AxisSpec =
         specOfPinned None style tickCount label side packed
@@ -286,7 +306,9 @@ module Axes =
 
     /// How much room the tick labels need *across* the axis: their height on a horizontal axis,
     /// their width on a vertical one. Includes the tick mark and the label gap.
-    let tickExtent (m: ITextMeasurer) (theme: Theme) (side: AxisSide) (spec: AxisSpec) (plan: TickPlan) : float<px> =
+    /// The room a side's ticks and their labels take outside the plot area. An inward tick takes
+    /// none: its length is inside the plot (D168).
+    let tickExtentWith (direction: TickDirection) (m: ITextMeasurer) (theme: Theme) (side: AxisSide) (spec: AxisSpec) (plan: TickPlan) : float<px> =
         let kept = keptTicks spec plan
 
         if kept.Length = 0 then
@@ -301,7 +323,15 @@ module Axes =
                     if horizontal then Rect.height b else Rect.width b)
                 |> Array.max
 
-            theme.TickLength + theme.LabelGap + across
+            (match direction with
+             | TickIn -> 0.0<px>
+             | TickOut
+             | TickInOut -> theme.TickLength)
+            + theme.LabelGap
+            + across
+
+    let tickExtent (m: ITextMeasurer) (theme: Theme) (side: AxisSide) (spec: AxisSpec) (plan: TickPlan) : float<px> =
+        tickExtentWith theme.TickDirection m theme side spec plan
 
     /// How far a tick label sticks out past the *end* of the axis, on each side. A centred label
     /// at position 0 hangs half its width off the left edge of the panel, and if layout does not
@@ -362,24 +392,29 @@ module Axes =
 
         let textPaint = Solid t.Foreground
 
-        // Outward: away from the plot area, in nd.
-        let outX, outY =
-            match a.Side with
+        // Outward: away from the plot area, in nd, for any side.
+        let outwardOf (side: AxisSide) =
+            match side with
             | AxisBottom -> 0.0<nd>, -1.0<nd>
             | AxisTop -> 0.0<nd>, 1.0<nd>
             | AxisLeft -> -1.0<nd>, 0.0<nd>
             | AxisRight -> 1.0<nd>, 0.0<nd>
 
-        let offset (d: float<px>) : Vec2<nd> =
+        let offsetAt (side: AxisSide) (d: float<px>) : Vec2<nd> =
+            let outX, outY = outwardOf side
+
             { X = (outX / 1.0<nd>) * Layout.ndX e d
               Y = (outY / 1.0<nd>) * Layout.ndY e d }
 
-        let anchorPoint (p: float<nd>) : Vec2<nd> =
-            match a.Side with
+        let anchorAt (side: AxisSide) (p: float<nd>) : Vec2<nd> =
+            match side with
             | AxisBottom -> { X = alongX panel p; Y = panel.Y0 }
             | AxisTop -> { X = alongX panel p; Y = panel.Y1 }
             | AxisLeft -> { X = panel.X0; Y = alongY panel p }
             | AxisRight -> { X = panel.X1; Y = alongY panel p }
+
+        let offset (d: float<px>) = offsetAt a.Side d
+        let anchorPoint (p: float<nd>) = anchorAt a.Side p
 
         // ---- the spine ----------------------------------------------------------------
         let spine =
@@ -396,18 +431,48 @@ module Axes =
                 Path([| MoveTo p0; LineTo p1 |], Some axisStroke, None, NonZero)
 
         // ---- tick marks: one Path, many subpaths --------------------------------------
+        //
+        // D168 — a mark runs from `inward` lengths inside the spine to `outward` lengths outside
+        // it, and a mirrored side repeats the marks on the opposite edge of the frame. D167's
+        // minor marks are more subpaths of the same path, shorter.
+        let outward, inward =
+            match a.Direction with
+            | TickOut -> 1.0, 0.0
+            | TickIn -> 0.0, 1.0
+            | TickInOut -> 1.0, 1.0
+
+        let opposite =
+            match a.Side with
+            | AxisBottom -> AxisTop
+            | AxisTop -> AxisBottom
+            | AxisLeft -> AxisRight
+            | AxisRight -> AxisLeft
+
+        let markSegs (side: AxisSide) (length: float<px>) (positions: float<nd>[]) =
+            let d = offsetAt side length
+
+            [| for pos in positions do
+                   let p = anchorAt side pos
+                   yield MoveTo { X = p.X - d.X * inward; Y = p.Y - d.Y * inward }
+                   yield LineTo { X = p.X + d.X * outward; Y = p.Y + d.Y * outward } |]
+
         let marks =
-            if not a.ShowTicks || kept.Length = 0 then
+            let majors = kept |> Array.map (fun k -> k.Position)
+            let minors = if a.ShowMinor then a.Spec.Minor |> Array.filter inPanel else [||]
+
+            let segs =
+                if not a.ShowTicks then
+                    [||]
+                else
+                    Array.concat
+                        [ markSegs a.Side t.TickLength majors
+                          markSegs a.Side t.MinorTickLength minors
+                          (if a.Mirror then markSegs opposite t.TickLength majors else [||])
+                          (if a.Mirror then markSegs opposite t.MinorTickLength minors else [||]) ]
+
+            if segs.Length = 0 then
                 Scene.empty
             else
-                let d = offset t.TickLength
-
-                let segs =
-                    [| for k in kept do
-                           let p = anchorPoint k.Position
-                           yield MoveTo p
-                           yield LineTo(p + d) |]
-
                 Path(segs, Some tickStroke, None, NonZero)
 
         // ---- tick labels ---------------------------------------------------------------
@@ -415,7 +480,7 @@ module Axes =
             if not a.ShowLabels || kept.Length = 0 then
                 Scene.empty
             else
-                let d = offset (t.TickLength + t.LabelGap)
+                let d = offset (t.TickLength * outward + t.LabelGap)
                 let rotated = a.Plan.Rotation <> 0.0<rad>
 
                 let anchor, baseline =

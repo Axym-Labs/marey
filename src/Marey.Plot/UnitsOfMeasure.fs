@@ -330,7 +330,104 @@ module Chart =
     let sizeBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
         Marey.Chart.sizeBy u values fig
 
+    // ---- Rules and spans (D162) ----------------------------------------------------------------
+
+    /// A horizontal rule at `y`, across the last panel wherever its domain ends up, and without
+    /// moving that domain (D163; `withDomainIncluded` lets it). The witness is the y axis's, so a
+    /// rule at `9.81<m/s^2>` on a metre axis does not compile. Unnamed it is furniture and stays
+    /// out of the legend; `withName` puts it in.
+    let addHLine (uy: U<'uy>) (y: float<'uy>) (fig: Figure) : Figure = Marey.Chart.addHLine uy y fig
+
+    /// A vertical rule at `x`. See `addHLine`.
+    let addVLine (ux: U<'ux>) (x: float<'ux>) (fig: Figure) : Figure = Marey.Chart.addVLine ux x fig
+
+    /// A horizontal band between `lo` and `hi`, across the panel. See `addHLine`.
+    let addHSpan (uy: U<'uy>) (lo: float<'uy>) (hi: float<'uy>) (fig: Figure) : Figure = Marey.Chart.addHSpan uy lo hi fig
+
+    /// A vertical band between `lo` and `hi`, up the panel. See `addHLine`.
+    let addVSpan (ux: U<'ux>) (lo: float<'ux>) (hi: float<'ux>) (fig: Figure) : Figure = Marey.Chart.addVSpan ux lo hi fig
+
+    /// The line through (`x`, `y`) with `slope`, to both edges of the panel. The slope is in the
+    /// y unit per x unit, so a speed is the slope of a line of metres against seconds and a
+    /// slope in the wrong units does not compile. On a log axis it is straight on the page.
+    let addLineThrough (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (slope: float<'uy / 'ux>) (fig: Figure) : Figure =
+        Marey.Chart.addLineThrough ux uy x y slope fig
+
+    /// A figure that is only a horizontal rule, for `Chart.add` or `Chart.overlay`.
+    let hLine (uy: U<'uy>) (y: float<'uy>) : Figure = Marey.Chart.hLine uy y
+
+    let vLine (ux: U<'ux>) (x: float<'ux>) : Figure = Marey.Chart.vLine ux x
+
+    let hSpan (uy: U<'uy>) (lo: float<'uy>) (hi: float<'uy>) : Figure = Marey.Chart.hSpan uy lo hi
+
+    let vSpan (ux: U<'ux>) (lo: float<'ux>) (hi: float<'ux>) : Figure = Marey.Chart.vSpan ux lo hi
+
+    let lineThrough (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (slope: float<'uy / 'ux>) : Figure =
+        Marey.Chart.lineThrough ux uy x y slope
+
+    // ---- Annotations (D164) -------------------------------------------------------------------
+
+    /// Text marking the point (`x`, `y`) on the last panel, 6 px up and to the right of it,
+    /// without moving the domain. `withTextOffset`, `withTextAt` and `withArrow` place it and
+    /// point at the point; `withColor` and `withStyle` restyle it.
+    let annotate (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (text: string) (fig: Figure) : Figure =
+        Marey.Chart.annotate ux uy x y text fig
+
+    /// A figure that is only an annotation, for `Chart.add`.
+    let annotation (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (text: string) : Figure =
+        Marey.Chart.annotation ux uy x y text
+
+    /// Put the most recent annotation's text at a place in data space, checked against the axes'
+    /// witnesses.
+    let withTextAt (_ux: U<'ux>) (_uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (fig: Figure) : Figure =
+        Marey.Chart.withTextAt (float x) (float y) fig
+
+    // ---- Stated ticks (D166) -------------------------------------------------------------------
+
+    let private erased (u: U<'u>) : U<1> = U.erase (u :> IUnit)
+
+    /// A tick at every multiple of `step` on the x axis. The step is checked against the axis's
+    /// unit when the figure is compiled, and converted when it is another unit of the same
+    /// dimension: `withXTicksEvery Derived.kilometre 0.5<km>` on a metre axis ticks every 500 m.
+    let withXTicksEvery (u: U<'u>) (step: float<'u>) (fig: Figure) : Figure =
+        Marey.Chart.withXTickSpec (TicksEvery(float step)) (erased u) fig
+
+    let withYTicksEvery (u: U<'u>) (step: float<'u>) (fig: Figure) : Figure =
+        Marey.Chart.withYTickSpec (TicksEvery(float step)) (erased u) fig
+
+    /// Ticks at these values on the x axis, labelled as chosen ticks would be.
+    let withXTicksAt (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
+        Marey.Chart.withXTickSpec (TicksAt(values |> Array.map float)) (erased u) fig
+
+    let withYTicksAt (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
+        Marey.Chart.withYTickSpec (TicksAt(values |> Array.map float)) (erased u) fig
+
+    /// Ticks at these values on the x axis, each with its own label — `X`, `Γ`, `X`.
+    let withXTicksNamed (u: U<'u>) (ticks: (float<'u> * string)[]) (fig: Figure) : Figure =
+        Marey.Chart.withXTickSpec (TicksNamed(ticks |> Array.map (fun (v, n) -> float v, n))) (erased u) fig
+
+    let withYTicksNamed (u: U<'u>) (ticks: (float<'u> * string)[]) (fig: Figure) : Figure =
+        Marey.Chart.withYTickSpec (TicksNamed(ticks |> Array.map (fun (v, n) -> float v, n))) (erased u) fig
+
     // ---- The shadows -------------------------------------------------------------------------
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so an annotation takes a witness per axis: Chart.annotate or Chart.annotation. Chart.Annotation(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+    let Annotation (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so a rule takes a witness: Chart.addHLine or Chart.hLine. Chart.HLine(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+    let HLine (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so a rule takes a witness: Chart.addVLine or Chart.vLine. Chart.VLine(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+    let VLine (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so a span takes a witness: Chart.addHSpan or Chart.hSpan. Chart.HSpan(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+    let HSpan (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so a span takes a witness: Chart.addVSpan or Chart.vSpan. Chart.VSpan(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+    let VSpan (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
+
+    [<Obsolete("Marey.UnitsOfMeasure is open, so a rule takes a witness per axis: Chart.addLineThrough or Chart.lineThrough. Chart.LineThrough(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
+    let LineThrough (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
 
     [<Obsolete("Marey.UnitsOfMeasure is open, so a chart takes a witness per axis: Chart.line. Chart.Line(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
     let Line (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."

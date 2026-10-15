@@ -305,6 +305,33 @@ module Figures =
     let ``a wide log axis under Theme tikz`` () =
         check "figure-log-siunitx.tex" (logFigure |> Chart.withTheme Theme.tikz |> Chart.render TikzBackend.render figureSurface)
 
+    /// D162 — rules, spans and a polar circle in TeX: dashed strokes, a filled band at a tenth,
+    /// and the sampled arc.
+    [<Fact>]
+    let ``rules and spans`` () =
+        check "figure-rules.tex" (Chart.render TikzBackend.render rulesSurface rulesFigure)
+
+    /// D164 / D165 — arrows straight and arced, text past the plot area, and panel letters.
+    [<Fact>]
+    let ``annotations and panel letters`` () =
+        check "figure-annotate.tex" (Chart.render TikzBackend.render annotateSurface annotateFigure)
+
+    /// D166 / D169 / D170 — a stated step, named ticks, a reversed axis and a pinned prefix.
+    [<Fact>]
+    let ``stated ticks`` () =
+        check "figure-ticks.tex" (Chart.render TikzBackend.render ticksSurface ticksFigure)
+
+    /// D167 / D168 — the publication box: frame, inward and mirrored ticks, minor ticks.
+    [<Fact>]
+    let ``the publication theme`` () =
+        check "figure-publication.tex" (Chart.render TikzBackend.render publicationSurface publicationFigure)
+
+    /// D171 — legends outside, in columns, in the emptiest corner, and shared by a figure.
+    [<Fact>]
+    let ``legends`` () =
+        check "figure-legends.tex" (Chart.render TikzBackend.render legendsSurface legendsFigure)
+        check "figure-legend-shared.tex" (Chart.render TikzBackend.render sharedLegendSurface sharedLegendFigure)
+
     /// Gate 6 meets gate 7. A baseline can be byte-stable, valid TeX and *blank* — that is
     /// precisely the failure this milestone already shipped once. So the committed figure is also
     /// compiled and looked at, which is what makes it a record of a picture rather than of a

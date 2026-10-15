@@ -67,6 +67,48 @@ type ViolinProfile<[<Measure>] 'p> =
     { At: float<'p>[]
       Width: float[] }
 
+/// D162 — a mark across the whole panel: `axhline`, `axvline`, `axline`, `axhspan`, `axvspan`.
+///
+/// Each says where it is on **one** axis (or through two points), and nothing about where it
+/// ends, because it ends where the panel does. That is only known once the panel's domain is
+/// final — after `unify`, a facet's sharing, a stated domain, the union over a shot, a zoom — so
+/// a rule is carried in data space like every geom here (D97) and laid across the panel when it
+/// is compiled.
+[<NoComparison>]
+type RuleSpec<[<Measure>] 'p> =
+    /// Constant y, across the panel.
+    | RuleH of y: float<'p>
+    /// Constant x, up the panel.
+    | RuleV of x: float<'p>
+    /// The line through two points, to both edges of the panel. On a log axis it is straight on
+    /// the page between where the two points land, as matplotlib's `axline` is.
+    | RuleThrough of x0: float<'p> * y0: float<'p> * x1: float<'p> * y1: float<'p>
+    /// The band between two y values, across the panel.
+    | SpanH of lo: float<'p> * hi: float<'p>
+    /// The band between two x values, up the panel.
+    | SpanV of lo: float<'p> * hi: float<'p>
+
+/// D164 — where an annotation's text stands.
+[<NoComparison>]
+type TextPlacement<[<Measure>] 'p> =
+    /// A device offset from the point it marks, y up — matplotlib's `textcoords='offset
+    /// points'`, and the default, because it survives a zoom and a change of figure size where
+    /// a place in data space drifts across the label.
+    | TextOffset of Vec2<px>
+    /// A second place in data space.
+    | TextAt of x: float<'p> * y: float<'p>
+    /// D165 — a place in the plot area, as fractions of its width and height from the bottom
+    /// left, with no point to mark: a panel's "(a)", a note in a corner. It ignores the coord.
+    | TextInPanel of x: float * y: float
+
+/// D164 — the arrow from an annotation's text to the point it marks.
+type ArrowStyle =
+    | ArrowNone
+    | ArrowStraight
+    /// A quadratic arc bent by `bend` times the arrow's length to its left, as matplotlib's
+    /// `connectionstyle="arc3,rad=…"`.
+    | ArrowArc of bend: float
+
 /// M0's geoms (§16: "line/scatter/errorbar" by name), and M2 phase 6's.
 ///
 /// **`'p` is the space the numeric payloads live in**, and there are exactly two. A `Geom` —
@@ -143,6 +185,13 @@ type GeomOf<[<Measure>] 'p> =
     /// points are the nodes, so the axes cover the grid and a colour channel over the values
     /// gets its colorbar exactly as a scatter's would.
     | GeomField of field: FieldPayload<'p> * mark: FieldMark
+    /// D162 — a rule or a span, laid across the panel when it is compiled. The layer's points
+    /// are not drawn; they are there so that its unit is checked against the axes like any
+    /// layer's, and so that `withDomainIncluded` has a value to put in the domain.
+    | GeomRule of RuleSpec<'p>
+    /// D164 / D165 — one piece of text, at a place relative to the layer's one point (the
+    /// point it marks) or in the plot area, with an optional arrow to the point.
+    | GeomAnnotation of text: string * placement: TextPlacement<'p> * arrow: ArrowStyle
 
 /// A geom in the series' data space — what every constructor returns and every `Layer` holds.
 type Geom = GeomOf<1>
@@ -201,6 +250,37 @@ module Geom =
                     MarkCircle
                 else
                     theme.MarkerShapes.[((i % theme.MarkerShapes.Length) + theme.MarkerShapes.Length) % theme.MarkerShapes.Length] }
+
+    /// D162 — the style a rule or a span starts with. It is furniture rather than data, so it
+    /// takes no palette colour: a rule is drawn in the theme's axis colour at the axis's width,
+    /// dashed, and a span is the foreground at a tenth of its strength.
+    let ruleStyle (theme: Theme) (rule: RuleSpec<'p>) : GeomStyle =
+        match rule with
+        | SpanH _
+        | SpanV _ -> { style theme theme.Foreground with FillOpacity = 0.1 }
+        | RuleH _
+        | RuleV _
+        | RuleThrough _ ->
+            { style theme theme.AxisColor with
+                Width = theme.AxisWidth
+                Dash = [| 4.0<px>; 3.0<px> |]
+                Cap = Butt }
+
+    /// D164 — the style an annotation starts with: the theme's foreground, in the tick face, its
+    /// arrow as wide as the axis. An annotation is read with the axes, not as a series, so it
+    /// takes no palette colour.
+    let annotationStyle (theme: Theme) : GeomStyle =
+        { style theme theme.Foreground with
+            Width = theme.AxisWidth
+            Cap = Butt }
+
+    /// The style a layer drawing `geom` starts with in palette slot `i`: what a constructor gives
+    /// it, and what `Chart.withTheme` compares against to tell a default from a choice.
+    let styleOf (theme: Theme) (i: int) (geom: GeomOf<'p>) : GeomStyle =
+        match geom with
+        | GeomRule r -> ruleStyle theme r
+        | GeomAnnotation _ -> annotationStyle theme
+        | _ -> styleFor theme i
 
     let withColor (c: Color) (s: GeomStyle) = { s with Color = c }
     let withWidth (w: float<px>) (s: GeomStyle) = { s with Width = w }
@@ -508,6 +588,23 @@ module Geom =
                   W = w },
                 mark
             )
+        | GeomAnnotation(text, placement, arrow) ->
+            let placement =
+                match placement with
+                | TextAt(x, y) -> TextAt(fx x, fy y)
+                | TextOffset o -> TextOffset o
+                | TextInPanel(x, y) -> TextInPanel(x, y)
+
+            GeomAnnotation(text, placement, arrow)
+        | GeomRule r ->
+            GeomRule(
+                match r with
+                | RuleH y -> RuleH(fy y)
+                | RuleV x -> RuleV(fx x)
+                | RuleThrough(x0, y0, x1, y1) -> RuleThrough(fx x0, fy y0, fx x1, fy y1)
+                | SpanH(lo, hi) -> SpanH(fy lo, fy hi)
+                | SpanV(lo, hi) -> SpanV(fx lo, fx hi)
+            )
 
     /// A geom put on the panel its **own** series' scales describe — what a figure would give it
     /// if nothing else shared the panel. For drawing a geom outside a figure; inside one,
@@ -629,6 +726,178 @@ module Geom =
             else
                 let sorted = Array.sort gaps
                 sorted.[sorted.Length / 2]
+
+    /// D162 — lay a rule across the panel, or `None` when it falls outside it, which the caller
+    /// counts (D52). The rule has been put on the panel by `project`, so the panel is the unit
+    /// square here. Under a coord that is not the identity the path is sampled before it is
+    /// warped, so a horizontal rule under `Coord.polar` is a circle rather than a chord.
+    let compileRule (coord: Coord) (st: GeomStyle) (rule: RuleSpec<nd>) : Node option =
+        let edge = 1e-9
+        let inside (v: float) = v >= -edge && v <= 1.0 + edge
+        let pt (x: float) (y: float) : Vec2<nd> = at (nd x) (nd y)
+
+        let segs (closed: bool) (pts: Vec2<nd>[]) =
+            let pts = if closed then Array.append pts [| pts.[0] |] else pts
+            let w = if Coord.isIdentity coord then pts else Coord.warpPolyline coord 64 pts
+
+            [| yield MoveTo w.[0]
+               for i in 1 .. w.Length - 1 do
+                   yield LineTo w.[i]
+               if closed then
+                   yield ClosePath |]
+
+        let line (pts: Vec2<nd>[]) =
+            Some(Path(segs false pts, Some(strokeOf st), None, NonZero))
+
+        // A band clamped to the panel, or nothing when no part of it is inside.
+        let band (a: float) (b: float) (corners: float -> float -> Vec2<nd>[]) =
+            if not (finiteNum a && finiteNum b) then
+                None
+            else
+                let lo = max 0.0 (min a b)
+                let hi = min 1.0 (max a b)
+
+                if lo > hi then
+                    None
+                else
+                    Some(Path(segs true (corners lo hi), None, Some(fillOf st), NonZero))
+
+        match rule with
+        | RuleH y when inside (float y) -> line [| pt 0.0 (float y); pt 1.0 (float y) |]
+        | RuleV x when inside (float x) -> line [| pt (float x) 0.0; pt (float x) 1.0 |]
+        | RuleH _
+        | RuleV _ -> None
+        | SpanH(a, b) -> band (float a) (float b) (fun lo hi -> [| pt 0.0 lo; pt 1.0 lo; pt 1.0 hi; pt 0.0 hi |])
+        | SpanV(a, b) -> band (float a) (float b) (fun lo hi -> [| pt lo 0.0; pt hi 0.0; pt hi 1.0; pt lo 1.0 |])
+        | RuleThrough(x0, y0, x1, y1) ->
+            let x0, y0 = float x0, float y0
+            let dx, dy = float x1 - x0, float y1 - y0
+
+            if not (finiteNum x0 && finiteNum y0 && finiteNum dx && finiteNum dy) || (dx = 0.0 && dy = 0.0) then
+                None
+            else
+                // Liang–Barsky on the infinite line: the parameter range inside 0 ≤ x, y ≤ 1.
+                let range (p: float) (d: float) =
+                    if d = 0.0 then
+                        if inside p then -infinity, infinity else infinity, -infinity
+                    else
+                        let a, b = (0.0 - p) / d, (1.0 - p) / d
+                        min a b, max a b
+
+                let ax, bx = range x0 dx
+                let ay, by = range y0 dy
+                let t0, t1 = max ax ay, min bx by
+
+                if t1 - t0 < edge then
+                    None
+                else
+                    line [| pt (x0 + t0 * dx) (y0 + t0 * dy); pt (x0 + t1 * dx) (y0 + t1 * dy) |]
+
+    /// D164 / D165 — one annotation: its text, and an arrow from the text to the point it marks,
+    /// or `None` when that point is outside the panel (counted by the caller, D52). Text placed
+    /// in the panel (`TextInPanel`) marks no point and is always drawn.
+    ///
+    /// The text is anchored on the side facing the point: offset up and to the right, it starts
+    /// at its place and sits on it, so the place is the corner of its box nearest the point and
+    /// the arrow can leave from there without measuring the text. The arrow stops 3 px short of
+    /// the point, and its head is the streamlines' (`FieldMarks.arrowhead`).
+    let compileAnnotation
+        (coord: Coord)
+        (plotSize: Extent<px>)
+        (st: GeomStyle)
+        (text: string)
+        (placement: TextPlacement<nd>)
+        (arrow: ArrowStyle)
+        (anchor: Vec2<nd>)
+        : Node option =
+        let w, h = float plotSize.Width, float plotSize.Height
+        let paint = Solid(Color.withAlpha (st.Color.A * st.Opacity) st.Color)
+
+        let label (at: Vec2<nd>) (anchor: TextAnchor) (baseline: TextBaseline) =
+            Text
+                { Text = text
+                  Tex = None
+                  At = at
+                  Font = st.Font
+                  Paint = paint
+                  Anchor = anchor
+                  Baseline = baseline
+                  Rotation = 0.0<rad> }
+
+        let side (v: float) (low: 'a) (middle: 'a) (high: 'a) =
+            if v < 1.0 / 3.0 then low elif v > 2.0 / 3.0 then high else middle
+
+        let inside (p: Vec2<nd>) =
+            let x, y = float p.X, float p.Y
+            x >= -1e-9 && x <= 1.0 + 1e-9 && y >= -1e-9 && y <= 1.0 + 1e-9
+
+        match placement with
+        | TextInPanel(x, y) ->
+            Some(label (at (nd x) (nd y)) (side x AnchorStart AnchorMiddle AnchorEnd) (side y BaselineAlphabetic BaselineMiddle BaselineHanging))
+        | _ when not (finite anchor) || not (inside anchor) || w <= 0.0 || h <= 0.0 -> None
+        | _ ->
+            let mapPt (v: Vec2<nd>) = if Coord.isIdentity coord then v else coord.ToPanel v
+            let toPx (v: Vec2<nd>) = float v.X * w, float v.Y * h
+            let toNd (x: float, y: float) = at (nd (x / w)) (nd (y / h))
+            let ax, ay = toPx (mapPt anchor)
+
+            let tx, ty =
+                match placement with
+                | TextOffset o -> ax + float o.X, ay + float o.Y
+                | TextAt(x, y) -> toPx (mapPt (at x y))
+                | TextInPanel _ -> ax, ay
+
+            let dx, dy = tx - ax, ty - ay
+            let d = sqrt (dx * dx + dy * dy)
+
+            let anchorH =
+                if d = 0.0 then AnchorMiddle
+                elif dx > 0.25 * d then AnchorStart
+                elif dx < -0.25 * d then AnchorEnd
+                else AnchorMiddle
+
+            let baselineV =
+                if d = 0.0 then BaselineMiddle
+                elif dy > 0.25 * d then BaselineAlphabetic
+                elif dy < -0.25 * d then BaselineHanging
+                else BaselineMiddle
+
+            let text = label (toNd (tx, ty)) anchorH baselineV
+            let head = FieldMarks.arrowheadLength st.Width
+
+            match arrow with
+            | ArrowNone -> Some text
+            | _ when d < 2.0 + 3.0 + 1.5 * head -> Some text
+            | _ ->
+                let ux, uy = -dx / d, -dy / d
+                let sx, sy = tx + 2.0 * ux, ty + 2.0 * uy
+                let ex, ey = ax - 3.0 * ux, ay - 3.0 * uy
+
+                // The shaft, and the direction it arrives in.
+                let shaft, (hx, hy) =
+                    match arrow with
+                    | ArrowArc bend ->
+                        let cx = (sx + ex) / 2.0 - bend * (ey - sy)
+                        let cy = (sy + ey) / 2.0 + bend * (ex - sx)
+                        let c1 = toNd (sx + 2.0 / 3.0 * (cx - sx), sy + 2.0 / 3.0 * (cy - sy))
+                        let c2 = toNd (ex + 2.0 / 3.0 * (cx - ex), ey + 2.0 / 3.0 * (cy - ey))
+                        let n = sqrt ((ex - cx) ** 2.0 + (ey - cy) ** 2.0)
+                        [| MoveTo(toNd (sx, sy)); CubicTo(c1, c2, toNd (ex, ey)) |], ((ex - cx) / n, (ey - cy) / n)
+                    | _ ->
+                        // Stopped at the middle of the head, so a butt end cannot show past its tip.
+                        [| MoveTo(toNd (sx, sy)); LineTo(toNd (ex - ux * head / 2.0, ey - uy * head / 2.0)) |], (ux, uy)
+
+                let corners = FieldMarks.arrowhead head (ex, ey) (hx, hy)
+                let struct (x0, y0) = corners.[0]
+                let struct (x1, y1) = corners.[1]
+                let struct (x2, y2) = corners.[2]
+
+                Some(
+                    Group
+                        [| Path(shaft, Some { strokeOf st with Dash = [||] }, None, NonZero)
+                           Path([| MoveTo(toNd (x0, y0)); LineTo(toNd (x1, y1)); LineTo(toNd (x2, y2)); ClosePath |], None, Some paint, NonZero)
+                           text |]
+                )
 
     /// The body of `compile`, with two parameters `compile` does not expose.
     ///
@@ -1175,6 +1444,13 @@ module Geom =
                 // it is drawn once rather than once per colour batch.
                 compileField coord plotSize TextMeasure.approx Color.white st (fun v -> if finiteNum v then Some st.Color else None) field mark
 
+            // `Figure.fs` draws a rule layer through `compileRule` itself, to count one that
+            // falls outside the panel; this is the same drawing for a geom compiled alone.
+            | GeomRule rule -> compileRule coord st rule |> Option.defaultValue Scene.empty
+
+            | GeomAnnotation(text, placement, arrow) ->
+                compileAnnotation coord plotSize st text placement arrow pts.[0] |> Option.defaultValue Scene.empty
+
             | GeomViolin(profiles, widthFraction) ->
                 let half = (defaultArg spacing (medianSpacing pts)) * widthFraction * 0.5
 
@@ -1266,7 +1542,9 @@ module Geom =
                 // An image occupies a stated box and has no rhythm to read, and a field is drawn
                 // from its grid rather than from its points.
                 | GeomImage _
-                | GeomField _ -> None
+                | GeomField _
+                | GeomRule _
+                | GeomAnnotation _ -> None
 
             compileWith address spacing (Some ix) coord plotSize st geom (ix |> Array.map (fun i -> all.[i]))
 
@@ -1323,3 +1601,9 @@ module Geom =
         | GeomField(_, FieldDirections)
         | GeomField(_, FieldStreamlines _) -> LegendLine st.Dash
         | GeomField _ -> LegendSwatch
+        // A rule is a line and a span is an area, whichever way they run.
+        | GeomRule(SpanH _)
+        | GeomRule(SpanV _) -> LegendSwatch
+        | GeomRule _ -> LegendLine st.Dash
+        // Unnamed and out of the legend unless a caller names it, as a text layer is.
+        | GeomAnnotation _ -> LegendSwatch

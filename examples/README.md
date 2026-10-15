@@ -1,6 +1,6 @@
 # Examples
 
-Twenty-one standalone scripts, one notebook, and one browser app. Start with [`reel.fsx`](reel.fsx) if you want to see what the library
+Twenty-two standalone scripts, one notebook, and one browser app. Start with [`reel.fsx`](reel.fsx) if you want to see what the library
 does before reading how; start with [`free-fall.fsx`](free-fall.fsx) if you would rather read the
 smallest complete thing first.
 
@@ -20,6 +20,7 @@ static anywhere else.
 | [`free-fall.fsx`](free-fall.fsx) | The smallest complete figure. Both axis titles, the tick values and the scale are derived from two unit witnesses, and nothing is configured. |
 | [`wave-packet.fsx`](wave-packet.fsx) | Prefix selection: data spanning ±15 mm and ±50 kPa labels itself in millimetres and kilopascals. Renders to SVG and to a `tikzpicture` for LaTeX. |
 | [`oscillator.fsx`](oscillator.fsx) | The usual scientific figure — a model curve, measured points, error bars and a legend. Synthetic data, seeded so the output is reproducible. |
+| [`paper-figure.fsx`](paper-figure.fsx) | The last ten minutes of a figure for a paper, done by the library: a fit over its residuals, lettered (a) and (b), with a rule at zero that moves neither axis; and a spectrum with its lines marked by arrows, ticks every 50 nm stated in metres and written in nanometres, minor ticks, a shaded passband and the legend outside. Under `Theme.publication`, framed with ticks inside on all four sides. |
 | [`co2-record.fsx`](co2-record.fsx) | Real measurements with real uncertainties, and where the units story stops: a mole fraction in ppm is dimensionless, so the label is written by hand. |
 | [`temperature-anomaly.fsx`](temperature-anomaly.fsx) | Real data in kelvin, and why an anomaly is **not** degrees Celsius — a units error no compiler can catch, since both witnesses share a dimension. |
 | [`shaped-text.fsx`](shaped-text.fsx) | The same figure arranged by two text measurers and drawn by the same renderer, so the only difference in the two PNGs is what measuring text properly does to a layout. Also the vector PDF, and which font the machine actually resolved. |

@@ -35,6 +35,17 @@ let private at (x: float) (y: float) : Vec2<nd> = { X = x * 1.0<nd>; Y = y * 1.0
 let private ts = Array.init 40 (fun i -> float i * 0.25<s>)
 let private xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
 
+/// `Theme.tikz` as it was before D168, an open L with outward ticks. Its frame and inward ticks
+/// ink the edges of the panel, and the regions below attribute the panel's ink to its series and
+/// its legend; the probes draw without them so that they still can. The frame itself is checked
+/// by the TikZ goldens.
+let private probeTheme =
+    { Theme.tikz with
+        PanelFrame = false
+        TickDirection = TickOut
+        MirrorTicks = false
+        MinorTicks = false }
+
 /// Free fall under `Theme.tikz` — the figure the milestone is announced on.
 ///
 /// **The legend is switched off deliberately**, and not for tidiness. Naming a layer turns the
@@ -46,7 +57,7 @@ let private xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
 let private freeFall =
     Chart.line U.second U.metre ts xs
     |> Chart.withName "model"
-    |> Chart.withTheme Theme.tikz
+    |> Chart.withTheme probeTheme
     |> Chart.withLegend LegendNone
 
 /// The same data as points only. With the legend off its panel interior is inked by **nothing but
@@ -55,7 +66,7 @@ let private freeFall =
 let private points =
     Chart.scatter U.second U.metre ts.[..8] xs.[..8]
     |> Chart.withName "measured"
-    |> Chart.withTheme Theme.tikz
+    |> Chart.withTheme probeTheme
     |> Chart.withLegend LegendNone
 
 /// Delete every node of one case from a scene, leaving the layout untouched.

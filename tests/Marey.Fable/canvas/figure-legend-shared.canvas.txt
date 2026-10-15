@@ -1,0 +1,931 @@
+canvas.width = 1520
+canvas.height = 560
+setTransform 2 0 0 2 0 0
+clearRect 0 0 760 280
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 760 280
+beginPath
+moveTo 0 280
+lineTo 760 280
+lineTo 760 0
+lineTo 0 0
+closePath
+fillStyle = rgba(255,255,255,1)
+fill nonzero
+beginPath
+moveTo 60.349 222.464
+lineTo 188.234 222.464
+moveTo 60.349 197.037
+lineTo 188.234 197.037
+moveTo 60.349 171.61
+lineTo 188.234 171.61
+moveTo 60.349 146.182
+lineTo 188.234 146.182
+moveTo 60.349 120.755
+lineTo 188.234 120.755
+moveTo 60.349 95.328
+lineTo 188.234 95.328
+moveTo 60.349 69.9
+lineTo 188.234 69.9
+strokeStyle = rgba(231,233,237,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+beginPath
+moveTo 60.349 228.567
+lineTo 188.234 228.567
+lineTo 188.234 68.883
+lineTo 60.349 68.883
+closePath
+clip nonzero
+beginPath
+moveTo 66.162 197.037
+lineTo 70.038 179.088
+lineTo 73.913 164.918
+lineTo 77.788 153.447
+lineTo 81.663 143.971
+lineTo 85.539 136.011
+lineTo 89.414 129.231
+lineTo 93.289 123.385
+lineTo 97.165 118.294
+lineTo 101.04 113.82
+lineTo 104.915 109.858
+lineTo 108.791 106.323
+lineTo 112.666 103.151
+lineTo 116.541 100.289
+lineTo 120.416 97.693
+lineTo 124.292 95.328
+lineTo 128.167 93.164
+lineTo 132.042 91.176
+lineTo 135.918 89.345
+lineTo 139.793 87.652
+lineTo 143.668 86.081
+lineTo 147.544 84.621
+lineTo 151.419 83.261
+lineTo 155.294 81.989
+lineTo 159.169 80.798
+lineTo 163.045 79.68
+lineTo 166.92 78.629
+lineTo 170.795 77.639
+lineTo 174.671 76.705
+lineTo 178.546 75.822
+lineTo 182.421 74.986
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 66.162 207.208
+lineTo 70.038 189.259
+lineTo 73.913 175.089
+lineTo 77.788 163.618
+lineTo 81.663 154.142
+lineTo 85.539 146.182
+lineTo 89.414 139.402
+lineTo 93.289 133.556
+lineTo 97.165 128.465
+lineTo 101.04 123.991
+lineTo 104.915 120.028
+lineTo 108.791 116.494
+lineTo 112.666 113.322
+lineTo 116.541 110.46
+lineTo 120.416 107.864
+lineTo 124.292 105.499
+lineTo 128.167 103.335
+lineTo 132.042 101.347
+lineTo 135.918 99.516
+lineTo 139.793 97.822
+lineTo 143.668 96.252
+lineTo 147.544 94.792
+lineTo 151.419 93.431
+lineTo 155.294 92.16
+lineTo 159.169 90.969
+lineTo 163.045 89.851
+lineTo 166.92 88.8
+lineTo 170.795 87.81
+lineTo 174.671 86.876
+lineTo 178.546 85.993
+lineTo 182.421 85.157
+strokeStyle = rgba(213,94,0,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 66.162 222.464
+lineTo 70.038 204.515
+lineTo 73.913 190.345
+lineTo 77.788 178.874
+lineTo 81.663 169.398
+lineTo 85.539 161.439
+lineTo 89.414 154.658
+lineTo 93.289 148.813
+lineTo 97.165 143.722
+lineTo 101.04 139.248
+lineTo 104.915 135.285
+lineTo 108.791 131.751
+lineTo 112.666 128.579
+lineTo 116.541 125.716
+lineTo 120.416 123.12
+lineTo 124.292 120.755
+lineTo 128.167 118.591
+lineTo 132.042 116.604
+lineTo 135.918 114.772
+lineTo 139.793 113.079
+lineTo 143.668 111.509
+lineTo 147.544 110.049
+lineTo 151.419 108.688
+lineTo 155.294 107.416
+lineTo 159.169 106.225
+lineTo 163.045 105.107
+lineTo 166.92 104.056
+lineTo 170.795 103.066
+lineTo 174.671 102.132
+lineTo 178.546 101.249
+lineTo 182.421 100.413
+strokeStyle = rgba(0,158,115,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+restore
+beginPath
+moveTo 60.349 228.567
+lineTo 188.234 228.567
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 66.162 228.567
+lineTo 66.162 231.567
+moveTo 104.915 228.567
+lineTo 104.915 231.567
+moveTo 143.668 228.567
+lineTo 143.668 231.567
+moveTo 182.421 228.567
+lineTo 182.421 231.567
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 62.826 244.183 "0"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 94.907 244.183 "200"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 133.66 244.183 "400"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 172.413 244.183 "600"
+restore
+save
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 113.545 263.24 "t [s]"
+restore
+beginPath
+moveTo 60.349 228.567
+lineTo 60.349 68.883
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 60.349 222.464
+lineTo 57.349 222.464
+moveTo 60.349 197.037
+lineTo 57.349 197.037
+moveTo 60.349 171.61
+lineTo 57.349 171.61
+moveTo 60.349 146.182
+lineTo 57.349 146.182
+moveTo 60.349 120.755
+lineTo 57.349 120.755
+moveTo 60.349 95.328
+lineTo 57.349 95.328
+moveTo 60.349 69.9
+lineTo 57.349 69.9
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 225.53 "290"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 200.103 "300"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 174.676 "310"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 149.248 "320"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 123.821 "330"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 98.394 "340"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 33.333 72.966 "350"
+restore
+save
+translate 26.333 148.725
+rotate -1.571
+translate -26.333 -148.725
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 12.253 148.725 "T [K]"
+restore
+save
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 113.172 53.573 "one"
+restore
+beginPath
+moveTo 274.592 222.464
+lineTo 402.476 222.464
+moveTo 274.592 197.037
+lineTo 402.476 197.037
+moveTo 274.592 171.61
+lineTo 402.476 171.61
+moveTo 274.592 146.182
+lineTo 402.476 146.182
+moveTo 274.592 120.755
+lineTo 402.476 120.755
+moveTo 274.592 95.328
+lineTo 402.476 95.328
+moveTo 274.592 69.9
+lineTo 402.476 69.9
+strokeStyle = rgba(231,233,237,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+beginPath
+moveTo 274.592 228.567
+lineTo 402.476 228.567
+lineTo 402.476 68.883
+lineTo 274.592 68.883
+closePath
+clip nonzero
+beginPath
+moveTo 280.405 197.037
+lineTo 284.28 179.088
+lineTo 288.155 164.918
+lineTo 292.03 153.447
+lineTo 295.906 143.971
+lineTo 299.781 136.011
+lineTo 303.656 129.231
+lineTo 307.532 123.385
+lineTo 311.407 118.294
+lineTo 315.282 113.82
+lineTo 319.158 109.858
+lineTo 323.033 106.323
+lineTo 326.908 103.151
+lineTo 330.783 100.289
+lineTo 334.659 97.693
+lineTo 338.534 95.328
+lineTo 342.409 93.164
+lineTo 346.285 91.176
+lineTo 350.16 89.345
+lineTo 354.035 87.652
+lineTo 357.91 86.081
+lineTo 361.786 84.621
+lineTo 365.661 83.261
+lineTo 369.536 81.989
+lineTo 373.412 80.798
+lineTo 377.287 79.68
+lineTo 381.162 78.629
+lineTo 385.038 77.639
+lineTo 388.913 76.705
+lineTo 392.788 75.822
+lineTo 396.663 74.986
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 280.405 207.208
+lineTo 284.28 189.259
+lineTo 288.155 175.089
+lineTo 292.03 163.618
+lineTo 295.906 154.142
+lineTo 299.781 146.182
+lineTo 303.656 139.402
+lineTo 307.532 133.556
+lineTo 311.407 128.465
+lineTo 315.282 123.991
+lineTo 319.158 120.028
+lineTo 323.033 116.494
+lineTo 326.908 113.322
+lineTo 330.783 110.46
+lineTo 334.659 107.864
+lineTo 338.534 105.499
+lineTo 342.409 103.335
+lineTo 346.285 101.347
+lineTo 350.16 99.516
+lineTo 354.035 97.822
+lineTo 357.91 96.252
+lineTo 361.786 94.792
+lineTo 365.661 93.431
+lineTo 369.536 92.16
+lineTo 373.412 90.969
+lineTo 377.287 89.851
+lineTo 381.162 88.8
+lineTo 385.038 87.81
+lineTo 388.913 86.876
+lineTo 392.788 85.993
+lineTo 396.663 85.157
+strokeStyle = rgba(213,94,0,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 280.405 222.464
+lineTo 284.28 204.515
+lineTo 288.155 190.345
+lineTo 292.03 178.874
+lineTo 295.906 169.398
+lineTo 299.781 161.439
+lineTo 303.656 154.658
+lineTo 307.532 148.813
+lineTo 311.407 143.722
+lineTo 315.282 139.248
+lineTo 319.158 135.285
+lineTo 323.033 131.751
+lineTo 326.908 128.579
+lineTo 330.783 125.716
+lineTo 334.659 123.12
+lineTo 338.534 120.755
+lineTo 342.409 118.591
+lineTo 346.285 116.604
+lineTo 350.16 114.772
+lineTo 354.035 113.079
+lineTo 357.91 111.509
+lineTo 361.786 110.049
+lineTo 365.661 108.688
+lineTo 369.536 107.416
+lineTo 373.412 106.225
+lineTo 377.287 105.107
+lineTo 381.162 104.056
+lineTo 385.038 103.066
+lineTo 388.913 102.132
+lineTo 392.788 101.249
+lineTo 396.663 100.413
+strokeStyle = rgba(0,158,115,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+restore
+beginPath
+moveTo 274.592 228.567
+lineTo 402.476 228.567
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 280.405 228.567
+lineTo 280.405 231.567
+moveTo 319.158 228.567
+lineTo 319.158 231.567
+moveTo 357.91 228.567
+lineTo 357.91 231.567
+moveTo 396.663 228.567
+lineTo 396.663 231.567
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 277.069 244.183 "0"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 309.15 244.183 "200"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 347.902 244.183 "400"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 386.655 244.183 "600"
+restore
+save
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 327.787 263.24 "t [s]"
+restore
+beginPath
+moveTo 274.592 228.567
+lineTo 274.592 68.883
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 274.592 222.464
+lineTo 271.592 222.464
+moveTo 274.592 197.037
+lineTo 271.592 197.037
+moveTo 274.592 171.61
+lineTo 271.592 171.61
+moveTo 274.592 146.182
+lineTo 271.592 146.182
+moveTo 274.592 120.755
+lineTo 271.592 120.755
+moveTo 274.592 95.328
+lineTo 271.592 95.328
+moveTo 274.592 69.9
+lineTo 271.592 69.9
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 247.576 225.53 "290"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 247.576 200.103 "300"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 247.576 174.676 "310"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 247.576 149.248 "320"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 247.576 123.821 "330"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 247.576 98.394 "340"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 247.576 72.966 "350"
+restore
+save
+translate 240.576 148.725
+rotate -1.571
+translate -240.576 -148.725
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 226.496 148.725 "T [K]"
+restore
+save
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 328.161 53.573 "two"
+restore
+beginPath
+moveTo 488.834 222.464
+lineTo 616.719 222.464
+moveTo 488.834 197.037
+lineTo 616.719 197.037
+moveTo 488.834 171.61
+lineTo 616.719 171.61
+moveTo 488.834 146.182
+lineTo 616.719 146.182
+moveTo 488.834 120.755
+lineTo 616.719 120.755
+moveTo 488.834 95.328
+lineTo 616.719 95.328
+moveTo 488.834 69.9
+lineTo 616.719 69.9
+strokeStyle = rgba(231,233,237,1)
+lineWidth = 1
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+beginPath
+moveTo 488.834 228.567
+lineTo 616.719 228.567
+lineTo 616.719 68.883
+lineTo 488.834 68.883
+closePath
+clip nonzero
+beginPath
+moveTo 494.647 197.037
+lineTo 498.522 179.088
+lineTo 502.397 164.918
+lineTo 506.273 153.447
+lineTo 510.148 143.971
+lineTo 514.023 136.011
+lineTo 517.899 129.231
+lineTo 521.774 123.385
+lineTo 525.649 118.294
+lineTo 529.524 113.82
+lineTo 533.4 109.858
+lineTo 537.275 106.323
+lineTo 541.15 103.151
+lineTo 545.026 100.289
+lineTo 548.901 97.693
+lineTo 552.776 95.328
+lineTo 556.652 93.164
+lineTo 560.527 91.176
+lineTo 564.402 89.345
+lineTo 568.277 87.652
+lineTo 572.153 86.081
+lineTo 576.028 84.621
+lineTo 579.903 83.261
+lineTo 583.779 81.989
+lineTo 587.654 80.798
+lineTo 591.529 79.68
+lineTo 595.405 78.629
+lineTo 599.28 77.639
+lineTo 603.155 76.705
+lineTo 607.03 75.822
+lineTo 610.906 74.986
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 494.647 207.208
+lineTo 498.522 189.259
+lineTo 502.397 175.089
+lineTo 506.273 163.618
+lineTo 510.148 154.142
+lineTo 514.023 146.182
+lineTo 517.899 139.402
+lineTo 521.774 133.556
+lineTo 525.649 128.465
+lineTo 529.524 123.991
+lineTo 533.4 120.028
+lineTo 537.275 116.494
+lineTo 541.15 113.322
+lineTo 545.026 110.46
+lineTo 548.901 107.864
+lineTo 552.776 105.499
+lineTo 556.652 103.335
+lineTo 560.527 101.347
+lineTo 564.402 99.516
+lineTo 568.277 97.822
+lineTo 572.153 96.252
+lineTo 576.028 94.792
+lineTo 579.903 93.431
+lineTo 583.779 92.16
+lineTo 587.654 90.969
+lineTo 591.529 89.851
+lineTo 595.405 88.8
+lineTo 599.28 87.81
+lineTo 603.155 86.876
+lineTo 607.03 85.993
+lineTo 610.906 85.157
+strokeStyle = rgba(213,94,0,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 494.647 222.464
+lineTo 498.522 204.515
+lineTo 502.397 190.345
+lineTo 506.273 178.874
+lineTo 510.148 169.398
+lineTo 514.023 161.439
+lineTo 517.899 154.658
+lineTo 521.774 148.813
+lineTo 525.649 143.722
+lineTo 529.524 139.248
+lineTo 533.4 135.285
+lineTo 537.275 131.751
+lineTo 541.15 128.579
+lineTo 545.026 125.716
+lineTo 548.901 123.12
+lineTo 552.776 120.755
+lineTo 556.652 118.591
+lineTo 560.527 116.604
+lineTo 564.402 114.772
+lineTo 568.277 113.079
+lineTo 572.153 111.509
+lineTo 576.028 110.049
+lineTo 579.903 108.688
+lineTo 583.779 107.416
+lineTo 587.654 106.225
+lineTo 591.529 105.107
+lineTo 595.405 104.056
+lineTo 599.28 103.066
+lineTo 603.155 102.132
+lineTo 607.03 101.249
+lineTo 610.906 100.413
+strokeStyle = rgba(0,158,115,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+restore
+beginPath
+moveTo 488.834 228.567
+lineTo 616.719 228.567
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 494.647 228.567
+lineTo 494.647 231.567
+moveTo 533.4 228.567
+lineTo 533.4 231.567
+moveTo 572.153 228.567
+lineTo 572.153 231.567
+moveTo 610.906 228.567
+lineTo 610.906 231.567
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 491.311 244.183 "0"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 523.392 244.183 "200"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 562.145 244.183 "400"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 600.898 244.183 "600"
+restore
+save
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 542.03 263.24 "t [s]"
+restore
+beginPath
+moveTo 488.834 228.567
+lineTo 488.834 68.883
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 488.834 222.464
+lineTo 485.834 222.464
+moveTo 488.834 197.037
+lineTo 485.834 197.037
+moveTo 488.834 171.61
+lineTo 485.834 171.61
+moveTo 488.834 146.182
+lineTo 485.834 146.182
+moveTo 488.834 120.755
+lineTo 485.834 120.755
+moveTo 488.834 95.328
+lineTo 485.834 95.328
+moveTo 488.834 69.9
+lineTo 485.834 69.9
+strokeStyle = rgba(57,65,77,1)
+lineWidth = 0.9
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 461.818 225.53 "290"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 461.818 200.103 "300"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 461.818 174.676 "310"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 461.818 149.248 "320"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 461.818 123.821 "330"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 461.818 98.394 "340"
+restore
+save
+font = 400 12px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 461.818 72.966 "350"
+restore
+save
+translate 454.818 148.725
+rotate -1.571
+translate -454.818 -148.725
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 440.738 148.725 "T [K]"
+restore
+save
+font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 537.583 53.573 "three"
+restore
+beginPath
+moveTo 656.727 105.15
+lineTo 746 105.15
+lineTo 746 44
+lineTo 656.727 44
+closePath
+fillStyle = rgba(255,255,255,0.902)
+fill nonzero
+beginPath
+moveTo 663.727 56.858
+lineTo 681.727 56.858
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12.667px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 689.727 60.095 "chamber"
+restore
+beginPath
+moveTo 663.727 74.575
+lineTo 681.727 74.575
+strokeStyle = rgba(213,94,0,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12.667px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 689.727 77.811 "probe"
+restore
+beginPath
+moveTo 663.727 92.292
+lineTo 681.727 92.292
+strokeStyle = rgba(0,158,115,1)
+lineWidth = 2
+miterLimit = 4
+lineCap = round
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12.667px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
+fillStyle = rgba(20,24,31,1)
+fillText 689.727 95.528 "wall"
+restore
