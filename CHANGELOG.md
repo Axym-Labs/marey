@@ -69,7 +69,8 @@ land in a minor release.
 - **Spans** (D174): `Panel.RowSpan` and `ColSpan`; `Chart.mosaic "AB;AC" [ 'A', a; … ]` lays
   single-panel figures out by a picture of the grid, `.` for an empty cell.
 - **Row and column ratios** (D175): `Chart.withRowHeights` and `withColWidths`, as ratios of the
-  plots rather than of the cells.
+  plots rather than of the cells. Exact unless `beside` or `above` subdivides the weighted rows to
+  meet a side with more of them, where they are approximate.
 - **Shared axes on any composition** (D176): `Chart.shareX`, `shareY` and `shareAxes` share the
   axes of every panel the figure has, checked for one dimension at the call and kept shared: a
   domain stated on one of the panels, or a zoom of one, is the group's. `AxisConfig.ShowTickLabels`.
@@ -98,7 +99,9 @@ land in a minor release.
   `panel-r-c/inset-i`. `Panel.Insets`, `Inset`, `PanelView.Inset`, `LiveZoom.Inset`, `Keys.inset`,
   `Figure.withInsetDomains`.
 - C# extensions for every verb above, and `Figures.Mosaic`.
-- **`examples/paper-figure.fsx`**: a fit over its residuals, and a spectrum with its lines marked.
+- **`examples/paper-figure.fsx`**: one figure for a paper. A fit over its residuals, sharing t,
+  three to one, beside a spectrum spanning both rows with its lines marked and photon energy along
+  the top.
 
 ### Changed
 
@@ -125,11 +128,13 @@ land in a minor release.
   `Panel` (`LegendColumns`, `LegendFrame`), `Figure` (`Letters`, `Legend`), `PanelLayout`
   (`LegendGap`, `LegendW`, `LegendH`, `LegendScores`), `AxisRender` (`Direction`, `Mirror`,
   `ShowMinor`), and `Theme` (`TickDirection`, `MirrorTicks`, `MinorTicks`, `MinorTickLength`).
-  M9 adds `Layer.SecondaryY`, `Panel` (`RowSpan`, `ColSpan`, `XShare`, `YShare`, `Y2Axis`, `Aspect`, `Insets`), `Figure` (`RowWeights`,
-  `ColWeights`), `AxisConfig.ShowTickLabels` and `PanelLayout` (`SlackLeft`, `SlackRight`,
-  `SlackTop`, `SlackBottom`, `Y2TicksW`, `Y2TitleW`, `Y2Prefix`, `X2TicksH`, `X2TitleH`), `AxisConfig.Secondary`, `PanelView` (`Y2`, `Y2Axis`, `EqualAspect`, `Inset`), `LiveZoom.Inset`,
-  and `ZoomAxis.Y2`, which breaks an exhaustive `match` over it. `LegendPlacement` gains three cases, which breaks an exhaustive `match` over it, and `Geom` two
-  (`GeomRule`, `GeomAnnotation`).
+  M9 adds `Layer.SecondaryY`, `Panel` (`RowSpan`, `ColSpan`, `XShare`, `YShare`, `Y2Axis`,
+  `Aspect`, `Insets`), `Figure` (`RowWeights`, `ColWeights`), `AxisConfig` (`ShowTickLabels`,
+  `Secondary`), `PanelLayout` (`SlackLeft`, `SlackRight`, `SlackTop`, `SlackBottom`, `Y2TicksW`,
+  `Y2TitleW`, `Y2Prefix`, `X2TicksH`, `X2TitleH`), `PanelView` (`Y2`, `Y2Axis`, `EqualAspect`,
+  `Inset`) and `LiveZoom.Inset`. `LegendPlacement` gains three cases, `Geom` two (`GeomRule`,
+  `GeomAnnotation`) and `ZoomAxis` one (`Y2`), each of which breaks an exhaustive `match` over
+  it.
 
 ### Fixed
 
