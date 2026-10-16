@@ -530,7 +530,12 @@ let insetFigure: Figure =
 
     Chart.line hz U.metre fs (fs |> Array.map resonance)
     |> Chart.withYLabel "amplitude"
-    |> Chart.withInset (0.58, 0.45, 0.96, 0.95) (Chart.line hz U.metre peak (peak |> Array.map resonance) |> Chart.withXLabel "" |> Chart.withYLabel "")
+    // The inset's axes are the host's quantities, so its titles would only repeat them.
+    |> Chart.withInset
+        (0.58, 0.45, 0.96, 0.95)
+        (Chart.line hz U.metre peak (peak |> Array.map resonance)
+         |> Chart.withXAxis { Figure.axisConfig with ShowTitle = false }
+         |> Chart.withYAxis { Figure.axisConfig with ShowTitle = false })
     |> Chart.withInsetZoom
     |> Chart.withTheme Theme.publication
 

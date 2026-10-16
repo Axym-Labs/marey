@@ -928,11 +928,6 @@ font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
 fillStyle = rgba(16,16,16,1)
 fillText 504.588 205.525 "11.0"
 restore
-save
-font = 400 13.333px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
-fillStyle = rgba(16,16,16,1)
-fillText 418.375 222.582 "[Hz]"
-restore
 beginPath
 moveTo 338.125 171.496
 lineTo 334.625 171.496
@@ -1046,14 +1041,6 @@ save
 font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
 fillStyle = rgba(16,16,16,1)
 fillText 316.279 64.763 "1.0"
-restore
-save
-translate 311.279 124.655
-rotate -1.571
-translate -311.279 -124.655
-font = 400 13.333px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
-fillStyle = rgba(16,16,16,1)
-fillText 297.651 124.655 "[mm]"
 restore
 beginPath
 moveTo 334.625 193.909

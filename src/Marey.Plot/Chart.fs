@@ -1307,11 +1307,10 @@ module Chart =
     let withXScaleKind (k: ScaleKind) (fig: Figure) = mapLayers (Figure.withKinds (Some k) None) fig
     let withYScaleKind (k: ScaleKind) (fig: Figure) = mapLayers (Figure.withKinds None (Some k)) fig
 
-    /// Set the x domain in raw numeric values of the axis's own unit. Raw because the measure
-    /// has already been erased into the figure; use `Chart.ofSeries` with a hand-built scale
-    /// when you want the domain checked.
-    /// The last panel's x domain, raw, in the axis's own unit. On a shared x (D176) it is the
-    /// group's: every panel the axis is shared with takes it.
+    /// The last panel's x domain, in raw numeric values of the axis's own unit. Raw because the
+    /// measure has already been erased into the figure; use `Chart.ofSeries` with a hand-built
+    /// scale when you want the domain checked. On a shared x (D176) it is the group's: every
+    /// panel the axis is shared with takes it.
     let withXDomain (lo: float) (hi: float) (fig: Figure) =
         if fig.Panels.Length = 0 then
             fig
@@ -1415,13 +1414,13 @@ module Chart =
     let rec private gcd (a: int) (b: int) = if b = 0 then a else gcd b (a % b)
     let private lcm (a: int) (b: int) = a / gcd a b * b
 
-    /// D174 — a figure's rows stretched by `k`: each panel starts `k` times lower and spans `k`
-    /// times as many rows.
     /// D175 — a row's stated weight given to each of the `k` rows it becomes. Every row is split
     /// alike, so every proportion holds and the mean stays 1.
     let private split (k: int) (weights: float[]) =
         weights |> Array.collect (fun w -> Array.create k w)
 
+    /// D174 — a figure's rows stretched by `k`: each panel starts `k` times lower and spans `k`
+    /// times as many rows.
     let private stretchRows (k: int) (f: Figure) =
         if k = 1 then
             f

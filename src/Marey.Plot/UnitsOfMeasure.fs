@@ -330,12 +330,8 @@ module Chart =
     let sizeBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
         Marey.Chart.sizeBy u values fig
 
-    // ---- Rules and spans (D162) ----------------------------------------------------------------
+    // ---- Secondary axes (D178) ----------------------------------------------------------------
 
-    /// A horizontal rule at `y`, across the last panel wherever its domain ends up, and without
-    /// moving that domain (D163; `withDomainIncluded` lets it). The witness is the y axis's, so a
-    /// rule at `9.81<m/s^2>` on a metre axis does not compile. Unnamed it is furniture and stays
-    /// out of the legend; `withName` puts it in.
     /// D178 — the x axis read along the top through a map, typed: `forward` takes the x axis's
     /// unit to `u`, and the compiler checks both directions. See `Marey.Chart.withTopAxisMapped`.
     let withTopAxisMapped (u: U<'v>) (forward: float<'ux> -> float<'v>) (inverse: float<'v> -> float<'ux>) (fig: Figure) : Figure =
@@ -353,6 +349,12 @@ module Chart =
             (fun w -> float (inverse (LanguagePrimitives.FloatWithMeasure<'v> w)))
             fig
 
+    // ---- Rules and spans (D162) ----------------------------------------------------------------
+
+    /// A horizontal rule at `y`, across the last panel wherever its domain ends up, and without
+    /// moving that domain (D163; `withDomainIncluded` lets it). The witness is the y axis's, so a
+    /// rule at `9.81<m/s^2>` on a metre axis does not compile. Unnamed it is furniture and stays
+    /// out of the legend; `withName` puts it in.
     let addHLine (uy: U<'uy>) (y: float<'uy>) (fig: Figure) : Figure = Marey.Chart.addHLine uy y fig
 
     /// A vertical rule at `x`. See `addHLine`.

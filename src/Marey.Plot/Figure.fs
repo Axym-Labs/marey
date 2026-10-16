@@ -459,9 +459,6 @@ module PanelView =
     let toData (p: Vec2<px>) (v: PanelView) : (float * float) option =
         toUnit p v |> Option.map (fun u -> v.X.Invert u.X, v.Y.Invert u.Y)
 
-    /// The data domains a px rectangle covers, each ascending: the box around its four corners'
-    /// inverses, which under a cartesian coord is the rectangle itself. `None` when a corner has
-    /// no inverse.
     /// D179 — two domains widened about their centres until one unit is as long on y as on x
     /// over this panel's plot, or as they were for a panel without equal aspect. What a zoom of
     /// such a panel states, so that re-arranging it keeps the plot's shape.
@@ -495,6 +492,9 @@ module PanelView =
         | Some a, Some b -> Some(min a b, max a b)
         | _ -> None
 
+    /// The data domains a px rectangle covers, each ascending: the box around its four corners'
+    /// inverses, which under a cartesian coord is the rectangle itself. `None` when a corner has
+    /// no inverse.
     let domainsOf (r: Rect<px>) (v: PanelView) : ((float * float) * (float * float)) option =
         let corners =
             [| { X = r.X0; Y = r.Y0 }; { X = r.X1; Y = r.Y0 }; { X = r.X1; Y = r.Y1 }; { X = r.X0; Y = r.Y1 } |]
@@ -2271,15 +2271,15 @@ module Figure =
     let private ownLegend (fig: Figure) (p: Panel) =
         if fig.Legend.IsSome then { p with Legend = LegendNone } else p
 
+    /// D175 — a row's or column's weight, 1 where none is stated.
+    let private weightOf (weights: float[]) (i: int) = if i < weights.Length then weights.[i] else 1.0
+
     /// The figure's own outer grid: one content row for the head, then one row of tracks per
     /// panel row. Split out of `toScene` by D72 so that `arrangeFor` and the renderer cannot be
     /// looking at two different grids — which they were, for two milestones. See `Shot`.
     ///
     /// `head` overrides the measured head height when it is `Some`, which is how the union takes
     /// the tallest head of the shot rather than each frame's own.
-    /// D175 — a row's or column's weight, 1 where none is stated.
-    let private weightOf (weights: float[]) (i: int) = if i < weights.Length then weights.[i] else 1.0
-
     let private outerGrid (head: float<px> option) (fig: Figure) =
         let theme = fig.Theme
         let rows = max 1 fig.Rows
