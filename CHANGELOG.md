@@ -98,6 +98,10 @@ land in a minor release.
   that cross neither. A pointer over an inset reads and zooms the inset. Keyed under its host,
   `panel-r-c/inset-i`. `Panel.Insets`, `Inset`, `PanelView.Inset`, `LiveZoom.Inset`, `Keys.inset`,
   `Figure.withInsetDomains`.
+- **Axis looks**: `Chart.withXLook`, `withYLook` and `withAxesLook` with `AxisFull`,
+  `AxisUntitled`, `AxisUnlabelled`, `AxisBare` and `AxisHidden` set how much of an axis is drawn,
+  and only that, so they compose with the other axis verbs in either order. An axis without tick
+  marks reserves no room for them. `AxisLook`, `AxisConfig.ShowTicks`.
 - C# extensions for every verb above, and `Figures.Mosaic`.
 - **`examples/paper-figure.fsx`**: one figure for a paper. A fit over its residuals, sharing t,
   three to one, beside a spectrum spanning both rows with its lines marked and photon energy along
@@ -130,7 +134,7 @@ land in a minor release.
   `ShowMinor`), and `Theme` (`TickDirection`, `MirrorTicks`, `MinorTicks`, `MinorTickLength`).
   M9 adds `Layer.SecondaryY`, `Panel` (`RowSpan`, `ColSpan`, `XShare`, `YShare`, `Y2Axis`,
   `Aspect`, `Insets`), `Figure` (`RowWeights`, `ColWeights`), `AxisConfig` (`ShowTickLabels`,
-  `Secondary`), `PanelLayout` (`SlackLeft`, `SlackRight`, `SlackTop`, `SlackBottom`, `Y2TicksW`,
+  `Secondary`, `ShowTicks`), `PanelLayout` (`SlackLeft`, `SlackRight`, `SlackTop`, `SlackBottom`, `Y2TicksW`,
   `Y2TitleW`, `Y2Prefix`, `X2TicksH`, `X2TitleH`), `PanelView` (`Y2`, `Y2Axis`, `EqualAspect`,
   `Inset`) and `LiveZoom.Inset`. `LegendPlacement` gains three cases, `Geom` two (`GeomRule`,
   `GeomAnnotation`) and `ZoomAxis` one (`Y2`), each of which breaks an exhaustive `match` over

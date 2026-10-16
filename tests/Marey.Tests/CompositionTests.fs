@@ -746,3 +746,78 @@ module ``D180 insets`` =
         refused (fun () -> host |> Chart.withInset (0.6, 0.6, 1.2, 0.9) zoom) "within 0"
         refused (fun () -> host |> Chart.withInset (0.6, 0.6, 0.9, 0.9) (zoom |> Chart.withInset (0.1, 0.1, 0.2, 0.2) zoom)) "no insets of its own"
         refused (fun () -> host |> Chart.withInsetZoom) "has none"
+
+module ``Axis looks`` =
+
+    let private extent = Chart.size 480.0 320.0
+    let private plain = Chart.line U.second U.metre t x
+
+    let rec private keyed (k: Key) (n: Node) : Node option =
+        match n with
+        | Keyed(k', c) when k' = k -> Some c
+        | Group ns -> ns |> Array.tryPick (keyed k)
+        | Transform(_, c)
+        | Clip(_, c)
+        | Opacity(_, c)
+        | Keyed(_, c)
+        | Annotated(_, c) -> keyed k c
+        | _ -> None
+
+    let rec private marks (n: Node) : int =
+        match n with
+        | Path(segs, Some _, None, _) -> segs |> Array.sumBy (function MoveTo _ -> 1 | _ -> 0)
+        | Group ns -> ns |> Array.sumBy marks
+        | Transform(_, c)
+        | Clip(_, c)
+        | Opacity(_, c)
+        | Keyed(_, c)
+        | Annotated(_, c) -> marks c
+        | _ -> 0
+
+    let private xAxis (fig: Figure) =
+        keyed (Keys.axisX (Keys.panel 0 0)) (Chart.toSceneWith measurer extent fig)
+
+    let private bottom (fig: Figure) = float (viewsOf extent fig).[0].Plot.Y1
+
+    [<Fact>]
+    let ``a look keeps what other axis verbs stated, in either order`` () =
+        let ticks = [| 0.0<s>; 2.0<s>; 4.0<s> |]
+        let before = plain |> Chart.withXLook AxisUntitled |> Chart.withXTicksAt U.second ticks |> Chart.withXReversed
+        let after = plain |> Chart.withXTicksAt U.second ticks |> Chart.withXReversed |> Chart.withXLook AxisUntitled
+
+        for fig in [ before; after ] do
+            let cfg = fig.Panels.[0].XAxis
+            Assert.True((cfg.Ticks = TicksAt [| 0.0; 2.0; 4.0 |]), sprintf "%A" cfg.Ticks)
+            Assert.True(cfg.Reversed)
+            Assert.False(cfg.ShowTitle)
+            let shown = texts (xAxis fig).Value
+            Assert.DoesNotContain("t [s]", shown)
+            Assert.Contains("4", shown)
+
+    [<Fact>]
+    let ``a bare axis draws no marks and gives their length back to the plot`` () =
+        let unlabelled = plain |> Chart.withXLook AxisUnlabelled
+        let bare = plain |> Chart.withXLook AxisBare
+        // The spine, when the theme draws it rather than a frame, is the one stroke left.
+        Assert.True(marks (xAxis unlabelled).Value > 1)
+        Assert.True(marks (xAxis bare).Value <= 1, sprintf "%d strokes on a bare axis" (marks (xAxis bare).Value))
+        Assert.Empty(texts (xAxis bare).Value)
+
+        let expected = if plain.Theme.TickDirection = TickIn then 0.0 else float plain.Theme.TickLength
+        Assert.Equal(expected, bottom bare - bottom unlabelled, 6)
+
+    [<Fact>]
+    let ``a hidden axis draws nothing and reserves nothing`` () =
+        let hidden = plain |> Chart.withAxesLook AxisHidden
+        let scene = Chart.toSceneWith measurer extent hidden
+        Assert.True((keyed (Keys.axisX (Keys.panel 0 0)) scene).IsNone || marks (keyed (Keys.axisX (Keys.panel 0 0)) scene).Value = 0)
+        Assert.DoesNotContain("t [s]", texts scene)
+        // A bare axis reserves nothing either: no marks, numbers or title.
+        Assert.Equal(bottom (plain |> Chart.withXLook AxisBare), bottom hidden, 6)
+        Assert.True(bottom hidden > bottom plain)
+
+    [<Fact>]
+    let ``a full look does not undo a shared axis's inner labels`` () =
+        let fig = plain |> Chart.withXLook AxisFull |> Chart.above plain |> Chart.shareX
+        let n = texts (Chart.toSceneWith measurer extent fig) |> List.filter ((=) "t [s]") |> List.length
+        Assert.Equal(1, n)

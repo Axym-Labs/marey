@@ -693,6 +693,16 @@ The rest of an axis's numbers:
 Each has a `Y` form. When both axes of a panel are lengths, as on a map, they are titled `x` and
 `y` by side; a length against anything else is `x`, as in `x [m]` against `t [s]`.
 
+How much of an axis is drawn is its look: `AxisFull` (the default), `AxisUntitled` (no title),
+`AxisUnlabelled` (ticks only), `AxisBare` (the line alone) and `AxisHidden` (nothing).
+`withXLook`, `withYLook` and `withAxesLook` change only what is drawn, so they compose with the
+verbs above in either order, and an axis without ticks or numbers gives their room back to the
+plot:
+
+```fsharp
+let quiet = spectrumAxis |> Chart.withYLook AxisUnlabelled |> Chart.withXLook AxisUntitled
+```
+
 ### A second y axis
 
 Two quantities against one time, on one panel, each read against its own axis: `withRightAxis`
@@ -850,8 +860,9 @@ another shape is widened about its centre to the plot's, so the plot does not mo
 
 `withInset (x0, y0, x1, y1)` draws a one-panel figure over the last panel, its plot at those
 fractions of the host's plot, y up (matplotlib's `inset_axes`). Its tick labels and titles stand
-round that rectangle, over the host. `withInsetZoom` marks the inset's domain on the host and
-joins the two:
+round that rectangle, over the host; its axes are usually the host's quantities, so
+`AxisUntitled` (§7) drops the titles that would only repeat them. `withInsetZoom` marks the inset's
+domain on the host and joins the two:
 
 ```fsharp
 let zoomed =
@@ -861,8 +872,7 @@ let zoomed =
         (Chart.line U.second U.metre t x
          |> Chart.withXDomain 0.0 2.0
          |> Chart.withYDomain 0.0 20.0
-         |> Chart.withXAxis { Figure.axisConfig with ShowTitle = false }
-         |> Chart.withYAxis { Figure.axisConfig with ShowTitle = false })
+         |> Chart.withAxesLook AxisUntitled)
     |> Chart.withInsetZoom
 ```
 

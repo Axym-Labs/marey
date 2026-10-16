@@ -534,8 +534,7 @@ let insetFigure: Figure =
     |> Chart.withInset
         (0.58, 0.45, 0.96, 0.95)
         (Chart.line hz U.metre peak (peak |> Array.map resonance)
-         |> Chart.withXAxis { Figure.axisConfig with ShowTitle = false }
-         |> Chart.withYAxis { Figure.axisConfig with ShowTitle = false })
+         |> Chart.withAxesLook AxisUntitled)
     |> Chart.withInsetZoom
     |> Chart.withTheme Theme.publication
 

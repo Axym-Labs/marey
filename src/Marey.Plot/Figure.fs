@@ -116,7 +116,26 @@ type AxisConfig =
       ShowTickLabels: bool
       /// D178 — an axis on the opposite side reading this one in other numbers: the top for x,
       /// the right for y.
-      Secondary: SecondaryAxis option }
+      Secondary: SecondaryAxis option
+      /// Whether the tick marks are drawn, mirrored ones included. An axis without them reserves
+      /// no room for their length.
+      ShowTicks: bool }
+
+/// How much of an axis is drawn, whatever its ticks, prefix and domain say: the five looks a
+/// caller asks for by name rather than by fields. `Chart.withXLook` sets only `Visible`,
+/// `ShowTicks`, `ShowTickLabels` and `ShowTitle`, so it composes with every other axis verb in
+/// either order.
+type AxisLook =
+    /// Ticks, numbers and title: the default.
+    | AxisFull
+    /// No title: an inset, or a panel whose quantity its neighbour names.
+    | AxisUntitled
+    /// Ticks only, without numbers or title (what a shared axis's inner panels draw).
+    | AxisUnlabelled
+    /// The line alone, without ticks (matplotlib's `set_xticks([])`).
+    | AxisBare
+    /// Nothing (matplotlib's `axis('off')`). A framed theme still draws its frame.
+    | AxisHidden
 
 /// D179 — the shape a panel's plot is held to.
 [<RequireQualifiedAccess>]
@@ -754,7 +773,24 @@ module Figure =
           Minor = MinorAuto
           Format = FormatAuto
           ShowTickLabels = true
-          Secondary = None }
+          Secondary = None
+          ShowTicks = true }
+
+    /// `cfg` drawn with `look`; every other field kept.
+    let withLook (look: AxisLook) (cfg: AxisConfig) : AxisConfig =
+        let shown visible ticks labels title =
+            { cfg with
+                Visible = visible
+                ShowTicks = ticks
+                ShowTickLabels = labels
+                ShowTitle = title }
+
+        match look with
+        | AxisFull -> shown true true true true
+        | AxisUntitled -> shown true true true false
+        | AxisUnlabelled -> shown true true false false
+        | AxisBare -> shown true false false false
+        | AxisHidden -> shown false false false false
 
     let panelOf (layers: Layer[]) : Panel =
         { Title = ""
@@ -1770,8 +1806,10 @@ module Figure =
             // them moves when the numbers move.
             // D176 — an axis whose labels are off keeps its marks, and an outward mark still takes
             // its length outside the plot.
-            let marksOnly =
+            // What an axis without numbers still reserves: an outward tick's length.
+            let marksOnly (cfg: AxisConfig) =
                 match theme.TickDirection with
+                | _ when not cfg.ShowTicks -> 0.0<px>
                 | TickIn -> 0.0<px>
                 | TickOut
                 | TickInOut -> theme.TickLength
@@ -1803,7 +1841,7 @@ module Figure =
                 let y2Ticks, y2Title, y2Overhang =
                     match right, planY2 probe.Height with
                     | Some(cfg, spec), Some plan when cfg.Visible ->
-                        (if cfg.ShowTickLabels then Axes.tickExtent m theme AxisRight spec plan else marksOnly),
+                        (if cfg.ShowTickLabels then Axes.tickExtent m theme AxisRight spec plan else marksOnly cfg),
                         (if cfg.ShowTitle then Axes.titleExtent m theme spec.Title else 0.0<px>),
                         (if cfg.ShowTickLabels then Axes.labelOverhang m theme AxisRight spec plan else 0.0<px>)
                     | _ -> 0.0<px>, 0.0<px>, 0.0<px>
@@ -1828,12 +1866,12 @@ module Figure =
                   XTicksH =
                     if not p.XAxis.Visible then 0.0<px>
                     elif p.XAxis.ShowTickLabels then Axes.tickExtent m theme AxisBottom xSpec xPlan
-                    else marksOnly
+                    else marksOnly p.XAxis
 
                   YTicksW =
                     if not p.YAxis.Visible then 0.0<px>
                     elif p.YAxis.ShowTickLabels then Axes.tickExtent m theme AxisLeft ySpec yPlan
-                    else marksOnly
+                    else marksOnly p.YAxis
 
                   XTitleH =
                     if p.XAxis.Visible && p.XAxis.ShowTitle then
@@ -2107,7 +2145,7 @@ module Figure =
                               Extent = extent
                               Theme = theme
                               ShowSpine = not theme.PanelFrame
-                              ShowTicks = true
+                              ShowTicks = cfg.ShowTicks
                               ShowLabels = cfg.ShowTickLabels
                               ShowTitle = cfg.ShowTitle
                               TitleOffset = Axes.tickExtent m theme side spec tickPlan + theme.TitleGap

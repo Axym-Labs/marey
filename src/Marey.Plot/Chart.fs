@@ -1277,6 +1277,21 @@ module Chart =
     let withXAxis (cfg: AxisConfig) (fig: Figure) = mapLast (fun p -> { p with XAxis = cfg }) fig
     let withYAxis (cfg: AxisConfig) (fig: Figure) = mapLast (fun p -> { p with YAxis = cfg }) fig
 
+    /// How much of the last panel's x axis is drawn: `AxisFull`, `AxisUntitled`, `AxisUnlabelled`,
+    /// `AxisBare` or `AxisHidden`. Only what is drawn changes, so stated ticks, a prefix, a domain
+    /// or a reversal set before or after it stay. A shared axis (D176) still hides the inner
+    /// panels' numbers and title whatever their look.
+    let withXLook (look: AxisLook) (fig: Figure) =
+        mapLast (fun p -> { p with XAxis = Figure.withLook look p.XAxis }) fig
+
+    /// How much of the last panel's y axis is drawn. See `withXLook`.
+    let withYLook (look: AxisLook) (fig: Figure) =
+        mapLast (fun p -> { p with YAxis = Figure.withLook look p.YAxis }) fig
+
+    /// `withXLook` and `withYLook` at once: `withAxesLook AxisUntitled` is an inset whose axes are
+    /// its host's quantities, `withAxesLook AxisHidden` an image without axes.
+    let withAxesLook (look: AxisLook) (fig: Figure) = fig |> withXLook look |> withYLook look
+
     let withXLabel (l: string) (fig: Figure) =
         mapLast (fun p -> { p with XAxis = { p.XAxis with Label = Some l } }) fig
 

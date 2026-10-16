@@ -105,6 +105,15 @@ type FigureExtensions =
     static member WithXReversed(fig: Figure) = Chart.withXReversed fig
 
     [<Extension>]
+    static member WithXLook(fig: Figure, look: AxisLook) = Chart.withXLook look fig
+
+    [<Extension>]
+    static member WithYLook(fig: Figure, look: AxisLook) = Chart.withYLook look fig
+
+    [<Extension>]
+    static member WithAxesLook(fig: Figure, look: AxisLook) = Chart.withAxesLook look fig
+
+    [<Extension>]
     static member WithXMinorTicks(fig: Figure, minor: MinorSpec) = Chart.withXMinorTicks minor fig
 
     [<Extension>]
