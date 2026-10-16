@@ -269,7 +269,7 @@ interact {
 The reader moves a slider and the kernel draws the figure again, sending only what changed when
 that is smaller. Dragging zooms, double-clicking resets, and the pointer reads the data under it
 in the axes' own units. The figure is laid out once over the states the controls can reach, so the
-plot area holds still while the numbers move. This needs a Verso newer than 1.2.2; anywhere else
+plot area holds still while the numbers move. This needs Verso 1.2.3 or newer; anywhere else
 the same cell shows the figure with its controls disabled.
 
 **A large figure is drawn on a canvas.** From 5000 drawn elements on, the kernel sends the scene as

@@ -34,7 +34,7 @@ zooms, a shift-drag pans, a double click resets, and the pointer's position is r
 units. A save writes the figure at the state the reader left it in, with its controls disabled.
 
 This needs a Verso whose formatter context carries output channels and the cell's id: a release
-newer than 1.2.2. On an older host, or one without channels, the extension writes the same page
+1.2.3 or newer. On an older host, or one without channels, the extension writes the same page
 with the controls disabled and opens nothing.
 
 ## Installing

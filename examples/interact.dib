@@ -10,8 +10,8 @@ A figure with controls. Move a slider and the kernel draws the figure again; dra
 zoom, shift-drag to pan, double-click to go back, and hover to read the position under the
 pointer.
 
-It needs the **Marey** extension in [Verso](https://github.com/DataficationSDK/Verso), and a Verso
-newer than 1.2.2, whose cells can talk back to the kernel. Anywhere else the same cells show the
+It needs the **Marey** extension in [Verso](https://github.com/DataficationSDK/Verso), and Verso
+1.2.3 or newer, whose cells can talk back to the kernel. Anywhere else the same cells show the
 figure with its controls disabled, and say that it is static.
 
 #!fsharp
