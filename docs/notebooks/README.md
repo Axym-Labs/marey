@@ -33,7 +33,7 @@ Twelve types then display: `Figure`, `Film`, `Node`, `Color`, `Ramp`, `Color[]`,
 `Dim`, `U<'u>`, `IScaleErased`, `Live` and `Recorder`. A `Film` **plays** — an animation built with
 the `scene { … }` block loops in the cell as a flipbook, with no encoder installed and no video file
 on disk. A `Live`, built with `interact { … }`, is a figure with controls that the kernel redraws as
-the reader moves them, in a Verso newer than 1.2.2; [`examples/interact.dib`](../../examples/interact.dib)
+the reader moves them, in Verso 1.2.3 or newer; [`examples/interact.dib`](../../examples/interact.dib)
 is one.
 
 Installing the extension and referencing the library are **separate steps that cannot substitute

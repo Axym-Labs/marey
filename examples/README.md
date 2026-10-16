@@ -12,7 +12,7 @@ dotnet fsi examples/free-fall.fsx
 
 Each script writes its figure into the working directory. The `#r "nuget: …"` lines at the top
 resolve from nuget.org, so nothing needs to be built first. The notebook, `interact.dib`, opens in
-Verso with the Marey extension installed; its figure is live in a Verso newer than 1.2.2, and
+Verso with the Marey extension installed; its figure is live in Verso 1.2.3 or newer, and
 static anywhere else.
 
 | Example | What it shows |

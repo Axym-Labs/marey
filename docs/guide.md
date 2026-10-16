@@ -2414,7 +2414,7 @@ The page formats no number. Every label and every reading is written by the kern
 the axes are written in.
 
 A live figure needs a host that can talk back to the page. In Verso that is a release whose
-formatter context carries output channels (newer than 1.2.2). In any other host, and in a saved
+formatter context carries output channels (1.2.3 or newer). In any other host, and in a saved
 notebook, the same page is drawn with its controls disabled and a line saying it is static. A save
 writes the page at the state the reader left it in.
 

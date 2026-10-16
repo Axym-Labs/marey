@@ -12,6 +12,21 @@ land in a minor release.
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-10-16
+
+**Paper figures.** What a figure for a paper adds last, and where its panels sit. Rules, spans and
+annotations with arrows that leave the axes the data chose, panel letters, stated and minor ticks,
+tick formats, reversed axes, and legends outside the plot, in the emptiest corner or shared. Panels
+that line up on one grid, spans and mosaics, plot ratios, shared axes labelled once, a second y
+axis, secondary axes in another unit or through a map, equal aspect, and insets. `Theme.publication`
+is now the framed box physics journals print. A scene also travels as bytes (`Wire`), and a figure
+above 5000 drawn elements is drawn on a canvas in a notebook, so a 10⁵-point live figure steps in
+tens of milliseconds; a live figure in Verso needs 1.2.3 or newer. Seventeen packages, none new.
+Under `Changed`, what can break a build: a record expression that builds `AxisConfig`, `Panel`,
+`Figure`, `Layer`, `PanelLayout`, `PanelView`, `LiveZoom`, `AxisSpec`, `AxisRender` or `Theme`
+without `with`, and a match that names every case of `LegendPlacement`, `Geom` or `ZoomAxis`.
+Multi-panel figures, facets and `Theme.publication` draw differently.
+
 ### Added
 
 - **`Wire`** in `Marey.Core`: a scene (`Wire.encode`, `decode`) or a patch (`encodePatch`,
@@ -1324,7 +1339,8 @@ Superseded by `0.1.0` and not recommended for use. `Marey.Verso` in particular c
 installed from it: prerelease versions do not appear in Verso's Extensions panel at all, so an
 rc validates the package and the formatter but never the installation path.
 
-[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.6.0...HEAD
+[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.7.0...HEAD
+[0.7.0]: https://github.com/Axym-Labs/marey/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/Axym-Labs/marey/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/Axym-Labs/marey/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/Axym-Labs/marey/compare/0.3.1...0.4.0
