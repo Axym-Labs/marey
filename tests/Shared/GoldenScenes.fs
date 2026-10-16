@@ -352,7 +352,8 @@ let ticksSurface: Extent<px> = { Width = 760.0<px>; Height = 520.0<px> }
 /// D167 / D168 — P1 of the M8 port: a fit over measurements with a residual panel below it,
 /// under `Theme.publication` — framed, ticks inside on four sides, minor ticks — lettered, with a
 /// rule at zero and an axis stated every second. The model is a polynomial over exact values.
-let publicationFigure: Figure =
+/// P1's fit and its residuals, without `exp` (D141).
+let private fitAndResiduals =
     let ts = Array.init 13 (fun i -> float i * 0.5<s>)
     let model (t: float<s>) = 1.0e-3<m> * (float t - 3.0) * (float t - 3.0) - 4.0e-3<m>
     let wobble = [| 0.4; -0.7; 0.9; 0.1; -0.3; -0.8; 0.6; 0.2; -0.5; 0.7; -0.1; -0.9; 0.3 |]
@@ -373,6 +374,11 @@ let publicationFigure: Figure =
         |> Chart.addHLine U.metre 0.0<m>
         |> Chart.withXTicksEvery U.second 1.0<s>
         |> Chart.withYLabel "residual"
+
+    fit, residual
+
+let publicationFigure: Figure =
+    let fit, residual = fitAndResiduals
 
     fit
     |> Chart.above residual
@@ -409,6 +415,130 @@ let sharedLegendFigure: Figure =
     warming "one" |> Chart.beside (warming "two") |> Chart.beside (warming "three") |> Chart.withFigureLegend FigureLegendRight
 
 let sharedLegendSurface: Extent<px> = { Width = 760.0<px>; Height = 280.0<px> }
+
+/// D174 — a mosaic: one panel down the left, two stacked beside it whose y labels differ in
+/// width, lettered in reading order. The spanning panel's plot runs from the top of (b)'s to the
+/// bottom of (c)'s.
+let mosaicFigure: Figure =
+    let ts = Array.init 31 (fun i -> float i * 20.0<s>)
+    let rise (k: float) = ts |> Array.map (fun t -> k * 1e-3<m> * (t / (t + 150.0<s>)))
+
+    Chart.mosaic
+        "AB;AC"
+        [ 'A', warming "a panel over two rows"
+          'B', Chart.line U.second U.metre ts (rise 1.0)
+          'C', Chart.line U.second U.metre ts (rise 100.0) |> Chart.withYLabel "deflection" ]
+    |> Chart.withPanelLetters LetterParen
+    |> Chart.withTheme Theme.publication
+
+let mosaicSurface: Extent<px> = { Width = 760.0<px>; Height = 420.0<px> }
+
+/// D173, D175, D176 — P1 as matplotlib draws it: `subplots(2, 1, sharex=True,
+/// height_ratios=[3, 1])`. One x, labelled under the residuals; the plots three to one and lined
+/// up; the fit's x ticks kept, inside, without their labels.
+let sharedFigure: Figure =
+    let fit, residual = fitAndResiduals
+
+    fit
+    |> Chart.above residual
+    |> Chart.shareX
+    |> Chart.withRowHeights [| 3.0; 1.0 |]
+    |> Chart.withPanelLetters LetterParen
+    |> Chart.withTheme Theme.publication
+
+let sharedSurface: Extent<px> = { Width = 480.0<px>; Height = 420.0<px> }
+
+/// D177 — P3: a chamber's temperature on the left and its pressure on the right, against one
+/// time. Each axis in its series' colour; one legend. Rational, with a stated wobble (D141).
+let twinFigure: Figure =
+    let ts = Array.init 41 (fun i -> float i * 15.0<s>)
+    let wobble = [| 0.4; -0.7; 0.9; 0.1; -0.3; -0.8; 0.6; 0.2; -0.5; 0.7; -0.1; -0.9; 0.3 |]
+    let temperature = ts |> Array.map (fun t -> 300.0<K> + 60.0<K> * (t / (t + 150.0<s>)))
+    let pressure = temperature |> Array.mapi (fun i tk -> (101.3 * float tk / 300.0 + 0.4 * wobble.[i % wobble.Length]) * 1e3<Pa>)
+
+    Chart.line U.second U.kelvin ts temperature
+    |> Chart.withName "temperature"
+    |> Chart.withRightAxis (Chart.line U.second Derived.pascal ts pressure |> Chart.withName "pressure")
+    |> Chart.withLegend LegendBottomRight
+    |> Chart.withTheme Theme.publication
+
+let twinSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
+
+/// D178 — P2's spectrum with photon energy along the top, through E = hc/λ, beside a temperature
+/// with °C along the right. Lorentzian lines, rational (D141).
+let secondaryFigure: Figure =
+    let nm = 1e-9<m>
+    let hc = 1.239841984e-6<eV * m>
+    let lam = Array.init 301 (fun i -> (400.0 + float i) * nm)
+    let line (centre: float) (height: float) (l: float<m>) = height / (1.0 + ((float (l / nm) - centre) / 1.5) ** 2.0)
+
+    let spectrum =
+        Chart.line U.metre U.one lam (lam |> Array.map (fun l -> 0.03 + line 486.1 0.55 l + line 656.3 1.0 l))
+        |> Chart.withTopAxisMapped NonSi.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
+
+    let ts = Array.init 21 (fun i -> float i * 30.0<s>)
+
+    let warming =
+        Chart.line U.second U.kelvin ts (ts |> Array.map (fun t -> 280.0<K> + 50.0<K> * (t / (t + 150.0<s>))))
+        |> Chart.withRightAxisIn NonSi.degreeCelsius
+
+    spectrum |> Chart.beside warming |> Chart.withTheme Theme.publication
+
+let secondarySurface: Extent<px> = { Width = 760.0<px>; Height = 300.0<px> }
+
+/// D179 — a circle of 2 mm round an ellipse, drawn round because one millimetre is as long on y
+/// as on x, beside a panel that keeps its rectangle. The rational parametrisation of the circle
+/// (D141).
+let aspectFigure: Figure =
+    let ts = Array.init 41 (fun i -> -1.0 + 2.0 * float i / 40.0)
+
+    // t from −1 to 1 is the right half, from the bottom round to the top; mirrored, the left half
+    // comes back down to where it started.
+    let circle (rx: float<m>) (ry: float<m>) =
+        let right = ts |> Array.map (fun t -> rx * (1.0 - t * t) / (1.0 + t * t), ry * 2.0 * t / (1.0 + t * t))
+        Array.append right (right |> Array.rev |> Array.map (fun (x, y) -> -x, y))
+
+    let c = circle 2e-3<m> 2e-3<m>
+    let e = circle 1.5e-3<m> 0.6e-3<m>
+
+    let orbit =
+        Chart.line U.metre U.metre (Array.map fst c) (Array.map snd c)
+        |> Chart.withName "circle"
+        |> Chart.addLine U.metre U.metre (Array.map fst e) (Array.map snd e)
+        |> Chart.withName "ellipse"
+        |> Chart.withLegend LegendOutsideRight
+        |> Chart.withEqualAspect
+
+    let ts2 = Array.init 21 (fun i -> float i * 30.0<s>)
+    let warming = Chart.line U.second U.kelvin ts2 (ts2 |> Array.map (fun t -> 280.0<K> + 50.0<K> * (t / (t + 150.0<s>))))
+    orbit |> Chart.beside warming |> Chart.withTheme Theme.publication
+
+let aspectSurface: Extent<px> = { Width = 760.0<px>; Height = 300.0<px> }
+
+/// D180 — a resonance with its peak drawn again in an inset, the zoom marked on the host. A
+/// Lorentzian, rational (D141).
+let insetFigure: Figure =
+    let hz = U.div U.one U.second
+    let fs = Array.init 401 (fun i -> float i * 0.05<s^-1>)
+    // A product rather than `** 2.0`: `Math.Pow` is not correctly rounded on every platform, and
+    // under Node two of the inset's points came out a bit apart from .NET's.
+    let resonance (f: float<s^-1>) =
+        let d = (f - 10.0<s^-1>) / 0.3<s^-1>
+        1e-3<m> / (1.0 + d * d)
+
+    let peak = fs |> Array.filter (fun f -> f >= 9.0<s^-1> && f <= 11.0<s^-1>)
+
+    Chart.line hz U.metre fs (fs |> Array.map resonance)
+    |> Chart.withYLabel "amplitude"
+    // The inset's axes are the host's quantities, so its titles would only repeat them.
+    |> Chart.withInset
+        (0.58, 0.45, 0.96, 0.95)
+        (Chart.line hz U.metre peak (peak |> Array.map resonance)
+         |> Chart.withAxesLook AxisUntitled)
+    |> Chart.withInsetZoom
+    |> Chart.withTheme Theme.publication
+
+let insetSurface: Extent<px> = { Width = 560.0<px>; Height = 360.0<px> }
 
 /// The figure surface. Larger than `surface` because a figure has margins, ticks and a legend to
 /// fit, and a cramped one tests the collision ladder rather than the layout.
@@ -1197,7 +1327,13 @@ let scenesWith (m: ITextMeasurer) : (string * Extent<px> * Node) list =
         fig "figure-ticks" ticksSurface ticksFigure
         fig "figure-publication" publicationSurface publicationFigure
         fig "figure-legends" legendsSurface legendsFigure
-        fig "figure-legend-shared" sharedLegendSurface sharedLegendFigure ]
+        fig "figure-legend-shared" sharedLegendSurface sharedLegendFigure
+        fig "figure-mosaic" mosaicSurface mosaicFigure
+        fig "figure-shared" sharedSurface sharedFigure
+        fig "figure-twin" twinSurface twinFigure
+        fig "figure-secondary" secondarySurface secondaryFigure
+        fig "figure-aspect" aspectSurface aspectFigure
+        fig "figure-inset" insetSurface insetFigure ]
 
 let svg: (string * (unit -> string)) list =
     let wide = Chart.size 480.0 300.0
@@ -1222,4 +1358,10 @@ let svg: (string * (unit -> string)) list =
         "figure-ticks", figureAt ticksSurface ticksFigure
         "figure-publication", figureAt publicationSurface publicationFigure
         "figure-legends", figureAt legendsSurface legendsFigure
-        "figure-legend-shared", figureAt sharedLegendSurface sharedLegendFigure ]
+        "figure-legend-shared", figureAt sharedLegendSurface sharedLegendFigure
+        "figure-mosaic", figureAt mosaicSurface mosaicFigure
+        "figure-shared", figureAt sharedSurface sharedFigure
+        "figure-twin", figureAt twinSurface twinFigure
+        "figure-secondary", figureAt secondarySurface secondaryFigure
+        "figure-aspect", figureAt aspectSurface aspectFigure
+        "figure-inset", figureAt insetSurface insetFigure ]

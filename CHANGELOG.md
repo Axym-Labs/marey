@@ -66,8 +66,46 @@ land in a minor release.
 - **Legends** (D171): `LegendOutsideRight`, `LegendOutsideBottom` and `LegendBest` (the emptiest
   corner, chosen once for an animation); `withLegendColumns`, `withLegendFrame`, and
   `withFigureLegend` for one legend shared by every panel.
-- C# extensions for every verb above.
-- **`examples/paper-figure.fsx`**: a fit over its residuals, and a spectrum with its lines marked.
+- **Spans** (D174): `Panel.RowSpan` and `ColSpan`; `Chart.mosaic "AB;AC" [ 'A', a; … ]` lays
+  single-panel figures out by a picture of the grid, `.` for an empty cell.
+- **Row and column ratios** (D175): `Chart.withRowHeights` and `withColWidths`, as ratios of the
+  plots rather than of the cells. Exact unless `beside` or `above` subdivides the weighted rows to
+  meet a side with more of them, where they are approximate.
+- **Shared axes on any composition** (D176): `Chart.shareX`, `shareY` and `shareAxes` share the
+  axes of every panel the figure has, checked for one dimension at the call and kept shared: a
+  domain stated on one of the panels, or a zoom of one, is the group's. `AxisConfig.ShowTickLabels`.
+- **A second y axis** (D177): `Chart.withRightAxis right` draws a one-panel figure's layers on
+  the right of the last panel, against a y axis of their own, each side's unit checked among its
+  own layers; `toRightAxis`, `withRightYDomain`, `withRightYLabel`. A side with one series is drawn
+  in its colour. The pointer reads the second axis too, and a zoom or a pan moves it with the
+  first. `Panel.Y2Axis`, `Layer.SecondaryY`, `PanelView.Y2`, `ZoomAxis.Y2`, `Keys.axisY2`.
+- **Secondary axes** (D178): `Chart.withTopAxisIn` and `withRightAxisIn` read an axis in another
+  unit of its dimension (°C over kelvin), converted by the units; `withTopAxisMapped` and
+  `withRightAxisMapped` through a map and its inverse (photon energy over wavelength), typed in
+  both directions under `Marey.UnitsOfMeasure` and checked on the domain when drawn: finite,
+  monotone, and inverse to each other. Ticks are chosen in the secondary unit and placed through
+  the inverse. `withTopAxisLabel`; `AxisConfig.Secondary`, `SecondaryAxis`, `SecondaryMap`,
+  `Keys.axisX2`.
+- **Equal aspect** (D179): `Chart.withEqualAspect` holds one unit as long on y as on x, the plot
+  shrunk to the domain's shape and centred in its cell; both axes linear and of one dimension,
+  compared in SI. An animation keeps one box over the union of its frames and widens each frame's
+  domain to it; a live zoom is widened to the plot's shape, so the plot does not move.
+  `withBoxAspect` states the plot's height over width. `Panel.Aspect`, `PanelView.EqualAspect`,
+  `PanelView.fitEqual`.
+- **Insets** (D180): `Chart.withInset (x0, y0, x1, y1) inset` draws a one-panel figure over the
+  last panel's plot, its own plot at those fractions of the host's, its axes its own;
+  `withInsetZoom` draws its domain on the host as a rectangle joined to it by the two corner lines
+  that cross neither. A pointer over an inset reads and zooms the inset. Keyed under its host,
+  `panel-r-c/inset-i`. `Panel.Insets`, `Inset`, `PanelView.Inset`, `LiveZoom.Inset`, `Keys.inset`,
+  `Figure.withInsetDomains`.
+- **Axis looks**: `Chart.withXLook`, `withYLook` and `withAxesLook` with `AxisFull`,
+  `AxisUntitled`, `AxisUnlabelled`, `AxisBare` and `AxisHidden` set how much of an axis is drawn,
+  and only that, so they compose with the other axis verbs in either order. An axis without tick
+  marks reserves no room for them. `AxisLook`, `AxisConfig.ShowTicks`.
+- C# extensions for every verb above, and `Figures.Mosaic`.
+- **`examples/paper-figure.fsx`**: one figure for a paper. A fit over its residuals, sharing t,
+  three to one, beside a spectrum spanning both rows with its lines marked and photon energy along
+  the top.
 
 ### Changed
 
@@ -79,13 +117,28 @@ land in a minor release.
   `TickDirection = TickOut`, `MirrorTicks = false` and `MinorTicks = false`.
 - **A panel whose two axes are both lengths titles them `x` and `y`**, by side; both were `x`. A
   length against anything else is still `x`.
+- **The plots of a multi-panel figure line up** (D173): every panel in a column has one left and
+  one right plot edge, every panel in a row one top and one bottom, and equal rows or columns get
+  equal plots rather than equal cells. A panel next to one with a colorbar or an outside legend
+  gives up that room too. A figure of one panel is placed as before.
+- **`beside` and `above` no longer leave empty cells** (D174): two figures with different numbers
+  of rows (or columns) are composed over the least common multiple, and each side's panels span
+  their share. Figures with equal counts compose as before.
+- **A facet labels a shared axis once** (D176): only the panels at the foot of each column write
+  their x tick labels and title, and only those at the left of each row their y ones. The ticks
+  stay. A zoom or a stated domain on one panel of a facet now applies to its shared axis.
 - New record fields, which break a record built without `with`: `AxisConfig` (`Ticks`,
   `TickUnit`, `Prefix`, `Reversed`, `Minor`, `Format`), `AxisSpec.Minor`, `Layer.InDomain`,
   `Panel` (`LegendColumns`, `LegendFrame`), `Figure` (`Letters`, `Legend`), `PanelLayout`
   (`LegendGap`, `LegendW`, `LegendH`, `LegendScores`), `AxisRender` (`Direction`, `Mirror`,
   `ShowMinor`), and `Theme` (`TickDirection`, `MirrorTicks`, `MinorTicks`, `MinorTickLength`).
-  `LegendPlacement` gains three cases, which breaks an exhaustive `match` over it, and `Geom` two
-  (`GeomRule`, `GeomAnnotation`).
+  M9 adds `Layer.SecondaryY`, `Panel` (`RowSpan`, `ColSpan`, `XShare`, `YShare`, `Y2Axis`,
+  `Aspect`, `Insets`), `Figure` (`RowWeights`, `ColWeights`), `AxisConfig` (`ShowTickLabels`,
+  `Secondary`, `ShowTicks`), `PanelLayout` (`SlackLeft`, `SlackRight`, `SlackTop`, `SlackBottom`, `Y2TicksW`,
+  `Y2TitleW`, `Y2Prefix`, `X2TicksH`, `X2TitleH`), `PanelView` (`Y2`, `Y2Axis`, `EqualAspect`,
+  `Inset`) and `LiveZoom.Inset`. `LegendPlacement` gains three cases, `Geom` two (`GeomRule`,
+  `GeomAnnotation`) and `ZoomAxis` one (`Y2`), each of which breaks an exhaustive `match` over
+  it.
 
 ### Fixed
 

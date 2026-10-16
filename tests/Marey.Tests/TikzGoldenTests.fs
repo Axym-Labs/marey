@@ -332,6 +332,36 @@ module Figures =
         check "figure-legends.tex" (Chart.render TikzBackend.render legendsSurface legendsFigure)
         check "figure-legend-shared.tex" (Chart.render TikzBackend.render sharedLegendSurface sharedLegendFigure)
 
+    /// D174 — a panel spanning two rows of a mosaic.
+    [<Fact>]
+    let ``a mosaic`` () =
+        check "figure-mosaic.tex" (Chart.render TikzBackend.render mosaicSurface mosaicFigure)
+
+    /// D173, D175, D176 — P1 with one x, three to one.
+    [<Fact>]
+    let ``a shared axis over ratios`` () =
+        check "figure-shared.tex" (Chart.render TikzBackend.render sharedSurface sharedFigure)
+
+    /// D177 — two y axes, each in its series' colour.
+    [<Fact>]
+    let ``a twin y`` () =
+        check "figure-twin.tex" (Chart.render TikzBackend.render twinSurface twinFigure)
+
+    /// D178 — secondary axes, through a map and through a unit.
+    [<Fact>]
+    let ``secondary axes`` () =
+        check "figure-secondary.tex" (Chart.render TikzBackend.render secondarySurface secondaryFigure)
+
+    /// D179 — equal aspect beside a panel that keeps its rectangle.
+    [<Fact>]
+    let ``equal aspect`` () =
+        check "figure-aspect.tex" (Chart.render TikzBackend.render aspectSurface aspectFigure)
+
+    /// D180 — an inset and its zoom.
+    [<Fact>]
+    let ``an inset`` () =
+        check "figure-inset.tex" (Chart.render TikzBackend.render insetSurface insetFigure)
+
     /// Gate 6 meets gate 7. A baseline can be byte-stable, valid TeX and *blank* — that is
     /// precisely the failure this milestone already shipped once. So the committed figure is also
     /// compiled and looked at, which is what makes it a record of a picture rather than of a

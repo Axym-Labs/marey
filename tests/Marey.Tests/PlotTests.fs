@@ -164,7 +164,8 @@ module CategoricalAxes =
           ShowInLegend = false
           Addressed = [||]
           RowKeys = [||]
-          InDomain = (true, true) }
+          InDomain = (true, true)
+          SecondaryY = false }
 
     /// The whole point of D45, rendered: a bar per level, a named tick per band, and no
     /// configuration beyond the level set.

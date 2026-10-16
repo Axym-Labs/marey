@@ -262,4 +262,16 @@ public class Surface
         Assert.False(Units.TryParse("days since 1970-01-01", out _));
         Assert.Throws<FormatException>(() => Units.Parse("furlong"));
     }
+
+    /// An axis's look from C#, which cannot spell an `AxisConfig` record update. The drawn title goes;
+    /// the axis's `aria-label` keeps it for a screen reader.
+    [Fact]
+    public void AnAxisLook()
+    {
+        var fig = Chart.Line(X, Y, xUnit: Units.Second, yUnit: Units.Metre);
+        Assert.Contains(">t [s]<", Svg(fig));
+        Assert.DoesNotContain(">t [s]<", Svg(fig.WithAxesLook(AxisLook.AxisUntitled)));
+        Assert.DoesNotContain(">t [s]<", Svg(fig.WithXLook(AxisLook.AxisHidden)));
+        Assert.Contains(">x [m]<", Svg(fig.WithXLook(AxisLook.AxisHidden)));
+    }
 }

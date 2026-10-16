@@ -693,6 +693,72 @@ The rest of an axis's numbers:
 Each has a `Y` form. When both axes of a panel are lengths, as on a map, they are titled `x` and
 `y` by side; a length against anything else is `x`, as in `x [m]` against `t [s]`.
 
+How much of an axis is drawn is its look: `AxisFull` (the default), `AxisUntitled` (no title),
+`AxisUnlabelled` (ticks only), `AxisBare` (the line alone) and `AxisHidden` (nothing).
+`withXLook`, `withYLook` and `withAxesLook` change only what is drawn, so they compose with the
+verbs above in either order, and an axis without ticks or numbers gives their room back to the
+plot:
+
+```fsharp
+let quiet = spectrumAxis |> Chart.withYLook AxisUnlabelled |> Chart.withXLook AxisUntitled
+```
+
+### A second y axis
+
+Two quantities against one time, on one panel, each read against its own axis: `withRightAxis`
+takes a one-panel figure built as any other and draws its layers against a y axis on the right
+(matplotlib's `twinx`). A side with one series draws its ticks, numbers and title in that series'
+colour, which is how a reader tells the curves apart; the legend takes both sides.
+
+```fsharp
+let pressure = t |> Array.map (fun s -> 101.3e3<Pa> * exp (-s / 6.0<s>))
+
+let twin =
+    Chart.line U.second U.kelvin t temperature
+    |> Chart.withName "temperature"
+    |> Chart.withRightAxis (Chart.line U.second Derived.pascal t pressure |> Chart.withName "pressure")
+    |> Chart.withLegend LegendBest
+```
+
+The two sides must agree on x. That is checked at the call, in both modes, because each side is a
+figure of its own and only their meeting can be checked; a right side drawn against metres is
+refused there:
+
+```
+Marey: layer 0 has an x axis in s but layer 1 has one in m. Two physical dimensions cannot share an axis.
+```
+
+`toRightAxis` moves the last layer added to the right instead, and `withRightYDomain` and
+`withRightYLabel` set that axis's domain and name. A zoom moves both y axes.
+
+### The same axis in other numbers
+
+A secondary axis reads the panel's own axis again, on the opposite side, in another unit: kelvin
+on the left and degrees Celsius on the right, wavelength along the bottom and photon energy along
+the top. `withRightAxisIn` and `withTopAxisIn` take a unit of the axis's dimension and convert by
+the units themselves, offset included. Through a map, `withTopAxisMapped` and
+`withRightAxisMapped` take the forward and inverse functions; typed, the compiler checks both
+directions.
+
+```fsharp
+let celsius = Chart.line U.second U.kelvin t temperature |> Chart.withRightAxisIn NonSi.degreeCelsius
+
+let hc = 1.239841984e-6<eV * m>
+let wavelengths = Array.init 61 (fun i -> (400.0 + 5.0 * float i) * 1e-9<m>)
+let band (l: float<m>) = let d = (l - 550e-9<m>) / 40e-9<m> in exp (-d * d)
+
+let energyAxis =
+    Chart.line U.metre U.one wavelengths (wavelengths |> Array.map band)
+    |> Chart.withTopAxisMapped NonSi.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
+    |> Chart.withTopAxisLabel "E"
+```
+
+The ticks are chosen in the secondary unit and placed through the inverse, so on a reciprocal
+they fall unevenly, where whole energies are. When the figure is drawn the pair is checked on 257
+points of the domain (finite, strictly monotone, and the inverse returning each point), and a map
+that turns back, as `x * x` over −1 … 1 does at 0, is refused there. A unit of another dimension
+without a map is refused naming both.
+
 ---
 
 ## 8. Panels
@@ -721,7 +787,99 @@ let lettered = stacked |> Chart.withPanelLetters LetterParen
 ```
 
 Layout is a measure–arrange constraint grid, so a panel gets the space its contents need rather
-than an equal share of the surface.
+than an equal share of the surface. The panels of a figure are one grid: the room each needs for
+its tick labels, titles, legend and colorbar is made the same along each grid line, so plots in a
+column share their left and right edges and plots in a row their top and bottom, whatever their
+neighbours carry.
+
+### Spans, a mosaic, and proportions
+
+`beside` and `above` take figures of any shape. A single panel beside a stack of two runs the
+height of both, and no cell is left empty:
+
+```fsharp
+let spanning = Chart.line U.second U.metre t x |> Chart.above lineOnly |> Chart.beside scatterOnly
+```
+
+A layout that does not nest, such as four panels round a fifth, is drawn as a picture: each
+character of the string is a cell, rows are separated by `;` or a newline, `.` is an empty cell,
+and each part covers the rectangle of cells that carry its character.
+
+```fsharp
+let pinwheel =
+    Chart.mosaic "AAB;DEB;DCC" [ 'A', lineOnly; 'B', scatterOnly; 'C', areaOnly; 'D', stepOnly; 'E', barOnly ]
+```
+
+A character whose cells are not one rectangle is refused, naming it, as is a character with no
+part or a part with no character, or a part of more than one panel.
+
+`withRowHeights` and `withColWidths` state the plots' proportions, one weight per row or column:
+`[| 3.0; 1.0 |]` draws the first row's plots three times as tall as the second's, whatever their
+gutters (matplotlib's `height_ratios`). They hold exactly unless `beside` or `above` has to
+subdivide the weighted rows to meet a side with more of them; there they are approximate.
+
+### Shared axes
+
+`shareX` shares the x axis of every panel the figure has so far: one domain, the same for all, and
+the x tick labels and title written only on the lowest panel of each column (matplotlib's
+`label_outer`). The ticks themselves stay. `shareY` does the same for y, labelling the leftmost
+panel of each row, and `shareAxes` both. Together with the proportions, a fit over its residuals:
+
+```fsharp
+let fitOverResidual =
+    lineOnly
+    |> Chart.above (Chart.scatter U.second U.metre t (x |> Array.map (fun v -> v * 0.01)) |> Chart.withYLabel "residual")
+    |> Chart.shareX
+    |> Chart.withRowHeights [| 3.0; 1.0 |]
+```
+
+The dimensions are checked at the call, and an x in seconds shared with one in metres is refused
+there, naming both panels. A domain stated on one panel of a shared axis afterwards, or a live zoom
+of it, applies to every panel that shares it. A panel composed in later is not part of the
+sharing; call `shareX` again to take it in.
+
+### Aspect
+
+`withEqualAspect` makes one unit as long on y as on x, which a map, an orbit or a field needs to
+be read without distortion. The plot is shrunk to the domains' shape and centred in its cell, and
+its neighbours keep their rectangles. Both axes must be linear and of one dimension, compared in
+SI, so millimetres against metres is fine and seconds against metres is refused naming both.
+`withBoxAspect` holds the plot at a stated height over width, whatever its domains.
+
+```fsharp
+let orbit =
+    let th = Array.init 121 (fun i -> float i * 2.0 * System.Math.PI / 120.0)
+    Chart.line U.metre U.metre (th |> Array.map (fun a -> 2.0<m> * cos a)) (th |> Array.map (fun a -> 1.0<m> * sin a))
+    |> Chart.withEqualAspect
+```
+
+In an animation the shape is fixed from every frame's domains together, and a frame or a zoom of
+another shape is widened about its centre to the plot's, so the plot does not move.
+
+### Insets
+
+`withInset (x0, y0, x1, y1)` draws a one-panel figure over the last panel, its plot at those
+fractions of the host's plot, y up (matplotlib's `inset_axes`). Its tick labels and titles stand
+round that rectangle, over the host; its axes are usually the host's quantities, so
+`AxisUntitled` (§7) drops the titles that would only repeat them. `withInsetZoom` marks the inset's
+domain on the host and joins the two:
+
+```fsharp
+let zoomed =
+    lineOnly
+    |> Chart.withInset
+        (0.16, 0.5, 0.52, 0.93)
+        (Chart.line U.second U.metre t x
+         |> Chart.withXDomain 0.0 2.0
+         |> Chart.withYDomain 0.0 20.0
+         |> Chart.withAxesLook AxisUntitled)
+    |> Chart.withInsetZoom
+```
+
+An inset's axes are its own: a drag inside it zooms the inset and not the host, and a storyboard
+addresses it as `panel-0-0/inset-0`. It draws no colorbar; a heatmap inset is read against the
+host's bar when its colour domain is stated to match. An inset with a legend outside its plot, or
+insets of its own, is refused.
 
 ---
 
@@ -1067,7 +1225,8 @@ let faceted =
 Sharing is what separates a facet from a page of unrelated charts: every panel reports the same x
 and y domain, so a difference between panels is a difference in the data. `facetScales` narrows
 that to `ShareX` or `ShareY` where one axis makes no cross-panel claim, and `facetWrapIn` states
-the number of columns instead of taking the squarest grid that fits.
+the number of columns instead of taking the squarest grid that fits. A shared axis is labelled
+once, on the outermost panels, as `Chart.shareX` labels it (§8).
 
 Anything that has to be identical across the grid is computed before the split — the level set and
 its colours, a colorbar's scale, and a histogram's bin edges, which come from the undivided sample

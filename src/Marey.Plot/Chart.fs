@@ -90,7 +90,8 @@ module Chart =
           ShowInLegend = not (System.String.IsNullOrEmpty name)
           Addressed = [||]
           RowKeys = [||]
-          InDomain = (true, true) }
+          InDomain = (true, true)
+          SecondaryY = false }
 
     // ---- Constructors ------------------------------------------------------------------------
 
@@ -416,7 +417,8 @@ module Chart =
     let private ruleLayer (theme: Theme) (i: int) (rule: RuleSpec<1>) (data: PackedSeries) : Layer =
         { layerOf "" theme i (GeomRule rule) data with
             Style = Geom.ruleStyle theme rule
-            InDomain = (false, false) }
+            InDomain = (false, false)
+            SecondaryY = false }
 
     let private ruleFigure (rule: RuleSpec<1>) (s: Series<'ux, 'uy>) : Figure =
         figureOf [| ruleLayer Theme.initial 0 rule (Erase.packSeries s) |]
@@ -997,7 +999,8 @@ module Chart =
     let private annotationLayer (theme: Theme) (i: int) (text: string) (placement: TextPlacement<1>) (data: PackedSeries) : Layer =
         { layerOf "" theme i (GeomAnnotation(text, placement, ArrowNone)) data with
             Style = Geom.annotationStyle theme
-            InDomain = (false, false) }
+            InDomain = (false, false)
+            SecondaryY = false }
 
     let private besidePoint: TextPlacement<1> = TextOffset { X = 6.0<px>; Y = 6.0<px> }
 
@@ -1274,6 +1277,21 @@ module Chart =
     let withXAxis (cfg: AxisConfig) (fig: Figure) = mapLast (fun p -> { p with XAxis = cfg }) fig
     let withYAxis (cfg: AxisConfig) (fig: Figure) = mapLast (fun p -> { p with YAxis = cfg }) fig
 
+    /// How much of the last panel's x axis is drawn: `AxisFull`, `AxisUntitled`, `AxisUnlabelled`,
+    /// `AxisBare` or `AxisHidden`. Only what is drawn changes, so stated ticks, a prefix, a domain
+    /// or a reversal set before or after it stay. A shared axis (D176) still hides the inner
+    /// panels' numbers and title whatever their look.
+    let withXLook (look: AxisLook) (fig: Figure) =
+        mapLast (fun p -> { p with XAxis = Figure.withLook look p.XAxis }) fig
+
+    /// How much of the last panel's y axis is drawn. See `withXLook`.
+    let withYLook (look: AxisLook) (fig: Figure) =
+        mapLast (fun p -> { p with YAxis = Figure.withLook look p.YAxis }) fig
+
+    /// `withXLook` and `withYLook` at once: `withAxesLook AxisUntitled` is an inset whose axes are
+    /// its host's quantities, `withAxesLook AxisHidden` an image without axes.
+    let withAxesLook (look: AxisLook) (fig: Figure) = fig |> withXLook look |> withYLook look
+
     let withXLabel (l: string) (fig: Figure) =
         mapLast (fun p -> { p with XAxis = { p.XAxis with Label = Some l } }) fig
 
@@ -1304,14 +1322,23 @@ module Chart =
     let withXScaleKind (k: ScaleKind) (fig: Figure) = mapLayers (Figure.withKinds (Some k) None) fig
     let withYScaleKind (k: ScaleKind) (fig: Figure) = mapLayers (Figure.withKinds None (Some k)) fig
 
-    /// Set the x domain in raw numeric values of the axis's own unit. Raw because the measure
-    /// has already been erased into the figure; use `Chart.ofSeries` with a hand-built scale
-    /// when you want the domain checked.
+    /// The last panel's x domain, in raw numeric values of the axis's own unit. Raw because the
+    /// measure has already been erased into the figure; use `Chart.ofSeries` with a hand-built
+    /// scale when you want the domain checked. On a shared x (D176) it is the group's: every
+    /// panel the axis is shared with takes it.
     let withXDomain (lo: float) (hi: float) (fig: Figure) =
-        mapLayers (Figure.withDomains (Some(lo, hi)) None) fig
+        if fig.Panels.Length = 0 then
+            fig
+        else
+            let last = fig.Panels.[lastPanel fig]
+            Figure.withDomainsShared (fun p -> p.Row = last.Row && p.Col = last.Col) (Some(lo, hi)) None fig
 
     let withYDomain (lo: float) (hi: float) (fig: Figure) =
-        mapLayers (Figure.withDomains None (Some(lo, hi))) fig
+        if fig.Panels.Length = 0 then
+            fig
+        else
+            let last = fig.Panels.[lastPanel fig]
+            Figure.withDomainsShared (fun p -> p.Row = last.Row && p.Col = last.Col) None (Some(lo, hi)) fig
 
     // ---- Stated ticks, the prefix, reversal (D166, D169, D170) ------------------------------
 
@@ -1399,20 +1426,361 @@ module Chart =
 
     // ---- Multi-panel ---------------------------------------------------------------------------
 
+    let rec private gcd (a: int) (b: int) = if b = 0 then a else gcd b (a % b)
+    let private lcm (a: int) (b: int) = a / gcd a b * b
+
+    /// D175 — a row's stated weight given to each of the `k` rows it becomes. Every row is split
+    /// alike, so every proportion holds and the mean stays 1.
+    let private split (k: int) (weights: float[]) =
+        weights |> Array.collect (fun w -> Array.create k w)
+
+    /// D174 — a figure's rows stretched by `k`: each panel starts `k` times lower and spans `k`
+    /// times as many rows.
+    let private stretchRows (k: int) (f: Figure) =
+        if k = 1 then
+            f
+        else
+            { f with
+                Rows = f.Rows * k
+                RowWeights = split k f.RowWeights
+                Panels = f.Panels |> Array.map (fun p -> { p with Row = p.Row * k; RowSpan = max 1 p.RowSpan * k }) }
+
+    let private stretchCols (k: int) (f: Figure) =
+        if k = 1 then
+            f
+        else
+            { f with
+                Cols = f.Cols * k
+                ColWeights = split k f.ColWeights
+                Panels = f.Panels |> Array.map (fun p -> { p with Col = p.Col * k; ColSpan = max 1 p.ColSpan * k }) }
+
+    /// D175 — two figures' weights along the axis they are joined on: each side's, or ones where
+    /// it states none, so a stated pair keeps its proportion beside an unstated panel.
+    let private joined (aCount: int) (a: float[]) (bCount: int) (b: float[]) =
+        if a.Length = 0 && b.Length = 0 then
+            [||]
+        else
+            let fill n (ws: float[]) = if ws.Length = 0 then Array.create n 1.0 else ws
+            Array.append (fill aCount a) (fill bCount b)
+
+    /// D175 — the weights two figures share along the axis they stand side by side on: the
+    /// first's where it states them, otherwise the second's.
+    let private shared (a: float[]) (b: float[]) = if a.Length > 0 then a else b
+
     /// Put `b`'s panels to the right of `a`'s. `b`'s figure-level title is dropped; use
     /// `withPanelTitle` for per-panel headings.
+    ///
+    /// D174 — when the two have different numbers of rows, the grid takes the least common
+    /// multiple and each side's panels span what their share covers, so a single panel beside
+    /// a stack of two runs the height of both, and no cell is left empty.
     let beside (b: Figure) (a: Figure) : Figure =
+        let b = Figure.offsetShares a b
+        let rows = lcm (max 1 a.Rows) (max 1 b.Rows)
+        let a = stretchRows (rows / max 1 a.Rows) a
+        let b = stretchRows (rows / max 1 b.Rows) b
+
         { a with
             Cols = a.Cols + b.Cols
-            Rows = max a.Rows b.Rows
+            Rows = rows
+            RowWeights = shared a.RowWeights b.RowWeights
+            ColWeights = joined (max 1 a.Cols) a.ColWeights (max 1 b.Cols) b.ColWeights
             Panels = Array.append a.Panels (b.Panels |> Array.map (fun p -> { p with Col = p.Col + a.Cols })) }
 
-    /// Put `b`'s panels below `a`'s.
+    /// Put `b`'s panels below `a`'s, across the least common multiple of their columns (D174).
     let above (b: Figure) (a: Figure) : Figure =
+        let b = Figure.offsetShares a b
+        let cols = lcm (max 1 a.Cols) (max 1 b.Cols)
+        let a = stretchCols (cols / max 1 a.Cols) a
+        let b = stretchCols (cols / max 1 b.Cols) b
+
         { a with
             Rows = a.Rows + b.Rows
-            Cols = max a.Cols b.Cols
+            Cols = cols
+            ColWeights = shared a.ColWeights b.ColWeights
+            RowWeights = joined (max 1 a.Rows) a.RowWeights (max 1 b.Rows) b.RowWeights
             Panels = Array.append a.Panels (b.Panels |> Array.map (fun p -> { p with Row = p.Row + a.Rows })) }
+
+    /// D177 — **a second y axis, on the right**: `left |> Chart.withRightAxis right` draws
+    /// `right`'s layers on the last panel of `left`, against a y axis of their own on the right,
+    /// titled from `right`'s y config. Each side is built as a figure of its own, in either mode.
+    /// The two must agree on x, and each side's layers on their y; both are checked here, at the
+    /// call, and a layer added to a side later is checked against that side when it is drawn.
+    ///
+    /// A side with exactly one series has its axis drawn in that series' colour, which is how a
+    /// reader tells which curve belongs to which side. `right`'s layers take the next palette
+    /// slots of `left`, unless their style was set.
+    let withRightAxis (right: Figure) (fig: Figure) : Figure =
+        if right.Panels.Length <> 1 then
+            failwithf "Marey: the right axis takes a one-panel figure; this one has %d panels." right.Panels.Length
+
+        let rp = right.Panels.[0]
+
+        let merged =
+            fig
+            |> addLayers (fun i ->
+                rp.Layers
+                |> Array.mapi (fun j l ->
+                    let style = if l.Style = Geom.styleOf right.Theme j l.Geom then Geom.styleOf fig.Theme (i + j) l.Geom else l.Style
+                    { l with SecondaryY = true; Style = style }))
+            |> mapLast (fun p -> { p with Y2Axis = Some rp.YAxis })
+
+        Figure.unify merged.Panels.[lastPanel merged] |> ignore
+        merged
+
+    /// D177 — move the last layer to the last panel's right y axis, giving the panel one if it
+    /// has none.
+    let toRightAxis (fig: Figure) : Figure =
+        fig
+        |> mapLastLayer (fun l -> { l with SecondaryY = true })
+        |> mapLast (fun p -> { p with Y2Axis = Some(defaultArg p.Y2Axis Figure.axisConfig) })
+
+    /// D177 — the last panel's right y domain, raw, in that axis's unit.
+    let withRightYDomain (lo: float) (hi: float) (fig: Figure) : Figure =
+        if fig.Panels.Length = 0 then
+            fig
+        else
+            let p = fig.Panels.[lastPanel fig]
+            Figure.withPanelDomainY2 (p.Row, p.Col) (lo, hi) fig
+
+    /// D177 / D178 — the last panel's right y axis's name, in place of the one its unit suggests:
+    /// the secondary axis's when it has one, otherwise the second y axis's.
+    let withRightYLabel (label: string) (fig: Figure) : Figure =
+        mapLast
+            (fun p ->
+                match p.YAxis.Secondary with
+                | Some sa -> { p with YAxis = { p.YAxis with Secondary = Some { sa with Label = Some label } } }
+                | None -> { p with Y2Axis = Some { (defaultArg p.Y2Axis Figure.axisConfig) with Label = Some label } })
+            fig
+
+    // ---- D179: aspect ----------------------------------------------------------------------
+
+    /// D179 — **one unit as long on y as on x** on the last panel: the plot is shrunk to the
+    /// domain's shape and centred in its cell. A frame of an animation or a zoom whose domains have
+    /// another shape is widened to the plot's, so the plot does not move. Both axes must be linear
+    /// and of one dimension, compared in SI; checked here and again when the figure is drawn.
+    let withEqualAspect (fig: Figure) : Figure =
+        let shaped = mapLast (fun p -> { p with Aspect = Some Aspect.Equal }) fig
+
+        if shaped.Panels.Length > 0 then
+            let p = Figure.unify shaped.Panels.[lastPanel shaped]
+
+            if p.Layers.Length > 0 then
+                let sx, sy = Figure.axisScalesErased p
+
+                if sx.Dim <> sy.Dim then
+                    failwithf
+                        "Marey: equal aspect needs one dimension on both axes; this panel's x is in %s and its y in %s."
+                        (Dim.show sx.Dim)
+                        (Dim.show sy.Dim)
+
+        shaped
+
+    /// D179 — the last panel's plot at this height over its width, whatever its domains.
+    let withBoxAspect (heightOverWidth: float) (fig: Figure) : Figure =
+        if not (heightOverWidth > 0.0) || System.Double.IsInfinity heightOverWidth then
+            failwithf "Marey: a box aspect is a positive height over width; got %g." heightOverWidth
+
+        mapLast (fun p -> { p with Aspect = Some(Aspect.Box heightOverWidth) }) fig
+
+    // ---- D180: insets ------------------------------------------------------------------------
+
+    /// D180 — **a one-panel figure drawn over the last panel's plot**, its own plot at
+    /// `(x0, y0, x1, y1)` in fractions of the host's plot, y up (matplotlib's `inset_axes`). Its
+    /// tick labels and titles stand round that rectangle, over the host. Its axes are its own, a
+    /// zoom inside it zooms it, and its key is the host's with `inset-<i>` under it. It draws no
+    /// colorbar. Refused for a figure of several panels, one with insets of its own, and one
+    /// whose legend is outside.
+    let withInset (x0: float, y0: float, x1: float, y1: float) (inset: Figure) (fig: Figure) : Figure =
+        if inset.Panels.Length <> 1 then
+            failwithf "Marey: an inset is a one-panel figure; this one has %d panels." inset.Panels.Length
+
+        let ip = inset.Panels.[0]
+
+        if ip.Insets.Length > 0 then
+            failwith "Marey: an inset has no insets of its own."
+
+        match ip.Legend with
+        | LegendOutsideRight
+        | LegendOutsideBottom -> failwith "Marey: an inset draws its legend in a corner; this one's is outside."
+        | _ -> ()
+
+        let inside (v: float) = v >= 0.0 && v <= 1.0
+
+        if not (inside x0 && inside x1 && inside y0 && inside y1 && x1 > x0 && y1 > y0) then
+            failwithf "Marey: an inset is placed at fractions of the host's plot, low before high, within 0 … 1; got (%g, %g, %g, %g)." x0 y0 x1 y1
+
+        let at: Rect<nd> = { X0 = x0 * 1.0<nd>; Y0 = y0 * 1.0<nd>; X1 = x1 * 1.0<nd>; Y1 = y1 * 1.0<nd> }
+        // An inset has no room for a colorbar: its colour keys leave the key, and its colours are
+        // read against the host's bar when its domain is stated to match (`withColorDomain`).
+        let quiet = ip.Layers |> Array.map (fun l -> if l.Channels.Length > 0 then { l with ShowInLegend = false } else l)
+
+        let entry: Inset =
+            { Panel = { ip with Layers = quiet; Legend = (if ip.Legend = LegendBest then LegendTopRight else ip.Legend) }
+              At = at
+              Indicate = false }
+        mapLast (fun p -> { p with Insets = Array.append p.Insets [| entry |] }) fig
+
+    /// D180 — draw the last inset's domain on its host as a rectangle, joined to the inset by two
+    /// lines (matplotlib's `indicate_inset_zoom`). The inset's axes must be in the host's
+    /// dimensions; checked when the figure is drawn.
+    let withInsetZoom (fig: Figure) : Figure =
+        mapLast
+            (fun p ->
+                if p.Insets.Length = 0 then
+                    failwith "Marey: `withInsetZoom` marks the last panel's last inset, and it has none."
+
+                { p with Insets = p.Insets |> Array.mapi (fun i ins -> if i = p.Insets.Length - 1 then { ins with Indicate = true } else ins) })
+            fig
+
+    // ---- D178: secondary axes -------------------------------------------------------------
+
+    let internal withSecondary (onX: bool) (u: U<1>) (map: SecondaryMap option) (fig: Figure) : Figure =
+        let sa: SecondaryAxis = { Unit = u; Map = map; Label = None }
+
+        mapLast
+            (fun p ->
+                if onX then
+                    { p with XAxis = { p.XAxis with Secondary = Some sa } }
+                else
+                    { p with YAxis = { p.YAxis with Secondary = Some sa } })
+            fig
+
+    /// D178 — **the x axis again along the top, in another unit of its dimension**: inches over
+    /// millimetres, °C over kelvin. The conversion is the units' own, offset included, so nothing
+    /// is trusted; another dimension is refused when the figure is drawn, naming both. The ticks
+    /// are chosen in the new unit.
+    let withTopAxisIn (u: U<'v>) (fig: Figure) : Figure = withSecondary true (U.erase u) None fig
+
+    /// D178 — the y axis again along the right, in another unit of its dimension.
+    let withRightAxisIn (u: U<'v>) (fig: Figure) : Figure = withSecondary false (U.erase u) None fig
+
+    /// D178 — **the x axis read along the top through a map**: photon energy over wavelength,
+    /// period over frequency. `forward` takes the x axis's raw numbers to `u`'s and `inverse` takes
+    /// them back. When the figure is drawn the pair is checked on 257 points of the domain —
+    /// finite, strictly monotone, and `inverse (forward x)` back at `x` — and refused at the first
+    /// point that fails. The ticks are chosen evenly in `u` and placed through `inverse`, so they
+    /// fall unevenly along a reciprocal.
+    let withTopAxisMapped (u: U<'v>) (forward: float -> float) (inverse: float -> float) (fig: Figure) : Figure =
+        withSecondary true (U.erase u) (Some(SecondaryMap(forward, inverse))) fig
+
+    /// D178 — the y axis read along the right through a map. See `withTopAxisMapped`.
+    let withRightAxisMapped (u: U<'v>) (forward: float -> float) (inverse: float -> float) (fig: Figure) : Figure =
+        withSecondary false (U.erase u) (Some(SecondaryMap(forward, inverse))) fig
+
+    /// D178 — the secondary top axis's name, in place of the one its unit suggests.
+    let withTopAxisLabel (label: string) (fig: Figure) : Figure =
+        mapLast
+            (fun p ->
+                match p.XAxis.Secondary with
+                | Some sa -> { p with XAxis = { p.XAxis with Secondary = Some { sa with Label = Some label } } }
+                | None -> p)
+            fig
+
+    /// D176 — **share the x axis of every panel the figure has now**, as a facet does: one
+    /// domain, checked here for one dimension, and kept one afterwards. Only the outermost panel
+    /// of each column writes its x tick labels and title. A panel composed in later is not part
+    /// of the sharing; call `shareX` again to take it in.
+    let shareX (fig: Figure) = Figure.shareRecorded ShareX fig
+
+    /// D176 — `shareX` for y: only the leftmost panel of each row is labelled.
+    let shareY (fig: Figure) = Figure.shareRecorded ShareY fig
+
+    /// D176 — `shareX` and `shareY` at once.
+    let shareAxes (fig: Figure) = Figure.shareRecorded ShareBoth fig
+
+    /// D175 — weights to the mean of 1, refused unless there is one per track and each is positive.
+    let private weights (what: string) (count: int) (ws: float[]) =
+        if ws.Length <> count then
+            failwithf "Marey: %d %s weights for a figure of %d %s. Give one per %s." ws.Length what count what (what.TrimEnd 's')
+
+        if ws |> Array.exists (fun w -> not (w > 0.0) || System.Double.IsInfinity w) then
+            failwithf "Marey: %s weights must be positive and finite; got %s." what (ws |> Array.map string |> String.concat ", ")
+
+        let mean = Array.average ws
+        ws |> Array.map (fun w -> w / mean)
+
+    /// D175 — **the rows' plot heights, relative**: `withRowHeights [| 3.0; 1.0 |]` draws the first
+    /// row's plots three times as tall as the second's, whatever their gutters (matplotlib's
+    /// `height_ratios`). One weight per row of the figure as composed so far.
+    let withRowHeights (heights: float[]) (fig: Figure) =
+        { fig with RowWeights = weights "rows" (max 1 fig.Rows) heights }
+
+    /// D175 — the columns' plot widths, relative (matplotlib's `width_ratios`).
+    let withColWidths (widths: float[]) (fig: Figure) =
+        { fig with ColWeights = weights "columns" (max 1 fig.Cols) widths }
+
+    /// D174 — **panels laid out by a picture of the grid.** Each character of `layout` is a cell,
+    /// rows separated by `;` or a newline, `.` an empty cell; every other character names a
+    /// part, whose single panel covers the rectangle of cells that carry its character.
+    /// `"AAB;DEB;DCC"` is a pinwheel of four panels around a fifth, a shape `beside` and `above`
+    /// cannot nest into.
+    ///
+    /// Refused when a character's cells are not one rectangle, when the rows are not all the
+    /// same length, when a character has no part or a part has no character, and when a part
+    /// holds more than one panel.
+    let mosaic (layout: string) (parts: (char * Figure) list) : Figure =
+        let rows =
+            layout.Split([| ';'; '\n' |], System.StringSplitOptions.RemoveEmptyEntries)
+            |> Array.map (fun r -> r.Trim())
+            |> Array.filter (fun r -> r.Length > 0)
+
+        if rows.Length = 0 then
+            failwith "Marey: a mosaic needs at least one row."
+
+        let width = rows.[0].Length
+
+        rows
+        |> Array.iteri (fun i r ->
+            if r.Length <> width then
+                failwithf "Marey: mosaic row %d ('%s') has %d cells and row 0 ('%s') has %d. Every row needs the same number." i r r.Length rows.[0] width)
+
+        let labels =
+            rows |> Array.collect (fun r -> r.ToCharArray()) |> Array.filter (fun c -> c <> '.') |> Array.distinct
+
+        let parts = Map.ofList parts
+
+        for c in labels do
+            if not (parts.ContainsKey c) then
+                failwithf "Marey: mosaic cell '%c' has no part. Give one as ('%c', figure)." c c
+
+        for KeyValue(c, f) in parts do
+            if not (Array.contains c labels) then
+                failwithf "Marey: the part '%c' has no cell in the mosaic \"%s\"." c layout
+
+            if f.Panels.Length <> 1 then
+                failwithf
+                    "Marey: mosaic part '%c' is a %d-panel figure, and a mosaic cell holds one panel. Compose it with `beside` or `above` instead."
+                    c
+                    f.Panels.Length
+
+        let panels =
+            labels
+            |> Array.map (fun c ->
+                let cells =
+                    [| for r in 0 .. rows.Length - 1 do
+                           for k in 0 .. width - 1 do
+                               if rows.[r].[k] = c then yield r, k |]
+
+                let r0 = cells |> Array.map fst |> Array.min
+                let r1 = cells |> Array.map fst |> Array.max
+                let c0 = cells |> Array.map snd |> Array.min
+                let c1 = cells |> Array.map snd |> Array.max
+
+                if cells.Length <> (r1 - r0 + 1) * (c1 - c0 + 1) then
+                    failwithf "Marey: mosaic cell '%c' does not cover a rectangle in \"%s\". A panel spans whole rows and columns." c layout
+
+                { parts.[c].Panels.[0] with
+                    XShare = 0
+                    YShare = 0
+                    Row = r0
+                    Col = c0
+                    RowSpan = r1 - r0 + 1
+                    ColSpan = c1 - c0 + 1 })
+
+        { Figure.create panels with
+            Rows = rows.Length
+            Cols = width
+            Theme = parts.[labels.[0]].Theme }
 
     // ---- Facets (§9, D48) ----------------------------------------------------------------------
 
@@ -1476,13 +1844,15 @@ module Chart =
             parts
             |> Array.mapi (fun i (title, f) ->
                 { f.Panels.[0] with
+                    XShare = 0
+                    YShare = 0
                     Title = title
                     Row = i / cols
                     Col = i % cols })
 
         { Figure.create panels with
             Theme = (snd parts.[0]).Theme }
-        |> Figure.shareScales mode
+        |> Figure.shareRecorded mode
         |> keyOnFirstPanelOnly
 
     /// `facetWith` sharing both axes — what a facet means — over an automatic wrap width.

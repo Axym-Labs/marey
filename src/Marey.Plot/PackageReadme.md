@@ -41,6 +41,11 @@ out — and plotting metres against metres on these axes is a compile error.
 - **Statistics** — histogram, kernel density, ECDF, least-squares fit, and a five-number summary.
   The measures carry through: a fit of metres against seconds has a slope of type `float<m/s>`.
 - **Facets.** `facetWrap` gives one panel per level of a key, over shared axes.
+- **Composition.** `beside`, `above` and `mosaic` place panels on one grid whose plots line up,
+  spanning rows or columns where the layout asks; `withRowHeights` and `withColWidths` set the
+  plots' proportions; `shareX` and `shareY` share an axis across any composition and label it once.
+  A second y axis, a secondary axis in another unit or through a map (photon energy over
+  wavelength), equal aspect, and insets with their zoom marked on the host.
 - **What a paper figure adds last.** Rules and spans across a panel, annotations with arrows,
   panel letters, ticks stated by step, value or name in the axis's own unit, minor ticks, tick
   formats, reversed axes, and legends outside the plot, in the emptiest corner, in columns, or

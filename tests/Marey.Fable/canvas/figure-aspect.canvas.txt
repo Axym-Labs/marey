@@ -1,0 +1,900 @@
+canvas.width = 1520
+canvas.height = 600
+setTransform 2 0 0 2 0 0
+clearRect 0 0 760 300
+fillStyle = rgba(255,255,255,1)
+fillRect 0 0 760 300
+beginPath
+moveTo 0 300
+lineTo 760 300
+lineTo 760 0
+lineTo 0 0
+closePath
+fillStyle = rgba(255,255,255,1)
+fill nonzero
+save
+beginPath
+moveTo 65.565 258.567
+lineTo 282.582 258.567
+lineTo 282.582 41.55
+lineTo 65.565 41.55
+closePath
+clip nonzero
+beginPath
+moveTo 174.073 248.702
+lineTo 179.129 248.573
+lineTo 184.428 248.157
+lineTo 189.965 247.414
+lineTo 195.727 246.296
+lineTo 201.694 244.757
+lineTo 207.837 242.744
+lineTo 214.12 240.207
+lineTo 220.494 237.097
+lineTo 226.898 233.366
+lineTo 233.26 228.973
+lineTo 239.494 223.887
+lineTo 245.505 218.089
+lineTo 251.187 211.573
+lineTo 256.428 204.358
+lineTo 261.112 196.479
+lineTo 265.129 187.998
+lineTo 268.376 179
+lineTo 270.764 169.592
+lineTo 272.225 159.898
+lineTo 272.717 150.058
+lineTo 272.225 140.219
+lineTo 270.764 130.525
+lineTo 268.376 121.116
+lineTo 265.129 112.118
+lineTo 261.112 103.638
+lineTo 256.428 95.759
+lineTo 251.187 88.543
+lineTo 245.505 82.028
+lineTo 239.494 76.229
+lineTo 233.26 71.143
+lineTo 226.898 66.751
+lineTo 220.494 63.02
+lineTo 214.12 59.909
+lineTo 207.837 57.373
+lineTo 201.694 55.36
+lineTo 195.727 53.82
+lineTo 189.965 52.703
+lineTo 184.428 51.959
+lineTo 179.129 51.544
+lineTo 174.073 51.414
+lineTo 174.073 51.414
+lineTo 169.018 51.544
+lineTo 163.719 51.959
+lineTo 158.182 52.703
+lineTo 152.42 53.82
+lineTo 146.453 55.36
+lineTo 140.309 57.373
+lineTo 134.026 59.909
+lineTo 127.653 63.02
+lineTo 121.249 66.751
+lineTo 114.887 71.143
+lineTo 108.653 76.229
+lineTo 102.642 82.028
+lineTo 96.96 88.543
+lineTo 91.719 95.759
+lineTo 87.035 103.638
+lineTo 83.017 112.118
+lineTo 79.771 121.116
+lineTo 77.383 130.525
+lineTo 75.921 140.219
+lineTo 75.429 150.058
+lineTo 75.921 159.898
+lineTo 77.383 169.592
+lineTo 79.771 179
+lineTo 83.017 187.998
+lineTo 87.035 196.479
+lineTo 91.719 204.358
+lineTo 96.96 211.573
+lineTo 102.642 218.089
+lineTo 108.653 223.887
+lineTo 114.887 228.973
+lineTo 121.249 233.366
+lineTo 127.653 237.097
+lineTo 134.026 240.207
+lineTo 140.309 242.744
+lineTo 146.453 244.757
+lineTo 152.42 246.296
+lineTo 158.182 247.414
+lineTo 163.719 248.157
+lineTo 169.018 248.573
+lineTo 174.073 248.702
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 1.4
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 174.073 179.652
+lineTo 177.865 179.613
+lineTo 181.84 179.488
+lineTo 185.992 179.265
+lineTo 190.314 178.93
+lineTo 194.789 178.468
+lineTo 199.396 177.864
+lineTo 204.109 177.103
+lineTo 208.889 176.17
+lineTo 213.692 175.051
+lineTo 218.463 173.733
+lineTo 223.139 172.207
+lineTo 227.647 170.467
+lineTo 231.909 168.513
+lineTo 235.839 166.348
+lineTo 239.352 163.985
+lineTo 242.365 161.44
+lineTo 244.8 158.741
+lineTo 246.591 155.918
+lineTo 247.687 153.01
+lineTo 248.056 150.058
+lineTo 247.687 147.106
+lineTo 246.591 144.198
+lineTo 244.8 141.376
+lineTo 242.365 138.676
+lineTo 239.352 136.132
+lineTo 235.839 133.769
+lineTo 231.909 131.604
+lineTo 227.647 129.649
+lineTo 223.139 127.91
+lineTo 218.463 126.384
+lineTo 213.692 125.066
+lineTo 208.889 123.947
+lineTo 204.109 123.014
+lineTo 199.396 122.253
+lineTo 194.789 121.649
+lineTo 190.314 121.187
+lineTo 185.992 120.852
+lineTo 181.84 120.629
+lineTo 177.865 120.504
+lineTo 174.073 120.465
+lineTo 174.073 120.465
+lineTo 170.282 120.504
+lineTo 166.307 120.629
+lineTo 162.155 120.852
+lineTo 157.833 121.187
+lineTo 153.358 121.649
+lineTo 148.75 122.253
+lineTo 144.038 123.014
+lineTo 139.258 123.947
+lineTo 134.455 125.066
+lineTo 129.684 126.384
+lineTo 125.008 127.91
+lineTo 120.5 129.649
+lineTo 116.238 131.604
+lineTo 112.308 133.769
+lineTo 108.794 136.132
+lineTo 105.781 138.676
+lineTo 103.346 141.376
+lineTo 101.555 144.198
+lineTo 100.459 147.106
+lineTo 100.09 150.058
+lineTo 100.459 153.01
+lineTo 101.555 155.918
+lineTo 103.346 158.741
+lineTo 105.781 161.44
+lineTo 108.794 163.985
+lineTo 112.308 166.348
+lineTo 116.238 168.513
+lineTo 120.5 170.467
+lineTo 125.008 172.207
+lineTo 129.684 173.733
+lineTo 134.455 175.051
+lineTo 139.258 176.17
+lineTo 144.038 177.103
+lineTo 148.75 177.864
+lineTo 153.358 178.468
+lineTo 157.833 178.93
+lineTo 162.155 179.265
+lineTo 166.307 179.488
+lineTo 170.282 179.613
+lineTo 174.073 179.652
+strokeStyle = rgba(213,94,0,1)
+lineWidth = 1.4
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+restore
+beginPath
+moveTo 75.429 255.067
+lineTo 75.429 258.567
+moveTo 124.751 255.067
+lineTo 124.751 258.567
+moveTo 174.073 255.067
+lineTo 174.073 258.567
+moveTo 223.395 255.067
+lineTo 223.395 258.567
+moveTo 272.717 255.067
+lineTo 272.717 258.567
+moveTo 65.565 256.567
+lineTo 65.565 258.567
+moveTo 85.294 256.567
+lineTo 85.294 258.567
+moveTo 95.158 256.567
+lineTo 95.158 258.567
+moveTo 105.023 256.567
+lineTo 105.023 258.567
+moveTo 114.887 256.567
+lineTo 114.887 258.567
+moveTo 134.616 256.567
+lineTo 134.616 258.567
+moveTo 144.48 256.567
+lineTo 144.48 258.567
+moveTo 154.345 256.567
+lineTo 154.345 258.567
+moveTo 164.209 256.567
+lineTo 164.209 258.567
+moveTo 183.938 256.567
+lineTo 183.938 258.567
+moveTo 193.802 256.567
+lineTo 193.802 258.567
+moveTo 203.667 256.567
+lineTo 203.667 258.567
+moveTo 213.531 256.567
+lineTo 213.531 258.567
+moveTo 233.26 256.567
+lineTo 233.26 258.567
+moveTo 243.124 256.567
+lineTo 243.124 258.567
+moveTo 252.989 256.567
+lineTo 252.989 258.567
+moveTo 262.853 256.567
+lineTo 262.853 258.567
+moveTo 282.582 256.567
+lineTo 282.582 258.567
+moveTo 75.429 45.05
+lineTo 75.429 41.55
+moveTo 124.751 45.05
+lineTo 124.751 41.55
+moveTo 174.073 45.05
+lineTo 174.073 41.55
+moveTo 223.395 45.05
+lineTo 223.395 41.55
+moveTo 272.717 45.05
+lineTo 272.717 41.55
+moveTo 65.565 43.55
+lineTo 65.565 41.55
+moveTo 85.294 43.55
+lineTo 85.294 41.55
+moveTo 95.158 43.55
+lineTo 95.158 41.55
+moveTo 105.023 43.55
+lineTo 105.023 41.55
+moveTo 114.887 43.55
+lineTo 114.887 41.55
+moveTo 134.616 43.55
+lineTo 134.616 41.55
+moveTo 144.48 43.55
+lineTo 144.48 41.55
+moveTo 154.345 43.55
+lineTo 154.345 41.55
+moveTo 164.209 43.55
+lineTo 164.209 41.55
+moveTo 183.938 43.55
+lineTo 183.938 41.55
+moveTo 193.802 43.55
+lineTo 193.802 41.55
+moveTo 203.667 43.55
+lineTo 203.667 41.55
+moveTo 213.531 43.55
+lineTo 213.531 41.55
+moveTo 233.26 43.55
+lineTo 233.26 41.55
+moveTo 243.124 43.55
+lineTo 243.124 41.55
+moveTo 252.989 43.55
+lineTo 252.989 41.55
+moveTo 262.853 43.55
+lineTo 262.853 41.55
+moveTo 282.582 43.55
+lineTo 282.582 41.55
+strokeStyle = rgba(16,16,16,1)
+lineWidth = 0.8
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 70.522 270.183 "-2"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 119.844 270.183 "-1"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 171.004 270.183 "0"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 220.326 270.183 "1"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 269.648 270.183 "2"
+restore
+save
+font = 400 13.333px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 155.673 287.24 "x [mm]"
+restore
+beginPath
+moveTo 69.065 248.702
+lineTo 65.565 248.702
+moveTo 69.065 199.38
+lineTo 65.565 199.38
+moveTo 69.065 150.058
+lineTo 65.565 150.058
+moveTo 69.065 100.736
+lineTo 65.565 100.736
+moveTo 69.065 51.414
+lineTo 65.565 51.414
+moveTo 67.565 258.567
+lineTo 65.565 258.567
+moveTo 67.565 238.838
+lineTo 65.565 238.838
+moveTo 67.565 228.973
+lineTo 65.565 228.973
+moveTo 67.565 219.109
+lineTo 65.565 219.109
+moveTo 67.565 209.245
+lineTo 65.565 209.245
+moveTo 67.565 189.516
+lineTo 65.565 189.516
+moveTo 67.565 179.652
+lineTo 65.565 179.652
+moveTo 67.565 169.787
+lineTo 65.565 169.787
+moveTo 67.565 159.923
+lineTo 65.565 159.923
+moveTo 67.565 140.194
+lineTo 65.565 140.194
+moveTo 67.565 130.33
+lineTo 65.565 130.33
+moveTo 67.565 120.465
+lineTo 65.565 120.465
+moveTo 67.565 110.601
+lineTo 65.565 110.601
+moveTo 67.565 90.872
+lineTo 65.565 90.872
+moveTo 67.565 81.008
+lineTo 65.565 81.008
+moveTo 67.565 71.143
+lineTo 65.565 71.143
+moveTo 67.565 61.279
+lineTo 65.565 61.279
+moveTo 67.565 41.55
+lineTo 65.565 41.55
+moveTo 279.082 248.702
+lineTo 282.582 248.702
+moveTo 279.082 199.38
+lineTo 282.582 199.38
+moveTo 279.082 150.058
+lineTo 282.582 150.058
+moveTo 279.082 100.736
+lineTo 282.582 100.736
+moveTo 279.082 51.414
+lineTo 282.582 51.414
+moveTo 280.582 258.567
+lineTo 282.582 258.567
+moveTo 280.582 238.838
+lineTo 282.582 238.838
+moveTo 280.582 228.973
+lineTo 282.582 228.973
+moveTo 280.582 219.109
+lineTo 282.582 219.109
+moveTo 280.582 209.245
+lineTo 282.582 209.245
+moveTo 280.582 189.516
+lineTo 282.582 189.516
+moveTo 280.582 179.652
+lineTo 282.582 179.652
+moveTo 280.582 169.787
+lineTo 282.582 169.787
+moveTo 280.582 159.923
+lineTo 282.582 159.923
+moveTo 280.582 140.194
+lineTo 282.582 140.194
+moveTo 280.582 130.33
+lineTo 282.582 130.33
+moveTo 280.582 120.465
+lineTo 282.582 120.465
+moveTo 280.582 110.601
+lineTo 282.582 110.601
+moveTo 280.582 90.872
+lineTo 282.582 90.872
+moveTo 280.582 81.008
+lineTo 282.582 81.008
+moveTo 280.582 71.143
+lineTo 282.582 71.143
+moveTo 280.582 61.279
+lineTo 282.582 61.279
+moveTo 280.582 41.55
+lineTo 282.582 41.55
+strokeStyle = rgba(16,16,16,1)
+lineWidth = 0.8
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 52.751 251.768 "-2"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 52.751 202.446 "-1"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 56.427 153.124 "0"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 56.427 103.802 "1"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 56.427 54.48 "2"
+restore
+save
+translate 47.751 150.058
+rotate -1.571
+translate -47.751 -150.058
+font = 400 13.333px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 29.351 150.058 "y [mm]"
+restore
+beginPath
+moveTo 65.565 258.567
+lineTo 282.582 258.567
+lineTo 282.582 41.55
+lineTo 65.565 41.55
+closePath
+strokeStyle = rgba(16,16,16,1)
+lineWidth = 0.8
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 313.489 79.75
+lineTo 382.776 79.75
+lineTo 382.776 41.55
+lineTo 313.489 41.55
+closePath
+fillStyle = rgba(255,255,255,0.851)
+fill nonzero
+strokeStyle = rgba(176,176,176,1)
+lineWidth = 0.6
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+beginPath
+moveTo 319.489 53.1
+lineTo 339.489 53.1
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 1.4
+miterLimit = 4
+lineCap = round
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 345.489 56.166 "circle"
+restore
+beginPath
+moveTo 319.489 68.2
+lineTo 339.489 68.2
+strokeStyle = rgba(213,94,0,1)
+lineWidth = 1.4
+miterLimit = 4
+lineCap = round
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 345.489 71.266 "ellipse"
+restore
+save
+beginPath
+moveTo 472.942 258.567
+lineTo 740.793 258.567
+lineTo 740.793 41.55
+lineTo 472.942 41.55
+closePath
+clip nonzero
+beginPath
+moveTo 485.117 248.702
+lineTo 497.292 207.601
+lineTo 509.467 178.242
+lineTo 521.642 156.224
+lineTo 533.817 139.098
+lineTo 545.992 125.397
+lineTo 558.167 114.188
+lineTo 570.342 104.847
+lineTo 582.517 96.942
+lineTo 594.692 90.167
+lineTo 606.867 84.296
+lineTo 619.042 79.158
+lineTo 631.217 74.625
+lineTo 643.392 70.595
+lineTo 655.567 66.99
+lineTo 667.742 63.745
+lineTo 679.917 60.809
+lineTo 692.092 58.14
+lineTo 704.267 55.703
+lineTo 716.443 53.469
+lineTo 728.618 51.414
+strokeStyle = rgba(0,114,178,1)
+lineWidth = 1.4
+miterLimit = 4
+lineCap = round
+lineJoin = round
+setLineDash []
+lineDashOffset = 0
+stroke
+restore
+beginPath
+moveTo 485.117 255.067
+lineTo 485.117 258.567
+moveTo 525.7 255.067
+lineTo 525.7 258.567
+moveTo 566.284 255.067
+lineTo 566.284 258.567
+moveTo 606.867 255.067
+lineTo 606.867 258.567
+moveTo 647.451 255.067
+lineTo 647.451 258.567
+moveTo 688.034 255.067
+lineTo 688.034 258.567
+moveTo 728.618 255.067
+lineTo 728.618 258.567
+moveTo 477 256.567
+lineTo 477 258.567
+moveTo 493.233 256.567
+lineTo 493.233 258.567
+moveTo 501.35 256.567
+lineTo 501.35 258.567
+moveTo 509.467 256.567
+lineTo 509.467 258.567
+moveTo 517.583 256.567
+lineTo 517.583 258.567
+moveTo 533.817 256.567
+lineTo 533.817 258.567
+moveTo 541.934 256.567
+lineTo 541.934 258.567
+moveTo 550.05 256.567
+lineTo 550.05 258.567
+moveTo 558.167 256.567
+lineTo 558.167 258.567
+moveTo 574.4 256.567
+lineTo 574.4 258.567
+moveTo 582.517 256.567
+lineTo 582.517 258.567
+moveTo 590.634 256.567
+lineTo 590.634 258.567
+moveTo 598.75 256.567
+lineTo 598.75 258.567
+moveTo 614.984 256.567
+lineTo 614.984 258.567
+moveTo 623.101 256.567
+lineTo 623.101 258.567
+moveTo 631.217 256.567
+lineTo 631.217 258.567
+moveTo 639.334 256.567
+lineTo 639.334 258.567
+moveTo 655.567 256.567
+lineTo 655.567 258.567
+moveTo 663.684 256.567
+lineTo 663.684 258.567
+moveTo 671.801 256.567
+lineTo 671.801 258.567
+moveTo 679.917 256.567
+lineTo 679.917 258.567
+moveTo 696.151 256.567
+lineTo 696.151 258.567
+moveTo 704.267 256.567
+lineTo 704.267 258.567
+moveTo 712.384 256.567
+lineTo 712.384 258.567
+moveTo 720.501 256.567
+lineTo 720.501 258.567
+moveTo 736.734 256.567
+lineTo 736.734 258.567
+moveTo 485.117 45.05
+lineTo 485.117 41.55
+moveTo 525.7 45.05
+lineTo 525.7 41.55
+moveTo 566.284 45.05
+lineTo 566.284 41.55
+moveTo 606.867 45.05
+lineTo 606.867 41.55
+moveTo 647.451 45.05
+lineTo 647.451 41.55
+moveTo 688.034 45.05
+lineTo 688.034 41.55
+moveTo 728.618 45.05
+lineTo 728.618 41.55
+moveTo 477 43.55
+lineTo 477 41.55
+moveTo 493.233 43.55
+lineTo 493.233 41.55
+moveTo 501.35 43.55
+lineTo 501.35 41.55
+moveTo 509.467 43.55
+lineTo 509.467 41.55
+moveTo 517.583 43.55
+lineTo 517.583 41.55
+moveTo 533.817 43.55
+lineTo 533.817 41.55
+moveTo 541.934 43.55
+lineTo 541.934 41.55
+moveTo 550.05 43.55
+lineTo 550.05 41.55
+moveTo 558.167 43.55
+lineTo 558.167 41.55
+moveTo 574.4 43.55
+lineTo 574.4 41.55
+moveTo 582.517 43.55
+lineTo 582.517 41.55
+moveTo 590.634 43.55
+lineTo 590.634 41.55
+moveTo 598.75 43.55
+lineTo 598.75 41.55
+moveTo 614.984 43.55
+lineTo 614.984 41.55
+moveTo 623.101 43.55
+lineTo 623.101 41.55
+moveTo 631.217 43.55
+lineTo 631.217 41.55
+moveTo 639.334 43.55
+lineTo 639.334 41.55
+moveTo 655.567 43.55
+lineTo 655.567 41.55
+moveTo 663.684 43.55
+lineTo 663.684 41.55
+moveTo 671.801 43.55
+lineTo 671.801 41.55
+moveTo 679.917 43.55
+lineTo 679.917 41.55
+moveTo 696.151 43.55
+lineTo 696.151 41.55
+moveTo 704.267 43.55
+lineTo 704.267 41.55
+moveTo 712.384 43.55
+lineTo 712.384 41.55
+moveTo 720.501 43.55
+lineTo 720.501 41.55
+moveTo 736.734 43.55
+lineTo 736.734 41.55
+strokeStyle = rgba(16,16,16,1)
+lineWidth = 0.8
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 482.048 270.183 "0"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 516.493 270.183 "100"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 557.076 270.183 "200"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 597.66 270.183 "300"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 638.243 270.183 "400"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 678.827 270.183 "500"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 719.41 270.183 "600"
+restore
+save
+font = 400 13.333px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 596.98 287.24 "t [s]"
+restore
+beginPath
+moveTo 476.442 248.702
+lineTo 472.942 248.702
+moveTo 476.442 199.38
+lineTo 472.942 199.38
+moveTo 476.442 150.058
+lineTo 472.942 150.058
+moveTo 476.442 100.736
+lineTo 472.942 100.736
+moveTo 476.442 51.414
+lineTo 472.942 51.414
+moveTo 474.942 258.567
+lineTo 472.942 258.567
+moveTo 474.942 238.838
+lineTo 472.942 238.838
+moveTo 474.942 228.973
+lineTo 472.942 228.973
+moveTo 474.942 219.109
+lineTo 472.942 219.109
+moveTo 474.942 209.245
+lineTo 472.942 209.245
+moveTo 474.942 189.516
+lineTo 472.942 189.516
+moveTo 474.942 179.652
+lineTo 472.942 179.652
+moveTo 474.942 169.787
+lineTo 472.942 169.787
+moveTo 474.942 159.923
+lineTo 472.942 159.923
+moveTo 474.942 140.194
+lineTo 472.942 140.194
+moveTo 474.942 130.33
+lineTo 472.942 130.33
+moveTo 474.942 120.465
+lineTo 472.942 120.465
+moveTo 474.942 110.601
+lineTo 472.942 110.601
+moveTo 474.942 90.872
+lineTo 472.942 90.872
+moveTo 474.942 81.008
+lineTo 472.942 81.008
+moveTo 474.942 71.143
+lineTo 472.942 71.143
+moveTo 474.942 61.279
+lineTo 472.942 61.279
+moveTo 474.942 41.55
+lineTo 472.942 41.55
+moveTo 737.293 248.702
+lineTo 740.793 248.702
+moveTo 737.293 199.38
+lineTo 740.793 199.38
+moveTo 737.293 150.058
+lineTo 740.793 150.058
+moveTo 737.293 100.736
+lineTo 740.793 100.736
+moveTo 737.293 51.414
+lineTo 740.793 51.414
+moveTo 738.793 258.567
+lineTo 740.793 258.567
+moveTo 738.793 238.838
+lineTo 740.793 238.838
+moveTo 738.793 228.973
+lineTo 740.793 228.973
+moveTo 738.793 219.109
+lineTo 740.793 219.109
+moveTo 738.793 209.245
+lineTo 740.793 209.245
+moveTo 738.793 189.516
+lineTo 740.793 189.516
+moveTo 738.793 179.652
+lineTo 740.793 179.652
+moveTo 738.793 169.787
+lineTo 740.793 169.787
+moveTo 738.793 159.923
+lineTo 740.793 159.923
+moveTo 738.793 140.194
+lineTo 740.793 140.194
+moveTo 738.793 130.33
+lineTo 740.793 130.33
+moveTo 738.793 120.465
+lineTo 740.793 120.465
+moveTo 738.793 110.601
+lineTo 740.793 110.601
+moveTo 738.793 90.872
+lineTo 740.793 90.872
+moveTo 738.793 81.008
+lineTo 740.793 81.008
+moveTo 738.793 71.143
+lineTo 740.793 71.143
+moveTo 738.793 61.279
+lineTo 740.793 61.279
+moveTo 738.793 41.55
+lineTo 740.793 41.55
+strokeStyle = rgba(16,16,16,1)
+lineWidth = 0.8
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 451.527 251.768 "280"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 451.527 202.446 "290"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 451.527 153.124 "300"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 451.527 103.802 "310"
+restore
+save
+font = 400 12px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 451.527 54.48 "320"
+restore
+save
+translate 446.527 150.058
+rotate -1.571
+translate -446.527 -150.058
+font = 400 13.333px "Times New Roman", "Nimbus Roman", "Liberation Serif", serif
+fillStyle = rgba(16,16,16,1)
+fillText 433.573 150.058 "T [K]"
+restore
+beginPath
+moveTo 472.942 258.567
+lineTo 740.793 258.567
+lineTo 740.793 41.55
+lineTo 472.942 41.55
+closePath
+strokeStyle = rgba(16,16,16,1)
+lineWidth = 0.8
+miterLimit = 4
+lineCap = butt
+lineJoin = miter
+setLineDash []
+lineDashOffset = 0
+stroke

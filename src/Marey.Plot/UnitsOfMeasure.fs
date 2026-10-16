@@ -330,6 +330,25 @@ module Chart =
     let sizeBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
         Marey.Chart.sizeBy u values fig
 
+    // ---- Secondary axes (D178) ----------------------------------------------------------------
+
+    /// D178 — the x axis read along the top through a map, typed: `forward` takes the x axis's
+    /// unit to `u`, and the compiler checks both directions. See `Marey.Chart.withTopAxisMapped`.
+    let withTopAxisMapped (u: U<'v>) (forward: float<'ux> -> float<'v>) (inverse: float<'v> -> float<'ux>) (fig: Figure) : Figure =
+        Marey.Chart.withTopAxisMapped
+            u
+            (fun x -> float (forward (LanguagePrimitives.FloatWithMeasure<'ux> x)))
+            (fun w -> float (inverse (LanguagePrimitives.FloatWithMeasure<'v> w)))
+            fig
+
+    /// D178 — the y axis read along the right through a map, typed. See `withTopAxisMapped`.
+    let withRightAxisMapped (u: U<'v>) (forward: float<'uy> -> float<'v>) (inverse: float<'v> -> float<'uy>) (fig: Figure) : Figure =
+        Marey.Chart.withRightAxisMapped
+            u
+            (fun y -> float (forward (LanguagePrimitives.FloatWithMeasure<'uy> y)))
+            (fun w -> float (inverse (LanguagePrimitives.FloatWithMeasure<'v> w)))
+            fig
+
     // ---- Rules and spans (D162) ----------------------------------------------------------------
 
     /// A horizontal rule at `y`, across the last panel wherever its domain ends up, and without

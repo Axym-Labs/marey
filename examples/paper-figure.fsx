@@ -1,17 +1,19 @@
 (*  A figure for a paper: the last ten minutes, done in the library rather than by hand.
 
     Run it:  dotnet fsi examples/paper-figure.fsx
-    Writes:  paper-figure.svg, paper-figure.tex and paper-spectrum.svg in the current directory.
+    Writes:  paper-figure.svg and paper-figure.tex in the current directory.
 
-    Two figures that physics papers carry. A fit over measurements with its residuals below it,
-    lettered (a) and (b), with a rule at zero; and an emission spectrum with its lines marked by
-    arrows, ticks every 50 nm with minor ticks between, a shaded passband, and the legend outside
-    the plot. Under `Theme.publication` both are the box journals print: framed, ticks inside on
-    all four sides.
+    One figure of the kind physics papers carry. On the left, a fit over measurements with its
+    residuals below it, sharing their time axis, three to one in height, with a rule at zero; on
+    the right, running the height of both, an emission spectrum with its lines marked by arrows,
+    ticks every 50 nm with minor ticks between, a shaded passband, the photon energy along the
+    top and the legend outside. Lettered in reading order. Under `Theme.publication` it is the
+    box journals print: framed, ticks inside on all four sides.
 
     Everything a reader would otherwise draw by hand — the rule, the arrows, the letters, the tick
-    step, the legend's place — is a call, and none of it moves the axes: a rule or a label marks a
-    place on the domain the data chose. The data are synthetic and deterministic. *)
+    step, the energy scale, the shared axis written once, the panels lined up — is a call, and
+    none of it moves the axes: a rule or a label marks a place on the domain the data chose. The
+    data are synthetic and deterministic. *)
 
 #r "nuget: Marey.Plot"
 #r "nuget: Marey.Backend.Svg"
@@ -20,7 +22,7 @@
 open Marey
 open Marey.UnitsOfMeasure
 
-// ---- (a) and (b): a fit and its residuals -----------------------------------------------------
+// ---- A fit and its residuals --------------------------------------------------------------------
 
 // x(t) = A·e^(−t/τ)·cos(ωt), sampled with a seeded wobble standing in for noise.
 let amplitude, tau, frequency = 12e-3<m>, 1.8<s>, 1.4<1/s>
@@ -52,9 +54,10 @@ let residuals =
     |> Chart.withXDomain 0.0 6.0
     |> Chart.withYLabel "residual"
 
-// ---- A spectrum --------------------------------------------------------------------------------
+// ---- A spectrum ---------------------------------------------------------------------------------
 
 let nm = 1e-9<m>
+let hc = 1.239841984e-6<eV * m>
 let balmer = [| "Hδ", 410.2, 0.18; "Hγ", 434.0, 0.32; "Hβ", 486.1, 0.55; "Hα", 656.3, 1.0 |]
 let wavelengths = Array.init 1201 (fun i -> (400.0 + float i * 0.25) * nm)
 
@@ -86,33 +89,42 @@ let spectrum =
     |> Chart.withYDomain 0.0 1.3
     |> Chart.withXLabel "λ"
     |> Chart.withYLabel "intensity"
+    // E = hc/λ, checked both ways by the compiler; its ticks fall where whole energies are.
+    |> Chart.withTopAxisMapped NonSi.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
+    |> Chart.withTopAxisLabel "E"
     |> Chart.withLegend LegendOutsideRight
     |> Chart.withLegendFrame false
 
-// The fit over its residuals, lettered in reading order, and the spectrum on its own.
+// ---- One figure ----------------------------------------------------------------------------------
+
+// The fit over its residuals, sharing t, which only the lower panel writes; then the spectrum
+// beside them, which spans both rows because it is one panel beside two. Letters go in reading
+// order: the fit (a), the spectrum (b), the residuals (c).
 let figure =
     fit
     |> Chart.above residuals
+    |> Chart.shareX
+    |> Chart.withRowHeights [| 3.0; 1.0 |]
+    |> Chart.beside spectrum
     |> Chart.withPanelLetters LetterParen
     |> Chart.withTheme Theme.publication
 
-let spectrumFigure = spectrum |> Chart.withTheme Theme.publication
-
 let here = System.IO.Directory.GetCurrentDirectory()
-let size = Chart.size 560.0 480.0
-let wide = Chart.size 720.0 340.0
+let size = Chart.size 980.0 420.0
 
 figure |> Chart.toSvg SvgBackend.render (System.IO.Path.Combine(here, "paper-figure.svg")) size
 figure |> Chart.toFile TikzBackend.render (System.IO.Path.Combine(here, "paper-figure.tex")) size
-spectrumFigure |> Chart.toSvg SvgBackend.render (System.IO.Path.Combine(here, "paper-spectrum.svg")) wide
-printfn "wrote paper-figure.svg, paper-figure.tex and paper-spectrum.svg"
+printfn "wrote paper-figure.svg and paper-figure.tex"
 
 let svg = figure |> Chart.render SvgBackend.render size
-let spectrumSvg = spectrumFigure |> Chart.render SvgBackend.render wide
+let count (s: string) = (svg.Split s).Length - 1
 
 // The residual axis is in millimetres and the fit's too: the rule at zero moved neither.
 printfn "residuals in millimetres: %b" (svg.Contains ">residual [mm]<")
-printfn "lettered:                 %b" (svg.Contains ">(a)<" && svg.Contains ">(b)<")
+printfn "lettered (a) to (c):      %b" (svg.Contains ">(a)<" && svg.Contains ">(b)<" && svg.Contains ">(c)<")
+// The shared time axis is written once, under the residuals.
+printfn "t written once:           %b" (count ">t [s]<" = 1)
 // The spectrum's ticks were stated in metres and are written in nanometres.
-printfn "every 50 nm:              %b" (spectrumSvg.Contains ">450<" && spectrumSvg.Contains ">λ [nm]<")
-printfn "the lines are marked:     %b" (spectrumSvg.Contains ">Hα<")
+printfn "every 50 nm:              %b" (svg.Contains ">450<" && svg.Contains ">λ [nm]<")
+printfn "energy along the top:     %b" (svg.Contains ">E [eV]<")
+printfn "the lines are marked:     %b" (svg.Contains ">Hα<")

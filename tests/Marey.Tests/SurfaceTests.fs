@@ -388,7 +388,9 @@ module Coverage =
               // An annotation is added like a series; its text placed by a modifier of the last layer.
               "annotate"; "withTextAt"
               // Axis modifiers: Marey.Chart's take the axis's own numbers, these a witness to check them by.
-              "withXTicksEvery"; "withYTicksEvery"; "withXTicksAt"; "withYTicksAt"; "withXTicksNamed"; "withYTicksNamed" ]
+              "withXTicksEvery"; "withYTicksEvery"; "withXTicksAt"; "withYTicksAt"; "withXTicksNamed"; "withYTicksNamed"
+              // D178: Marey.Chart's take the map in raw numbers, these typed in both directions.
+              "withTopAxisMapped"; "withRightAxisMapped" ]
 
     let private pairs: (Type * Type) list =
         let plot = typeof<Marey.Figure>.Assembly
