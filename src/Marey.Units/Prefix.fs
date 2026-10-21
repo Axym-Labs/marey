@@ -125,7 +125,7 @@ module Prefix =
     let private finite (x: float) =
         not (System.Double.IsNaN x) && not (System.Double.IsInfinity x)
 
-    /// §2.2's pure function, minus the `Dim`.
+    /// The pure prefix choice, minus the `Dim`.
     ///
     /// **The design gives the signature as `Dim * (float*float) -> Prefix`. The `Dim` is not
     /// needed to choose the decade** — which prefix puts the mantissas in [1, 1000) is a
@@ -156,7 +156,7 @@ module Prefix =
             ofExponent clamped |> Option.defaultValue none
 
     /// Whether the chosen prefix can be **glued onto a symbol**, as opposed to stated as an
-    /// explicit power of ten. This is the part of §2.2's signature that genuinely needs the
+    /// explicit power of ten. This is the part of the choice that genuinely needs the
     /// `Dim`, and it is a question about typography, not about whether to rescale.
     ///
     /// Two dimensions refuse the glue:
@@ -181,7 +181,7 @@ module Prefix =
             | [ (_, 1) ] -> true
             | _ -> false
 
-    /// `select`, plus the two `Dim`-driven adjustments — and **§2.2's signature after all**.
+    /// `select`, plus the two `Dim`-driven adjustments — **the whole choice**.
     ///
     /// The design gives `Dim * (float*float) -> Prefix`. An earlier version of this function
     /// also took the registry, because deciding whether a compound unit could carry a prefix
@@ -197,7 +197,7 @@ module Prefix =
     /// **Everything else rescales**, including the compounds and powers that cannot take a glued
     /// prefix — they get `10⁻⁹·m²` from the renderer instead. Refusing to rescale those was the
     /// first implementation and it is worse than wrong: an `m²` axis over 0 … 5e-18 renders six
-    /// ticks that all read `0.000000000000000`, which violates §4's injectivity requirement
+    /// ticks that all read `0.000000000000000`, which violates tick injectivity
     /// outright, because `Ticks.decimalsFor` clamps at 15 places.
     ///
     /// **The mass clamp.** A prefix chosen for `float<kg>` is displayed against the *gram*,
@@ -217,10 +217,10 @@ module Prefix =
     /// Units that are metric in dimension but never take an SI prefix by convention.
     ///
     /// Keyed on the witness's declared `Symbol`, which is the only stable identity a `U<'u>`
-    /// carries — and legitimately so: this is a *policy* table about units, not a display
-    /// string being composed, so §12.6 does not apply. Everything absent from this set and
-    /// dimensionally sensible does take prefixes, which is why `keV`, `mbar`, `kcal`, `kDa`,
-    /// `Mpc`, `mG` and `mL` all come out right while `kmin` and `kau` never appear.
+    /// carries — and legitimately so: this is a *policy* table about units, not a display string
+    /// being composed, so the canonicalise-from-`Dim` rule does not apply. Everything absent from
+    /// this set and dimensionally sensible does take prefixes, which is why `keV`, `mbar`, `kcal`,
+    /// `kDa`, `Mpc`, `mG` and `mL` all come out right while `kmin` and `kau` never appear.
     let internal nonMetric =
         set
             [ U.minute.Symbol
@@ -245,9 +245,9 @@ module Prefix =
     ///   `UnitDisplay.unitText`), gated by `nonMetric`.
     /// The same policy, stated over the *erased* witness metadata rather than a `U<'u>`.
     ///
-    /// This exists because §15's reloaded figure has no measure left — "reloading gives you
-    /// `IScaleErased`, not `Scale<'u>`" — but it does carry `Symbol`, `Dim`, `ToSI` and
-    /// `OffsetSI` (D16 put them there for precisely this reason). Having the erased path call
+    /// This exists because a reloaded figure has no measure left — reloading gives you
+    /// `IScaleErased`, not `Scale<'u>` — but it does carry `Symbol`, `Dim`, `ToSI` and
+    /// `OffsetSI`, which are there for precisely this reason. Having the erased path call
     /// this rather than re-deriving the branches is what stops the two from drifting: an earlier
     /// version of `Axis.ofErasedWith` re-implemented the decision, got it wrong, and labelled a
     /// reloaded electronvolt axis `kJ`.

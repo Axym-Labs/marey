@@ -11,7 +11,7 @@ namespace Marey
 /// output*, a typography measure. It is not 10⁻³ m and it must not be treated as one. Prefixed
 /// SI lengths in this library are never new measures; they are a runtime factor on `U<m>`
 /// (see `Prefix` and `U.scaled`). `float<m>` is metres, always, and the prefix is a
-/// presentation decision made at the axis. That is the whole point of §2.2.
+/// presentation decision made at the axis. That is the whole point of prefixes as a runtime factor.
 ///
 /// **These seven are abbreviations of `FSharp.Data.UnitSystems.SI.UnitNames`, not fresh
 /// primitives.** F# measures are nominal, so declared fresh they would not unify with
@@ -20,7 +20,7 @@ namespace Marey
 /// through `LanguagePrimitives.FloatWithMeasure`, an unchecked assertion that relabels metres as
 /// seconds as happily as anything else. Aliasing removes the cast. The derived units' algebra is
 /// unaffected, and so are Core's graphics tags: FSharp.Core declares no prefixed and no non-SI
-/// units, so the `mm` hazard above is untouched. Binary-breaking, and taken at rc1. See D42.
+/// units, so the `mm` hazard above is untouched. Binary-breaking, and taken before 0.1.
 [<Measure>]
 type m = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.metre
 
@@ -56,7 +56,7 @@ type cd = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.candela
 ///
 /// The module `U` below merges with the algebra module `U` in Marey.Core: F# name resolution
 /// keeps modules in a multi-map, so `U.mul` (Core) and `U.metre` (here) are both reachable
-/// through the single path `U`, exactly as §2.1 writes them. Two modules of one name inside one
+/// through the single path `U`. Two modules of one name inside one
 /// assembly is FS0037, which is why the derived and the non-SI witnesses are each a `U` inside a
 /// module of their own (`DerivedWitnesses`, `NonSiWitnesses`), opened with the namespace like
 /// this one.

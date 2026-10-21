@@ -5,9 +5,9 @@ namespace Marey
 //
 // Abbreviations rather than opaque measures is the load-bearing choice. `[<Measure>] type N`
 // on its own would be a fresh, incompatible measure, and `U.mul U.kilogram
-// U.metrePerSecondSquared` would not be a `U<N>` — the witness algebra of §2.1 would stop
+// U.metrePerSecondSquared` would not be a `U<N>` — the witness algebra would stop
 // being able to *derive* anything. As abbreviations they normalise to the same measure the
-// algebra produces, so the compiler unifies them and §2.1's "inferred" comments come true.
+// algebra produces, so the compiler unifies them and the "inferred" comments come true.
 // `U.newtonByComposition` and `U.jouleByComposition` at the bottom of this file
 // are that claim written as a compile-time assertion.
 //
@@ -34,7 +34,7 @@ type N = kg m / s^2
 [<Measure>]
 type Pa = N / m^2
 
-/// Joule — N·m. §12.6's running example: `U.mul force metre` composes the *symbol*
+/// Joule — N·m. The running example: `U.mul force metre` composes the *symbol*
 /// `kg·m/s/s·m` for what is plainly `J`, while the `Dim` comes out right. Never compose
 /// display strings.
 [<Measure>]

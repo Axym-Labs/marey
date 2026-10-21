@@ -26,8 +26,8 @@ open System
 ///
 /// ### What it refuses, by name
 ///
-/// A timestamp (`"days since 1970-01-01"`) and a logarithmic unit (`dB`, `lg(re 1 mW)`): D110
-/// left both out, and each is refused with a message saying so rather than as an unknown symbol.
+/// A timestamp (`"days since 1970-01-01"`) and a logarithmic unit (`dB`, `lg(re 1 mW)`): both
+/// are left out, and each is refused with a message saying so rather than as an unknown symbol.
 /// A number other than an exponent or a reciprocal's `1` is refused too — `"1000 m"` is a scale
 /// factor, which is `U.scaled`'s job and is not syntax this reads.
 ///

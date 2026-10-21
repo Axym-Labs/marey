@@ -3,9 +3,8 @@ namespace Marey
 /// A fully resolved axis: everything a backend needs to draw one, and nothing it has to
 /// decide for itself.
 ///
-/// "`x (fun r -> r.Time)` where `Time : float<s>` gives you a linear scale over seconds with
-/// the axis labelled `t [s]`, with no configuration. That is the user-visible payoff of §2, and
-/// it should be the first thing in the README."
+/// `x (fun r -> r.Time)` where `Time : float<s>` gives a linear scale over seconds with the axis
+/// labelled `t [s]`, with no configuration. That is the user-visible payoff of typed units.
 type AxisSpec =
     { /// The finished title: `t [s]`, `x [nm]`, or bare `x` when the quantity is dimensionless.
       ///
@@ -54,7 +53,7 @@ type AxisSpec =
 /// axis happens to pick, so a step cannot be right on one figure and a thousand times wrong on
 /// the next. The prefix and the unit in the title are still chosen as for any axis.
 type TickSpec =
-    /// The 1-2-5 ladder at the tick target: what every axis did before M8.
+    /// The 1-2-5 ladder at the tick target: the default.
     | TicksAuto
     /// Every multiple of `step` inside the domain — matplotlib's `MultipleLocator`.
     | TicksEvery of step: float
@@ -88,7 +87,7 @@ type TickFormatter(format: float -> string) =
 /// How tick numbers are written, after the prefix has rescaled them.
 [<NoComparison>]
 type TickFormat =
-    /// The decimals the step needs: what every axis did before M8.
+    /// The decimals the step needs: the default.
     | FormatAuto
     /// This many decimals.
     | FormatFixed of decimals: int
@@ -116,7 +115,7 @@ module TickFormat =
 ///
 /// 1. **It has already formatted the labels.** `Erase.scale` computes tick text with a decimal
 ///    count derived from the *unrescaled* step, so ticks at 1e-9 m come out as
-///    `"0.000000001"`. §2.2 asks for `1, 2, 3, 4, 5`. Prefix selection has to happen before
+///    `"0.000000001"` where a reader wants `1, 2, 3, 4, 5`. Prefix selection has to happen before
 ///    formatting, so the axis compiler has to own the formatting, so it needs the raw
 ///    `TickHint`.
 /// 2. **It has already formatted the tick labels for the wrong scale.** Prefix selection has to
@@ -126,20 +125,20 @@ module TickFormat =
 /// A second objection used to live here and no longer applies: `IScaleErased` once exposed
 /// `Symbol` and `Dim` but not `ToSI`/`OffsetSI`, so it could not tell electronvolts from joules
 /// (same `Dim`, 1.6e-19 apart) or °C from K (same `Dim`, affine), and an erased eV axis was
-/// labelled `kJ`. D16 added both fields to `IScaleErased` — §15's reloaded-figure story means
+/// labelled `kJ`. Both fields are on `IScaleErased` now — a reloaded figure has only that, so
 /// the information would otherwise be *destroyed* at save time rather than merely hidden — and
 /// `ofErasedWith` now routes its prefix and symbol decisions through the same
 /// `Prefix.selectForErased`/`UnitDisplay.unitTextErased` the measured path uses.
 ///
 /// `ofPacked` is the third door and the correct one whenever the packed value still exists:
-/// §2.3's rank-2 encoding hands the measure back, so the full `Scale<'u>` path applies.
+/// the rank-2 encoding hands the measure back, so the full `Scale<'u>` path applies.
 [<RequireQualifiedAccess>]
 module Axis =
 
     /// The default tick target.
     ///
     /// Five, not six or ten. It is a *target*, not a count — `Ticks.linear` walks the 1-2-5
-    /// ladder and returns whatever falls out — but the choice is load-bearing for §2.2's worked
+    /// ladder and returns whatever falls out — but the choice is load-bearing for the worked
     /// example: over 1e-9 … 5e-9 a target of 5 picks a step of 1 nm and yields exactly
     /// `1, 2, 3, 4, 5`, while a target of 6 picks 0.5 nm and yields `1.0, 1.5, … 5.0`. Both are
     /// legitimate axes; only one is the one the design asks for, and a sparser axis is the
@@ -147,8 +146,8 @@ module Axis =
     [<Literal>]
     let DefaultTickCount = 5
 
-    /// `x` + `nm` becomes `x [nm]`; `x` + nothing stays `x`. The bracket convention is the one
-    /// §9 uses, and dropping it for dimensionless quantities is what keeps a probability axis
+    /// `x` + `nm` becomes `x [nm]`; `x` + nothing stays `x`. The bracket convention is the
+    /// usual one, and dropping it for dimensionless quantities is what keeps a probability axis
     /// from being labelled `p [1]`.
     let title (label: string) (unitText: string) =
         if System.String.IsNullOrEmpty unitText then label
@@ -174,7 +173,7 @@ module Axis =
         | Unicode
         | Ascii -> false
 
-    /// The prefix an axis takes when nothing pins one: D19's choice from the domain, except on
+    /// The prefix an axis takes when nothing pins one: chosen from the domain, except on
     /// a wide log axis, which takes none.
     ///
     /// A prefix names one decade in three, and a wide log axis has many more. Chosen from the top
@@ -463,7 +462,7 @@ module Axis =
           Ticks = ticks
           Minor = minorPositions }
 
-    /// The full form, with the prefix decided somewhere else — D73.
+    /// The full form, with the prefix decided somewhere else, as an animation does.
     ///
     /// `pin = None` is `ofScaleWith` exactly: the prefix comes from this scale's own domain.
     /// `Some p` uses `p` instead, and everything downstream of the choice is unchanged — the
@@ -499,7 +498,7 @@ module Axis =
         : AxisSpec =
         ofScalePinnedWith None style registry tickCount label scale
 
-    /// §9's payoff, in one call: `Axis.auto Unicode "x" xScale`.
+    /// The payoff, in one call: `Axis.auto Unicode "x" xScale`.
     ///
     /// Registry is `UnitRegistry.si`, tick target is `DefaultTickCount`, prefix selection is
     /// automatic, and the tick *values* are rescaled to match the prefix — which is the whole
@@ -507,7 +506,7 @@ module Axis =
     let auto<[<Measure>] 'u> (style: UnitStyle) (label: string) (scale: Scale<'u>) : AxisSpec =
         ofScaleWith style UnitRegistry.si DefaultTickCount label scale
 
-    /// Recover the measure from §2.3's rank-2 package and take the `Scale<'u>` path. This is
+    /// Recover the measure from the rank-2 package and take the `Scale<'u>` path. This is
     /// the right way to build an axis from a heterogeneous `PackedSeries list`.
     let internal ofPackedWith (style: UnitStyle) (registry: UnitRegistry) (tickCount: int) (label: string) (packed: PackedScale) =
         packed.Accept
@@ -518,7 +517,7 @@ module Axis =
     let internal ofPacked (style: UnitStyle) (label: string) (packed: PackedScale) =
         ofPackedWith style UnitRegistry.si DefaultTickCount label packed
 
-    /// `ofPackedWith` with the prefix decided elsewhere — D73. See `ofScalePinnedWith`.
+    /// `ofPackedWith` with the prefix decided elsewhere. See `ofScalePinnedWith`.
     let internal ofPackedPinnedWith
         (pin: Prefix option)
         (style: UnitStyle)
@@ -549,8 +548,8 @@ module Axis =
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) =
                     ofScaleTicked ticks minor format pin style registry tickCount label s }
 
-    /// The domain a packed scale covers, as plain floats — the half of D73 that has to be
-    /// unioned across an animation's frames before a prefix can be chosen for all of them.
+    /// The domain a packed scale covers, as plain floats — the half of a pinned prefix that has to
+    /// be unioned across an animation's frames before a prefix can be chosen for all of them.
     ///
     /// Plain floats rather than `float<'u>` because the caller is comparing *several* frames'
     /// domains, and the measure is the same on every one of them by construction: it is the
@@ -564,7 +563,7 @@ module Axis =
                     float lo, float hi }
 
     /// The prefix this axis *would* choose if its numbers were `domain` rather than its own —
-    /// D73's other half. The unit comes from the scale, the range from the caller, and a log
+    /// the other half. The unit comes from the scale, the range from the caller, and a log
     /// scale over a wide range takes none, as `ofScaleWith` would decide.
     let internal prefixForPacked (domain: float * float) (packed: PackedScale) : Prefix =
         packed.Accept
@@ -578,11 +577,11 @@ module Axis =
     /// read `E [kJ]` — same `Dim` as joules, off by 1.6×10⁻¹⁹ — and a reloaded Celsius axis read
     /// `T [K]`, since °C and K also share a `Dim` and differ only by an offset.
     ///
-    /// D16 put `ToSI` and `OffsetSI` on `IScaleErased` precisely so this path could be fixed:
-    /// "without `ToSI`/`OffsetSI` the information is *destroyed* at save time, not merely hidden,
-    /// and a reloaded non-SI axis can never be relabelled correctly." Both decisions now go
-    /// through `Prefix.selectForErased` and `UnitDisplay.unitTextErased`, which are the same
-    /// functions the measured path uses, so the two cannot drift apart again.
+    /// `ToSI` and `OffsetSI` are on `IScaleErased` precisely so this path could be fixed: without
+    /// them the information is *destroyed* at save time, and a reloaded non-SI axis can never be
+    /// relabelled correctly. Both decisions now go through `Prefix.selectForErased` and
+    /// `UnitDisplay.unitTextErased`, which are the same functions the measured path uses, so the
+    /// two cannot drift apart again.
     ///
     /// `ofScaleWith` and `ofPackedWith` remain preferable whenever the measure still exists, for
     /// the other reason given in the module note: they own tick formatting, so they can rescale

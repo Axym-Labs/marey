@@ -5,7 +5,7 @@ namespace Marey
 /// **The design sketches the registry as `Dim -> string`. One string is not enough**, and the
 /// ohm proves it in four different ways: `Ω` (Unicode), `ohm` (ASCII), `\Omega` (LaTeX math),
 /// `\ohm` (siunitx macro). Storing one spelling and deriving the others means string surgery
-/// on symbols, which is precisely the composition §12.6 forbids. So the registry value is a
+/// on symbols, which is precisely the composition this library forbids. So the registry value is a
 /// record of the four spellings, chosen once, by whoever registered the unit.
 ///
 /// `LatexCore` is the content that goes *inside* `\mathrm{…}`, not the wrapped form, so a
@@ -41,14 +41,14 @@ module UnitSymbol =
 
 /// Canonical-symbol lookup, keyed on `Dim`.
 ///
-/// **Deliberate correction to the design.** §2.2 sketches
+/// **Not a global table.** The obvious design is
 ///
 /// ```fsharp
 /// val register : Dim -> symbol: string -> unit
 /// ```
 ///
-/// which is a process-global mutable table. That is the exact defect §1.1 indicts matplotlib
-/// for — "Global mutable state (`pyplot`)" — and it would poison this library specifically:
+/// which is a process-global mutable table. That is matplotlib's `pyplot` defect, global
+/// mutable state, and it would poison this library specifically:
 /// two figures in one notebook would fight over the registry, a golden-image test would depend
 /// on test ordering, and `Marey.Core`'s "immutable values with structural equality" story
 /// would have a hole in it at the exact point where axis labels are produced.
@@ -59,7 +59,7 @@ module UnitSymbol =
 ///
 /// ### On "longest-match-wins"
 ///
-/// §2.2 says the match should be "longest-match-wins". That phrase presupposes a *string* key,
+/// A symbol table would match "longest-match-wins". That phrase presupposes a *string* key,
 /// where `kg·m·s⁻²` could match a longer or shorter prefix of the symbol. Keyed on `Dim` there
 /// is no such ordering: a `Dim` is a 7-vector of exponents and the lookup is exact equality on
 /// all seven. There is nothing to be longest about, so the concept does not survive the move
