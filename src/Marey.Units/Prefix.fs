@@ -27,6 +27,7 @@ type Prefix =
     /// The multiplier this prefix denotes. Data is *divided* by it to produce the mantissas.
     member this.Factor = 10.0 ** float this.Exponent
 
+/// The SI prefixes, and choosing one for a range of values.
 [<RequireQualifiedAccess>]
 module Prefix =
 

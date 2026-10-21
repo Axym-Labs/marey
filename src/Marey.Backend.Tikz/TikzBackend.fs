@@ -87,6 +87,7 @@ type TikzFontMode =
     /// different size than the one used.
     | InheritFont
 
+/// The TikZ backend's options: resolution, font handling, comments and what the document carries.
 [<NoComparison>]
 type TikzOptions =
     { /// Resolution used to turn the px-denominated parts of the IR — stroke widths, marker

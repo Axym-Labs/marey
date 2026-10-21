@@ -101,6 +101,7 @@ type PackedSeries =
 type IScaleConsumer<'r> =
     abstract Apply<[<Measure>] 'u> : Scale<'u> -> 'r
 
+/// A typed scale with its measure hidden, opened with an `IScaleConsumer`.
 type PackedScale =
     abstract Accept: IScaleConsumer<'r> -> 'r
 
@@ -109,6 +110,7 @@ type PackedScale =
 type IQuantityConsumer<'r> =
     abstract Apply<[<Measure>] 'u> : U<'u> * float<'u> -> 'r
 
+/// One dimensioned value with its unit, opened with an `IQuantityConsumer`.
 type PackedQuantity =
     abstract Accept: IQuantityConsumer<'r> -> 'r
 
@@ -123,6 +125,8 @@ type PackedQuantity =
 type IChannelConsumer<'res> =
     abstract Apply<[<Measure>] 'u> : U<'u> * float<'u>[] -> 'res
 
+/// One encoding channel, its unit and its values packed together, opened with an
+/// `IChannelConsumer`.
 type PackedChannel =
     abstract Accept: IChannelConsumer<'res> -> 'res
 
@@ -136,6 +140,8 @@ type PackedChannel =
 type IChannelPairConsumer<'res> =
     abstract Apply<[<Measure>] 'ux, [<Measure>] 'uy> : U<'ux> * float<'ux>[] * U<'uy> * float<'uy>[] -> 'res
 
+/// Packing typed scales, series and quantities into their erased forms, and opening them again
+/// through the rank-2 consumers.
 [<RequireQualifiedAccess>]
 module Erase =
 

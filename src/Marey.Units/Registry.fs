@@ -22,6 +22,7 @@ type UnitSymbol =
       /// Bare siunitx macro: `\ohm`, `\joule`, `\kilogram`.
       Siunitx: string }
 
+/// A unit's four spellings, built.
 [<RequireQualifiedAccess>]
 module UnitSymbol =
 
@@ -107,6 +108,7 @@ type UnitRegistry(entries: (Dim * UnitSymbol)[]) =
         | true, v -> Some v
         | _ -> None
 
+/// Unit registries: the SI default, additions and merges.
 [<RequireQualifiedAccess>]
 module UnitRegistry =
 

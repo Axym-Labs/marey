@@ -85,6 +85,7 @@ type ToolOutcome =
     /// The tool exited. Its exit code may still be non-zero.
     | ToolRan of ToolRun
 
+/// Finding external programs on `PATH`, running them, and saying what is missing.
 [<RequireQualifiedAccess>]
 module Toolchain =
 

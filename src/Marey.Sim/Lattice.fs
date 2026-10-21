@@ -77,6 +77,8 @@ type LbmOptions<[<Measure>] 'x> =
       Bottom: LatticeEdge<'x>
       Top: LatticeEdge<'x> }
 
+/// A lattice Boltzmann flow: created over a grid with obstacles, read as density, velocity and
+/// vorticity.
 [<RequireQualifiedAccess>]
 module Lattice =
 

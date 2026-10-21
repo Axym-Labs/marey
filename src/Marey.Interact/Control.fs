@@ -57,6 +57,7 @@ type Control<'a> =
     { Specs: ControlSpec[]
       Read: float[] -> 'a }
 
+/// Reading a control's description.
 [<RequireQualifiedAccess>]
 module ControlSpec =
 
@@ -73,6 +74,8 @@ module ControlSpec =
             | Checkbox -> Some(if v <> 0.0 then 1.0 else 0.0)
             | Time(lo, hi, _, _) -> Some(max lo (min hi v))
 
+/// Typed controls — sliders, checkboxes, selections and a clock — and the applicative
+/// combinators over them.
 [<RequireQualifiedAccess>]
 module Control =
 

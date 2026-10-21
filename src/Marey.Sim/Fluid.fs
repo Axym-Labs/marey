@@ -74,6 +74,8 @@ type StamOptions<[<Measure>] 'x, [<Measure>] 'q> =
       /// Red-black Gauss–Seidel sweeps for the viscous and the diffusive solve.
       Sweeps: int }
 
+/// A stable-fluids flow (Stam's method): a box of fluid with its dye and velocity, read as
+/// pressure, divergence and vorticity.
 [<RequireQualifiedAccess>]
 module Fluid =
 

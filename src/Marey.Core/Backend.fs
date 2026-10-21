@@ -172,6 +172,7 @@ type RenderedDocument =
     { Document: string
       Assets: RenderedAsset[] }
 
+/// Stock capability sets a backend starts from: `full` and `vector`.
 [<RequireQualifiedAccess>]
 module Capabilities =
 
@@ -447,6 +448,7 @@ type ApproxTextMeasurer(?dpi: float<px / mm>) =
               Ascent = AscentEm * sizePx
               Descent = DescentEm * sizePx }
 
+/// The default text measurer, and the box a run occupies under an anchor, baseline and rotation.
 [<RequireQualifiedAccess>]
 module TextMeasure =
 

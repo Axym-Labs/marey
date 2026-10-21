@@ -136,6 +136,7 @@ type TexOptions =
       /// of that, and a `latex` sitting at an interactive prompt never returns at all.
       TimeoutMs: int }
 
+/// The TeX pipeline's default options.
 [<RequireQualifiedAccess>]
 module TexOptions =
 

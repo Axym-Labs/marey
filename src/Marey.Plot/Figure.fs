@@ -145,6 +145,7 @@ type Aspect =
     /// The plot's height over its width (matplotlib's `set_box_aspect`).
     | Box of heightOverWidth: float
 
+/// One panel: its layers, axes, coordinate system, legend, and place on the figure's grid.
 [<NoComparison>]
 type Panel =
     { Title: string
@@ -203,9 +204,12 @@ type LetterStyle =
     /// A, B, C
     | LetterUpper
 
+/// How the panels' letters are written: their style, and whether bold.
 [<NoComparison>]
 type PanelLetters = { Letter: LetterStyle; Bold: bool }
 
+/// A whole figure: its panels on a grid, title and subtitle, theme, shared legend, and the
+/// grid's row and column weights. Built and changed through `Chart`.
 [<NoComparison>]
 type Figure =
     { Title: string
@@ -314,6 +318,7 @@ type PanelLayout =
           LeftPad: float<px>
           BottomPad: float<px> }
 
+/// Where a panel's legend stands once the layout has resolved it.
 [<RequireQualifiedAccess>]
 module PanelLayout =
 
@@ -487,6 +492,8 @@ type PanelView =
       /// Which of the panel at `Row`, `Col`'s insets this is, or `None` for the panel.
       Inset: int option }
 
+/// Reading a drawn panel under a pointer: whether it contains the point, the data there, and the
+/// readout.
 [<RequireQualifiedAccess>]
 module PanelView =
 

@@ -72,6 +72,7 @@ type cd = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.candela
 [<AutoOpen>]
 module SiWitnesses =
 
+    /// The SI base units, and a few common compositions.
     [<RequireQualifiedAccess>]
     module U =
 

@@ -230,6 +230,7 @@ module UnitParsing =
         | u, [] -> u
         | _, _ -> fail text "Something follows the unit that is not part of it."
 
+    /// Reading a unit from text, in UDUNITS-2's syntax, and narrowing a parsed unit to a typed one.
     [<RequireQualifiedAccess>]
     module U =
 

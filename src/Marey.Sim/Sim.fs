@@ -55,6 +55,8 @@ type Drift =
       Times: float<s>[]
       Values: float[] }
 
+/// Simulations: from a stepper or an adaptive integrator, run and sampled, checked against
+/// invariants and events, and seen as an animation.
 [<RequireQualifiedAccess>]
 module Sim =
 

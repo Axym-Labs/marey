@@ -76,6 +76,8 @@ type Hit =
       Time: float<s>
       Kind: HitKind }
 
+/// Events: where a function of the state crosses zero, located in time, with a minimum
+/// separation and what a crossing too soon does instead.
 [<RequireQualifiedAccess>]
 module Event =
 
@@ -164,6 +166,7 @@ module Event =
 
         b
 
+/// Ready-made responses to an event: `reflect` a coordinate's velocity.
 [<RequireQualifiedAccess>]
 module Response =
 

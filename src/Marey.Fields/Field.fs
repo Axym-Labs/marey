@@ -52,6 +52,9 @@ type Jacobian<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w> =
       DwDx: ScalarGrid<'x, 'y, 'w / 'x>
       DwDy: ScalarGrid<'x, 'y, 'w / 'y> }
 
+/// Fields: their derivatives — gradient, divergence, curl, Laplacian, Jacobian — in the units the
+/// types work out, and the figures that draw them: heatmaps, contours, bands, quivers,
+/// streamlines and LIC.
 [<RequireQualifiedAccess>]
 module Field =
 

@@ -81,6 +81,7 @@ type Rect<[<Measure>] 'u> =
 [<Struct>]
 type Extent<[<Measure>] 'u> = { Width: float<'u>; Height: float<'u> }
 
+/// 2-D vectors, including the unit-changing operations, which are functions rather than operators.
 [<RequireQualifiedAccess>]
 module Vec2 =
 
@@ -153,6 +154,7 @@ module Vec2 =
 
     let toRaw (a: Vec2<'u>) = float a.X, float a.Y
 
+/// 3-D vectors.
 [<RequireQualifiedAccess>]
 module Vec3 =
 
@@ -183,6 +185,7 @@ module Vec3 =
           Y = a.Y + (b.Y - a.Y) * t
           Z = a.Z + (b.Z - a.Z) * t }
 
+/// Axis-aligned rectangles.
 [<RequireQualifiedAccess>]
 module Rect =
 

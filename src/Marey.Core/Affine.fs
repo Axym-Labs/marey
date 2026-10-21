@@ -36,6 +36,7 @@ type Affine<[<Measure>] 'a, [<Measure>] 'b> =
       Dx: float<'b>
       Dy: float<'b> }
 
+/// Affine transforms: applied to points and vectors, composed, inverted, and the usual constructors.
 [<RequireQualifiedAccess>]
 module Affine =
 

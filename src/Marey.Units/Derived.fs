@@ -126,6 +126,7 @@ type kat = mol / s
 [<AutoOpen>]
 module DerivedWitnesses =
 
+    /// The named SI derived units, from the hertz to the katal, with the radian and the steradian.
     [<RequireQualifiedAccess>]
     module U =
 

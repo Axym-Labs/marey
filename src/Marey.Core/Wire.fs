@@ -215,6 +215,8 @@ type TextTable(entries: (FontSpec * string * TextMetrics)[]) =
             | true, m -> m
             | _ -> TextMeasure.approx.Measure font text
 
+/// A scene, or a patch between two scenes, as bytes and back, with the text metrics it was laid
+/// out with.
 [<RequireQualifiedAccess>]
 module Wire =
 

@@ -33,6 +33,8 @@ type Oklch =
       H: float<rad>
       Alpha: float }
 
+/// Colours: built from sRGB or hex, converted to Oklab and Oklch, mixed perceptually, and measured
+/// for contrast.
 [<RequireQualifiedAccess>]
 module Color =
 

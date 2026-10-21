@@ -50,6 +50,8 @@ type Scale<[<Measure>] 'u> =
       /// converting at every axis render is pure waste.
       TickHint: int -> float<'u>[] }
 
+/// Scales: linear, logarithmic, symmetric-log, power, reciprocal and categorical, and the
+/// operations on them.
 [<RequireQualifiedAccess>]
 module Scale =
 

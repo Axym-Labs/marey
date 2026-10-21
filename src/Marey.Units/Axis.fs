@@ -100,6 +100,7 @@ type TickFormat =
     /// The caller's function, of the number the label would show (after the prefix).
     | FormatCustom of TickFormatter
 
+/// Building tick formats.
 [<RequireQualifiedAccess; CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module TickFormat =
 

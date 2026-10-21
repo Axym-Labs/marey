@@ -28,6 +28,8 @@ type TickDirection =
     /// Across the spine, both ways.
     | TickInOut
 
+/// Everything a figure's look depends on: fonts, colours, palettes, strokes, tick and grid
+/// conventions, spacing, and how units are written.
 [<NoComparison>]
 type Theme =
     { Name: string
@@ -141,6 +143,7 @@ type ThemeReport =
       /// Text clears WCAG AAA (7:1) and the spine clears the 3:1 non-text minimum.
       Ok: bool }
 
+/// The built-in themes, and the combinators that derive one theme from another.
 [<RequireQualifiedAccess>]
 module Theme =
 

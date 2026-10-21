@@ -22,6 +22,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 type Recording<'a> =
     { Events: (float<s> * 'a)[] }
 
+/// Recordings of a live session: built from its events, sampled at a time, mapped.
 [<RequireQualifiedAccess>]
 module Recording =
 

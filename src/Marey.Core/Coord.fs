@@ -40,6 +40,8 @@ type Coord =
     /// what the compiler feeds to the IR's `Clip` node.
     abstract Clip: PathSeg[]
 
+/// Coordinate systems for a panel: Cartesian, flipped, polar and polar sectors, and warping a
+/// polyline through one.
 [<RequireQualifiedAccess>]
 module Coord =
 

@@ -29,6 +29,7 @@ open System
 /// dy/dt)`. `Flow2T` itself, named for what it holds here.
 type Unsteady<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> = Flow2T<'x, 'y, 't>
 
+/// Velocity fields that change in time, from a function or from snapshots on a grid.
 [<RequireQualifiedAccess>]
 module Unsteady =
 
@@ -150,6 +151,7 @@ module Unsteady =
 /// Many particles in a plane, carried by a field: x and y per particle.
 type Particles<[<Measure>] 'x, [<Measure>] 'y> = (struct (float<'x>[] * float<'y>[]))
 
+/// Particles carried by an unsteady field, stepped together by RK4: pathlines.
 [<RequireQualifiedAccess>]
 module Particles =
 

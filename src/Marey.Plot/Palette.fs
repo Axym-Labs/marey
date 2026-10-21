@@ -24,6 +24,7 @@ type Ramp =
     { Name: string
       Stops: (float * Color)[] }
 
+/// Colour ramps: built from stops, colours or hex, sampled at a position, reversed.
 [<RequireQualifiedAccess>]
 module Ramp =
 

@@ -48,6 +48,7 @@ type Boundaries<[<Measure>] 'x, [<Measure>] 'v> =
       Bottom: Boundary<'x, 'v>
       Top: Boundary<'x, 'v> }
 
+/// Boundary conditions for the finite-difference solvers.
 [<RequireQualifiedAccess>]
 module Boundaries =
 
@@ -65,6 +66,8 @@ type PoissonSolution<[<Measure>] 'x, [<Measure>] 'u> =
       /// Whether the residual reached the tolerance before the sweeps ran out.
       Converged: bool }
 
+/// Finite-difference solvers on scalar grids: heat (explicit and implicit), wave and Poisson, with
+/// their stability limits.
 [<RequireQualifiedAccess>]
 module Fdm =
 

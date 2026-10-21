@@ -23,6 +23,8 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 /// One crossing of a section: when, and the state there.
 type SectionPoint<'s> = { Time: float<s>; State: 's }
 
+/// Poincaré sections of a trajectory: stroboscopic, at every multiple of a period, and spatial,
+/// where a surface is crossed.
 [<RequireQualifiedAccess>]
 module Poincare =
 

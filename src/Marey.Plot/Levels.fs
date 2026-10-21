@@ -17,6 +17,7 @@ type Levels<'k when 'k: equality> =
       /// What the axis prints for each level, index-aligned with `Values`.
       Labels: string[] }
 
+/// The level sets of a categorical channel or axis: built, sorted, reversed and read.
 [<RequireQualifiedAccess>]
 module Levels =
 

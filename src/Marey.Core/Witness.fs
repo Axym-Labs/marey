@@ -32,6 +32,8 @@ type IUnit =
     /// False only for `U.unspecified` and what is composed from it — see `U.Stated`.
     abstract Stated: bool
 
+/// A unit witness: the value that carries a measure's symbol, dimension and conversion to SI,
+/// so an axis can label and convert what the type system checks.
 [<Sealed>]
 type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, factors: (string * int) list, stated: bool) =
 

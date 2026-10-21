@@ -83,6 +83,7 @@ type Stage =
     { Figure: Figure option
       Edits: (Key * (Node -> Node))[] }
 
+/// The storyboard's stage: what is on it at an instant.
 [<RequireQualifiedAccess>]
 module Stage =
 
@@ -222,6 +223,7 @@ module Storyboard =
             let b, act2 = unwrap (f a) (after s0)
             b, Anim.andThen act1 (Anim.map (fun g -> g << after) act2))
 
+    /// The builder behind `scene { … }`.
     [<Sealed>]
     type Builder() =
         member _.Bind(m: Story<'a>, f: 'a -> Story<'b>) : Story<'b> = bind m f

@@ -147,6 +147,7 @@ module GridAxes =
                 a + (b - a) * fy
             | _ -> nan
 
+/// Scalar grids: built from data or sampled from a function, and read back.
 [<RequireQualifiedAccess>]
 module ScalarGrid =
 
@@ -211,6 +212,7 @@ module ScalarGrid =
           Ys = g.Ys
           Values = Array.map f g.Values }
 
+/// Vector grids: built from data or sampled from a field, and read back.
 [<RequireQualifiedAccess>]
 module VectorGrid =
 

@@ -171,6 +171,7 @@ type Film =
     /// How long the film runs.
     member this.Duration: float<s> = this.Frames.Duration
 
+/// Films: an animation of figures, or a storyboard, laid out once for every frame.
 [<RequireQualifiedAccess>]
 module Film =
 
@@ -222,6 +223,7 @@ type FrameTarget =
       /// directory that sorts wrongly and a video that stops early.
       Digits: int }
 
+/// Where a frame sequence is written.
 [<RequireQualifiedAccess>]
 module FrameTarget =
 

@@ -97,6 +97,7 @@ type PdfMetadata =
       Creator: string
       Producer: string }
 
+/// A PDF's document information, fixed rather than discovered.
 [<RequireQualifiedAccess>]
 module PdfMetadata =
 
@@ -153,6 +154,7 @@ type SkiaOptions =
       /// The document information dictionary written into a PDF. Ignored by a PNG render.
       Pdf: PdfMetadata }
 
+/// The Skia backend's default options.
 [<RequireQualifiedAccess>]
 module SkiaOptions =
 

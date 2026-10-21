@@ -105,6 +105,7 @@ type LiveMsg =
     /// The pointer left the figure.
     | Leave
 
+/// A reader's messages to a live figure, and their JSON form.
 [<RequireQualifiedAccess>]
 module LiveMsg =
 
@@ -479,6 +480,7 @@ type RecorderState =
     { Session: int
       State: LiveState }
 
+/// Recording a live session as it is stepped.
 [<RequireQualifiedAccess>]
 module Recorder =
 
@@ -488,6 +490,8 @@ module Recorder =
     /// The log, and the recording stops. `Live.record r.Live` replays it.
     let stop (r: Recorder) : Recording<LiveMsg> = r.Stop()
 
+/// Stepping a live figure: its first state, the step from a reader's message, its scene, the
+/// readout, and recording.
 [<RequireQualifiedAccess>]
 module Live =
 
@@ -947,6 +951,7 @@ type InteractBuilder() =
     member _.Return(x: 'a) : Control<'a> = Control.constant x
     member _.Run(c: Control<Figure>) : Live = Live.ofControl c
 
+/// The `interact { … }` block.
 [<AutoOpen>]
 module InteractBuilderInstance =
     /// A figure with controls:

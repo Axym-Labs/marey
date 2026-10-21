@@ -97,6 +97,8 @@ type cal
 [<AutoOpen>]
 module NonSiWitnesses =
 
+    /// Units outside SI that physics uses: the electronvolt, ångström, astronomical unit, bar, litre,
+    /// hour, degree Celsius and the rest.
     [<RequireQualifiedAccess>]
     module U =
 

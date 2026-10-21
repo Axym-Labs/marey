@@ -68,6 +68,7 @@ type FixedPoint<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> =
       /// positive imaginary part first.
       Eigenvalues: Eigenvalue<'t> * Eigenvalue<'t> }
 
+/// Reading a classified fixed point.
 [<RequireQualifiedAccess>]
 module FixedPoint =
 

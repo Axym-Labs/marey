@@ -49,11 +49,13 @@ type Paint =
     /// Centre, radius in panel space, stops from centre outward.
     | RadialGradient of centre: Vec2<nd> * radius: float<nd> * stops: GradientStop[]
 
+/// How an open stroke ends.
 type LineCap =
     | Butt
     | Round
     | Square
 
+/// How two segments of a stroke meet.
 type LineJoin =
     | Miter
     | RoundJoin
@@ -65,6 +67,7 @@ type FillRule =
     | NonZero
     | EvenOdd
 
+/// How an outline is drawn: paint, width in px, dashes, caps and joins.
 [<NoComparison>]
 type Stroke =
     { Paint: Paint
@@ -100,16 +103,20 @@ type FontSpec =
       Weight: int
       Italic: bool }
 
+/// Where a text run's anchor point sits along its advance.
 type TextAnchor =
     | AnchorStart
     | AnchorMiddle
     | AnchorEnd
 
+/// Which line of a text run its anchor point sits on.
 type TextBaseline =
     | BaselineAlphabetic
     | BaselineMiddle
     | BaselineHanging
 
+/// A run of text in the scene: its plain and optional TeX form, position, font, paint, anchor,
+/// baseline and rotation.
 [<NoComparison>]
 type TextRun =
     { /// The plain-Unicode form of this run. **Always set**, even when `Tex` is present.
@@ -196,6 +203,7 @@ type Image =
       Height: int
       Rgba: byte[] }
 
+/// An image drawn into a box in panel space.
 [<NoComparison>]
 type RasterNode =
     { Image: Image
@@ -229,6 +237,8 @@ type SemanticRole =
     | RoleDecoration
     | RoleOther of string
 
+/// What a subtree means — its role, a readable label and metadata — for accessibility and hit
+/// testing, carried by `Annotated`.
 [<NoComparison>]
 type Semantics =
     { Role: SemanticRole
@@ -275,6 +285,7 @@ type Patch =
     /// new scene describes it.
     | Whole of Node
 
+/// Stroke constructors.
 [<RequireQualifiedAccess>]
 module Stroke =
 
@@ -289,6 +300,8 @@ module Stroke =
 
     let dashed (c: Color) (w: float<px>) (pattern: float<px>[]) = { solid c w with Dash = pattern }
 
+/// Building and walking scenes: a constructor per node, folds, rewrites by key, diffs and
+/// pruning.
 [<RequireQualifiedAccess>]
 module Scene =
 

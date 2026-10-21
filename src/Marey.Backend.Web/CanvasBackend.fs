@@ -435,6 +435,7 @@ type CanvasBackend(ctx: CanvasContext, ?measurer: ITextMeasurer, ?background: Co
         member _.Draw(node: Node) = painter.Draw(ctx, root, node)
         member _.Finish() = ()
 
+/// Drawing a scene on a canvas in the browser.
 [<RequireQualifiedAccess>]
 module CanvasBackend =
 

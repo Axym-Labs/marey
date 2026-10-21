@@ -143,6 +143,11 @@ jobs:
       - name: No internal references in what ships
         run: dotnet fsi tools/refs/check.fsx
 
+      # Every public type and module has a doc comment, so the API reference has no blank entry.
+      # Read from the Release assemblies' metadata and the XML documentation they just wrote.
+      - name: Every public type and module is documented
+        run: dotnet fsi tools/api/undocumented.fsx
+
       # MAREY_REQUIRE_TOOLCHAIN turns "the tool is not installed, so the gate did not run" from
       # a printed skip into a failure. Right here and wrong on a contributor's laptop: the steps
       # above install the toolchain on purpose, so a gate that skips on this runner means the

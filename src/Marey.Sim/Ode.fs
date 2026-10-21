@@ -89,6 +89,7 @@ type Controller<[<Measure>] 't> =
     { H: float<'t>
       ErrOld: float }
 
+/// The adaptive integrators' step-size controller.
 [<RequireQualifiedAccess>]
 module Controller =
 
@@ -119,6 +120,7 @@ type AdaptiveStep<'s, [<Measure>] 't> = float<'t> -> Controller<'t> -> 's -> Acc
 /// state of mixed units weighs each component by its own.
 type ErrorNorm<'s, 'ds, [<Measure>] 't> = float<'t> -> 'ds -> 's -> 's -> float
 
+/// The norms an adaptive integrator measures a step's error with.
 [<RequireQualifiedAccess>]
 module ErrorNorm =
 

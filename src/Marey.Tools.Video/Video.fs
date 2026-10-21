@@ -101,6 +101,7 @@ type MuxOptions =
       /// rather than a hung suite.
       TimeoutMs: int }
 
+/// Encoder settings for `Video.mux`.
 [<RequireQualifiedAccess>]
 module MuxOptions =
 

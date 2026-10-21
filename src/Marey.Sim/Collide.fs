@@ -61,6 +61,8 @@ type Collider<[<Measure>] 'q> =
       /// Above this many discs, pairs are found through a grid rather than all against all.
       BroadPhaseAbove: int }
 
+/// Discs for a collision simulation: placed at positions and velocities, and their kinetic energy
+/// and momentum.
 [<RequireQualifiedAccess>]
 module Discs =
 
@@ -107,6 +109,7 @@ module Discs =
 
         struct (px, py)
 
+/// Hard discs colliding in a box: the collider and its step.
 [<RequireQualifiedAccess>]
 module Collide =
 

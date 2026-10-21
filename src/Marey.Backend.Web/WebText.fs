@@ -117,6 +117,7 @@ type WebMeasurer =
       /// `ApproxTextMeasurer`: a figure compiled with it is approximated, and should say so.
       Approximated: string option }
 
+/// Measuring text in the browser, once the page's fonts have loaded.
 [<RequireQualifiedAccess>]
 module WebText =
 

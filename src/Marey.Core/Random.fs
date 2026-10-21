@@ -29,6 +29,7 @@ namespace Marey
 [<Struct>]
 type Rng = { State: uint64 }
 
+/// The seeded SplitMix64 generator: every draw returns its value and the next state.
 [<RequireQualifiedAccess>]
 module Rng =
 
