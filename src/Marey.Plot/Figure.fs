@@ -348,11 +348,11 @@ module PanelLayout =
           BottomPad = 0.0<px> }
 
     /// D171 — the four inside corners, in the order `LegendScores` keeps them.
-    let legendCorners = [| LegendTopRight; LegendTopLeft; LegendBottomLeft; LegendBottomRight |]
+    let internal legendCorners = [| LegendTopRight; LegendTopLeft; LegendBottomLeft; LegendBottomRight |]
 
     /// D171 — whether every inside corner is more than 2% covered: a corner the legend would hide
     /// data in.
-    let crowded (scores: float[]) = scores.Length = 4 && Array.min scores > 0.02
+    let internal crowded (scores: float[]) = scores.Length = 4 && Array.min scores > 0.02
 
     /// D171 — where a legend stated as `stated` stands in a panel laid out as `g`: `LegendBest`
     /// resolved to the least covered inside corner, or outside on the right when every corner is
