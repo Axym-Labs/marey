@@ -431,8 +431,6 @@ namespace Marey
     [<RequireQualifiedAccess>]
     module UnitDisplay =
 
-        val superscript: n: int -> string
-
         val render:
           style: UnitStyle -> registry: UnitRegistry -> dim: Dim -> string
 

@@ -412,12 +412,8 @@ let framed =
     |> Chart.withXDomain 0.0 10.0
 ```
 
-Ticks walk a 1-2-5 ladder and return what falls out, so a theme's `TickCount` is a *target*
-rather than a promise:
-
-```fsharp
-printfn "ticks: %A" (Ticks.linear 5 (0.0, 9.2))
-```
+Ticks walk a 1-2-5 ladder and keep what falls out, so a theme's `TickCount` is a *target*
+rather than a promise.
 
 ---
 

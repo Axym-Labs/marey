@@ -20,7 +20,7 @@ namespace Marey
 /// goes — decimals, and powers of ten on a wide log axis. Prefix selection and unit symbols live
 /// in `Marey.Units`, because they need the `Dim`, and Core does not know what a kilometre is.
 [<RequireQualifiedAccess>]
-module Ticks =
+module internal Ticks =
 
     /// The coarsest "nice" step at most `raw`-ish. Rounds `raw` to the nearest member of the
     /// 1-2-5 ladder rather than always rounding up, which is what keeps the count centred on

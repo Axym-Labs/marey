@@ -42,11 +42,7 @@ namespace Marey
     [<RequireQualifiedAccess>]
     module Tex =
 
-        val tryEscapeChar: c: char -> string option
-
         val escape: s: string -> string
-
-        val isLiteralSafe: s: string -> bool
 
 namespace Marey
 
@@ -556,47 +552,6 @@ namespace Marey
           xs: (float * ^T) array -> t: float -> ^T
             when (Interpolate or ^T) :
                    (static member Interp: ^T * ^T * float -> ^T)
-
-namespace Marey
-
-    [<RequireQualifiedAccess>]
-    module Ticks =
-
-        val niceStep: raw: float -> float
-
-        val decimalsFor: step: float -> int
-
-        val linear:
-          target: int -> lo: float<'u> * hi: float<'u> -> float<'u> array
-
-        val linearStep: target: int -> lo: float<'u> * hi: float<'u> -> float
-
-        val log10:
-          target: int -> lo: float<'u> * hi: float<'u> -> float<'u> array
-
-        val expandToNice:
-          target: int -> lo: float<'u> * hi: float<'u> -> float<'u> * float<'u>
-
-        val format: decimals: int -> x: float -> string
-
-        val formatScientific: sigFigs: int -> x: float -> string
-
-        val formatGeneral: x: float -> string
-
-        [<Literal>]
-        val WideLogDecades: float = 3
-
-        val isWideLog: lo: float * hi: float -> bool
-
-        val logInPowers: float * float -> values: float array -> bool
-
-        val powerOfTen: x: float -> int * int
-
-        val formatPower: x: float -> string
-
-        val formatPowerTo: resolution: float -> x: float -> string
-
-        val formatOwn: x: float -> string
 
 namespace Marey
 
@@ -1305,15 +1260,6 @@ namespace Marey
         val primitiveCount: n: Node -> int
 
         val prune: n: Node -> Node
-
-namespace Marey
-
-    [<RequireQualifiedAccess>]
-    module Png =
-
-        val encode: width: int -> height: int -> rgba: byte array -> byte array
-
-        val dataUri: img: Image -> string
 
 namespace Marey
 

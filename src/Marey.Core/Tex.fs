@@ -74,7 +74,7 @@ module Tex =
     /// backend interleaving its own substitutions — a Unicode-to-macro map, superscript runs —
     /// can reuse it instead of keeping a second copy that drifts. Returning `None` for the
     /// common case keeps the string path allocation-free.
-    let tryEscapeChar (c: char) : string option =
+    let internal tryEscapeChar (c: char) : string option =
         match c with
         | '\\' -> Some "\\textbackslash{}"
         | '{' -> Some "\\{"
@@ -250,7 +250,7 @@ module Tex =
 
     /// True when `escape` would leave the string unchanged — i.e. it contains no TeX special
     /// character and none of the non-ASCII characters `escape` rewrites.
-    let isLiteralSafe (s: string) : bool =
+    let internal isLiteralSafe (s: string) : bool =
         isNull s
         || s
            |> Seq.forall (fun c ->

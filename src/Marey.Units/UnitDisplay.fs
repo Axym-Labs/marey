@@ -36,7 +36,7 @@ module UnitDisplay =
     let private intText (n: int) = n.ToString(invariant)
 
     /// Unicode superscript for an integer exponent: `-2` becomes `⁻²`. See `Num.superscript`.
-    let superscript (n: int) = Num.superscript n
+    let internal superscript (n: int) = Num.superscript n
 
     // ---- Spelling tables --------------------------------------------------------------
 

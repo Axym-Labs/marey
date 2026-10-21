@@ -33,7 +33,7 @@ open System
 
 /// A minimal, dependency-free PNG encoder for RGBA8 images.
 [<RequireQualifiedAccess>]
-module Png =
+module internal Png =
 
     let private crcTable =
         let t = Array.zeroCreate<uint32> 256
