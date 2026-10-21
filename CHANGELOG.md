@@ -12,6 +12,53 @@ land in a minor release.
 
 ## [Unreleased]
 
+<!-- A draft. At 1.0.0 the statement below replaces the "Pre-1.0" paragraph above. -->
+
+**What a version number promises, from 1.0.0.** The public API is what `api/` lists, package by
+package. A patch release fixes defects and changes no public signature. A minor release adds, and
+removes, renames or retypes nothing a 1.x release published. Anything else waits for a major
+release, with four exceptions, which a minor release may make:
+
+- **A new field in a public record.** `Figure`, `Panel`, `Layer`, `AxisConfig`, `Theme`,
+  `PanelView` and `Shot` are built from a published value with `with` (`{ Theme.modern with … }`,
+  `{ Chart.axis "t" with … }`), or only read. Code written that way keeps compiling when a field is
+  added. A record expression that names every field does not, and is not covered. `PlotSpec`,
+  `Handle`, `PanelLayout`, `LiveZoom`, `Story` and `Step` have no fields a user can name.
+- **A new case of an open union.** `Geom`, `LegendPlacement`, `ZoomAxis` and the scene's `Node` gain
+  cases as the library gains marks, places for a legend, ways to zoom and kinds of drawing. A
+  `match` over one of them keeps a wildcard case; a `match` that names every case is not covered.
+  A new case in any other public union waits for a major release.
+- **What a figure looks like.** Drawing is not part of the API. A minor release may move a mark, a
+  tick or a gutter, and lists it under `Changed` with the baselines that moved. A patch release
+  moves a drawing only to fix a defect.
+- **A newer Fable, SDK or toolchain** that a release is built and tested with, named under
+  `Changed`.
+
+Two formats are versioned on their own rather than by the package. A scene on the wire (`Wire`)
+carries its format version, and a reader refuses one it does not know, naming the version. A
+`LiveLog` saved as JSON is format version 1, which every 1.x reads. `LiveMsg`, which passes between
+a kernel and a page of the same release, is not a format and may change in any release.
+
+The packages are released together and depend on each other by exact version, so upgrading one
+means upgrading all of them; referencing `Marey` does that in one line.
+
+Every package targets netstandard2.1, except the GPU backend (net8.0) and the Verso extension
+(net8.0 and net10.0), and requires FSharp.Core 8.0.100 or newer. Each release is checked on the .NET
+SDK 10.0.100 band and on the newest SDK. The nine packages that carry their sources for Fable are
+built and tested with Fable 5.20. A live figure in a notebook needs Verso 1.2.3 or newer. The GPU
+window runs on Linux and Windows, not on macOS. `latex`, `dvisvgm` and `ffmpeg` are found on `PATH`
+and reported when missing; Marey does not require a version of them.
+
+### Added
+
+- **`Marey`, the library in one reference.** `#r "nuget: Marey"` or `dotnet add package Marey`
+  brings units, the plotting grammar, fields, simulations, animation, live figures, and SVG, TikZ
+  and HTML output: Core, Units, Plot, Anim, Fields, Sim, Interact, Backend.Svg, Backend.Tikz and
+  Html. It carries no code. What needs a native library or an external program stays a separate
+  reference: `Marey.Backend.Skia` for PNG and PDF, `Marey.Backend.Gpu` for a window,
+  `Marey.Tools.Tex` and `Marey.Tools.Video`. A Fable app can reference it too, and compiles the
+  packages in it that carry their sources. Eighteen packages.
+
 ### Changed
 
 - **A rate reads `s⁻¹`, a frequency `Hz`.** A unit written as the reciprocal of one base unit
@@ -48,15 +95,15 @@ land in a minor release.
   beside a stack of three drew 1.70 : 1, and the stack uneven, because `beside` subdivided both
   sides to the least common multiple of their rows and every line of one side then crossed the
   other's panels with its gutters. The two sides' rows are now merged where they end, and the lines
-  are placed so that each side's plots keep their proportions (D175). `above` does the same for
+  are placed so that each side's plots keep their proportions. `above` does the same for
   columns. A figure composed from sides of different shapes has a different number of rows or
   columns than before (three beside two has four rows, not six), so `withRowHeights` after such a
   `beside` takes that many weights, and its plots move. Figures whose sides line up row for row
   draw exactly as before.
 - **A secondary axis keeps one prefix through an animation.** Its prefix was chosen per frame from
   its own numbers, so a zoom across a decade stepped its title (`x [mm]` to `x [µm]`) beside a
-  primary title that held still. A shot now pins it over the image of the primary's union, as D73
-  pins the primary (D178). `PanelLayout` gains `X2Prefix`; `Y2Prefix` now pins whichever axis is on
+  primary title that held still. A shot now pins it over the image of the primary's union, as it
+  already pinned the primary. `PanelLayout` gains `X2Prefix`; `Y2Prefix` now pins whichever axis is on
   the right.
 - **An annotation's text past the plot is given room.** It was drawn unclipped but nothing
   reserved space for it, so text beyond the plot's edge was cut by the figure's (P4's `E_F` at
