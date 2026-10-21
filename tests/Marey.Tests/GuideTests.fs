@@ -203,7 +203,8 @@ let ``every unit-optional example in the guide compiles and runs`` () = runSessi
 /// that file under the block. The figures are committed, so the guide reads on GitHub with its
 /// pictures, and a figure that no longer matches what its block draws fails here, as a golden
 /// does. `MAREY_UPDATE_GOLDEN=1` accepts the new drawing. `size=640x400` on the fence sets its
-/// size; 720 × 450 otherwise.
+/// size; 720 × 450 otherwise. A block that ends on a film, or an animation of figures, draws an
+/// SVG that plays, `frames=N` of it (24 otherwise).
 module ``the tour`` =
 
     let private guideDir = lazy (Path.Combine(Golden.repoRoot.Force(), "docs", "guide"))
@@ -221,13 +222,15 @@ module ``the tour`` =
         { Code: string
           Optional: bool
           Output: string option
-          Size: float * float }
+          Size: float * float
+          Frames: int }
 
     let private fence =
         Regex(@"^```fsharp((?: [^\n]*)?)\n(.*?)^```$", RegexOptions.Multiline ||| RegexOptions.Singleline)
 
     let private outputAttr = Regex(@"\boutput=([A-Za-z0-9-]+)")
     let private sizeAttr = Regex(@"\bsize=(\d+)x(\d+)")
+    let private framesAttr = Regex(@"\bframes=(\d+)")
 
     /// The blocks of a page, in order. `fsharp-error` does not match the fence, so a block meant
     /// not to compile is left out as in `guide.md`.
@@ -236,6 +239,7 @@ module ``the tour`` =
               let attrs = m.Groups.[1].Value
               let output = outputAttr.Match attrs
               let size = sizeAttr.Match attrs
+              let frames = framesAttr.Match attrs
 
               { Code = m.Groups.[2].Value
                 Optional = Regex.IsMatch(attrs, @"\boptional\b")
@@ -244,7 +248,8 @@ module ``the tour`` =
                   if size.Success then
                       float size.Groups.[1].Value, float size.Groups.[2].Value
                   else
-                      720.0, 450.0 } ]
+                      720.0, 450.0
+                Frames = if frames.Success then int frames.Groups.[1].Value else 24 } ]
 
     /// Where the value a block ends on begins: its last line at the left margin that does not
     /// continue an expression above it.
@@ -274,18 +279,41 @@ module ``the tour`` =
                 [ yield! head
                   sprintf "let guideOutput%d =" index
                   yield! value
-                  sprintf "GuideOutput.write @\"%s\" \"%s\" %g %g (box guideOutput%d)" dir name w h index ]
+                  sprintf "GuideOutput.write @\"%s\" \"%s\" %g %g %d (box guideOutput%d)" dir name w h b.Frames index ]
 
     /// What draws a block's value. Defined in the script, ahead of the first block.
     let private prelude =
         """
 module GuideOutput =
-    let write (dir: string) (name: string) (w: float) (h: float) (value: obj) =
+    /// A film as one SVG that plays: each frame a group, shown in turn by SMIL timing, which an
+    /// `<img>` on GitHub runs. Each frame's ids are prefixed, so their clips do not collide.
+    let filmSvg (frames: int) (film: Marey.Film) =
+        let duration = float film.Duration
+        let w, h = float film.Extent.Width, float film.Extent.Height
+        let sb = System.Text.StringBuilder()
+        sb.AppendFormat(System.Globalization.CultureInfo.InvariantCulture, "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"{0}\" height=\"{1}\" viewBox=\"0 0 {0} {1}\">\n", w, h) |> ignore
+
+        for i in 0 .. frames - 1 do
+            let t = duration * float i / float (frames - 1)
+            let node = film.Frames.At(LanguagePrimitives.FloatWithMeasure t)
+            let at (k: int) = (float k / float frames).ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)
+            let values, times =
+                if i = 0 then "visible;hidden", "0;" + at 1
+                else "hidden;visible;hidden", sprintf "0;%s;%s" (at i) (at (i + 1))
+            sb.AppendFormat(System.Globalization.CultureInfo.InvariantCulture, "<g visibility=\"{0}\"><animate attributeName=\"visibility\" calcMode=\"discrete\" values=\"{1}\" keyTimes=\"{2}\" dur=\"{3}s\" repeatCount=\"indefinite\"/>\n", (if i = 0 then "visible" else "hidden"), values, times, duration) |> ignore
+            sb.Append(Marey.SvgBackend.renderScoped (sprintf "f%d-" i) film.Extent node).Append("</g>\n") |> ignore
+
+        sb.Append("</svg>\n").ToString()
+
+    let write (dir: string) (name: string) (w: float) (h: float) (frames: int) (value: obj) =
         let path = System.IO.Path.Combine(dir, name + ".svg")
 
         match value with
         | :? Marey.Figure as f -> Marey.Chart.toSvg Marey.SvgBackend.render path (Marey.Chart.size w h) f
         | :? Marey.Node as n -> System.IO.File.WriteAllText(path, Marey.SvgBackend.render (Marey.Chart.size w h) n)
+        | :? Marey.Film as film -> System.IO.File.WriteAllText(path, filmSvg frames film)
+        | :? Marey.Anim<Marey.Figure> as anim ->
+            System.IO.File.WriteAllText(path, filmSvg frames (Marey.Film.ofFigures frames (Marey.Chart.size w h) anim))
         | v -> failwithf "output=%s is a %s, which the guide does not draw" name (v.GetType().Name)
 """
 
