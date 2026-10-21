@@ -169,14 +169,15 @@ type Handle =
 /// D69 — the CE's value. A function from the stage a story starts on to whatever it binds and
 /// an animation of what the stage becomes.
 [<NoComparison; NoEquality>]
-type Story<'a> = Story of (Stage -> 'a * Anim<Stage -> Stage>)
+type Story<'a> = internal Story of (Stage -> 'a * Anim<Stage -> Stage>)
 
 /// A step whose duration has not been chosen yet. `over` chooses it; the CE uses `Default`
 /// when it is not written, and `Default` is the handle's own introduction.
 [<NoComparison; NoEquality>]
 type Step<'a> =
-    { Default: float<s>
-      Build: float<s> -> Story<'a> }
+    internal
+        { Default: float<s>
+          Build: float<s> -> Story<'a> }
 
 
 /// §7.2 / D69 — the storyboard.

@@ -1741,14 +1741,11 @@ namespace Marey
         member Item: key: string -> Handle with get
 
     [<NoComparison; NoEquality>]
-    type Story<'a> = | Story of (Stage -> 'a * Anim<(Stage -> Stage)>)
+    type Story<'a> = internal | Story of (Stage -> 'a * Anim<(Stage -> Stage)>)
 
     [<NoComparison; NoEquality>]
     type Step<'a> =
-        {
-          Default: float<Data.UnitSystems.SI.UnitSymbols.s>
-          Build: (float<Data.UnitSystems.SI.UnitSymbols.s> -> Story<'a>)
-        }
+        internal
 
     module Storyboard =
 
