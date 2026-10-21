@@ -4,7 +4,7 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D149 — LATTICE BOLTZMANN, D2Q9.
+// LATTICE BOLTZMANN, D2Q9.
 //
 // A fluid as nine populations per cell moving along the lattice's links: each step they collide
 // towards a local equilibrium (BGK) and stream to the neighbour they point at. Weakly
@@ -213,7 +213,7 @@ module Lattice =
 
         total * l.Spacing * l.Spacing
 
-/// D149 — a lattice's step, on the CPU. `GpuSim.lbm` is the same step on the GPU.
+/// A lattice's step, on the CPU. `GpuSim.lbm` is the same step on the GPU.
 [<RequireQualifiedAccess>]
 module Lbm =
 

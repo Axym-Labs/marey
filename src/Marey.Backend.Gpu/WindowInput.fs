@@ -4,7 +4,7 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// M5 — THE WINDOW'S INPUT, AS MESSAGES (D118)
+// M5 — THE WINDOW'S INPUT, AS MESSAGES
 //
 // The window has no interaction model of its own. A drag on the figure, a shifted drag, a double
 // click and the pointer passing over it become the `LiveMsg`s the notebook widget's script sends
@@ -52,7 +52,7 @@ type WindowEvent =
     /// The pointer left the window.
     | Left
     | Key of WindowKey * shift: bool
-    /// The frame loop's tick, which advances a time control that is playing (D137). The host
+    /// The frame loop's tick, which advances a time control that is playing. The host
     /// sends it only while one is.
     | Frame
 
@@ -180,7 +180,7 @@ type internal WindowGesture =
       Focus: int option
       LastPress: (float<s> * Vec2<px>) option
       Over: bool
-      /// D137 — a time control playing: its index, and the clock and the value play started
+      /// A time control playing: its index, and the clock and the value play started
       /// from. Its value at a frame is the start's plus the time since, never a sum of frames.
       Playing: (int * float<s> * float) option
       /// The content area, which the strip's rows and the figure's place are laid out against.

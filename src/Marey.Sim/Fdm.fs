@@ -4,7 +4,7 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D138 — FINITE DIFFERENCES ON A GRID: HEAT, WAVE, POISSON.
+// FINITE DIFFERENCES ON A GRID: HEAT, WAVE, POISSON.
 //
 // The solvers step M4's `ScalarGrid`, and their units come out of the types: `∂T/∂t = α ∇²T` with
 // `T` in kelvin and `α` in m²/s steps in kelvin, and the explicit limit `dt ≤ h² / (4α)` is an

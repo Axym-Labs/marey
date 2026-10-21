@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §2.2 — the four typographies the library can emit for a unit.
+/// The four typographies the library can emit for a unit.
 ///
 /// "The TikZ backend emits `\qty{}{\kilogram\metre\per\second\squared}` for siunitx; the SVG
 /// backend emits `kg·m·s⁻²`. Same `Dim`, different renderer. Get this right once and every
@@ -19,7 +19,7 @@ type UnitStyle =
     /// and it is why the registry stores a macro rather than a glyph.
     | Siunitx
 
-/// §2.2 / §12.6 — unit rendering, driven **from `Dim`**.
+/// Unit rendering, driven **from `Dim`**.
 ///
 /// The rule this module exists to enforce, quoting §12.6 in full: *"`mul force metre` produced
 /// the symbol `kg·m/s/s·m` for what is `J`. The `Dim` was correct (`L=2, M=1, T=-2`); only the
@@ -209,7 +209,7 @@ module UnitDisplay =
     /// guess: it is what the caller wrote. The registry still wins, so `mul newton metre`
     /// remains `J` rather than becoming `N·m`.
     /// The registry's name for a dimension — unless the factorisation carries an angle, which
-    /// the dimension cannot see (D98). `rad·s⁻¹` and `Hz` share `s⁻¹`; naming the first by the
+    /// the dimension cannot see. `rad·s⁻¹` and `Hz` share `s⁻¹`; naming the first by the
     /// second is a factor of 2π said confidently.
     let private canonicalFor (registry: UnitRegistry) (factors: (string * int) list) (dim: Dim) =
         if U.angleExponentOf "" factors <> 0 then None else UnitRegistry.tryCanonical registry dim
@@ -357,7 +357,7 @@ module UnitDisplay =
     /// The same rendering decision, stated over the *erased* witness metadata rather than a
     /// `U<'u>`. See `Prefix.selectForErased` for why this pair exists: §15's reloaded figure has
     /// only `IScaleErased`, and the `ToSI <> 1.0` test is what makes an electronvolt axis read
-    /// `keV` rather than `kJ` (D16). Sharing one implementation is what keeps the erased path
+    /// `keV` rather than `kJ`. Sharing one implementation is what keeps the erased path
     /// and the measured path from disagreeing.
     let internal unitTextErasedWith
         (style: UnitStyle)
@@ -397,7 +397,7 @@ module UnitDisplay =
 
     /// A number already written, and the unit text it was written in: `2 kV·m⁻¹`, or the number
     /// alone when the unit has no text. `quantityIn` ends here, and so does a live figure's
-    /// readout (D105), which has its unit text from the axis rather than from a witness.
+    /// readout, which has its unit text from the axis rather than from a witness.
     let withUnit (unitText: string) (shown: string) : string =
         if unitText = "" then shown else shown + " " + unitText
 
@@ -415,8 +415,8 @@ module UnitDisplay =
 
     /// A value and its unit as one string: `2 kV·m⁻¹`, `300 K`, `0 rad`.
     ///
-    /// The one place a single quantity is written for a reader. The quiver key (D87) and
-    /// `FixedPoint.describe` (D92) each had a private copy, and the two already disagreed on the
+    /// The one place a single quantity is written for a reader. The quiver key and
+    /// `FixedPoint.describe` each had a private copy, and the two already disagreed on the
     /// prefix; a control's label would have made a third. What the callers legitimately differ in
     /// is an argument here rather than a reason to copy it: `prefixed` chooses the prefix the value
     /// would be ticked in (`Prefix.selectForUnit`) or none, and `number` writes the scaled value,

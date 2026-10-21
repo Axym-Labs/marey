@@ -3,7 +3,7 @@ namespace Marey
 /// A tick, resolved: where it sits, what it is, and what to print.
 ///
 /// Carrying `Position` alongside `Value` means the axis compiler never re-invokes `Project`,
-/// and — more importantly — a reloaded figure whose scale is gone (§15) still knows where its
+/// and — more importantly — a reloaded figure whose scale is gone still knows where its
 /// ticks belong.
 [<Struct>]
 type TickLabel =
@@ -17,7 +17,7 @@ type TickLabel =
       /// style. The rule is `AxisSpec.TitleTex`'s.
       LabelTex: string option }
 
-/// §2.3 — **The erasure boundary.**
+/// **The erasure boundary.**
 ///
 /// "The IR must not be measure-generic — a `Scene` holding `float<'u>` could never be put in a
 /// list with a differently-united scene. Erase *once*, at the point where a series becomes a
@@ -56,7 +56,7 @@ type IScaleErased =
 
     abstract OffsetSI: float
 
-    /// D127 — whether the unit was stated, or is `U.unspecified`. An unstated axis makes no
+    /// Whether the unit was stated, or is `U.unspecified`. An unstated axis makes no
     /// dimensional claim, so the checks that compare two axes skip it — see `U.Stated`.
     abstract Stated: bool
 
@@ -70,7 +70,7 @@ type IScaleErased =
     abstract Invert: float<nd> -> float
     abstract Ticks: int -> TickLabel[]
 
-/// §2.3 — A dimensioned series, struct-of-arrays.
+/// A dimensioned series, struct-of-arrays.
 ///
 /// The design sketches this as `(float<'ux> * float<'uy>) []`. An array of reference tuples
 /// allocates one heap object per point: a 100 000-point scatter becomes 100 000 objects, which
@@ -78,7 +78,7 @@ type IScaleErased =
 /// §8.3's "struct-of-arrays layout" rule for the same data one layer down.
 ///
 /// Two parallel `float[]`s cost nothing, vectorise, and are what the batched `Markers` node
-/// (§5.1) wants anyway.
+/// wants anyway.
 type Series<[<Measure>] 'ux, [<Measure>] 'uy> =
     { Name: string
       X: float<'ux>[]
@@ -86,7 +86,7 @@ type Series<[<Measure>] 'ux, [<Measure>] 'uy> =
       XScale: Scale<'ux>
       YScale: Scale<'uy> }
 
-/// §2.3 / §12.5 — Rank-2 consumer. Both measures come back, fully typed, inside `Apply`.
+/// Rank-2 consumer. Both measures come back, fully typed, inside `Apply`.
 ///
 /// This is the mechanism that "makes a multi-panel figure with heterogeneous physical
 /// quantities possible at all": F# has no existential types, so a universally quantified
@@ -117,7 +117,7 @@ type PackedQuantity =
 /// anything knows which pair of channels will become a series.
 ///
 /// `PackedQuantity` above carries one witness and one *value*; `PackedSeries` carries a witness
-/// *pair* and two arrays. A channel is neither, and the gap is what the encoding CE (§9) walks
+/// *Pair* and two arrays. A channel is neither, and the gap is what the encoding CE walks
 /// into: it accumulates `x`, `y`, `color` … independently, each erased where it is declared,
 /// and only at the end decides which two of them are the positional pair. So this is a fourth
 /// instance of the rank-2 pattern this file already argues for three times, not a new idea.
@@ -157,7 +157,7 @@ module Erase =
     /// **The** erasure. The only sanctioned crossing from measured to unmeasured space.
     ///
     /// Tick labels are formatted here with the decimal count derived from the tick step, which
-    /// is what makes them injective (§4). `Marey.Units` layers prefix selection on top by
+    /// is what makes them injective. `Marey.Units` layers prefix selection on top by
     /// wrapping the result; it does not need its own copy of this.
     let scale (s: Scale<'u>) : IScaleErased =
         { new IScaleErased with
@@ -184,7 +184,7 @@ module Erase =
                 // How the ticks become text, which is the one thing a categorical axis does
                 // differently from every other kind: its labels are names and there is no
                 // decimal count to derive. D45 puts the level array in `Kind` precisely so that
-                // this path — the erased one, all a reloaded figure has (§15) — can still read
+                // this path — the erased one, all a reloaded figure has — can still read
                 // them.
                 let labels =
                     match s.Kind with
@@ -264,7 +264,7 @@ module Erase =
         { new PackedChannel with
             member _.Accept c = c.Apply<'u>(u, values) }
 
-    /// **A subset of a channel, taken by row index** — the operation a facet is made of (D48).
+    /// **A subset of a channel, taken by row index** — the operation a facet is made of.
     ///
     /// A facet does not re-read the data: by the time the block runs, every array in it has
     /// already been erased where it was declared (D44 finding 2) and the accessors are gone. But
@@ -350,8 +350,8 @@ module Erase =
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
                     // Written twice rather than once over a pair: `'ux` and `'uy` are
                     // different type variables and one shared helper would be monomorphised by
-                    // whichever axis reached it first (§12.2).
-                    // D127 — an unstated side makes no claim to check.
+                    // whichever axis reached it first.
+                    // An unstated side makes no claim to check.
                     if s.XScale.Unit.Stated && bx.Stated && s.XScale.Unit.Dim <> bx.Dim then
                         invalidArg
                             "b"
@@ -415,7 +415,7 @@ module Erase =
     /// The dimensions must match, and that is the only check there is to make: this is the
     /// runtime edge of the type system, exactly like `U.convert`.
     ///
-    /// `t` is **not** clamped (D71): an easing that overshoots reaches here and extrapolates,
+    /// `t` is **not** clamped: an easing that overshoots reaches here and extrapolates,
     /// which is what makes `Ease.backOut` visible on a morph.
     let tweenSeries (a: PackedSeries) (b: PackedSeries) (t: float) : PackedSeries =
         tweenAligned
@@ -426,7 +426,7 @@ module Erase =
             b
             t
 
-    /// **D104 — interpolate row by row, as the caller pairs them.** Each entry of `rows` is a
+    /// **Interpolate row by row, as the caller pairs them.** Each entry of `rows` is a
     /// row of `a` and a row of `b`, either of which may be `-1`: a row of `a` alone holds
     /// still where it is, and a row of `b` alone holds still where it is going. The result has
     /// one point per entry, in that order, and is otherwise `tweenSeries`: `a`'s name and units,

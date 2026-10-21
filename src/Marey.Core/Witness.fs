@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §2.1 — The unit witness: a phantom-typed record tying a compile-time `[<Measure>]` to
+/// The unit witness: a phantom-typed record tying a compile-time `[<Measure>]` to
 /// runtime metadata.
 ///
 /// Microsoft's own docs on units of measure: *"implementing a ToString function to print out
@@ -8,8 +8,8 @@ namespace Marey
 /// library needs a runtime handle on the unit. This is it.
 ///
 /// `Symbol` is the unit as *written by whoever declared it* — it is a presentation hint, and
-/// composing it is wrong (§2.2, §12.6). `Dim` is the truth.
-/// D111 — **the witness as a value that may be absent**: everything a `U<'u>` carries at run time,
+/// composing it is wrong. `Dim` is the truth.
+/// **The witness as a value that may be absent**: everything a `U<'u>` carries at run time,
 /// and nothing typed.
 ///
 /// The unit-optional mode takes its witness as an optional method parameter, and an optional
@@ -84,7 +84,7 @@ type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, f
     /// meaningful product or quotient — see `U.mul`.
     member _.IsAffine = offsetSI <> 0.0
 
-    /// D127 — whether anyone *said* what this unit is. True for every witness but
+    /// Whether anyone *said* what this unit is. True for every witness but
     /// `U.unspecified` and what is composed from it.
     ///
     /// **Unspecified is not dimensionless.** `U.one` claims the data has no dimension, and
@@ -105,7 +105,7 @@ type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, f
         member _.OffsetSI = offsetSI
         member _.Stated = stated
 
-/// §12.1 — **The algebra lives in module-level functions with explicit `[<Measure>]` type
+/// **The algebra lives in module-level functions with explicit `[<Measure>]` type
 /// parameters, and it must never move into operator overloads on `U<'u>`.**
 ///
 /// ```fsharp
@@ -136,7 +136,7 @@ module U =
     /// Order is first-appearance, left operand first, so `div volt metre` reads `V·m⁻¹` rather
     /// than `m⁻¹·V`: a caller who wrote a numerator first expects to read it first, and nothing
     /// downstream re-sorts.
-    /// D98 — how many powers of angle a witness carries: a radian counts once, a steradian twice
+    /// How many powers of angle a witness carries: a radian counts once, a steradian twice
     /// (solid angle is angle squared). Read from the factorisation, or from the declared symbol
     /// when the witness was declared rather than built — `U.radian` is `rad` with no
     /// factors.
@@ -239,16 +239,16 @@ module U =
     /// a count and a probability all get.
     let one: U<1> = U<1>("", Dim.zero, 1.0, 0.0)
 
-    /// D127 — the unit nobody stated: what the unit-optional mode draws an axis in when no
+    /// The unit nobody stated: what the unit-optional mode draws an axis in when no
     /// witness was given. No bracket, no prefix, and no claim for the axis-sharing check to act
     /// on. **Not `one`**, which says the quantity has no dimension — see `U.Stated`.
     let unspecified: U<1> = U<1>("", Dim.zero, 1.0, 0.0, [], false)
 
-    /// D128 — **a runtime unit, carried at measure 1.** The witness of the unit-optional mode,
+    /// **A runtime unit, carried at measure 1.** The witness of the unit-optional mode,
     /// where data is `float[]` and the unit arrives as a value: everything `u` carries at run
     /// time, under a measure that says nothing. `null` is `unspecified`.
     ///
-    /// After the erasure boundary (§2.3) the result is indistinguishable from `u`, which is why
+    /// After the erasure boundary the result is indistinguishable from `u`, which is why
     /// one measure-generic implementation serves both modes: a stat that derives a unit derives
     /// it from these runtime fields, so `density` over `erase U.metre` still reports `m⁻¹`. What
     /// is given up is the compile-time half, and that is the mode's definition.

@@ -65,7 +65,7 @@ module Color =
 
     // ---- Oklab -----------------------------------------------------------------------
 
-    /// Cube root. `System.Math.Cbrt` exists but Core must stay Fable-compatible (§13), and
+    /// Cube root. `System.Math.Cbrt` exists but Core must stay Fable-compatible, and
     /// `**` is accurate enough here — measured at 6.7e-16 relative, which is the double
     /// precision floor. A Newton refinement step on top makes it *worse*, not better.
     ///
@@ -152,7 +152,7 @@ module Color =
         let s = s.Trim().TrimStart('#')
 
         // Digit by digit rather than `Int32.TryParse` with `HexNumber`, which Fable cannot honour
-        // (D113) and which also took "ff 000" for #ff0000 by allowing white space inside a field.
+        // and which also took "ff 000" for #ff0000 by allowing white space inside a field.
         let hex (i: int) (n: int) =
             let digit (c: char) =
                 if c >= '0' && c <= '9' then int c - int '0'

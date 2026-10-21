@@ -41,20 +41,20 @@ type internal AxisRender =
       /// Distance from the panel edge to the title anchor, in device px. Layout computes it
       /// from the measured tick labels; the axis compiler does not guess.
       TitleOffset: float<px>
-      /// D168 — which way the marks point, and whether they are repeated, unlabelled, on the
+      /// Which way the marks point, and whether they are repeated, unlabelled, on the
       /// opposite side of the frame.
       Direction: TickDirection
       Mirror: bool
-      /// D167 — whether `Spec.Minor` is drawn.
+      /// Whether `Spec.Minor` is drawn.
       ShowMinor: bool }
 
-/// §5.5 — **an axis is compiled into `Path` and `Text`. There is no `Axis` node and there never
+/// **An axis is compiled into `Path` and `Text`. There is no `Axis` node and there never
 /// will be.**
 ///
 /// Everything this module emits bottoms out in the nine cases of `Node`: the spine and the tick
 /// marks are `Path`, the labels and the title are `Text`, gridlines are one `Path` routed
-/// through `Coord.Grid` so that polar curves them without this module knowing polar exists (§4),
-/// and the whole thing is wrapped in `Annotated` with `RoleAxis` or `RoleDecoration` (§5.3).
+/// through `Coord.Grid` so that polar curves them without this module knowing polar exists,
+/// and the whole thing is wrapped in `Annotated` with `RoleAxis` or `RoleDecoration`.
 ///
 /// The titles and the tick labels are **not computed here.** They come from `Marey.Units`'
 /// `Axis.auto`, which already owns prefix selection, rescaling and the `t [s]` convention. This
@@ -80,7 +80,7 @@ module internal Axes =
     /// Anything not in the table falls back to the axis's own name, `x` or `y`, which is what a
     /// plot of an unnamed compound quantity should say.
     ///
-    /// D98 — `angle` is the witness's power of angle (`U.angleExponentOf`), which `Dim` cannot
+    /// `angle` is the witness's power of angle (`U.angleExponentOf`), which `Dim` cannot
     /// see. An angle is `θ`, an angular velocity `ω`, an angular acceleration `α`; any other
     /// quantity carrying an angle falls back to the axis's name rather than borrowing the name of
     /// the angle-free quantity with the same dimension — which is how `rad/s` was titled `f`.
@@ -131,7 +131,7 @@ module internal Axes =
     /// The name a quantity gets from its dimension alone, for a witness that carries no angle.
     let defaultLabel (side: AxisSide) (d: Dim) = defaultLabelFor side 0 d
 
-    /// The power of angle behind a packed scale (D98).
+    /// The power of angle behind a packed scale.
     let angleOf (packed: PackedScale) =
         packed.Accept
             { new IScaleConsumer<int> with
@@ -145,10 +145,10 @@ module internal Axes =
 
     /// Build the axis spec, with the quantity name defaulted from the dimension when the caller
     /// did not name it. The unit half is entirely `Marey.Units`' work.
-    /// D73 — the prefix may be decided elsewhere. The only caller that passes anything but
+    /// The prefix may be decided elsewhere. The only caller that passes anything but
     /// `None` is the one laying out a whole animation against a union domain; see
     /// `Axis.ofScalePinnedWith` for why an animation needs it.
-    /// D166 — `specOfPinned` with the ticks stated, in the axis's own numbers.
+    /// `specOfPinned` with the ticks stated, in the axis's own numbers.
     let specTicked
         (ticks: TickSpec)
         (minor: MinorSpec)
@@ -190,7 +190,7 @@ module internal Axes =
         | AxisRight -> false
 
     /// The angle a rotated tick label gets. −45° in the reader's sense; +45° counter-clockwise
-    /// in `nd`, which is y-up (D13).
+    /// in `nd`, which is y-up.
     let private slant = System.Math.PI / 4.0 * 1.0<rad>
 
     /// Footprint of a label *along the axis*, at a given rotation.
@@ -218,7 +218,7 @@ module internal Axes =
     /// tilting them costs. The rung that fired is recorded in `TickPlan.Rule`.
     ///
     /// Ticks are never *moved* and never relabelled: `Marey.Units` already guaranteed the
-    /// labels are injective (§4), and a thinned axis is still a correct axis.
+    /// labels are injective, and a thinned axis is still a correct axis.
     let planTicks
         (m: ITextMeasurer)
         (font: FontSpec)
@@ -307,7 +307,7 @@ module internal Axes =
     /// How much room the tick labels need *across* the axis: their height on a horizontal axis,
     /// their width on a vertical one. Includes the tick mark and the label gap.
     /// The room a side's ticks and their labels take outside the plot area. An inward tick takes
-    /// none: its length is inside the plot (D168).
+    /// none: its length is inside the plot.
     let tickExtentWith (direction: TickDirection) (m: ITextMeasurer) (theme: Theme) (side: AxisSide) (spec: AxisSpec) (plan: TickPlan) : float<px> =
         let kept = keptTicks spec plan
 
@@ -432,7 +432,7 @@ module internal Axes =
 
         // ---- tick marks: one Path, many subpaths --------------------------------------
         //
-        // D168 — a mark runs from `inward` lengths inside the spine to `outward` lengths outside
+        // A mark runs from `inward` lengths inside the spine to `outward` lengths outside
         // it, and a mirrored side repeats the marks on the opposite edge of the frame. D167's
         // minor marks are more subpaths of the same path, shorter.
         let outward, inward =
@@ -565,7 +565,7 @@ module internal Axes =
 
     /// Gridlines, **through `Coord.Grid`**.
     ///
-    /// §4: "Cartesian is the identity `Coord`. Polar warps and gives circular gridlines … and
+    /// "Cartesian is the identity `Coord`. Polar warps and gives circular gridlines … and
     /// nothing else in the system needs to know polar exists." That property is what this
     /// function is protecting: it asks the coord for the paths and never draws a straight line
     /// itself, so a polar panel's gridlines are arcs without a line of polar-aware code here.

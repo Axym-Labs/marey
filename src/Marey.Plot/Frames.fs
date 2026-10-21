@@ -6,7 +6,7 @@ open System.Text
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// §7 / D77 — FRAMES, AND WHAT MAKES RENDERING THEM IN PARALLEL HONEST
+// FRAMES, AND WHAT MAKES RENDERING THEM IN PARALLEL HONEST
 //
 // `Anim.fs`'s header makes the claim this file cashes in:
 //
@@ -40,7 +40,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // function. It does not degrade the scene against a backend's capabilities either — that is
 // `Chart.renderTo`'s job and `SkiaBackend.renderPng`'s, and doing it here would do it twice.
 //
-// And it is not the video encoder. `FrameSequence` is deliberately the product (D75): a
+// And it is not the video encoder. `FrameSequence` is deliberately the product: a
 // numbered directory of frames is something a user can inspect, re-encode, and hand to a tool
 // this library does not ship. `Marey.Tools.Video` is thin over it.
 //
@@ -54,7 +54,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // Fable floor for the same reason and is worse, because it is also where the `ITextMeasurer`
 // seam is declared and a decorator over a seam is not the seam.
 //
-// `Marey.Plot` already references `Marey.Anim` (D69), already writes files (`Chart.toFile`),
+// `Marey.Plot` already references `Marey.Anim`, already writes files (`Chart.toFile`),
 // and is where the producer of an `Anim<Node>` lives. The graph does not move.
 // ======================================================================================
 
@@ -125,7 +125,7 @@ type MemoTextMeasurer(inner: ITextMeasurer) =
                 cache.[key] <- m
                 m
 
-    /// D150: the measurer underneath's convolution, when it has one.
+    /// The measurer underneath's convolution, when it has one.
     interface ILicConvolver with
         member _.Convolve(job: LicJob) =
 #if FABLE_COMPILER
@@ -159,7 +159,7 @@ type FramePass =
 /// would catch; it is a picture in the corner of a page.
 [<NoComparison; NoEquality>]
 type Film =
-    { /// The scene at any instant. Total on every `float<s>` — `Anim.At` clamps (D70).
+    { /// The scene at any instant. Total on every `float<s>` — `Anim.At` clamps.
       Frames: Anim<Node>
       /// The frozen layout every frame is drawn inside, and the surface it was arranged
       /// against.
@@ -321,7 +321,7 @@ module Frames =
         | FramePass.Serial -> ts |> Array.map one
         | FramePass.Concurrent -> ts |> Array.Parallel.map one
 
-    // D113 — file output is .NET's. A Fable build has no file system to write to, and these do not
+    // File output is .NET's. A Fable build has no file system to write to, and these do not
     // compile there.
 #if !FABLE_COMPILER
     let private writeAll

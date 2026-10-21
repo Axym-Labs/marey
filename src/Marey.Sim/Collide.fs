@@ -4,7 +4,7 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D144 — HARD DISCS.
+// HARD DISCS.
 //
 // Particle–particle collisions are pairwise events, resolved inside a step in time order: the
 // earliest contact first, then the rest re-tested. Between contacts every disc moves in a

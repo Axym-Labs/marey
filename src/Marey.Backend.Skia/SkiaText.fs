@@ -6,7 +6,7 @@ open SkiaSharp
 open SkiaSharp.HarfBuzz
 
 // ======================================================================================
-// §10 — "ARCHITECT `ITextShaper` AS A CAPABILITY FROM DAY ONE", CASHED IN.
+// "ARCHITECT `ITextShaper` AS A CAPABILITY FROM DAY ONE", CASHED IN.
 //
 // `ITextMeasurer` has existed since M0 with exactly one implementation behind it, and M0's
 // comment on that seam said what it was for: "having one seam here is what makes it possible
@@ -19,12 +19,12 @@ open SkiaSharp.HarfBuzz
 // file the caller names.
 //
 // ---------------------------------------------------------------------------------------
-// D62 — A FONT IS RESOLVED AND *REPORTED*, OR STATED AND OBEYED.
+// A FONT IS RESOLVED AND *REPORTED*, OR STATED AND OBEYED.
 // ---------------------------------------------------------------------------------------
 //
 // `Theme.Sans` is a CSS stack: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto,
 // Helvetica Neue, Arial, sans-serif". SVG hands that string to whatever opens the file; TikZ
-// ignores it and inherits the document's font (D35). Skia has to pick one real face, and it
+// ignores it and inherits the document's font. Skia has to pick one real face, and it
 // picks it from what happens to be installed — so the same figure is a different PNG on a
 // laptop, on a colleague's laptop and in CI.
 //
@@ -137,7 +137,7 @@ module SkiaNative =
 
 
 // ======================================================================================
-// D78 — THE SEAM DOES NOT MOVE; THE SPLITTING HIDES IN THE MEASURER; THE FALLBACK REPORTS.
+// THE SEAM DOES NOT MOVE; THE SPLITTING HIDES IN THE MEASURER; THE FALLBACK REPORTS.
 //
 // `SKShaper` shapes against **one** typeface and has no fallback list, so a codepoint that face
 // lacks becomes glyph 0 and measures as the missing-glyph box — 9.0 px at 12 px in Liberation
@@ -155,7 +155,7 @@ module SkiaNative =
 //     owns real faces — the approximate measurer has one advance table and no notion of
 //     coverage at all. So `Measure` still answers a width, and the splitting happens behind it.
 //   * **The backend gets the richer view internally**, exactly as `Shaping` served it before.
-//     D62: measuring and drawing must agree, or an `AnchorMiddle` title lands 3.5 px off. A
+//     Measuring and drawing must agree, or an `AnchorMiddle` title lands 3.5 px off. A
 //     backend that measured a segmented run and drew it with one face would be that bug with
 //     more steps.
 //   * **And it reports.** D62's whole design is "resolved and *reported*, or stated and obeyed".
@@ -208,10 +208,10 @@ type ResolvedFace =
       /// The file it came from, when the caller stated one rather than letting the stack
       /// resolve. `Some` means this render is reproducible on another machine.
       File: string option
-      /// D78 — the faces that covered codepoints this one lacks, in first-seen order. Empty
+      /// The faces that covered codepoints this one lacks, in first-seen order. Empty
       /// when this face drew every run it was asked for, which is the ordinary case.
       Fallbacks: FallbackFace[]
-      /// D78 — the codepoints **nothing** covered, ascending. These were drawn as `.notdef` in
+      /// The codepoints **nothing** covered, ascending. These were drawn as `.notdef` in
       /// the face above, and this array is the difference between a figure that fell back and a
       /// figure that has boxes in it.
       Missing: int[] }

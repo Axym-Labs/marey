@@ -2,7 +2,7 @@ namespace Marey
 
 open System
 
-/// §9 / D47 — **the stats, as pure functions over typed arrays.**
+/// **The stats, as pure functions over typed arrays.**
 ///
 /// The design lists them as "pure, composable transforms" between the data and the geom. D47
 /// settles where that leaves them once measures are involved, and the answer is: *below* the
@@ -212,7 +212,7 @@ module Stat =
 
     /// How many rows carry each distinct key, **in first-appearance order**.
     ///
-    /// The order is `Levels.ofSeq`'s and for its reason (D45): a category usually arrives in an
+    /// The order is `Levels.ofSeq`'s and for its reason: a category usually arrives in an
     /// order that is itself information, and sorting destroys it in exactly that case. The two
     /// agree by construction, so counting a key set and laying it out on a categorical axis
     /// cannot disagree about which band is which.
@@ -395,10 +395,10 @@ module Stat =
         densityWith u (bandwidth xs) DefaultDensityPoints xs
 
     // ======================================================================================
-    // frameOf — the parameters a facet fixes before it splits (D48)
+    // frameOf — the parameters a facet fixes before it splits
     // ======================================================================================
 
-    /// §9 / D48 — **what a whole sample asks for, so that its parts can agree.**
+    /// **What a whole sample asks for, so that its parts can agree.**
     ///
     /// Raw numbers rather than measured ones, because the caller is the encoding block, which is
     /// below the erasure boundary and cannot name the measure: the values are reattached inside
@@ -452,7 +452,7 @@ module Stat =
         let kept, _ = finiteOf xs
         quantileSorted (max 0.0 (min 1.0 p)) (Array.sort kept)
 
-    /// §9 / D55 — **a five-number summary with Tukey whiskers**, which is what a box plot is
+    /// **A five-number summary with Tukey whiskers**, which is what a box plot is
     /// before it is a picture.
     ///
     /// Every field is `float&lt;'u&gt;`, including the outliers: a summary of a sample of
@@ -679,7 +679,7 @@ module Stat =
 
         [| lo; hi |], [| predict f lo; predict f hi |]
 
-    /// **The slope, on its way out of the scope that knows its measure** (D47).
+    /// **The slope, on its way out of the scope that knows its measure**.
     ///
     /// Inside `Erase.reunify` both measures exist and `Slope` is `float&lt;'uy/'ux&gt;`; outside
     /// it neither does, and F# has no way to return the type. `PackedQuantity` is the encoding —

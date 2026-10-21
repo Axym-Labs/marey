@@ -1,4 +1,4 @@
-/// §3 — Coordinate-space measures.
+/// Coordinate-space measures.
 ///
 /// "Give every coordinate space its own measure. Then mixing them is a compile error."
 ///
@@ -14,7 +14,7 @@ namespace Marey
 type px
 
 /// Normalized panel space, nominally [0,1]x[0,1]. The IR is expressed *entirely* in `nd`
-/// (§5): the Scene never knows the output size, which is what makes one Scene render to a
+///: the Scene never knows the output size, which is what makes one Scene render to a
 /// 320x200 SVG and a 4K PNG without recompilation.
 [<Measure>]
 type nd

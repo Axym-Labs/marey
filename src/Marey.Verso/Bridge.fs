@@ -42,7 +42,7 @@ module internal Bridge =
     [<Literal>]
     let Render = "renderForHost"
 
-    /// Step F (D160) — a page for a frame instead of markup, for a figure drawn on a canvas.
+    /// Step F — a page for a frame instead of markup, for a figure drawn on a canvas.
     /// Optional: a `Marey.Html` without it is always rendered as markup.
     [<Literal>]
     let Document = "documentForHost"
@@ -61,11 +61,11 @@ module internal Bridge =
     [<Literal>]
     let LiveReply = "liveReplyForHost"
 
-    // D103 — optional on its own: without it every step is answered with the whole figure.
+    // Optional on its own: without it every step is answered with the whole figure.
     [<Literal>]
     let LiveAnswer = "liveAnswerForHost"
 
-    // D105 — optional on its own: without it the view shows no readout.
+    // Optional on its own: without it the view shows no readout.
     [<Literal>]
     let LiveReadout = "liveReadoutForHost"
 

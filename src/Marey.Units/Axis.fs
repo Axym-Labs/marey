@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §9 — a fully resolved axis: everything a backend needs to draw one, and nothing it has to
+/// A fully resolved axis: everything a backend needs to draw one, and nothing it has to
 /// decide for itself.
 ///
 /// "`x (fun r -> r.Time)` where `Time : float<s>` gives you a linear scale over seconds with
@@ -44,10 +44,10 @@ type AxisSpec =
       /// disagree. `Position` is untouched normalized panel space: rescaling is a relabelling,
       /// it never moves a tick.
       Ticks: TickLabel[]
-      /// D167 — the minor ticks' positions, in normalized panel space, none on a major tick.
+      /// The minor ticks' positions, in normalized panel space, none on a major tick.
       Minor: float<nd>[] }
 
-/// D166 — where an axis's ticks go: chosen, or stated.
+/// Where an axis's ticks go: chosen, or stated.
 ///
 /// Values are in the axis's own numbers, the ones its data is written in (a nanometre axis over
 /// metres takes `50e-9`, not `50`). They are stated in the data's unit and never in the prefix the
@@ -64,7 +64,7 @@ type TickSpec =
     /// title keeps its unit; the collision ladder may tilt them and never drops one.
     | TicksNamed of ticks: (float * string)[]
 
-/// D167 — where an axis's minor ticks go. They carry no labels and never take part in the
+/// Where an axis's minor ticks go. They carry no labels and never take part in the
 /// collision ladder.
 type MinorSpec =
     /// Each major interval in 5 when the major step's mantissa is 1 or 5, in 4 otherwise
@@ -77,7 +77,7 @@ type MinorSpec =
     /// Each major interval in `count`.
     | MinorCount of count: int
 
-/// D169 — a tick label written by the caller's own function, kept out of structural equality so
+/// A tick label written by the caller's own function, kept out of structural equality so
 /// that a figure carrying one is still a value. It compares by reference, and it does not survive
 /// a figure written to bytes, which is why the formats beside it are data.
 [<Sealed>]
@@ -85,7 +85,7 @@ type TickFormatter(format: float -> string) =
     member _.Format(value: float) = format value
     override _.ToString() = "custom"
 
-/// D169 — how tick numbers are written, after the prefix has rescaled them.
+/// How tick numbers are written, after the prefix has rescaled them.
 [<NoComparison>]
 type TickFormat =
     /// The decimals the step needs: what every axis did before M8.
@@ -107,7 +107,7 @@ module TickFormat =
     /// A format from a function of the number the label would show.
     let custom (format: float -> string) = FormatCustom(TickFormatter format)
 
-/// §9 — the axis compiler. Turns a `Scale<'u>` into an `AxisSpec` with no configuration.
+/// The axis compiler. Turns a `Scale<'u>` into an `AxisSpec` with no configuration.
 ///
 /// ### Why the input is `Scale<'u>` and not `IScaleErased`
 ///
@@ -201,7 +201,7 @@ module Axis =
         | (Latex | Siunitx), (m, e) -> "$" + (if m = 1 then "" else intText m + "\\times") + "10^{" + intText e + "}$"
 
     /// The ticks' labels, plain and TeX, *after* prefix rescaling, so that they are injective
-    /// (§4) in the numbers the axis actually prints.
+    /// in the numbers the axis actually prints.
     ///
     /// A log axis's ticks are not on a uniform grid, so each takes its own decimals, or the axis
     /// is written in powers of ten — the rule is `Ticks.logInPowers`, applied here to the
@@ -210,7 +210,7 @@ module Axis =
     /// `Erase.scale` uses, so the measured, packed and erased paths cannot label a category
     /// three different ways. It is not rescaled, so the value handed here is the level index:
     /// `Prefix.selectFor` refuses to rescale a dimensionless axis and an ordinal scale is
-    /// dimensionless by construction (D45).
+    /// dimensionless by construction.
     ///
     /// Only a power of ten has a TeX form. Digits and a decimal point typeset identically in TeX
     /// and in plain text.
@@ -237,7 +237,7 @@ module Axis =
     [<Literal>]
     let internal MaxStatedTicks = 50
 
-    /// D166 — the stated values inside the domain, in order, and the step their labels need.
+    /// The stated values inside the domain, in order, and the step their labels need.
     let private statedTicks (ticks: TickSpec) (domain: float * float) (axisUnit: string) : float[] * float option =
         let lo, hi = min (fst domain) (snd domain), max (fst domain) (snd domain)
         let slack = 1e-9 * (hi - lo)
@@ -276,13 +276,13 @@ module Axis =
             let kept = named |> Array.map fst |> Array.filter within |> Array.sort
             kept, minGap kept
 
-    /// D166 — `ofScalePinnedWith` with the ticks stated. `TicksAuto` is that function exactly.
+    /// `ofScalePinnedWith` with the ticks stated. `TicksAuto` is that function exactly.
     /// The most minor ticks an axis draws. Past it a minor step is so fine against the domain that
     /// the ticks are a grey bar, and none are drawn.
     [<Literal>]
     let private MaxMinorTicks = 500
 
-    /// D167 — the minor values inside the domain, none on a major one. `majors` are the major
+    /// The minor values inside the domain, none on a major one. `majors` are the major
     /// values and `step` the major step, when the majors are a regular step apart.
     let private minorValues (minor: MinorSpec) (kind: ScaleKind) (domain: float * float) (majors: float[]) (step: float option) : float[] =
         let lo, hi = min (fst domain) (snd domain), max (fst domain) (snd domain)
@@ -371,7 +371,7 @@ module Axis =
 
         let labelStep = (defaultArg step (float (Ticks.linearStep tickCount scale.Domain))) / factor
 
-        // D169 — the common power of ten a scientific axis takes into its title.
+        // The common power of ten a scientific axis takes into its title.
         let exponent =
             match format with
             | FormatScientific ->
@@ -471,7 +471,7 @@ module Axis =
     /// rescaled values, because rescaling is not the part being pinned.
     ///
     /// **Only an animation needs this.** Which decade a prefix is chosen from is a property of
-    /// "the numbers" (D19), and across a shot the numbers are the union of every frame's domain
+    /// "the numbers", and across a shot the numbers are the union of every frame's domain
     /// rather than the instantaneous one. Without the pin a zoom crossing a decade steps
     /// `mm → µm` mid-shot: the axis *title* changes while the data is the thing supposed to be
     /// moving, and `10⁻¹⁸·m²` can appear and disappear between two frames.
@@ -532,7 +532,7 @@ module Axis =
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) =
                     ofScalePinnedWith pin style registry tickCount label s }
 
-    /// D166 — `ofPackedPinnedWith` with the ticks stated.
+    /// `ofPackedPinnedWith` with the ticks stated.
     let internal ofPackedTicked
         (ticks: TickSpec)
         (minor: MinorSpec)
@@ -571,7 +571,7 @@ module Axis =
             { new IScaleConsumer<Prefix> with
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) = prefixFor s.Kind (Prefix.selectForUnit s.Unit) domain }
 
-    /// The reloaded-figure path (§15).
+    /// The reloaded-figure path.
     ///
     /// **This used to be correct for SI-coherent axes only**, because it selected a prefix from
     /// the `Dim` alone and rendered from the `Dim` alone. That made a reloaded electronvolt axis

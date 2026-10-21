@@ -6,7 +6,7 @@ open System.IO
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D75 / D76 — THE MUX, WHICH IS THE THIN HALF
+// THE MUX, WHICH IS THE THIN HALF
 //
 // **The frame sequence is the product; this is a convenience over it.** That is D75's wording
 // and it is the whole design. `Frames.write` (in `Marey.Plot`) renders a film in parallel and

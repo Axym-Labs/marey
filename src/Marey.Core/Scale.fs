@@ -22,9 +22,9 @@ type ScaleKind =
     /// `1/x`. Arrhenius plots against `1/T`, and the reason it is on §4's ship list.
     | Reciprocal
 
-    /// §9 — **a categorical axis**, `n` named levels in `n` equal bands.
+    /// **A categorical axis**, `n` named levels in `n` equal bands.
     ///
-    /// D45: the levels ride in the tag because a category *is* its level set, and that is data
+    /// The levels ride in the tag because a category *is* its level set, and that is data
     /// in exactly the sense the note at the top of this type argues for. It serializes (§15
     /// reloads a categorical axis with its names intact, through `IScaleErased.Kind`, and no
     /// new erased interface is needed for it), it is inspectable in a test, and adding it here
@@ -32,10 +32,10 @@ type ScaleKind =
     /// which a sibling type would not have done.
     | Ordinal of levels: string[]
 
-/// §4 — A scale maps **data space to normalized panel space**.
+/// A scale maps **data space to normalized panel space**.
 ///
 /// `Forward` deliberately does *not* clamp. A point outside the domain projects outside
-/// `[0,1]` and is removed by the panel's `Clip` node in the IR (§5). Clamping here would
+/// `[0,1]` and is removed by the panel's `Clip` node in the IR. Clamping here would
 /// silently pile out-of-range data onto the panel edge, which is a lie about the data — and
 /// it would also break the `inverse (forward x) = x` round-trip that §4 asks to be proven.
 type Scale<[<Measure>] 'u> =
@@ -99,7 +99,7 @@ module Scale =
 
     /// Logarithm to an arbitrary base.
     ///
-    /// §4: "log10 of a dimensioned quantity is not itself dimensioned — a subtlety the type
+    /// "log10 of a dimensioned quantity is not itself dimensioned — a subtlety the type
     /// system will correctly force you to acknowledge." That acknowledgement is the
     /// `float lo` on the way in and the `FloatWithMeasure` on the way out; there is no way to
     /// write it that hides the fact, and there should not be.
@@ -192,7 +192,7 @@ module Scale =
           // and thinning them is the collision-avoidance layer's job, not this one's.
           TickHint = fun _ -> Array.init n (fun i -> tag<'u> (float i)) }
 
-    /// §9 / D45 — **a categorical axis**: `n` levels, one band each, level `i` at index `i`.
+    /// **A categorical axis**: `n` levels, one band each, level `i` at index `i`.
     ///
     /// The type is `Scale<1>` and not `Scale<'k>`, and that is the decision rather than an
     /// accident. A category has no measure, so a measure-indexed scale over one is a

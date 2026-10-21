@@ -4,7 +4,7 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D144 — EVENTS.
+// EVENTS.
 //
 // An event is a function of the state, a direction and a response. Within a step whose ends
 // straddle a root in the stated direction, the root is located to a stated tolerance in time:
@@ -43,7 +43,7 @@ type Response<'s> =
     /// The simulation stops; past the event its state holds.
     | Stop
 
-/// D144 — a crossing of zero by a function of the state, and what to do there. Built by
+/// A crossing of zero by a function of the state, and what to do there. Built by
 /// `Event.create`, which takes the function in its own unit.
 type Event<'s> =
     { Name: string

@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §9 — **"A theme is a record of resolved values, not a stylesheet lookup."**
+/// **"A theme is a record of resolved values, not a stylesheet lookup."**
 ///
 /// Every field below is a concrete font, a concrete colour, a concrete width in `px` or a
 /// concrete size in `pt`. There is no key, no cascade, no `Map(string,string)`, and no "inherit
@@ -18,7 +18,7 @@ namespace Marey
 /// So a theme contains no `nd` at all. Turning a `px` gap into the `nd` offset the IR wants is
 /// the layout layer's job and needs the figure's `Extent(px)`; see `Layout.ndX`/`Layout.ndY`.
 /// Doing that conversion here would bake a resolution into the theme.
-/// D168 — which way tick marks point from the spine.
+/// Which way tick marks point from the spine.
 type TickDirection =
     /// Away from the plot area: the screen convention.
     | TickOut
@@ -79,7 +79,7 @@ type Theme =
       LegendPadding: float<px>
       LegendItemGap: float<px>
       LegendSwatchWidth: float<px>
-      /// D49 — the width of a colorbar's strip. The rest of the bar's column is its tick
+      /// The width of a colorbar's strip. The rest of the bar's column is its tick
       /// labels and its title, and those are measured by the axis compiler's own helpers
       /// rather than given a theme field of their own.
       ColorbarWidth: float<px>
@@ -116,7 +116,7 @@ type Theme =
       /// D5 put a shape field on `MarkerBatch`.
       MarkerShapes: MarkerShape[]
 
-      // ---- Ticks (D167, D168) ---------------------------------------------------------
+      // ---- Ticks ---------------------------------------------------------
       TickDirection: TickDirection
       /// Ticks on the top and right of the frame as well, unlabelled. Drawn only where the frame
       /// is (`PanelFrame`).
@@ -173,12 +173,12 @@ module Theme =
     let private defaultShapes =
         [| MarkCircle; MarkSquare; MarkTriangleUp; MarkDiamond; MarkPlus; MarkTriangleDown; MarkCross |]
 
-    /// §9 — "serif, thin rules, no chartjunk, colour-blind-safe."
+    /// "serif, thin rules, no chartjunk, colour-blind-safe."
     ///
     /// No gridlines, hairline rules, and a palette that has been measured under three
     /// dichromacies. This is the theme a figure goes into a paper in.
     ///
-    /// **D168: the box of a physics journal.** Since M8 it is framed, with ticks pointing into the
+    /// **The box of a physics journal.** Since M8 it is framed, with ticks pointing into the
     /// plot on all four sides and minor ticks between them — the convention of the journals it is
     /// for, and pgfplots' own default, so a `Theme.tikz` figure matches the document around it.
     /// Until 0.6 it was an open L with outward ticks; that figure is `Theme.publication` with
@@ -234,7 +234,7 @@ module Theme =
           TickCount = Axis.DefaultTickCount
           MarkerShapes = defaultShapes
 
-          // D168 — the physics-journal convention: a framed box, ticks inside on all four sides,
+          // The physics-journal convention: a framed box, ticks inside on all four sides,
           // minor ticks between them.
           TickDirection = TickIn
           MirrorTicks = true
@@ -327,7 +327,7 @@ module Theme =
     /// same by construction.
     let initial: Theme = modern
 
-    /// §9 — the notebook theme, and now a variation on `modern` rather than a sibling of it.
+    /// The notebook theme, and now a variation on `modern` rather than a sibling of it.
     ///
     /// What survives as its own is the tinted panel and the vertical gridlines. Both exist for one
     /// reason: a figure in a notebook is not on a page, it is in a stack of cells, and it has to
@@ -344,7 +344,7 @@ module Theme =
             ShowGridX = true
             ShowLegendFrame = true }
 
-    /// §9 — "large type." Everything that carries meaning at four metres is bigger; everything
+    /// "large type." Everything that carries meaning at four metres is bigger; everything
     /// that does not is gone.
     let presentation: Theme =
         { modern with
@@ -377,7 +377,7 @@ module Theme =
             ShowGridX = false
             ShowGridY = true }
 
-    /// §9 — dark.
+    /// Dark.
     ///
     /// **Not an inversion of the light theme, and that is the point.** Pure white text on pure
     /// black is a contrast ratio of 21 and produces halation — the glyphs bloom on an emissive
@@ -453,16 +453,16 @@ module Theme =
 
     let withPalette (cs: Color[]) (t: Theme) = { t with Categorical = cs }
 
-    /// D168 — which way the ticks point: `TickIn` is the physics-journal convention.
+    /// Which way the ticks point: `TickIn` is the physics-journal convention.
     let withTickDirection (d: TickDirection) (t: Theme) = { t with TickDirection = d }
 
-    /// D168 — ticks repeated, unlabelled, on the top and right of the frame; turns the frame on.
+    /// Ticks repeated, unlabelled, on the top and right of the frame; turns the frame on.
     let withMirrorTicks (on: bool) (t: Theme) =
         { t with
             MirrorTicks = on
             PanelFrame = t.PanelFrame || on }
 
-    /// D167 — minor ticks on every axis whose `MinorSpec` is `MinorAuto`.
+    /// Minor ticks on every axis whose `MinorSpec` is `MinorAuto`.
     let withMinorTicks (on: bool) (t: Theme) = { t with MinorTicks = on }
     let withSequential (r: Ramp) (t: Theme) = { t with Sequential = r }
     let withDiverging (r: Ramp) (t: Theme) = { t with Diverging = r }

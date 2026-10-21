@@ -2,13 +2,13 @@ namespace Marey
 
 open System
 
-/// D110 — **a unit read from a string**, in the syntax of UDUNITS-2, Unidata's C library:
+/// **A unit read from a string**, in the syntax of UDUNITS-2, Unidata's C library:
 /// `"kg m s-2"`, `"V/m"`, `"kPa"`, `"degC"`.
 ///
 /// It is the only route to a unit first seen at run time — a netCDF attribute, a CSV header, a
 /// configuration file — and the spelling a C# caller will use for anything composed. Written in
 /// F# rather than bound, because a native dependency would end `Marey.Units`' and the core's
-/// zero-dependency rule and the byte-identical SVG with them (D42).
+/// zero-dependency rule and the byte-identical SVG with them.
 ///
 /// ### What it reads
 ///
@@ -34,7 +34,7 @@ open System
 /// ### What it returns
 ///
 /// The witness the same composition in F# would produce, at measure 1: `"V/m"` is `U.div volt
-/// metre`, with the factorisation `[V,1; m,-1]` (D41), not a `Dim` canonicalised into base units.
+/// metre`, with the factorisation `[V,1; m,-1]`, not a `Dim` canonicalised into base units.
 /// A single symbol returns the declared witness itself. The measure is lost, as it must be for a
 /// unit first seen at run time; `U.tryAs` asserts one back, checked.
 [<AutoOpen>]
@@ -233,7 +233,7 @@ module UnitParsing =
     [<RequireQualifiedAccess>]
     module U =
 
-        /// D110 — read a unit, or say why it cannot be read. See `UnitParsing` for the syntax.
+        /// Read a unit, or say why it cannot be read. See `UnitParsing` for the syntax.
         let tryParse (text: string) : Result<U<1>, string> =
             if isNull text || String.IsNullOrWhiteSpace text then
                 Error "Marey: an empty string is not a unit. Leave the unit out, or use U.unspecified, for numbers nobody named."
@@ -247,15 +247,15 @@ module UnitParsing =
                 with :? FormatException as e ->
                     Error e.Message
 
-        /// D110 — read a unit: `U.parse "V/m"`. Raises `FormatException` with the reason when the
+        /// Read a unit: `U.parse "V/m"`. Raises `FormatException` with the reason when the
         /// text is not one; `tryParse` returns it instead.
         let parse (text: string) : U<1> =
             match tryParse text with
             | Ok u -> u
             | Error why -> raise (FormatException why)
 
-        /// D110 — **assert a measure onto a unit read at run time, checked.** `Some` when `u`
-        /// has `target`'s dimension and carries an angle exactly as often (D98), as a `U<'u>`
+        /// **Assert a measure onto a unit read at run time, checked.** `Some` when `u`
+        /// has `target`'s dimension and carries an angle exactly as often, as a `U<'u>`
         /// with everything `u` carries at run time — so `tryAs U.metre (U.parse "km")` is a
         /// `U<m>` whose `ToSI` is 1000, as `U.scaled "km" 1000.0 U.metre` is. `None` otherwise,
         /// and for an unstated unit, which makes no claim to check. A checked assertion, not a

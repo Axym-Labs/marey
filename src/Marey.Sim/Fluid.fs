@@ -4,7 +4,7 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D148 — STAM'S STABLE FLUIDS, ON A STAGGERED GRID.
+// STAM'S STABLE FLUIDS, ON A STAGGERED GRID.
 //
 // Incompressible flow in a box of square cells: semi-Lagrangian advection, implicit viscosity, and
 // a pressure projection, each unconditionally stable, so a step is as long as the picture wants.
@@ -180,7 +180,7 @@ module Fluid =
     /// The vorticity at the cells' centres, `∂v/∂x − ∂u/∂y` of `velocity`.
     let vorticity<[<Measure>] 'x, [<Measure>] 'q> (f: Fluid<'x, 'q>) : ScalarGrid<'x, 'x, 1 / s> = Field.curl (velocity f)
 
-/// D148 — a fluid's step, on the CPU. `GpuSim.stam` is the same step on the GPU.
+/// A fluid's step, on the CPU. `GpuSim.stam` is the same step on the GPU.
 [<RequireQualifiedAccess>]
 module Stam =
 

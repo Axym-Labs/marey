@@ -6,7 +6,7 @@ open System.Text
 // ======================================================================================
 // THE TIKZ BACKEND.
 //
-// §6: "Emits `\begin{tikzpicture}`. Figures that inherit the document's fonts and `siunitx`
+// "Emits `\begin{tikzpicture}`. Figures that inherit the document's fonts and `siunitx`
 // units. For a physics/maths audience this is a killer feature almost nobody offers, and it is
 // *cheap* — it's a text emitter."
 //
@@ -142,7 +142,7 @@ type TikzBackend(?options: TikzOptions) =
         if finished then
             invalidOp "Marey.TikzBackend: Draw cannot be called after Finish; call Begin again to start a new document."
 
-    /// px → bp, for the parts of the IR that are in device units (D12).
+    /// px → bp, for the parts of the IR that are in device units.
     let bp (v: float<px>) = float (Space.ptOfPx opts.Dpi v)
 
     // ---- geometry --------------------------------------------------------------------
@@ -504,7 +504,7 @@ type TikzBackend(?options: TikzOptions) =
                 draw ctm (depth + 1) child
                 sb.Append(indent depth).Append("\\end{scope}\n") |> ignore
 
-        // D67 — this backend advertises `GroupOpacity = false`, so `Degrade.forCaps` normally
+        // This backend advertises `GroupOpacity = false`, so `Degrade.forCaps` normally
         // folds the node away before the traversal sees it and this branch is for a caller
         // driving `IBackend` by hand. It performs the identical fold rather than inventing a
         // second answer.
@@ -524,7 +524,7 @@ type TikzBackend(?options: TikzOptions) =
 
             draw ctm depth (Degrade.foldOpacity a child)
 
-        // §5.2 — stable identity. There is no `id` attribute in TeX, so the key becomes a comment:
+        // Stable identity. There is no `id` attribute in TeX, so the key becomes a comment:
         // it survives into the output for a reviewer and for anyone diffing two pictures, which is
         // what the key is for at this stage.
         | Keyed(Key name, child) ->
@@ -549,7 +549,7 @@ type TikzBackend(?options: TikzOptions) =
 
             draw ctm depth child
 
-    /// D64 — a raster becomes a sidecar `.png` and an `\includegraphics`.
+    /// A raster becomes a sidecar `.png` and an `\includegraphics`.
     ///
     /// This is the paragraph of D31 that is superseded. `Rasters` was `false` at M1 on the
     /// argument that "an honest raster needs a sidecar .png and `\includegraphics`, which breaks
@@ -788,7 +788,7 @@ type TikzBackend(?options: TikzOptions) =
     /// check emitted coordinates against the transform that produced them.
     member _.RootTransform: Affine<nd, pt> = root
 
-    /// The sidecar files this picture refers to, in traversal order (D64).
+    /// The sidecar files this picture refers to, in traversal order.
     ///
     /// Empty for every figure that contains no `Raster`, which is every figure Marey produced
     /// before `Chart.image` — so a caller who never draws an image never learns this exists.
@@ -901,7 +901,7 @@ module TikzBackend =
     /// is cheap insurance on an older one and it documents which macros the emitter relies on.
     ///
     /// `graphicx` is where `\includegraphics` comes from, and a raster is the only thing that
-    /// needs it (D64). It is loaded unconditionally rather than only when a picture contains an
+    /// needs it. It is loaded unconditionally rather than only when a picture contains an
     /// image, because a preamble that changes with the figure is a preamble a host document
     /// cannot be written against once.
     [<Literal>]
@@ -949,7 +949,7 @@ module TikzBackend =
         renderInto backend (documentOnlyCaps (backend :> IBackend).Caps) extent node
         backend.Result
 
-    /// Render a scene as a picture plus the sidecar files it refers to (D64).
+    /// Render a scene as a picture plus the sidecar files it refers to.
     ///
     /// This is the door D31 named and did not build. A `Raster` becomes an
     /// `\includegraphics` of a `.png` that comes back in `Assets`, so the caller writes
@@ -988,11 +988,11 @@ module TikzBackend =
     /// Render a scene and write the picture to a file as UTF-8 with no byte-order mark.
     ///
     /// The encoding is pinned rather than left to the default because these files are golden
-    /// masters (§13): a BOM appearing or disappearing would show up as a whole-file diff.
+    /// masters: a BOM appearing or disappearing would show up as a whole-file diff.
     let renderToFile (path: string) (extent: Extent<px>) (node: Node) : unit =
         IO.File.WriteAllText(path, render extent node, UTF8Encoding false)
 
-    /// Render a scene to a `.tex` file and write its sidecar images beside it (D64).
+    /// Render a scene to a `.tex` file and write its sidecar images beside it.
     ///
     /// The sidecars go in the **same directory as `path`**, because that is the only place
     /// `\\includegraphics{marey-raster-0.png}` will look for them without the host

@@ -9,7 +9,7 @@ type internal LegendMark =
     | LegendLineMarker of dash: float<px>[] * shape: MarkerShape
     /// A filled rectangle: areas and bars.
     | LegendSwatch
-    /// D49 — a marker drawn at a stated diameter rather than the theme's: the size key of a
+    /// A marker drawn at a stated diameter rather than the theme's: the size key of a
     /// continuous size channel, three of them at the domain's ends and middle.
     ///
     /// **A new case here is cheap in a way an IR case is not**, which is the whole of D11's
@@ -28,7 +28,7 @@ type internal LegendEntry =
 
 /// Where the legend sits: a corner of the plot area, outside it, the emptiest corner, or off.
 ///
-/// Outside placement waited from M0 to M8 (D171) because it changes the panel's width and the tick
+/// Outside placement waited from M0 to M8 because it changes the panel's width and the tick
 /// plan is measured against that width. D49's colorbar showed the way round: a column of the
 /// panel's own grid, sized before the ticks are planned, so the loop is still two passes.
 type LegendPlacement =
@@ -37,21 +37,21 @@ type LegendPlacement =
     | LegendTopLeft
     | LegendBottomRight
     | LegendBottomLeft
-    /// D171 — a column of its own to the right of the plot (and of a colorbar).
+    /// A column of its own to the right of the plot (and of a colorbar).
     | LegendOutsideRight
-    /// D171 — a row of its own below the x axis's title.
+    /// A row of its own below the x axis's title.
     | LegendOutsideBottom
-    /// D171 — the inside corner whose box covers the fewest drawn marks, or outside right when
+    /// The inside corner whose box covers the fewest drawn marks, or outside right when
     /// every corner is covered. Decided once for an animation, over all its frames, so the legend
     /// does not jump.
     | LegendBest
 
-/// D171 — the legend shared by every panel of a figure (`Chart.withFigureLegend`).
+/// The legend shared by every panel of a figure (`Chart.withFigureLegend`).
 type FigureLegend =
     | FigureLegendRight
     | FigureLegendBottom
 
-/// §5.5 — a legend is not an IR node either. It is a `Path` for the box, a `Path` or `Markers`
+/// A legend is not an IR node either. It is a `Path` for the box, a `Path` or `Markers`
 /// per swatch, and a `Text` per entry, wrapped in `Annotated` with `RoleLegend` so that a later
 /// milestone can make it clickable without the scene having to be rebuilt to carry the
 /// information (§5.3: "retrofitting this is painful; it costs almost nothing now").
@@ -81,7 +81,7 @@ module internal Legend =
         entries
         |> Array.fold (fun acc e -> max acc (swatchSize theme e)) theme.LegendSwatchWidth
 
-    /// D171 — the entries split into `columns` columns, filled down then across.
+    /// The entries split into `columns` columns, filled down then across.
     let private columnsOf (columns: int) (entries: LegendEntry[]) : LegendEntry[][] =
         let columns = max 1 (min columns entries.Length)
         let perColumn = (entries.Length + columns - 1) / columns
@@ -142,7 +142,7 @@ module internal Legend =
           X1 = x0 + size.Width
           Y1 = y0 + size.Height }
 
-    /// D171 — compile the legend into the box `b`, in device px, in `columns` columns, with its
+    /// Compile the legend into the box `b`, in device px, in `columns` columns, with its
     /// frame drawn or not. The corner placements and the outside ones are both this, at a box
     /// chosen for them.
     let compileIn

@@ -5,20 +5,20 @@ open System.Runtime.InteropServices
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// M4.5 — TYPED CONTROLS (D101)
+// M4.5 — TYPED CONTROLS
 //
 // A control is a source of one value, owned by the widget and read-only to the code that uses
 // it. Controls compose *applicatively*: `interact { let! t = … and! on = … in return view t on }`.
 // The block has `BindReturn` and `MergeSources` and no `Bind`, so a control cannot be chosen by
 // the value of another one. That is the point rather than a limitation. The set of controls is
 // known without running the view, which is what lets the widget lay out once against all of
-// them (D106) and draw itself before the kernel has answered; and a widget whose shape was a
+// them and draw itself before the kernel has answered; and a widget whose shape was a
 // function of its own state would have no stable document to patch.
 //
 // **The measures are spent here, once.** A slider over `float<K>` hands the view `float<K>`;
 // the widget and the messages only ever see the erased `ControlSpec` and a `float`. The value's
 // label is written by `UnitDisplay.quantityIn`, under a prefix chosen once from the slider's
-// range, so number formatting stays in one place and in the kernel (D105): the widget's script
+// range, so number formatting stays in one place and in the kernel: the widget's script
 // formats nothing.
 // ======================================================================================
 
@@ -150,7 +150,7 @@ module Control =
                  Show = fun v -> names.[max 0 (min (names.Length - 1) (int (Num.roundEven v)))] } |]
           Read = fun vs -> snd options.[max 0 (min (options.Length - 1) (int (Num.roundEven vs.[0])))] }
 
-    /// D137 — a time control over `[lo, hi]`, starting at `lo`, arranged over `samples` states
+    /// A time control over `[lo, hi]`, starting at `lo`, arranged over `samples` states
     /// along it, looping at the end or stopping there. The view receives `float<s>`.
     let timeWith (samples: int) (loop: bool) (label: string) (lo: float<s>) (hi: float<s>) =
         let lo', hi' = float lo, float hi
@@ -175,7 +175,7 @@ module Control =
                  Show = show } |]
           Read = fun (vs: float[]) -> LanguagePrimitives.FloatWithMeasure<s> vs.[0] }
 
-    /// D137 — a time control over `[lo, hi]` that loops, arranged over 60 states along it.
+    /// A time control over `[lo, hi]` that loops, arranged over 60 states along it.
     let time (label: string) (lo: float<s>) (hi: float<s>) =
         timeWith 60 true label lo hi
 
@@ -188,7 +188,7 @@ module Control =
                  Show = fun v -> if v <> 0.0 then "on" else "off" } |]
           Read = fun vs -> vs.[0] <> 0.0 }
 
-/// D109 — the controls that take a witness, in the unit-optional mode: a slider over plain
+/// The controls that take a witness, in the unit-optional mode: a slider over plain
 /// numbers, with a unit that may be stated. `Control.Slider("T", 200.0, 400.0, 300.0, unit = U.kelvin)`.
 /// The other controls take no witness and are the module's in both modes.
 [<AbstractClass; Sealed>]
@@ -215,7 +215,7 @@ type Control =
         ) : Control<float> =
         Control.slider (U.erase unit) label lo hi init
 
-    /// D137 — a time control over plain seconds: `Control.Time("t", 0.0, 10.0)`. It loops, and
+    /// A time control over plain seconds: `Control.Time("t", 0.0, 10.0)`. It loops, and
     /// is arranged over 60 states along its range unless told otherwise.
     static member Time
         (

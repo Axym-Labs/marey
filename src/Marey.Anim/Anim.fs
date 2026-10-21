@@ -3,7 +3,7 @@ namespace Marey
 open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
-/// §7 — an animation is a value, not a mutation.
+/// An animation is a value, not a mutation.
 ///
 /// Manim's objects are mutable and its scene replays a timeline from the start. That single
 /// decision is why a Manim render cannot be scrubbed, cannot produce frames out of order, and
@@ -103,7 +103,7 @@ type Anim<'a>(duration: float<s>, atSeconds: float<s> -> 'a) =
     member _.AtFraction(u: float) : 'a = atSeconds (u * duration)
 
 
-/// §7 — the algebra. Six combinators and two constructors; the laws are stated and tested in
+/// The algebra. Six combinators and two constructors; the laws are stated and tested in
 /// `AnimProperties` rather than asserted here.
 ///
 /// **What actually holds**, because §7's one-line summary ("`(Anim<'a>, andThen, constant)` is a

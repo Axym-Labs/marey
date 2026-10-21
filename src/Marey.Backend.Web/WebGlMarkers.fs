@@ -4,10 +4,10 @@ open System
 open Fable.Core
 
 // ======================================================================================
-// M5 — MARKER BATCHES ON WEBGL2 (D122)
+// M5 — MARKER BATCHES ON WEBGL2
 //
 // The GPU backend's instanced draw, in the browser: one quad per mark, each shape a signed
-// distance in device pixels, filled then stroked in one pass and composited on its own (D132).
+// distance in device pixels, filled then stroked in one pass and composited on its own.
 // The shader is `MarkerDrawer`'s, ported to GLSL ES 3.0, so a mark here is the mark the desktop
 // draws, and both are Skia's outline.
 //
@@ -73,7 +73,7 @@ module internal WebGlSurface =
     [<Emit("(function (w, h) { var c = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(w, h) : (typeof document !== 'undefined' ? Object.assign(document.createElement('canvas'), { width: w, height: h }) : null); return c && c.getContext('webgl2', { premultipliedAlpha: true, antialias: false, alpha: true }); })($0, $1)")>]
     let create (_width: int) (_height: int) : WebGl2 = jsNative
 
-/// D122 — marker batches drawn by WebGL2 and composited into a 2-D context.
+/// Marker batches drawn by WebGL2 and composited into a 2-D context.
 [<Sealed>]
 type WebGlMarkers(?minimumBatch: int) =
 
@@ -264,7 +264,7 @@ void main() {
             if int surface.width <> w then surface.width <- float w
             if int surface.height <> h then surface.height <- float h
 
-            // Device pixels, in `float` until here (D116).
+            // Device pixels, in `float` until here.
             let centres = Array.zeroCreate<float32> (b.Points.Length * 2)
 
             for i in 0 .. b.Points.Length - 1 do

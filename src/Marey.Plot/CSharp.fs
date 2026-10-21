@@ -5,7 +5,7 @@ open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 open Marey
 
-/// D124 — **the combinators as C# reads them**: `fig.WithTitle("t").Add(other)`.
+/// **The combinators as C# reads them**: `fig.WithTitle("t").Add(other)`.
 ///
 /// F# pipes a figure through `Chart.withTitle "t"`; C# has no pipe and no curried call, so each
 /// combinator a C# caller reaches for is an extension method here, one line over the module
@@ -13,7 +13,7 @@ open Marey
 /// it opens `Marey.CSharp`, so F# keeps one spelling of every combinator.
 ///
 /// Output is `Save` and `Render`, taking a backend's renderer as a delegate:
-/// `fig.Save(SvgRenderer.Render, "plot.svg", 800, 500)`. `Marey.Plot` references no backend (§16),
+/// `fig.Save(SvgRenderer.Render, "plot.svg", 800, 500)`. `Marey.Plot` references no backend,
 /// so the renderer arrives as an argument, exactly as it does to `Chart.toFile`.
 [<Extension; AbstractClass; Sealed>]
 type FigureExtensions =
@@ -222,7 +222,7 @@ type FigureExtensions =
 
     // ---- Composition -----------------------------------------------------------------------------
 
-    /// `top`'s layers as the next series (D125).
+    /// `top`'s layers as the next series.
     [<Extension>]
     static member Add(fig: Figure, top: Figure) = Chart.add top fig
 
@@ -236,7 +236,7 @@ type FigureExtensions =
     [<Extension>]
     static member Above(fig: Figure, below: Figure) = Chart.above below fig
 
-    /// D177 — `right`'s layers on this figure's last panel, against a y axis on its right.
+    /// `right`'s layers on this figure's last panel, against a y axis on its right.
     [<Extension>]
     static member WithRightAxis(fig: Figure, right: Figure) = Chart.withRightAxis right fig
 
@@ -246,41 +246,41 @@ type FigureExtensions =
     [<Extension>]
     static member WithRightYLabel(fig: Figure, label: string) = Chart.withRightYLabel label fig
 
-    /// D180 — a one-panel figure drawn over this figure's last panel, at fractions of its plot.
+    /// A one-panel figure drawn over this figure's last panel, at fractions of its plot.
     [<Extension>]
     static member WithInset(fig: Figure, x0: float, y0: float, x1: float, y1: float, inset: Figure) = Chart.withInset (x0, y0, x1, y1) inset fig
 
-    /// D180 — the last inset's domain drawn on its host.
+    /// The last inset's domain drawn on its host.
     [<Extension>]
     static member WithInsetZoom(fig: Figure) = Chart.withInsetZoom fig
 
-    /// D179 — one unit as long on y as on x.
+    /// One unit as long on y as on x.
     [<Extension>]
     static member WithEqualAspect(fig: Figure) = Chart.withEqualAspect fig
 
-    /// D179 — the plot at this height over its width.
+    /// The plot at this height over its width.
     [<Extension>]
     static member WithBoxAspect(fig: Figure, heightOverWidth: float) = Chart.withBoxAspect heightOverWidth fig
 
-    /// D178 — the x axis again along the top, in another unit of its dimension.
+    /// The x axis again along the top, in another unit of its dimension.
     [<Extension>]
     static member WithTopAxisIn(fig: Figure, unit: IUnit) = Chart.withSecondary true (U.erase unit) None fig
 
-    /// D178 — the y axis again along the right, in another unit of its dimension.
+    /// The y axis again along the right, in another unit of its dimension.
     [<Extension>]
     static member WithRightAxisIn(fig: Figure, unit: IUnit) = Chart.withSecondary false (U.erase unit) None fig
 
-    /// D178 — the x axis read along the top through a map and its inverse, in raw numbers.
+    /// The x axis read along the top through a map and its inverse, in raw numbers.
     [<Extension>]
     static member WithTopAxisMapped(fig: Figure, unit: IUnit, forward: System.Func<float, float>, inverse: System.Func<float, float>) =
         Chart.withSecondary true (U.erase unit) (Some(SecondaryMap(forward.Invoke, inverse.Invoke))) fig
 
-    /// D178 — the y axis read along the right through a map and its inverse.
+    /// The y axis read along the right through a map and its inverse.
     [<Extension>]
     static member WithRightAxisMapped(fig: Figure, unit: IUnit, forward: System.Func<float, float>, inverse: System.Func<float, float>) =
         Chart.withSecondary false (U.erase unit) (Some(SecondaryMap(forward.Invoke, inverse.Invoke))) fig
 
-    /// D176 — one x axis for every panel the figure has now, labelled on the outermost.
+    /// One x axis for every panel the figure has now, labelled on the outermost.
     [<Extension>]
     static member ShareX(fig: Figure) = Chart.shareX fig
 
@@ -290,11 +290,11 @@ type FigureExtensions =
     [<Extension>]
     static member ShareAxes(fig: Figure) = Chart.shareAxes fig
 
-    /// D175 — the rows' plot heights, relative: `fig.WithRowHeights(3, 1)`.
+    /// The rows' plot heights, relative: `fig.WithRowHeights(3, 1)`.
     [<Extension>]
     static member WithRowHeights(fig: Figure, [<System.ParamArray>] heights: float[]) = Chart.withRowHeights heights fig
 
-    /// D175 — the columns' plot widths, relative.
+    /// The columns' plot widths, relative.
     [<Extension>]
     static member WithColWidths(fig: Figure, [<System.ParamArray>] widths: float[]) = Chart.withColWidths widths fig
 
@@ -321,7 +321,7 @@ type FigureExtensions =
         Chart.toFileBytes (fun e n -> renderer.Invoke(e, n)) path (Chart.size width height) fig
 #endif
 
-/// D124 — the arrangements that take several figures, for C#. F# passes `(title, figure)` tuples;
+/// The arrangements that take several figures, for C#. F# passes `(title, figure)` tuples;
 /// C# passes the titles and the figures as two arrays of one length.
 [<AbstractClass; Sealed>]
 type Figures =
@@ -340,7 +340,7 @@ type Figures =
     static member FacetWith(mode: FacetScales, cols: int, titles: string[], parts: Figure[]) =
         Chart.facetWith mode cols (Figures.Parts(titles, parts))
 
-    /// D174 — panels laid out by a picture of the grid: `Figures.Mosaic("AB;AC", "ABC", a, b, c)`,
+    /// Panels laid out by a picture of the grid: `Figures.Mosaic("AB;AC", "ABC", a, b, c)`,
     /// where the i-th character of `names` names the i-th figure.
     static member Mosaic(layout: string, names: string, [<System.ParamArray>] parts: Figure[]) =
         if names.Length <> parts.Length then
@@ -348,7 +348,7 @@ type Figures =
 
         Chart.mosaic layout (List.zip (List.ofSeq names) (List.ofArray parts))
 
-/// D124 — the categorical front door for C#. F# writes `Chart.Category.Bar(…)`, a type nested in
+/// The categorical front door for C#. F# writes `Chart.Category.Bar(…)`, a type nested in
 /// `module Chart`, which C# can only reach as `ChartModule.Category`; this is the same members
 /// under a name C# reads.
 [<AbstractClass; Sealed>]

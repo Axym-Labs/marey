@@ -8,7 +8,7 @@ open System.Collections.Generic
 open Microsoft.FSharp.NativeInterop
 open Silk.NET.OpenGL
 
-/// D139 — the compute seam: fragment shaders writing float textures, in OpenGL 3.3 core.
+/// The compute seam: fragment shaders writing float textures, in OpenGL 3.3 core.
 ///
 /// **One pass is one full-screen triangle** into a framebuffer over one or more `R32F` or
 /// `RGBA32F` textures; a shader reads its inputs with `texelFetch` and writes one value per texel.
@@ -16,8 +16,8 @@ open Silk.NET.OpenGL
 /// Measured in the M5.6 inventory: a 256² Stam step in 43 passes took 0.084 ms on radeonsi and
 /// 3.8 ms on llvmpipe, and a rerun was bit-identical on each.
 ///
-/// **Values cross as `float32`** (D116): uploaded from `float[]`, read back into `float[]`. A GPU
-/// result is held to its CPU twin by a stated bound, never by bytes (D140).
+/// **Values cross as `float32`**: uploaded from `float[]`, read back into `float[]`. A GPU
+/// result is held to its CPU twin by a stated bound, never by bytes.
 ///
 /// **Owned by a `GpuContext`** and used on its render thread only, between Skia's drawing. Every
 /// call leaves the GL state Skia expects to have to reset, and the caller resets Skia.

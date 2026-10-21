@@ -3,7 +3,7 @@ namespace Marey.UnitsOfMeasure
 open System
 open Marey
 
-/// D109 — **the unit-required mode**: `open Marey.UnitsOfMeasure`, and every chart takes a witness
+/// **The unit-required mode**: `open Marey.UnitsOfMeasure`, and every chart takes a witness
 /// per axis, checked at compile time.
 ///
 /// ```fsharp
@@ -103,7 +103,7 @@ module Chart =
         Marey.Chart.tile ux uy w h x y
 
     /// An RGBA image placed in data space — a micrograph under its scale bar, a map under a
-    /// track, a reference plate beside a measurement (D64).
+    /// track, a reference plate beside a measurement.
     ///
     /// The box is given in the axes' own units, so the image lands where the data says it does
     /// and the axes label themselves from the witnesses as they do for anything else. `smooth`
@@ -262,7 +262,7 @@ module Chart =
     /// The witness is an argument for the same reason it is one on `Chart.line`: `float<K>` is
     /// `float` at runtime, and something has to hand the library the evidence exactly once.
     /// What it buys is the same thing it buys on an axis — the colorbar labels itself `T [K]`,
-    /// picks its own prefix, and its ticks are the axis compiler's (D49).
+    /// picks its own prefix, and its ticks are the axis compiler's.
     ///
     /// The domain is the data's own range, **unpadded**: an axis pads so that the extreme
     /// points are not on the frame, and a colour ramp has no frame to sit on — padding it would
@@ -280,11 +280,11 @@ module Chart =
     /// end takes the ramp's end colour.
     ///
     /// For two figures that must share a colour scale, and for a film whose colours should mean
-    /// a stated range rather than the union of its sampled frames (D94). `u` need not be the
+    /// a stated range rather than the union of its sampled frames. `u` need not be the
     /// channel's own unit, only of its dimension: the ends are converted. A different dimension,
-    /// or an angle against no angle (D98), raises, as `Figure.unify` does for an axis. When
+    /// or an angle against no angle, raises, as `Figure.unify` does for an axis. When
     /// either is `U.unspecified` there is nothing to check or convert, and the ends are used as
-    /// given (D127).
+    /// given.
     let withColorDomain (u: U<'u>) (lo: float<'u>) (hi: float<'u>) (fig: Figure) : Figure =
         Marey.Chart.withColorDomain u lo hi fig
 
@@ -293,12 +293,12 @@ module Chart =
     /// Interpolated in area rather than in diameter, because area is what the eye reads off a
     /// disc. Size is the weakest of the channels for accurate reading, so it is the one to
     /// reach for last: the key it produces is three marks in the legend, not a bar.
-    /// §9 — **a heatmap**: one tile per row, sized to the grid's own pitch, coloured by a third
+    /// **A heatmap**: one tile per row, sized to the grid's own pitch, coloured by a third
     /// quantity.
     ///
     /// Three witnesses and three measures, and the middle one is what a heatmap usually gets
     /// wrong: `z` has its own unit, so the colorbar labels itself `T [K]` off the same witness
-    /// the values were declared with (D49), and a `z` handed the x array does not compile.
+    /// the values were declared with, and a `z` handed the x array does not compile.
     ///
     /// The cell size is derived rather than asked for, because it is a property of the grid and
     /// not a choice: the smallest positive gap between two x values is the column pitch, and a
@@ -330,9 +330,9 @@ module Chart =
     let sizeBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
         Marey.Chart.sizeBy u values fig
 
-    // ---- Secondary axes (D178) ----------------------------------------------------------------
+    // ---- Secondary axes ----------------------------------------------------------------
 
-    /// D178 — the x axis read along the top through a map, typed: `forward` takes the x axis's
+    /// The x axis read along the top through a map, typed: `forward` takes the x axis's
     /// unit to `u`, and the compiler checks both directions. See `Marey.Chart.withTopAxisMapped`.
     let withTopAxisMapped (u: U<'v>) (forward: float<'ux> -> float<'v>) (inverse: float<'v> -> float<'ux>) (fig: Figure) : Figure =
         Marey.Chart.withTopAxisMapped
@@ -341,7 +341,7 @@ module Chart =
             (fun w -> float (inverse (LanguagePrimitives.FloatWithMeasure<'v> w)))
             fig
 
-    /// D178 — the y axis read along the right through a map, typed. See `withTopAxisMapped`.
+    /// The y axis read along the right through a map, typed. See `withTopAxisMapped`.
     let withRightAxisMapped (u: U<'v>) (forward: float<'uy> -> float<'v>) (inverse: float<'v> -> float<'uy>) (fig: Figure) : Figure =
         Marey.Chart.withRightAxisMapped
             u
@@ -349,7 +349,7 @@ module Chart =
             (fun w -> float (inverse (LanguagePrimitives.FloatWithMeasure<'v> w)))
             fig
 
-    // ---- Rules and spans (D162) ----------------------------------------------------------------
+    // ---- Rules and spans ----------------------------------------------------------------
 
     /// A horizontal rule at `y`, across the last panel wherever its domain ends up, and without
     /// moving that domain (D163; `withDomainIncluded` lets it). The witness is the y axis's, so a
@@ -384,7 +384,7 @@ module Chart =
     let lineThrough (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (slope: float<'uy / 'ux>) : Figure =
         Marey.Chart.lineThrough ux uy x y slope
 
-    // ---- Annotations (D164) -------------------------------------------------------------------
+    // ---- Annotations -------------------------------------------------------------------
 
     /// Text marking the point (`x`, `y`) on the last panel, 6 px up and to the right of it,
     /// without moving the domain. `withTextOffset`, `withTextAt` and `withArrow` place it and
@@ -401,7 +401,7 @@ module Chart =
     let withTextAt (_ux: U<'ux>) (_uy: U<'uy>) (x: float<'ux>) (y: float<'uy>) (fig: Figure) : Figure =
         Marey.Chart.withTextAt (float x) (float y) fig
 
-    // ---- Stated ticks (D166) -------------------------------------------------------------------
+    // ---- Stated ticks -------------------------------------------------------------------
 
     let private erased (u: U<'u>) : U<1> = U.erase (u :> IUnit)
 
@@ -550,7 +550,7 @@ module Chart =
         let scatter (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
             Marey.Chart.Category.scatter uy keys values
 
-        /// §9 / D55 — **a box plot per level**, from the rows that carry it.
+        /// **A box plot per level**, from the rows that carry it.
         ///
         /// The measures again do the work nobody had to ask for: `Stat.summary` of a
         /// `float&lt;'uy&gt;[]` is entirely in `float&lt;'uy&gt;`, so the box, the whiskers and
@@ -564,7 +564,7 @@ module Chart =
         let boxplot (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
             Marey.Chart.Category.boxplot uy keys values
 
-        /// §9 / D55 — **a violin per level**: the same split, drawn as a density instead of a
+        /// **A violin per level**: the same split, drawn as a density instead of a
         /// summary.
         ///
         /// **The bandwidth comes from the undivided sample** (`Stat.frameOf`), not from each
@@ -594,14 +594,14 @@ module Chart =
         [<Obsolete("Marey.UnitsOfMeasure is open, so a categorical chart takes the values' witness: Chart.Category.violin. Chart.Category.Violin(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
         let Violin (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
 
-/// D109 — **the encoding block in the unit-required mode**: every channel that takes a witness
+/// **The encoding block in the unit-required mode**: every channel that takes a witness
 /// takes one, and an accessor without a measure stated for it is FS3099 rather than an unspecified
 /// axis. The block's other operations are inherited from the core's; only the witness-free forms
 /// `Marey.PlotBuilder` adds are missing, which is the whole difference.
 type PlotBuilder<'r>(rows: 'r[]) =
     inherit PlotBuilderBase<'r>(rows)
 
-/// §9 — the encoding block's entry point in the unit-required mode. It shadows the core's `plot`,
+/// The encoding block's entry point in the unit-required mode. It shadows the core's `plot`,
 /// which is how the block, a class whose members cannot be shadowed one by one, changes mode with
 /// the `open`.
 [<AutoOpen>]

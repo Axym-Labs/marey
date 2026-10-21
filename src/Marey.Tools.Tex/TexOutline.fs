@@ -6,7 +6,7 @@ open System.Globalization
 open System.Xml.Linq
 
 // ======================================================================================
-// D79 — THE HALF THAT NEEDS NO TEX INSTALLED.
+// THE HALF THAT NEEDS NO TEX INSTALLED.
 //
 // §10 names three routes to mathematical typesetting and D79 took the first: shell out to
 // LaTeX, render DVI to vector paths, and ship it as an opt-in package — "acceptable as a

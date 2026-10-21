@@ -10,7 +10,7 @@ type Layer =
       Data: PackedSeries
       Geom: Geom
       Style: GeomStyle
-      /// §9 / D46 — the non-positional channels driving this layer: colour, size, shape.
+      /// The non-positional channels driving this layer: colour, size, shape.
       ///
       /// They live on the layer rather than being resolved into styles at construction time
       /// because two things downstream need them *unresolved*. The legend needs the level
@@ -21,7 +21,7 @@ type Layer =
       Channels: Channel[]
       ShowInLegend: bool
 
-      /// D69 — the rows that get a **node of their own**, by original row index.
+      /// The rows that get a **node of their own**, by original row index.
       ///
       /// §5.1 batches N marks into one `Markers` node, which is "the single biggest performance
       /// decision in the IR" and the reason mark 42 has nothing to address. A row named here
@@ -33,14 +33,14 @@ type Layer =
       /// every figure in the library that does not name a mark carries.
       Addressed: int[]
 
-      /// D104 — **the data's own names for its rows**, one per row and unique, or empty for none.
+      /// **The data's own names for its rows**, one per row and unique, or empty for none.
       ///
       /// A mark is then keyed `Keys.datum` rather than `Keys.mark`, so it keeps its name when an
       /// earlier row is removed, and a morph pairs it with the datum of the same name rather than
       /// with whatever sits at the same row. Empty is the common case and keeps the ordinals.
       RowKeys: string[]
 
-      /// D163 — whether this layer's extent joins the panel's domain, on x and on y.
+      /// Whether this layer's extent joins the panel's domain, on x and on y.
       ///
       /// `true, true` for data, which is every layer that existed before M8. A rule, a span or an
       /// annotation is `false, false`: it marks a place on the axes the data chose, and an
@@ -51,11 +51,11 @@ type Layer =
       /// rules alone still has axes.
       InDomain: bool * bool
 
-      /// D177 — the layer is drawn against the panel's second y axis, on its right
+      /// The layer is drawn against the panel's second y axis, on its right
       /// (`Panel.Y2Axis`). Its y unit is checked against the other layers on that side only.
       SecondaryY: bool }
 
-/// D178 — a secondary axis's map from the primary axis's numbers to its own and back, kept out
+/// A secondary axis's map from the primary axis's numbers to its own and back, kept out
 /// of structural equality as `TickFormatter` is: it compares by reference.
 [<Sealed>]
 type SecondaryMap(forward: float -> float, inverse: float -> float) =
@@ -63,7 +63,7 @@ type SecondaryMap(forward: float -> float, inverse: float -> float) =
     member _.Inverse(value: float) = inverse value
     override _.ToString() = "function"
 
-/// D178 — **an axis that reads the primary one in other numbers**: photon energy over a
+/// **An axis that reads the primary one in other numbers**: photon energy over a
 /// wavelength, Celsius over kelvin, period over frequency. It draws on the opposite side and owns
 /// no data: it joins no domain and no layer is drawn against it.
 [<NoComparison>]
@@ -95,26 +95,26 @@ type AxisConfig =
       Grid: bool option
       Visible: bool
       ShowTitle: bool
-      /// D166 — the ticks, chosen (`TicksAuto`) or stated, in the axis's own numbers.
+      /// The ticks, chosen (`TicksAuto`) or stated, in the axis's own numbers.
       Ticks: TickSpec
       /// The unit `Ticks` was stated in: checked against the axis, and converted into its numbers
       /// when it is another unit of the same dimension. `U.unspecified` claims nothing.
       TickUnit: U<1>
-      /// D169 — the prefix the axis is written in, instead of the one its domain selects (D19).
+      /// The prefix the axis is written in, instead of the one its domain selects.
       /// `Some Prefix.none` writes an unprefixed axis.
       Prefix: Prefix option
-      /// D170 — the axis runs from its high end to its low end, over the domain it would have
+      /// The axis runs from its high end to its low end, over the domain it would have
       /// had: a depth below a surface, a magnitude, a Hertzsprung–Russell diagram.
       Reversed: bool
-      /// D167 — the minor ticks. `MinorAuto` draws them where the theme does (`MinorTicks`); a
+      /// The minor ticks. `MinorAuto` draws them where the theme does (`MinorTicks`); a
       /// stated step or count draws them whatever the theme.
       Minor: MinorSpec
-      /// D169 — how the tick numbers are written.
+      /// How the tick numbers are written.
       Format: TickFormat
-      /// D176 — whether the tick labels are written. The ticks stay either way. Off on a panel
+      /// Whether the tick labels are written. The ticks stay either way. Off on a panel
       /// whose shared axis is labelled by the panel beyond it (matplotlib's `label_outer`).
       ShowTickLabels: bool
-      /// D178 — an axis on the opposite side reading this one in other numbers: the top for x,
+      /// An axis on the opposite side reading this one in other numbers: the top for x,
       /// the right for y.
       Secondary: SecondaryAxis option
       /// Whether the tick marks are drawn, mirrored ones included. An axis without them reserves
@@ -137,7 +137,7 @@ type AxisLook =
     /// Nothing (matplotlib's `axis('off')`). A framed theme still draws its frame.
     | AxisHidden
 
-/// D179 — the shape a panel's plot is held to.
+/// The shape a panel's plot is held to.
 [<RequireQualifiedAccess>]
 type Aspect =
     /// One unit of the data is as long on y as on x (matplotlib's `set_aspect('equal')`). Both axes
@@ -149,40 +149,40 @@ type Aspect =
 [<NoComparison>]
 type Panel =
     { Title: string
-      /// The panel's top-left cell, and its name (D68): `panel-<row>-<col>`.
+      /// The panel's top-left cell, and its name: `panel-<row>-<col>`.
       Row: int
       Col: int
-      /// D174 — how many rows and columns of the grid the panel covers, from its top-left cell.
+      /// How many rows and columns of the grid the panel covers, from its top-left cell.
       /// 1 and 1 for a panel in one cell, which is every panel `beside` and `above` make when
       /// the two sides have the same number of rows or columns.
       RowSpan: int
       ColSpan: int
-      /// D176 — the group of panels this one shares its x axis with, or 0 for none. A group is
+      /// The group of panels this one shares its x axis with, or 0 for none. A group is
       /// made by `Chart.shareX` (or a facet) over the panels the figure has at that moment, once
       /// their units have been checked, and it is renumbered when figures are composed, so a
       /// panel composed in later never joins it.
       XShare: int
-      /// D176 — the same for y.
+      /// The same for y.
       YShare: int
-      /// D177 — the second y axis, on the right, for the layers marked `SecondaryY`; `None` for a
+      /// The second y axis, on the right, for the layers marked `SecondaryY`; `None` for a
       /// panel with one y axis.
       Y2Axis: AxisConfig option
-      /// D179 — the shape the plot is held to, or `None` for whatever its region gives it.
+      /// The shape the plot is held to, or `None` for whatever its region gives it.
       Aspect: Aspect option
-      /// D180 — panels drawn over this one's plot, in order.
+      /// Panels drawn over this one's plot, in order.
       Insets: Inset[]
       Layers: Layer[]
       XAxis: AxisConfig
       YAxis: AxisConfig
-      /// §4 — cartesian is the identity. Nothing else in this file knows polar exists.
+      /// Cartesian is the identity. Nothing else in this file knows polar exists.
       Coord: Coord
       Legend: LegendPlacement
-      /// D171 — the legend's columns, filled down then across.
+      /// The legend's columns, filled down then across.
       LegendColumns: int
-      /// D171 — the legend's frame, overriding the theme's `ShowLegendFrame`.
+      /// The legend's frame, overriding the theme's `ShowLegendFrame`.
       LegendFrame: bool option }
 
-/// D180 — **a panel drawn over another's plot** (matplotlib's `inset_axes`), at a rectangle in
+/// **A panel drawn over another's plot** (matplotlib's `inset_axes`), at a rectangle in
 /// fractions of the host's plot, y up. The rectangle is the inset's own plot; its tick labels and
 /// titles stand round it, over the host, where the caller put it. It shares nothing with its
 /// host: its axes are its own, and a zoom inside it zooms it.
@@ -193,7 +193,7 @@ and [<NoComparison>] Inset =
       /// (matplotlib's `indicate_inset_zoom`).
       Indicate: bool }
 
-/// D165 — how `Chart.withPanelLetters` writes a panel's letter.
+/// How `Chart.withPanelLetters` writes a panel's letter.
 type LetterStyle =
     /// (a), (b), (c) — the usual one in physics.
     | LetterParen
@@ -215,20 +215,20 @@ type Figure =
       Cols: int
       Panels: Panel[]
       Theme: Theme
-      /// D165 — letters for the panels, assigned in reading order when the figure is drawn, so a
+      /// Letters for the panels, assigned in reading order when the figure is drawn, so a
       /// panel added by `beside` after the call is lettered too. `None` writes none.
       Letters: PanelLetters option
-      /// D171 — one legend for every panel, beside or below the grid of them, in place of each
+      /// One legend for every panel, beside or below the grid of them, in place of each
       /// panel's own.
       Legend: FigureLegend option
-      /// D175 — the rows' plot heights and the columns' plot widths, relative, one weight per row
+      /// The rows' plot heights and the columns' plot widths, relative, one weight per row
       /// or column and averaging 1. Empty for equal ones, which is every figure that does not
       /// state them. Under D173 they share out the plots, not the cells, so `[3; 1]` draws a plot
       /// three times as tall as the one below it whatever their gutters.
       RowWeights: float[]
       ColWeights: float[] }
 
-/// §9 / D48 — **which axes the panels of a composed figure share.**
+/// **Which axes the panels of a composed figure share.**
 ///
 /// Three cases, and the two that are missing are the decision.
 ///
@@ -249,7 +249,7 @@ type FacetScales =
     /// One y across the panels; each panel keeps its own x.
     | ShareY
 
-/// D72 — one panel's inner grid, frozen.
+/// One panel's inner grid, frozen.
 ///
 /// The nine sizes are the `Track.Content` extents of the panel's inner grid: its *gutters*. They
 /// are what an axis title, a column of tick labels, a panel title or a colorbar takes out of the
@@ -277,40 +277,40 @@ type PanelLayout =
           RightPad: float<px>
           BarGap: float<px>
           BarW: float<px>
-          /// D171 — an outside legend's column (right) or row (bottom), and the gap before it.
+          /// An outside legend's column (right) or row (bottom), and the gap before it.
           LegendGap: float<px>
           LegendW: float<px>
           LegendH: float<px>
-          /// D171 — for `LegendBest`, the share of the panel's drawn samples under the legend's box
+          /// For `LegendBest`, the share of the panel's drawn samples under the legend's box
           /// in each inside corner (top right, top left, bottom left, bottom right). A shot keeps the
           /// largest each corner had in any frame, and the legend goes where that is least.
           LegendScores: float[]
           /// The plot rectangle the tick plan is measured against.
           Probe: Extent<px>
-          /// D73 — the prefix the x axis is pinned to. `None` chooses one from this figure's own
+          /// The prefix the x axis is pinned to. `None` chooses one from this figure's own
           /// domain, which is what a still figure does and has always done.
           XPrefix: Prefix option
           YPrefix: Prefix option
-          /// D173 — room left empty at each outer edge of the panel's region, so that its gutters
+          /// Room left empty at each outer edge of the panel's region, so that its gutters
           /// add up to those of the widest panel on the same grid line and the plot rectangles line
           /// up. Zero until the figure's panels are aligned, and always zero for a panel alone.
           SlackLeft: float<px>
           SlackRight: float<px>
           SlackTop: float<px>
           SlackBottom: float<px>
-          /// D177 — the second y axis's tick labels and title, on the right of the plot; zero for a
+          /// The second y axis's tick labels and title, on the right of the plot; zero for a
           /// panel with one y axis.
           Y2TicksW: float<px>
           Y2TitleW: float<px>
-          /// D177 — the prefix the axis on the right is pinned to, as `YPrefix` is for the first: a
-          /// second y axis's, or a secondary y axis's (D178). A panel has one right side.
+          /// The prefix the axis on the right is pinned to, as `YPrefix` is for the first: a
+          /// second y axis's, or a secondary y axis's. A panel has one right side.
           Y2Prefix: Prefix option
-          /// D178 — a secondary x axis's tick labels and title, above the plot.
+          /// A secondary x axis's tick labels and title, above the plot.
           X2TicksH: float<px>
           X2TitleH: float<px>
-          /// D178 — the prefix a secondary x axis is pinned to.
+          /// The prefix a secondary x axis is pinned to.
           X2Prefix: Prefix option
-          /// D164 — room for an annotation's text past the plot's left and bottom edges, beyond what
+          /// Room for an annotation's text past the plot's left and bottom edges, beyond what
           /// the axis already takes there. `RightPad` and `TopPad` take it on the other two sides.
           LeftPad: float<px>
           BottomPad: float<px> }
@@ -348,14 +348,14 @@ module PanelLayout =
           LeftPad = 0.0<px>
           BottomPad = 0.0<px> }
 
-    /// D171 — the four inside corners, in the order `LegendScores` keeps them.
+    /// The four inside corners, in the order `LegendScores` keeps them.
     let internal legendCorners = [| LegendTopRight; LegendTopLeft; LegendBottomLeft; LegendBottomRight |]
 
-    /// D171 — whether every inside corner is more than 2% covered: a corner the legend would hide
+    /// Whether every inside corner is more than 2% covered: a corner the legend would hide
     /// data in.
     let internal crowded (scores: float[]) = scores.Length = 4 && Array.min scores > 0.02
 
-    /// D171 — where a legend stated as `stated` stands in a panel laid out as `g`: `LegendBest`
+    /// Where a legend stated as `stated` stands in a panel laid out as `g`: `LegendBest`
     /// resolved to the least covered inside corner, or outside on the right when every corner is
     /// crowded and the layout made room there. The drawing pass places it here, and a pointer's
     /// readout keeps out of its corner.
@@ -418,7 +418,7 @@ module PanelLayout =
           LeftPad = max a.LeftPad b.LeftPad
           BottomPad = max a.BottomPad b.BottomPad }
 
-    /// D173 — the room a panel's gutters take on each side of its plot, slack included: what the
+    /// The room a panel's gutters take on each side of its plot, slack included: what the
     /// outer grid's gutter tracks are sized from.
     let internal left (g: PanelLayout) = g.SlackLeft + g.LeftPad + g.YTitleW + g.YTicksW
 
@@ -430,7 +430,7 @@ module PanelLayout =
     let internal bottom (g: PanelLayout) =
         g.XTicksH + g.XTitleH + (if g.LegendH > 0.0<px> then g.LegendGap + g.LegendH else 0.0<px>) + g.BottomPad + g.SlackBottom
 
-/// D72 — **the layout of one shot**: everything every frame of an animation shares, and nothing
+/// **The layout of one shot**: everything every frame of an animation shares, and nothing
 /// a frame is allowed to recompute.
 ///
 /// A still figure has one of these too, over a single sample. That is not a courtesy: it is what
@@ -449,18 +449,18 @@ type Shot =
       /// the union is only as good as its samples, and an animation with a spike between two of
       /// them can still overflow. A single figure's own shot reports 1.
       Samples: int
-      /// D94 — every continuous colour channel's domain, unioned over the sampled states and
+      /// Every continuous colour channel's domain, unioned over the sampled states and
       /// keyed `panel-0-0/layer/channel`. A frame draws its colours and its colorbar against
       /// this rather than against its own range, so a growing field reads as growing rather than
       /// being renormalised every frame. Empty for a still. A value outside it, between two
       /// samples, takes the ramp's end colour.
       ColourDomains: (string * (float * float))[]
-      /// D94 — every quiver layer's key, the one with the largest magnitude among the sampled
+      /// Every quiver layer's key, the one with the largest magnitude among the sampled
       /// states, keyed `panel-0-0/layer`. The arrows are scaled against it in every frame, for
       /// the colour domain's reason. Empty for a still.
       QuiverKeys: (string * QuiverKey)[] }
 
-/// D105 — **one panel as a pointer meets it**: where its plot area is on the surface, and the
+/// **One panel as a pointer meets it**: where its plot area is on the surface, and the
 /// coord and the two scales that turn a point in it back into data.
 ///
 /// Read off a `Shot` rather than off a scene, because the scene has spent its scales: a `Node`
@@ -476,16 +476,16 @@ type PanelView =
       X: IScaleErased
       Y: IScaleErased
       /// Each axis as it is drawn: its name, and the prefix and unit text its ticks are written
-      /// in. A reading of the pointer is written in them too (D105), so it can be checked
+      /// in. A reading of the pointer is written in them too, so it can be checked
       /// against the ticks without converting anything.
       XAxis: AxisSpec
       YAxis: AxisSpec
-      /// D177 — the second y axis's scale and spec, for a panel that has one.
+      /// The second y axis's scale and spec, for a panel that has one.
       Y2: IScaleErased option
       Y2Axis: AxisSpec option
-      /// D179 — the panel holds one unit as long on y as on x.
+      /// The panel holds one unit as long on y as on x.
       EqualAspect: bool
-      /// D180 — which of the panel at `Row`, `Col`'s insets this is, or `None` for the panel.
+      /// Which of the panel at `Row`, `Col`'s insets this is, or `None` for the panel.
       Inset: int option }
 
 [<RequireQualifiedAccess>]
@@ -514,7 +514,7 @@ module PanelView =
     let toData (p: Vec2<px>) (v: PanelView) : (float * float) option =
         toUnit p v |> Option.map (fun u -> v.X.Invert u.X, v.Y.Invert u.Y)
 
-    /// D179 — two domains widened about their centres until one unit is as long on y as on x
+    /// Two domains widened about their centres until one unit is as long on y as on x
     /// over this panel's plot, or as they were for a panel without equal aspect. What a zoom of
     /// such a panel states, so that re-arranging it keeps the plot's shape.
     let fitEqual (v: PanelView) (dx: float * float, dy: float * float) : (float * float) * (float * float) =
@@ -535,13 +535,13 @@ module PanelView =
 
             if have < want then dx, grow dy (want / have) else grow dx (have / want), dy
 
-    /// D177 — the second y axis's value under a surface point, raw, in its own unit.
+    /// The second y axis's value under a surface point, raw, in its own unit.
     let toY2 (p: Vec2<px>) (v: PanelView) : float option =
         match v.Y2 with
         | Some s -> toUnit p v |> Option.map (fun u -> s.Invert u.Y)
         | None -> None
 
-    /// D177 — the second y axis's domain over a dragged rectangle, as `domainsOf` gives the first's.
+    /// The second y axis's domain over a dragged rectangle, as `domainsOf` gives the first's.
     let y2DomainOf (r: Rect<px>) (v: PanelView) : (float * float) option =
         match toY2 { X = r.X0; Y = r.Y0 } v, toY2 { X = r.X0; Y = r.Y1 } v with
         | Some a, Some b -> Some(min a b, max a b)
@@ -562,7 +562,7 @@ module PanelView =
             let ys = corners |> Array.map (fun c -> snd c.Value)
             Some((Array.min xs, Array.max xs), (Array.min ys, Array.max ys))
 
-    /// **D105 — what a pointer reads**: one line per axis, x first, each the axis's name and the
+    /// **What a pointer reads**: one line per axis, x first, each the axis's name and the
     /// value under the point, written in the prefix and unit text the axis's ticks are written
     /// in. A categorical axis reads the level whose band the point is in.
     ///
@@ -624,7 +624,7 @@ module PanelView =
 
                 if spec.Label = "" then shown else spec.Label + " = " + shown
 
-            // D177 — a third line for a second y axis, resolved over one px as the others are.
+            // A third line for a second y axis, resolved over one px as the others are.
             let second =
                 match v.Y2, v.Y2Axis, toY2 p v with
                 | Some s, Some spec, Some y2 ->
@@ -658,8 +658,8 @@ module PanelView =
 [<RequireQualifiedAccess>]
 module Figure =
 
-    /// The key a layer's mark carries: by the data's own key when the layer has them (D104),
-    /// by its original row otherwise (D68). `row` is always the original row.
+    /// The key a layer's mark carries: by the data's own key when the layer has them,
+    /// by its original row otherwise. `row` is always the original row.
     let internal markKey (l: Layer) (layerKey: Key) (row: int) : Key =
         if l.RowKeys.Length = 0 then Keys.mark layerKey row else Keys.datum layerKey l.RowKeys.[row]
 
@@ -675,7 +675,7 @@ module Figure =
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
                     Erase.packScale s.XScale, Erase.packScale s.YScale }
 
-    /// D127 — **which layer an axis takes its unit from**: the first whose unit on that axis was
+    /// **Which layer an axis takes its unit from**: the first whose unit on that axis was
     /// stated, or the first layer when none was. An unspecified layer drawn first under a metre
     /// layer makes no claim about the axis, so the axis reads `[m]` whichever order they were
     /// added in. Every reader of a panel's axes goes through here — the drawing pass, the prefix a
@@ -685,7 +685,7 @@ module Figure =
         | Some l -> l.Data
         | None -> layers.[0].Data
 
-    /// D177 — the layers a panel's left y axis is drawn from: all of them but those on its second
+    /// The layers a panel's left y axis is drawn from: all of them but those on its second
     /// axis, or all of them when every layer is there.
     let private onSecond (p: Panel) (l: Layer) = l.SecondaryY && p.Y2Axis.IsSome
 
@@ -694,7 +694,7 @@ module Figure =
         | [||] -> p.Layers
         | ls -> ls
 
-    /// D177 — **a panel's second y axis, as a panel of its own**: its secondary layers under
+    /// **A panel's second y axis, as a panel of its own**: its secondary layers under
     /// `Y2Axis`. Everything that reads one y axis — the scales, the spec, the prefix — reads the
     /// second through this, so there is one code path for both. `None` for a panel with one y.
     let internal secondaryOf (p: Panel) : Panel option =
@@ -882,7 +882,7 @@ module Figure =
 
                     point s.XScale s.X, point s.YScale s.Y }
 
-    /// D163 — the entries whose layer joins the domain, or all of them when none does, so that a
+    /// The entries whose layer joins the domain, or all of them when none does, so that a
     /// panel of rules alone still has an axis. `included` is one flag per entry.
     let private joining (included: bool[]) (entries: 'a[]) : 'a[] =
         if Array.exists id included then
@@ -904,7 +904,7 @@ module Figure =
             | Some v when points |> Array.forall (fun q -> q = Some v) -> Some v
             | _ -> None
 
-        // D177 — y over the left axis's layers; a second axis is a panel of its own (`secondaryOf`).
+        // Y over the left axis's layers; a second axis is a panel of its own (`secondaryOf`).
         shared p.Layers fst (fun l -> fst l.InDomain), shared (primaryLayers p) snd (fun l -> snd l.InDomain)
 
     /// **The check, once.** Whether a set of things can share one axis, and what domain they
@@ -922,7 +922,7 @@ module Figure =
     /// so it is the one whose message has to work hardest.
     ///
     /// `points` is each thing's `pointsOf` on this axis, so that a constant's padding can be told
-    /// from a domain. `included` is whether each thing joins the domain (D163): every one is
+    /// from a domain. `included` is whether each thing joins the domain: every one is
     /// checked, and only those that join are shared.
     let private agreeOn
         (describe: int -> string)
@@ -937,7 +937,7 @@ module Figure =
             scales |> Array.indexed |> Array.tryFind (fun (_, s) -> s.Stated)
 
         // The categorical counterpart of the dimensional check, and it is needed for exactly the
-        // reason that check is: an ordinal scale is dimensionless (D45), so two scales with
+        // reason that check is: an ordinal scale is dimensionless, so two scales with
         // *different* level sets have identical `Dim` and the check cannot see the difference.
         // Verified before it was written: two four-level layers over unrelated levels unified
         // silently, and the second layer's points were drawn against the first layer's labels —
@@ -968,12 +968,12 @@ module Figure =
                     (describe i)
             | _ -> ()
 
-            // D127 — the dimensional checks compare stated units only, each against the first
+            // The dimensional checks compare stated units only, each against the first
             // stated one: an unspecified layer makes no claim, so it neither fails the check nor
             // becomes the reference that hides a disagreement between two that did.
             match reference with
             | Some(ri, r) when ri <> i && si.Stated ->
-                // D98 — the one difference `Dim` cannot see. An angular velocity and a frequency are
+                // The one difference `Dim` cannot see. An angular velocity and a frequency are
                 // both s⁻¹ and differ by 2π, so a rad/s layer and a Hz layer on one axis plot one of
                 // them 6.28 times too high without a word.
                 let ar = U.angleExponentOf r.Symbol r.Factors
@@ -1034,7 +1034,7 @@ module Figure =
             let inY = p.Layers |> Array.map (fun l -> snd l.InDomain)
             let dx = agreeOn describe "x" (scales |> Array.map fst) (points |> Array.map fst) inX
 
-            // D177 — y is agreed per side: the layers on the left among themselves, and those on
+            // Y is agreed per side: the layers on the left among themselves, and those on
             // a second axis among themselves, each naming its layers by their place on the panel.
             let ySide (second: bool) (axis: string) =
                 let idx = p.Layers |> Array.indexed |> Array.filter (fun (_, l) -> onSecond p l = second) |> Array.map fst
@@ -1061,7 +1061,7 @@ module Figure =
                         { l with
                             Data = withDomains (Some dx) (if onSecond p l then dy2 else dy) l.Data }) }
 
-    /// D170 — run a reversed axis from its high end to its low end, over the domain it would
+    /// Run a reversed axis from its high end to its low end, over the domain it would
     /// have had. After the sharing, so the padding and the union are the ones a forward axis gets.
     let private orient (p: Panel) : Panel =
         let y2Reversed = p.Y2Axis |> Option.exists (fun c -> c.Reversed)
@@ -1084,7 +1084,7 @@ module Figure =
     /// See `share`; every reader of a panel's axes goes through here.
     let internal unify (p: Panel) : Panel = p |> share |> orient
 
-    /// D179 — **the plot's height over its width that a panel asks for**, over the states of it a
+    /// **The plot's height over its width that a panel asks for**, over the states of it a
     /// shot holds (one for a still figure), unified. Equal aspect takes the union of their domains,
     /// so the box is the one every state fits in; it needs one dimension on both axes, compared in
     /// SI, and linear scales.
@@ -1128,7 +1128,7 @@ module Figure =
                 let ys = span snd * sy.ToSI
                 if xs > 0.0 && ys > 0.0 then Some(ys / xs) else None
 
-    /// D179 — a frame whose domains do not have the frozen plot's shape, widened about their
+    /// A frame whose domains do not have the frozen plot's shape, widened about their
     /// centres until they do, so equal aspect holds in a box that does not move. A still figure's
     /// domains already have it and pass through.
     let private fitAspect (f: PanelLayout) (p: Panel) : Panel =
@@ -1155,7 +1155,7 @@ module Figure =
                 { p with Layers = p.Layers |> Array.map (fun l -> { l with Data = withDomains dx (if onSecond p l then None else dy) l.Data }) }
         | _ -> p
 
-    /// §9 / D48 — **give every panel of a figure the same axes.** What makes a grid of panels a
+    /// **Give every panel of a figure the same axes.** What makes a grid of panels a
     /// facet rather than a page of unrelated charts.
     ///
     /// Applied **eagerly**, by whoever composes the panels, so that the shared domains are on the
@@ -1217,7 +1217,7 @@ module Figure =
                 match mode with
                 | ShareBoth
                 | ShareY ->
-                    // D177 — a facet shares the left y; a panel's second axis stays its own.
+                    // A facet shares the left y; a panel's second axis stays its own.
                     let yIdx =
                         entries
                         |> Array.indexed
@@ -1244,9 +1244,9 @@ module Figure =
     let private sharesX (mode: FacetScales) = mode <> ShareY
     let private sharesY (mode: FacetScales) = mode <> ShareX
 
-    /// D176 — **share the axes of every panel the figure has now, and remember it.** The check is
+    /// **Share the axes of every panel the figure has now, and remember it.** The check is
     /// `shareScales`', made here, at the call, so a dimensional mismatch is reported by the call
-    /// that asked for the sharing (D48). Only when it passes is the sharing recorded, as a group
+    /// that asked for the sharing. Only when it passes is the sharing recorded, as a group
     /// on each panel, and the group is what keeps the axis shared afterwards: a domain stated on
     /// one of its panels is stated on all of them, and the compiled figure shares them again.
     let internal shareRecorded (mode: FacetScales) (fig: Figure) : Figure =
@@ -1263,11 +1263,11 @@ module Figure =
                         XShare = (if sharesX mode then gx else p.XShare)
                         YShare = (if sharesY mode then gy else p.YShare) }) }
 
-    /// D176 — the panels in `p`'s x group (or `p` alone when it has none), as a predicate.
+    /// The panels in `p`'s x group (or `p` alone when it has none), as a predicate.
     let private inXGroup (p: Panel) (q: Panel) = (p.XShare <> 0 && q.XShare = p.XShare) || (q.Row = p.Row && q.Col = p.Col)
     let private inYGroup (p: Panel) (q: Panel) = (p.YShare <> 0 && q.YShare = p.YShare) || (q.Row = p.Row && q.Col = p.Col)
 
-    /// D176 — a domain stated on one panel, stated on every panel its axis is shared with.
+    /// A domain stated on one panel, stated on every panel its axis is shared with.
     let internal withDomainsShared (target: Panel -> bool) (dx: (float * float) option) (dy: (float * float) option) (fig: Figure) : Figure =
         let targets = fig.Panels |> Array.filter target
         let onX (q: Panel) = dx.IsSome && targets |> Array.exists (fun p -> inXGroup p q)
@@ -1283,10 +1283,10 @@ module Figure =
                     if x.IsNone && y.IsNone then
                         q
                     else
-                        // D177 — a y domain is the left axis's; `withPanelDomainsY2` states the right's.
+                        // A y domain is the left axis's; `withPanelDomainsY2` states the right's.
                         { q with Layers = q.Layers |> Array.map (fun l -> { l with Data = withDomains x (if onSecond q l then None else y) l.Data }) }) }
 
-    /// D176 — renumber `b`'s share groups past `a`'s, so composing two figures never merges a
+    /// Renumber `b`'s share groups past `a`'s, so composing two figures never merges a
     /// group of one with a group of the other.
     let internal offsetShares (a: Figure) (b: Figure) : Figure =
         let top (pick: Panel -> int) = a.Panels |> Array.fold (fun acc p -> max acc (pick p)) 0
@@ -1300,7 +1300,7 @@ module Figure =
                         XShare = (if p.XShare = 0 then 0 else p.XShare + dx)
                         YShare = (if p.YShare = 0 then 0 else p.YShare + dy) }) }
 
-    /// D176 — the figure as it is compiled: every share group shared again, which is idempotent
+    /// The figure as it is compiled: every share group shared again, which is idempotent
     /// for a group whose domains nothing has touched since and puts back one that something has;
     /// then the inner tick labels and titles off. A shared x is labelled only on a panel with no
     /// panel of its group directly below it over the same columns, a shared y only on one with
@@ -1356,7 +1356,7 @@ module Figure =
     let private textBox (m: ITextMeasurer) (f: FontSpec) (s: string) =
         TextMeasure.bounds m f AnchorMiddle BaselineMiddle 0.0<rad> s
 
-    /// D49 — **the legend enumerates.** What one layer contributes to it.
+    /// **The legend enumerates.** What one layer contributes to it.
     ///
     /// A layer with a **categorical** channel contributes one entry per level rather than one
     /// entry for itself: what the reader has to tell apart is the level, and the series name is
@@ -1372,7 +1372,7 @@ module Figure =
     ///
     /// `ShowInLegend` gates **all** of it, not only the layer's own entry. The field says
     /// whether this layer is in the legend, and a layer that is not cannot be in it by way of
-    /// its channels either. The encoding block (§9) is what makes the distinction matter: its
+    /// its channels either. The encoding block is what makes the distinction matter: its
     /// channels belong to the block rather than to one geom, so every layer carries them, and
     /// three levels drawn as points *and* as a line would enumerate themselves twice under two
     /// different swatches. `Chart.withChannel` sets the flag when it attaches a channel, so
@@ -1439,7 +1439,7 @@ module Figure =
             if l.ShowInLegend && not (isEmpty l.Name) && levelEntries.Length = 0 then
                 [| { Name = l.Name
                      Color =
-                        // D162 — a span is a tint over the panel, and a swatch at full strength
+                        // A span is a tint over the panel, and a swatch at full strength
                         // would name a colour the figure never shows.
                         (match l.Geom with
                          | GeomRule(SpanH _)
@@ -1455,7 +1455,7 @@ module Figure =
     ///
     /// A legend enumerates what the reader has to tell apart, so the same swatch under the same
     /// name twice is not a second thing — it is the same thing counted twice. The encoding block
-    /// (§9) is what makes this reachable: its channels belong to the block rather than to one
+    /// is what makes this reachable: its channels belong to the block rather than to one
     /// geom, so a two-layer block over three levels would otherwise print six entries naming
     /// three levels. `Array.distinct` keeps first-appearance order, which is level order.
     ///
@@ -1469,12 +1469,12 @@ module Figure =
     /// in from outside and produce the same rectangle every time. The drawing pass and
     /// `panelsIn` both take the plot rectangle from here, so there is one of it.
     let private innerGrid (m: ITextMeasurer) (extent: Extent<px>) (region: Rect<px>) (g: PanelLayout) =
-        // D171 — an outside legend's gap and column to the right of the colorbar, or its gap and
+        // An outside legend's gap and column to the right of the colorbar, or its gap and
         // row below the x title. A panel without one has them at zero, which changes nothing.
         let gapRight = if g.LegendW > 0.0<px> then g.LegendGap else 0.0<px>
         let gapBelow = if g.LegendH > 0.0<px> then g.LegendGap else 0.0<px>
 
-        // D173 — the slack sits outside everything else, so a title stays beside its ticks and
+        // The slack sits outside everything else, so a title stays beside its ticks and
         // only the plot rectangle moves into line. Zero tracks add exactly nothing, so a panel
         // alone is placed as it always was.
         let cols =
@@ -1542,7 +1542,7 @@ module Figure =
         // changes its axis titles — which is what `Chart.withTheme Theme.tikz` has to do.
         let unitStyle (cfg: AxisConfig) = defaultArg cfg.Style theme.UnitStyle
 
-        // D166 — stated ticks, checked against the axis and brought into its numbers when they were
+        // Stated ticks, checked against the axis and brought into its numbers when they were
         // stated in another unit of its dimension: kilometres on a metre axis, °C on a kelvin one.
         let ticksOf (axis: string) (cfg: AxisConfig) (scale: IScaleErased) =
             let t = cfg.TickUnit
@@ -1569,7 +1569,7 @@ module Figure =
                 | TicksAt values -> TicksAt(Array.map at values)
                 | TicksNamed named -> TicksNamed(named |> Array.map (fun (v, n) -> at v, n))
 
-        // A stated prefix is the axis's, in a still figure and across a shot alike (D169).
+        // A stated prefix is the axis's, in a still figure and across a shot alike.
         let pin (cfg: AxisConfig) (chosen: Prefix option) =
             match cfg.Prefix with
             | Some _ -> cfg.Prefix
@@ -1591,7 +1591,7 @@ module Figure =
         Axes.specTicked (ticksOf "x" p.XAxis xErased) p.XAxis.Minor p.XAxis.Format (pin p.XAxis pinX) (unitStyle p.XAxis) p.XAxis.TickCount (label p.XAxis "x") AxisBottom xPacked,
         Axes.specTicked (ticksOf "y" p.YAxis yErased) p.YAxis.Minor p.YAxis.Format (pin p.YAxis pinY) (unitStyle p.YAxis) p.YAxis.TickCount (label p.YAxis "y") AxisLeft yPacked
 
-    /// D165 — the panel letters' face, and the height of the row they need: none without letters.
+    /// The panel letters' face, and the height of the row they need: none without letters.
     let private letterFont (theme: Theme) (letters: PanelLetters) =
         { theme.PanelTitleFont with
             Weight = (if letters.Bold then 700 else theme.PanelTitleFont.Weight) }
@@ -1601,7 +1601,7 @@ module Figure =
         | None -> 0.0<px>
         | Some letters -> Rect.height (textBox m (letterFont fig.Theme letters) "(a)")
 
-    /// D178 — a secondary axis's map from the primary axis's numbers to its own, and back: the one
+    /// A secondary axis's map from the primary axis's numbers to its own, and back: the one
     /// stated, or else the conversion between the two units, refused when their dimensions differ.
     let private secondaryMap (axis: string) (sa: SecondaryAxis) (primary: IScaleErased) =
         let u = sa.Unit
@@ -1627,7 +1627,7 @@ module Figure =
             (fun v -> (v * primary.ToSI + primary.OffsetSI - u.OffsetSI) / u.ToSI),
             (fun w -> (w * u.ToSI + u.OffsetSI - primary.OffsetSI) / primary.ToSI)
 
-    /// D178 — the prefix a secondary axis takes over the primary's numbers `lo` to `hi`: the one
+    /// The prefix a secondary axis takes over the primary's numbers `lo` to `hi`: the one
     /// its own numbers there would choose, which is what a shot pins it to.
     let private secondaryPrefix (axis: string) (sa: SecondaryAxis) (primary: IScaleErased) (lo: float, hi: float) =
         let forward, _ = secondaryMap axis sa primary
@@ -1636,7 +1636,7 @@ module Figure =
         Axis.prefixForPacked (lo2, hi2) (Erase.packScale (Scale.linear sa.Unit (LanguagePrimitives.FloatWithMeasure lo2, LanguagePrimitives.FloatWithMeasure hi2)))
 
     /// Compile one panel into a device-space region.
-    /// D72 — one function, two answers: the panel's frozen inner grid, and a thunk that draws
+    /// One function, two answers: the panel's frozen inner grid, and a thunk that draws
     /// the panel inside it.
     ///
     /// **Why one function and not two.** Measuring and drawing share every intermediate here —
@@ -1665,19 +1665,19 @@ module Figure =
         if p.Layers.Length = 0 then
             PanelLayout.empty, (fun () -> PanelLayout.empty), (fun () -> Scene.empty)
         else
-            // D68 — `panelKey` is this panel's name: its grid position for a panel, its host's
-            // and its index for an inset (D180). `Keyed` says *which* panel; the `Annotated` at
+            // `panelKey` is this panel's name: its grid position for a panel, its host's
+            // and its index for an inset. `Keyed` says *which* panel; the `Annotated` at
             // the end of this function says that it is a panel. Both, because §5.2 and §5.3 are
             // different questions.
 
-            // D73 — the prefix comes from the frozen layout when there is one. A still figure
+            // The prefix comes from the frozen layout when there is one. A still figure
             // pins nothing and chooses per figure, which is what it has always done; an
             // animation pins both axes against the union of every frame's domain, so the axis
             // *title* cannot step from `mm` to `µm` halfway through a zoom.
             //
             // `pins` is the same choice for a panel being *measured* rather than drawn: the union
             // measures every state under the prefix it will be drawn in, or a state whose own
-            // prefix differs is measured with labels it never shows (D108).
+            // prefix differs is measured with labels it never shows.
             let pinsX, pinsY, pinsY2, pinsX2 = pins
             let pinX = match frozen with Some f -> f.XPrefix | None -> pinsX
             let pinY = match frozen with Some f -> f.YPrefix | None -> pinsY
@@ -1686,7 +1686,7 @@ module Figure =
 
             let xSpec, ySpec = axisSpecs theme (pinX, pinY) p
 
-            // D177 — the second y axis, read as a panel of its own: its config and its spec.
+            // The second y axis, read as a panel of its own: its config and its spec.
             let second = secondaryOf p
 
             if second.IsSome && not (Coord.isIdentity p.Coord) then
@@ -1694,12 +1694,12 @@ module Figure =
 
             let y2 = second |> Option.map (fun sp -> sp.YAxis, snd (axisSpecs theme (pinX, pinY2) sp))
 
-            // D178 — an axis reading the primary one in other numbers. Its ticks are chosen in its
+            // An axis reading the primary one in other numbers. Its ticks are chosen in its
             // own numbers over the image of the primary's domain, then placed through the inverse
             // and the primary's scale, so a reciprocal map puts evenly spaced energies unevenly
             // along a wavelength. The map is checked on the domain before anything is drawn.
             //
-            // D178 — in a shot its prefix is pinned too, as D73 pins the primary's, so a zoom that
+            // In a shot its prefix is pinned too, as D73 pins the primary's, so a zoom that
             // crosses a decade does not step its title.
             let secondaryOn (axis: string) (cfg: AxisConfig) (side: AxisSide) (pin: Prefix option) (primary: IScaleErased) : AxisSpec option =
                 match cfg.Secondary with
@@ -1752,13 +1752,13 @@ module Figure =
             if ySecondary.IsSome && y2.IsSome then
                 failwith "Marey: a panel has one right side, and this one has both a second y axis and a secondary one."
 
-            // The right side: a second y axis (D177) or a secondary one (D178), laid out alike.
+            // The right side: a second y axis or a secondary one, laid out alike.
             let right =
                 match y2 with
                 | Some _ -> y2
                 | None -> ySecondary |> Option.map (fun spec -> shown p.YAxis, spec)
 
-            // D165 — a lettered figure's panels keep a title row for the letter, which stands at
+            // A lettered figure's panels keep a title row for the letter, which stands at
             // the row's left, above the axis title, clear of the data and of the legend.
             let titleH =
                 let title =
@@ -1769,7 +1769,7 @@ module Figure =
 
                 max title (if letterH > 0.0<px> then letterH + theme.TitleGap else 0.0<px>)
 
-            // D49 — a continuous colour channel gets a colorbar, and the bar is a column of the
+            // A continuous colour channel gets a colorbar, and the bar is a column of the
             // panel's own grid. The first one on the panel wins: two different colour scales on
             // one panel are two keys the reader has to arbitrate between, and that is a different
             // question from D48's, which is about one scale across several panels.
@@ -1794,7 +1794,7 @@ module Figure =
                 | Some _ -> theme.PanelGap
                 | None -> 0.0<px>
 
-            // D171 — the legend: its entries and box, whether it sits outside, and for
+            // The legend: its entries and box, whether it sits outside, and for
             // `LegendBest` the share of the panel's drawn samples under each inside corner.
             let entries = legendEntries theme p
             let hasLegend = p.Legend <> LegendNone && entries.Length > 0
@@ -1852,12 +1852,12 @@ module Figure =
 
             let crowded = PanelLayout.crowded
 
-            // D72 — the gutters, measured. This is the half of the panel that depends on the
+            // The gutters, measured. This is the half of the panel that depends on the
             // data: how tall the surviving x labels are, how wide the widest y label is, how
             // much the outermost label hangs past the end of its axis, how wide the colorbar
             // needs to be. Every one of them is a `Track.Content` size below, and every one of
             // them moves when the numbers move.
-            // D176 — an axis whose labels are off keeps its marks, and an outward mark still takes
+            // An axis whose labels are off keeps its marks, and an outward mark still takes
             // its length outside the plot.
             // What an axis without numbers still reserves: an outward tick's length.
             let marksOnly (cfg: AxisConfig) =
@@ -1867,7 +1867,7 @@ module Figure =
                 | TickOut
                 | TickInOut -> theme.TickLength
 
-            // D166 — a reader who asked for Γ sees Γ: named ticks may be tilted by the ladder,
+            // A reader who asked for Γ sees Γ: named ticks may be tilted by the ladder,
             // and are never thinned.
             let keepNamed (cfg: AxisConfig) (spec: AxisSpec) (plan: TickPlan) =
                 match cfg.Ticks with
@@ -1877,11 +1877,11 @@ module Figure =
                         Rule = plan.Rule + ", named ticks kept" }
                 | _ -> plan
 
-            // D177 — the second axis's plan, against the plot's height as the first's is.
+            // The second axis's plan, against the plot's height as the first's is.
             let planY2 (h: float<px>) =
                 right |> Option.map (fun (cfg, spec) -> keepNamed cfg spec (Axes.planTicks m theme.TickFont theme.LabelGap h AxisRight spec.Ticks))
 
-            // D164 — how far the annotations' text stands past each edge of a plot of this size,
+            // How far the annotations' text stands past each edge of a plot of this size,
             // in px, as left, right, top and bottom (zero where it does not).
             let annotationOverhang (probe: Extent<px>) : Rect<px> =
                 let none: Rect<px> = { X0 = 0.0<px>; X1 = 0.0<px>; Y0 = 0.0<px>; Y1 = 0.0<px> }
@@ -2020,7 +2020,7 @@ module Figure =
                     LeftPad = 0.0<px>
                     BottomPad = 0.0<px> }
 
-                // D164 — an annotation's text may stand past the plot, and is not clipped, so the
+                // An annotation's text may stand past the plot, and is not clipped, so the
                 // gutter on that side grows until it holds it, over whatever the axis already
                 // takes there.
                 let past = annotationOverhang probe
@@ -2066,7 +2066,7 @@ module Figure =
                     gutters xPlan1 yPlan1 barPlan1 probe
 
             let draw () =
-                // D72 — the plan is *not* frozen, only the rectangle it is measured against. A
+                // The plan is *not* frozen, only the rectangle it is measured against. A
                 // frame's own tick values decide its own labels, inside a panel that does not
                 // move. Freezing the plan too would freeze the labels, and an animation whose
                 // numbers change and whose labels do not is not showing the numbers changing.
@@ -2097,7 +2097,7 @@ module Figure =
                 // One Transform for the panel, one Clip inside it. D9: `Scale.Forward` does not
                 // clamp, so out-of-domain data projects outside [0,1] and this Clip is what removes
                 // it. That is also why a backend without clipping still gets the common case right.
-                // D52 / D163 — marks that fell outside the panel, counted on the panel. A dropped
+                // Marks that fell outside the panel, counted on the panel. A dropped
                 // rule's layer is empty and is pruned with its key, so the count cannot live on it.
                 let dropped = ref 0
 
@@ -2107,7 +2107,7 @@ module Figure =
                         |> Array.mapi (fun ordinal l ->
                             let pts = Erase.projectXY l.Data
 
-                            // D97 — the geom's own arrays through the same scales as `pts`, at
+                            // The geom's own arrays through the same scales as `pts`, at
                             // the same moment. Projected at construction they went stale as soon
                             // as `unify` or a stated domain moved the panel out from under them.
                             let geom =
@@ -2116,7 +2116,7 @@ module Figure =
 
                             let layerKey = Keys.layer panelKey ordinal
 
-                            // D69 — the rows this layer was asked to name. `None` is the
+                            // The rows this layer was asked to name. `None` is the
                             // unsplit path and is what every figure that highlights nothing
                             // takes, which is why the golden baselines did not move.
                             let address =
@@ -2125,14 +2125,14 @@ module Figure =
                                 else
                                     Some(markKey l layerKey, l.Addressed)
 
-                            // D46 — **one batch per bucket, not one per point.** With no channels
+                            // **One batch per bucket, not one per point.** With no channels
                             // this is `Geom.compile`'s own path; with a continuous colour channel
                             // it is at most 256 groups for any number of points, which is what
                             // keeps §5.1's batching intact while the colour varies.
                             let body, counts =
                                 match geom with
                                 | GeomField(field, mark) ->
-                                    // D86 / D91 — a field is drawn once, not once per colour
+                                    // A field is drawn once, not once per colour
                                     // batch: its pixels and its contour levels are coloured
                                     // through the channel's own quantiser, the call the
                                     // colorbar's strips are drawn with, so the three agree.
@@ -2157,7 +2157,7 @@ module Figure =
 
                                     Geom.compileField p.Coord plotSize m theme.PanelBackground l.Style colourOf field mark, [||]
                                 | GeomRule rule ->
-                                    // D162 / D163 — laid across the panel's final domain. One that
+                                    // Laid across the panel's final domain. One that
                                     // misses the panel is not drawn and says so, on D52's rule.
                                     match Geom.compileRule p.Coord l.Style rule with
                                     | Some node -> node, [||]
@@ -2165,7 +2165,7 @@ module Figure =
                                         dropped.Value <- dropped.Value + 1
                                         Scene.empty, [||]
                                 | GeomAnnotation(text, placement, arrow) ->
-                                    // D164 — and an annotation whose point is off the panel.
+                                    // And an annotation whose point is off the panel.
                                     match Geom.compileAnnotation p.Coord plotSize l.Style text placement arrow pts.[0] with
                                     | Some node -> node, [||]
                                     | None ->
@@ -2200,7 +2200,7 @@ module Figure =
                                         [| "batches", string nodes.Length
                                            "unmapped", string unmapped |]
 
-                            // D68 — the layer's **ordinal**, not its name. `l.Name` is written
+                            // The layer's **ordinal**, not its name. `l.Name` is written
                             // into the `Annotated` node just below because that is where a
                             // human-readable label belongs; it is kept out of the key because it
                             // is caller-supplied, is empty until `Chart.withName` is called, and
@@ -2210,7 +2210,7 @@ module Figure =
                                 layerKey,
                                 Annotated(
                                     { Role =
-                                        // D162 — a rule marks the axes rather than carrying data.
+                                        // A rule marks the axes rather than carrying data.
                                         (match l.Geom with
                                          | GeomRule _
                                          | GeomAnnotation _ -> RoleAnnotation
@@ -2221,7 +2221,7 @@ module Figure =
                                 )
                             ))
 
-                    // D164 — an annotation's point is in the panel (one outside is dropped above),
+                    // An annotation's point is in the panel (one outside is dropped above),
                     // but its text and arrow may reach past the plot area, as matplotlib's do, so
                     // annotations are drawn after the data and outside its clip. A panel without
                     // one keeps the single clipped group it has always had.
@@ -2269,7 +2269,7 @@ module Figure =
                                 | MinorEvery _
                                 | MinorCount _ -> true }
 
-                // D177 — on a panel with two y axes, each takes the colour of its series when it
+                // On a panel with two y axes, each takes the colour of its series when it
                 // has exactly one, so the reader can tell which curve is read against which side
                 // without a legend. With several on a side, that side keeps the axis colour.
                 let tint (layers: Layer[]) =
@@ -2297,7 +2297,7 @@ module Figure =
                               Baseline = BaselineHanging
                               Rotation = 0.0<rad> }
 
-                // D171 — the legend where it was put: a corner, outside, or the corner the frozen
+                // The legend where it was put: a corner, outside, or the corner the frozen
                 // scores make least covered.
                 let legend =
                     let framed = defaultArg p.LegendFrame theme.ShowLegendFrame
@@ -2350,7 +2350,7 @@ module Figure =
                                // figure without a dropped mark keeps its baseline.
                                if dropped.Value > 0 then
                                    "dropped-marks", string dropped.Value |] },
-                        // D103 — everything but the background, the frame and the title is
+                        // Everything but the background, the frame and the title is
                         // keyed below the panel, so a change to one part replaces that part.
                         // An empty part is pruned with its key, so a panel with no legend
                         // writes no empty element for one.
@@ -2378,7 +2378,7 @@ module Figure =
                     )
                 )
 
-            // D106 — what this panel's own labels need inside the rectangle it was given. With
+            // What this panel's own labels need inside the rectangle it was given. With
             // no frozen layout that is the layout. With one, it is the gutters the tick plan made
             // at the frozen probe asks for, under the frozen prefixes: the question a widget asks
             // of a state nobody sampled. Lazy, because drawing never needs it.
@@ -2391,15 +2391,15 @@ module Figure =
 
             layout, needed, draw
 
-    /// A panel at its own cell, keyed by it (D68).
+    /// A panel at its own cell, keyed by it.
     let private compilePanel m theme extent region frozen pins letterH (p: Panel) =
         compilePanelKeyed (Keys.panel p.Row p.Col) m theme extent region frozen pins letterH p
 
-    /// D171 — every panel's legend entries, once each, for a figure's shared legend.
+    /// Every panel's legend entries, once each, for a figure's shared legend.
     let private figureEntries (fig: Figure) =
         fig.Panels |> Array.collect (legendEntries fig.Theme) |> Array.distinct
 
-    /// D171 — the shared legend, when there is one and it has something to say.
+    /// The shared legend, when there is one and it has something to say.
     let private sharedLegend (fig: Figure) =
         match fig.Legend with
         | Some placement when (figureEntries fig).Length > 0 -> Some placement
@@ -2409,7 +2409,7 @@ module Figure =
     let private ownLegend (fig: Figure) (p: Panel) =
         if fig.Legend.IsSome then { p with Legend = LegendNone } else p
 
-    /// D175 — a row's or column's weight, 1 where none is stated.
+    /// A row's or column's weight, 1 where none is stated.
     let private weightOf (weights: float[]) (i: int) = if i < weights.Length then weights.[i] else 1.0
 
     /// The figure's own outer grid: one content row for the head, then one row of tracks per
@@ -2442,7 +2442,7 @@ module Figure =
 
                 a + b
 
-        // D171 — a shared legend is one more column, or one more row, of the figure's own grid.
+        // A shared legend is one more column, or one more row, of the figure's own grid.
         // A figure without one keeps the grid it had: a track of zero would still take a gap.
         let trackRows =
             Array.concat
@@ -2473,10 +2473,10 @@ module Figure =
         |> Layout.withGaps theme.PanelGap theme.PanelGap
         |> Layout.withPadding theme.FigurePadding
 
-    /// D173 — whether a figure's panels have anything to line up with: more than one cell.
+    /// Whether a figure's panels have anything to line up with: more than one cell.
     let private isGrid (fig: Figure) = max 1 fig.Rows * max 1 fig.Cols > 1
 
-    /// D173 — **the panels lined up.** Every panel on one grid line is given the gutters of the
+    /// **The panels lined up.** Every panel on one grid line is given the gutters of the
     /// widest one there, as slack at its outer edge: the left gutters of the panels in a column
     /// all add up to the column's largest, and so on for right, top and bottom. It is D72's
     /// union again, componentwise and taken along a grid line instead of over frames, and it
@@ -2504,7 +2504,7 @@ module Figure =
                 |> Array.filter (fun (_, p, _) -> at p = i)
                 |> Array.fold (fun acc (_, _, l) -> max acc (size l)) 0.0<px>)
 
-        // D174 — a spanning panel's gutters sit on the outer lines of its span: its top on its
+        // A spanning panel's gutters sit on the outer lines of its span: its top on its
         // first row's, its bottom on its last row's.
         let lastRow (p: Panel) = min (rows - 1) (max 0 p.Row + max 1 p.RowSpan - 1)
         let lastCol (p: Panel) = min (cols - 1) (max 0 p.Col + max 1 p.ColSpan - 1)
@@ -2525,7 +2525,7 @@ module Figure =
 
         (lefts, rights, tops, bottoms), slackened
 
-    /// D173 — the outer grid once the gutters are known: each panel row is three tracks, its top
+    /// The outer grid once the gutters are known: each panel row is three tracks, its top
     /// gutters, its plot and its bottom gutters, and each panel column three likewise, so a
     /// panel's region is the span of its three and its plot lands on the middle one. The gaps
     /// between panels become tracks of their own, since `Layout`'s gap would also fall between a
@@ -2593,7 +2593,7 @@ module Figure =
 
         Layout.grid trackRows trackCols cells |> Layout.withPadding theme.FigurePadding
 
-    /// D179 — **the plot held to its shape**: a panel that asks for one has its plot shrunk to it
+    /// **The plot held to its shape**: a panel that asks for one has its plot shrunk to it
     /// inside its region and centred, as slack on the two sides that give way. Applied last, after
     /// the panels are lined up, so a neighbour keeps its rectangle and only this panel's plot moves
     /// out of line. The probe becomes the plot's exact size, which `fitAspect` holds each frame to.
@@ -2659,7 +2659,7 @@ module Figure =
 
         { l with Probe = probe }
 
-    /// D180 — every inset's layout, measured over its host's frozen plot.
+    /// Every inset's layout, measured over its host's frozen plot.
     let private insetLayouts (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) (outer: Arrangement) (hosts: (string * PanelLayout)[]) =
         [| for p in fig.Panels do
                if p.Insets.Length > 0 && p.Layers.Length > 0 then
@@ -2678,7 +2678,7 @@ module Figure =
                                    measureInset m fig.Theme extent (Keys.inset (Keys.panel p.Row p.Col) i) (insetRect hostPlot inset.At) (unify inset.Panel)
                    | _ -> () |]
 
-    /// D180 — the inset's domain on its host, as a rectangle, and two lines from its corners to
+    /// The inset's domain on its host, as a rectangle, and two lines from its corners to
     /// the inset's nearest ones. Both must be cartesian, with the inset's axes in the host's
     /// dimensions.
     let private indicator (theme: Theme) (extent: Extent<px>) (host: Panel) (hostPlot: Rect<px>) (inset: Panel) (rect: Rect<px>) : Node =
@@ -2790,13 +2790,13 @@ module Figure =
 
             Some x
 
-    /// D175 — **where each grid line falls, so the plots keep their stated proportions.** In the
+    /// **Where each grid line falls, so the plots keep their stated proportions.** In the
     /// grid, a line that only one side of a `beside` has still takes its gutters and gap across the
     /// whole figure, inside the other side's panel that spans it, and that panel's plot grows by
     /// them: 3 : 1 beside a stack of three drew 1.70 : 1. Here the lines are placed directly
     /// instead: each line `l` of `1 .. count - 1` is the edge where the regions ending on it end
     /// (the regions starting on it begin a gap later), so the panels on one line still share it
-    /// and stay lined up (D173), while two lines of different sides are free to overlap. Solved
+    /// and stay lined up, while two lines of different sides are free to overlap. Solved
     /// so that along every crossing line each panel's plot is its stated share times one length,
     /// with a tiny pull towards where the grid put each line, which settles a line nothing
     /// constrains.
@@ -2869,7 +2869,7 @@ module Figure =
                 let moved = Seq.exists (fun l -> abs (lines.[l] - current.[l]) > 1e-6) (seq { 1 .. count - 1 })
                 if fits && moved then Some lines else None)
 
-    /// D175 — the panels' regions moved onto the lines `placeLines` found, rows then columns. The
+    /// The panels' regions moved onto the lines `placeLines` found, rows then columns. The
     /// head and a shared legend keep the places the grid gave them.
     let private placeProportionally (fig: Figure) (outer: Arrangement) (lefts: float<px>[], rights: float<px>[], tops: float<px>[], bottoms: float<px>[]) =
         let rows = max 1 fig.Rows
@@ -2916,12 +2916,12 @@ module Figure =
                 Placements = placements
                 Regions = placements |> Array.map (fun (k, r) -> k, Layout.ndRect outer.Extent r) }
 
-    /// D173 — pass 2: the measured layouts lined up, the outer grid rebuilt around their gutters,
+    /// Pass 2: the measured layouts lined up, the outer grid rebuilt around their gutters,
     /// and each panel's probe set to the plot it now has. A figure of one panel has nothing to
     /// line up with and keeps pass 1 exactly.
     ///
     /// `rescore` gives a `LegendBest` panel its corner scores again over the plot it now has
-    /// (D171): a panel that gave up width to line up with a neighbour's outside legend has a
+    ///: a panel that gave up width to line up with a neighbour's outside legend has a
     /// different emptiest corner. The gutters are not re-measured, so whether the legend went
     /// outside, which is a gutter, stays as pass 1 decided it.
     let private placeAligned
@@ -3106,12 +3106,12 @@ module Figure =
 
         a + b
 
-    /// **D106 — one arrangement over states a caller lists.** `arrangeUnion` is this over samples
+    /// **One arrangement over states a caller lists.** `arrangeUnion` is this over samples
     /// of time; a widget calls it over the states its controls can reach (their extremes), which
     /// it knows without running anything, because the controls are known before the view runs.
     ///
     /// Everything `arrangeUnion` says about the union holds: componentwise, the prefixes pinned
-    /// from the union domain, the colour domains and quiver keys (D94) held across the states.
+    /// from the union domain, the colour domains and quiver keys held across the states.
     /// `Samples` reports how many states there were.
     let internal arrangeOver (m: ITextMeasurer) (extent: Extent<px>) (raw: Figure[]) : Shot =
         if raw.Length = 0 then
@@ -3161,9 +3161,9 @@ module Figure =
                     Layout.tryFindPx key outer
                     |> Option.map (fun region -> key, (fig, region, unify (ownLegend fig p)))))
 
-        // D73 — the prefix, chosen once from the union of every frame's domain rather than per
+        // The prefix, chosen once from the union of every frame's domain rather than per
         // frame from its own. This is the same mechanism as the gutters and not a second one:
-        // which decade a prefix comes from is a property of "the numbers" (D19), and across a
+        // which decade a prefix comes from is a property of "the numbers", and across a
         // shot the numbers are all of them.
         //
         // **Chosen before anything is measured** — D108, M4.5's correction to it. Each state
@@ -3197,7 +3197,7 @@ module Figure =
                 let pinOver (panels: Panel[]) (packedOf: Panel -> PackedScale) (pointOf: Panel -> float option) =
                     unionOver panels packedOf pointOf |> Option.map (fun d -> Axis.prefixForPacked d (packedOf panels.[0]))
 
-                // D178 — a secondary axis pinned over the image of the primary's union, which is
+                // A secondary axis pinned over the image of the primary's union, which is
                 // the union of its images, since its map is monotone.
                 let secondaryPin (axis: string) (cfgOf: Panel -> AxisConfig) (packedOf: Panel -> PackedScale) (erasedOf: Panel -> IScaleErased) (pointOf: Panel -> float option) =
                     match drawn |> Array.tryHead |> Option.bind (fun p -> (cfgOf p).Secondary) with
@@ -3208,7 +3208,7 @@ module Figure =
                 let yPacked (p: Panel) = snd (axisScales p)
 
                 let rightPin =
-                    // D177 — the second y axis pinned the same way, over its own layers.
+                    // The second y axis pinned the same way, over its own layers.
                     match pinOver (drawn |> Array.choose secondaryOf) yPacked (panelPoints >> snd) with
                     | Some pin -> Some pin
                     | None -> secondaryPin "y" (fun p -> p.YAxis) yPacked (axisScalesErased >> snd) (panelPoints >> snd)
@@ -3244,13 +3244,13 @@ module Figure =
 
         let outer, panels = placeAligned m extent (Some head) template outer rescore panels
 
-        // D179 — the box from the union of every state's domains, so each fits it.
+        // The box from the union of every state's domains, so each fits it.
         let ratioOf (key: string) =
             entries |> Array.filter (fun (k, _) -> k = key) |> Array.map (fun (_, (_, _, unified)) -> unified) |> aspectOf
 
         let panels = withAspects outer ratioOf rescore panels
 
-        // D180 — every state's insets, unioned by key as the panels are.
+        // Every state's insets, unioned by key as the panels are.
         let insets =
             states
             |> Array.collect (fun fig -> insetLayouts m extent fig outer panels)
@@ -3265,7 +3265,7 @@ module Figure =
           ColourDomains = colourDomains
           QuiverKeys = quiverKeys }
 
-    /// **D72 — one arrangement for the whole shot.** Sample the animation, arrange each state,
+    /// **One arrangement for the whole shot.** Sample the animation, arrange each state,
     /// and take the union: the arrangement no frame can overflow.
     ///
     /// `sample` is `float -> Figure` over `[0, 1]`, which is deliberately not `Anim<Figure>`.
@@ -3301,11 +3301,11 @@ module Figure =
             else
                 Array.init samples (fun i -> float i / float (samples - 1))
 
-        // D94 — the colour domains and quiver keys first, and every state measured with them in
+        // The colour domains and quiver keys first, and every state measured with them in
         // place: the union domain's colorbar labels can be wider than any one state's.
         arrangeOver m extent (times |> Array.map sample)
 
-    /// **D106 — does a state fit a layout that is already decided?** A widget lays out once over
+    /// **Does a state fit a layout that is already decided?** A widget lays out once over
     /// the states its controls can reach at their extremes, and the reader can still choose one
     /// between them whose labels are wider, or zoom to a domain no extreme had. This is the
     /// question it asks of each new state, before drawing it in the old rectangle.
@@ -3357,7 +3357,7 @@ module Figure =
 
         within (headHeight m fig) headRoom && Array.forall panelFits fig.Panels
 
-    /// **D105 — every drawn panel of a figure, as a pointer meets it in a shot.** The plot
+    /// **Every drawn panel of a figure, as a pointer meets it in a shot.** The plot
     /// rectangle comes from the shot's frozen inner grid through `innerGrid`, the function the
     /// drawing pass takes it from, and the scales from the panel after `unify`. A panel with no
     /// layers, or one the shot has no layout for, has nothing to point at and is left out.
@@ -3383,7 +3383,7 @@ module Figure =
               Y2 = second |> Option.map (fun sp -> snd (axisScalesErased sp))
               Y2Axis = second |> Option.map (fun sp -> snd (axisSpecs fig.Theme (f.XPrefix, f.Y2Prefix) sp)) }
 
-        // D180 — the insets first, so a pointer over one finds it before the host beneath.
+        // The insets first, so a pointer over one finds it before the host beneath.
         let insets =
             fig.Panels
             |> Array.collect (fun p ->
@@ -3414,7 +3414,7 @@ module Figure =
             | _ -> None)
         |> Array.append insets
 
-    /// D180 — one inset's domains, stated, raw, in each axis's own unit; `None` leaves an axis.
+    /// One inset's domains, stated, raw, in each axis's own unit; `None` leaves an axis.
     let internal withInsetDomains (row: int, col: int, inset: int) (dx: (float * float) option) (dy: (float * float) option) (fig: Figure) : Figure =
         { fig with
             Panels =
@@ -3433,7 +3433,7 @@ module Figure =
                     else
                         p) }
 
-    /// D177 — one panel's second y domain, stated, raw, in that axis's unit.
+    /// One panel's second y domain, stated, raw, in that axis's unit.
     let internal withPanelDomainY2 (row: int, col: int) (lo: float, hi: float) (fig: Figure) : Figure =
         { fig with
             Panels =
@@ -3455,7 +3455,7 @@ module Figure =
         (dy: (float * float) option)
         (fig: Figure)
         : Figure =
-        // D176 — on a shared axis, the domain is the group's.
+        // On a shared axis, the domain is the group's.
         withDomainsShared (fun p -> p.Row = row && p.Col = col) dx dy fig
 
     /// **`Shot -> Figure -> Node`.** Draw this figure inside a layout that has already been
@@ -3529,7 +3529,7 @@ module Figure =
                     let unified = match frozen with Some f -> fitAspect f unified | None -> unified
                     let _, _, draw = compilePanel m theme extent region frozen (None, None, None, None) (letterHeight m fig) unified
 
-                    // D180 — the insets over the host's plot, each with its zoom drawn first.
+                    // The insets over the host's plot, each with its zoom drawn first.
                     let insets =
                         match frozen with
                         | Some hf when p.Insets.Length > 0 && p.Layers.Length > 0 ->
@@ -3551,7 +3551,7 @@ module Figure =
 
                     if insets.Length = 0 then draw () else Group(Array.append [| draw () |] insets))
 
-        // D165 — the panels' letters, in reading order, at the top left of each panel's region,
+        // The panels' letters, in reading order, at the top left of each panel's region,
         // in the title row `compilePanel` keeps for them: above the axis title, clear of the data
         // and of a legend in the corner. Drawn here rather than by `compilePanel` because the
         // order is the figure's.
@@ -3597,7 +3597,7 @@ module Figure =
                     |> Option.map (letterAt i p))
                 |> Array.choose id
 
-        // D171 — the figure's shared legend, in the column or row the outer grid kept for it.
+        // The figure's shared legend, in the column or row the outer grid kept for it.
         let shared =
             match sharedLegend fig, Layout.tryFindPx "flegend" shot.Outer with
             | Some placement, Some cell ->

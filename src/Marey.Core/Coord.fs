@@ -12,7 +12,7 @@ type GridSpec =
       /// emits two-point lines; polar needs ~64 to look round.
       Samples: int }
 
-/// §4 — Coordinate systems, which sit *above* scales.
+/// Coordinate systems, which sit *above* scales.
 ///
 /// "Cartesian is the identity `Coord`. Polar warps and gives circular gridlines and a circular
 /// clip. **Nothing else in the system needs to know polar exists** — which is exactly the

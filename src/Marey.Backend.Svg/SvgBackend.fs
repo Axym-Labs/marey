@@ -4,11 +4,11 @@ open System
 open System.Text
 
 // ======================================================================================
-// §6 — THE REFERENCE BACKEND.
+// THE REFERENCE BACKEND.
 //
 // "Build this first and treat it as the spec." Everything in this file is written for two
 // readers: the SVG renderer that has to draw it, and the person reviewing a golden-image diff
-// in a pull request (§13). Where those two pull in different directions the reviewer wins,
+// in a pull request. Where those two pull in different directions the reviewer wins,
 // because the reviewer is the one who catches the bug.
 //
 // ---------------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
     /// markers and `Keyed` names colliding. See `SvgDocument`.
     let doc = SvgDocument(defaultArg idPrefix "")
 
-    /// D103 — where each `Keyed` element sits in the body: its key, its id, and the offsets of
+    /// Where each `Keyed` element sits in the body: its key, its id, and the offsets of
     /// its markup from the start of its line to the end of its closing tag's line.
     let spans = ResizeArray<struct (string * string * int * int)>()
 
@@ -368,7 +368,7 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
 
     // ---- semantics -------------------------------------------------------------------
 
-    // §5.3: "Annotated is not decoration ... hit-testing, tooltips, aria-labels on SVG output,
+    // "Annotated is not decoration ... hit-testing, tooltips, aria-labels on SVG output,
     // and clickable legends all need the IR to remember what a shape means."
     //
     // Two attributes come out of the role, not one. `role` is a real ARIA role from the WAI
@@ -495,7 +495,7 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
                 draw ctm (depth + 1) child
                 endTag depth "g"
 
-        // D67 — group opacity, which is what `<g opacity>` means in SVG: the subtree is
+        // Group opacity, which is what `<g opacity>` means in SVG: the subtree is
         // composited into its own buffer and *that* is faded, so an overlap inside the group
         // does not read darker than the rest of it. This is the case `Degrade.forCaps`
         // approximates for a backend without it; here it is exact and no rewrite happens.
@@ -511,7 +511,7 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
             draw ctm (depth + 1) child
             endTag depth "g"
 
-        // §5.2 — stable identity, so a future diff can address this subtree by name.
+        // Stable identity, so a future diff can address this subtree by name.
         | Keyed(Key name, child) ->
             let id = doc.UniqueId(Svg.ncname name)
             let start = sb.Length
@@ -703,7 +703,7 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
         else
             cached
 
-    /// D103 — the document in its three parts, and every keyed element's place in the body.
+    /// The document in its three parts, and every keyed element's place in the body.
     member internal _.Pieces =
         doc.Header, doc.DefsText(), doc.Body.ToString(), spans.ToArray()
 
@@ -732,7 +732,7 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
               // document. `Capabilities.full` has this false because it describes a generic
               // vector backend; this one earns it.
               Semantics = true
-              // D67 — `<g opacity>` is group opacity by definition: SVG composites the group
+              // `<g opacity>` is group opacity by definition: SVG composites the group
               // into its own buffer and fades the result. Nothing to degrade.
               GroupOpacity = true
               // No instance-buffer ceiling: a text file has no hardware limit, and §5.1's
@@ -790,7 +790,7 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
             finished <- true
             cached <- null
 
-/// D103 — a new scene as a change to the document the old one rendered to.
+/// A new scene as a change to the document the old one rendered to.
 ///
 /// The view swaps each element in `Elements` in by its id, and replaces its `<defs>` with `Defs`
 /// whole. `Elements` is `None` when no set of keyed elements describes the change, and the view
@@ -834,7 +834,7 @@ module SvgBackend =
     /// Render a scene to an SVG document at the given surface size.
     let render (extent: Extent<px>) (node: Node) : string = renderScoped "" extent node
 
-    /// **D103 — the change from `before` to `after`, as elements to swap by id.**
+    /// **The change from `before` to `after`, as elements to swap by id.**
     ///
     /// `Scene.diff` chooses the keys. Each is written from a render of the **whole** new scene,
     /// never from a render of the subtree alone, because the ids a subtree refers to (`qc`, `qm`,
@@ -900,13 +900,13 @@ module SvgBackend =
                 else
                     whole
 
-    // D113 — file output is .NET's. A Fable build has no file system to write to, and these do not
+    // File output is .NET's. A Fable build has no file system to write to, and these do not
     // compile there.
 #if !FABLE_COMPILER
     /// Render a scene and write it to a file as UTF-8 with no byte-order mark.
     ///
     /// The encoding is pinned rather than left to the default because these files are golden
-    /// masters (§13): a BOM appearing or disappearing would show up as a whole-file diff.
+    /// masters: a BOM appearing or disappearing would show up as a whole-file diff.
     let renderToFile (path: string) (extent: Extent<px>) (node: Node) : unit =
         let text = render extent node
         IO.File.WriteAllText(path, text, UTF8Encoding(false))

@@ -18,7 +18,7 @@ type Cvd =
 /// the IR. Stops are a value; `Ramp.at` is the evaluator.
 ///
 /// Stops are in ascending position order over [0,1] and are interpolated by `Interp.stops`,
-/// which goes through `Color.mix` — i.e. **Oklab**, not sRGB (§7.1). A ten-stop ramp resampled
+/// which goes through `Color.mix` — i.e. **Oklab**, not sRGB. A ten-stop ramp resampled
 /// perceptually is indistinguishable from the 256-entry table it came from.
 type Ramp =
     { Name: string
@@ -82,7 +82,7 @@ type PaletteReport =
       /// every entry clears `ContrastFloor` against the background.
       Ok: bool }
 
-/// §9 — the colour system.
+/// The colour system.
 ///
 /// Categorical: **Okabe–Ito**, the eight-colour set designed for dichromats. Sequential:
 /// viridis / cividis / magma, all perceptually ordered. Diverging: built here, in Oklab, rather

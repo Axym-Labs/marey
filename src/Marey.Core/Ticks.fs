@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §4 — Tick generation.
+/// Tick generation.
 ///
 /// The spike's `TickHint` returns `n+1` evenly spaced values across the domain, which puts
 /// ticks at 3.7142857 and is not shippable. Real tick selection is the "1-2-5" nice-number
@@ -204,7 +204,7 @@ module internal Ticks =
     /// when the domain is wide, or when a tick lies outside [10⁻³, 10³].
     ///
     /// The second condition covers a narrow axis no prefix brought near 1: a dimensionless one,
-    /// one in a unit that takes no prefix (`h`), or one whose prefix was pinned elsewhere (D73).
+    /// one in a unit that takes no prefix (`h`), or one whose prefix was pinned elsewhere.
     /// [10⁻³, 10³] is the range a prefix leaves a narrow axis in, so a tick outside it is a
     /// number a prefix would have shortened.
     let logInPowers (domain: float * float) (values: float[]) : bool =

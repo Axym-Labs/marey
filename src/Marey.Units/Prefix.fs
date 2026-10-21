@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §2.2 — an SI decimal prefix.
+/// An SI decimal prefix.
 ///
 /// "Data in `float<m>` spanning 1e-9 … 5e-9 should produce ticks labelled 1, 2, 3, 4, 5 with
 /// an axis title of `x [nm]`. That is one of the most visible quality-of-life wins the unit

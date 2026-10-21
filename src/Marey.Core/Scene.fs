@@ -1,14 +1,14 @@
 namespace Marey
 
 // ======================================================================================
-// §5 — THE SCENE IR
+// THE SCENE IR
 //
 // "The most important constraint in the project: this type is small, closed, total, and
 //  backend-agnostic. Every addition costs you six backend implementations."
 //
 // Read this before adding anything below:
 //
-//   §5.5 — what is deliberately NOT here: axes, legends, titles, colorbars, facets, error
+//   What is deliberately NOT here: axes, legends, titles, colorbars, facets, error
 //   bars, box plots. Those are *compiled into* Path/Text/Markers by the layer above. "If you
 //   find yourself wanting `| Axis of ...`, the design has failed."
 //
@@ -16,7 +16,7 @@ namespace Marey
 //
 //   1. `Transform` carries an `Affine<nd,nd>`, not a function. A closure has reference
 //      equality, which would silently destroy the structural-equality diffing that §5.2
-//      depends on, and it cannot be serialized (§15). See Affine.fs.
+//      depends on, and it cannot be serialized. See Affine.fs.
 //
 //   2. Collections are arrays, not lists. §1.3: "Per-frame allocation of records will destroy
 //      a 60 fps loop. The hot path (scene -> backend, particle stepping) must be struct/array
@@ -79,7 +79,7 @@ type Stroke =
       Join: LineJoin
       MiterLimit: float }
 
-/// §5 — Path segments. Four cases, and it stays four cases.
+/// Path segments. Four cases, and it stays four cases.
 ///
 /// No arcs and no quadratic curves: both are exactly representable (arcs to within any
 /// tolerance) as cubics, and every extra case is a case in six backends. Polar gridlines,
@@ -151,11 +151,11 @@ type TextRun =
       /// Rotation about `At`. Measured, so a degrees/radians mix-up is a compile error.
       Rotation: float<rad> }
 
-/// §5.1 — Marker shapes.
+/// Marker shapes.
 ///
 /// The design's node is `Markers of Vec2<nd>[] * float<px> * Paint` — no shape. Shape is a
 /// standard encoding channel and the *only* redundant encoding for colour, so a
-/// colour-blind-safe scatter (§9) needs it. Without a shape field the compiler layer has to
+/// colour-blind-safe scatter needs it. Without a shape field the compiler layer has to
 /// emit one `Path` per point to vary it, which defeats §5.1 — "the single biggest performance
 /// decision in the IR" — in the exact case that motivated batching.
 ///
@@ -170,7 +170,7 @@ type MarkerShape =
     | MarkCross
     | MarkPlus
 
-/// §5.1 — "A 100 000-point scatter must be *one* IR node, not 100 000 `Path` nodes."
+/// "A 100 000-point scatter must be *one* IR node, not 100 000 `Path` nodes."
 ///
 /// The GPU backend turns this into one instanced draw call; SVG into a `<use>`/`<symbol>`
 /// pair. Any geometry that can appear ten thousand times gets a batched node.
@@ -186,7 +186,7 @@ type MarkerBatch =
 /// Raw RGBA8 pixels, row-major, top row first.
 ///
 /// Note that structural equality on this is O(pixels), which makes a `Raster` an expensive
-/// thing to diff (§5.2). A key does not help: two rasters under the same key are not therefore
+/// thing to diff. A key does not help: two rasters under the same key are not therefore
 /// the same raster, and `Scene.diff` compares what is under a key. Only **reference** equality
 /// lets a diff skip the bytes, so a producer that wants an unchanged raster skipped has to hand
 /// back the same array, which `mapKey`'s sharing does and a field recomputed for a new state
@@ -206,7 +206,7 @@ type RasterNode =
       /// discrete data, where smoothing invents values that were never measured.
       Smooth: bool }
 
-/// §5.2 — Stable identity for diffing.
+/// Stable identity for diffing.
 ///
 /// "Scene graphs are immutable F# values with structural equality. Re-render on interaction =
 /// build a new `Scene`, diff against the previous one, emit only the changed subtrees.
@@ -215,7 +215,7 @@ type RasterNode =
 [<Struct>]
 type Key = Key of string
 
-/// §5.3 — What a shape *means*.
+/// What a shape *means*.
 ///
 /// "Hit-testing, tooltips, `aria-label`s on SVG output, and clickable legends all need the IR
 /// to remember what a shape means, not just where it is. Retrofitting this is painful; it
@@ -240,7 +240,7 @@ type Semantics =
       /// comparable and Fable-friendly.
       Data: (string * string)[] }
 
-/// §5 — The IR. Ten cases. Guard it obsessively.
+/// The IR. Ten cases. Guard it obsessively.
 [<NoComparison>]
 type Node =
     | Path of segments: PathSeg[] * stroke: Stroke option * fill: Paint option * rule: FillRule
@@ -250,7 +250,7 @@ type Node =
     | Group of Node[]
     | Transform of Affine<nd, nd> * Node
     | Clip of PathSeg[] * Node
-    /// D67 — uniform opacity over the **composited** subtree. In [0,1]; `Scene.opacity` clamps.
+    /// Uniform opacity over the **composited** subtree. In [0,1]; `Scene.opacity` clamps.
     ///
     /// Not the same thing as multiplying `Color.A` through the subtree, and the difference is
     /// exactly where the group's own shapes overlap: with per-shape alpha an overlap shows both
@@ -266,7 +266,7 @@ type Node =
     | Keyed of Key * Node
     | Annotated of Semantics * Node
 
-/// §5.2 / D103 — what changed between two scenes, as replacements at the keys that hold them.
+/// What changed between two scenes, as replacements at the keys that hold them.
 [<NoComparison>]
 type Patch =
     /// Put each node under its key, in place of what is there now: the **child** of the
@@ -386,7 +386,7 @@ module Scene =
         | Markers _
         | Raster _ -> state
 
-    /// §5.2 — the subtree a key names, or `None`.
+    /// The subtree a key names, or `None`.
     ///
     /// Returns the **child** of the matching `Keyed` node, not the node itself, so that it
     /// pairs with `mapKey`: what you can read is what you can replace, and neither can lose
@@ -426,7 +426,7 @@ module Scene =
 
         go n
 
-    /// §5.2 — rewrite the subtree a key names, leaving the rest of the scene alone.
+    /// Rewrite the subtree a key names, leaving the rest of the scene alone.
     ///
     /// `f` is applied to the *child* of the matching `Keyed` node and the wrapper is put back,
     /// so a rewrite cannot drop the key it was addressed by. This is what an animation holds a
@@ -475,7 +475,7 @@ module Scene =
 
         go n
 
-    /// **§5.2 / D103 — the diff.** Walk both scenes together, and answer with the smallest
+    /// **The diff.** Walk both scenes together, and answer with the smallest
     /// set of keyed subtrees whose replacement turns `before` into `after`.
     ///
     /// - A **reference-equal** pair is skipped without looking inside. That is what makes a

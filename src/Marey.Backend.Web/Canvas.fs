@@ -3,7 +3,7 @@ namespace Marey
 open Fable.Core
 
 // ======================================================================================
-// M5 — THE CANVAS, AS THE BACKEND SEES IT (D122)
+// M5 — THE CANVAS, AS THE BACKEND SEES IT
 //
 // The members of the browser's 2-D canvas this package calls, by their JavaScript names, and
 // nothing else. Declared here rather than taken from `Fable.Browser.Dom`, whose bindings predate

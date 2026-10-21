@@ -14,14 +14,14 @@ type Stepping<'s> =
     /// Accepted steps of an adaptive integrator, its controller started at `h0`.
     | Adaptive of h0: float<s> * step: AdaptiveStep<'s, s>
 
-/// §8.2 — a quantity a simulation should conserve: energy, momentum, mass. Erased to `float`, with
-/// the unit it was stated in kept beside it for the drift figure's axis (D136).
+/// A quantity a simulation should conserve: energy, momentum, mass. Erased to `float`, with
+/// the unit it was stated in kept beside it for the drift figure's axis.
 type Invariant<'s> =
     { Name: string
       Unit: IUnit
       Of: 's -> float }
 
-/// §8.2 — a simulation is a start and a way to step.
+/// A simulation is a start and a way to step.
 ///
 /// Simulations are sequential and `Anim` asks for random access to time; `Sim.trajectory` is the
 /// bridge, and this record is what it needs. The stepping is any integrator's (`Ode`). A fixed
@@ -39,7 +39,7 @@ type Sim<'s> =
         /// What the simulation should conserve, for `Sim.drift`. Plotting them against time is
         /// the standard way to catch a broken integrator.
         Invariants: Invariant<'s> list
-        /// Crossings to locate and respond to, in the order a tie is broken (D144).
+        /// Crossings to locate and respond to, in the order a tie is broken.
         Events: Event<'s> list
     }
 
@@ -87,7 +87,7 @@ module Sim =
     /// The same simulation with a state that a step updates in place, and `copy` to keep one.
     let withCheckpoint (copy: 's -> 's) (sim: Sim<'s>) : Sim<'s> = { sim with Checkpoint = copy }
 
-    /// D136 — the simulation with an invariant attached, in no stated unit. In the unit-required
+    /// The simulation with an invariant attached, in no stated unit. In the unit-required
     /// mode (`open Marey.UnitsOfMeasure`) this is shadowed by a form that takes a witness.
     let withInvariant (name: string) (f: 's -> float) (sim: Sim<'s>) : Sim<'s> =
         { sim with Invariants = sim.Invariants @ [ { Name = name; Unit = U.unspecified; Of = f } ] }
@@ -97,11 +97,11 @@ module Sim =
     let internal withInvariantIn<'s, [<Measure>] 'e> (name: string) (u: U<'e>) (f: 's -> float<'e>) (sim: Sim<'s>) : Sim<'s> =
         { sim with Invariants = sim.Invariants @ [ { Name = name; Unit = (u :> IUnit); Of = fun s -> float (f s) } ] }
 
-    /// D144 — the simulation with events attached, after any it has. Their order breaks a tie
+    /// The simulation with events attached, after any it has. Their order breaks a tie
     /// between two roots at the same time.
     let withEvents (events: Event<'s> list) (sim: Sim<'s>) : Sim<'s> = { sim with Events = sim.Events @ events }
 
-    // ---- The engine: adaptive steps and events (D143, D144) ------------------------------------------
+    // ---- The engine: adaptive steps and events ------------------------------------------
     //
     // A run is a sequence of units, each one step or one step cut short at an event, between
     // cursors. A fixed step's time is `Origin + J · h`: `k · h` until the first event, and counted
@@ -117,7 +117,7 @@ module Sim =
             J: int
             T: float<s>
             S: 's
-            /// An adaptive integrator's controller (D143).
+            /// An adaptive integrator's controller.
             C: Controller<s>
             /// When each event last fired; NaN before it has.
             Last: float<s>[]
@@ -357,7 +357,7 @@ module Sim =
         walk n sim (fun k t _ -> out.[k] <- t) |> ignore
         out
 
-    // ---- Trajectory (D135) ------------------------------------------------------------------------
+    // ---- Trajectory ------------------------------------------------------------------------
 
     /// The checkpoint table `trajectory` refuses to exceed, unless told otherwise: 512 MiB.
     [<Literal>]
@@ -476,7 +476,7 @@ module Sim =
 
     /// A trajectory through the engine, for an adaptive integrator or a simulation with events.
     /// Checkpoint `i` is the first unit boundary at or past `i · every`, with everything the next
-    /// unit depends on: the controller (D143), when each event last fired, the step origin.
+    /// unit depends on: the controller, when each event last fired, the step origin.
     let private unitTrajectory maxBytes (every: float<s>) (horizon: float<s>) (sim: Sim<'s>) =
         if horizon / every >= 2.0e9 then
             invalidArg "every" (sprintf "Marey: %g s checkpointed every %g s is more checkpoints than a trajectory counts." (float horizon) (float every))
@@ -557,7 +557,7 @@ module Sim =
     let trajectory (every: float<s>) (horizon: float<s>) (sim: Sim<'s>) : Anim<'s> =
         trajectoryWithin DefaultCheckpointBytes every horizon sim
 
-    // ---- Drift (D136) -------------------------------------------------------------------------------
+    // ---- Drift -------------------------------------------------------------------------------
 
     /// Each invariant's drift over a trajectory, at `samples` evenly spaced times from 0 to its
     /// duration: `(I(t) − I(0)) / |I(0)|`, or `I(t) − I(0)` in the invariant's unit where `I(0)` is

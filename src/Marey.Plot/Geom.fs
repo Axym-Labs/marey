@@ -42,7 +42,7 @@ type StepAlign =
 
 /// One box of a box plot — the five-number summary after `Geom.boxplot` has spent the measures
 /// on it. In the series' data space on a `Geom`, and in panel-local nd once `Geom.project` has
-/// put it on a panel (D97).
+/// put it on a panel.
 [<NoComparison>]
 type BoxSpan<[<Measure>] 'p> =
     { Lower: float<'p>
@@ -67,12 +67,12 @@ type ViolinProfile<[<Measure>] 'p> =
     { At: float<'p>[]
       Width: float[] }
 
-/// D162 — a mark across the whole panel: `axhline`, `axvline`, `axline`, `axhspan`, `axvspan`.
+/// A mark across the whole panel: `axhline`, `axvline`, `axline`, `axhspan`, `axvspan`.
 ///
 /// Each says where it is on **one** axis (or through two points), and nothing about where it
 /// ends, because it ends where the panel does. That is only known once the panel's domain is
 /// final — after `unify`, a facet's sharing, a stated domain, the union over a shot, a zoom — so
-/// a rule is carried in data space like every geom here (D97) and laid across the panel when it
+/// a rule is carried in data space like every geom here and laid across the panel when it
 /// is compiled.
 [<NoComparison>]
 type RuleSpec<[<Measure>] 'p> =
@@ -88,7 +88,7 @@ type RuleSpec<[<Measure>] 'p> =
     /// The band between two x values, up the panel.
     | SpanV of lo: float<'p> * hi: float<'p>
 
-/// D164 — where an annotation's text stands.
+/// Where an annotation's text stands.
 [<NoComparison>]
 type TextPlacement<[<Measure>] 'p> =
     /// A device offset from the point it marks, y up — matplotlib's `textcoords='offset
@@ -97,11 +97,11 @@ type TextPlacement<[<Measure>] 'p> =
     | TextOffset of Vec2<px>
     /// A second place in data space.
     | TextAt of x: float<'p> * y: float<'p>
-    /// D165 — a place in the plot area, as fractions of its width and height from the bottom
+    /// A place in the plot area, as fractions of its width and height from the bottom
     /// left, with no point to mark: a panel's "(a)", a note in a corner. It ignores the coord.
     | TextInPanel of x: float * y: float
 
-/// D164 — the arrow from an annotation's text to the point it marks.
+/// The arrow from an annotation's text to the point it marks.
 type ArrowStyle =
     | ArrowNone
     | ArrowStraight
@@ -120,7 +120,7 @@ type ArrowStyle =
 /// `GeomOf<nd>` is the same geom put on a panel by `Geom.project`, and it is what the compiler
 /// draws.
 ///
-/// **D97 — projected when the points are, not when the geom is built.** Until 0.3.1 the payloads
+/// **Projected when the points are, not when the geom is built.** Until 0.3.1 the payloads
 /// went to `nd` at construction, through the series' scales as they were then, while the
 /// layer's points were projected at compile time through the scales the panel ended up with. A
 /// second layer (`Figure.unify`), `Chart.withXDomain` or a switch to a log axis moved the points
@@ -154,7 +154,7 @@ type GeomOf<[<Measure>] 'p> =
     /// second case would be a second branch in every consumer for no difference in what is
     /// drawn.
     | GeomRect of x0: float<'p>[] * y0: float<'p>[] * x1: float<'p>[] * y1: float<'p>[]
-    /// D93 — a closed polygon per point, its vertices in data space and projected one by one,
+    /// A closed polygon per point, its vertices in data space and projected one by one,
     /// so a hexagon's edges are straight on the panel whatever the axes. Filled and edged in the
     /// fill's own paint, as a tile is, because polygons that tessellate must not draw a grid.
     | GeomPolygon of xs: float<'p>[][] * ys: float<'p>[][]
@@ -166,7 +166,7 @@ type GeomOf<[<Measure>] 'p> =
     | GeomBox of spans: BoxSpan<'p>[] * widthFraction: float
     /// Mirrored density profiles, one per point; width as a fraction of the median x spacing.
     | GeomViolin of profiles: ViolinProfile<'p>[] * widthFraction: float
-    /// A user-supplied RGBA image filling a box (D64).
+    /// A user-supplied RGBA image filling a box.
     ///
     /// The one geom in this file that does **not** bottom out in `Path`, `Markers` or `Text`:
     /// it is the only producer of §5's `Raster` node anywhere above the IR, and until M2.5
@@ -179,24 +179,24 @@ type GeomOf<[<Measure>] 'p> =
     /// a batched subset draws the same image in the same place, which is correct rather than
     /// lucky. A channel over an image layer has nothing to say.
     | GeomImage of image: Image * bounds: Rect<'p> * smooth: bool
-    /// D86 — a field: a grid of values, drawn as a heatmap, contour lines or filled bands. The
+    /// A field: a grid of values, drawn as a heatmap, contour lines or filled bands. The
     /// one geom computed on the panel rather than from its points, because a raster's pixels and
     /// a contour's vertices depend on where the panel's final scales put the nodes. The layer's
     /// points are the nodes, so the axes cover the grid and a colour channel over the values
     /// gets its colorbar exactly as a scatter's would.
     | GeomField of field: FieldPayload<'p> * mark: FieldMark
-    /// D162 — a rule or a span, laid across the panel when it is compiled. The layer's points
+    /// A rule or a span, laid across the panel when it is compiled. The layer's points
     /// are not drawn; they are there so that its unit is checked against the axes like any
     /// layer's, and so that `withDomainIncluded` has a value to put in the domain.
     | GeomRule of RuleSpec<'p>
-    /// D164 / D165 — one piece of text, at a place relative to the layer's one point (the
+    /// One piece of text, at a place relative to the layer's one point (the
     /// point it marks) or in the plot area, with an optional arrow to the point.
     | GeomAnnotation of text: string * placement: TextPlacement<'p> * arrow: ArrowStyle
 
 /// A geom in the series' data space — what every constructor returns and every `Layer` holds.
 type Geom = GeomOf<1>
 
-/// §5.5 — **"error bars … are compiled into `Path`/`Text`/`Markers` by the layer above."**
+/// **"error bars … are compiled into `Path`/`Text`/`Markers` by the layer above."**
 ///
 /// Every geom in this module bottoms out in `Path` or `Markers`. There is no error-bar node, no
 /// bar node and no area node, and the whole file is the argument that none is needed.
@@ -242,7 +242,7 @@ module Geom =
           Font = theme.TickFont }
 
     /// Style for series `i` of a theme: colour and marker shape cycle together, so that shape is
-    /// a redundant encoding of colour rather than a decoration (D5).
+    /// a redundant encoding of colour rather than a decoration.
     let internal styleFor (theme: Theme) (i: int) : GeomStyle =
         { style theme (Palette.pick theme.Categorical i) with
             Shape =
@@ -251,7 +251,7 @@ module Geom =
                 else
                     theme.MarkerShapes.[((i % theme.MarkerShapes.Length) + theme.MarkerShapes.Length) % theme.MarkerShapes.Length] }
 
-    /// D162 — the style a rule or a span starts with. It is furniture rather than data, so it
+    /// The style a rule or a span starts with. It is furniture rather than data, so it
     /// takes no palette colour: a rule is drawn in the theme's axis colour at the axis's width,
     /// dashed, and a span is the foreground at a tenth of its strength.
     let internal ruleStyle (theme: Theme) (rule: RuleSpec<'p>) : GeomStyle =
@@ -266,7 +266,7 @@ module Geom =
                 Dash = [| 4.0<px>; 3.0<px> |]
                 Cap = Butt }
 
-    /// D164 — the style an annotation starts with: the theme's foreground, in the tick face, its
+    /// The style an annotation starts with: the theme's foreground, in the tick face, its
     /// arrow as wide as the axis. An annotation is read with the axes, not as a series, so it
     /// takes no palette colour.
     let internal annotationStyle (theme: Theme) : GeomStyle =
@@ -357,7 +357,7 @@ module Geom =
     // code, and what reaches the DU is the data value with its measure stripped. Every one of
     // these takes the series it will be drawn against, so the arrays it is handed are checked
     // against that series' units by the compiler. They are projected by the scales the panel
-    // ends up with, beside the points (D97) -- which is what makes a ribbon on a log axis
+    // ends up with, beside the points -- which is what makes a ribbon on a log axis
     // asymmetric, correctly, and a tile on one the right size.
 
     let private lengthCheck (s: Series<'ux, 'uy>) (field: string) (n: int) =
@@ -419,7 +419,7 @@ module Geom =
             s.Y |> Array.map (fun y -> float (y + hh))
         )
 
-    /// An RGBA image filling a box given in the series' own units (D64).
+    /// An RGBA image filling a box given in the series' own units.
     ///
     /// Both measures are checked, so the box cannot be given its width in the y unit — the same
     /// guarantee `rect` makes, for the same reason and by the same route.
@@ -617,13 +617,13 @@ module Geom =
 
     // ---- Compilation ---------------------------------------------------------------------
 
-    /// D86 — draw a field layer, given the colour each value takes. `Figure.fs` passes the
+    /// Draw a field layer, given the colour each value takes. `Figure.fs` passes the
     /// layer's colour channel through its own quantiser, so the heatmap, its contours and its
     /// colorbar take every colour from the same call (D91, gate 7). Without a channel, every
     /// value is the layer's colour. `colourOf` gives colours before the layer's opacity, which
     /// is applied here.
     ///
-    /// `plotSize`, `measurer` and `background` are for the arrows (D87): the quiver's length
+    /// `plotSize`, `measurer` and `background` are for the arrows: the quiver's length
     /// scale is chosen in pixels against the grid's pitch, and its key is measured and set on a
     /// box of the panel's colour.
     let internal compileField
@@ -727,8 +727,8 @@ module Geom =
                 let sorted = Array.sort gaps
                 sorted.[sorted.Length / 2]
 
-    /// D162 — lay a rule across the panel, or `None` when it falls outside it, which the caller
-    /// counts (D52). The rule has been put on the panel by `project`, so the panel is the unit
+    /// Lay a rule across the panel, or `None` when it falls outside it, which the caller
+    /// counts. The rule has been put on the panel by `project`, so the panel is the unit
     /// square here. Under a coord that is not the identity the path is sampled before it is
     /// warped, so a horizontal rule under `Coord.polar` is a circle rather than a chord.
     let internal compileRule (coord: Coord) (st: GeomStyle) (rule: RuleSpec<nd>) : Node option =
@@ -793,7 +793,7 @@ module Geom =
                 else
                     line [| pt (x0 + t0 * dx) (y0 + t0 * dy); pt (x0 + t1 * dx) (y0 + t1 * dy) |]
 
-    /// D164 / D165 — one annotation: its text, and an arrow from the text to the point it marks,
+    /// One annotation: its text, and an arrow from the text to the point it marks,
     /// or `None` when that point is outside the panel (counted by the caller, D52). Text placed
     /// in the panel (`TextInPanel`) marks no point and is always drawn.
     ///
@@ -958,8 +958,8 @@ module Geom =
 
                     Path(segs, Some stroke, None, NonZero)
 
-            // §5.1 — "a 100 000-point scatter must be *one* IR node". One `Markers`, always —
-            // unless a row was **addressed** (D69), and then it is three, which is the whole
+            // "a 100 000-point scatter must be *one* IR node". One `Markers`, always —
+            // unless a row was **addressed**, and then it is three, which is the whole
             // cost of being able to name a single mark.
             | GeomPoint ->
                 // The row travels beside the point because the filter below destroys the
@@ -1309,7 +1309,7 @@ module Geom =
             | GeomText(labels, anchor, baseline, offset) ->
                 // The offset is a device length and this function's output is about to be
                 // scaled by the panel transform, so it is divided by the panel's own pixel
-                // size -- the correction an error bar's cap makes, for the same reason (D12).
+                // size -- the correction an error bar's cap makes, for the same reason.
                 let dx =
                     if plotSize.Width = 0.0<px> then
                         0.0
@@ -1405,7 +1405,7 @@ module Geom =
                                 Stroke = Some { stroke with Width = stroke.Width * 0.75 } } ]
 
             | GeomImage(image, bounds, smooth) ->
-                // The only `Raster` this library produces above the IR (D64).
+                // The only `Raster` this library produces above the IR.
                 //
                 // **The pixels are not warped, and that is a limit rather than an oversight.**
                 // `RasterNode.Bounds` is an axis-aligned `Rect<nd>` by construction, so under a
@@ -1490,7 +1490,7 @@ module Geom =
     /// **The one compile**, with the two things a whole unaddressed layer does not have.
     ///
     /// `plotSize` is the plot area's device size, and it is here for exactly one reason: an error
-    /// bar's cap is `px` wide (D12) while this function's output is about to be scaled by the
+    /// bar's cap is `px` wide while this function's output is about to be scaled by the
     /// panel transform. Dividing by the panel's own pixel size is what makes a 3 px cap 3 px
     /// wide after that scaling, on both a wide panel and a tall one.
     ///
@@ -1499,7 +1499,7 @@ module Geom =
     /// spacing note below.
     ///
     /// `address` is D69's **named rows**, with the key each one's node carries: `Keys.mark` by
-    /// row, or `Keys.datum` when the data supplied keys (D104). Only
+    /// row, or `Keys.datum` when the data supplied keys. Only
     /// `GeomPoint` can honour it, because `Markers` is the only node in this file that batches
     /// N data points into one; a `Path` is one shape, not a batch of marks, and splitting it in
     /// three would change the joins between the pieces rather than name one of them.
@@ -1552,7 +1552,7 @@ module Geom =
     let internal compile (coord: Coord) (plotSize: Extent<px>) (st: GeomStyle) (geom: GeomOf<nd>) (pts: Vec2<nd>[]) : Node =
         compileFor None None coord plotSize st geom pts
 
-    /// D46 — **one channel batch of a layer**: the points named by `indices`, drawn with
+    /// **One channel batch of a layer**: the points named by `indices`, drawn with
     /// everything that belongs to the *layer* still taken from the layer.
     ///
     /// Only bar width is such a thing today, and it is enough to justify the second entry

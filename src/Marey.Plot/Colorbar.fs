@@ -1,19 +1,19 @@
 namespace Marey
 
-/// D49 — **the key a continuous colour channel gets, and why it is not a legend entry.**
+/// **The key a continuous colour channel gets, and why it is not a legend entry.**
 ///
 /// A legend *enumerates*: `n` rows, each a name beside a swatch. A colorbar *maps*: a domain
 /// along a strip, read by position. D46 makes that split unavoidable rather than stylistic — a
 /// continuous colour channel is 256 quantised steps, and enumerating 256 rows is not a legend.
 /// So this is a sibling of `Legend`, sharing the theme, the placement and `Layout`, and sharing
-/// with it the fact that neither is an IR node (§5.5).
+/// with it the fact that neither is an IR node.
 ///
 /// ### Three things this module does not do, and each is a decision
 ///
 /// **It never emits a gradient.** The obvious implementation is one rect with a
 /// `LinearGradient` fill, and run through the TikZ backend's own capabilities that rect comes
 /// out as a single flat `#23908c` block: `Gradients = false`, so `Degrade.forCaps` collapses
-/// the ramp to its Oklab midpoint (D10). Valid TeX, clean golden diff, no colorbar — D33's
+/// the ramp to its Oklab midpoint. Valid TeX, clean golden diff, no colorbar — D33's
 /// failure mode exactly. The bar is strips, and the strips come from the same
 /// `Channel.stepMidpoint` the marks do, so the bar and the data cannot disagree.
 ///
@@ -65,7 +65,7 @@ module internal Colorbar =
     let planTicks (m: ITextMeasurer) (theme: Theme) (height: float<px>) (spec: AxisSpec) : TickPlan =
         Axes.planTicks m theme.TickFont theme.LabelGap height AxisRight spec.Ticks
 
-    /// D46 / D49 — **`min(256, ⌈height in px⌉)`**.
+    /// **`min(256, ⌈height in px⌉)`**.
     ///
     /// The same argument D46 makes for the marks: do not encode below the resolution of the
     /// output. Two strips inside one device pixel cannot differ on screen or on paper, and a

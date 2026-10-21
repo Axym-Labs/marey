@@ -1,7 +1,7 @@
 namespace Marey
 
 // ======================================================================================
-// §5.2 / D68 — THE NAMES THE PRODUCER GIVES WHAT IT DRAWS
+// THE NAMES THE PRODUCER GIVES WHAT IT DRAWS
 //
 // `Keyed` is the IR's stable identity, and until M3 the whole library produced exactly one of
 // them: `Keyed(Key "figure", …)` at the root of every figure. So the diff §5.2 designed the IR
@@ -31,7 +31,7 @@ namespace Marey
 // not invent a second one — the cost of agreeing on a string early is a string.
 // ======================================================================================
 
-/// D68 — the hierarchical names `Marey.Plot` gives the subtrees it produces.
+/// The hierarchical names `Marey.Plot` gives the subtrees it produces.
 ///
 /// ```
 /// figure
@@ -57,7 +57,7 @@ module Keys =
     /// The root of every figure. The one key that existed before D68.
     let figure = Key "figure"
 
-    /// D171 — the legend a figure shares among its panels.
+    /// The legend a figure shares among its panels.
     let figureLegend = child figure "legend"
 
     /// A panel, by its grid position. Not by its index in `Figure.Panels`: a panel's identity is
@@ -69,12 +69,12 @@ module Keys =
     let layer (panelKey: Key) (ordinal: int) = child panelKey (sprintf "layer-%d" ordinal)
 
     /// One mark, by its **original row** in the layer's data — not by its position within a
-    /// channel batch, which is a renumbered subset (D55).
+    /// channel batch, which is a renumbered subset.
     ///
-    /// A layer whose data supplied keys names its marks by `datum` instead (D104).
+    /// A layer whose data supplied keys names its marks by `datum` instead.
     let mark (layerKey: Key) (row: int) = child layerKey (sprintf "mark-%d" row)
 
-    /// D104 — a key the data supplied, written as one path segment. `%`, `/` and the control
+    /// A key the data supplied, written as one path segment. `%`, `/` and the control
     /// characters are percent-encoded and nothing else is, so a station called `Bern/Ost` is one
     /// segment, `key-Bern%2FOst`, and cannot forge a path that `covers` would read as a child.
     /// Distinct keys stay distinct, because the encoding is reversible.
@@ -89,12 +89,12 @@ module Keys =
 
         sb.ToString()
 
-    /// D104 — one mark, by the key its datum carries rather than by its row. A row ordinal names
-    /// a different datum as soon as an earlier row is removed (D68); a supplied key does not.
+    /// One mark, by the key its datum carries rather than by its row. A row ordinal names
+    /// a different datum as soon as an earlier row is removed; a supplied key does not.
     /// `key-` rather than `mark-`, so the two spellings cannot meet inside one layer.
     let datum (layerKey: Key) (k: string) = child layerKey ("key-" + escape k)
 
-    /// D104 — **keys for a layer's rows, checked.** One per row, and no two alike, because a
+    /// **Keys for a layer's rows, checked.** One per row, and no two alike, because a
     /// duplicate is D68's failure: one name for two marks, and `Scene.mapKey` touching both
     /// when asked for one. The duplicates are named, with their rows, up to five of them.
     let validate (rows: int) (keys: string[]) : unit =
@@ -121,7 +121,7 @@ module Keys =
 
             invalidArg "keys" (sprintf "Marey: keys must be unique within a layer; duplicated: %s%s." named more)
 
-    /// D103 — the parts of a panel that are not its layers, each under its own key so that a
+    /// The parts of a panel that are not its layers, each under its own key so that a
     /// change to one is a change to it and not to the whole panel. A slider moving one
     /// annotation over a fixed scatter leaves the axes, the gridlines and the keys alone, and
     /// a diff can only see that when they are not all one subtree.
@@ -129,13 +129,13 @@ module Keys =
 
     let axisY (panelKey: Key) = child panelKey "axis-y"
 
-    /// D180 — a panel's `i`th inset, under the panel it is drawn over.
+    /// A panel's `i`th inset, under the panel it is drawn over.
     let inset (panelKey: Key) (i: int) = child panelKey (sprintf "inset-%d" i)
 
-    /// D178 — a panel's secondary x axis, on its top.
+    /// A panel's secondary x axis, on its top.
     let axisX2 (panelKey: Key) = child panelKey "axis-x2"
 
-    /// D177 — a panel's second y axis, on its right, or D178's secondary y axis.
+    /// A panel's second y axis, on its right, or D178's secondary y axis.
     let axisY2 (panelKey: Key) = child panelKey "axis-y2"
 
     let grid (panelKey: Key) = child panelKey "grid"
@@ -144,7 +144,7 @@ module Keys =
 
     let colorbar (panelKey: Key) = child panelKey "colorbar"
 
-    /// D165 — the panel's letter, "(a)", a sibling of its axes rather than one of its layers.
+    /// The panel's letter, "(a)", a sibling of its axes rather than one of its layers.
     let letter (panelKey: Key) = child panelKey "letter"
 
     /// Does `ancestor` name `key`, or something `key` sits under?

@@ -42,7 +42,7 @@ open System.Numerics
 //     makes exact on both, and each function below reproduces what .NET produced before it,
 //     which is what keeps every golden byte-identical.
 //
-// Zero dependencies, so this costs `Marey.Core` nothing (§13).
+// Zero dependencies, so this costs `Marey.Core` nothing.
 // ======================================================================================
 
 /// Culture- and platform-invariant number formatting. Every number a text backend emits goes
@@ -55,7 +55,7 @@ module Num =
 #endif
 
     /// The nearest integer, a half rounded away from zero. `Math.Round(x,
-    /// MidpointRounding.AwayFromZero)` without the platform (D129): the fraction is exact, so the
+    /// MidpointRounding.AwayFromZero)` without the platform: the fraction is exact, so the
     /// comparison with one half is too.
     let roundAway (x: float) : float =
         let t = Math.Truncate x
@@ -63,7 +63,7 @@ module Num =
         if abs (x - t) >= 0.5 then t + float (sign x) else t
 
     /// The nearest integer, a half rounded to the even one. `Math.Round(x)` without the platform
-    /// (D129): Fable's version calls anything within 10⁻⁸ of a half a tie, so it rounds 2.500000001
+    ///: Fable's version calls anything within 10⁻⁸ of a half a tie, so it rounds 2.500000001
     /// down and 3.4999999999 up. The fraction is exact, so a tie here is an exact half.
     let roundEven (x: float) : float =
         let t = Math.Truncate x
@@ -188,7 +188,7 @@ module Num =
     ///
     /// Both runtimes specify the same digits — the shortest that round-trip, the closest when
     /// two are as short — and differ only in how they are written, so under Fable JavaScript's
-    /// string is rewritten in .NET's notation (D129). The notation rule was measured against
+    /// string is rewritten in .NET's notation. The notation rule was measured against
     /// "R" on four million doubles.
     let shortest (x: float) : string =
 #if FABLE_COMPILER

@@ -2,7 +2,7 @@ namespace Marey.CSharp
 
 open Marey
 
-/// D124 — **every unit witness, for C#, under one name**: `Units.Metre`, `Units.DegreeCelsius`,
+/// **Every unit witness, for C#, under one name**: `Units.Metre`, `Units.DegreeCelsius`,
 /// `Units.Div(Units.Volt, Units.Metre)`.
 ///
 /// F# reaches the witnesses as `U.metre`, `U.volt` and `U.degreeCelsius`, three modules
@@ -12,7 +12,7 @@ open Marey
 /// object. Its type is `U<'u>`, which C# sees as the class `U`.
 ///
 /// The algebra takes `IUnit` and returns a witness at measure 1: the measure is F#'s, and C#
-/// gives it up by definition (D109). `Dim`, the symbol, the factors and the SI conversion are all
+/// gives it up by definition. `Dim`, the symbol, the factors and the SI conversion are all
 /// carried, so a quotient labels its axis as F#'s does.
 [<AbstractClass; Sealed>]
 type Units =
@@ -21,7 +21,7 @@ type Units =
     /// which an axis acts on; for numbers nobody named, leave the unit out, or pass `Unspecified`.
     static member One = U.one
 
-    /// The unit nobody stated (D127): no bracket, no prefix, no dimensional claim.
+    /// The unit nobody stated: no bracket, no prefix, no dimensional claim.
     static member Unspecified = U.unspecified
 
     static member Mul(a: IUnit, b: IUnit) : U<1> = U.mul (U.erase a) (U.erase b)
@@ -99,7 +99,7 @@ type Units =
     static member DegreeCelsius = U.degreeCelsius
     static member DegreeFahrenheit = U.degreeFahrenheit
 
-    // ---- Read from text (D110) -----------------------------------------------------------------
+    // ---- Read from text -----------------------------------------------------------------
 
     /// A unit in UDUNITS-2's syntax: `Units.Parse("V/m")`, `Units.Parse("kg m s-2")`. Throws
     /// `FormatException` with the reason when the text is not one. See `U.parse`.

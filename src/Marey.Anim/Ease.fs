@@ -2,7 +2,7 @@ namespace Marey
 
 open System
 
-/// §7 / D71 — the easing catalogue.
+/// The easing catalogue.
 ///
 /// An easing function reparameterises an animation's **normalised** clock: `float` in, `float`
 /// out, both nominally in `[0, 1]`. It never sees a duration, which is what lets one

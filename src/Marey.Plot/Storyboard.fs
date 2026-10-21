@@ -3,7 +3,7 @@ namespace Marey
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// §7.2 / D69 — THE STORYBOARD, RE-SPELLED
+// THE STORYBOARD, RE-SPELLED
 //
 // §7.2 sketched the CE in 2024's vocabulary:
 //
@@ -53,7 +53,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 //
 // ### What the CE accumulates, which is not what §7.2 said
 //
-// §7.2: *"a writer monad accumulating `Anim<Scene>` under `andThen`/`map2`"*. It cannot be.
+// *"a writer monad accumulating `Anim<Scene>` under `andThen`/`map2`"*. It cannot be.
 // `Anim.andThen a b` reaches `b` with no knowledge of `a`, so the second step of a storyboard
 // would draw its own contribution on an empty stage and everything drawn before it would
 // vanish. The accumulator is `Anim<Stage -> Stage>` — an animation of *what the stage becomes*
@@ -67,7 +67,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // from `parallel'`, and it is inherited rather than re-implemented.
 // ======================================================================================
 
-/// D69 — what is on stage at one instant.
+/// What is on stage at one instant.
 ///
 /// One figure at a time, deliberately. M2 already spells "two charts on one surface"
 /// (`Chart.beside`, `Chart.above`, `Chart.facet`) and it spells it as *one* `Figure` with two
@@ -93,14 +93,14 @@ module Stage =
     let empty: Stage = { Figure = None; Edits = [||] }
 
 
-/// Which mark a handle names: a row of the layer, or — when the data supplied keys (D104) — the
+/// Which mark a handle names: a row of the layer, or — when the data supplied keys — the
 /// datum with that key, wherever it sits.
 [<RequireQualifiedAccess>]
 type internal MarkRef =
     | Row of int
     | Datum of string
 
-/// D69 — a name for something on stage, and the duration it arrived over.
+/// A name for something on stage, and the duration it arrived over.
 [<NoComparison>]
 type Handle =
     internal
@@ -119,7 +119,7 @@ type Handle =
           /// subtree. What `highlight` needs, and what tells `curve.[42]` apart from `curve`.
           Mark: (Key * MarkRef) option
 
-          /// D104 — the keys of `MarkLayer`'s rows when it was drawn, or empty when its data
+          /// The keys of `MarkLayer`'s rows when it was drawn, or empty when its data
           /// supplied none. With keys, `curve.[42]` names the datum that was row 42, and keeps
           /// naming it after a morph has moved it.
           MarkKeys: string[] }
@@ -166,7 +166,7 @@ type Handle =
                     "Marey: this handle does not name a single scatter, so a mark is ambiguous. Only a layer drawn with GeomPoint has addressable marks."
 
 
-/// D69 — the CE's value. A function from the stage a story starts on to whatever it binds and
+/// The CE's value. A function from the stage a story starts on to whatever it binds and
 /// an animation of what the stage becomes.
 [<NoComparison; NoEquality>]
 type Story<'a> = internal Story of (Stage -> 'a * Anim<Stage -> Stage>)
@@ -180,7 +180,7 @@ type Step<'a> =
           Build: float<s> -> Story<'a> }
 
 
-/// §7.2 / D69 — the storyboard.
+/// The storyboard.
 ///
 /// **Meant to be opened.** `scene { let! curve = draw fig |> over 1.2<s> }` is the shape §7.2
 /// asked for and `Storyboard.draw fig |> Storyboard.over 1.2<s>` is not, so this module is not
@@ -375,8 +375,8 @@ module Storyboard =
                             else
                                 s)) }
 
-    /// D104 — a source channel value as another map reads it. A level is matched by name,
-    /// because the two figures numbered their levels separately (D45); a level the map does not
+    /// A source channel value as another map reads it. A level is matched by name,
+    /// because the two figures numbered their levels separately; a level the map does not
     /// have is NaN, which is not drawn and is counted, as any unmapped value is. A value map's
     /// numbers are raw in the channel's unit and pass through.
     let private translateChannel (src: ChannelMap) (dst: ChannelMap) (v: float) : float =
@@ -403,13 +403,13 @@ module Storyboard =
         | SizeByValue _, SizeByValue _ -> true
         | _ -> false
 
-    /// **D104 — a scatter morphed by key.** Each of the target's rows, in the target's order,
+    /// **A scatter morphed by key.** Each of the target's rows, in the target's order,
     /// paired with the source row of the same key or with nothing; then the source rows whose
     /// key the target does not have. Returned as the pairing for `Erase.tweenRows`, the keys in
     /// that order, and how many of them are the target's.
     ///
     /// `None` unless both layers are scatters with keys and their channels line up kind for kind:
-    /// only a scatter has a node per mark to fade (D69), and a channel of another kind has no
+    /// only a scatter has a node per mark to fade, and a channel of another kind has no
     /// value to carry a row across in. The morph then pairs by index, as it always did.
     let private pairByKey (src: Layer) (dst: Layer) : (struct (int * int)[] * string[] * int) option =
         let scatter (l: Layer) =
@@ -535,7 +535,7 @@ module Storyboard =
     /// differ: `Erase.tweenSeries` converts through SI, so morphing kilometres into metres is a
     /// morph and not a factor of a thousand.
     ///
-    /// **D104 — a scatter whose rows have keys on both sides is paired by key**, not by index. A
+    /// **A scatter whose rows have keys on both sides is paired by key**, not by index. A
     /// datum moves to where the datum of the same name is going; one only the target has fades
     /// in where it is going, and one only the source has fades out where it was. That is what
     /// makes a filter animate truthfully: a station that was dropped leaves, and nothing slides
@@ -670,7 +670,7 @@ module Storyboard =
 
                     let theme = (onStage "highlight" s0).Theme
 
-                    // D104 — a datum is found by its key on the stage as it stands, so a highlight
+                    // A datum is found by its key on the stage as it stands, so a highlight
                     // after a morph lands on the same datum at its new row. One that is not on
                     // stage when the step starts is refused, by name, rather than ringing nothing.
                     match mark with
@@ -720,7 +720,7 @@ module Storyboard =
     /// `compilePanel`'s reason: the layout the whole film is drawn inside, and the frames drawn
     /// inside it. Handing back only the second would make a renderer that needs the surface
     /// take it as a second argument, and a second extent beside a decided layout is a second
-    /// chance to disagree with nothing able to notice (D72). `Film` is built from this pair.
+    /// chance to disagree with nothing able to notice. `Film` is built from this pair.
     ///
     /// `samples` is D72's union: the storyboard is sampled that many times, every state is
     /// arranged, and the gutters are the componentwise maximum, so the panel does not breathe
@@ -729,7 +729,7 @@ module Storyboard =
     ///
     /// **The union pass is where the fonts are resolved**, and that matters to a parallel
     /// render: it runs here, once, on the calling thread, before any frame exists. So a
-    /// measurer that resolves a face against the machine (D62) has done all of its resolving
+    /// measurer that resolves a face against the machine has done all of its resolving
     /// by the time `Array.Parallel.map` starts, and `ResolvedFaces` is in first-seen order
     /// rather than in whichever order sixteen threads happened to ask. See D77.
     let shoot (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (story: Story<unit>) : Shot * Anim<Node> =

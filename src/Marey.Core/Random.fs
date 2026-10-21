@@ -1,7 +1,7 @@
 namespace Marey
 
 // ======================================================================================
-// D95 — A SPECIFIED PSEUDO-RANDOM GENERATOR.
+// A SPECIFIED PSEUDO-RANDOM GENERATOR.
 //
 // The library had no randomness until M4, and it gets exactly one generator, for two consumers:
 // the noise texture a line-integral convolution smears along a field, and the resampling behind

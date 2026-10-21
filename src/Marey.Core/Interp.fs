@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §7.1 — "affine transforms (decompose to translate/rotate/scale/skew and interpolate the
+/// "affine transforms (decompose to translate/rotate/scale/skew and interpolate the
 /// components, never the matrix entries)."
 ///
 /// Componentwise interpolation of the matrix entries between a 0° and a 180° rotation passes
@@ -92,7 +92,7 @@ module AffineInterp =
               Shear = da.Shear + (db.Shear - da.Shear) * t }
 
 
-/// §7.1 — Interpolation as a type class.
+/// Interpolation as a type class.
 ///
 /// F# has no higher-kinded types, so this is SRTP against a witness type. Three findings from
 /// §12 are baked into the shape of this file, and every one of them cost real time to
@@ -121,7 +121,7 @@ type Interpolate private () =
 
     static member inline Interp(a: Vec3<'u>, b: Vec3<'u>, t: float) : Vec3<'u> = Vec3.lerp t a b
 
-    /// Colour interpolation goes through **Oklab**, not sRGB (§7.1, §9). An sRGB lerp between
+    /// Colour interpolation goes through **Oklab**, not sRGB. An sRGB lerp between
     /// two saturated colours passes through a desaturated grey; a perceptual one does not.
     /// Making this the default — rather than an option on a palette somewhere — is what stops
     /// the wrong thing being easy.
@@ -133,7 +133,7 @@ type Interpolate private () =
           X1 = a.X1 + (b.X1 - a.X1) * t
           Y1 = a.Y1 + (b.Y1 - a.Y1) * t }
 
-    /// D74 — `Affine` joins the witness, and it is the one overload that is not componentwise.
+    /// `Affine` joins the witness, and it is the one overload that is not componentwise.
     /// It decomposes to translate/rotate/scale/skew first, because the componentwise answer
     /// collapses a half-turn through the zero matrix. See `AffineInterp` above for the argument
     /// and for the degenerate cases.

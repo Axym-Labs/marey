@@ -3,7 +3,7 @@ namespace Marey
 open System
 
 // ======================================================================================
-// D134 — THE SHAPE OF A STATE, AND THE INTEGRATOR'S TYPE.
+// THE SHAPE OF A STATE, AND THE INTEGRATOR'S TYPE.
 //
 // §8.3 asks for integrators "unit-generic over state", and F# cannot write `'s / s` for a record
 // `'s`. Three tiers cover every state without an erased one:
@@ -29,7 +29,7 @@ open System
 // checkpoint would then see a different force than the straight run did.
 //
 // **Every public function declares its measure parameters**, as `Marey.Fields` does: inferred,
-// they narrow silently (§12.1).
+// they narrow silently.
 // ======================================================================================
 
 /// One step of an integrator: from the state at time `t`, the state at `t + h`.
@@ -82,7 +82,7 @@ module Tangent =
 
 /// What an adaptive integrator carries from one step to the next: the step it proposes, and the
 /// previous step's error, which the PI controller weighs against the current one. Both belong in a
-/// checkpoint (D143): a replay that restarted the controller from anything else would choose
+/// checkpoint: a replay that restarted the controller from anything else would choose
 /// different steps than the straight run did.
 [<Struct>]
 type Controller<[<Measure>] 't> =
@@ -291,7 +291,7 @@ module Ode =
             kick (t + h) q half v
             struct (q, v)
 
-    // ---- Dormand–Prince 4(5) (D143) ---------------------------------------------------------------
+    // ---- Dormand–Prince 4(5) ---------------------------------------------------------------
 
     // The tableau, and the error weights `b − b̂`. The fifth-order solution is propagated (local
     // extrapolation), and the seventh stage is the derivative at the step's end.

@@ -122,7 +122,7 @@ module Tex =
         else None
 
     /// Greek letters, as math-mode macros. **A quantity's conventional name is Greek as often as
-    /// not** — ρ for a density, θ, ω and α for an angle and its rates (D98). Math mode because a
+    /// not** — ρ for a density, θ, ω and α for an angle and its rates. Math mode because a
     /// quantity symbol is set in italic, which is what `\theta` gives and what physics writes.
     ///
     /// µ and the capital omega are absent here on purpose: `tryMacro` maps them first, to the

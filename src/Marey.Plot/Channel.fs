@@ -1,6 +1,6 @@
 namespace Marey
 
-/// D46 / D49 — **how one non-positional channel turns data into appearance.**
+/// **How one non-positional channel turns data into appearance.**
 ///
 /// Four cases, and the pairing is not an accident: a category can drive colour or shape, a
 /// quantity can drive colour or size, and nothing else is possible. There is no continuous
@@ -8,26 +8,26 @@ namespace Marey
 /// says nothing), so the DU has exactly the four arms the two halves of §9's channel list
 /// allow.
 ///
-/// The **categorical** arms index by level number, exactly as `ScaleKind.Ordinal` does (D45):
+/// The **categorical** arms index by level number, exactly as `ScaleKind.Ordinal` does:
 /// `Levels` is what the key reached before the erasure boundary, and a channel's values are
 /// level numbers by the time they arrive here. The **continuous** arms carry a `PackedScale`
 /// rather than a domain pair, because the scale is what gives the colorbar its ticks, its
 /// prefix and its unit — a colour channel over `float<K>` labels its bar `T [K]` because the
-/// witness came this far (D49).
+/// witness came this far.
 [<NoComparison>]
 type ChannelMap =
     /// One colour per level. `levels` is index-aligned with `colors` and is what the legend
     /// prints.
     | ColorByLevel of levels: string[] * colors: Color[]
     /// One marker shape per level — §9's redundant encoding, and the reason `MarkerShape` is
-    /// on the batched node at all (D5).
+    /// on the batched node at all.
     | ShapeByLevel of levels: string[] * shapes: MarkerShape[]
     /// A ramp over a dimensioned scale. Values are raw, in the scale's own unit.
     | ColorByValue of scale: PackedScale * ramp: Ramp
     /// Marker diameter interpolated between two device sizes over a dimensioned scale.
     | SizeByValue of scale: PackedScale * smallest: float<px> * largest: float<px>
 
-/// §9 — **one non-positional channel**: a value per point, a mapping, and the quantity's name.
+/// **One non-positional channel**: a value per point, a mapping, and the quantity's name.
 ///
 /// A record rather than a tuple because the name is load-bearing on the continuous arms: it is
 /// the `Label` the axis compiler puts in front of the unit, so a colorbar over kelvin can read
@@ -43,7 +43,7 @@ type Channel =
       Values: float[]
       Map: ChannelMap }
 
-/// D46 — **the quantiser, and the grouping it makes possible.**
+/// **The quantiser, and the grouping it makes possible.**
 ///
 /// The problem this module exists for is stated in §5.1 and D11: `MarkerBatch` carries one
 /// paint for the whole batch, so a colour that varies per point has nowhere to live. The two
@@ -71,12 +71,12 @@ type Channel =
 [<RequireQualifiedAccess>]
 module internal Channel =
 
-    /// D46 — steps along a colour ramp. Below the 8-bit hex the backends write, so the
+    /// Steps along a colour ramp. Below the 8-bit hex the backends write, so the
     /// quantisation is invisible in the output by construction.
     [<Literal>]
     let ColorSteps = 256
 
-    /// D46 — the size quantum. Half a device pixel.
+    /// The size quantum. Half a device pixel.
     let SizeStep = 0.5<px>
 
     let private clamp01 (x: float) = if x < 0.0 then 0.0 elif x > 1.0 then 1.0 else x
@@ -103,13 +103,13 @@ module internal Channel =
         not (System.Double.IsNaN x) && not (System.Double.IsInfinity x)
 
     /// The erased side of a packed scale — the projection a channel needs, and the same
-    /// interface a reloaded figure would have (§15).
+    /// interface a reloaded figure would have.
     let erasedScale (packed: PackedScale) : IScaleErased =
         packed.Accept
             { new IScaleConsumer<IScaleErased> with
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) = Erase.scale s }
 
-    /// §9 / D48 — **one facet's share of a channel**: the same mapping, over a subset of the
+    /// **One facet's share of a channel**: the same mapping, over a subset of the
     /// rows.
     ///
     /// `Map` is deliberately untouched. It carries the level set and its colours, or the scale
@@ -117,7 +117,7 @@ module internal Channel =
     /// so `treated` is the same colour in every panel, the colorbar covers the whole sample, and
     /// a panel that happens to contain none of a level still leaves room for it in the legend.
     /// Recomputing the map per panel would renumber the levels underneath values that are already
-    /// level *numbers* (D45), which is the one way a facet can quietly draw the right marks
+    /// level *numbers*, which is the one way a facet can quietly draw the right marks
     /// against the wrong labels.
     let select (rows: int[]) (c: Channel) : Channel =
         { c with
@@ -137,7 +137,7 @@ module internal Channel =
     /// A function returned rather than a function of two arguments, because the continuous arms
     /// have to cross the erasure boundary to project a value and that crossing is an object
     /// expression plus a rank-2 dispatch. Doing it per point would put 100 000 allocations in
-    /// the one path this library promises not to allocate in (§1.3, §8.3); doing it per
+    /// the one path this library promises not to allocate in; doing it per
     /// *channel* costs one.
     ///
     /// The result is `-1` for a value that has **no bucket**, and non-finite is the case that
@@ -303,7 +303,7 @@ module internal Channel =
     let levelColors (theme: Theme) (n: int) : Color[] =
         Array.init n (Palette.pick theme.Categorical)
 
-    /// The shapes a theme gives `n` levels, cycling its shape list alongside its palette (D5).
+    /// The shapes a theme gives `n` levels, cycling its shape list alongside its palette.
     let levelShapes (theme: Theme) (n: int) : MarkerShape[] =
         let shapes =
             if theme.MarkerShapes.Length = 0 then

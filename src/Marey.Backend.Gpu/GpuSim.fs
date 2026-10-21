@@ -4,18 +4,18 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D147 — GPU SOLVERS WITH THE CPU'S TYPES.
+// GPU SOLVERS WITH THE CPU'S TYPES.
 //
 // `GpuSim.stam` is `Stam.step` on a renderer's GPU: a `Stepper` over the same `Fluid`, so `Sim`,
 // `trajectory`, films and the time control take it unchanged. Each call uploads the state, runs
-// the step as fragment passes (D139), and reads the state back. Nothing carries from one call to
+// the step as fragment passes, and reads the state back. Nothing carries from one call to
 // the next but compiled programs and allocated textures, so two seeks of one trajectory, queued on
 // the render thread one after the other, get what a straight run gets, bit for bit on one device.
 //
 // **The same arithmetic as the CPU.** Every pass computes the CPU step's expression for one node,
 // in the same order, in float32 rather than float64. Bilinear interpolation is written out with
 // texelFetch; red-black half-sweeps read only the old values, as the CPU's do; the multigrid has the
-// same levels, cycle and schedule. So the CPU step is the GPU step's oracle (D140): after 200
+// same levels, cycle and schedule. So the CPU step is the GPU step's oracle: after 200
 // steps the two agree to about 10⁻⁴ of the field's maximum on radeonsi and on llvmpipe, and the
 // two drivers do not agree with each other to the bit.
 //
@@ -599,7 +599,7 @@ void main() {
 
         out
 
-/// D147 — GPU twins of `Marey.Sim`'s grid solvers, stepping the same states on a renderer's GPU.
+/// GPU twins of `Marey.Sim`'s grid solvers, stepping the same states on a renderer's GPU.
 ///
 /// ```fsharp
 /// use gpu = new GpuRenderer()

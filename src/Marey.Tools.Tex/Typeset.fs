@@ -9,9 +9,9 @@ open System.Text
 open System.Text.RegularExpressions
 
 // ======================================================================================
-// D79 — MATHEMATICAL TYPESETTING, BY THE DOOR §10 LEFT OPEN.
+// MATHEMATICAL TYPESETTING, BY THE DOOR §10 LEFT OPEN.
 //
-// §10: *"A maths visualization library that cannot set `\frac{\partial \vec{E}}{\partial t}` is
+// *"A maths visualization library that cannot set `\frac{\partial \vec{E}}{\partial t}` is
 // not a maths visualization library."* It gives three options and calls the third the right
 // answer and a multi-month subproject; M6 is where that lands. The recommendation for now is
 // "ship (1) as an opt-in package and (2) automatically on the web backend at M3", and D79 found
@@ -73,7 +73,7 @@ open System.Text.RegularExpressions
 // frame and 1060 ms for five. An earlier draft of this header claimed the opposite and the guide
 // repeated it; `TypesetTests` now pins the real number so the claim cannot drift back.
 //
-// **D96 — a cache that outlives a call, when the caller holds one.** `TexCache` is a value, not
+// **A cache that outlives a call, when the caller holds one.** `TexCache` is a value, not
 // a global: a film creates one and passes it to every frame's pass (`sceneCached`), and the first
 // frame pays for the figure's formulas while the rest pay nothing. It is keyed on everything that
 // changes an outline — the source, the preamble, the class options, the base size, and the two
@@ -185,7 +185,7 @@ type TypesetResult =
       /// `TexOutline.Recoloured`.
       Recoloured: int }
 
-/// What an outline depends on: the snippet, and every option and tool that shapes it (D96).
+/// What an outline depends on: the snippet, and every option and tool that shapes it.
 /// The extent and the resolution are absent on purpose — they act when an outline is placed.
 [<Struct; CustomEquality; NoComparison>]
 type internal TexCacheKey =
@@ -210,7 +210,7 @@ type internal TexCacheKey =
     override k.GetHashCode() =
         HashCode.Combine(k.Source, k.Preamble, k.ClassOptions, k.BaseSize, k.Engine, k.Dvisvgm)
 
-/// **D96 — typeset outlines that outlive one call**, for a film whose every frame carries the
+/// **Typeset outlines that outlive one call**, for a film whose every frame carries the
 /// same formulas. Hold one, pass it to `Typeset.sceneCached` for each frame, and only the first
 /// frame runs the engine.
 ///
@@ -610,7 +610,7 @@ module Typeset =
             )
         else
 
-        // Keyed on the source and everything that shapes an outline (D96). The size is a scale
+        // Keyed on the source and everything that shapes an outline. The size is a scale
         // applied at placement, so one engine run serves every size the same formula appears at.
         let mutable engineRuns = 0
         let mutable typeset = 0
@@ -717,7 +717,7 @@ module Typeset =
         let tools = toolchain ()
         sceneWith tools.Engine tools.Dvisvgm options extent node
 
-    /// D96 — `scene` through a cache the caller holds, so a film's frames after the first run
+    /// `scene` through a cache the caller holds, so a film's frames after the first run
     /// no engine for the formulas the first one typeset. `EngineRuns` counts the runs this call
     /// caused; `TexCache.EngineRuns` counts them all.
     let sceneCached (cache: TexCache) (options: TexOptions) (extent: Extent<px>) (node: Node) : TypesetOutcome =

@@ -40,7 +40,7 @@ open System.Text
 // TEXT: two kinds of string, and conflating them corrupts the document.
 // ---------------------------------------------------------------------------------------
 //
-// `TextRun.Tex` (D32) is TeX source and goes to the output verbatim. `TextRun.Text` is literal
+// `TextRun.Tex` is TeX source and goes to the output verbatim. `TextRun.Text` is literal
 // content and must be escaped: a title containing `50% yield` comments out the rest of the line
 // and a `_` outside maths is an error. `runContent` is the only function that decides which is
 // which, so no traversal code has to remember.
@@ -266,7 +266,7 @@ type internal TikzDocument() =
     let mutable footer = ""
     let mutable nextId = 0
 
-    /// Sidecar files this picture refers to but does not contain (D64). Assigned in traversal
+    /// Sidecar files this picture refers to but does not contain. Assigned in traversal
     /// order, which is what makes `RenderedDocument.Assets` deterministic in order as well as
     /// in name — a render that produced `marey-raster-0.png` and `marey-raster-1.png` in
     /// swapped order would be a golden diff for no reason.

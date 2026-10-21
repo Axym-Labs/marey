@@ -5,7 +5,7 @@ open System.Collections.Generic
 open System.Text
 
 // ======================================================================================
-// §6 — THE SVG WRITER: the primitives the reference backend is built out of.
+// THE SVG WRITER: the primitives the reference backend is built out of.
 //
 // §6 says of the SVG backend: "Build this first and treat it as the spec." §13 says the test
 // strategy is "golden-image snapshots against the SVG backend (text-diffable, reviewable in a
@@ -207,7 +207,7 @@ module internal Svg =
 ///
 /// `idPrefix` namespaces every id this document hands out — both the generated ones (`qc`, `qm`)
 /// and the `Keyed` names. Empty by default, which is every ordinary render. It exists for the
-/// flipbook (D83): SVG ids are scoped to the *document*, not to a nested `<svg>` element, so
+/// flipbook: SVG ids are scoped to the *document*, not to a nested `<svg>` element, so
 /// stacking N independently rendered frames inside one outer document makes frame 5's
 /// `url(#qc)` resolve to frame 0's clip path. Prefixing here rather than at the call sites is
 /// what makes that airtight — every id in this backend is allocated by `UniqueId`, including the

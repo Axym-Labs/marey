@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §3 — Unit-indexed 2-D vector.
+/// Unit-indexed 2-D vector.
 ///
 /// `Vec2<m>` and `Vec2<px>` are distinct types, so "a layout bug where you passed a normalized
 /// coordinate to a routine expecting pixels stops being a runtime mystery and becomes a red
@@ -33,7 +33,7 @@ type Vec2<[<Measure>] 'u> =
     static member (*)(a: Vec2<'u>, k: float) = { X = a.X * k; Y = a.Y * k }
     static member (/)(a: Vec2<'u>, k: float) = { X = a.X / k; Y = a.Y / k }
 
-/// §3 — Unit-indexed 3-D vector. Present in Core from the start because §5.4 requires the IR
+/// Unit-indexed 3-D vector. Present in Core from the start because §5.4 requires the IR
 /// to leave a door open for `Project3D of Camera * Node3`; absent from the Scene IR entirely,
 /// because that door stays shut until M4.
 [<Struct>]
@@ -69,7 +69,7 @@ type Vec3<[<Measure>] 'u> =
           Y = a.Y / k
           Z = a.Z / k }
 
-/// An axis-aligned box. Layout (§9) is a measure–arrange pass over these, and the panel /
+/// An axis-aligned box. Layout is a measure–arrange pass over these, and the panel /
 /// facet / colourbar grid is nothing but rectangle subdivision.
 [<Struct>]
 type Rect<[<Measure>] 'u> =
@@ -78,7 +78,7 @@ type Rect<[<Measure>] 'u> =
       X1: float<'u>
       Y1: float<'u> }
 
-/// Output surface size. `IBackend.Begin` takes an `Extent<px>` (§5).
+/// Output surface size. `IBackend.Begin` takes an `Extent<px>`.
 [<Struct>]
 type Extent<[<Measure>] 'u> = { Width: float<'u>; Height: float<'u> }
 
@@ -94,7 +94,7 @@ module Vec2 =
     let inline map (f: float<'u> -> float<'v>) (a: Vec2<'u>) : Vec2<'v> = { X = f a.X; Y = f a.Y }
 
     /// Scale by a *dimensioned* quantity, changing the unit. This is the payoff, and the
-    /// reason it is a function and not an operator (§12.1):
+    /// reason it is a function and not an operator:
     ///
     /// ```fsharp
     /// scaleBy dt (field p)   // float<s> * Vec2<m/s> -> Vec2<m>
@@ -141,13 +141,13 @@ module Vec2 =
 
     let angle (a: Vec2<'u>) : float<rad> = atan2 (float a.Y) (float a.X) * 1.0<rad>
 
-    /// Componentwise linear interpolation. `Interp` for `Vec2` delegates here (§7.1).
+    /// Componentwise linear interpolation. `Interp` for `Vec2` delegates here.
     let lerp (t: float) (a: Vec2<'u>) (b: Vec2<'u>) : Vec2<'u> =
         { X = a.X + (b.X - a.X) * t
           Y = a.Y + (b.Y - a.Y) * t }
 
     /// Reattach a measure to a raw pair. The escape hatch backends need, and the only
-    /// sanctioned way back across the erasure boundary (§2.3).
+    /// sanctioned way back across the erasure boundary.
     let ofRaw<[<Measure>] 'u> (x: float, y: float) : Vec2<'u> =
         { X = LanguagePrimitives.FloatWithMeasure<'u> x
           Y = LanguagePrimitives.FloatWithMeasure<'u> y }

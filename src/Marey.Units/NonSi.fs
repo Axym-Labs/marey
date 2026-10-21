@@ -1,7 +1,7 @@
 namespace Marey
 
 // ---------------------------------------------------------------------------------------
-// §2.4 — Common non-SI units.
+// Common non-SI units.
 //
 // **These are opaque measures, not abbreviations, and that is the opposite choice from
 // Derived.fs.** The reason is the conversion factor. `[<Measure>] type eV = J` would make
@@ -93,7 +93,7 @@ type Gs
 [<Measure>]
 type cal
 
-/// §2.4 — Witnesses for the non-SI units a physics audience actually uses.
+/// Witnesses for the non-SI units a physics audience actually uses.
 [<AutoOpen>]
 module NonSiWitnesses =
 

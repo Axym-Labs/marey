@@ -99,7 +99,7 @@ type MareyFormatter() =
             match Live.format value context with
             | Some output -> output
             | None ->
-            // Step F (D160) — a figure drawn on a canvas is a page in a frame, because an `Html`
+            // Step F — a figure drawn on a canvas is a page in a frame, because an `Html`
             // output is inserted as markup and its script would never run.
             match Bridge.document context.MaxWidth context.MaxHeight value with
             | Some doc -> Task.FromResult(CellOutput.Widget doc)

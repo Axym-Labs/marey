@@ -19,7 +19,7 @@ open System
 // That trade is deliberate and it is bounded: correctness and zero dependencies now, a real
 // Huffman encoder later if raster output ever becomes a size-sensitive path.
 //
-// D65 — it lives here, and it did not move. It was written in `Marey.Backend.Svg/SvgWriter.fs`
+// It lives here, and it did not move. It was written in `Marey.Backend.Svg/SvgWriter.fs`
 // at M1, under a comment predicting that "M2's Skia backend writes PNGs through libpng anyway,
 // so this may well never need to grow." That reasoning holds for the Skia backend and fails for
 // TikZ's sidecar, which must not acquire a native dependency to write a `.png` next to a

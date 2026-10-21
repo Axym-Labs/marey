@@ -3,7 +3,7 @@ namespace Marey
 open System
 
 // ======================================================================================
-// D145 — UNSTEADY FIELDS, PATHLINES, PARTICLES.
+// UNSTEADY FIELDS, PATHLINES, PARTICLES.
 //
 // A pathline is an ODE trajectory through a velocity field that depends on time, so its input is
 // D134's tier-2 function itself: `t -> x -> y -> (dx/dt, dy/dt)`. An analytic field (the double
@@ -86,7 +86,7 @@ module Unsteady =
     /// A field that does not change in time.
     let ofSteady<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (f: Flow<'x, 'y, 't>) : Unsteady<'x, 'y, 't> = Ode.ofFlow f
 
-    /// D145 — grids at stated times, bilinear between nodes and linear between snapshots. Every
+    /// Grids at stated times, bilinear between nodes and linear between snapshots. Every
     /// snapshot must be on the same grid, and the times strictly increasing; outside them, or
     /// outside the grid, the velocity is NaN. Second order in the snapshots' spacing.
     let ofSnapshots<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
@@ -124,7 +124,7 @@ module Unsteady =
     /// The last grid `ofFunction` built, and its time.
     type private Built = { T: float; Grid: Plain }
 
-    /// D145 — a grid built for whatever time is asked, bilinear between its nodes, NaN outside
+    /// A grid built for whatever time is asked, bilinear between its nodes, NaN outside
     /// it. The last grid is kept, so every particle a batch step evaluates at one stage time
     /// shares one build: step particles with `Particles.step`, never one at a time.
     ///

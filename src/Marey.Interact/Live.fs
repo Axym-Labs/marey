@@ -5,7 +5,7 @@ open System.Globalization
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// M4.5 — THE PURE STEP (D100)
+// M4.5 — THE PURE STEP
 //
 // A live figure is a value: its controls, and a view from their values to a `Figure`. What a
 // host does with it is a fold. `Live.init` gives the first state, `Live.step` the next one for
@@ -14,9 +14,9 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // without a notebook, and snapshotted by rendering the current state.
 //
 // **The view is re-run whole on every change.** There is no graph of derived signals, so there
-// is no order in which they update and no moment at which one of them is stale (D101). What the
+// is no order in which they update and no moment at which one of them is stale. What the
 // re-run costs is the cost of building a figure, which the library already pays per frame of a
-// film; what it would cost to send is the differ's business (D103), not this file's.
+// film; what it would cost to send is the differ's business, not this file's.
 //
 // **The wire form is deliberately small.** Verso hands an extension the payload as JSON text,
 // and this package may not take a JSON dependency. A message is a type and a payload short
@@ -34,16 +34,16 @@ type Live =
 type ZoomAxis =
     | X
     | Y
-    /// D177 — a panel's second y axis, on its right.
+    /// A panel's second y axis, on its right.
     | Y2
 
-/// D105 — one axis the reader has zoomed or panned: the panel it was done on, which axis, and the
+/// One axis the reader has zoomed or panned: the panel it was done on, which axis, and the
 /// domain, raw, in that axis's own unit.
 type LiveZoom =
     internal
         { Row: int
           Col: int
-          /// D180 — the inset of that panel the zoom was made in, or `None` for the panel.
+          /// The inset of that panel the zoom was made in, or `None` for the panel.
           Inset: int option
           Axis: ZoomAxis
           Lo: float
@@ -60,22 +60,22 @@ type LiveState =
       /// The surface the widget draws on: the frame's width as the view measured it, at the
       /// figure's aspect, or `Live.DefaultSize` until the view has said.
       Size: Extent<px>
-      /// D106 — the one arrangement every state is drawn in, laid out over the controls'
+      /// The one arrangement every state is drawn in, laid out over the controls'
       /// extremes and any state in `Grown`.
       Shot: Shot
-      /// D106 — the states that did not fit an earlier arrangement and were added to its union.
+      /// The states that did not fit an earlier arrangement and were added to its union.
       /// Its length is how many times the widget re-arranged, which is reported rather than
       /// hidden: each one is a jump the reader saw.
       Grown: float[][]
-      /// D105 — the axes the reader has zoomed or panned, oldest first, at most one per panel and
+      /// The axes the reader has zoomed or panned, oldest first, at most one per panel and
       /// axis. Applied over whatever the view returns, so a slider moved while zoomed stays zoomed.
       Zoom: LiveZoom[]
-      /// D105 — where the pointer is over the figure, in the figure's px, while it is over it.
+      /// Where the pointer is over the figure, in the figure's px, while it is over it.
       /// Nothing is drawn from it: `Live.readout` reads it, and the figure is the same with or
       /// without it (`Live.drawsAlike`).
       Pointer: Vec2<px> option }
 
-/// D105 — what the pointer reads, and where it is shown: inside the top corner of the plot it is
+/// What the pointer reads, and where it is shown: inside the top corner of the plot it is
 /// over, away from the legend, so it never moves the layout.
 type LiveReadout =
     { Row: int
@@ -93,16 +93,16 @@ type LiveMsg =
     | Set of index: int * value: float
     /// The view measured its frame: draw at this width and height, in px.
     | Resize of width: float * height: float
-    /// D105 — a drag on the figure, from `(X0, Y0)` where the pointer went down to `(X1, Y1)`
+    /// A drag on the figure, from `(X0, Y0)` where the pointer went down to `(X1, Y1)`
     /// where it came up, in the figure's px. Zooms the panel it started on to what it covered.
     | Zoom of Rect<px>
-    /// D105 — a shifted drag: move what was under `at` by `by`, in px, on the panel under `at`.
+    /// A shifted drag: move what was under `at` by `by`, in px, on the panel under `at`.
     | Pan of at: Vec2<px> * by: Vec2<px>
-    /// D105 — a double click: every axis back to the view's own domain.
+    /// A double click: every axis back to the view's own domain.
     | Reset
-    /// D105 — the pointer moved to here, in the figure's px.
+    /// The pointer moved to here, in the figure's px.
     | Hover of Vec2<px>
-    /// D105 — the pointer left the figure.
+    /// The pointer left the figure.
     | Leave
 
 [<RequireQualifiedAccess>]
@@ -163,7 +163,7 @@ module LiveMsg =
         | "leave", _ -> Some Leave
         | _ -> None
 
-    /// Read a message from the wire, with the view's clock reading if it sent one (D102): a type
+    /// Read a message from the wire, with the view's clock reading if it sent one: a type
     /// and its JSON payload text. `set` takes `[index,value]`, `size` `[width,height]`, `zoom`
     /// `[x0,y0,x1,y1]`, `pan` `[x,y,dx,dy]`, `hover` `[x,y]`, and `reset` and `leave` anything;
     /// each may carry one number more, the event's `timeStamp` in milliseconds, which comes back
@@ -201,7 +201,7 @@ module LiveMsg =
         | Hover at -> "hover", [| f at.X; f at.Y |]
         | Leave -> "leave", [||]
 
-/// **A session's messages as data (D102)**: what the reader did and when, by the view's clock. A
+/// **A session's messages as data**: what the reader did and when, by the view's clock. A
 /// log replayed through `Live.record` is the session again, because the step is pure; so the
 /// log is what is kept and written down, and the states are recomputed from it.
 ///
@@ -414,7 +414,7 @@ module LiveLog =
         | Some _ -> Error "not a Marey live log: it needs format, version and events"
         | None -> Error "not JSON"
 
-/// **A live figure that keeps what the reader did (D102).** Displayed, it is the same widget as
+/// **A live figure that keeps what the reader did.** Displayed, it is the same widget as
 /// its `Live`; the host steps it exactly as it would, and each message the step is given is
 /// noted with the view's time. `Recorder.stop` gives the log, and `Live.record` and `Live.film`
 /// turn it into a film.
@@ -495,7 +495,7 @@ module Live =
     /// `Html.defaultSize`.
     let DefaultSize: Extent<px> = { Width = 640.0<px>; Height = 400.0<px> }
 
-    /// The most states the union is taken over before the extremes stop being combined (D106).
+    /// The most states the union is taken over before the extremes stop being combined.
     [<Literal>]
     let MaxExtremes = 64
 
@@ -507,7 +507,7 @@ module Live =
     let ofControl (c: Control<Figure>) : Live = { Controls = c.Specs; View = c.Read }
 
     /// A handle that displays as this live figure and keeps the reader's messages, for
-    /// `Recorder.stop` to hand back (D102).
+    /// `Recorder.stop` to hand back.
     let recorder (live: Live) : Recorder = Recorder live
 
     /// The figure for a set of values.
@@ -526,9 +526,9 @@ module Live =
         | ZoomAxis.Y
         | ZoomAxis.Y2 -> sy
 
-    /// **D105 — a zoom applied to a figure.** Each entry states its axis on the panel it was made
+    /// **A zoom applied to a figure.** Each entry states its axis on the panel it was made
     /// on, and on every panel whose same axis the view drew identically: the same domain in the
-    /// same unit. Facet panels share their axes by being built with equal domains (D48), and a
+    /// same unit. Facet panels share their axes by being built with equal domains, and a
     /// facet zoomed in one panel and not in its neighbours has stopped being a facet; a `beside`
     /// whose two panels happen to agree is linked the same way, which is the reading the agreement
     /// invites. Later entries win where two reach the same axis.
@@ -554,7 +554,7 @@ module Live =
                 (fun fig z ->
                     match axes |> Array.tryFind (fun (k, _) -> k = (z.Row, z.Col)) with
                     | None -> fig
-                    // D180 — an inset's axes are its own, and join no other.
+                    // An inset's axes are its own, and join no other.
                     | Some _ when z.Inset.IsSome ->
                         let d = Some(z.Lo, z.Hi)
 
@@ -562,7 +562,7 @@ module Live =
                         | ZoomAxis.X -> Figure.withInsetDomains (z.Row, z.Col, z.Inset.Value) d None fig
                         | ZoomAxis.Y -> Figure.withInsetDomains (z.Row, z.Col, z.Inset.Value) None d fig
                         | ZoomAxis.Y2 -> fig
-                    // D177 — a second y axis is the panel's own, and joins no other.
+                    // A second y axis is the panel's own, and joins no other.
                     | Some _ when z.Axis = ZoomAxis.Y2 -> Figure.withPanelDomainY2 (z.Row, z.Col) (z.Lo, z.Hi) fig
                     | Some(_, target) ->
                         let t = axisOf z.Axis target
@@ -584,9 +584,9 @@ module Live =
     /// The figure for a set of values under a zoom.
     let private figureIn (live: Live) (zoom: LiveZoom[]) (values: float[]) = zoomed zoom (figureOf live values)
 
-    /// **D106 — the states the controls can reach at their extremes**, the initial state first: a
+    /// **The states the controls can reach at their extremes**, the initial state first: a
     /// slider's ends, every option of a select, both states of a checkbox, and a time control's
-    /// samples along its range (D137). Every combination
+    /// samples along its range. Every combination
     /// while there are at most `MaxExtremes` of them; past that, one control at a time with the
     /// others at their initial values, which keeps the count linear in the controls.
     let extremes (live: Live) : float[][] =
@@ -597,7 +597,7 @@ module Live =
             | Slider(lo, hi, _) -> [| lo; hi |]
             | Select options -> Array.init options.Length float
             | Checkbox -> [| 0.0; 1.0 |]
-            // D137 — a time control is played, so the states it passes through are arranged
+            // A time control is played, so the states it passes through are arranged
             // for, not only its ends. Over `MaxExtremes`, the fallback below takes one control
             // at a time, which keeps all of these.
             | Time(lo, hi, samples, _) -> Array.init samples (fun k -> if k = samples - 1 then hi else lo + (hi - lo) * float k / float (samples - 1))
@@ -663,7 +663,7 @@ module Live =
         && obj.ReferenceEquals(a.Shot, b.Shot)
         && a.Size = b.Size
 
-    /// **D105 — what the pointer reads**: the data under it on the panel it is over, written by
+    /// **What the pointer reads**: the data under it on the panel it is over, written by
     /// the kernel in the axes' own prefixes and units (`PanelView.read`), and the corner it is
     /// shown in. `None` when the pointer is off the figure or between plots.
     ///
@@ -680,7 +680,7 @@ module Live =
             |> Option.bind (fun v ->
                 PanelView.read at v
                 |> Option.map (fun lines ->
-                    // D171 — the corner the legend was drawn in, `LegendBest` resolved as the
+                    // The corner the legend was drawn in, `LegendBest` resolved as the
                     // drawing pass resolved it, from the shot's scores. A figure with one shared
                     // legend draws none on its panels.
                     let legendLeft =
@@ -809,7 +809,7 @@ module Live =
                 match PanelView.domainsOf { X0 = x0; Y0 = y0; X1 = x1; Y1 = y1 } v with
                 | None -> state
                 | Some(dx, dy) when v.EqualAspect ->
-                    // D179 — both axes, widened to the plot's shape, so equal aspect holds and
+                    // Both axes, widened to the plot's shape, so equal aspect holds and
                     // re-arranging keeps the box.
                     if x1 - x0 < MinDrag * 1.0<px> && y1 - y0 < MinDrag * 1.0<px> then
                         state
@@ -827,7 +827,7 @@ module Live =
                         [ if x1 - x0 >= MinDrag * 1.0<px> then ZoomAxis.X, dx
                           if y1 - y0 >= MinDrag * 1.0<px> then
                               ZoomAxis.Y, dy
-                              // D177 — the same rows of the plot, read on the right axis.
+                              // The same rows of the plot, read on the right axis.
                               match PanelView.y2DomainOf { X0 = x0; Y0 = y0; X1 = x1; Y1 = y1 } v with
                               | Some d2 -> ZoomAxis.Y2, d2
                               | None -> () ]
@@ -835,7 +835,7 @@ module Live =
                     match withEntries state.Zoom v entries with
                     | Some zoom ->
                         // A zoom is a jump the reader asked for, and it can change an axis's
-                        // prefix (D73), so it re-arranges rather than waiting to overflow.
+                        // prefix, so it re-arranges rather than waiting to overflow.
                         { state with
                             Zoom = zoom
                             Shot = arrange live state.Size state.Grown zoom }
@@ -879,7 +879,7 @@ module Live =
         | Hover _ -> state
         | Leave -> if state.Pointer.IsNone then state else { state with Pointer = None }
 
-    /// **A session again, from its log (D102)**: the state after each message, at the time the
+    /// **A session again, from its log**: the state after each message, at the time the
     /// view stamped it, from `start`. Every time is the view's, so the kernel's clock appears
     /// nowhere. A log with no messages records `start` alone, so the result can always be
     /// sampled.

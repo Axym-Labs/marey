@@ -13,7 +13,7 @@ open Silk.NET.OpenGL
 open Silk.NET.Windowing
 open SkiaSharp
 
-/// D117 — the thread a GL context belongs to.
+/// The thread a GL context belongs to.
 ///
 /// A GL context is current on one thread, and making it current elsewhere is the expensive and
 /// driver-dependent thing a GPU renderer exists to avoid. So the context, Skia's `GRContext` on
@@ -264,7 +264,7 @@ type internal GpuContext(?shown: string * int * int * bool) =
 
     let markers = new MarkerDrawer(gl)
 
-    // D139: made the first time a solver asks, so a renderer that only draws compiles no shader of it.
+    // Made the first time a solver asks, so a renderer that only draws compiles no shader of it.
     let mutable compute: GpuCompute option = None
 
     do gr.ResetContext()
@@ -311,7 +311,7 @@ type internal GpuContext(?shown: string * int * int * bool) =
 
     /// **Draw layers on the target for a size**, each a scene under the transform that places
     /// it, in order, and flush. Every node is Skia's but a marker batch the instanced drawer can
-    /// draw exactly as Skia would (D119), which is claimed and drawn between Skia's flushes, so it
+    /// draw exactly as Skia would, which is claimed and drawn between Skia's flushes, so it
     /// lands over what came before it and under what comes after. The scenes are degraded by the
     /// caller.
     member this.Paint(opts: SkiaOptions, shaping: SkiaTextMeasurer, instanced: bool, width: int, height: int, layers: (Affine<nd, px> * Node) seq) : GpuTarget =

@@ -9,8 +9,8 @@ open System.IO
 //
 // Marey drives three programs it does not ship — `pdflatex` compiles the TikZ goldens,
 // `pdftoppm` rasterises the compiled page for the ink gate, and `dotnet fsi` executes every
-// example and guide snippet — and M3 adds two more: `ffmpeg` for video export (D75) and a TeX
-// engine for the mathematical-typesetting package (D79).
+// example and guide snippet — and M3 adds two more: `ffmpeg` for video export and a TeX
+// engine for the mathematical-typesetting package.
 //
 // Before this file, "is the tool there?" was answered five times in four files. `onPath` was
 // written twice — once in `TexToolchain` and once, in a different spelling, in `GuideTests`,

@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §3 — A 2-D affine map between two *coordinate spaces*, checked by the compiler.
+/// A 2-D affine map between two *coordinate spaces*, checked by the compiler.
 ///
 /// ```text
 ///     | M11 M12 Dx |     x' = M11·x + M12·y + Dx

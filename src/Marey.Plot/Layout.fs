@@ -4,7 +4,7 @@ namespace Marey
 ///
 /// Three kinds, because those are the three answers to "how big is this?": *you tell me*,
 /// *whatever is left*, and *ask the content*. Facets, colourbars, shared axes and inset axes all
-/// decompose into those three, and ad-hoc layout does not (§9).
+/// decompose into those three, and ad-hoc layout does not.
 [<RequireQualifiedAccess>]
 type internal Track =
     /// Exactly this many device pixels, regardless of content.
@@ -21,7 +21,7 @@ type internal Track =
 /// `Measure` is the measure half of measure–arrange. It is a function, not data, and that is
 /// deliberate: a cell's demand is "how wide is this tick label in *this* backend's font", which
 /// is exactly the question `ITextMeasurer` answers and exactly the question the layout layer
-/// cannot answer for itself (§9, D8). It is called **once per arrange**, before any track size
+/// cannot answer for itself. It is called **once per arrange**, before any track size
 /// is known.
 ///
 /// Layout values never enter the IR and are never serialized, so the function field costs
@@ -35,7 +35,7 @@ type internal GridCell =
       ColSpan: int
       Measure: ITextMeasurer -> Extent<px> }
 
-/// A constraint grid, à la Makie's `GridLayout` (§9).
+/// A constraint grid, à la Makie's `GridLayout`.
 [<NoComparison>]
 type internal Grid =
     { Rows: Track[]
@@ -71,9 +71,9 @@ type Arrangement =
       Placements: (string * Rect<px>)[]
       Regions: (string * Rect<nd>)[] }
 
-/// §9 — **"Layout is a measure–arrange pass against `IBackend.MeasureText`."**
+/// **"Layout is a measure–arrange pass against `IBackend.MeasureText`."**
 ///
-/// ### The device-unit convention, stated once (D12)
+/// ### The device-unit convention, stated once
 ///
 /// Positions in the IR are `nd`. Stroke widths, font sizes, tick lengths and paddings are device
 /// units, because a hairline must stay a hairline at 4K. Layout is the only layer that holds

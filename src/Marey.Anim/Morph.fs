@@ -40,7 +40,7 @@ type MorphOptions =
       Padding: SubpathPadding
       Closure: ClosurePolicy }
 
-/// §7.1 / D74 — **path morphing is a function, not an `Interp` instance.**
+/// **Path morphing is a function, not an `Interp` instance.**
 ///
 /// `interp a b t` on a `PathSeg[]` is not well defined without three policies: how subpaths are
 /// paired when the counts differ, how many samples the common parameterisation gets, and what a

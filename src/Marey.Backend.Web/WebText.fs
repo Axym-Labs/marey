@@ -4,7 +4,7 @@ open System
 open Fable.Core
 
 // ======================================================================================
-// M5 — TEXT IN THE BROWSER (D123)
+// M5 — TEXT IN THE BROWSER
 //
 // The browser lays out and draws, so the measurer is the canvas's own `measureText`: synchronous,
 // and answered in the font the canvas will draw with. The trap is a web font that has not
@@ -65,7 +65,7 @@ module WebFonts =
     /// Resolves when `ready` is true.
     let whenReady () : JS.Promise<unit> = readyPromise ()
 
-/// **D123 — the canvas's own measurer**, which refuses until the fonts are ready.
+/// **The canvas's own measurer**, which refuses until the fonts are ready.
 ///
 /// Advances are `measureText`'s width; the ascent and descent are the font's box, as Skia's
 /// measurer reports a face's, so a centred label sits where the canvas will draw it. A browser

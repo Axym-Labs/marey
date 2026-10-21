@@ -3,7 +3,7 @@
 /// The bundle esbuild makes of this file is a classic script that defines one global,
 /// `MareyView`, so the widget's own script, which runs in document order, can call it at once.
 /// The page holds one scene: the one it was shown last, with the text metrics its layout used
-/// (D156), and it redraws the whole canvas on every change, because a canvas has no element to
+///, and it redraws the whole canvas on every change, because a canvas has no element to
 /// replace.
 module Marey.View
 

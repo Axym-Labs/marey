@@ -1,7 +1,7 @@
 namespace Marey
 
 // ---------------------------------------------------------------------------------------
-// §2 — The 22 named SI derived units, as measure **abbreviations**.
+// The 22 named SI derived units, as measure **abbreviations**.
 //
 // Abbreviations rather than opaque measures is the load-bearing choice. `[<Measure>] type N`
 // on its own would be a fresh, incompatible measure, and `U.mul U.kilogram
@@ -117,7 +117,7 @@ type Sv = J / kg
 [<Measure>]
 type kat = mol / s
 
-/// §2.1 — Witnesses for the named SI derived units.
+/// Witnesses for the named SI derived units.
 ///
 /// Every `Dim` here is written out rather than derived through `U.mul`/`U.div`, so that the
 /// witness is a *statement* of the unit's dimension that a reader can check against SI, not a
@@ -164,10 +164,10 @@ module DerivedWitnesses =
         // These are not tests-that-run; they are tests-that-typecheck. If someone ever turns `N`
         // into an opaque measure, the build breaks here rather than three layers up in a plot.
 
-        /// §2.1 — `mul kilogram accel` **is** a `U<N>`, inferred, not annotated into place.
+        /// `mul kilogram accel` **is** a `U<N>`, inferred, not annotated into place.
         let internal newtonByComposition: U<N> = U.mul U.kilogram U.metrePerSecondSquared
 
-        /// §2.1 / §12.6 — `mul force metre` **is** a `U<J>` at the type level, while its `Symbol`
+        /// `mul force metre` **is** a `U<J>` at the type level, while its `Symbol`
         /// is the useless `kg·m/s²·m`. The `Dim` is right; the string is not. That is the entire
         /// argument for `UnitDisplay`.
         let internal jouleByComposition: U<J> = U.mul newtonByComposition U.metre

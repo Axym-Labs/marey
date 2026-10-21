@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §2.2 — one unit's preferred symbol, in every typography the library can emit.
+/// One unit's preferred symbol, in every typography the library can emit.
 ///
 /// **The design sketches the registry as `Dim -> string`. One string is not enough**, and the
 /// ohm proves it in four different ways: `Ω` (Unicode), `ohm` (ASCII), `\Omega` (LaTeX math),
@@ -39,7 +39,7 @@ module UnitSymbol =
           LatexCore = latexCore
           Siunitx = siunitx }
 
-/// §2.2 — canonical-symbol lookup, keyed on `Dim`.
+/// Canonical-symbol lookup, keyed on `Dim`.
 ///
 /// **Deliberate correction to the design.** §2.2 sketches
 ///
@@ -64,7 +64,7 @@ module UnitSymbol =
 /// is no such ordering: a `Dim` is a 7-vector of exponents and the lookup is exact equality on
 /// all seven. There is nothing to be longest about, so the concept does not survive the move
 /// to a dimension key — and the dimension key is right, because it is the only thing that
-/// makes `mul force metre` come out as `J` (§12.6).
+/// makes `mul force metre` come out as `J`.
 ///
 /// What "longest match" *would* buy, and what is deliberately not implemented here, is
 /// **partial factorisation**: rendering entropy `kg·m²·s⁻²·K⁻¹` as `J·K⁻¹` by peeling off the

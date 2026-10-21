@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §2 — The seven SI base measures.
+/// The seven SI base measures.
 ///
 /// These are *physical* dimensions, which is why they live here and not in Marey.Core: Core's
 /// `px`/`nd`/`pt`/`mm`/`rad`/`deg` are graphics tags with no SI dimension and no conversion to
@@ -52,7 +52,7 @@ type mol = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.mole
 [<Measure>]
 type cd = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.candela
 
-/// §2.1 — SI base-unit witnesses, inside a module F# opens with the namespace.
+/// SI base-unit witnesses, inside a module F# opens with the namespace.
 ///
 /// The module `U` below merges with the algebra module `U` in Marey.Core: F# name resolution
 /// keeps modules in a multi-map, so `U.mul` (Core) and `U.metre` (here) are both reachable
@@ -61,7 +61,7 @@ type cd = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.candela
 /// module of their own (`DerivedWitnesses`, `NonSiWitnesses`), opened with the namespace like
 /// this one.
 ///
-/// **Why it is nested (D124).** At namespace level this module compiled to a public type
+/// **Why it is nested.** At namespace level this module compiled to a public type
 /// `Marey.U`, and so does the witness class in Marey.Core: C# saw two `Marey.U` and refused
 /// every call that named either (CS0433), so no C# caller could pass a witness at all. F# reads
 /// an `[<AutoOpen>]` module as opened with its namespace, so `open Marey` still finds `U.metre`
@@ -101,7 +101,7 @@ module SiWitnesses =
         //
         // Each of these is exactly what `U.mul`/`U.div` would produce, and the `Symbol` is
         // deliberately the same naive composition those functions build. It is a debugging aid
-        // and nothing else: display goes through `Dim` (§12.6).
+        // and nothing else: display goes through `Dim`.
 
         let squareMetre: U<m^2> = U<m^2>("m²", dimOf 2 0 0 0 0 0 0, 1.0)
         let cubicMetre: U<m^3> = U<m^3>("m³", dimOf 3 0 0 0 0 0 0, 1.0)

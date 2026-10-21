@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §9 / D45 — **an ordered level set**: the distinct values of a categorical key, in the order
+/// **An ordered level set**: the distinct values of a categorical key, in the order
 /// they will be laid out.
 ///
 /// This is the half of the discrete scale that a category type actually reaches. D45 put the
@@ -91,5 +91,5 @@ module Levels =
                     ls.Values.Length
                     (System.String.Join(", ", ls.Labels)))
 
-    /// The scale these levels lay out: one band each, level `i` at index `i` (D45).
+    /// The scale these levels lay out: one band each, level `i` at index `i`.
     let scale (ls: Levels<'k>) : Scale<1> = Scale.ordinal ls.Labels

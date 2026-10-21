@@ -3,7 +3,7 @@ namespace Marey.CSharp
 open System
 open Marey
 
-/// D124 — **fields from C#**: grids built from delegates, at measure 1.
+/// **Fields from C#**: grids built from delegates, at measure 1.
 ///
 /// F# samples a field with a function, `ScalarGrid.sample xs ys (fun x y -> …)`, and C# cannot
 /// pass an F# function without building one by hand. Each member here takes a `Func` instead and

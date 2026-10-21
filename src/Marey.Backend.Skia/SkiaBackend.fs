@@ -5,7 +5,7 @@ open SkiaSharp
 open SkiaSharp.HarfBuzz
 
 // ======================================================================================
-// §6 / §14 — THE SKIA BACKEND: PNG, AND PDF.
+// THE SKIA BACKEND: PNG, AND PDF.
 //
 // The third implementation of the `IBackend` contract, and the first whose artifact is
 // **bytes**. Two containers share one traversal — `SkiaFormat.Png` and `SkiaFormat.Pdf` — and
@@ -54,7 +54,7 @@ open SkiaSharp.HarfBuzz
 //   laid out through `Chart.renderTo` against this backend has *different gutters* from the
 //   same figure through the SVG backend. That is a result rather than a regression and it is
 //   the milestone's headline — but it is also why the cross-backend oracle below compares
-//   scenes under a **stated** measurer (D61) rather than comparing whatever each backend
+//   scenes under a **stated** measurer rather than comparing whatever each backend
 //   happens to lay out against.
 // ======================================================================================
 
@@ -136,7 +136,7 @@ type SkiaOptions =
       /// which is what a user wants; `Some` is what a golden, a regression test or a paper
       /// figure wants, because it is the only way two machines produce the same pixels.
       ///
-      /// **A stated file is obeyed alone and never falls back** (D78). One face is the whole
+      /// **A stated file is obeyed alone and never falls back**. One face is the whole
       /// answer, and a codepoint it lacks is a `.notdef` box — reported, not hidden.
       FontFile: string option
       /// D78's new option shape: a stated *list* of font files, in priority order. The first
@@ -188,7 +188,7 @@ type PainterClip =
     /// An enclosing clip is not an axis-aligned rectangle.
     | Shaped
 
-/// D131 — Skia's traversal of a `Node`, on a canvas the caller owns.
+/// Skia's traversal of a `Node`, on a canvas the caller owns.
 ///
 /// `SkiaBackend` creates a surface or a PDF page and hands its canvas here; the GPU backend hands
 /// the canvas of a surface on its own framebuffer. Both draw with the same code, so text,
@@ -202,7 +202,7 @@ type PainterClip =
 /// the framebuffer would not be faded with the rest of its group.
 ///
 /// Not thread-safe, like the canvas it draws on. The measurer is shared, and must be the one
-/// layout ran against (D62): the traversal centres text with the advances it measured.
+/// layout ran against: the traversal centres text with the advances it measured.
 [<Sealed>]
 type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, claim: (Affine<nd, px> -> Node -> bool) option) =
 
@@ -538,7 +538,7 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
             clip <- outer
             canvas.Restore()
 
-        // D67 — `SaveLayer` *is* group opacity: the subtree is drawn into an offscreen layer
+        // `SaveLayer` *is* group opacity: the subtree is drawn into an offscreen layer
         // and the layer is composited back with the paint's alpha, so an overlap inside the
         // group does not read darker than the rest of it. Setting `canvas.Alpha` or folding
         // the value into each paint would be the degraded picture, which is what
@@ -582,7 +582,7 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
             // face and per size and disposes them with this backend. Disposing them here would
             // free a handle the next run is about to use.
             //
-            // **D78 — one run, one *or more* faces.** `Segments` splits the string by which
+            // **One run, one *or more* faces.** `Segments` splits the string by which
             // face has each codepoint and hands back the pieces with the font and shaper that
             // draw each. A Latin run is one segment and this loop is what it always was; a CJK
             // title against a Latin theme is several, and drawing it with the first segment's
@@ -648,10 +648,10 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
 
     and drawMarkers (ctm: Affine<nd, px>) (b: MarkerBatch) =
         if b.Points.Length > 0 then
-            // §5.1 — "a 100 000-point scatter must be *one* IR node", and one outline and one
+            // "a 100 000-point scatter must be *one* IR node", and one outline and one
             // pair of paints here, built once for the batch.
             //
-            // **D132 — but each mark is composited on its own, filled and then stroked.** That is
+            // **But each mark is composited on its own, filled and then stroked.** That is
             // what the SVG backend's `<use>`s and TikZ's per-mark paths do, and what a scatter
             // plot means: two translucent marks that overlap are darker where they overlap,
             // which is how a dense region shows. Until 0.4.0 this backend added the whole batch to
@@ -819,7 +819,7 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
     let mutable document: SKDocument = null
     let mutable pdfStream: SKDynamicMemoryWStream = null
 
-    // D131 — the traversal, on whichever canvas `Begin` made.
+    // The traversal, on whichever canvas `Begin` made.
     let mutable painter: SkiaPainter option = None
 
     let mutable root: Affine<nd, px> =
@@ -971,7 +971,7 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
               // the time. If tagging ever arrives it wants the D64 treatment — the capability
               // moving to the entry point.
               Semantics = false
-              // D67 — `SKCanvas.SaveLayer` composites the subtree and fades the result, which
+              // `SKCanvas.SaveLayer` composites the subtree and fades the result, which
               // is exactly the node's meaning. Nothing to degrade.
               GroupOpacity = true
               // No instance-buffer ceiling. Skia takes a path of any size, and §5.1's whole
