@@ -271,8 +271,14 @@ module ``instanced markers`` =
 
     /// Gate 9. A million marks in one batch, on hardware. Skipped, and said, on a software
     /// driver, where the number would measure the CPU.
+    ///
+    /// Timed against the CPU raster in the same run rather than against a fixed 50 ms, which a
+    /// loaded machine missed (72 ms at load 31–35, 2026-10-21) although nothing had regressed:
+    /// load slows both alike. The GPU must draw ten times the marks in under half the CPU raster's
+    /// time, twenty times as fast per mark, where the margin on an idle machine is well past a
+    /// hundred. Each side is its best of several runs, so one descheduled frame does not decide it.
     [<Fact>]
-    let ``a million marks render in under fifty milliseconds`` () =
+    let ``a million marks render twenty times as fast per mark as the CPU raster`` () =
         withGpu (fun gpu ->
             if gpu.Description.Contains "llvmpipe" then
                 Console.WriteLine("SKIPPED: gate 9 times a hardware GPU, and this is " + gpu.Description)
@@ -280,20 +286,26 @@ module ``instanced markers`` =
                 let rng = Random 9
                 let wide = Chart.size 800.0 500.0
 
-                let node =
+                let marks (n: int) =
                     Markers
-                        { Points = Array.init 1_000_000 (fun _ -> { X = rng.NextDouble() * 1.0<nd>; Y = rng.NextDouble() * 1.0<nd> })
+                        { Points = Array.init n (fun _ -> { X = rng.NextDouble() * 1.0<nd>; Y = rng.NextDouble() * 1.0<nd> })
                           Shape = MarkCircle
                           Size = 3.0<px>
                           Fill = Some(Solid(Color.rgba 0.0 0.45 0.7 0.25))
                           Stroke = None }
 
-                gpu.RenderImage wide node |> ignore
-                let sw = Diagnostics.Stopwatch.StartNew()
+                let best (runs: int) (draw: unit -> unit) =
+                    draw ()
 
-                for _ in 1..5 do
-                    gpu.RenderImage wide node |> ignore
+                    Seq.init runs (fun _ ->
+                        let sw = Diagnostics.Stopwatch.StartNew()
+                        draw ()
+                        sw.Elapsed.TotalMilliseconds)
+                    |> Seq.min
 
-                let ms = sw.Elapsed.TotalMilliseconds / 5.0
-                Console.WriteLine(sprintf "gate 9: 10^6 marks in %.1f ms on %s" ms gpu.Description)
-                Assert.True(ms < 50.0, sprintf "10^6 marks took %.1f ms" ms))
+                let million = marks 1_000_000
+                let tenth = marks 100_000
+                let gpuMs = best 5 (fun () -> gpu.RenderImage wide million |> ignore)
+                let cpuMs = best 2 (fun () -> SkiaBackend.renderPng wide tenth |> ignore)
+                Console.WriteLine(sprintf "gate 9: 10^6 marks in %.1f ms on %s; 10^5 on the CPU raster in %.1f ms" gpuMs gpu.Description cpuMs)
+                Assert.True(gpuMs < cpuMs / 2.0, sprintf "10^6 marks took %.1f ms on the GPU, 10^5 took %.1f ms on the CPU raster" gpuMs cpuMs))
