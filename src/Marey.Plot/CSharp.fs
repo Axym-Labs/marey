@@ -280,6 +280,42 @@ type FigureExtensions =
     static member WithRightAxisMapped(fig: Figure, unit: IUnit, forward: System.Func<float, float>, inverse: System.Func<float, float>) =
         Chart.withSecondary false (U.erase unit) (Some(SecondaryMap(forward.Invoke, inverse.Invoke))) fig
 
+    /// The secondary x axis's title, in place of the one its unit would give it.
+    [<Extension>]
+    static member WithTopAxisLabel(fig: Figure, label: string) = Chart.withTopAxisLabel label fig
+
+    /// Move the last layer onto a right y axis of its own.
+    [<Extension>]
+    static member ToRightAxis(fig: Figure) = Chart.toRightAxis fig
+
+    /// The last panel's x axis, configured whole: `fig.WithXAxis(Figures.Axis("t"))`.
+    [<Extension>]
+    static member WithXAxis(fig: Figure, config: AxisConfig) = Chart.withXAxis config fig
+
+    [<Extension>]
+    static member WithYAxis(fig: Figure, config: AxisConfig) = Chart.withYAxis config fig
+
+    /// The last panel's x scale: `ScaleKind.NewLog(10.0)`, `ScaleKind.NewSymlog(1.0)`, ….
+    [<Extension>]
+    static member WithXScaleKind(fig: Figure, kind: ScaleKind) = Chart.withXScaleKind kind fig
+
+    [<Extension>]
+    static member WithYScaleKind(fig: Figure, kind: ScaleKind) = Chart.withYScaleKind kind fig
+
+    /// The last panel's coordinate system: `fig.WithCoord(Coords.Polar)`.
+    [<Extension>]
+    static member WithCoord(fig: Figure, coord: Coord) = Chart.withCoord coord fig
+
+    /// The x domain of the panel at `row`, `col`, in the axis's own numbers.
+    [<Extension>]
+    static member WithPanelXDomain(fig: Figure, row: int, col: int, lo: float, hi: float) =
+        Chart.withPanelDomains (row, col) (Some(lo, hi)) None fig
+
+    /// The y domain of the panel at `row`, `col`, in the axis's own numbers.
+    [<Extension>]
+    static member WithPanelYDomain(fig: Figure, row: int, col: int, lo: float, hi: float) =
+        Chart.withPanelDomains (row, col) None (Some(lo, hi)) fig
+
     /// One x axis for every panel the figure has now, labelled on the outermost.
     [<Extension>]
     static member ShareX(fig: Figure) = Chart.shareX fig
@@ -342,11 +378,56 @@ type Figures =
 
     /// Panels laid out by a picture of the grid: `Figures.Mosaic("AB;AC", "ABC", a, b, c)`,
     /// where the i-th character of `names` names the i-th figure.
+    /// An axis configuration named after the quantity, for `WithXAxis` and `WithYAxis`.
+    static member Axis(label: string) = Chart.axis label
+
     static member Mosaic(layout: string, names: string, [<System.ParamArray>] parts: Figure[]) =
         if names.Length <> parts.Length then
             invalidArg "parts" (sprintf "Marey: %d names and %d figures." names.Length parts.Length)
 
         Chart.mosaic layout (List.zip (List.ofSeq names) (List.ofArray parts))
+
+/// The built-in themes, for C#: `fig.WithTheme(Themes.Publication)`.
+[<AbstractClass; Sealed>]
+type Themes =
+
+    /// The default: sans-serif, light, a grid behind the data.
+    static member Modern = Theme.modern
+
+    /// The framed box of a physics journal: ticks in on four sides, minor ticks, no grid.
+    static member Publication = Theme.publication
+
+    static member Notebook = Theme.notebook
+
+    static member Presentation = Theme.presentation
+
+    static member Dark = Theme.dark
+
+    /// For a LaTeX document: sizes pinned, fonts inherited, units as siunitx macros.
+    static member Tikz = Theme.tikz
+
+    /// The theme a figure starts with.
+    static member Default = Theme.initial
+
+    /// Every built-in theme.
+    static member All = Theme.all
+
+/// Coordinate systems, for C#: `fig.WithCoord(Coords.Polar)`.
+[<AbstractClass; Sealed>]
+type Coords =
+
+    static member Cartesian = Coord.cartesian
+
+    /// Angle along x, radius along y.
+    static member Polar = Coord.polar
+
+    /// A polar sector from `startAngle` to `endAngle`, in radians, with an inner radius as a
+    /// fraction of the outer.
+    static member PolarBetween(startAngle: float, endAngle: float, innerRadius: float) =
+        Coord.polarBetween (startAngle * 1.0<rad>) (endAngle * 1.0<rad>) innerRadius
+
+    /// `inner` with its two axes swapped.
+    static member Flipped(inner: Coord) = Coord.flipped inner
 
 /// The categorical front door for C#. F# writes `Chart.Category.Bar(…)`, a type nested in
 /// `module Chart`, which C# can only reach as `ChartModule.Category`; this is the same members

@@ -23,6 +23,11 @@ land in a minor release.
   from `At`; `Marey.Sim`'s `Step<'s,'t>` is `Stepper<'s,'t>`, so it no longer shares a name with the
   storyboard's `Step`. The auto-opened `interp` and `interpWith` are gone: `Interp.between` and
   `Interp.betweenWith`.
+- **C# reaches every verb.** New: `WithXAxis`/`WithYAxis` with `Figures.Axis(label)`,
+  `WithXScaleKind`/`WithYScaleKind`, `WithCoord`, `ToRightAxis`, `WithTopAxisLabel`,
+  `WithPanelXDomain`/`WithPanelYDomain`; and `Themes.Publication`, `Coords.Polar` and
+  `Prefixes.Nano` in place of `ThemeModule.publication`, `CoordModule.polar` and
+  `PrefixModule.nano`.
 - **A smaller public surface.** What turns a figure into a scene is internal: the layout, axis,
   legend, colorbar, field-mark and channel modules, the geom compilers, the arranging functions
   `Chart.*` already exposes, the tick generator, the SVG and TikZ writers' helpers, the GPU window's

@@ -5,9 +5,9 @@ open Marey
 /// **Every unit witness, for C#, under one name**: `Units.Metre`, `Units.DegreeCelsius`,
 /// `Units.Div(Units.Volt, Units.Metre)`.
 ///
-/// F# reaches the witnesses as `U.metre`, `U.volt` and `U.degreeCelsius`, three modules
-/// whose split follows how a unit is defined rather than how it is looked for; a C# caller should
-/// not have to know which is which, and should not read F#'s lowercase as a C# property. Each
+/// F# reaches the witnesses as `U.metre`, `U.volt` and `U.degreeCelsius`; a C# caller should
+/// not read F#'s lowercase as a C# property, nor have to know that F# opens three modules named
+/// `U` to put them under one name. Each
 /// member here is the F# witness itself, not a copy, so `Units.Metre` and `U.metre` are one
 /// object. Its type is `U<'u>`, which C# sees as the class `U`.
 ///
@@ -114,3 +114,40 @@ type Units =
         | Error _ ->
             result <- Unchecked.defaultof<_>
             false
+
+/// The SI prefixes, for C#: `fig.WithYPrefix(Prefixes.Nano)`. `None` writes the unit bare.
+[<AbstractClass; Sealed>]
+type Prefixes =
+
+    static member None = Prefix.none
+    static member Quecto = Prefix.quecto
+    static member Ronto = Prefix.ronto
+    static member Yocto = Prefix.yocto
+    static member Zepto = Prefix.zepto
+    static member Atto = Prefix.atto
+    static member Femto = Prefix.femto
+    static member Pico = Prefix.pico
+    static member Nano = Prefix.nano
+    static member Micro = Prefix.micro
+    static member Milli = Prefix.milli
+    static member Centi = Prefix.centi
+    static member Deci = Prefix.deci
+    static member Deca = Prefix.deca
+    static member Hecto = Prefix.hecto
+    static member Kilo = Prefix.kilo
+    static member Mega = Prefix.mega
+    static member Giga = Prefix.giga
+    static member Tera = Prefix.tera
+    static member Peta = Prefix.peta
+    static member Exa = Prefix.exa
+    static member Zetta = Prefix.zetta
+    static member Yotta = Prefix.yotta
+    static member Ronna = Prefix.ronna
+    static member Quetta = Prefix.quetta
+
+    /// Every prefix, smallest first.
+    static member All = Prefix.all
+
+    /// The prefix a range of values in `unit` would be written with.
+    static member For(unit: IUnit, lo: float, hi: float) =
+        Prefix.selectForErased unit.Symbol unit.Dim unit.ToSI unit.OffsetSI (lo, hi)

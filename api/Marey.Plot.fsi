@@ -2567,6 +2567,9 @@ namespace Marey.CSharp
                         ((null :> obj))>] unit: Marey.IUnit -> Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
+        static member ToRightAxis: fig: Marey.Figure -> Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
         static member
           ToScene: fig: Marey.Figure * width: float * height: float ->
                      Marey.Node
@@ -2604,6 +2607,10 @@ namespace Marey.CSharp
         [<System.Runtime.CompilerServices.Extension>]
         static member
           WithColorLabel: fig: Marey.Figure * label: string -> Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member
+          WithCoord: fig: Marey.Figure * coord: Marey.Coord -> Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
@@ -2675,6 +2682,16 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
+          WithPanelXDomain: fig: Marey.Figure * row: int * col: int * lo: float *
+                            hi: float -> Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member
+          WithPanelYDomain: fig: Marey.Figure * row: int * col: int * lo: float *
+                            hi: float -> Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member
           WithRightAxis: fig: Marey.Figure * right: Marey.Figure -> Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
@@ -2735,6 +2752,10 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
+          WithTopAxisLabel: fig: Marey.Figure * label: string -> Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member
           WithTopAxisMapped: fig: Marey.Figure * unit: Marey.IUnit *
                              forward: System.Func<float,float> *
                              inverse: System.Func<float,float> -> Marey.Figure
@@ -2743,6 +2764,11 @@ namespace Marey.CSharp
         static member
           WithUnitStyle: fig: Marey.Figure * style: Marey.UnitStyle ->
                            Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member
+          WithXAxis: fig: Marey.Figure * config: Marey.AxisConfig ->
+                       Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
@@ -2770,6 +2796,11 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member WithXReversed: fig: Marey.Figure -> Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member
+          WithXScaleKind: fig: Marey.Figure * kind: Marey.ScaleKind ->
+                            Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
@@ -2805,6 +2836,11 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
+          WithYAxis: fig: Marey.Figure * config: Marey.AxisConfig ->
+                       Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member
           WithYDomain: fig: Marey.Figure * lo: float * hi: float -> Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
@@ -2829,6 +2865,11 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member WithYReversed: fig: Marey.Figure -> Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member
+          WithYScaleKind: fig: Marey.Figure * kind: Marey.ScaleKind ->
+                            Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
@@ -2865,6 +2906,8 @@ namespace Marey.CSharp
     [<AbstractClass; Sealed; Class>]
     type Figures =
 
+        static member Axis: label: string -> Marey.AxisConfig
+
         static member
           Facet: titles: string array * parts: Marey.Figure array ->
                    Marey.Figure
@@ -2881,6 +2924,38 @@ namespace Marey.CSharp
           Mosaic: layout: string * names: string *
                   [<System.ParamArray>] parts: Marey.Figure array ->
                     Marey.Figure
+
+    [<AbstractClass; Sealed; Class>]
+    type Themes =
+
+        static member All: Marey.Theme array
+
+        static member Dark: Marey.Theme
+
+        static member Default: Marey.Theme
+
+        static member Modern: Marey.Theme
+
+        static member Notebook: Marey.Theme
+
+        static member Presentation: Marey.Theme
+
+        static member Publication: Marey.Theme
+
+        static member Tikz: Marey.Theme
+
+    [<AbstractClass; Sealed; Class>]
+    type Coords =
+
+        static member Flipped: inner: Marey.Coord -> Marey.Coord
+
+        static member
+          PolarBetween: startAngle: float * endAngle: float * innerRadius: float ->
+                          Marey.Coord
+
+        static member Cartesian: Marey.Coord
+
+        static member Polar: Marey.Coord
 
     [<AbstractClass; Sealed; Class>]
     type Category =

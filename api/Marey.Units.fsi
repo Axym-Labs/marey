@@ -684,3 +684,61 @@ namespace Marey.CSharp
         static member Weber: Marey.U<Marey.Wb>
 
         static member Year: Marey.U<Marey.yr>
+
+    [<AbstractClass; Sealed; Class>]
+    type Prefixes =
+
+        static member
+          For: unit: Marey.IUnit * lo: float * hi: float -> Marey.Prefix
+
+        static member All: Marey.Prefix array
+
+        static member Atto: Marey.Prefix
+
+        static member Centi: Marey.Prefix
+
+        static member Deca: Marey.Prefix
+
+        static member Deci: Marey.Prefix
+
+        static member Exa: Marey.Prefix
+
+        static member Femto: Marey.Prefix
+
+        static member Giga: Marey.Prefix
+
+        static member Hecto: Marey.Prefix
+
+        static member Kilo: Marey.Prefix
+
+        static member Mega: Marey.Prefix
+
+        static member Micro: Marey.Prefix
+
+        static member Milli: Marey.Prefix
+
+        static member Nano: Marey.Prefix
+
+        static member None: Marey.Prefix
+
+        static member Peta: Marey.Prefix
+
+        static member Pico: Marey.Prefix
+
+        static member Quecto: Marey.Prefix
+
+        static member Quetta: Marey.Prefix
+
+        static member Ronna: Marey.Prefix
+
+        static member Ronto: Marey.Prefix
+
+        static member Tera: Marey.Prefix
+
+        static member Yocto: Marey.Prefix
+
+        static member Yotta: Marey.Prefix
+
+        static member Zepto: Marey.Prefix
+
+        static member Zetta: Marey.Prefix

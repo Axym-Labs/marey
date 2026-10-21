@@ -265,6 +265,45 @@ public class Surface
 
     /// An axis's look from C#, which cannot spell an `AxisConfig` record update. The drawn title goes;
     /// the axis's `aria-label` keeps it for a screen reader.
+    /// Composition from C#: one call from each group — spans and mosaics, ratios, sharing, a
+    /// twin y axis, secondary axes, aspect and insets — so a missing spelling fails the build.
+    [Fact]
+    public void Composition()
+    {
+        var a = Chart.Line(X, Y, xUnit: Units.Second, yUnit: Units.Metre);
+        var b = Chart.Scatter(X, Err, xUnit: Units.Second, yUnit: Units.Metre);
+
+        var grid = a.Above(b).WithRowHeights(3.0, 1.0).ShareX().Beside(a).WithColWidths(2.0, 1.0);
+        Assert.Equal(3, grid.Panels.Length);
+        Assert.Equal(3, Figures.Mosaic("AB;AC", "ABC", a, b, a).Panels.Length);
+
+        Assert.Contains("[K]", Svg(a.WithRightAxis(Chart.Line(X, Y, xUnit: Units.Second, yUnit: Units.Kelvin))));
+        Assert.Contains("[min]", Svg(a.WithTopAxisIn(Units.Minute)));
+        Assert.Contains(">period [", Svg(a.WithTopAxisMapped(Units.Second, t => 1.0 / (t + 1.0), p => 1.0 / p - 1.0).WithTopAxisLabel("period")));
+        Assert.Contains("[mK]", Svg(a.Add(Chart.Line(X, Err, xUnit: Units.Second, yUnit: Units.Kelvin)).ToRightAxis()));
+
+        Assert.NotEmpty(Svg(Chart.Line(X, Y, xUnit: Units.Metre, yUnit: Units.Metre).WithEqualAspect()));
+        Assert.NotEmpty(Svg(a.WithBoxAspect(1.0)));
+        Assert.Single(a.WithInset(0.6, 0.6, 0.95, 0.95, b).WithInsetZoom().Panels[0].Insets);
+    }
+
+    /// The facade's names for what F# reaches through modules C# sees with a `Module` suffix:
+    /// themes, coordinate systems, prefixes, a whole axis configuration and a scale kind.
+    [Fact]
+    public void TheFacadesNames()
+    {
+        var a = Chart.Line(X, Y, xUnit: Units.Second, yUnit: Units.Metre);
+        Assert.Same(Themes.Publication, a.WithTheme(Themes.Publication).Theme);
+        Assert.Equal(6, Themes.All.Length);
+        Assert.NotEmpty(Svg(Chart.Line(X, Y).WithCoord(Coords.Polar)));
+        Assert.NotEmpty(Svg(Chart.Line(X, Y).WithCoord(Coords.PolarBetween(0.0, Math.PI, 0.3))));
+        Assert.Contains("[km]", Svg(a.WithYPrefix(Prefixes.Kilo)));
+        Assert.Equal(Prefixes.Nano, Prefixes.For(Units.Metre, 1e-9, 5e-9));
+        Assert.Contains(">time [s]<", Svg(a.WithXAxis(Figures.Axis("time"))));
+        Assert.NotEmpty(Svg(a.WithYScaleKind(ScaleKind.NewLog(10.0))));
+        Assert.NotEmpty(Svg(a.Beside(a).WithPanelXDomain(0, 1, 0.0, 10.0).WithPanelYDomain(0, 0, 0.0, 5.0)));
+    }
+
     [Fact]
     public void AnAxisLook()
     {
