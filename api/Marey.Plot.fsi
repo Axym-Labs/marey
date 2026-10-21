@@ -1293,12 +1293,20 @@ namespace Marey
 
           X2TicksH: float<px>
           X2TitleH: float<px>
+
+          X2Prefix: Prefix option
+
+          LeftPad: float<px>
+          BottomPad: float<px>
         }
 
     [<RequireQualifiedAccess>]
     module PanelLayout =
 
         val empty: PanelLayout
+
+        val legendPlacement:
+          stated: LegendPlacement -> g: PanelLayout -> LegendPlacement
 
         val union: a: PanelLayout -> b: PanelLayout -> PanelLayout
 

@@ -12,6 +12,30 @@ land in a minor release.
 
 ## [Unreleased]
 
+### Changed
+
+- **A stated proportion holds beside a side of another shape.** `withRowHeights [| 3.0; 1.0 |]`
+  beside a stack of three drew 1.70 : 1, and the stack uneven, because `beside` subdivided both
+  sides to the least common multiple of their rows and every line of one side then crossed the
+  other's panels with its gutters. The two sides' rows are now merged where they end, and the lines
+  are placed so that each side's plots keep their proportions (D175). `above` does the same for
+  columns. A figure composed from sides of different shapes has a different number of rows or
+  columns than before (three beside two has four rows, not six), so `withRowHeights` after such a
+  `beside` takes that many weights, and its plots move. Figures whose sides line up row for row
+  draw exactly as before.
+- **A secondary axis keeps one prefix through an animation.** Its prefix was chosen per frame from
+  its own numbers, so a zoom across a decade stepped its title (`x [mm]` to `x [µm]`) beside a
+  primary title that held still. A shot now pins it over the image of the primary's union, as D73
+  pins the primary (D178). `PanelLayout` gains `X2Prefix`; `Y2Prefix` now pins whichever axis is on
+  the right.
+- **An annotation's text past the plot is given room.** It was drawn unclipped but nothing
+  reserved space for it, so text beyond the plot's edge was cut by the figure's (P4's `E_F` at
+  the right end of a Fermi level). The panel's gutter on that side now grows to hold it.
+  `PanelLayout` gains `LeftPad` and `BottomPad` beside `RightPad` and `TopPad`.
+- **The pointer's readout keeps clear of a `LegendBest` that went top left.** It moved to the right
+  only for a legend stated as `LegendTopLeft`. It now resolves `LegendBest` as the drawing pass
+  does, through `PanelLayout.legendPlacement`, which is new.
+
 ## [0.7.0] — 2026-10-16
 
 **Paper figures.** What a figure for a paper adds last, and where its panels sit. Rules, spans and

@@ -679,9 +679,18 @@ module Live =
             |> Option.bind (fun v ->
                 PanelView.read at v
                 |> Option.map (fun lines ->
+                    // D171 — the corner the legend was drawn in, `LegendBest` resolved as the
+                    // drawing pass resolved it, from the shot's scores. A figure with one shared
+                    // legend draws none on its panels.
                     let legendLeft =
-                        fig.Panels
-                        |> Array.exists (fun p -> p.Row = v.Row && p.Col = v.Col && p.Legend = LegendTopLeft)
+                        fig.Legend.IsNone
+                        && fig.Panels
+                           |> Array.exists (fun p ->
+                               p.Row = v.Row
+                               && p.Col = v.Col
+                               && (match state.Shot.Panels |> Array.tryFind (fun (k, _) -> k = sprintf "panel-%d-%d" p.Row p.Col) with
+                                   | Some(_, layout) -> PanelLayout.legendPlacement p.Legend layout
+                                   | None -> p.Legend) = LegendTopLeft)
 
                     { Row = v.Row
                       Col = v.Col

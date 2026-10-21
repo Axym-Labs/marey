@@ -661,6 +661,20 @@ module ``the readout`` =
         let sl = Live.step left (Live.init left) (Hover inside)
         Assert.True((Live.readout left sl).Value.Right)
 
+    /// A4 (1.0) — a `LegendBest` that resolved to the top left is kept clear of too, as the drawing
+    /// pass resolved it. A rising line crowds the top right and leaves the top left emptiest.
+    [<Fact>]
+    let ``the readout keeps clear of a best legend that went top left`` () =
+        let t = Array.init 40 (fun i -> float i * 0.1<s>)
+        let rising = Chart.line U.second U.metre t (t |> Array.map (fun t -> t * 1.0<m / s>)) |> Chart.withName "rising"
+        let l = still (rising |> Chart.withLegend LegendBest)
+        let s0 = Live.init l
+        let layout = s0.Shot.Panels |> Array.find (fun (k, _) -> k = "panel-0-0") |> snd
+        Assert.Equal(LegendTopLeft, PanelLayout.legendPlacement LegendBest layout)
+        let v = first l s0
+        let s1 = Live.step l s0 (Hover(pxOf v (3.0, 0.5)))
+        Assert.True((Live.readout l s1).Value.Right)
+
     /// The pointer stays where it is while a slider moves the figure under it, and the reading
     /// is of the new figure.
     [<Fact>]

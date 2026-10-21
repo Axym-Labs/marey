@@ -301,11 +301,18 @@ type PanelLayout =
       /// panel with one y axis.
       Y2TicksW: float<px>
       Y2TitleW: float<px>
-      /// D177 — the prefix the second y axis is pinned to, as `YPrefix` is for the first.
+      /// D177 — the prefix the axis on the right is pinned to, as `YPrefix` is for the first: a
+      /// second y axis's, or a secondary y axis's (D178). A panel has one right side.
       Y2Prefix: Prefix option
       /// D178 — a secondary x axis's tick labels and title, above the plot.
       X2TicksH: float<px>
-      X2TitleH: float<px> }
+      X2TitleH: float<px>
+      /// D178 — the prefix a secondary x axis is pinned to.
+      X2Prefix: Prefix option
+      /// D164 — room for an annotation's text past the plot's left and bottom edges, beyond what
+      /// the axis already takes there. `RightPad` and `TopPad` take it on the other two sides.
+      LeftPad: float<px>
+      BottomPad: float<px> }
 
 [<RequireQualifiedAccess>]
 module PanelLayout =
@@ -335,7 +342,32 @@ module PanelLayout =
           Y2TitleW = 0.0<px>
           Y2Prefix = None
           X2TicksH = 0.0<px>
-          X2TitleH = 0.0<px> }
+          X2TitleH = 0.0<px>
+          X2Prefix = None
+          LeftPad = 0.0<px>
+          BottomPad = 0.0<px> }
+
+    /// D171 — the four inside corners, in the order `LegendScores` keeps them.
+    let internal legendCorners = [| LegendTopRight; LegendTopLeft; LegendBottomLeft; LegendBottomRight |]
+
+    /// D171 — whether every inside corner is more than 2% covered: a corner the legend would hide
+    /// data in.
+    let internal crowded (scores: float[]) = scores.Length = 4 && Array.min scores > 0.02
+
+    /// D171 — where a legend stated as `stated` stands in a panel laid out as `g`: `LegendBest`
+    /// resolved to the least covered inside corner, or outside on the right when every corner is
+    /// crowded and the layout made room there. The drawing pass places it here, and a pointer's
+    /// readout keeps out of its corner.
+    let legendPlacement (stated: LegendPlacement) (g: PanelLayout) =
+        match stated with
+        | LegendBest when g.LegendScores.Length = 4 ->
+            if crowded g.LegendScores && g.LegendW > 0.0<px> then
+                LegendOutsideRight
+            else
+                let least = Array.min g.LegendScores
+                legendCorners.[Array.findIndex (fun v -> v = least) g.LegendScores]
+        | LegendBest -> LegendTopRight
+        | other -> other
 
     /// D72's union, and the whole rule is one sentence: **every size is the largest any sampled
     /// frame needed.**
@@ -380,11 +412,14 @@ module PanelLayout =
           Y2TitleW = max a.Y2TitleW b.Y2TitleW
           Y2Prefix = a.Y2Prefix
           X2TicksH = max a.X2TicksH b.X2TicksH
-          X2TitleH = max a.X2TitleH b.X2TitleH }
+          X2TitleH = max a.X2TitleH b.X2TitleH
+          X2Prefix = a.X2Prefix
+          LeftPad = max a.LeftPad b.LeftPad
+          BottomPad = max a.BottomPad b.BottomPad }
 
     /// D173 — the room a panel's gutters take on each side of its plot, slack included: what the
     /// outer grid's gutter tracks are sized from.
-    let left (g: PanelLayout) = g.SlackLeft + g.YTitleW + g.YTicksW
+    let left (g: PanelLayout) = g.SlackLeft + g.LeftPad + g.YTitleW + g.YTicksW
 
     let right (g: PanelLayout) =
         g.Y2TicksW + g.Y2TitleW + g.RightPad + g.BarGap + g.BarW + (if g.LegendW > 0.0<px> then g.LegendGap + g.LegendW else 0.0<px>) + g.SlackRight
@@ -392,7 +427,7 @@ module PanelLayout =
     let top (g: PanelLayout) = g.SlackTop + g.TitleH + g.TopPad + g.X2TitleH + g.X2TicksH
 
     let bottom (g: PanelLayout) =
-        g.XTicksH + g.XTitleH + (if g.LegendH > 0.0<px> then g.LegendGap + g.LegendH else 0.0<px>) + g.SlackBottom
+        g.XTicksH + g.XTitleH + (if g.LegendH > 0.0<px> then g.LegendGap + g.LegendH else 0.0<px>) + g.BottomPad + g.SlackBottom
 
 /// D72 — **the layout of one shot**: everything every frame of an animation shares, and nothing
 /// a frame is allowed to recompute.
@@ -1443,6 +1478,7 @@ module Figure =
         // alone is placed as it always was.
         let cols =
             [| Track.Content g.SlackLeft
+               Track.Content g.LeftPad
                Track.Content g.YTitleW
                Track.Content g.YTicksW
                Track.Frac 1.0
@@ -1466,30 +1502,31 @@ module Figure =
                Track.Content g.XTitleH
                Track.Content gapBelow
                Track.Content g.LegendH
+               Track.Content g.BottomPad
                Track.Content g.SlackBottom |]
 
         let fixedCell key row col (w: float<px>) (h: float<px>) =
             Layout.cell key row col (fun _ -> { Width = w; Height = h })
 
         let cells =
-            [| fixedCell "ytitle" 5 1 g.YTitleW 0.0<px>
-               fixedCell "yticks" 5 2 g.YTicksW 0.0<px>
-               Layout.fill "plot" 5 3
-               fixedCell "y2ticks" 5 4 g.Y2TicksW 0.0<px>
-               fixedCell "y2title" 5 5 g.Y2TitleW 0.0<px>
-               fixedCell "rightpad" 5 6 g.RightPad 0.0<px>
-               fixedCell "bargap" 5 7 g.BarGap 0.0<px>
-               fixedCell "colorbar" 5 8 g.BarW 0.0<px>
-               fixedCell "legendgap" 5 9 gapRight 0.0<px>
-               fixedCell "legend" 5 10 g.LegendW 0.0<px>
-               fixedCell "ptitle" 1 1 0.0<px> g.TitleH |> Layout.spanning 1 10
-               fixedCell "toppad" 2 1 0.0<px> g.TopPad |> Layout.spanning 1 10
-               fixedCell "x2title" 3 3 0.0<px> g.X2TitleH
-               fixedCell "x2ticks" 4 3 0.0<px> g.X2TicksH
-               fixedCell "xticks" 6 3 0.0<px> g.XTicksH
-               fixedCell "xtitle" 7 3 0.0<px> g.XTitleH
-               fixedCell "legendgapb" 8 3 0.0<px> gapBelow
-               fixedCell "legendb" 9 3 0.0<px> g.LegendH |]
+            [| fixedCell "ytitle" 5 2 g.YTitleW 0.0<px>
+               fixedCell "yticks" 5 3 g.YTicksW 0.0<px>
+               Layout.fill "plot" 5 4
+               fixedCell "y2ticks" 5 5 g.Y2TicksW 0.0<px>
+               fixedCell "y2title" 5 6 g.Y2TitleW 0.0<px>
+               fixedCell "rightpad" 5 7 g.RightPad 0.0<px>
+               fixedCell "bargap" 5 8 g.BarGap 0.0<px>
+               fixedCell "colorbar" 5 9 g.BarW 0.0<px>
+               fixedCell "legendgap" 5 10 gapRight 0.0<px>
+               fixedCell "legend" 5 11 g.LegendW 0.0<px>
+               fixedCell "ptitle" 1 2 0.0<px> g.TitleH |> Layout.spanning 1 10
+               fixedCell "toppad" 2 2 0.0<px> g.TopPad |> Layout.spanning 1 10
+               fixedCell "x2title" 3 4 0.0<px> g.X2TitleH
+               fixedCell "x2ticks" 4 4 0.0<px> g.X2TicksH
+               fixedCell "xticks" 6 4 0.0<px> g.XTicksH
+               fixedCell "xtitle" 7 4 0.0<px> g.XTitleH
+               fixedCell "legendgapb" 8 4 0.0<px> gapBelow
+               fixedCell "legendb" 9 4 0.0<px> g.LegendH |]
 
         Layout.arrangeIn m extent region (Layout.grid rows cols cells)
 
@@ -1563,6 +1600,40 @@ module Figure =
         | None -> 0.0<px>
         | Some letters -> Rect.height (textBox m (letterFont fig.Theme letters) "(a)")
 
+    /// D178 — a secondary axis's map from the primary axis's numbers to its own, and back: the one
+    /// stated, or else the conversion between the two units, refused when their dimensions differ.
+    let private secondaryMap (axis: string) (sa: SecondaryAxis) (primary: IScaleErased) =
+        let u = sa.Unit
+
+        let unitText (dim: Dim) symbol factors toSI offset =
+            UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none symbol factors dim toSI offset
+
+        match primary.Kind with
+        | ScaleKind.Ordinal _ -> failwithf "Marey: a categorical %s axis has no numbers for a secondary axis to read." axis
+        | _ -> ()
+
+        match sa.Map with
+        | Some map -> map.Forward, map.Inverse
+        | None ->
+            if primary.Stated && u.Dim <> primary.Dim then
+                failwithf
+                    "Marey: the secondary %s axis is in %s but the %s axis is in %s. Two dimensions need a map between them (`withTopAxisMapped`, `withRightAxisMapped`)."
+                    axis
+                    (unitText u.Dim u.Symbol u.Factors u.ToSI u.OffsetSI)
+                    axis
+                    (unitText primary.Dim primary.Symbol primary.Factors primary.ToSI primary.OffsetSI)
+
+            (fun v -> (v * primary.ToSI + primary.OffsetSI - u.OffsetSI) / u.ToSI),
+            (fun w -> (w * u.ToSI + u.OffsetSI - primary.OffsetSI) / primary.ToSI)
+
+    /// D178 — the prefix a secondary axis takes over the primary's numbers `lo` to `hi`: the one
+    /// its own numbers there would choose, which is what a shot pins it to.
+    let private secondaryPrefix (axis: string) (sa: SecondaryAxis) (primary: IScaleErased) (lo: float, hi: float) =
+        let forward, _ = secondaryMap axis sa primary
+        let a, b = forward lo, forward hi
+        let lo2, hi2 = min a b, max a b
+        Axis.prefixForPacked (lo2, hi2) (Erase.packScale (Scale.linear sa.Unit (LanguagePrimitives.FloatWithMeasure lo2, LanguagePrimitives.FloatWithMeasure hi2)))
+
     /// Compile one panel into a device-space region.
     /// D72 — one function, two answers: the panel's frozen inner grid, and a thunk that draws
     /// the panel inside it.
@@ -1586,7 +1657,7 @@ module Figure =
         (extent: Extent<px>)
         (region: Rect<px>)
         (frozen: PanelLayout option)
-        (pins: Prefix option * Prefix option * Prefix option)
+        (pins: Prefix option * Prefix option * Prefix option * Prefix option)
         (letterH: float<px>)
         (p: Panel)
         : PanelLayout * (unit -> PanelLayout) * (unit -> Node) =
@@ -1606,10 +1677,11 @@ module Figure =
             // `pins` is the same choice for a panel being *measured* rather than drawn: the union
             // measures every state under the prefix it will be drawn in, or a state whose own
             // prefix differs is measured with labels it never shows (D108).
-            let pinsX, pinsY, pinsY2 = pins
+            let pinsX, pinsY, pinsY2, pinsX2 = pins
             let pinX = match frozen with Some f -> f.XPrefix | None -> pinsX
             let pinY = match frozen with Some f -> f.YPrefix | None -> pinsY
             let pinY2 = match frozen with Some f -> f.Y2Prefix | None -> pinsY2
+            let pinX2 = match frozen with Some f -> f.X2Prefix | None -> pinsX2
 
             let xSpec, ySpec = axisSpecs theme (pinX, pinY) p
 
@@ -1625,33 +1697,15 @@ module Figure =
             // own numbers over the image of the primary's domain, then placed through the inverse
             // and the primary's scale, so a reciprocal map puts evenly spaced energies unevenly
             // along a wavelength. The map is checked on the domain before anything is drawn.
-            let secondaryOn (axis: string) (cfg: AxisConfig) (side: AxisSide) (primary: IScaleErased) : AxisSpec option =
+            //
+            // D178 — in a shot its prefix is pinned too, as D73 pins the primary's, so a zoom that
+            // crosses a decade does not step its title.
+            let secondaryOn (axis: string) (cfg: AxisConfig) (side: AxisSide) (pin: Prefix option) (primary: IScaleErased) : AxisSpec option =
                 match cfg.Secondary with
                 | None -> None
                 | Some sa ->
                     let u = sa.Unit
-
-                    let unitText (dim: Dim) symbol factors toSI offset =
-                        UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none symbol factors dim toSI offset
-
-                    match primary.Kind with
-                    | ScaleKind.Ordinal _ -> failwithf "Marey: a categorical %s axis has no numbers for a secondary axis to read." axis
-                    | _ -> ()
-
-                    let forward, inverse =
-                        match sa.Map with
-                        | Some map -> map.Forward, map.Inverse
-                        | None ->
-                            if primary.Stated && u.Dim <> primary.Dim then
-                                failwithf
-                                    "Marey: the secondary %s axis is in %s but the %s axis is in %s. Two dimensions need a map between them (`withTopAxisMapped`, `withRightAxisMapped`)."
-                                    axis
-                                    (unitText u.Dim u.Symbol u.Factors u.ToSI u.OffsetSI)
-                                    axis
-                                    (unitText primary.Dim primary.Symbol primary.Factors primary.ToSI primary.OffsetSI)
-
-                            (fun v -> (v * primary.ToSI + primary.OffsetSI - u.OffsetSI) / u.ToSI),
-                            (fun w -> (w * u.ToSI + u.OffsetSI - primary.OffsetSI) / primary.ToSI)
+                    let forward, inverse = secondaryMap axis sa primary
 
                     let finite (v: float) = not (System.Double.IsNaN v || System.Double.IsInfinity v)
                     let lo, hi = primary.Domain
@@ -1676,7 +1730,7 @@ module Figure =
 
                     let lo2, hi2 = min ws.[0] ws.[n], max ws.[0] ws.[n]
                     let packed = Erase.packScale (Scale.linear u (LanguagePrimitives.FloatWithMeasure lo2, LanguagePrimitives.FloatWithMeasure hi2))
-                    let spec = Axes.specTicked TicksAuto cfg.Minor FormatAuto None (defaultArg cfg.Style theme.UnitStyle) cfg.TickCount sa.Label side packed
+                    let spec = Axes.specTicked TicksAuto cfg.Minor FormatAuto pin (defaultArg cfg.Style theme.UnitStyle) cfg.TickCount sa.Label side packed
                     let factor = Prefix.factor spec.Prefix
                     let at (w: float) = primary.Project(inverse w)
 
@@ -1690,9 +1744,9 @@ module Figure =
             let primaryX, primaryY = axisScalesErased p
 
             let x2 =
-                secondaryOn "x" p.XAxis AxisTop primaryX |> Option.map (fun spec -> shown p.XAxis, spec)
+                secondaryOn "x" p.XAxis AxisTop pinX2 primaryX |> Option.map (fun spec -> shown p.XAxis, spec)
 
-            let ySecondary = secondaryOn "y" p.YAxis AxisRight primaryY
+            let ySecondary = secondaryOn "y" p.YAxis AxisRight pinY2 primaryY
 
             if ySecondary.IsSome && y2.IsSome then
                 failwith "Marey: a panel has one right side, and this one has both a second y axis and a secondary one."
@@ -1771,8 +1825,7 @@ module Figure =
                                     yield struct (float pts.[pts.Length - 1].X, float pts.[pts.Length - 1].Y) |]
                          | _ -> pts |> Array.map (fun v -> struct (float v.X, float v.Y))))
 
-            // The four inside corners, in the order `PanelLayout.LegendScores` keeps them.
-            let corners = [| LegendTopRight; LegendTopLeft; LegendBottomLeft; LegendBottomRight |]
+            let corners = PanelLayout.legendCorners
 
             let scores (probe: Extent<px>) =
                 if p.Legend <> LegendBest || not hasLegend || probe.Width <= 0.0<px> || probe.Height <= 0.0<px> then
@@ -1796,8 +1849,7 @@ module Figure =
 
                             float under / float all.Length)
 
-            // A corner more than 2% covered is a corner the legend would hide data in.
-            let crowded (s: float[]) = s.Length = 4 && Array.min s > 0.02
+            let crowded = PanelLayout.crowded
 
             // D72 — the gutters, measured. This is the half of the panel that depends on the
             // data: how tall the surviving x labels are, how wide the widest y label is, how
@@ -1828,6 +1880,45 @@ module Figure =
             let planY2 (h: float<px>) =
                 right |> Option.map (fun (cfg, spec) -> keepNamed cfg spec (Axes.planTicks m theme.TickFont theme.LabelGap h AxisRight spec.Ticks))
 
+            // D164 — how far the annotations' text stands past each edge of a plot of this size,
+            // in px, as left, right, top and bottom (zero where it does not).
+            let annotationOverhang (probe: Extent<px>) : Rect<px> =
+                let none: Rect<px> = { X0 = 0.0<px>; X1 = 0.0<px>; Y0 = 0.0<px>; Y1 = 0.0<px> }
+
+                p.Layers
+                |> Array.choose (fun l ->
+                    let sx, sy = Erase.seriesScales l.Data
+
+                    match Geom.project sx.Project sy.Project l.Geom with
+                    | GeomAnnotation(text, placement, arrow) ->
+                        let pts = Erase.projectXY l.Data
+
+                        if pts.Length = 0 then
+                            None
+                        else
+                            Geom.compileAnnotation p.Coord probe l.Style text placement arrow pts.[0]
+                    | _ -> None)
+                |> Array.collect (fun node ->
+                    node
+                    |> Scene.fold
+                        (fun acc n ->
+                            match n with
+                            | Text t -> t :: acc
+                            | _ -> acc)
+                        []
+                    |> Array.ofList)
+                |> Array.fold
+                    (fun (acc: Rect<px>) t ->
+                        let b = TextMeasure.bounds m t.Font t.Anchor t.Baseline t.Rotation t.Text
+                        let x = float t.At.X * probe.Width
+                        let y = (1.0 - float t.At.Y) * probe.Height
+
+                        { X0 = max acc.X0 (-(x + b.X0))
+                          X1 = max acc.X1 (x + b.X1 - probe.Width)
+                          Y0 = max acc.Y0 (-(y + b.Y0))
+                          Y1 = max acc.Y1 (y + b.Y1 - probe.Height) })
+                    none
+
             let gutters (xPlan: TickPlan) (yPlan: TickPlan) (barPlan: TickPlan option) (probe: Extent<px>) : PanelLayout =
                 let legendScores = scores probe
 
@@ -1851,78 +1942,95 @@ module Figure =
 
                 let outsideBelow = hasLegend && p.Legend = LegendOutsideBottom
 
-                { TitleH = titleH
-                  BarGap = barGap
-                  LegendGap = (if outsideRight || outsideBelow then theme.PanelGap else 0.0<px>)
-                  LegendW = (if outsideRight then legendSize.Width else 0.0<px>)
-                  LegendH = (if outsideBelow then legendSize.Height else 0.0<px>)
-                  LegendScores = legendScores
+                let g =
+                  { TitleH = titleH
+                    BarGap = barGap
+                    LegendGap = (if outsideRight || outsideBelow then theme.PanelGap else 0.0<px>)
+                    LegendW = (if outsideRight then legendSize.Width else 0.0<px>)
+                    LegendH = (if outsideBelow then legendSize.Height else 0.0<px>)
+                    LegendScores = legendScores
 
-                  BarW =
-                    match colorbar, barPlan with
-                    | Some(spec, _), Some plan -> Colorbar.measure m theme spec plan
-                    | _ -> 0.0<px>
+                    BarW =
+                      match colorbar, barPlan with
+                      | Some(spec, _), Some plan -> Colorbar.measure m theme spec plan
+                      | _ -> 0.0<px>
 
-                  XTicksH =
-                    if not p.XAxis.Visible then 0.0<px>
-                    elif p.XAxis.ShowTickLabels then Axes.tickExtent m theme AxisBottom xSpec xPlan
-                    else marksOnly p.XAxis
+                    XTicksH =
+                      if not p.XAxis.Visible then 0.0<px>
+                      elif p.XAxis.ShowTickLabels then Axes.tickExtent m theme AxisBottom xSpec xPlan
+                      else marksOnly p.XAxis
 
-                  YTicksW =
-                    if not p.YAxis.Visible then 0.0<px>
-                    elif p.YAxis.ShowTickLabels then Axes.tickExtent m theme AxisLeft ySpec yPlan
-                    else marksOnly p.YAxis
+                    YTicksW =
+                      if not p.YAxis.Visible then 0.0<px>
+                      elif p.YAxis.ShowTickLabels then Axes.tickExtent m theme AxisLeft ySpec yPlan
+                      else marksOnly p.YAxis
 
-                  XTitleH =
-                    if p.XAxis.Visible && p.XAxis.ShowTitle then
-                        Axes.titleExtent m theme xSpec.Title
-                    else
-                        0.0<px>
+                    XTitleH =
+                      if p.XAxis.Visible && p.XAxis.ShowTitle then
+                          Axes.titleExtent m theme xSpec.Title
+                      else
+                          0.0<px>
 
-                  YTitleW =
-                    if p.YAxis.Visible && p.YAxis.ShowTitle then
-                        Axes.titleExtent m theme ySpec.Title
-                    else
-                        0.0<px>
+                    YTitleW =
+                      if p.YAxis.Visible && p.YAxis.ShowTitle then
+                          Axes.titleExtent m theme ySpec.Title
+                      else
+                          0.0<px>
 
-                  // Half of the outermost tick label hangs past the end of the axis. Reserving
-                  // it is half of §13's "labels inside bounds"; without it the right-hand x
-                  // label and the top y label are clipped by the figure edge.
-                  // A second y axis's labels already stand where the last x label hangs, so
-                  // only what still sticks out past them is reserved.
-                  RightPad =
-                    if p.XAxis.Visible && p.XAxis.ShowTickLabels then
-                        max 0.0<px> (max (Axes.labelOverhang m theme AxisBottom xSpec xPlan) x2Overhang - y2Ticks - y2Title)
-                    else
-                        max 0.0<px> (x2Overhang - y2Ticks - y2Title)
+                    // Half of the outermost tick label hangs past the end of the axis. Reserving
+                    // it is half of §13's "labels inside bounds"; without it the right-hand x
+                    // label and the top y label are clipped by the figure edge.
+                    // A second y axis's labels already stand where the last x label hangs, so
+                    // only what still sticks out past them is reserved.
+                    RightPad =
+                      if p.XAxis.Visible && p.XAxis.ShowTickLabels then
+                          max 0.0<px> (max (Axes.labelOverhang m theme AxisBottom xSpec xPlan) x2Overhang - y2Ticks - y2Title)
+                      else
+                          max 0.0<px> (x2Overhang - y2Ticks - y2Title)
 
-                  // Likewise a secondary x axis's labels stand where the top y label hangs.
-                  TopPad =
-                    max
-                        0.0<px>
-                        (max
-                            y2Overhang
-                            (if p.YAxis.Visible && p.YAxis.ShowTickLabels then
-                                 Axes.labelOverhang m theme AxisLeft ySpec yPlan
-                             else
-                                 0.0<px>)
-                         - x2Ticks
-                         - x2Title)
+                    // Likewise a secondary x axis's labels stand where the top y label hangs.
+                    TopPad =
+                      max
+                          0.0<px>
+                          (max
+                              y2Overhang
+                              (if p.YAxis.Visible && p.YAxis.ShowTickLabels then
+                                   Axes.labelOverhang m theme AxisLeft ySpec yPlan
+                               else
+                                   0.0<px>)
+                           - x2Ticks
+                           - x2Title)
 
-                  X2TicksH = x2Ticks
-                  X2TitleH = x2Title
+                    X2TicksH = x2Ticks
+                    X2TitleH = x2Title
 
-                  Y2TicksW = y2Ticks
-                  Y2TitleW = y2Title
-                  Y2Prefix = pinY2
+                    Y2TicksW = y2Ticks
+                    Y2TitleW = y2Title
+                    Y2Prefix = pinY2
+                    X2Prefix = pinX2
 
-                  Probe = probe
-                  XPrefix = pinX
-                  YPrefix = pinY
-                  SlackLeft = 0.0<px>
-                  SlackRight = 0.0<px>
-                  SlackTop = 0.0<px>
-                  SlackBottom = 0.0<px> }
+                    Probe = probe
+                    XPrefix = pinX
+                    YPrefix = pinY
+                    SlackLeft = 0.0<px>
+                    SlackRight = 0.0<px>
+                    SlackTop = 0.0<px>
+                    SlackBottom = 0.0<px>
+                    LeftPad = 0.0<px>
+                    BottomPad = 0.0<px> }
+
+                // D164 — an annotation's text may stand past the plot, and is not clipped, so the
+                // gutter on that side grows until it holds it, over whatever the axis already
+                // takes there.
+                let past = annotationOverhang probe
+                let rightOfPlot = g.Y2TicksW + g.Y2TitleW + g.BarGap + g.BarW + (if g.LegendW > 0.0<px> then g.LegendGap + g.LegendW else 0.0<px>)
+                let belowPlot = g.XTicksH + g.XTitleH + (if g.LegendH > 0.0<px> then g.LegendGap + g.LegendH else 0.0<px>)
+
+                { g with
+                    LeftPad = max 0.0<px> (past.X0 - g.YTitleW - g.YTicksW)
+                    RightPad = max g.RightPad (past.X1 - rightOfPlot)
+                    TopPad = max g.TopPad (past.Y0 - g.TitleH - g.X2TitleH - g.X2TicksH)
+                    BottomPad = max 0.0<px> (past.Y1 - belowPlot) }
 
             let build (g: PanelLayout) = innerGrid m extent region g
 
@@ -2201,16 +2309,7 @@ module Figure =
                     let at (x0: float<px>) (y0: float<px>) : Rect<px> =
                         { X0 = x0; Y0 = y0; X1 = x0 + legendSize.Width; Y1 = y0 + legendSize.Height }
 
-                    let placement =
-                        match p.Legend with
-                        | LegendBest when layout.LegendScores.Length = 4 ->
-                            if crowded layout.LegendScores && layout.LegendW > 0.0<px> then
-                                LegendOutsideRight
-                            else
-                                let least = Array.min layout.LegendScores
-                                corners.[Array.findIndex (fun v -> v = least) layout.LegendScores]
-                        | LegendBest -> LegendTopRight
-                        | other -> other
+                    let placement = PanelLayout.legendPlacement p.Legend layout
 
                     if not hasLegend then
                         Scene.empty
@@ -2549,9 +2648,9 @@ module Figure =
 
     /// An inset's gutters, measured at the plot it will have.
     let private measureInset (m: ITextMeasurer) (theme: Theme) (extent: Extent<px>) (key: Key) (rect: Rect<px>) (ip: Panel) : PanelLayout =
-        let first, _, _ = compilePanelKeyed key m theme extent rect None (None, None, None) 0.0<px> ip
+        let first, _, _ = compilePanelKeyed key m theme extent rect None (None, None, None, None) 0.0<px> ip
         let probe: Extent<px> = { Width = Rect.width rect; Height = Rect.height rect }
-        let _, needed, _ = compilePanelKeyed key m theme extent (insetRegion rect first) (Some { first with Probe = probe }) (None, None, None) 0.0<px> ip
+        let _, needed, _ = compilePanelKeyed key m theme extent (insetRegion rect first) (Some { first with Probe = probe }) (None, None, None, None) 0.0<px> ip
         let l = needed ()
 
         if l.BarW > 0.0<px> || l.LegendW > 0.0<px> || l.LegendH > 0.0<px> then
@@ -2641,6 +2740,181 @@ module Figure =
                        yield Scene.polyline stroke [| nd a; nd b |] |]
         )
 
+    /// Least squares by the normal equations, solved by elimination with partial pivoting. The
+    /// systems here are a few grid lines wide.
+    let private leastSquares (a: float[][]) (b: float[]) : float[] option =
+        let n = a.[0].Length
+
+        let m =
+            Array.init n (fun i ->
+                Array.init (n + 1) (fun j ->
+                    if j < n then
+                        a |> Array.sumBy (fun r -> r.[i] * r.[j])
+                    else
+                        Array.fold2 (fun t (r: float[]) bk -> t + r.[i] * bk) 0.0 a b))
+
+        let rec eliminate k =
+            if k = n then
+                true
+            else
+                let p = seq { k .. n - 1 } |> Seq.maxBy (fun i -> abs m.[i].[k])
+
+                if abs m.[p].[k] < 1e-12 then
+                    false
+                else
+                    let t = m.[k]
+                    m.[k] <- m.[p]
+                    m.[p] <- t
+
+                    for i in k + 1 .. n - 1 do
+                        let f = m.[i].[k] / m.[k].[k]
+
+                        for j in k .. n do
+                            m.[i].[j] <- m.[i].[j] - f * m.[k].[j]
+
+                    eliminate (k + 1)
+
+        if not (eliminate 0) then
+            None
+        else
+            let x = Array.zeroCreate n
+
+            for i in n - 1 .. -1 .. 0 do
+                let mutable t = m.[i].[n]
+
+                for j in i + 1 .. n - 1 do
+                    t <- t - m.[i].[j] * x.[j]
+
+                x.[i] <- t / m.[i].[i]
+
+            Some x
+
+    /// D175 — **where each grid line falls, so the plots keep their stated proportions.** In the
+    /// grid, a line that only one side of a `beside` has still takes its gutters and gap across the
+    /// whole figure, inside the other side's panel that spans it, and that panel's plot grows by
+    /// them: 3 : 1 beside a stack of three drew 1.70 : 1. Here the lines are placed directly
+    /// instead: each line `l` of `1 .. count - 1` is the edge where the regions ending on it end
+    /// (the regions starting on it begin a gap later), so the panels on one line still share it
+    /// and stay lined up (D173), while two lines of different sides are free to overlap. Solved
+    /// so that along every crossing line each panel's plot is its stated share times one length,
+    /// with a tiny pull towards where the grid put each line, which settles a line nothing
+    /// constrains.
+    ///
+    /// `spans` is each panel's (first row, rows, first column, columns) in the axis solved;
+    /// `before` and `after` the lined-up gutters per row. Returns the line positions with the two
+    /// outer ones, or `None` when nothing spans a line or the gutters leave a plot no room.
+    let private placeLines
+        (count: int)
+        (crossCount: int)
+        (weights: float[])
+        (gap: float)
+        (current: float[])
+        (before: float[])
+        (after: float[])
+        (spans: (int * int * int * int)[])
+        : float[] option =
+        if count < 2 || spans |> Array.forall (fun (_, len, _, _) -> len <= 1) then
+            None
+        else
+            let stated = Array.init count (weightOf weights)
+            let unknowns = count - 1 + crossCount
+            let line l = l - 1
+            let length c = count - 1 + c
+            let pull = 1e-4
+            let start = current.[0]
+            let finish = current.[count]
+
+            // A panel's plot as coefficients over the unknowns, and the constant beside them.
+            let plot (first: int) (len: int) =
+                let row = Array.zeroCreate unknowns
+                let last = first + len
+                let mutable constant = -after.[last - 1] - before.[first]
+
+                if last = count then constant <- constant + finish else row.[line last] <- 1.0
+
+                if first = 0 then
+                    constant <- constant - start
+                else
+                    row.[line first] <- row.[line first] - 1.0
+                    constant <- constant - gap
+
+                row, constant
+
+            let equations =
+                [| for first, len, cross, crossLen in spans do
+                       let share = Array.sum stated.[first .. first + len - 1]
+
+                       for c in cross .. min (crossCount - 1) (cross + crossLen - 1) do
+                           let row, constant = plot first len
+                           row.[length c] <- -share
+                           yield row, -constant
+
+                   for l in 1 .. count - 1 do
+                       yield Array.init unknowns (fun j -> if j = line l then pull else 0.0), pull * current.[l]
+
+                   for c in 0 .. crossCount - 1 do
+                       yield Array.init unknowns (fun j -> if j = length c then pull else 0.0), pull * (finish - start) / Array.sum stated |]
+
+            leastSquares (Array.map fst equations) (Array.map snd equations)
+            |> Option.bind (fun x ->
+                let lines = Array.init (count + 1) (fun l -> if l = 0 then start elif l = count then finish else x.[line l])
+
+                let fits =
+                    spans
+                    |> Array.forall (fun (first, len, _, _) ->
+                        let row, constant = plot first len
+                        Array.fold2 (fun t a v -> t + a * v) constant row x > 0.0)
+
+                let moved = Seq.exists (fun l -> abs (lines.[l] - current.[l]) > 1e-6) (seq { 1 .. count - 1 })
+                if fits && moved then Some lines else None)
+
+    /// D175 — the panels' regions moved onto the lines `placeLines` found, rows then columns. The
+    /// head and a shared legend keep the places the grid gave them.
+    let private placeProportionally (fig: Figure) (outer: Arrangement) (lefts: float<px>[], rights: float<px>[], tops: float<px>[], bottoms: float<px>[]) =
+        let rows = max 1 fig.Rows
+        let cols = max 1 fig.Cols
+        let gap = float fig.Theme.PanelGap
+        let floats (a: float<px>[]) = a |> Array.map float
+
+        // Where each line's regions end, read off the tracks: rows start after the head and its
+        // gap, and a lane is its gutter, its plot, its other gutter and a gap.
+        let ends (origin: float<px>) (sizes: float<px>[]) (lead: int) (count: int) =
+            let at = Array.scan (+) origin sizes |> floats
+            Array.init (count + 1) (fun l -> if l = 0 then at.[lead] else at.[lead + 4 * l - 1])
+
+        let spans = fig.Panels |> Array.map (fun p -> max 0 p.Row, max 1 p.RowSpan, max 0 p.Col, max 1 p.ColSpan)
+        let padded = fig.Theme.FigurePadding
+
+        let rowLines =
+            placeLines rows cols fig.RowWeights gap (ends (outer.Region.Y0 + padded) outer.RowSizes 2 rows) (floats tops) (floats bottoms) spans
+
+        let colLines =
+            placeLines cols rows fig.ColWeights gap (ends (outer.Region.X0 + padded) outer.ColSizes 0 cols) (floats lefts) (floats rights) (spans |> Array.map (fun (r, rs, c, cs) -> c, cs, r, rs))
+
+        match rowLines, colLines with
+        | None, None -> outer
+        | _ ->
+            let edge (lines: float[] option) (first: int) (len: int) (lo: float<px>) (hi: float<px>) =
+                match lines with
+                | Some l -> (if first = 0 then l.[0] else l.[first] + gap) * 1.0<px>, l.[first + len] * 1.0<px>
+                | None -> lo, hi
+
+            let byKey = fig.Panels |> Array.map (fun p -> sprintf "panel-%d-%d" p.Row p.Col, p)
+
+            let placements =
+                outer.Placements
+                |> Array.map (fun (key, r) ->
+                    match byKey |> Array.tryFind (fun (k, _) -> k = key) with
+                    | Some(_, p) ->
+                        let y0, y1 = edge rowLines (max 0 p.Row) (max 1 p.RowSpan) r.Y0 r.Y1
+                        let x0, x1 = edge colLines (max 0 p.Col) (max 1 p.ColSpan) r.X0 r.X1
+                        key, { X0 = x0; X1 = x1; Y0 = y0; Y1 = y1 }
+                    | None -> key, r)
+
+            { outer with
+                Placements = placements
+                Regions = placements |> Array.map (fun (k, r) -> k, Layout.ndRect outer.Extent r) }
+
     /// D173 — pass 2: the measured layouts lined up, the outer grid rebuilt around their gutters,
     /// and each panel's probe set to the plot it now has. A figure of one panel has nothing to
     /// line up with and keeps pass 1 exactly.
@@ -2662,7 +2936,7 @@ module Figure =
             outer, layouts
         else
             let gutters, slackened = align fig layouts
-            let outer2 = Layout.arrange m extent (alignedGrid head fig gutters)
+            let outer2 = Layout.arrange m extent (alignedGrid head fig gutters) |> fun o -> placeProportionally fig o gutters
 
             let probed =
                 slackened
@@ -2785,14 +3059,14 @@ module Figure =
                 match Layout.tryFindPx key outer with
                 | None -> None
                 | Some region ->
-                    let layout, _, _ = compilePanel m fig.Theme extent region None (None, None, None) (letterHeight m fig) (unify (ownLegend fig p))
+                    let layout, _, _ = compilePanel m fig.Theme extent region None (None, None, None, None) (letterHeight m fig) (unify (ownLegend fig p))
                     Some(key, layout))
 
         let rescore (key: string) (region: Rect<px>) (l: PanelLayout) =
             fig.Panels
             |> Array.filter (fun p -> sprintf "panel-%d-%d" p.Row p.Col = key)
             |> Array.map (fun p ->
-                let _, needed, _ = compilePanel m fig.Theme extent region (Some l) (None, None, None) (letterHeight m fig) (unify (ownLegend fig p))
+                let _, needed, _ = compilePanel m fig.Theme extent region (Some l) (None, None, None, None) (letterHeight m fig) (unify (ownLegend fig p))
                 (needed ()).LegendScores)
             |> Array.filter (fun s -> s.Length = 4)
             |> Array.fold (fun acc s -> if acc = [||] then s else Array.map2 max acc s) [||]
@@ -2910,24 +3184,39 @@ module Figure =
                 // A state whose panel is one constant contributes the constant and not its
                 // padding, by the rule `agreeOn` uses across layers: a wave that starts flat at
                 // zero is padded to ±1 m in its first frame, and that is not a number of the shot.
-                let pinOver (panels: Panel[]) (packedOf: Panel -> PackedScale) (pointOf: Panel -> float option) =
+                let unionOver (panels: Panel[]) (packedOf: Panel -> PackedScale) (pointOf: Panel -> float option) =
                     if panels.Length = 0 then
                         None
                     else
-                        let lo, hi =
-                            panels
-                            |> Array.map (fun p -> Axis.domainOfPacked (packedOf p), pointOf p)
-                            |> Scale.shareDomain autoPadding
+                        panels
+                        |> Array.map (fun p -> Axis.domainOfPacked (packedOf p), pointOf p)
+                        |> Scale.shareDomain autoPadding
+                        |> Some
 
-                        Some(Axis.prefixForPacked (lo, hi) (packedOf panels.[0]))
+                let pinOver (panels: Panel[]) (packedOf: Panel -> PackedScale) (pointOf: Panel -> float option) =
+                    unionOver panels packedOf pointOf |> Option.map (fun d -> Axis.prefixForPacked d (packedOf panels.[0]))
 
-                let pinFor = pinOver drawn
+                // D178 — a secondary axis pinned over the image of the primary's union, which is
+                // the union of its images, since its map is monotone.
+                let secondaryPin (axis: string) (cfgOf: Panel -> AxisConfig) (packedOf: Panel -> PackedScale) (erasedOf: Panel -> IScaleErased) (pointOf: Panel -> float option) =
+                    match drawn |> Array.tryHead |> Option.bind (fun p -> (cfgOf p).Secondary) with
+                    | Some sa -> unionOver drawn packedOf pointOf |> Option.map (secondaryPrefix axis sa (erasedOf drawn.[0]))
+                    | None -> None
+
+                let xPacked (p: Panel) = fst (axisScales p)
+                let yPacked (p: Panel) = snd (axisScales p)
+
+                let rightPin =
+                    // D177 — the second y axis pinned the same way, over its own layers.
+                    match pinOver (drawn |> Array.choose secondaryOf) yPacked (panelPoints >> snd) with
+                    | Some pin -> Some pin
+                    | None -> secondaryPin "y" (fun p -> p.YAxis) yPacked (axisScalesErased >> snd) (panelPoints >> snd)
 
                 key,
-                (pinFor (fun p -> fst (axisScales p)) (panelPoints >> fst),
-                 pinFor (fun p -> snd (axisScales p)) (panelPoints >> snd),
-                 // D177 — the second y axis pinned the same way, over its own layers.
-                 pinOver (drawn |> Array.choose secondaryOf) (fun p -> snd (axisScales p)) (panelPoints >> snd)))
+                (pinOver drawn xPacked (panelPoints >> fst),
+                 pinOver drawn yPacked (panelPoints >> snd),
+                 rightPin,
+                 secondaryPin "x" (fun p -> p.XAxis) xPacked (axisScalesErased >> fst) (panelPoints >> fst)))
             |> dict
 
         let panels =
@@ -2938,15 +3227,15 @@ module Figure =
             |> Array.groupBy fst
             |> Array.map (fun (key, measured) ->
                 let merged = measured |> Array.map snd |> Array.reduce PanelLayout.union
-                let pinX, pinY, pinY2 = pins.[key]
-                key, { merged with XPrefix = pinX; YPrefix = pinY; Y2Prefix = pinY2 })
+                let pinX, pinY, pinY2, pinX2 = pins.[key]
+                key, { merged with XPrefix = pinX; YPrefix = pinY; Y2Prefix = pinY2; X2Prefix = pinX2 })
 
         // Every state's scores over the new plot, and the largest each corner had, as `union` does.
         let rescore (key: string) (region: Rect<px>) (l: PanelLayout) =
             entries
             |> Array.filter (fun (k, _) -> k = key)
             |> Array.map (fun (_, (fig, _, unified)) ->
-                let _, needed, _ = compilePanel m fig.Theme extent region (Some l) (None, None, None) (letterHeight m fig) unified
+                let _, needed, _ = compilePanel m fig.Theme extent region (Some l) (None, None, None, None) (letterHeight m fig) unified
                 (needed ()).LegendScores)
             |> Array.filter (fun s -> s.Length = 4)
             |> Array.fold (fun acc s -> if acc = [||] then s else Array.map2 max acc s) [||]
@@ -3044,7 +3333,7 @@ module Figure =
                 match Layout.tryFindPx key shot.Outer, frozen with
                 | Some region, Some f ->
                     let _, needed, _ =
-                        compilePanel m fig.Theme extent region (Some f) (None, None, None) (letterHeight m fig) (fitAspect f (unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p))))
+                        compilePanel m fig.Theme extent region (Some f) (None, None, None, None) (letterHeight m fig) (fitAspect f (unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p))))
 
                     let n = needed ()
 
@@ -3061,6 +3350,8 @@ module Figure =
                     && within n.Y2TitleW f.Y2TitleW
                     && within n.X2TicksH f.X2TicksH
                     && within n.X2TitleH f.X2TitleH
+                    && within n.LeftPad f.LeftPad
+                    && within n.BottomPad f.BottomPad
                 | _ -> false
 
         within (headHeight m fig) headRoom && Array.forall panelFits fig.Panels
@@ -3235,7 +3526,7 @@ module Figure =
                     let frozen = shot.Panels |> Array.tryPick (fun (k, l) -> if k = key then Some l else None)
                     let unified = unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p))
                     let unified = match frozen with Some f -> fitAspect f unified | None -> unified
-                    let _, _, draw = compilePanel m theme extent region frozen (None, None, None) (letterHeight m fig) unified
+                    let _, _, draw = compilePanel m theme extent region frozen (None, None, None, None) (letterHeight m fig) unified
 
                     // D180 — the insets over the host's plot, each with its zoom drawn first.
                     let insets =
@@ -3249,7 +3540,7 @@ module Figure =
                                 | Some l ->
                                     let rect = insetRect hostPlot inset.At
                                     let ip = fitAspect l (unify inset.Panel)
-                                    let _, _, drawInset = compilePanelKeyed (Keys.inset (Keys.panel p.Row p.Col) i) m theme extent (insetRegion rect l) (Some l) (None, None, None) 0.0<px> ip
+                                    let _, _, drawInset = compilePanelKeyed (Keys.inset (Keys.panel p.Row p.Col) i) m theme extent (insetRegion rect l) (Some l) (None, None, None, None) 0.0<px> ip
 
                                     Group
                                         [| (if inset.Indicate then indicator theme extent unified hostPlot ip rect else Scene.empty)

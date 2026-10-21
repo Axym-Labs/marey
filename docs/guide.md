@@ -815,8 +815,8 @@ part or a part with no character, or a part of more than one panel.
 
 `withRowHeights` and `withColWidths` state the plots' proportions, one weight per row or column:
 `[| 3.0; 1.0 |]` draws the first row's plots three times as tall as the second's, whatever their
-gutters (matplotlib's `height_ratios`). They hold exactly unless `beside` or `above` has to
-subdivide the weighted rows to meet a side with more of them; there they are approximate.
+gutters (matplotlib's `height_ratios`). They hold beside a side of any other shape too: a pair
+drawn 3 : 1 beside a stack of three keeps 3 : 1, and the three stay even.
 
 ### Shared axes
 

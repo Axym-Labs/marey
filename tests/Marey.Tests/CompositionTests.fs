@@ -181,13 +181,25 @@ module ``D174 spans`` =
         Assert.Equal<(int * int)[]>([| 0, 0; 0, 1; 1, 0; 1, 1 |], fig.Panels |> Array.map (fun p -> p.Row, p.Col))
 
     [<Fact>]
-    let ``three beside two takes six rows`` () =
+    let ``three beside two takes a line wherever either has one`` () =
+        // D175: lines at a third and two thirds, and at a half, so four rows of 2 : 1 : 1 : 2.
         let three = fit |> Chart.above fit |> Chart.above fit
         let two = fit |> Chart.above fit
         let fig = three |> Chart.beside two
-        Assert.Equal(6, fig.Rows)
-        Assert.Equal<(int * int * int)[]>([| 0, 0, 2; 2, 0, 2; 4, 0, 2; 0, 1, 3; 3, 1, 3 |], fig.Panels |> Array.map (fun p -> p.Row, p.Col, p.RowSpan))
-        assertAlignedIn fig (viewsOf extent fig)
+        Assert.Equal(4, fig.Rows)
+        Assert.Equal<(int * int * int)[]>([| 0, 0, 1; 1, 0, 2; 3, 0, 1; 0, 1, 2; 2, 1, 2 |], fig.Panels |> Array.map (fun p -> p.Row, p.Col, p.RowSpan))
+        let round (w: float) = System.Math.Round(w, 12)
+        Assert.Equal<float[]>(Array.map round [| 4.0 / 3.0; 2.0 / 3.0; 2.0 / 3.0; 4.0 / 3.0 |], Array.map round fig.RowWeights)
+        let views = viewsOf extent fig
+        assertAlignedIn fig views
+        // Unstated, every plot of a side is as tall as the others, the middle one's crossing line
+        // notwithstanding.
+        let h (v: PanelView) = float (v.Plot.Y1 - v.Plot.Y0)
+        let col c = views |> Array.filter (fun v -> v.Col = c) |> Array.map h
+
+        for c in 0..1 do
+            let hs = col c
+            Assert.True(hs |> Array.forall (fun x -> abs (x / hs.[0] - 1.0) < 0.005), sprintf "column %d: %A" c hs)
 
     [<Fact>]
     let ``a mosaic places each part on its rectangle (gate 3)`` () =
@@ -252,19 +264,49 @@ module ``D175 ratios`` =
         assertAlignedIn fig views
 
     [<Fact>]
-    let ``stretched by a beside of three rows, the proportion is only approximate`` () =
-        // Known limitation, recorded in m9-plan.md: the LCM grid gives each of the pair's panels
-        // three rows, and one of the other side's row lines falls inside each of them with its
-        // gutters and gap. Those add the same length to both plots, so 3 : 1 comes out near 1.7.
-        // The order and the alignment hold.
+    let ``beside a stack of three, still three to one (G8)`` () =
+        // The pair's line falls inside the stack's lowest panel and the stack's two lines inside
+        // the pair's upper one, each with its gutters and gap; the tracks are solved round them.
         let pair = fit |> Chart.above (residuals 1.0) |> Chart.withRowHeights [| 3.0; 1.0 |]
         let three = fit |> Chart.above fit |> Chart.above fit
         let fig = pair |> Chart.beside three
-        Assert.Equal(6, fig.Rows)
+        Assert.Equal(4, fig.Rows)
         let views = viewsOf (Chart.size 700.0 600.0) fig
         let ratio = h (at views 0 0) / h (at views 3 0)
-        Assert.True(ratio > 1.5 && ratio < 3.0, sprintf "ratio %g" ratio)
+        Assert.True(within 3.0 ratio, sprintf "ratio %g" ratio)
+        let stack = views |> Array.filter (fun v -> v.Col = 1) |> Array.map h
+        Assert.True(stack |> Array.forall (within stack.[0]), sprintf "stack %A" stack)
         assertAlignedIn fig views
+
+    [<Fact>]
+    let ``above a row of three, widths still three to one`` () =
+        let pair = fit |> Chart.beside (residuals 1.0) |> Chart.withColWidths [| 3.0; 1.0 |]
+        let three = fit |> Chart.beside fit |> Chart.beside fit
+        let fig = pair |> Chart.above three
+        let views = viewsOf (Chart.size 900.0 500.0) fig
+        let row r = views |> Array.filter (fun v -> v.Row = r) |> Array.sortBy (fun v -> v.Col) |> Array.map w
+        let ratio = (row 0).[0] / (row 0).[1]
+        Assert.True(within 3.0 ratio, sprintf "ratio %g" ratio)
+        Assert.True(row 1 |> Array.forall (within (row 1).[0]), sprintf "row %A" (row 1))
+        assertAlignedIn fig views
+
+    [<Fact>]
+    let ``two stated sides keep their own proportions`` () =
+        let a = fit |> Chart.above (residuals 1.0) |> Chart.withRowHeights [| 3.0; 1.0 |]
+        let b = fit |> Chart.above fit |> Chart.withRowHeights [| 1.0; 2.0 |]
+        let fig = a |> Chart.beside b
+        let views = viewsOf (Chart.size 700.0 600.0) fig
+        let col c = views |> Array.filter (fun v -> v.Col = c) |> Array.sortBy (fun v -> v.Row) |> Array.map h
+        Assert.True(within 3.0 ((col 0).[0] / (col 0).[1]))
+        Assert.True(within 0.5 ((col 1).[0] / (col 1).[1]))
+
+    [<Fact>]
+    let ``an unstated side beside a stated one of as many rows lines up with it`` () =
+        let pair = fit |> Chart.above (residuals 1.0) |> Chart.withRowHeights [| 3.0; 1.0 |]
+        let fig = pair |> Chart.beside (fit |> Chart.above fit)
+        Assert.Equal(2, fig.Rows)
+        let views = viewsOf (Chart.size 700.0 480.0) fig
+        Assert.True(within 3.0 (h (at views 0 1) / h (at views 1 1)))
 
     [<Fact>]
     let ``column widths share out the plots`` () =
