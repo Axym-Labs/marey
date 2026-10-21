@@ -7,7 +7,7 @@ namespace Marey
 /// search: pick the coarsest step from {1, 2, 5} x 10^k that still yields roughly the
 /// requested count.
 ///
-/// This module is where §4's property tests bite:
+/// This module is where the property tests bite:
 ///
 /// * `TickHint n` returns between `n/2` and `2n` ticks — the 1-2-5 ladder gives ~[0.6n, 1.5n]
 ///   before boundary alignment, comfortably inside.
@@ -43,7 +43,7 @@ module internal Ticks =
     /// Decimal places needed to render values on a grid of `step` without two of them
     /// colliding. `step = 0.25` needs 2; `step = 20` needs 0.
     ///
-    /// This is the injectivity guarantee from §4, and it is the reason the step is a return
+    /// This is the injectivity guarantee, and it is the reason the step is a return
     /// value of tick generation rather than an implementation detail.
     let decimalsFor (step: float) =
         if step <= 0.0 || System.Double.IsNaN step || System.Double.IsInfinity step then

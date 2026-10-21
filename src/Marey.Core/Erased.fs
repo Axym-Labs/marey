@@ -27,7 +27,7 @@ type TickLabel =
 /// There is exactly one implementation (`Erase.scale`), and that is the point: one boundary,
 /// crossed in one direction, in one place.
 type IScaleErased =
-    /// The unit's *declared* symbol. Presentation only — see §12.6.
+    /// The unit's *declared* symbol. Presentation only: a display is canonicalised from `Dim`.
     abstract Symbol: string
     /// The truth about this axis's physical dimension.
     abstract Dim: Dim
@@ -35,8 +35,7 @@ type IScaleErased =
     /// The unit's composition, when it had one — see `U.Factors`. Carried across the boundary
     /// for the same reason `ToSI` is: a factorisation the caller supplied is information that
     /// `Dim` cannot reconstruct, so dropping it here would mean a reloaded `V·m⁻¹` axis
-    /// relabelled itself `kg·m·s⁻³·A⁻¹` while the live one did not. §15 requires the two paths
-    /// to agree.
+    /// relabelled itself `kg·m·s⁻³·A⁻¹` while the live one did not. The two paths must agree.
     abstract Factors: (string * int) list
 
     /// Multiplicative factor to SI base units, and the additive offset for affine units.
@@ -47,8 +46,8 @@ type IScaleErased =
     /// is explicitly untrusted). Labelling either from `Dim` would then be wrong by 10^19 in
     /// the first case and by 273.15 in the second.
     ///
-    /// §15 makes this load-bearing rather than tidy: "reloading gives you `IScaleErased`, not
-    /// `Scale<'u>`". Without these fields a reloaded non-SI axis can never be relabelled
+    /// This is load-bearing rather than tidy: reloading a figure gives you `IScaleErased`, not
+    /// `Scale<'u>`. Without these fields a reloaded non-SI axis can never be relabelled
     /// correctly, because the information was destroyed at save time rather than merely
     /// hidden. `ToSI <> 1.0` is also the principled test for "this unit is not SI-coherent,
     /// so do not render its symbol from `Dim`".
@@ -74,8 +73,8 @@ type IScaleErased =
 ///
 /// The design sketches this as `(float<'ux> * float<'uy>) []`. An array of reference tuples
 /// allocates one heap object per point: a 100 000-point scatter becomes 100 000 objects, which
-/// is precisely the GC pressure §1.3 warns will "destroy a 60 fps loop", and it contradicts
-/// §8.3's "struct-of-arrays layout" rule for the same data one layer down.
+/// is precisely the GC pressure that would destroy a 60 fps loop, and it contradicts the
+/// struct-of-arrays layout of the same data one layer down.
 ///
 /// Two parallel `float[]`s cost nothing, vectorise, and are what the batched `Markers` node
 /// wants anyway.
@@ -145,7 +144,7 @@ module Erase =
     /// identical to `Chart.series`'s default, because a series built through the channels must
     /// not render differently from the same series built through the front door.
     ///
-    /// Public since M2 phase 4, on the rule stated in `Num.fs`: it acquired a second consumer.
+    /// Public on the rule stated in `Num.fs`: it has a second consumer.
     /// A stat that builds its own series inside `reunify` — a fitted line, which is two points
     /// and not the caller's data — needs the same default, and a private copy of it in
     /// `Marey.Plot` is exactly the duplication that goes silently out of step.
@@ -183,7 +182,7 @@ module Erase =
 
                 // How the ticks become text, which is the one thing a categorical axis does
                 // differently from every other kind: its labels are names and there is no
-                // decimal count to derive. D45 puts the level array in `Kind` precisely so that
+                // decimal count to derive. The level array is in `Kind` precisely so that
                 // this path — the erased one, all a reloaded figure has — can still read
                 // them.
                 let labels =
@@ -268,8 +267,8 @@ module Erase =
     ///
     /// A facet does not re-read the data: by the time the block runs, every array in it has
     /// already been erased where it was declared and the accessors are gone. But
-    /// each of those arrays is one `Array.map` over the *same* rows — which is D53's argument for
-    /// a channel belonging to the block — so they are all index-aligned, and splitting the block
+    /// each of those arrays is one `Array.map` over the *same* rows — which is why a channel
+    /// belongs to the block — so they are all index-aligned, and splitting the block
     /// by a key is splitting one `int[]` of row indices and applying it to each.
     ///
     /// The measure is reattached inside `Apply`, where it is known, so this is measure-safe for a
@@ -319,7 +318,7 @@ module Erase =
     /// Not by arc length, which is what `Morph` does one layer down and what would be wrong
     /// here: arc length in data space is `sqrt(dx² + dy²)` over a metre and a second, which is
     /// not a quantity. The index is the one parameterisation a series has that does not mix its
-    /// two units, and pairing by index is the same rule D74 took for subpaths.
+    /// two units, and pairing by index is the same rule a path morph takes for subpaths.
     let private resampleTo (n: int) (xs: float[]) : float[] =
         if xs.Length = n then xs
         elif xs.Length = 0 then Array.zeroCreate n
@@ -402,7 +401,7 @@ module Erase =
                           XScale = xScale
                           YScale = yScale } }
 
-    /// **Interpolate one packed series into another**, D69's `morphTo` one layer down.
+    /// **Interpolate one packed series into another**, the storyboard's `morphTo` one layer down.
     ///
     /// The result wears `a`'s name, `a`'s units and `a`'s scale kinds, and holds
     /// `max (length a) (length b)` points: both sides are resampled to the longer of the two by

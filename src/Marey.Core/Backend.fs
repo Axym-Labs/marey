@@ -10,18 +10,17 @@ type TextMetrics =
 /// Text measurement, abstracted from day one.
 ///
 /// "Axis label sizes depend on text metrics, which depend on the backend, so layout is a
-/// *measure–arrange* pass against `IBackend.MeasureText`." The design's `IBackend` has no such
-/// member, so this is that member, split out as its own capability because §10 asks for
-/// exactly that: "architect `ITextShaper` as a capability from day one".
+/// *measure–arrange* pass against `IBackend.MeasureText`." `IBackend` has no such member, so
+/// this is that member, split out as a capability of its own.
 ///
-/// §15 puts the stakes plainly: "Text and layout eat 40% of the effort. Everyone
-/// underestimates this." Having one seam here is what makes it possible to start with an
-/// approximation and swap in HarfBuzz at M2 without touching the layout code.
+/// Text and layout are where most of the effort in a plotting library goes. Having one seam here is
+/// what makes it possible to start with an approximation and swap in HarfBuzz without touching the
+/// layout code.
 ///
-/// ### D77 — an implementation must be thread-safe, and one instance serves a whole render
+/// ### An implementation must be thread-safe, and one instance serves a whole render
 ///
 /// This is a requirement on the implementer, not an observation about the implementations. A
-/// measurer is called from layout, and since M3 layout runs once per frame of an animation
+/// measurer is called from layout, and layout runs once per frame of an animation
 /// across `Array.Parallel.map`. `Measure` must therefore be safe to call from several threads
 /// at once. `ApproxTextMeasurer` is stateless and satisfies it for free; `SkiaTextMeasurer`
 /// caches native handles and satisfies it with a lock.
@@ -116,11 +115,11 @@ type Capabilities =
 /// concrete type (`SvgBackend.Result`) while the *protocol* stays uniform enough to hold a
 /// heterogeneous list of backends and drive them all from one scene.
 ///
-/// ### D77 — the concurrency contract
+/// ### The concurrency contract
 ///
 /// **An `IBackend` is single-threaded. One instance per thread, and never two threads at
 /// once.** `Begin` / `Draw` / `Finish` is a state machine over a mutable surface, so this is
-/// what the interface has always meant; it was never written down, and M3 renders frames in
+/// what the interface has always meant; and frames are rendered in
 /// parallel, so it is written down here where an implementer reads it. An instance may be
 /// *reused* serially — `Begin` starts a new document — and both built backends support that.
 ///
@@ -155,11 +154,9 @@ type RenderedAsset =
 
 /// A document that does not stand alone: the text, plus the files it refers to.
 ///
-/// **This ships with a producer.** `renderWithAssets` was named at M1 as "the M2 door"
-/// for TikZ's `Rasters = false`, and D10 records what happens to a facility with no caller:
-/// `Capabilities` was "a record nobody reads" until the TikZ backend needed it. So this type
-/// arrives in the same milestone as `Chart.image`, which is the thing that finally puts a
-/// `Raster` node into a scene — nothing above the IR produced one before M2.5, which is why
+/// **This ships with a producer.** `renderWithAssets` is how TikZ, with `Rasters = false`,
+/// gets a raster out of a scene, and `Chart.image` is what puts a `Raster` node into one —
+/// nothing above the IR produces one otherwise, which is why
 /// `golden/figure-heatmap.svg` contains no raster and never did.
 ///
 /// **Not a member of `IBackend`.** A backend that needs no sidecar does not implement this and
@@ -183,7 +180,7 @@ module Capabilities =
     /// It must stay that way. An earlier version had `Semantics = false` here, which is a
     /// trap rather than a default: `Degrade.forCaps` strips every `Annotated` node when
     /// `Semantics` is false, so a backend author starting from `full` would silently lose all
-    /// of §5.3's accessibility and hit-testing output and have no reason to suspect it.
+    /// of the accessibility and hit-testing output and have no reason to suspect it.
     ///
     /// A preset named `full` that is not full is worse than no preset. Advertise less by
     /// starting from `vector` or by overriding explicitly.
@@ -225,10 +222,10 @@ module Degrade =
                 let mid = Interp.stops (stops |> Array.map (fun s -> s.Offset, s.Color)) 0.5
                 Solid mid
 
-    /// Multiply a constant into every alpha a subtree paints with — D67's approximation of
-    /// group opacity, for a target that cannot composite a subtree and fade the result.
+    /// Multiply a constant into every alpha a subtree paints with — the approximation of
+    /// group opacity for a target that cannot composite a subtree and fade the result.
     ///
-    /// This is D11's `Color.A` route, applied to a whole group at once, and it is the
+    /// This is the `Color.A` route, applied to a whole group at once, and it is the
     /// approximation `Node.Opacity` names: identical to true group opacity everywhere the
     /// group's shapes do not overlap, and darker than it where they do, because each shape is
     /// composited separately and an overlap is therefore painted twice.
@@ -331,7 +328,7 @@ module Degrade =
 
             | Clip(_, child) when not caps.Clipping -> child
 
-            // D67. Note that this fires *bottom-up*, so nested opacities compose the way they
+            // Note that this fires *bottom-up*, so nested opacities compose the way they
             // read: an inner `Opacity(0.5, x)` is already folded into `x`'s paints by the time
             // the enclosing `Opacity(0.4, _)` gets here, and the result carries 0.2.
             | Opacity(a, child) when not caps.GroupOpacity -> foldOpacity a child
@@ -342,7 +339,7 @@ module Degrade =
 
         Scene.transform rewrite n
 
-    /// Split oversized marker batches to fit `MaxBatch`. Keeps §5.1's one-node-per-batch
+    /// Split oversized marker batches to fit `MaxBatch`. Keeps the one-node-per-batch
     /// promise everywhere it can be kept, and breaks it in the smallest possible way where
     /// hardware forces the issue.
     let splitBatches (caps: Capabilities) (n: Node) : Node =
@@ -365,7 +362,7 @@ module Degrade =
 /// avoidance and legend sizing.
 ///
 /// It exists because `Marey.Core` may not take a dependency and because layout cannot
-/// wait for M2's SkiaSharp. `Capabilities.TextShaping = false` is the honest advertisement of
+/// wait for SkiaSharp. `Capabilities.TextShaping = false` is the honest advertisement of
 /// what this is.
 [<Sealed>]
 type ApproxTextMeasurer(?dpi: float<px / mm>) =

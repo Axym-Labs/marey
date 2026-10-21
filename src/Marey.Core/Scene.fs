@@ -15,21 +15,20 @@ namespace Marey
 // Two departures from the design sketch, both forced by other parts of the same design:
 //
 //   1. `Transform` carries an `Affine<nd,nd>`, not a function. A closure has reference
-//      equality, which would silently destroy the structural-equality diffing that §5.2
-//      depends on, and it cannot be serialized. See Affine.fs.
+//      equality, which would silently destroy the structural-equality diffing that scene
+//      updates depend on, and it cannot be serialized. See Affine.fs.
 //
-//   2. Collections are arrays, not lists. §1.3: "Per-frame allocation of records will destroy
+//   2. Collections are arrays, not lists. Per-frame allocation of records would destroy
 //      a 60 fps loop. The hot path (scene -> backend, particle stepping) must be struct/array
 //      -based, not list-based." A 100 000-segment path as a cons list is 100 000 heap objects.
 //
-// One omission, now closed, and left legible rather than tidied away. Through M2.5 there was
-// **no group-opacity node**, on the argument that `Color.A` covers the common case, that the
-// two differ only where a group's own shapes overlap, and that when M3 forced the issue it
-// should be a costed decision — one variant, six backends — not a reflex.
+// Group opacity is a node of its own (`Opacity`). `Color.A` covers the common case, and the
+// two differ only where a group's own shapes overlap, so the node had to earn its place: one
+// variant, six backends.
 //
-// M3 forced it. Fading a group in is what a storyboard asks for, and per-shape alpha cannot
+// It earned it. Fading a group in is what a storyboard asks for, and per-shape alpha cannot
 // express it: the moment two shapes in the group overlap, the fade shows a seam that is not in
-// the figure. D67 pays the cost as it was quoted — one variant, one `Capabilities` field, one
+// the figure. The node costs what it was quoted at — one variant, one `Capabilities` field, one
 // `Degrade` rule — and nothing else was let in alongside it.
 // ======================================================================================
 
@@ -40,8 +39,8 @@ type GradientStop = { Offset: float; Color: Color }
 /// How a region is filled.
 ///
 /// `Capabilities.Gradients` exists because TikZ's gradient support is genuinely weaker than
-/// SVG's (§5, backend contract): "The compiler layer queries caps and *degrades* rather than
-/// silently producing wrong output."
+/// SVG's, and the compiler layer queries capabilities and *degrades* rather than silently
+/// producing wrong output.
 [<NoComparison>]
 type Paint =
     | Solid of Color
@@ -91,8 +90,8 @@ type PathSeg =
     | CubicTo of c1: Vec2<nd> * c2: Vec2<nd> * until: Vec2<nd>
     | ClosePath
 
-/// A font request. Resolution to an actual face is the backend's business — §10 makes
-/// `ITextShaper` a capability precisely because the answer differs per target.
+/// A font request. Resolution to an actual face is the backend's business, which is why
+/// `ITextShaper` is a capability precisely because the answer differs per target.
 [<Struct>]
 type FontSpec =
     { Family: string
@@ -133,8 +132,8 @@ type TextRun =
       /// backend that cannot typeset TeX has a lossless-enough fallback by construction and
       /// there is nothing to degrade. That is what keeps `Capabilities` at ten fields.
       ///
-      /// §10's three routes to mathematical typesetting all read this one field — shelling out
-      /// to LaTeX, MathJax/KaTeX on the web backend at M3, and native OpenType MATH layout at
+      /// Every route to mathematical typesetting reads this one field — shelling out
+      /// to LaTeX, MathJax/KaTeX on the web backend, and native OpenType MATH layout at
       /// Which is why it is worth a field now rather than a migration later.
       ///
       /// **Known imprecision:** layout is measured against `Text` while a TeX backend typesets
@@ -156,8 +155,8 @@ type TextRun =
 /// The design's node is `Markers of Vec2<nd>[] * float<px> * Paint` — no shape. Shape is a
 /// standard encoding channel and the *only* redundant encoding for colour, so a
 /// colour-blind-safe scatter needs it. Without a shape field the compiler layer has to
-/// emit one `Path` per point to vary it, which defeats §5.1 — "the single biggest performance
-/// decision in the IR" — in the exact case that motivated batching.
+/// emit one `Path` per point to vary it, which defeats batching, the single biggest
+/// performance decision in the IR, in the exact case that motivated batching.
 ///
 /// A closed enum on an existing node is the cheap way to have it: no new backend dispatch,
 /// just a shape table each backend fills once.
@@ -490,8 +489,8 @@ module Scene =
     /// and an id addresses one element.
     ///
     /// A scene rebuilt from data shares no references with the last one, so the walk falls back
-    /// to structural equality: O(scene), float arrays compared element by element. Gate 9 of
-    /// M4.5 states what that costs rather than assuming it.
+    /// to structural equality: O(scene), float arrays compared element by element. Its cost is
+    /// measured by a test rather than assumed.
     let diff (before: Node) (after: Node) : Patch =
         let same (a: Node) (b: Node) = System.Object.ReferenceEquals(a, b)
 
@@ -551,12 +550,12 @@ module Scene =
         | Replace reps -> reps |> Array.fold (fun n (k, child) -> mapKey k (fun _ -> child) n) before
 
     /// Total number of nodes. A cheap sanity check in tests, and the denominator when
-    /// arguing that §5.2's diff is actually O(changed).
+    /// arguing that the diff is actually O(changed).
     let count (n: Node) = fold (fun acc _ -> acc + 1) 0 n
 
     /// Number of *drawn primitives*, counting a batch as its element count. This is the
     /// number that predicts render cost — and the gap between it and `count` is exactly the
-    /// win §5.1 is buying.
+    /// win batching buys.
     let primitiveCount (n: Node) =
         fold
             (fun acc node ->
@@ -585,11 +584,11 @@ module Scene =
             | c when c = empty -> empty
             | c -> Clip(p, c)
         // **`Opacity(0.0, _)` is not pruned**, and the temptation to prune it is a trap an
-        // animation walks straight into. A group fading in from zero would have its whole
-        // subtree vanish at t = 0 and reappear at the next frame, so the node count would
-        // change between two frames that differ only in a float — which is exactly the diff
-        // instability §5.2 exists to prevent. `prune` drops what *cannot* draw; a transparent
-        // subtree is one that is not drawing *yet*.
+        // animation walks straight into. A group fading in from zero would have its whole subtree
+        // vanish at t = 0 and reappear at the next frame, so the node count would change between
+        // two frames that differ only in a float — which is exactly the diff instability keyed
+        // diffing exists to prevent. `prune` drops what *cannot* draw; a transparent subtree is one
+        // that is not drawing *yet*.
         | Opacity(a, c) ->
             match prune c with
             | c when c = empty -> empty

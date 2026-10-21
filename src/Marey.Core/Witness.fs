@@ -46,26 +46,26 @@ type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, f
     new(symbol, dim, toSI) = U<'u>(symbol, dim, toSI, 0.0, [])
 
     /// The symbol this unit was *declared* with. Never build one by concatenation — see
-    /// `Marey.Units.UnitDisplay` and §12.6.
+    /// `Marey.Units.UnitDisplay`.
     member _.Symbol = symbol
 
     /// The composition this unit was *built* from, as `(symbol, exponent)` pairs — empty for a
     /// declared unit, non-empty only for one produced by `U.mul`, `div`, `recip`, `square` or
     /// `cube`.
     ///
-    /// **This is not §12.6's forbidden string composition, and the difference is the whole
-    /// point.** §12.6's bug was `mul force metre` concatenating its way to `kg·m/s/s·m`: a
+    /// **This is not string composition, and the difference is the whole point.** The
+    /// string bug was `mul force metre` concatenating its way to `kg·m/s/s·m`: a
     /// string, appended to, with no way to cancel or combine like factors. This is structure.
     /// `U.mul` merges exponents per symbol, so the same call yields `[kg, 1; m, 2; s, -2]` —
     /// which is what the quantity *is*, in the terms the caller wrote it in, and cannot
     /// accumulate the duplicated `/s/s` that made the string wrong.
     ///
-    /// It exists because `Dim` alone cannot express a factorisation the caller supplied.
-    /// `U.div volt metre` has the dimension of `kg·m·s⁻³·A⁻¹` and no registered name, so
-    /// display falls back to base units and an electric-field axis reads `10⁶·kg·m·s⁻³·A⁻¹`
-    /// rather than `MV·m⁻¹`. D18 declines to *infer* a factorisation from a bare `Dim` because
-    /// inference is ambiguous — the same `Dim` is `J/K` and `N·m/K`. Nothing is inferred here:
-    /// the caller wrote `div volt metre` and this records which of those readings they meant.
+    /// It exists because `Dim` alone cannot express a factorisation the caller supplied. `U.div
+    /// volt metre` has the dimension of `kg·m·s⁻³·A⁻¹` and no registered name, so display falls
+    /// back to base units and an electric-field axis reads `10⁶·kg·m·s⁻³·A⁻¹` rather than `MV·m⁻¹`.
+    /// The library declines to *infer* a factorisation from a bare `Dim` because inference is
+    /// ambiguous — the same `Dim` is `J/K` and `N·m/K`. Nothing is inferred here: the caller wrote
+    /// `div volt metre` and this records which of those readings they meant.
     member _.Factors = factors
 
     /// SI dimension exponents. The source of truth for identity and for display.
@@ -74,10 +74,10 @@ type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, f
     /// Multiplicative factor to SI base units. `U.kilometre.ToSI = 1000.0`.
     member _.ToSI = toSI
 
-    /// Additive offset to SI base units, applied *after* scaling. Non-zero only for affine
-    /// units — degrees Celsius (273.15) and Fahrenheit. §2.4 flags this as the "°C offset
-    /// problem"; carrying the field from day one is what stops it becoming a breaking change
-    /// when the UDUNITS-2 type provider lands.
+    /// Additive offset to SI base units, applied *after* scaling. Non-zero only for affine units —
+    /// degrees Celsius (273.15) and Fahrenheit. This is the "°C offset problem"; carrying the field
+    /// from day one is what stops it becoming a breaking change when the UDUNITS-2 type provider
+    /// lands.
     member _.OffsetSI = offsetSI
 
     /// True for °C / °F and anything else where zero is not zero. An affine unit has no
@@ -129,7 +129,7 @@ module U =
         else [ symbol, 1 ]
 
     /// Merge two factorisations, summing exponents per symbol and dropping anything that
-    /// cancels to zero. **This is the step §12.6's string concatenation could not perform**, and
+    /// cancels to zero. **This is the step string concatenation could not perform**, and
     /// the reason `mul force metre` yields `[kg,1; m,2; s,-2]` here where the string yielded
     /// `kg·m/s/s·m`.
     ///
@@ -173,7 +173,7 @@ module U =
         factors |> List.map (fun (s, e) -> s, e * n)
 
     /// Product of two units. Verified generic across five distinct instantiations
-    /// (`m/s`, `m/s^2`, `kg*m/s^2`, `kg*m/s`, `kg*m^2/s^2`) — §12.1.
+    /// (`m/s`, `m/s^2`, `kg*m/s^2`, `kg*m/s`, `kg*m^2/s^2`).
     ///
     /// The composed `Symbol` is deliberately naive and deliberately not trusted: it is a
     /// debugging aid only. Display goes through `Dim`, or through `Factors` when `Dim` has no

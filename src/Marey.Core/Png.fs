@@ -7,8 +7,8 @@ open System
 //
 // The `Raster` node has to become bytes: `<image href="data:image/png;base64,...">` in SVG,
 // and a sidecar `.png` beside a `.tex` for TikZ's `\includegraphics`. Neither path may take a
-// dependency — §13 makes that non-negotiable for Core, and §6 makes it a selling point for the
-// SVG backend ("Pure F#, works under Fable, works in notebooks").
+// dependency: Core takes none, and the SVG backend's selling point is that it is pure F#, works
+// under Fable and works in notebooks.
 //
 // So the encoder is written out. It is genuinely short because it uses **stored** deflate
 // blocks: the DEFLATE format allows an uncompressed block type, and zlib is just a two-byte
@@ -19,11 +19,10 @@ open System
 // That trade is deliberate and it is bounded: correctness and zero dependencies now, a real
 // Huffman encoder later if raster output ever becomes a size-sensitive path.
 //
-// It lives here, and it did not move. It was written in `Marey.Backend.Svg/SvgWriter.fs`
-// at M1, under a comment predicting that "M2's Skia backend writes PNGs through libpng anyway,
-// so this may well never need to grow." That reasoning holds for the Skia backend and fails for
-// TikZ's sidecar, which must not acquire a native dependency to write a `.png` next to a
-// `.tex`. Second consumer, so F2's promote-on-the-second-consumer rule applies.
+// It lives here rather than in the SVG backend, where it was first written on the reasoning that
+// the Skia backend writes PNGs through libpng anyway. That reasoning holds for Skia and fails for
+// TikZ's sidecar, which must not acquire a native dependency to write a `.png` next to a `.tex`.
+// Second consumer, so the promote-on-the-second-consumer rule applies.
 //
 // The promotion breaks nothing and needed no alias, because `Png` was a *sibling* of `Svg` in
 // `namespace Marey` rather than nested inside it. Its fully-qualified name was `Marey.Png`

@@ -6,7 +6,7 @@ namespace Marey
 /// the point where an axis label has to be printed. It is also the single source of truth for
 /// unit *identity*: two units are dimensionally the same iff their `Dim` values are equal.
 ///
-/// §12.6 is the rule this type exists to enforce: **never compose display strings, always
+/// The rule this type exists to enforce: **never compose display strings, always
 /// canonicalise from `Dim`.** `mul force metre` composes the symbol `kg·m/s/s·m` for what is
 /// plainly `J`, while the `Dim` comes out exactly right at `L=2, M=1, T=-2`.
 [<Struct; CustomEquality; NoComparison>]
@@ -63,8 +63,8 @@ type Dim =
             && this.N = d.N
             && this.J = d.J
 
-/// `Dim` under `add`/`neg` is the free abelian group on seven generators. §13 calls for
-/// FsCheck tests of exactly those group laws; they are cheap and they catch sign errors in
+/// `Dim` under `add`/`neg` is the free abelian group on seven generators. The test suite
+/// checks exactly those group laws with FsCheck; they are cheap and they catch sign errors in
 /// the witness algebra that would otherwise surface as a wrong axis label three layers up.
 [<RequireQualifiedAccess>]
 module Dim =

@@ -173,6 +173,6 @@ module Coord =
             out.ToArray()
 
     /// True when the coord is the identity, so callers can skip resampling entirely.
-    /// A hint, not a question about *which* coord it is — the distinction that keeps §4's
+    /// A hint, not a question about *which* coord it is — the distinction that keeps
     /// "nothing else needs to know polar exists" honest.
     let isIdentity (c: Coord) = System.Object.ReferenceEquals(c, cartesian)

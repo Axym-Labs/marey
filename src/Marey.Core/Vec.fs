@@ -6,18 +6,18 @@ namespace Marey
 /// coordinate to a routine expecting pixels stops being a runtime mystery and becomes a red
 /// squiggle."
 ///
-/// `[<Struct>]` is not a micro-optimisation here. §1.3: "Per-frame allocation of records will
+/// `[<Struct>]` is not a micro-optimisation here. Per-frame allocation of records would
 /// destroy a 60 fps loop. The hot path (scene -> backend, particle stepping) must be
-/// struct/array-based." Reference-type vectors in a particle loop are the difference between
+/// struct/array-based. Reference-type vectors in a particle loop are the difference between
 /// 60 fps and 6.
 ///
-/// **Operators are restricted to measure-*preserving* operations on purpose.** §3 sketches
+/// **Operators are restricted to measure-*preserving* operations on purpose.** One could sketch
 ///
 /// ```fsharp
 /// static member ( * ) (k: float<'k>, v: Vec2<'u>) : Vec2<'k * 'u>
 /// ```
 ///
-/// but that is the same shape §12.1 proves over-constrains: measure algebra in an operator
+/// but that shape over-constrains: measure algebra in an operator
 /// overload emits FS0064 and silently pins the second measure variable after its first use.
 /// Unit-*changing* operations therefore live in the `Vec2` module as functions with explicit
 /// `[<Measure>]` type parameters, exactly as `U.mul`/`U.div` do.
@@ -33,9 +33,8 @@ type Vec2<[<Measure>] 'u> =
     static member (*)(a: Vec2<'u>, k: float) = { X = a.X * k; Y = a.Y * k }
     static member (/)(a: Vec2<'u>, k: float) = { X = a.X / k; Y = a.Y / k }
 
-/// Unit-indexed 3-D vector. Present in Core from the start because §5.4 requires the IR
-/// to leave a door open for `Project3D of Camera * Node3`; absent from the Scene IR entirely,
-/// because that door stays shut until M4.
+/// Unit-indexed 3-D vector. Present in Core because the IR leaves a door open for
+/// `Project3D of Camera * Node3`; absent from the scene IR, because that door is still shut.
 [<Struct>]
 type Vec3<[<Measure>] 'u> =
     { X: float<'u>

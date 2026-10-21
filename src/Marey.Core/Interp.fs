@@ -7,17 +7,17 @@ namespace Marey
 /// through the *zero matrix*: the shape collapses to a point and pops back out. Decomposing
 /// first is the difference between a zoom that looks intentional and one that looks broken.
 ///
-/// **D74 moved this above the witness, and `Interpolate` now has an `Affine` overload that
-/// delegates here.** The note that used to sit in this place said the module stayed outside the
-/// witness because `Affine<'a,'b>` carries two measure variables and single-variable overloads
-/// keep SRTP resolution predictable. That was a precaution, not a measurement: the two-variable
-/// overload resolves, and it resolves for the same reason the one-variable ones do — `^T` is
-/// concrete at every call site, so the measures are decided before the constraint is solved.
+/// **This sits above the witness, and `Interpolate` has an `Affine` overload that delegates here.**
+/// An earlier version kept the module outside the witness because `Affine<'a,'b>` carries two
+/// measure variables and single-variable overloads keep SRTP resolution predictable. That was a
+/// precaution, not a measurement: the two-variable overload resolves, and it resolves for the same
+/// reason the one-variable ones do — `^T` is concrete at every call site, so the measures are
+/// decided before the constraint is solved.
 ///
-/// The precaution was worth taking and worth dropping. It cost nothing to hold, and holding it
-/// past the point where an animation wants to tween a transform would have cost §12.2's tax at
-/// every wrapper that carries one: the alternative to an overload is a second spelling of
-/// `interp` that a caller has to know to reach for.
+/// The precaution was worth taking and worth dropping. It cost nothing to hold, and holding it past
+/// the point where an animation wants to tween a transform would have cost the restated-constraint
+/// tax at every wrapper that carries one: the alternative to an overload is a second spelling of
+/// `Interp.between` that a caller has to know to reach for.
 ///
 /// The functions stay public. A caller who wants the *components* — a renderer that needs the
 /// rotation on its own — should not have to interpolate a matrix to get at them.
@@ -94,19 +94,19 @@ module AffineInterp =
 
 /// Interpolation as a type class.
 ///
-/// F# has no higher-kinded types, so this is SRTP against a witness type. Three findings from
-/// §12 are baked into the shape of this file, and every one of them cost real time to
+/// F# has no higher-kinded types, so this is SRTP against a witness type. Three findings are baked
+/// into the shape of this file, and every one of them cost real time to
 /// diagnose:
 ///
-/// * **§12.3 — every overload is measure-generic from its first line.** An `Interp` declared
+/// * **Every overload is measure-generic from its first line.** An `Interp` declared
 ///   as `(a: float, ...)` *rejects* `float<m>`: measures are erased at runtime but they are
 ///   absolutely present during overload resolution. `float<'u>` subsumes the unitless case,
 ///   because `float = float<1>`.
-/// * **§12.4 — the member is called `Interp`, never `Lerp`.** .NET 9 added `System.Double.Lerp`
+/// * **The member is called `Interp`, never `Lerp`.** .NET 9 added `System.Double.Lerp`
 ///   to the numeric interfaces, and it produces an ambiguous-overload error against a witness
 ///   of the same name. Check `Clamp`, `Sign`, `Abs`, `Min`, `Max`, `CreateChecked` before
 ///   naming any future SRTP member.
-/// * **§12.2 — the constraint is restated in full at every wrapper level.** Omit it and the
+/// * **The constraint is restated in full at every wrapper level.** Omit it and the
 ///   first call site monomorphises the whole chain; the errors then surface at the *other*
 ///   call sites, pointing at innocent code.
 [<Sealed; AbstractClass>]

@@ -11,8 +11,8 @@ namespace Marey
 /// The dimensions fall out of the arithmetic and they are not decoration: a map from `'a` to
 /// `'b` must have a linear part in `'b/'a` and a translation in `'b`, or the multiply does
 /// not type-check. That makes `Affine<nd,px>` and `Affine<px,nd>` different types, and it
-/// makes the §3 claim — "the composition `data -> nd -> px -> device` is checked end to end"
-/// — literally true rather than aspirational.
+/// makes the claim that the composition `data -> nd -> px -> device` is checked end to end
+/// literally true rather than aspirational.
 ///
 /// ---
 ///
@@ -20,10 +20,10 @@ namespace Marey
 /// `Transform of (Vec2<nd> -> Vec2<nd>) * Node`. That is a latent design failure with two
 /// heads:
 ///
-/// * §5.2 wants scene diffing from F#'s structural equality on immutable values. A closure
+/// * Scene diffing relies on F#'s structural equality on immutable values. A closure
 ///   has reference equality, so a single function field makes every enclosing `Node`
 ///   compare unequal to itself and collapses `Keyed` diffing to "redraw everything".
-/// * §15 wants a serializable figure format. A closure cannot be written to a file.
+/// * A figure is meant to be serializable, and a closure cannot be written to a file.
 ///
 /// Six floats have neither problem, and every backend can hand them straight to its native
 /// transform (SVG `matrix(...)`, TikZ `cm=`, Skia `SKMatrix`).
@@ -125,7 +125,7 @@ module Affine =
           Dy = LanguagePrimitives.FloatWithMeasure<'b> 0.0 }
 
     /// The measure parameter is declared explicitly rather than inferred. Without it F#
-    /// rejects `rotate<px> theta` outright (FS0686), and the same rule that §12.1 imposes on
+    /// rejects `rotate<px> theta` outright (FS0686), and the same rule that holds for
     /// `U.mul`/`U.div` applies here: a measure-generic function that anyone needs to
     /// instantiate by hand must say so in its signature.
     let rotate<[<Measure>] 'a> (theta: float<rad>) : Affine<'a, 'a> =
@@ -147,7 +147,7 @@ module Affine =
 
     /// Map one box onto another. **The workhorse.** Panel placement, facet offsets, viewport
     /// mapping and zoom are all this function, and expressing them as one operation is what
-    /// keeps §5's `Transform` node sufficient for all of them.
+    /// keeps the scene's one `Transform` node sufficient for all of them.
     ///
     /// Note the y axis is *not* flipped: `nd` is y-up like the data, and the flip to y-down
     /// device space is the backend's business, applied once in `Begin`.

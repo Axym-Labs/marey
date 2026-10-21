@@ -4,16 +4,15 @@ open System
 open System.Text
 
 // ======================================================================================
-// THE WIRE (D152–D155)
+// THE WIRE
 //
-// A scene as bytes, for a page that draws what a kernel compiled. Read §5's departure 1 first:
-// the IR has no closures so that it can be written down, and this is the file that writes it.
+// A scene as bytes, for a page that draws what a kernel compiled. The IR has no closures so that it
+// can be written down, and this is the file that writes it.
 //
 // **decode (encode n) = n**, field for field, for every scene. That is the property the format is
 // built around and the reason it is float64 throughout: rounding the goldens' coordinates through
-// float32 moves 11 of the 28 SVG baselines by a thousandth of a px (`wire-open-decisions.md`,
-// D153), and the moment a decoded scene is not the scene, every golden stops being a test of the
-// wire.
+// float32 moves 11 of the 28 SVG baselines by a thousandth of a px, and the moment a decoded scene
+// is not the scene, every golden stops being a test of the wire.
 //
 // The layout, little-endian throughout:
 //

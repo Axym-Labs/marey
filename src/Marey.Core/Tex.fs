@@ -17,7 +17,7 @@ open System.Text
 // `Marey.Core` is the only ancestor those two share — a backend must not depend on
 // `Marey.Units` (a renderer has no business knowing about physical dimensions), and
 // `Marey.Units` must not depend on a backend. So this lives here, for exactly the reason `Num`
-// does: two consumers, no other common ancestor, zero dependencies, and F2's rule that shared
+// does: two consumers, no other common ancestor, zero dependencies, and the rule that shared
 // text-emission rules get promoted rather than copied.
 //
 // The Unicode-to-macro table (`Δ` -> `\ensuremath{\Delta}`, `·` -> `\textperiodcentered{}`) lives

@@ -7,13 +7,13 @@ open System.Numerics
 // ======================================================================================
 // DETERMINISTIC NUMBER FORMATTING FOR TEXT BACKENDS.
 //
-// §13's test strategy is "golden-image snapshots against the SVG backend (text-diffable,
-// reviewable in a PR)", and §6 calls the SVG backend the spec. Both require the same thing:
+// The tests are golden snapshots against the SVG backend, text-diffable and reviewable in a PR,
+// and the SVG backend is the spec. Both require the same thing:
 // **the same Scene must produce byte-identical output on every machine, every run.**
 //
 // These rules started life inside the SVG writer, where they are documented at length. They
-// are here because a second text backend needs every one of them, and F2 states the rule for
-// exactly this situation: duplication is dangerous in the one place a change to one copy would
+// are here because a second text backend needs every one of them, and the rule for exactly
+// this situation is: duplication is dangerous in the one place a change to one copy would
 // silently disagree with the other, so promote on the appearance of a second consumer.
 //
 // The rules, and why each is not negotiable:
@@ -33,7 +33,7 @@ open System.Numerics
 //   * non-finite values become "0". A singular transform must not be able to write "NaN" into
 //     a document that then fails to parse, or "inf" into a TeX dimension.
 //
-//   * D129 — no rounding and no formatting is left to the platform. Under Fable the "same
+//   * No rounding and no formatting is left to the platform. Under Fable the "same
 //     compiler" is JavaScript's arithmetic, and the two runtimes disagree on exact halves:
 //     Fable reads `Math.Round(x, MidpointRounding.AwayFromZero)` as rounding to one decimal
 //     place, ignores the mode in `Math.Round(x, d, mode)`, calls anything within 10⁻⁸ of a half
@@ -228,7 +228,7 @@ module Num =
     /// U+207B SUPERSCRIPT MINUS, not a hyphen — the hyphen sits on the baseline next to
     /// superscript digits and looks like a typesetting bug in every font. Here rather than in
     /// `Marey.Units` because a log axis's `10⁻⁸` is written in Core (`Ticks.formatPower`) and a
-    /// unit's `s⁻²` in `UnitDisplay`, and the two must not drift apart (F2).
+    /// unit's `s⁻²` in `UnitDisplay`, and the two must not drift apart.
     let superscript (n: int) : string =
         let digits = string (abs (int64 n))
         let sb = System.Text.StringBuilder()
