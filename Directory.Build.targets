@@ -50,4 +50,13 @@
     <None Include="@(Compile)" Pack="true" PackagePath="fable/" Visible="false" />
   </ItemGroup>
 
+
+  <!-- 1.0 (C3) — `-p:MareyApiSig=<dir>` writes each project's inferred signature to
+       `<dir>/<project>.<tfm>.fsi`, which `tools/api/listing.fsx` turns into the checked-in public
+       API listing. Here rather than in the .props because `TargetFramework` of a single-target
+       project is only set once the project file has been read. -->
+  <PropertyGroup Condition="'$(MareyApiSig)' != ''">
+    <OtherFlags>$(OtherFlags) --sig:$(MareyApiSig)/$(MSBuildProjectName).$(TargetFramework).fsi</OtherFlags>
+  </PropertyGroup>
+
 </Project>

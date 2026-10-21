@@ -96,6 +96,19 @@ and those are not the same question.
 `tests/Marey.Tests/README.md` documents the suite in full — the property generators, the tolerance
 policy, the determinism checks and the seed sweep. Read it before adding tests.
 
+## The public API listing
+
+`api/` holds one file per package: the compiler's signature of everything a user can reach, with
+doc comments and private and internal declarations taken out. CI fails when it differs from the
+code. A change that is meant to touch the public surface regenerates it in the same commit:
+
+```
+dotnet fsi tools/api/listing.fsx
+```
+
+The diff of `api/` is then the change to the API, for review, as a golden's diff is the change to
+the picture.
+
 ## What the layering rules are
 
 Four constraints hold across the whole tree, and a change that breaks one needs to argue for it
