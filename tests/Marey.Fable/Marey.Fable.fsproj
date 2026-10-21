@@ -40,12 +40,12 @@
     <RestoreAdditionalProjectSources>$(MAREY_PACKAGE_SOURCE)</RestoreAdditionalProjectSources>
   </PropertyGroup>
 
+  <!-- From the packages, through `Marey` alone, plus the canvas backend it leaves out. So Fable has
+       to follow a package with no code of its own to the sources of Svg, Plot, Fields and Sim,
+       and pass over Tikz and Html, which it gathers too and which carry no sources for Fable. -->
   <ItemGroup Condition="'$(MAREY_FROM_PACKAGES)' != ''">
-    <PackageReference Include="Marey.Backend.Svg" Version="$(MAREY_FROM_PACKAGES)" />
-    <PackageReference Include="Marey.Plot" Version="$(MAREY_FROM_PACKAGES)" />
-    <PackageReference Include="Marey.Fields" Version="$(MAREY_FROM_PACKAGES)" />
+    <PackageReference Include="Marey" Version="$(MAREY_FROM_PACKAGES)" />
     <PackageReference Include="Marey.Backend.Web" Version="$(MAREY_FROM_PACKAGES)" />
-    <PackageReference Include="Marey.Sim" Version="$(MAREY_FROM_PACKAGES)" />
   </ItemGroup>
 
 </Project>
