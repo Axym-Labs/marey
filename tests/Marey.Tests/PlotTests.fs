@@ -629,6 +629,32 @@ module Annotations =
 
         Assert.Contains(("dropped-marks", "1"), panel.Data)
 
+    /// A3 (1.0) — text past the plot stays on the figure: P4's `E_F`, at the right end of a
+    /// Fermi level, offset outwards. Nothing reserved room for it, so the figure's edge cut it.
+    /// Checked on every side, each with its text pushed outwards from a corner of the data.
+    [<Theory>]
+    [<InlineData(2.0, 3.0, 4.0, 0.0, "right")>]
+    [<InlineData(0.0, 1.0, -4.0, 0.0, "left")>]
+    [<InlineData(2.0, 3.0, 0.0, 30.0, "top")>]
+    [<InlineData(0.0, 1.0, 0.0, -60.0, "bottom")>]
+    let ``text past the plot is given room inside the figure`` (at: float, value: float, dx: float, dy: float, side: string) =
+        let label = sprintf "a long label to the %s" side
+
+        let fig =
+            Chart.line U.second U.metre t x
+            |> Chart.annotate U.second U.metre (at * 1.0<s>) (value * 1.0<m>) label
+            |> Chart.withTextOffset (dx * 1.0<px>) (dy * 1.0<px>)
+
+        let measurer = TextMeasure.approx
+        let view = (Chart.panelsIn measurer (Chart.arrangeFor measurer surface fig) fig).[0]
+        let r = textOf fig label
+        let b = TextMeasure.bounds measurer r.Font r.Anchor r.Baseline r.Rotation r.Text
+        let x = view.Plot.X0 + float r.At.X * (view.Plot.X1 - view.Plot.X0)
+        let y = view.Plot.Y1 - float r.At.Y * (view.Plot.Y1 - view.Plot.Y0)
+        let slack = 0.01<px>
+        Assert.True(x + b.X0 >= -slack && x + b.X1 <= surface.Width + slack, sprintf "%s: x %g … %g of %g" side (float (x + b.X0)) (float (x + b.X1)) (float surface.Width))
+        Assert.True(y + b.Y0 >= -slack && y + b.Y1 <= surface.Height + slack, sprintf "%s: y %g … %g of %g" side (float (y + b.Y0)) (float (y + b.Y1)) (float surface.Height))
+
     /// G11 — an annotation is read with the axes: the theme's foreground, recoloured by a
     /// retheme, unless it was coloured by hand.
     [<Fact>]

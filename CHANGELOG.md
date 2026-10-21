@@ -28,6 +28,10 @@ land in a minor release.
   primary title that held still. A shot now pins it over the image of the primary's union, as D73
   pins the primary (D178). `PanelLayout` gains `X2Prefix`; `Y2Prefix` now pins whichever axis is on
   the right.
+- **An annotation's text past the plot is given room.** It was drawn unclipped but nothing
+  reserved space for it, so text beyond the plot's edge was cut by the figure's (P4's `E_F` at
+  the right end of a Fermi level). The panel's gutter on that side now grows to hold it.
+  `PanelLayout` gains `LeftPad` and `BottomPad` beside `RightPad` and `TopPad`.
 
 ## [0.7.0] — 2026-10-16
 

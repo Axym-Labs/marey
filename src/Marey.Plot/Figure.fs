@@ -308,7 +308,11 @@ type PanelLayout =
       X2TicksH: float<px>
       X2TitleH: float<px>
       /// D178 — the prefix a secondary x axis is pinned to.
-      X2Prefix: Prefix option }
+      X2Prefix: Prefix option
+      /// D164 — room for an annotation's text past the plot's left and bottom edges, beyond what
+      /// the axis already takes there. `RightPad` and `TopPad` take it on the other two sides.
+      LeftPad: float<px>
+      BottomPad: float<px> }
 
 [<RequireQualifiedAccess>]
 module PanelLayout =
@@ -339,7 +343,9 @@ module PanelLayout =
           Y2Prefix = None
           X2TicksH = 0.0<px>
           X2TitleH = 0.0<px>
-          X2Prefix = None }
+          X2Prefix = None
+          LeftPad = 0.0<px>
+          BottomPad = 0.0<px> }
 
     /// D72's union, and the whole rule is one sentence: **every size is the largest any sampled
     /// frame needed.**
@@ -385,11 +391,13 @@ module PanelLayout =
           Y2Prefix = a.Y2Prefix
           X2TicksH = max a.X2TicksH b.X2TicksH
           X2TitleH = max a.X2TitleH b.X2TitleH
-          X2Prefix = a.X2Prefix }
+          X2Prefix = a.X2Prefix
+          LeftPad = max a.LeftPad b.LeftPad
+          BottomPad = max a.BottomPad b.BottomPad }
 
     /// D173 — the room a panel's gutters take on each side of its plot, slack included: what the
     /// outer grid's gutter tracks are sized from.
-    let left (g: PanelLayout) = g.SlackLeft + g.YTitleW + g.YTicksW
+    let left (g: PanelLayout) = g.SlackLeft + g.LeftPad + g.YTitleW + g.YTicksW
 
     let right (g: PanelLayout) =
         g.Y2TicksW + g.Y2TitleW + g.RightPad + g.BarGap + g.BarW + (if g.LegendW > 0.0<px> then g.LegendGap + g.LegendW else 0.0<px>) + g.SlackRight
@@ -397,7 +405,7 @@ module PanelLayout =
     let top (g: PanelLayout) = g.SlackTop + g.TitleH + g.TopPad + g.X2TitleH + g.X2TicksH
 
     let bottom (g: PanelLayout) =
-        g.XTicksH + g.XTitleH + (if g.LegendH > 0.0<px> then g.LegendGap + g.LegendH else 0.0<px>) + g.SlackBottom
+        g.XTicksH + g.XTitleH + (if g.LegendH > 0.0<px> then g.LegendGap + g.LegendH else 0.0<px>) + g.BottomPad + g.SlackBottom
 
 /// D72 — **the layout of one shot**: everything every frame of an animation shares, and nothing
 /// a frame is allowed to recompute.
@@ -1448,6 +1456,7 @@ module Figure =
         // alone is placed as it always was.
         let cols =
             [| Track.Content g.SlackLeft
+               Track.Content g.LeftPad
                Track.Content g.YTitleW
                Track.Content g.YTicksW
                Track.Frac 1.0
@@ -1471,30 +1480,31 @@ module Figure =
                Track.Content g.XTitleH
                Track.Content gapBelow
                Track.Content g.LegendH
+               Track.Content g.BottomPad
                Track.Content g.SlackBottom |]
 
         let fixedCell key row col (w: float<px>) (h: float<px>) =
             Layout.cell key row col (fun _ -> { Width = w; Height = h })
 
         let cells =
-            [| fixedCell "ytitle" 5 1 g.YTitleW 0.0<px>
-               fixedCell "yticks" 5 2 g.YTicksW 0.0<px>
-               Layout.fill "plot" 5 3
-               fixedCell "y2ticks" 5 4 g.Y2TicksW 0.0<px>
-               fixedCell "y2title" 5 5 g.Y2TitleW 0.0<px>
-               fixedCell "rightpad" 5 6 g.RightPad 0.0<px>
-               fixedCell "bargap" 5 7 g.BarGap 0.0<px>
-               fixedCell "colorbar" 5 8 g.BarW 0.0<px>
-               fixedCell "legendgap" 5 9 gapRight 0.0<px>
-               fixedCell "legend" 5 10 g.LegendW 0.0<px>
-               fixedCell "ptitle" 1 1 0.0<px> g.TitleH |> Layout.spanning 1 10
-               fixedCell "toppad" 2 1 0.0<px> g.TopPad |> Layout.spanning 1 10
-               fixedCell "x2title" 3 3 0.0<px> g.X2TitleH
-               fixedCell "x2ticks" 4 3 0.0<px> g.X2TicksH
-               fixedCell "xticks" 6 3 0.0<px> g.XTicksH
-               fixedCell "xtitle" 7 3 0.0<px> g.XTitleH
-               fixedCell "legendgapb" 8 3 0.0<px> gapBelow
-               fixedCell "legendb" 9 3 0.0<px> g.LegendH |]
+            [| fixedCell "ytitle" 5 2 g.YTitleW 0.0<px>
+               fixedCell "yticks" 5 3 g.YTicksW 0.0<px>
+               Layout.fill "plot" 5 4
+               fixedCell "y2ticks" 5 5 g.Y2TicksW 0.0<px>
+               fixedCell "y2title" 5 6 g.Y2TitleW 0.0<px>
+               fixedCell "rightpad" 5 7 g.RightPad 0.0<px>
+               fixedCell "bargap" 5 8 g.BarGap 0.0<px>
+               fixedCell "colorbar" 5 9 g.BarW 0.0<px>
+               fixedCell "legendgap" 5 10 gapRight 0.0<px>
+               fixedCell "legend" 5 11 g.LegendW 0.0<px>
+               fixedCell "ptitle" 1 2 0.0<px> g.TitleH |> Layout.spanning 1 10
+               fixedCell "toppad" 2 2 0.0<px> g.TopPad |> Layout.spanning 1 10
+               fixedCell "x2title" 3 4 0.0<px> g.X2TitleH
+               fixedCell "x2ticks" 4 4 0.0<px> g.X2TicksH
+               fixedCell "xticks" 6 4 0.0<px> g.XTicksH
+               fixedCell "xtitle" 7 4 0.0<px> g.XTitleH
+               fixedCell "legendgapb" 8 4 0.0<px> gapBelow
+               fixedCell "legendb" 9 4 0.0<px> g.LegendH |]
 
         Layout.arrangeIn m extent region (Layout.grid rows cols cells)
 
@@ -1850,6 +1860,45 @@ module Figure =
             let planY2 (h: float<px>) =
                 right |> Option.map (fun (cfg, spec) -> keepNamed cfg spec (Axes.planTicks m theme.TickFont theme.LabelGap h AxisRight spec.Ticks))
 
+            // D164 — how far the annotations' text stands past each edge of a plot of this size,
+            // in px, as left, right, top and bottom (zero where it does not).
+            let annotationOverhang (probe: Extent<px>) : Rect<px> =
+                let none: Rect<px> = { X0 = 0.0<px>; X1 = 0.0<px>; Y0 = 0.0<px>; Y1 = 0.0<px> }
+
+                p.Layers
+                |> Array.choose (fun l ->
+                    let sx, sy = Erase.seriesScales l.Data
+
+                    match Geom.project sx.Project sy.Project l.Geom with
+                    | GeomAnnotation(text, placement, arrow) ->
+                        let pts = Erase.projectXY l.Data
+
+                        if pts.Length = 0 then
+                            None
+                        else
+                            Geom.compileAnnotation p.Coord probe l.Style text placement arrow pts.[0]
+                    | _ -> None)
+                |> Array.collect (fun node ->
+                    node
+                    |> Scene.fold
+                        (fun acc n ->
+                            match n with
+                            | Text t -> t :: acc
+                            | _ -> acc)
+                        []
+                    |> Array.ofList)
+                |> Array.fold
+                    (fun (acc: Rect<px>) t ->
+                        let b = TextMeasure.bounds m t.Font t.Anchor t.Baseline t.Rotation t.Text
+                        let x = float t.At.X * probe.Width
+                        let y = (1.0 - float t.At.Y) * probe.Height
+
+                        { X0 = max acc.X0 (-(x + b.X0))
+                          X1 = max acc.X1 (x + b.X1 - probe.Width)
+                          Y0 = max acc.Y0 (-(y + b.Y0))
+                          Y1 = max acc.Y1 (y + b.Y1 - probe.Height) })
+                    none
+
             let gutters (xPlan: TickPlan) (yPlan: TickPlan) (barPlan: TickPlan option) (probe: Extent<px>) : PanelLayout =
                 let legendScores = scores probe
 
@@ -1873,79 +1922,95 @@ module Figure =
 
                 let outsideBelow = hasLegend && p.Legend = LegendOutsideBottom
 
-                { TitleH = titleH
-                  BarGap = barGap
-                  LegendGap = (if outsideRight || outsideBelow then theme.PanelGap else 0.0<px>)
-                  LegendW = (if outsideRight then legendSize.Width else 0.0<px>)
-                  LegendH = (if outsideBelow then legendSize.Height else 0.0<px>)
-                  LegendScores = legendScores
+                let g =
+                  { TitleH = titleH
+                    BarGap = barGap
+                    LegendGap = (if outsideRight || outsideBelow then theme.PanelGap else 0.0<px>)
+                    LegendW = (if outsideRight then legendSize.Width else 0.0<px>)
+                    LegendH = (if outsideBelow then legendSize.Height else 0.0<px>)
+                    LegendScores = legendScores
 
-                  BarW =
-                    match colorbar, barPlan with
-                    | Some(spec, _), Some plan -> Colorbar.measure m theme spec plan
-                    | _ -> 0.0<px>
+                    BarW =
+                      match colorbar, barPlan with
+                      | Some(spec, _), Some plan -> Colorbar.measure m theme spec plan
+                      | _ -> 0.0<px>
 
-                  XTicksH =
-                    if not p.XAxis.Visible then 0.0<px>
-                    elif p.XAxis.ShowTickLabels then Axes.tickExtent m theme AxisBottom xSpec xPlan
-                    else marksOnly p.XAxis
+                    XTicksH =
+                      if not p.XAxis.Visible then 0.0<px>
+                      elif p.XAxis.ShowTickLabels then Axes.tickExtent m theme AxisBottom xSpec xPlan
+                      else marksOnly p.XAxis
 
-                  YTicksW =
-                    if not p.YAxis.Visible then 0.0<px>
-                    elif p.YAxis.ShowTickLabels then Axes.tickExtent m theme AxisLeft ySpec yPlan
-                    else marksOnly p.YAxis
+                    YTicksW =
+                      if not p.YAxis.Visible then 0.0<px>
+                      elif p.YAxis.ShowTickLabels then Axes.tickExtent m theme AxisLeft ySpec yPlan
+                      else marksOnly p.YAxis
 
-                  XTitleH =
-                    if p.XAxis.Visible && p.XAxis.ShowTitle then
-                        Axes.titleExtent m theme xSpec.Title
-                    else
-                        0.0<px>
+                    XTitleH =
+                      if p.XAxis.Visible && p.XAxis.ShowTitle then
+                          Axes.titleExtent m theme xSpec.Title
+                      else
+                          0.0<px>
 
-                  YTitleW =
-                    if p.YAxis.Visible && p.YAxis.ShowTitle then
-                        Axes.titleExtent m theme ySpec.Title
-                    else
-                        0.0<px>
+                    YTitleW =
+                      if p.YAxis.Visible && p.YAxis.ShowTitle then
+                          Axes.titleExtent m theme ySpec.Title
+                      else
+                          0.0<px>
 
-                  // Half of the outermost tick label hangs past the end of the axis. Reserving
-                  // it is half of §13's "labels inside bounds"; without it the right-hand x
-                  // label and the top y label are clipped by the figure edge.
-                  // A second y axis's labels already stand where the last x label hangs, so
-                  // only what still sticks out past them is reserved.
-                  RightPad =
-                    if p.XAxis.Visible && p.XAxis.ShowTickLabels then
-                        max 0.0<px> (max (Axes.labelOverhang m theme AxisBottom xSpec xPlan) x2Overhang - y2Ticks - y2Title)
-                    else
-                        max 0.0<px> (x2Overhang - y2Ticks - y2Title)
+                    // Half of the outermost tick label hangs past the end of the axis. Reserving
+                    // it is half of §13's "labels inside bounds"; without it the right-hand x
+                    // label and the top y label are clipped by the figure edge.
+                    // A second y axis's labels already stand where the last x label hangs, so
+                    // only what still sticks out past them is reserved.
+                    RightPad =
+                      if p.XAxis.Visible && p.XAxis.ShowTickLabels then
+                          max 0.0<px> (max (Axes.labelOverhang m theme AxisBottom xSpec xPlan) x2Overhang - y2Ticks - y2Title)
+                      else
+                          max 0.0<px> (x2Overhang - y2Ticks - y2Title)
 
-                  // Likewise a secondary x axis's labels stand where the top y label hangs.
-                  TopPad =
-                    max
-                        0.0<px>
-                        (max
-                            y2Overhang
-                            (if p.YAxis.Visible && p.YAxis.ShowTickLabels then
-                                 Axes.labelOverhang m theme AxisLeft ySpec yPlan
-                             else
-                                 0.0<px>)
-                         - x2Ticks
-                         - x2Title)
+                    // Likewise a secondary x axis's labels stand where the top y label hangs.
+                    TopPad =
+                      max
+                          0.0<px>
+                          (max
+                              y2Overhang
+                              (if p.YAxis.Visible && p.YAxis.ShowTickLabels then
+                                   Axes.labelOverhang m theme AxisLeft ySpec yPlan
+                               else
+                                   0.0<px>)
+                           - x2Ticks
+                           - x2Title)
 
-                  X2TicksH = x2Ticks
-                  X2TitleH = x2Title
+                    X2TicksH = x2Ticks
+                    X2TitleH = x2Title
 
-                  Y2TicksW = y2Ticks
-                  Y2TitleW = y2Title
-                  Y2Prefix = pinY2
-                  X2Prefix = pinX2
+                    Y2TicksW = y2Ticks
+                    Y2TitleW = y2Title
+                    Y2Prefix = pinY2
+                    X2Prefix = pinX2
 
-                  Probe = probe
-                  XPrefix = pinX
-                  YPrefix = pinY
-                  SlackLeft = 0.0<px>
-                  SlackRight = 0.0<px>
-                  SlackTop = 0.0<px>
-                  SlackBottom = 0.0<px> }
+                    Probe = probe
+                    XPrefix = pinX
+                    YPrefix = pinY
+                    SlackLeft = 0.0<px>
+                    SlackRight = 0.0<px>
+                    SlackTop = 0.0<px>
+                    SlackBottom = 0.0<px>
+                    LeftPad = 0.0<px>
+                    BottomPad = 0.0<px> }
+
+                // D164 — an annotation's text may stand past the plot, and is not clipped, so the
+                // gutter on that side grows until it holds it, over whatever the axis already
+                // takes there.
+                let past = annotationOverhang probe
+                let rightOfPlot = g.Y2TicksW + g.Y2TitleW + g.BarGap + g.BarW + (if g.LegendW > 0.0<px> then g.LegendGap + g.LegendW else 0.0<px>)
+                let belowPlot = g.XTicksH + g.XTitleH + (if g.LegendH > 0.0<px> then g.LegendGap + g.LegendH else 0.0<px>)
+
+                { g with
+                    LeftPad = max 0.0<px> (past.X0 - g.YTitleW - g.YTicksW)
+                    RightPad = max g.RightPad (past.X1 - rightOfPlot)
+                    TopPad = max g.TopPad (past.Y0 - g.TitleH - g.X2TitleH - g.X2TicksH)
+                    BottomPad = max 0.0<px> (past.Y1 - belowPlot) }
 
             let build (g: PanelLayout) = innerGrid m extent region g
 
@@ -3274,6 +3339,8 @@ module Figure =
                     && within n.Y2TitleW f.Y2TitleW
                     && within n.X2TicksH f.X2TicksH
                     && within n.X2TitleH f.X2TitleH
+                    && within n.LeftPad f.LeftPad
+                    && within n.BottomPad f.BottomPad
                 | _ -> false
 
         within (headHeight m fig) headRoom && Array.forall panelFits fig.Panels
