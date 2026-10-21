@@ -149,7 +149,7 @@ not touched by any of this.
 
 ## Pull requests
 
-- Branch from `dev`; `main` carries releases. CI runs on both.
+- Branch from `main` and open the pull request against it. CI runs on every pull request and on `main`.
 - `dotnet build` warning-free and `dotnet test` green before review.
 - One logical change per pull request. A baseline move, a new geom and a refactor are three.
 - New public API needs a runnable example. Every example in `docs/guide.md` and `examples/` is
