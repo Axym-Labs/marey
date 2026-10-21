@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="720" height="450" viewBox="0 0 720 450">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M57.013 398.567L695.992 398.567L695.992 72.583L57.013 72.583Z"/></clipPath>
+    <rect id="qm" x="-2.5" y="-2.5" width="5" height="5"/>
+  </defs>
+  <g id="figure">
+    <path d="M0 450L720 450L720 0L0 0Z" fill="#ffffff"/>
+    <g role="note" data-marey-role="annotation" aria-label="A dropped ball">
+      <text x="360" y="14" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="17.333" font-weight="600" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">A dropped ball</text>
+    </g>
+    <g id="figure_panel-0-0">
+      <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="2" data-x-tick-rule="all" data-y-tick-rule="all">
+        <g id="figure_panel-0-0_grid">
+          <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="4">
+            <path d="M57.013 383.843L695.992 383.843M57.013 300.458L695.992 300.458M57.013 217.073L695.992 217.073M57.013 133.688L695.992 133.688" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+          </g>
+        </g>
+        <g clip-path="url(#qc)">
+          <g id="figure_panel-0-0_layer-0">
+            <g role="graphics-object" data-marey-role="series" aria-label="½ g t²" data-series="½ g t²" data-points="61">
+              <path d="M86.058 383.843L95.739 383.761L105.421 383.515L115.102 383.106L124.784 382.534L134.465 381.798L144.147 380.898L153.828 379.834L163.51 378.607L173.191 377.217L182.873 375.662L192.554 373.945L202.236 372.063L211.917 370.018L221.599 367.81L231.28 365.437L240.962 362.902L250.643 360.202L260.325 357.339L270.006 354.313L279.688 351.122L289.369 347.768L299.051 344.251L308.732 340.57L318.414 336.725L328.095 332.717L337.777 328.545L347.458 324.21L357.14 319.711L366.821 315.048L376.503 310.222L386.184 305.232L395.866 300.079L405.547 294.762L415.229 289.281L424.91 283.637L434.592 277.829L444.273 271.858L453.955 265.722L463.636 259.424L473.318 252.962L482.999 246.336L492.681 239.546L502.362 232.593L512.044 225.477L521.725 218.196L531.407 210.752L541.088 203.145L550.77 195.374L560.451 187.439L570.133 179.341L579.814 171.079L589.496 162.654L599.177 154.065L608.859 145.312L618.54 136.396L628.222 127.316L637.903 118.072L647.585 108.665L657.266 99.095L666.948 89.36" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="figure_panel-0-0_layer-1">
+            <g role="graphics-object" data-marey-role="series" aria-label="light gate" data-series="light gate" data-points="6">
+              <path d="M182.873 378.673L182.873 372.002M180.373 378.673L185.373 378.673M180.373 372.002L185.373 372.002M279.688 354.991L279.688 348.321M277.188 354.991L282.188 354.991M277.188 348.321L282.188 348.321M376.503 312.632L376.503 305.961M374.003 312.632L379.003 312.632M374.003 305.961L379.003 305.961M473.318 257.264L473.318 250.593M470.818 257.264L475.818 257.264M470.818 250.593L475.818 250.593M570.133 181.718L570.133 175.047M567.633 181.718L572.633 181.718M567.633 175.047L572.633 175.047M666.948 93.83L666.948 87.159M664.448 93.83L669.448 93.83M664.448 87.159L669.448 87.159" fill="none" stroke="#d55e00" stroke-width="2" stroke-linejoin="round"/>
+            </g>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="t [ms]" data-side="bottom" data-unit="ms" data-prefix="milli" data-ticks="7" data-tick-rule="all">
+            <path d="M57.013 398.567L695.992 398.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M86.058 398.567L86.058 401.567M182.873 398.567L182.873 401.567M279.688 398.567L279.688 401.567M376.503 398.567L376.503 401.567M473.318 398.567L473.318 401.567M570.133 398.567L570.133 401.567M666.948 398.567L666.948 401.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="86.058" y="405.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+            <text x="182.873" y="405.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">100</text>
+            <text x="279.688" y="405.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">200</text>
+            <text x="376.503" y="405.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">300</text>
+            <text x="473.318" y="405.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">400</text>
+            <text x="570.133" y="405.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">500</text>
+            <text x="666.948" y="405.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">600</text>
+            <text x="376.503" y="423.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">t [ms]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="left" data-unit="m" data-prefix="" data-ticks="4" data-tick-rule="all">
+            <path d="M57.013 398.567L57.013 72.583" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M57.013 383.843L54.013 383.843M57.013 300.458L54.013 300.458M57.013 217.073L54.013 217.073M57.013 133.688L54.013 133.688" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="50.013" y="383.843" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.0</text>
+            <text x="50.013" y="300.458" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.5</text>
+            <text x="50.013" y="217.073" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.0</text>
+            <text x="50.013" y="133.688" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.5</text>
+            <text x="26.333" y="235.575" transform="rotate(-90 26.333 235.575)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">x [m]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_legend">
+          <g role="group" data-marey-role="legend" aria-label="legend" data-entries="2">
+            <path d="M64.013 123.017L155.415 123.017L155.415 79.583L64.013 79.583Z" fill="#ffffff" fill-opacity="0.9"/>
+            <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="½ g t²" data-series="½ g t²" data-color="#0072b2">
+              <path d="M71.013 92.442L89.013 92.442" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round"/>
+              <text x="97.013" y="92.442" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">½ g t²</text>
+            </g>
+            <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="light gate" data-series="light gate" data-color="#d55e00">
+              <path d="M71.013 110.158L89.013 110.158" fill="none" stroke="#d55e00" stroke-width="2" stroke-linecap="round"/>
+              <g fill="#d55e00">
+                <use xlink:href="#qm" x="80.013" y="110.158"/>
+              </g>
+              <text x="97.013" y="110.158" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">light gate</text>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
