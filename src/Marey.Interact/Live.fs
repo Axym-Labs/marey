@@ -500,7 +500,7 @@ module Live =
     let MaxExtremes = 64
 
     /// The widget draws SVG, and every SVG Marey writes is measured by the zero-dependency
-    /// default. One measurer for the whole widget, D77's rule.
+    /// default. One measurer for the whole widget, as for any render.
     let private measurer = TextMeasure.approx
 
     /// A live figure from a control over figures.
@@ -621,8 +621,8 @@ module Live =
         Array.append [| init |] combos |> Array.distinct
 
     /// The arrangement over the extremes and whatever has grown it, at a size, every state under
-    /// the same zoom. A zoomed axis therefore has one domain across the whole union, and D73 pins
-    /// its prefix from that domain rather than from the view's own.
+    /// the same zoom. A zoomed axis therefore has one domain across the whole union, and its prefix
+    /// is pinned from that domain rather than from the view's own.
     let private arrange (live: Live) (size: Extent<px>) (grown: float[][]) (zoom: LiveZoom[]) : Shot =
         Array.append (extremes live) grown
         |> Array.map (figureIn live zoom)
@@ -917,7 +917,7 @@ module Live =
 
     /// **A recording as a film**: each state's figure, held until the next, drawn in one
     /// arrangement laid out over **every** state the recording reached rather than over samples
-    /// of it, at the size the session ended at. The states are known, so D72's union is exact
+    /// of it, at the size the session ended at. The states are known, so the shot's union is exact
     /// here: a state a sampled union would have stepped over cannot overflow. Laying out costs
     /// one figure per distinct state, which for a long drag is hundreds.
     let film (live: Live) (recording: Recording<LiveState>) : Film =

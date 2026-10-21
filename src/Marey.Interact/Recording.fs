@@ -11,9 +11,8 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // **recording**: values with the times they arrived, finished.
 //
 // **The times are the view's.** The browser stamps each event with its own monotonic clock and
-// sends the reading with the message; the kernel never reads a clock (D76's removal, D80's
-// promise). So a recording is data, and the same gesture recorded once gives one film however
-// late the messages arrived.
+// sends the reading with the message; the kernel never reads a clock. So a recording is data, and
+// the same gesture recorded once gives one film however late the messages arrived.
 //
 // **Sample and hold, not interpolation.** A slider's values are what the reader chose. Anything
 // between two of them is a value nobody chose, and a film that shows one is not a replay.

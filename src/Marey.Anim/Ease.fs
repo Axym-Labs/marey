@@ -15,7 +15,7 @@ open System
 ///
 /// Nothing is promised about the interval between the endpoints, and that is deliberate.
 /// `back` and `elastic` leave `[0, 1]` and come back; the overshoot is the entire visual
-/// effect, and D71 is the decision that lets them keep it:
+/// effect, and not clamping the eased clock is what lets them keep it:
 ///
 /// > `Anim.At` clamps **seconds**, never the fraction. An eased animation therefore evaluates
 /// > its interpolation outside its own range by design, `Interp` extrapolates because none of
@@ -135,8 +135,8 @@ module Ease =
     let backIn (u: float) : float =
         (Back + 1.0) * u * u * u - Back * u * u
 
-    /// Overshoot: rises **past** one and settles back. D71 exists so that this survives the
-    /// clock, and `AnimProperties` asserts that it does.
+    /// Overshoot: rises **past** one and settles back. The clock leaves it unclamped so that
+    /// this survives, and `AnimProperties` asserts that it does.
     let backOut (u: float) : float =
         let v = u - 1.0
         1.0 + (Back + 1.0) * v * v * v + Back * v * v

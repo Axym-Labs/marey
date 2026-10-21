@@ -14,14 +14,14 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 ///
 /// ### One clock, three doors, and only one of them clamps
 ///
-/// D70 and D71 had to be taken together, and they resolve in opposite directions.
+/// The two decisions about clamping go together, and they resolve in opposite directions.
 ///
 /// * `At` is the **public seek**, and it clamps to `[0, Duration]`. It is therefore total on
 ///   every `float`, `nan` and both infinities included: before the start holds the first frame,
 ///   past the end holds the last. That is what makes `map2`'s "duration = max" mean something —
 ///   the shorter component holds through the tail rather than running off its own schedule —
-///   and what makes `andThen`'s `t - d1` well-defined everywhere. D9 refused to clamp
-///   `Scale.Forward` because clamping piles out-of-range data onto the panel edge and lies about
+///   and what makes `andThen`'s `t - d1` well-defined everywhere. `Scale.Forward` does not clamp,
+///   because clamping piles out-of-range data onto the panel edge and lies about
 ///   a measurement; an animation is a schedule, not a measurement, and holding a final frame is
 ///   not a claim about anything.
 /// * `AtUnclamped` and `AtFraction` are the **combinator doors**, and neither clamps.
@@ -106,7 +106,7 @@ type Anim<'a>(duration: float<s>, atSeconds: float<s> -> 'a) =
 /// The algebra. Six combinators and two constructors; the laws are stated and tested in
 /// `AnimProperties` rather than asserted here.
 ///
-/// **What actually holds**, because §7's one-line summary ("`(Anim<'a>, andThen, constant)` is a
+/// **What actually holds**, because the one-line summary ("`(Anim<'a>, andThen, constant)` is a
 /// monoid") is one word too strong and the difference is a single instant:
 ///
 /// * `andThen` is **associative**, exactly, at every time.
@@ -159,7 +159,7 @@ module Anim =
         Anim<'b>(a.Duration, (fun t -> f (a.AtUnclamped t)))
 
     /// Parallel composition; the duration is the **maximum**, and the shorter component holds
-    /// its final value through the tail. That hold is D70's clamp doing its job, which is why
+    /// its final value through the tail. That hold is `At`'s clamp doing its job, which is why
     /// the components are reached through `At` rather than through the raw door.
     let map2 (f: 'a -> 'b -> 'c) (a: Anim<'a>) (b: Anim<'b>) : Anim<'c> =
         Anim<'c>(max a.Duration b.Duration, (fun t -> f (a.At t) (b.At t)))
@@ -183,7 +183,7 @@ module Anim =
 
         Anim<'a>(k * a.Duration, (fun t -> a.AtUnclamped(t / k)))
 
-    /// Reparameterise the normalised clock. The result of `f` is **not** clamped — D71 — so an
+    /// Reparameterise the normalised clock. The result of `f` is **not** clamped, so an
     /// easing that leaves `[0, 1]` reaches the interpolation underneath and extrapolates.
     let ease (f: float -> float) (a: Anim<'a>) : Anim<'a> =
         let d = a.Duration
@@ -194,7 +194,7 @@ module Anim =
     /// combinator tweens `float<m>`, `float32`, `Vec2`, `Vec3`, `Color` and `Rect`, with no
     /// boxing and no per-type overload here.
     ///
-    /// The constraint is restated in full, per §12.2: omitting it compiles, and then the second
+    /// The constraint is restated in full: omitting it compiles, and then the second
     /// call site in the program fails with a type error naming the first one.
     let inline tween< ^T when (Interpolate or ^T): (static member Interp: ^T * ^T * float -> ^T)>
         (d: float<s>)

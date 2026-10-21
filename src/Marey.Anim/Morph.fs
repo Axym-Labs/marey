@@ -4,8 +4,8 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 /// What happens when one path has more subpaths than the other.
 ///
-/// There is no correct answer, only a choice that has to be made somewhere, and D74's argument
-/// is that a `static member Interp(a, b, t)` has nowhere to put it. Both cases here collapse the
+/// There is no correct answer, only a choice that has to be made somewhere, and a
+/// `static member Interp(a, b, t)` has nowhere to put it. Both cases here collapse the
 /// unmatched subpath to a *point of its own*, so an extra shape grows out of itself and shrinks
 /// back into itself rather than flying in from wherever the other path happens to be.
 type SubpathPadding =
@@ -29,7 +29,7 @@ type ClosurePolicy =
     /// occasionally what a caller wants and is never what they get by accident.
     | CloseWhenEither
 
-/// The three policies D74 says an `Interp` instance has nowhere to hold.
+/// The three policies an `Interp` instance has nowhere to hold.
 [<NoComparison>]
 type MorphOptions =
     { /// Points per subpath, per side. The output is a polyline, so this is the resolution of
@@ -51,7 +51,7 @@ type MorphOptions =
 ///
 /// ### What a morph actually is
 ///
-/// Both paths are flattened to polylines (D11 keeps this cheap: one curve kind, `CubicTo`, plus
+/// Both paths are flattened to polylines (the IR keeps this cheap: one curve kind, `CubicTo`, plus
 /// lines and closes — no arcs and no quadratics to special-case), split into subpaths, and each
 /// subpath is resampled to `Samples` points spaced evenly **by arc length**. Two paths in that
 /// form have the same shape, so they can be interpolated point by point.
@@ -278,7 +278,7 @@ module Morph =
         emit (aligned |> Array.map (fun (_, pb, c) -> pb, c))
 
     /// Morph `a` into `b`. `t = 0` is the prepared `a`, `t = 1` the prepared `b`, and `t`
-    /// outside `[0, 1]` extrapolates — D71's overshoot reaches here like it reaches `tween`.
+    /// outside `[0, 1]` extrapolates — an easing's overshoot reaches here like it reaches `tween`.
     ///
     /// Prepares both sides on every call. Use `anim` in a render loop.
     let paths (opts: MorphOptions) (a: PathSeg[]) (b: PathSeg[]) (t: float) : PathSeg[] = blend t (align opts a b)
