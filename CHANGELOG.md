@@ -32,6 +32,9 @@ land in a minor release.
   reserved space for it, so text beyond the plot's edge was cut by the figure's (P4's `E_F` at
   the right end of a Fermi level). The panel's gutter on that side now grows to hold it.
   `PanelLayout` gains `LeftPad` and `BottomPad` beside `RightPad` and `TopPad`.
+- **The pointer's readout keeps clear of a `LegendBest` that went top left.** It moved to the right
+  only for a legend stated as `LegendTopLeft`. It now resolves `LegendBest` as the drawing pass
+  does, through `PanelLayout.legendPlacement`, which is new.
 
 ## [0.7.0] — 2026-10-16
 

@@ -347,6 +347,28 @@ module PanelLayout =
           LeftPad = 0.0<px>
           BottomPad = 0.0<px> }
 
+    /// D171 — the four inside corners, in the order `LegendScores` keeps them.
+    let legendCorners = [| LegendTopRight; LegendTopLeft; LegendBottomLeft; LegendBottomRight |]
+
+    /// D171 — whether every inside corner is more than 2% covered: a corner the legend would hide
+    /// data in.
+    let crowded (scores: float[]) = scores.Length = 4 && Array.min scores > 0.02
+
+    /// D171 — where a legend stated as `stated` stands in a panel laid out as `g`: `LegendBest`
+    /// resolved to the least covered inside corner, or outside on the right when every corner is
+    /// crowded and the layout made room there. The drawing pass places it here, and a pointer's
+    /// readout keeps out of its corner.
+    let legendPlacement (stated: LegendPlacement) (g: PanelLayout) =
+        match stated with
+        | LegendBest when g.LegendScores.Length = 4 ->
+            if crowded g.LegendScores && g.LegendW > 0.0<px> then
+                LegendOutsideRight
+            else
+                let least = Array.min g.LegendScores
+                legendCorners.[Array.findIndex (fun v -> v = least) g.LegendScores]
+        | LegendBest -> LegendTopRight
+        | other -> other
+
     /// D72's union, and the whole rule is one sentence: **every size is the largest any sampled
     /// frame needed.**
     ///
@@ -1803,8 +1825,7 @@ module Figure =
                                     yield struct (float pts.[pts.Length - 1].X, float pts.[pts.Length - 1].Y) |]
                          | _ -> pts |> Array.map (fun v -> struct (float v.X, float v.Y))))
 
-            // The four inside corners, in the order `PanelLayout.LegendScores` keeps them.
-            let corners = [| LegendTopRight; LegendTopLeft; LegendBottomLeft; LegendBottomRight |]
+            let corners = PanelLayout.legendCorners
 
             let scores (probe: Extent<px>) =
                 if p.Legend <> LegendBest || not hasLegend || probe.Width <= 0.0<px> || probe.Height <= 0.0<px> then
@@ -1828,8 +1849,7 @@ module Figure =
 
                             float under / float all.Length)
 
-            // A corner more than 2% covered is a corner the legend would hide data in.
-            let crowded (s: float[]) = s.Length = 4 && Array.min s > 0.02
+            let crowded = PanelLayout.crowded
 
             // D72 — the gutters, measured. This is the half of the panel that depends on the
             // data: how tall the surviving x labels are, how wide the widest y label is, how
@@ -2289,16 +2309,7 @@ module Figure =
                     let at (x0: float<px>) (y0: float<px>) : Rect<px> =
                         { X0 = x0; Y0 = y0; X1 = x0 + legendSize.Width; Y1 = y0 + legendSize.Height }
 
-                    let placement =
-                        match p.Legend with
-                        | LegendBest when layout.LegendScores.Length = 4 ->
-                            if crowded layout.LegendScores && layout.LegendW > 0.0<px> then
-                                LegendOutsideRight
-                            else
-                                let least = Array.min layout.LegendScores
-                                corners.[Array.findIndex (fun v -> v = least) layout.LegendScores]
-                        | LegendBest -> LegendTopRight
-                        | other -> other
+                    let placement = PanelLayout.legendPlacement p.Legend layout
 
                     if not hasLegend then
                         Scene.empty
