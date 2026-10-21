@@ -2,7 +2,7 @@ namespace Marey
 
 /// One drawn thing: data, a geom, and a style.
 ///
-/// `Data` is a `PackedSeries` — §2.3's rank-2 existential — which is what lets a `Figure` hold a
+/// `Data` is a `PackedSeries` — a rank-2 existential — which is what lets a `Figure` hold a
 /// metres-against-seconds panel beside a joules-against-kelvin one and still be a single value.
 [<NoComparison>]
 type Layer =
@@ -23,8 +23,8 @@ type Layer =
 
       /// The rows that get a **node of their own**, by original row index.
       ///
-      /// §5.1 batches N marks into one `Markers` node, which is "the single biggest performance
-      /// decision in the IR" and the reason mark 42 has nothing to address. A row named here
+      /// The IR batches N marks into one `Markers` node, which is the single biggest performance
+      /// decision in the IR and the reason mark 42 has nothing to address. A row named here
       /// splits that batch three ways — before it, itself under `Keys.mark`, after it — so a
       /// storyboard's `highlight curve.[42]` has a subtree to rewrite. Two extra nodes per
       /// addressed mark, not N.
@@ -42,13 +42,12 @@ type Layer =
 
       /// Whether this layer's extent joins the panel's domain, on x and on y.
       ///
-      /// `true, true` for data, which is every layer that existed before M8. A rule, a span or an
-      /// annotation is `false, false`: it marks a place on the axes the data chose, and an
-      /// `axhline` at zero that dragged a millimetre panel out to its own position would be
-      /// deciding the figure rather than marking it. The unit is still checked against the axis
-      /// either way, because a rule in seconds on a metre axis is wrong whether or not it moves
-      /// the domain. A panel whose every layer is out takes their extents anyway, so a figure of
-      /// rules alone still has axes.
+      /// `true, true` for data. A rule, a span or an annotation is `false, false`: it marks a place
+      /// on the axes the data chose, and an `axhline` at zero that dragged a millimetre panel out
+      /// to its own position would be deciding the figure rather than marking it. The unit is still
+      /// checked against the axis either way, because a rule in seconds on a metre axis is wrong
+      /// whether or not it moves the domain. A panel whose every layer is out takes their extents
+      /// anyway, so a figure of rules alone still has axes.
       InDomain: bool * bool
 
       /// The layer is drawn against the panel's second y axis, on its right
@@ -77,7 +76,7 @@ type SecondaryAxis =
       Label: string option }
 
 /// Per-axis configuration. Every field has a defensible default, which is what "no
-/// configuration" in §9 has to mean in practice.
+/// configuration" has to mean in practice.
 [<NoComparison>]
 type AxisConfig =
     { /// The quantity name. `None` takes the conventional symbol for the dimension —
@@ -223,7 +222,7 @@ type Figure =
       Legend: FigureLegend option
       /// The rows' plot heights and the columns' plot widths, relative, one weight per row
       /// or column and averaging 1. Empty for equal ones, which is every figure that does not
-      /// state them. Under D173 they share out the plots, not the cells, so `[3; 1]` draws a plot
+      /// state them. They share out the plots, not the cells, so `[3; 1]` draws a plot
       /// three times as tall as the one below it whatever their gutters.
       RowWeights: float[]
       ColWeights: float[] }
@@ -254,7 +253,7 @@ type FacetScales =
 /// The nine sizes are the `Track.Content` extents of the panel's inner grid: its *gutters*. They
 /// are what an axis title, a column of tick labels, a panel title or a colorbar takes out of the
 /// region the figure gave the panel, and the plot rectangle is what is left over. That order is
-/// the reason a panel breathes when it is re-arranged per frame — since D61 the rectangle is a
+/// the reason a panel breathes when it is re-arranged per frame — the rectangle is a
 /// function of shaped text, so a domain crossing `9.5 → 10.5` gains a digit on every label at
 /// once, every gutter widens together, and the axis crawls while the data is the thing that was
 /// supposed to be moving.
@@ -263,7 +262,7 @@ type FacetScales =
 /// whether they tilt. It is one of the two passes' inputs rather than one of its outputs, and it
 /// is frozen for the same reason and stated separately for that one.
 ///
-/// **What is deliberately not here: the tick plan, and the labels.** D72 freezes the rectangle,
+/// **What is deliberately not here: the tick plan, and the labels.** A shot freezes the rectangle,
 /// not its contents. An animation whose numbers change and whose labels do not is not showing the
 /// numbers changing.
 type PanelLayout =
@@ -370,17 +369,17 @@ module PanelLayout =
         | LegendBest -> LegendTopRight
         | other -> other
 
-    /// D72's union, and the whole rule is one sentence: **every size is the largest any sampled
-    /// frame needed.**
+    /// The shot's union, and the whole rule is one sentence: **every size is the largest any
+    /// sampled frame needed.**
     ///
     /// Componentwise, not "the sample with the biggest gutters". There is no such sample — one
     /// frame can want a wider y gutter and a shorter x one than another, and picking either
     /// whole arrangement then overflows in the direction it did not win. The componentwise
-    /// maximum is the arrangement no frame can overflow, which is the property D72 is actually
+    /// maximum is the arrangement no frame can overflow, which is the property a shot is actually
     /// asking for, and it is the same rule for `Probe`: a larger probe keeps *more* tick labels,
     /// and the gutters that hold them have already been maximised.
     ///
-    /// The prefixes are not unioned — a prefix has no maximum, and D73 decides it from the union
+    /// The prefixes are not unioned — a prefix has no maximum, and it is decided from the union
     /// *domain* rather than from the sampled choices. `union` carries the left operand's through
     /// and `arrangeUnion` writes the pinned pair afterwards.
     let internal union (a: PanelLayout) (b: PanelLayout) : PanelLayout =
@@ -445,7 +444,7 @@ type Shot =
       /// A panel whose key is absent is measured from its own data, so a shot taken over a
       /// figure that later grows a panel degrades to today's behaviour rather than failing.
       Panels: (string * PanelLayout)[]
-      /// How many states the union was taken over. **Reported rather than assumed, per D72:**
+      /// How many states the union was taken over. **Reported rather than assumed:**
       /// the union is only as good as its samples, and an animation with a spike between two of
       /// them can still overflow. A single figure's own shot reports 1.
       Samples: int
@@ -641,8 +640,8 @@ module PanelView =
 
 /// **The compiler.** A `Figure` in, a `Node` out, nothing in between that a backend can see.
 ///
-/// This is the layer §5.5 describes: "axes, legends, titles, colorbars, facets, error bars, box
-/// plots … are all *compiled into* `Path`/`Text`/`Markers` by the layer above." Everything below
+/// This is the layer where axes, legends, titles, colorbars, facets, error bars and box plots
+/// are all *compiled into* `Path`/`Text`/`Markers`. Everything below
 /// emits one of the nine existing cases. No `Node` case was added, and none was needed.
 ///
 /// ### The three loops, and why there are three
@@ -667,7 +666,7 @@ module Figure =
 
     // ---- Crossing the existential --------------------------------------------------------
 
-    /// The two scales of a packed series, still packed. §2.3's encoding hands the measures back
+    /// The two scales of a packed series, still packed. The rank-2 encoding hands the measures back
     /// inside `Apply`; this repacks them one at a time so the axis compiler can take either.
     let internal packedScales (p: PackedSeries) : PackedScale * PackedScale =
         p.Accept
@@ -1642,7 +1641,7 @@ module Figure =
     /// **Why one function and not two.** Measuring and drawing share every intermediate here —
     /// the two axis specs, the colorbar, the inner grid, the tick planner — and this file already
     /// carries the proof of what splitting them costs: `Figure.arrangement` was a second copy of
-    /// `toScene`'s grid, and it had been silently wrong since M1, omitting the head row so that
+    /// `toScene`'s grid, and it was silently wrong, omitting the head row so that
     /// every titled figure reported a layout the renderer did not use. So the two answers come
     /// out of one body, and a caller that only wants the layout simply never calls the thunk —
     /// which matters, because sampling an animation 32 times must not compile 32 scenes' worth
@@ -1665,10 +1664,10 @@ module Figure =
         if p.Layers.Length = 0 then
             PanelLayout.empty, (fun () -> PanelLayout.empty), (fun () -> Scene.empty)
         else
-            // `panelKey` is this panel's name: its grid position for a panel, its host's
-            // and its index for an inset. `Keyed` says *which* panel; the `Annotated` at
-            // the end of this function says that it is a panel. Both, because §5.2 and §5.3 are
-            // different questions.
+            // `panelKey` is this panel's name: its grid position for a panel, its host's and its
+            // index for an inset. `Keyed` says *which* panel; the `Annotated` at the end of this
+            // function says that it is a panel. Both, because identity and meaning are different
+            // questions.
 
             // The prefix comes from the frozen layout when there is one. A still figure
             // pins nothing and chooses per figure, which is what it has always done; an
@@ -1699,7 +1698,7 @@ module Figure =
             // and the primary's scale, so a reciprocal map puts evenly spaced energies unevenly
             // along a wavelength. The map is checked on the domain before anything is drawn.
             //
-            // In a shot its prefix is pinned too, as D73 pins the primary's, so a zoom that
+            // In a shot its prefix is pinned too, as the primary's is, so a zoom that
             // crosses a decade does not step its title.
             let secondaryOn (axis: string) (cfg: AxisConfig) (side: AxisSide) (pin: Prefix option) (primary: IScaleErased) : AxisSpec option =
                 match cfg.Secondary with
@@ -1772,10 +1771,10 @@ module Figure =
             // A continuous colour channel gets a colorbar, and the bar is a column of the
             // panel's own grid. The first one on the panel wins: two different colour scales on
             // one panel are two keys the reader has to arbitrate between, and that is a different
-            // question from D48's, which is about one scale across several panels.
+            // question from one scale shared across several panels.
             //
-            // Gated on `ShowInLegend`, which D53 defines as a layer's whole legend entry and D48
-            // widens to a layer's whole *key* contribution — the bar and the entry are the same
+            // Gated on `ShowInLegend`, which is a layer's whole legend entry and, by extension, its
+            // whole *key* contribution — the bar and the entry are the same
             // claim about the same channel, differing only in whether the values are levels or a
             // range. A facet builds its channels over the whole block before it splits, so every
             // panel's bar would be identical; drawing it n times says nothing the first one did
@@ -1979,7 +1978,7 @@ module Figure =
                           0.0<px>
 
                     // Half of the outermost tick label hangs past the end of the axis. Reserving
-                    // it is half of §13's "labels inside bounds"; without it the right-hand x
+                    // it is half of keeping labels inside bounds; without it the right-hand x
                     // label and the top y label are clipped by the figure edge.
                     // A second y axis's labels already stand where the last x label hangs, so
                     // only what still sticks out past them is reserved.
@@ -2094,7 +2093,7 @@ module Figure =
 
                 // ---- the data ------------------------------------------------------------------
                 //
-                // One Transform for the panel, one Clip inside it. D9: `Scale.Forward` does not
+                // One Transform for the panel, one Clip inside it. `Scale.Forward` does not
                 // clamp, so out-of-domain data projects outside [0,1] and this Clip is what removes
                 // it. That is also why a backend without clipping still gets the common case right.
                 // Marks that fell outside the panel, counted on the panel. A dropped
@@ -2128,7 +2127,7 @@ module Figure =
                             // **One batch per bucket, not one per point.** With no channels
                             // this is `Geom.compile`'s own path; with a continuous colour channel
                             // it is at most 256 groups for any number of points, which is what
-                            // keeps §5.1's batching intact while the colour varies.
+                            // keeps batching intact while the colour varies.
                             let body, counts =
                                 match geom with
                                 | GeomField(field, mark) ->
@@ -2157,8 +2156,8 @@ module Figure =
 
                                     Geom.compileField p.Coord plotSize m theme.PanelBackground l.Style colourOf field mark, [||]
                                 | GeomRule rule ->
-                                    // Laid across the panel's final domain. One that
-                                    // misses the panel is not drawn and says so, on D52's rule.
+                                    // Laid across the panel's final domain. One that misses the
+                                    // panel is not drawn and says so: what is dropped is counted.
                                     match Geom.compileRule p.Coord l.Style rule with
                                     | Some node -> node, [||]
                                     | None ->
@@ -2173,9 +2172,10 @@ module Figure =
                                         Scene.empty, [||]
                                 | _ ->
                                     if l.Channels.Length = 0 then
-                                        // No channels, no counts: an unchannelled layer's annotation is
-                                        // exactly what it was before phase 2, so every baseline that
-                                        // predates channels stays byte-identical.
+                                        // No channels, no counts: an unchannelled layer's
+                                        // annotation is exactly what it was before channels, so
+                                        // every baseline that predates channels stays
+                                        // byte-identical.
                                         Geom.compileFor address None p.Coord plotSize l.Style geom pts, [||]
                                     else
                                         let (batches, unmapped) = Channel.split l.Channels pts.Length
@@ -2413,8 +2413,8 @@ module Figure =
     let private weightOf (weights: float[]) (i: int) = if i < weights.Length then weights.[i] else 1.0
 
     /// The figure's own outer grid: one content row for the head, then one row of tracks per
-    /// panel row. Split out of `toScene` by D72 so that `arrangeFor` and the renderer cannot be
-    /// looking at two different grids — which they were, for two milestones. See `Shot`.
+    /// panel row. Split out of `toScene` so that `arrangeFor` and the renderer cannot be looking at
+    /// two different grids, as they once were. See `Shot`.
     ///
     /// `head` overrides the measured head height when it is `Some`, which is how the union takes
     /// the tallest head of the shot rather than each frame's own.
@@ -2478,7 +2478,7 @@ module Figure =
 
     /// **The panels lined up.** Every panel on one grid line is given the gutters of the
     /// widest one there, as slack at its outer edge: the left gutters of the panels in a column
-    /// all add up to the column's largest, and so on for right, top and bottom. It is D72's
+    /// all add up to the column's largest, and so on for right, top and bottom. It is the shot's
     /// union again, componentwise and taken along a grid line instead of over frames, and it
     /// is what puts the plot rectangles of a column at one x and of a row at one y.
     ///
@@ -2960,9 +2960,9 @@ module Figure =
     // A frame normalises two things to its own data: a continuous colour channel's domain is the
     // range of its values, and a quiver's length scale is set against its largest magnitude.
     // Across a film both renormalise every frame, so a field that grows tenfold looks the same
-    // throughout. D72 already builds every sampled state, so the union of their domains, and the
+    // throughout. A shot already builds every sampled state, so the union of their domains, and the
     // largest of their quiver magnitudes, cost nothing more to take, and they are pinned here in
-    // the way D73 pins a prefix.
+    // the way a prefix is pinned.
 
     let private channelKey (panel: string) (layer: int) (channel: int) = sprintf "%s/%d/%d" panel layer channel
     let private layerKey (panel: string) (layer: int) = sprintf "%s/%d" panel layer
@@ -3044,10 +3044,9 @@ module Figure =
 
     /// **`Figure -> Shot`.** The layout this figure would be drawn in, measured and nothing more.
     ///
-    /// This is D72's cheap half and it is public API on the type every example in the repository
-    /// touches, because `Chart`'s surface had no way to say "lay out once and draw many times":
-    /// `toScene` computed its arrangement internally and `arrangement` computed a *second* one
-    /// for inspection. Both are now this function.
+    /// This is a shot's cheap half, public as `Chart.arrangeFor`, because `Chart`'s surface had no
+    /// way to say "lay out once and draw many times": `toScene` computed its arrangement internally
+    /// and `arrangement` computed a *second* one for inspection. Both are now this function.
     let internal arrangeFor (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Shot =
         let fig = prepare fig
         let outer = Layout.arrange m extent (outerGrid None fig)
@@ -3166,11 +3165,11 @@ module Figure =
         // which decade a prefix comes from is a property of "the numbers", and across a
         // shot the numbers are all of them.
         //
-        // **Chosen before anything is measured** — D108, M4.5's correction to it. Each state
+        // **Chosen before anything is measured.** Each state
         // used to be measured under its own prefix and drawn under the pinned one, so a state
         // from the low end of a decade-crossing zoom was measured as `0 2 4 6 8` and drawn as
         // `0.002 … 0.008`, in a gutter sized for the shorter labels. The rectangle held still,
-        // which is what gate 8 checked, and the labels did not fit in it, which nothing checked.
+        // which is what a test checked, and the labels did not fit in it, which nothing checked.
         // `fitsIn` asked that question for a widget and found it.
         //
         // A layerless panel has no numbers and therefore no prefix to pin. `toScene` draws one
@@ -3276,16 +3275,16 @@ module Figure =
     /// nothing in the dependency graph moves. It is also strictly more general, because a union
     /// over hand-listed keyframes needs no `Anim` at all.
     ///
-    /// The two alternatives D72 rejected, since a reader will reach for both. **Re-arranging per
+    /// The two rejected alternatives, since a reader will reach for both. **Re-arranging per
     /// frame makes the panel breathe** — see `PanelLayout`. **Freezing frame zero's arrangement
     /// overflows**, because a later frame's labels are wider than the gutters that were sized for
     /// frame zero. The union does neither, and tick labels still recompute per frame inside a
     /// rectangle that does not move.
     ///
-    /// `samples` is stated rather than hidden, and reported back on the `Shot`, because the
-    /// union is only as good as it: an animation with a spike between two samples can still
-    /// overflow. D72's default is 32 and this function does not supply it — a default belongs
-    /// where a caller can see it.
+    /// `samples` is stated rather than hidden, and reported back on the `Shot`, because the union
+    /// is only as good as it: an animation with a spike between two samples can still overflow. The
+    /// default elsewhere is 32 and this function does not supply it — a default belongs where a
+    /// caller can see it.
     let internal arrangeUnion
         (samples: int)
         (m: ITextMeasurer)
@@ -3622,7 +3621,7 @@ module Figure =
 
     /// **`Figure -> Node`.** The one entry point a backend's caller needs.
     ///
-    /// D72 split this into `arrangeFor` and `toSceneIn`; this is their composition and it is what
+    /// This is the composition of `arrangeFor` and `toSceneIn` and it is what
     /// every still figure in the library goes through. It is byte-for-byte what it was before the
     /// split — the two-pass tick solve, the estimate it plans against, and the grid it settles on
     /// are all unchanged, which is what the 46 golden baselines are for.
@@ -3632,10 +3631,10 @@ module Figure =
     /// The layout `toScene` chose. For tests, and for anyone debugging why a label landed where
     /// it did.
     ///
-    /// **This used to be a second, hand-written copy of `toScene`'s grid, and it had been wrong
-    /// since M1.** It omitted the head row entirely, so every figure with a title or a subtitle
+    /// **This used to be a second, hand-written copy of `toScene`'s grid, and it was
+    /// wrong.** It omitted the head row entirely, so every figure with a title or a subtitle
     /// reported panel regions taller than the ones it was actually drawn in — by exactly the
-    /// height of the title. §1 of the M3 plan predicted the class of the bug from the shape of
+    /// height of the title. The class of the bug was predictable from the shape of
     /// the code ("two functions that must agree and have no test saying they do") without knowing
     /// it had already happened. There is now one grid and a test that says so.
     let internal arrangement (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Arrangement =
