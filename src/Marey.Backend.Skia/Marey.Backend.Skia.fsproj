@@ -1,16 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- §6's Skia row, and §14's M2.5 line: "PNG and PDF without a TeX installation, and the
-         first backend that can measure text properly."
+    <!-- PNG and PDF without a TeX installation, and the first backend that measures text
+         properly.
 
-         `netstandard2.1` is **measured, not assumed** — the plan required that. SkiaSharp
+         `netstandard2.1` is **measured, not assumed**. SkiaSharp
          4.151.1 ships a `netstandard2.1` assembly, so this backend targets the same framework
          as every other one in the solution and nothing about the packaging story changes.
 
-         This is the ONLY project in the solution with a third-party PackageReference, and that
-         is the whole reason M2's plan split it out of the grammar release. §13 makes
-         `Marey.Core` having zero dependencies non-negotiable; nothing here weakens that, because
+         This is the ONLY project in the solution with a third-party PackageReference, which is
+         why it is a package of its own. `Marey.Core` has zero dependencies; nothing here weakens that, because
          the reference points the other way — Skia depends on Core, never the reverse. A build
          gate asserts it rather than trusting it. -->
     <TargetFramework>netstandard2.1</TargetFramework>

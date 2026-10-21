@@ -683,7 +683,7 @@ module Stat =
     /// it neither does, and F# has no way to return the type. `PackedQuantity` is the encoding —
     /// the witness travels with the number, so whoever receives it can still *print* `m·s⁻¹`
     /// even though they can no longer *say* it. This is the escape the grammar path takes, and
-    /// the reason `PackedQuantity` has been in `Erased.fs` since M0 with no consumer.
+    /// the reason `PackedQuantity` is in `Erased.fs`.
     let slopeQuantity (f: Fit<'ux, 'uy>) : PackedQuantity = Erase.packQuantity f.SlopeUnit f.Slope
 
     let interceptQuantity (f: Fit<'ux, 'uy>) : PackedQuantity =

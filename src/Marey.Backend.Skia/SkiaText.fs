@@ -8,15 +8,15 @@ open SkiaSharp.HarfBuzz
 // ======================================================================================
 // "ARCHITECT `ITextShaper` AS A CAPABILITY FROM DAY ONE", CASHED IN.
 //
-// `ITextMeasurer` has existed since M0 with exactly one implementation behind it, and M0's
-// comment on that seam said what it was for: "having one seam here is what makes it possible
-// to start with an approximation and swap in HarfBuzz at M2 without touching the layout code."
+// `ITextMeasurer` began with exactly one implementation behind it, and the comment on that seam
+// said what it was for: "having one seam here is what makes it possible to start with an
+// approximation and swap in HarfBuzz without touching the layout code."
 // This file is the second implementation, and that claim is now tested rather than asserted.
 //
-// `ApproxTextMeasurer` sums a Helvetica advance-width table. It has no kerning, no ligatures
-// and no shaping, and §15 warns that "text and layout eat 40% of the effort". What replaces it
-// here is HarfBuzz, through `SKShaper`, against a real face opened from the machine or from a
-// file the caller names.
+// `ApproxTextMeasurer` sums a Helvetica advance-width table. It has no kerning, no ligatures and no
+// shaping, and text and layout are where most of a plotting library's effort goes. What replaces it
+// here is HarfBuzz, through `SKShaper`, against a real face opened from the machine or from a file
+// the caller names.
 //
 // ---------------------------------------------------------------------------------------
 // A FONT IS RESOLVED AND *REPORTED*, OR STATED AND OBEYED.
@@ -41,8 +41,8 @@ open SkiaSharp.HarfBuzz
 //     gets it.
 //
 // The third, with the second available as `SkiaOptions.FontFile`. The test suite states a file
-// (`tests/Marey.Tests/fonts/LiberationSans-Regular.ttf`) precisely so this milestone's numbers
-// are reproducible even though a user's figure is not — which is §5's accepted imprecision,
+// (`tests/Marey.Tests/fonts/LiberationSans-Regular.ttf`) precisely so these numbers are
+// reproducible even though a user's figure is not — an accepted imprecision,
 // written down rather than discovered.
 //
 // ---------------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ open SkiaSharp.HarfBuzz
 // twice and caught twice by reading `dotnet list package`.
 //
 // Left alone, the third time surfaces as a `DllNotFoundException` from three frames inside a
-// render, on somebody else's CI, naming a file rather than a package. D33's incident was a
+// render, on somebody else's CI, naming a file rather than a package. An earlier incident was a
 // valid document with no visible ink; this is the same class of failure with a different cause,
 // and the fix is the same one: say what is wrong at the point it can still be acted on.
 // ======================================================================================
@@ -142,28 +142,27 @@ module SkiaNative =
 // `SKShaper` shapes against **one** typeface and has no fallback list, so a codepoint that face
 // lacks becomes glyph 0 and measures as the missing-glyph box — 9.0 px at 12 px in Liberation
 // Sans — where a browser opening the same figure as SVG walks the whole stack and finds a face
-// that has it. D62 recorded that and left it; `m2.5-plan.md` §5 named it M3's problem. This is
-// M3 paying it.
+// that has it. This is the fix.
 //
 // It does not reach the unit system: `·`, `²`, `⁻¹`, `Ω`, `µ` and `Å` are in any Latin face and
 // a test says so. It reaches a CJK axis title, and the fix is a *list* of faces rather than one.
 //
 // Three things were decided, and the first is the one that costs nothing:
 //
-//   * **`ITextMeasurer` does not move.** D8's seam survived M2.5 without a line of `Layout.fs`
-//     or `Figure.fs` changing, and segmentation is an implementation detail of a measurer that
+//   * **`ITextMeasurer` does not move.** The seam holds without a line of `Layout.fs` or
+//     `Figure.fs` changing, and segmentation is an implementation detail of a measurer that
 //     owns real faces — the approximate measurer has one advance table and no notion of
 //     coverage at all. So `Measure` still answers a width, and the splitting happens behind it.
 //   * **The backend gets the richer view internally**, exactly as `Shaping` served it before.
 //     Measuring and drawing must agree, or an `AnchorMiddle` title lands 3.5 px off. A
 //     backend that measured a segmented run and drew it with one face would be that bug with
 //     more steps.
-//   * **And it reports.** D62's whole design is "resolved and *reported*, or stated and obeyed".
+//   * **And it reports.** Font resolution is "resolved and *reported*, or stated and obeyed".
 //     A fallback that silently swapped a face would have abandoned the first half, so
 //     `ResolvedFace` carries which faces covered what, and which codepoints nothing covered.
 //
-// **THE RULE IS PER CODEPOINT, FIRST FACE THAT HAS IT** — CSS font matching's rule, and the one
-// D78 names. It has a consequence worth stating rather than discovering: a space comes back to
+// **THE RULE IS PER CODEPOINT, FIRST FACE THAT HAS IT** — CSS font matching's rule.
+// It has a consequence worth stating rather than discovering: a space comes back to
 // the primary face, because the primary has a space, so a CJK title with a space in it is three
 // segments and not one. That is what a browser does with the same string. The alternative —
 // letting a fallback hold the run until it fails — sets Latin text in a CJK face whenever the
@@ -174,7 +173,7 @@ module SkiaNative =
 // changes, and no face kerns across a script change.
 // ======================================================================================
 
-/// A face that covered part of a run its primary face could not. D78's "and it reports" half.
+/// A face that covered part of a run its primary face could not: the "and it reports" half.
 ///
 /// One of these exists on a `ResolvedFace` for every face that actually drew something, and
 /// none for a run the primary covered on its own — which is every run in a Latin figure, so the
@@ -190,7 +189,7 @@ type FallbackFace =
       /// two identical figures differ by the order their labels happened to be laid out in.
       Covered: int[] }
 
-/// What a font family stack resolved to on this machine. D62's "and report it" half.
+/// What a font family stack resolved to on this machine: the "and report it" half.
 ///
 /// One of these exists for every distinct `(family, weight, italic)` a render actually asked
 /// for, in the order it first asked, on `SkiaBackend.ResolvedFaces`.
@@ -249,7 +248,7 @@ type internal FaceSlot =
       /// Which face draws a codepoint: `-1` the primary — which is also where a `.notdef` box
       /// is drawn — otherwise an index into `Fallbacks`.
       ///
-      /// **Decided once and never revisited.** D77 and gate 3: one measurer serves a whole film
+      /// **Decided once and never revisited.** One measurer serves a whole film
       /// precisely so that a video cannot change typeface on a frame boundary, and a fallback
       /// that asked the font manager again on frame 200 would put that back.
       Decision: Dictionary<int, int> }
@@ -286,8 +285,8 @@ type internal ShapedRun =
 ///
 /// **`fontFile` and `fontFiles` are two answers to one question and only one may be given.**
 /// A single stated file is obeyed alone and never falls back — that is what "stated and obeyed"
-/// means, and a one-element list is exactly what it says. A stated *list* is D78's new option
-/// shape: those faces, in that order, and `.notdef` past the end of them. Neither consults the
+/// means, and a one-element list is exactly what it says. A stated *list* means
+/// those faces, in that order, and `.notdef` past the end of them. Neither consults the
 /// machine. With neither, the theme's stack resolves against what is installed and fallback
 /// asks the machine's font manager per codepoint — which is the case a real user is in, and the
 /// case that makes a CJK axis title render at all.
@@ -437,7 +436,7 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
     /// **The answer is verified rather than trusted.** `MatchCharacter` goes to fontconfig on
     /// Linux, and fontconfig answers a *best match*, which can be a face that does not have the
     /// character at all — the same trap `resolveStack` above disarms by comparing the family
-    /// name back. Without the check, `Missing` would always be empty and gate 14's second half
+    /// name back. Without the check, `Missing` would always be empty and its test
     /// would pass on a fallback that had silently drawn a box.
     let matchOnMachine (slot: FaceSlot) (cp: int) =
         let skWeight: SKFontStyleWeight = enum slot.Weight
@@ -614,16 +613,16 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
     /// at, or the font size in the bitmap is not the font size the panel was sized for.
     member _.Dpi = dpi
 
-    /// The font file this measurer was told to use, if it was told one. `Some` is the D62
+    /// The font file this measurer was told to use, if it was told one. `Some` is the
     /// answer that makes a render reproducible on another machine.
     member _.FontFile = fontFile
 
-    /// The font files this measurer was told to use, in order, if it was told a list. D78's new
-    /// option shape; empty when the theme's stack is resolving against the machine instead.
+    /// The font files this measurer was told to use, in order, if it was told a list;
+    /// empty when the theme's stack is resolving against the machine instead.
     member _.FontFiles = fontFiles
 
     /// Every distinct face this measurer has been asked for, in first-seen order, each with the
-    /// fallback account D78 requires of it.
+    /// account of its fallbacks.
     ///
     /// **Empty until something has been measured.** Resolution is lazy because the alternative
     /// is opening a face for a theme the scene never uses; read it after a render, which is
@@ -649,7 +648,7 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
     /// them is the backend in the next file, which must draw with exactly what it measured.
     ///
     /// **This replaced `Shaping`, which handed back one font and one shaper.** A segmented run
-    /// cannot be drawn with one of either, and D78's own signature for this member —
+    /// cannot be drawn with one of either, and the obvious signature for this member —
     /// `FontSpec -> string -> struct (SKFont * string)[]` — is a font short of drawable:
     /// `SKCanvas.DrawShapedText` takes the shaper, and a shaper is bound to a typeface, so a
     /// segment has to carry its own. The metrics ride along for the same reason the segments
@@ -673,9 +672,9 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
                     if String.IsNullOrEmpty text then
                         0.0f
                     else
-                        // **Summed over the segments, and each shaped in its own face.** For a
-                        // run one face covers — every run in a Latin figure — this is one
-                        // segment and exactly the number this measurer reported before D78.
+                        // **Summed over the segments, and each shaped in its own face.** For a run
+                        // one face covers — every run in a Latin figure — this is one segment and
+                        // exactly the number this measurer reported before fallback existed.
                         //
                         // The cost of the split is that kerning does not cross a segment
                         // boundary. Boundaries fall where coverage fails, which is where the
