@@ -121,7 +121,7 @@ let ``the guide has examples, and they are the ones being checked`` () =
 
 /// Run one session under `dotnet fsi`: the assemblies, a prelude, then the blocks in order. `source`
 /// names the session in the failure message and the script's file name.
-let private runBlocks (source: string) (name: string) (prelude: string) (blocks: string[]) =
+let private runBlocks (source: string) (name: string) (prelude: string) (workDir: string) (blocks: string[]) =
     let tool = dotnetTool.Force()
 
     match tool.Path with
@@ -150,7 +150,7 @@ let private runBlocks (source: string) (name: string) (prelude: string) (blocks:
         File.WriteAllText(scriptPath, script.ToString(), UTF8Encoding false)
 
         let run =
-            match Toolchain.run tool (sprintf "fsi --nologo \"%s\"" scriptPath) (Path.GetTempPath()) 600_000 with
+            match Toolchain.run tool (sprintf "fsi --nologo \"%s\"" scriptPath) workDir 600_000 with
             | ToolUnavailable why
             | ToolTimedOut why -> failwith why
             | ToolRan r -> r
@@ -177,7 +177,7 @@ let private runBlocks (source: string) (name: string) (prelude: string) (blocks:
 /// Run one session of `docs/guide.md`.
 let private runSession (name: string) (pick: string -> string[]) =
     let markdown = File.ReadAllText(guidePath.Force(), Encoding.UTF8)
-    runBlocks "guide.md" name "" (pick markdown)
+    runBlocks "guide.md" name "" (Path.GetTempPath()) (pick markdown)
 
 [<Fact>]
 let ``every example in the guide compiles and runs`` () = runSession "" blocks
@@ -308,13 +308,26 @@ module GuideOutput =
                         sprintf "%s draws %s.svg and does not show it" file name
                     ))
 
+    /// A working directory for a session, holding a copy of `examples/data`, which the guide
+    /// reads by that path as a reader in the repository would.
+    let private workDir (name: string) =
+        let dir = Path.Combine(Path.GetTempPath(), sprintf "marey-%s-%d" name (Diagnostics.Process.GetCurrentProcess().Id))
+        let data = Path.Combine(dir, "examples", "data")
+        Directory.CreateDirectory data |> ignore
+
+        for file in Directory.GetFiles(Path.Combine(Golden.repoRoot.Force(), "examples", "data")) do
+            File.Copy(file, Path.Combine(data, Path.GetFileName file), true)
+
+        dir
+
     [<Fact>]
     let ``every example in the tour runs, and draws the figures it shows`` () =
-        let dir = Path.Combine(Path.GetTempPath(), sprintf "marey-tour-%d" (Diagnostics.Process.GetCurrentProcess().Id))
+        let work = workDir "tour"
+        let dir = Path.Combine(work, "figures")
         Directory.CreateDirectory dir |> ignore
 
         try
-            runBlocks "docs/guide" "-tour" prelude (session false dir)
+            runBlocks "docs/guide" "-tour" prelude work (session false dir)
 
             let drawn = Directory.GetFiles(dir, "*.svg") |> Array.sort
             let committed = figuresDir.Force()
@@ -341,11 +354,16 @@ module GuideOutput =
                     Golden.UpdateVariable
             )
         finally
-            try Directory.Delete(dir, true) with _ -> ()
+            try Directory.Delete(work, true) with _ -> ()
 
     [<Fact>]
     let ``every unit-optional example in the tour runs`` () =
-        let blocks = session true (Path.GetTempPath())
+        let work = workDir "tour-optional"
 
-        if blocks.Length > 0 then
-            runBlocks "docs/guide" "-tour-optional" prelude blocks
+        try
+            let blocks = session true work
+
+            if blocks.Length > 0 then
+                runBlocks "docs/guide" "-tour-optional" prelude work blocks
+        finally
+            try Directory.Delete(work, true) with _ -> ()
