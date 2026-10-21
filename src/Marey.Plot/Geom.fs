@@ -243,7 +243,7 @@ module Geom =
 
     /// Style for series `i` of a theme: colour and marker shape cycle together, so that shape is
     /// a redundant encoding of colour rather than a decoration (D5).
-    let styleFor (theme: Theme) (i: int) : GeomStyle =
+    let internal styleFor (theme: Theme) (i: int) : GeomStyle =
         { style theme (Palette.pick theme.Categorical i) with
             Shape =
                 if theme.MarkerShapes.Length = 0 then
@@ -254,7 +254,7 @@ module Geom =
     /// D162 — the style a rule or a span starts with. It is furniture rather than data, so it
     /// takes no palette colour: a rule is drawn in the theme's axis colour at the axis's width,
     /// dashed, and a span is the foreground at a tenth of its strength.
-    let ruleStyle (theme: Theme) (rule: RuleSpec<'p>) : GeomStyle =
+    let internal ruleStyle (theme: Theme) (rule: RuleSpec<'p>) : GeomStyle =
         match rule with
         | SpanH _
         | SpanV _ -> { style theme theme.Foreground with FillOpacity = 0.1 }
@@ -269,14 +269,14 @@ module Geom =
     /// D164 — the style an annotation starts with: the theme's foreground, in the tick face, its
     /// arrow as wide as the axis. An annotation is read with the axes, not as a series, so it
     /// takes no palette colour.
-    let annotationStyle (theme: Theme) : GeomStyle =
+    let internal annotationStyle (theme: Theme) : GeomStyle =
         { style theme theme.Foreground with
             Width = theme.AxisWidth
             Cap = Butt }
 
     /// The style a layer drawing `geom` starts with in palette slot `i`: what a constructor gives
     /// it, and what `Chart.withTheme` compares against to tell a default from a choice.
-    let styleOf (theme: Theme) (i: int) (geom: GeomOf<'p>) : GeomStyle =
+    let internal styleOf (theme: Theme) (i: int) (geom: GeomOf<'p>) : GeomStyle =
         match geom with
         | GeomRule r -> ruleStyle theme r
         | GeomAnnotation _ -> annotationStyle theme
@@ -312,7 +312,7 @@ module Geom =
     /// Not what `area` and `bar` store any more: since D97 they store the data value zero and
     /// `project` clamps it against the panel's final scale, because a baseline computed here is
     /// computed against a domain the panel may yet widen past zero.
-    let baselineOf (scale: Scale<'u>) : float<nd> =
+    let internal baselineOf (scale: Scale<'u>) : float<nd> =
         clampBaseline (scale.Forward(LanguagePrimitives.FloatWithMeasure<'u> 0.0))
 
     /// Symmetric error bars on y.
@@ -517,7 +517,7 @@ module Geom =
     /// `fx` and `fy` are the layer's erased `Project`s after `Figure.unify`. A baseline is
     /// clamped into the panel here rather than at construction, because only now is it known
     /// whether the domain reaches zero.
-    let project (fx: float -> float<nd>) (fy: float -> float<nd>) (geom: Geom) : GeomOf<nd> =
+    let internal project (fx: float -> float<nd>) (fy: float -> float<nd>) (geom: Geom) : GeomOf<nd> =
         match geom with
         | GeomLine -> GeomLine
         | GeomPoint -> GeomPoint
@@ -609,7 +609,7 @@ module Geom =
     /// A geom put on the panel its **own** series' scales describe — what a figure would give it
     /// if nothing else shared the panel. For drawing a geom outside a figure; inside one,
     /// `Figure.fs` projects through the panel's final scales instead, which is the point of D97.
-    let onSeries (s: Series<'ux, 'uy>) (geom: Geom) : GeomOf<nd> =
+    let internal onSeries (s: Series<'ux, 'uy>) (geom: Geom) : GeomOf<nd> =
         project
             (fun v -> s.XScale.Forward(LanguagePrimitives.FloatWithMeasure<'ux> v))
             (fun v -> s.YScale.Forward(LanguagePrimitives.FloatWithMeasure<'uy> v))
@@ -626,7 +626,7 @@ module Geom =
     /// `plotSize`, `measurer` and `background` are for the arrows (D87): the quiver's length
     /// scale is chosen in pixels against the grid's pitch, and its key is measured and set on a
     /// box of the panel's colour.
-    let compileField
+    let internal compileField
         (coord: Coord)
         (plotSize: Extent<px>)
         (measurer: ITextMeasurer)
@@ -731,7 +731,7 @@ module Geom =
     /// counts (D52). The rule has been put on the panel by `project`, so the panel is the unit
     /// square here. Under a coord that is not the identity the path is sampled before it is
     /// warped, so a horizontal rule under `Coord.polar` is a circle rather than a chord.
-    let compileRule (coord: Coord) (st: GeomStyle) (rule: RuleSpec<nd>) : Node option =
+    let internal compileRule (coord: Coord) (st: GeomStyle) (rule: RuleSpec<nd>) : Node option =
         let edge = 1e-9
         let inside (v: float) = v >= -edge && v <= 1.0 + edge
         let pt (x: float) (y: float) : Vec2<nd> = at (nd x) (nd y)
@@ -801,7 +801,7 @@ module Geom =
     /// at its place and sits on it, so the place is the corner of its box nearest the point and
     /// the arrow can leave from there without measuring the text. The arrow stops 3 px short of
     /// the point, and its head is the streamlines' (`FieldMarks.arrowhead`).
-    let compileAnnotation
+    let internal compileAnnotation
         (coord: Coord)
         (plotSize: Extent<px>)
         (st: GeomStyle)
@@ -1507,7 +1507,7 @@ module Geom =
     /// `compile` and `compileSubset` are this function with one or both of them absent. They
     /// are two names for one body rather than two bodies, which is the shape D72 arrived at the
     /// hard way in `Figure.fs`.
-    let compileFor
+    let internal compileFor
         (address: ((int -> Key) * int[]) option)
         (indices: int[] option)
         (coord: Coord)
@@ -1549,7 +1549,7 @@ module Geom =
             compileWith address spacing (Some ix) coord plotSize st geom (ix |> Array.map (fun i -> all.[i]))
 
     /// A whole layer, nothing addressed. The path every static figure takes.
-    let compile (coord: Coord) (plotSize: Extent<px>) (st: GeomStyle) (geom: GeomOf<nd>) (pts: Vec2<nd>[]) : Node =
+    let internal compile (coord: Coord) (plotSize: Extent<px>) (st: GeomStyle) (geom: GeomOf<nd>) (pts: Vec2<nd>[]) : Node =
         compileFor None None coord plotSize st geom pts
 
     /// D46 — **one channel batch of a layer**: the points named by `indices`, drawn with
@@ -1560,7 +1560,7 @@ module Geom =
     /// the gaps between its own two bars as the data's rhythm, so the bars would come out
     /// twice as wide as an uncoloured chart's. The geometry a channel changes is the paint,
     /// not the layout.
-    let compileSubset
+    let internal compileSubset
         (coord: Coord)
         (plotSize: Extent<px>)
         (st: GeomStyle)
@@ -1571,7 +1571,7 @@ module Geom =
         compileFor None (Some indices) coord plotSize st geom all
 
     /// The legend swatch that matches a geom. Derived, never chosen separately.
-    let legendMark (geom: GeomOf<'p>) (st: GeomStyle) : LegendMark =
+    let internal legendMark (geom: GeomOf<'p>) (st: GeomStyle) : LegendMark =
         match geom with
         | GeomLine -> LegendLine st.Dash
         | GeomPoint -> LegendMarker st.Shape

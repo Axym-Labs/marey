@@ -60,7 +60,7 @@ type FigureLegend =
 /// is. §15's warning that "legend layout … is where plotting libraries actually die" is the
 /// reason the box is measured rather than estimated from a character count.
 [<RequireQualifiedAccess>]
-module Legend =
+module internal Legend =
 
     /// The drawn size of a swatch: the theme's, unless the entry states one.
     let private swatchSize (theme: Theme) (e: LegendEntry) =

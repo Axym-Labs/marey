@@ -358,59 +358,6 @@ namespace Marey
           Regions: (string * Rect<nd>) array
         }
 
-    [<RequireQualifiedAccess>]
-    module Layout =
-
-        val ndX: e: Extent<px> -> x: float<px> -> float<nd>
-
-        val ndY: e: Extent<px> -> y: float<px> -> float<nd>
-
-        val pxX: e: Extent<px> -> x: float<nd> -> float<px>
-
-        val pxY: e: Extent<px> -> y: float<nd> -> float<px>
-
-        val ndRect: e: Extent<px> -> r: Rect<px> -> Rect<nd>
-
-        val ndPoint: e: Extent<px> -> p: Vec2<px> -> Vec2<nd>
-
-        val pxRect: e: Extent<px> -> r: Rect<nd> -> Rect<px>
-
-        val cell:
-          key: string ->
-            row: int ->
-            col: int -> measure: (ITextMeasurer -> Extent<px>) -> GridCell
-
-        val fill: key: string -> row: int -> col: int -> GridCell
-
-        val spanning: rowSpan: int -> colSpan: int -> c: GridCell -> GridCell
-
-        val grid:
-          rows: Track array ->
-            cols: Track array -> cells: GridCell array -> Grid
-
-        val withGaps: rowGap: float<px> -> colGap: float<px> -> g: Grid -> Grid
-
-        val withPadding: p: float<px> -> g: Grid -> Grid
-
-        val arrangeIn:
-          m: ITextMeasurer ->
-            extent: Extent<px> -> region: Rect<px> -> g: Grid -> Arrangement
-
-        val arrange:
-          m: ITextMeasurer -> extent: Extent<px> -> g: Grid -> Arrangement
-
-        val tryFindPx: key: string -> a: Arrangement -> Rect<px> option
-
-        val findPx: key: string -> a: Arrangement -> Rect<px>
-
-        val tryFind: key: string -> a: Arrangement -> Rect<nd> option
-
-        val find: key: string -> a: Arrangement -> Rect<nd>
-
-        val overlaps: a: Arrangement -> (string * string) array
-
-        val withinRegion: tolerance: float<px> -> a: Arrangement -> bool
-
 namespace Marey
 
     type AxisSide =
@@ -454,85 +401,6 @@ namespace Marey
           ShowMinor: bool
         }
 
-    [<RequireQualifiedAccess>]
-    module Axes =
-
-        val defaultLabelFor: side: AxisSide -> angle: int -> d: Dim -> string
-
-        val defaultLabel: side: AxisSide -> d: Dim -> string
-
-        val angleOf: packed: PackedScale -> int
-
-        val dimOf: packed: PackedScale -> Dim
-
-        val specTicked:
-          ticks: TickSpec ->
-            minor: MinorSpec ->
-            format: TickFormat ->
-            pin: Prefix option ->
-            style: UnitStyle ->
-            tickCount: int ->
-            label: string option ->
-            side: AxisSide -> packed: PackedScale -> AxisSpec
-
-        val specOfPinned:
-          pin: Prefix option ->
-            style: UnitStyle ->
-            tickCount: int ->
-            label: string option ->
-            side: AxisSide -> packed: PackedScale -> AxisSpec
-
-        val specOf:
-          style: UnitStyle ->
-            tickCount: int ->
-            label: string option ->
-            side: AxisSide -> packed: PackedScale -> AxisSpec
-
-        val planTicks:
-          m: ITextMeasurer ->
-            font: FontSpec ->
-            minGap: float<px> ->
-            lengthPx: float<px> ->
-            side: AxisSide -> ticks: TickLabel array -> TickPlan
-
-        val keptTicks: spec: AxisSpec -> plan: TickPlan -> TickLabel array
-
-        val tickExtentWith:
-          direction: TickDirection ->
-            m: ITextMeasurer ->
-            theme: Theme ->
-            side: AxisSide -> spec: AxisSpec -> plan: TickPlan -> float<px>
-
-        val tickExtent:
-          m: ITextMeasurer ->
-            theme: Theme ->
-            side: AxisSide -> spec: AxisSpec -> plan: TickPlan -> float<px>
-
-        val labelOverhang:
-          m: ITextMeasurer ->
-            theme: Theme ->
-            side: AxisSide -> spec: AxisSpec -> plan: TickPlan -> float<px>
-
-        val titleExtent:
-          m: ITextMeasurer -> theme: Theme -> title: string -> float<px>
-
-        val compile: a: AxisRender -> Node
-
-        val panelTransform: panel: Rect<nd> -> Affine<nd,nd>
-
-        val gridlines:
-          theme: Theme ->
-            coord: Coord ->
-            panel: Rect<nd> ->
-            xs: float<nd> array -> ys: float<nd> array -> Node
-
-        val panelShape: coord: Coord -> PathSeg array
-
-        val panelBackground:
-          theme: Theme -> coord: Coord -> panel: Rect<nd> -> Node
-
-        val panelFrame: theme: Theme -> coord: Coord -> panel: Rect<nd> -> Node
-
 namespace Marey
 
     [<NoComparison>]
@@ -569,37 +437,6 @@ namespace Marey
     type FigureLegend =
         | FigureLegendRight
         | FigureLegendBottom
-
-    [<RequireQualifiedAccess>]
-    module Legend =
-
-        val measureIn:
-          columns: int ->
-            m: ITextMeasurer ->
-            theme: Theme -> entries: LegendEntry array -> Extent<px>
-
-        val measure:
-          m: ITextMeasurer ->
-            theme: Theme -> entries: LegendEntry array -> Extent<px>
-
-        val cornerBox:
-          theme: Theme ->
-            plot: Rect<px> ->
-            size: Extent<px> -> placement: LegendPlacement -> Rect<px>
-
-        val compileIn:
-          m: ITextMeasurer ->
-            theme: Theme ->
-            extent: Extent<px> ->
-            b: Rect<px> ->
-            columns: int -> framed: bool -> entries: LegendEntry array -> Node
-
-        val compile:
-          m: ITextMeasurer ->
-            theme: Theme ->
-            extent: Extent<px> ->
-            plot: Rect<nd> ->
-            placement: LegendPlacement -> entries: LegendEntry array -> Node
 
 namespace Marey
 
@@ -645,71 +482,6 @@ namespace Marey
           U: float array
           W: float array
         }
-
-    [<RequireQualifiedAccess>]
-    module FieldMarks =
-
-        val arrowheadLength: width: float<px> -> float
-
-        val arrowhead:
-          head: float ->
-            tx: float * ty: float ->
-              dx: float * dy: float -> struct (float * float) array
-
-        val heatmap:
-          colourOf: (float -> Color option) ->
-            smooth: bool -> f: FieldPayload<nd> -> Node
-
-        val isolines:
-          level: float -> f: FieldPayload<nd> -> (Vec2<nd> array * bool) array
-
-        val contours:
-          mapPt: (Vec2<nd> -> Vec2<nd>) ->
-            stroke: Stroke ->
-            colourOf: (float -> Color option) ->
-            levels: float array -> f: FieldPayload<nd> -> Node
-
-        val bands:
-          mapPt: (Vec2<nd> -> Vec2<nd>) ->
-            opacity: float ->
-            colourOf: (float -> Color option) ->
-            levels: float array -> f: FieldPayload<nd> -> Node
-
-        val arrows:
-          mapPt: (Vec2<nd> -> Vec2<nd>) ->
-            measurer: ITextMeasurer ->
-            plot: Extent<px> ->
-            background: Color ->
-            stroke: Stroke ->
-            font: FontSpec ->
-            colourOf: (float -> Color option) ->
-            directionOnly: bool ->
-            key: QuiverKey option -> f: FieldPayload<nd> -> Node
-
-        val streamlinePolylines:
-          plot: Extent<px> ->
-            separation: float<px> ->
-            f: FieldPayload<nd> -> (struct (float * float) array * bool) array
-
-        val streamlines:
-          mapPt: (Vec2<nd> -> Vec2<nd>) ->
-            plot: Extent<px> ->
-            stroke: Stroke ->
-            colourOf: (float -> Color option) ->
-            separation: float<px> -> f: FieldPayload<nd> -> Node
-
-        val licImage:
-          measurer: ITextMeasurer ->
-            plot: Extent<px> ->
-            colourOf: (float -> Color option) ->
-            options: LicOptions ->
-            f: FieldPayload<nd> -> (Image * Rect<nd>) option
-
-        val lic:
-          measurer: ITextMeasurer ->
-            plot: Extent<px> ->
-            colourOf: (float -> Color option) ->
-            options: LicOptions -> f: FieldPayload<nd> -> Node
 
 namespace Marey
 
@@ -836,14 +608,6 @@ namespace Marey
 
         val style: theme: Theme -> color: Color -> GeomStyle
 
-        val styleFor: theme: Theme -> i: int -> GeomStyle
-
-        val ruleStyle: theme: Theme -> rule: RuleSpec<'p> -> GeomStyle
-
-        val annotationStyle: theme: Theme -> GeomStyle
-
-        val styleOf: theme: Theme -> i: int -> geom: GeomOf<'p> -> GeomStyle
-
         val withColor: c: Color -> s: GeomStyle -> GeomStyle
 
         val withWidth: w: float<px> -> s: GeomStyle -> GeomStyle
@@ -859,8 +623,6 @@ namespace Marey
         val withFillOpacity: o: float -> s: GeomStyle -> GeomStyle
 
         val withFont: f: FontSpec -> s: GeomStyle -> GeomStyle
-
-        val baselineOf: scale: Scale<'u> -> float<nd>
 
         val errorY: s: Series<'ux,'uy> -> err: float<'uy> array -> Geom
 
@@ -914,53 +676,6 @@ namespace Marey
           widthFraction: float ->
             s: Series<'ux,'uy> -> densities: Stat.Density<'uy> array -> Geom
 
-        val project:
-          fx: (float -> float<nd>) ->
-            fy: (float -> float<nd>) -> geom: Geom -> GeomOf<nd>
-
-        val onSeries: s: Series<'ux,'uy> -> geom: Geom -> GeomOf<nd>
-
-        val compileField:
-          coord: Coord ->
-            plotSize: Extent<px> ->
-            measurer: ITextMeasurer ->
-            background: Color ->
-            st: GeomStyle ->
-            colourOf: (float -> Color option) ->
-            field: FieldPayload<nd> -> mark: FieldMark -> Node
-
-        val compileRule:
-          coord: Coord -> st: GeomStyle -> rule: RuleSpec<nd> -> Node option
-
-        val compileAnnotation:
-          coord: Coord ->
-            plotSize: Extent<px> ->
-            st: GeomStyle ->
-            text: string ->
-            placement: TextPlacement<nd> ->
-            arrow: ArrowStyle -> anchor: Vec2<nd> -> Node option
-
-        val compileFor:
-          address: ((int -> Key) * int array) option ->
-            indices: int array option ->
-            coord: Coord ->
-            plotSize: Extent<px> ->
-            st: GeomStyle -> geom: GeomOf<nd> -> all: Vec2<nd> array -> Node
-
-        val compile:
-          coord: Coord ->
-            plotSize: Extent<px> ->
-            st: GeomStyle -> geom: GeomOf<nd> -> pts: Vec2<nd> array -> Node
-
-        val compileSubset:
-          coord: Coord ->
-            plotSize: Extent<px> ->
-            st: GeomStyle ->
-            geom: GeomOf<nd> ->
-            all: Vec2<nd> array -> indices: int array -> Node
-
-        val legendMark: geom: GeomOf<'p> -> st: GeomStyle -> LegendMark
-
 namespace Marey
 
     [<NoComparison>]
@@ -984,98 +699,6 @@ namespace Marey
           Values: float array
           Map: ChannelMap
         }
-
-    [<RequireQualifiedAccess>]
-    module Channel =
-
-        [<Literal>]
-        val ColorSteps: int = 256
-
-        val SizeStep: float<px>
-
-        val sizeAt:
-          smallest: float<px> -> largest: float<px> -> t: float -> float<px>
-
-        val quantiseSize: size: float<px> -> float<px>
-
-        val erasedScale: packed: PackedScale -> IScaleErased
-
-        val select: rows: int array -> c: Channel -> Channel
-
-        val bucketCount: map: ChannelMap -> int
-
-        val bucketer: map: ChannelMap -> (float -> int)
-
-        val bucketOf: map: ChannelMap -> value: float -> int
-
-        val stepMidpoint: steps: int -> i: int -> float
-
-        val restyle:
-          map: ChannelMap -> bucket: int -> st: GeomStyle -> GeomStyle
-
-        val levelsOf: ch: Channel -> string array option
-
-        val isCategorical: ch: Channel -> bool
-
-        [<NoComparison>]
-        type Batch =
-            {
-
-              Indices: int array
-
-              Restyle: (GeomStyle -> GeomStyle)
-            }
-
-        val split:
-          channels: Channel array -> n: int -> Channel.Batch array * int
-
-        val levelColors: theme: Theme -> n: int -> Color array
-
-        val levelShapes: theme: Theme -> n: int -> MarkerShape array
-
-        val colorByLevel:
-          theme: Theme -> levels: string array -> values: float array -> Channel
-
-        val shapeByLevel:
-          theme: Theme -> levels: string array -> values: float array -> Channel
-
-        val colorByValue:
-          label: string ->
-            ramp: Ramp -> scale: Scale<'u> -> values: float<'u> array -> Channel
-
-        val sizeByValue:
-          label: string ->
-            smallest: float<px> ->
-            largest: float<px> ->
-            scale: Scale<'u> -> values: float<'u> array -> Channel
-
-namespace Marey
-
-    [<RequireQualifiedAccess>]
-    module Colorbar =
-
-        val measure:
-          m: ITextMeasurer ->
-            theme: Theme -> spec: AxisSpec -> plan: TickPlan -> float<px>
-
-        val labelOf: label: string -> packed: PackedScale -> string
-
-        val specOf:
-          style: UnitStyle ->
-            tickCount: int -> ch: Channel -> (AxisSpec * Ramp) option
-
-        val planTicks:
-          m: ITextMeasurer ->
-            theme: Theme -> height: float<px> -> spec: AxisSpec -> TickPlan
-
-        val steps: height: float<px> -> int
-
-        val compile:
-          m: ITextMeasurer ->
-            theme: Theme ->
-            extent: Extent<px> ->
-            column: Rect<px> ->
-            spec: AxisSpec -> plan: TickPlan -> ramp: Ramp -> Node
 
 namespace Marey
 
@@ -1301,20 +924,8 @@ namespace Marey
     [<RequireQualifiedAccess>]
     module PanelLayout =
 
-        val empty: PanelLayout
-
         val legendPlacement:
           stated: LegendPlacement -> g: PanelLayout -> LegendPlacement
-
-        val union: a: PanelLayout -> b: PanelLayout -> PanelLayout
-
-        val left: g: PanelLayout -> float<px>
-
-        val right: g: PanelLayout -> float<px>
-
-        val top: g: PanelLayout -> float<px>
-
-        val bottom: g: PanelLayout -> float<px>
 
     [<NoComparison>]
     type Shot =
@@ -1380,81 +991,7 @@ namespace Marey
     [<RequireQualifiedAccess>]
     module Figure =
 
-        val markKey: l: Layer -> layerKey: Key -> row: int -> Key
-
-        val packedScales: p: PackedSeries -> PackedScale * PackedScale
-
-        val secondaryOf: p: Panel -> Panel option
-
-        val axisScales: p: Panel -> PackedScale * PackedScale
-
-        val axisScalesErased: p: Panel -> IScaleErased * IScaleErased
-
-        val withDomains:
-          dx: (float * float) option ->
-            dy: (float * float) option -> p: PackedSeries -> PackedSeries
-
-        val withKinds:
-          kx: ScaleKind option ->
-            ky: ScaleKind option -> p: PackedSeries -> PackedSeries
-
-        val axisConfig: AxisConfig
-
-        val withLook: look: AxisLook -> cfg: AxisConfig -> AxisConfig
-
-        val panelOf: layers: Layer array -> Panel
-
         val create: panels: Panel array -> Figure
-
-        val unify: p: Panel -> Panel
-
-        val shareScales: mode: FacetScales -> fig: Figure -> Figure
-
-        val shareRecorded: mode: FacetScales -> fig: Figure -> Figure
-
-        val withDomainsShared:
-          target: (Panel -> bool) ->
-            dx: (float * float) option ->
-            dy: (float * float) option -> fig: Figure -> Figure
-
-        val offsetShares: a: Figure -> b: Figure -> Figure
-
-        val arrangeFor:
-          m: ITextMeasurer -> extent: Extent<px> -> fig: Figure -> Shot
-
-        val arrangeOver:
-          m: ITextMeasurer -> extent: Extent<px> -> raw: Figure array -> Shot
-
-        val arrangeUnion:
-          samples: int ->
-            m: ITextMeasurer ->
-            extent: Extent<px> -> sample: (float -> Figure) -> Shot
-
-        val fitsIn: m: ITextMeasurer -> shot: Shot -> fig: Figure -> bool
-
-        val panelsIn:
-          m: ITextMeasurer -> shot: Shot -> fig: Figure -> PanelView array
-
-        val withInsetDomains:
-          row: int * col: int * inset: int ->
-            dx: (float * float) option ->
-            dy: (float * float) option -> fig: Figure -> Figure
-
-        val withPanelDomainY2:
-          row: int * col: int -> lo: float * hi: float -> fig: Figure -> Figure
-
-        val withPanelDomains:
-          row: int * col: int ->
-            dx: (float * float) option ->
-            dy: (float * float) option -> fig: Figure -> Figure
-
-        val toSceneIn: m: ITextMeasurer -> shot: Shot -> fig: Figure -> Node
-
-        val toScene:
-          m: ITextMeasurer -> extent: Extent<px> -> fig: Figure -> Node
-
-        val arrangement:
-          m: ITextMeasurer -> extent: Extent<px> -> fig: Figure -> Arrangement
 
 namespace Marey
 

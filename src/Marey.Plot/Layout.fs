@@ -101,7 +101,7 @@ type Arrangement =
 /// is documented at `Figure.toScene`: the tick *plan* (how many labels survive, at what
 /// rotation) depends on the panel width, which depends on the arrangement.
 [<RequireQualifiedAccess>]
-module Layout =
+module internal Layout =
 
     // ---- px <-> nd, the D12 boundary ---------------------------------------------------
 

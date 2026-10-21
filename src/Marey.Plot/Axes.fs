@@ -60,7 +60,7 @@ type AxisRender =
 /// `Axis.auto`, which already owns prefix selection, rescaling and the `t [s]` convention. This
 /// module's contribution is where the glyphs go.
 [<RequireQualifiedAccess>]
-module Axes =
+module internal Axes =
 
     let private tag (x: float) : float<nd> = x * 1.0<nd>
 

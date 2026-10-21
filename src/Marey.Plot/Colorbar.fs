@@ -28,7 +28,7 @@ namespace Marey
 /// none of which depends on the plot's width, since its axis runs vertically while the track it
 /// adds is horizontal.
 [<RequireQualifiedAccess>]
-module Colorbar =
+module internal Colorbar =
 
     /// The strip, the gap, the tick labels and the title — measured with the axis compiler's
     /// own helpers, so a colorbar's labels are budgeted by the code that budgets an axis's.

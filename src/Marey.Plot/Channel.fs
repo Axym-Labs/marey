@@ -69,7 +69,7 @@ type Channel =
 /// correct and would allocate one object per point, which is the GC pressure §1.3 warns about
 /// in the one place this library promises not to create it.
 [<RequireQualifiedAccess>]
-module Channel =
+module internal Channel =
 
     /// D46 — steps along a colour ramp. Below the 8-bit hex the backends write, so the
     /// quantisation is invisible in the output by construction.

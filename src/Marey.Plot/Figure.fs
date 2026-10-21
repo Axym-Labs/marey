@@ -317,7 +317,7 @@ type PanelLayout =
 [<RequireQualifiedAccess>]
 module PanelLayout =
 
-    let empty: PanelLayout =
+    let internal empty: PanelLayout =
         { TitleH = 0.0<px>
           TopPad = 0.0<px>
           XTicksH = 0.0<px>
@@ -382,7 +382,7 @@ module PanelLayout =
     /// The prefixes are not unioned — a prefix has no maximum, and D73 decides it from the union
     /// *domain* rather than from the sampled choices. `union` carries the left operand's through
     /// and `arrangeUnion` writes the pinned pair afterwards.
-    let union (a: PanelLayout) (b: PanelLayout) : PanelLayout =
+    let internal union (a: PanelLayout) (b: PanelLayout) : PanelLayout =
         { TitleH = max a.TitleH b.TitleH
           TopPad = max a.TopPad b.TopPad
           XTicksH = max a.XTicksH b.XTicksH
@@ -419,14 +419,14 @@ module PanelLayout =
 
     /// D173 — the room a panel's gutters take on each side of its plot, slack included: what the
     /// outer grid's gutter tracks are sized from.
-    let left (g: PanelLayout) = g.SlackLeft + g.LeftPad + g.YTitleW + g.YTicksW
+    let internal left (g: PanelLayout) = g.SlackLeft + g.LeftPad + g.YTitleW + g.YTicksW
 
-    let right (g: PanelLayout) =
+    let internal right (g: PanelLayout) =
         g.Y2TicksW + g.Y2TitleW + g.RightPad + g.BarGap + g.BarW + (if g.LegendW > 0.0<px> then g.LegendGap + g.LegendW else 0.0<px>) + g.SlackRight
 
-    let top (g: PanelLayout) = g.SlackTop + g.TitleH + g.TopPad + g.X2TitleH + g.X2TicksH
+    let internal top (g: PanelLayout) = g.SlackTop + g.TitleH + g.TopPad + g.X2TitleH + g.X2TicksH
 
-    let bottom (g: PanelLayout) =
+    let internal bottom (g: PanelLayout) =
         g.XTicksH + g.XTitleH + (if g.LegendH > 0.0<px> then g.LegendGap + g.LegendH else 0.0<px>) + g.BottomPad + g.SlackBottom
 
 /// D72 — **the layout of one shot**: everything every frame of an animation shares, and nothing
@@ -659,7 +659,7 @@ module Figure =
 
     /// The key a layer's mark carries: by the data's own key when the layer has them (D104),
     /// by its original row otherwise (D68). `row` is always the original row.
-    let markKey (l: Layer) (layerKey: Key) (row: int) : Key =
+    let internal markKey (l: Layer) (layerKey: Key) (row: int) : Key =
         if l.RowKeys.Length = 0 then Keys.mark layerKey row else Keys.datum layerKey l.RowKeys.[row]
 
     let private isEmpty (s: string) = System.String.IsNullOrEmpty s
@@ -668,7 +668,7 @@ module Figure =
 
     /// The two scales of a packed series, still packed. §2.3's encoding hands the measures back
     /// inside `Apply`; this repacks them one at a time so the axis compiler can take either.
-    let packedScales (p: PackedSeries) : PackedScale * PackedScale =
+    let internal packedScales (p: PackedSeries) : PackedScale * PackedScale =
         p.Accept
             { new ISeriesConsumer<PackedScale * PackedScale> with
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
@@ -696,7 +696,7 @@ module Figure =
     /// D177 — **a panel's second y axis, as a panel of its own**: its secondary layers under
     /// `Y2Axis`. Everything that reads one y axis — the scales, the spec, the prefix — reads the
     /// second through this, so there is one code path for both. `None` for a panel with one y.
-    let secondaryOf (p: Panel) : Panel option =
+    let internal secondaryOf (p: Panel) : Panel option =
         match p.Y2Axis with
         | Some cfg when p.Layers |> Array.exists (fun l -> l.SecondaryY) ->
             Some
@@ -707,12 +707,12 @@ module Figure =
         | _ -> None
 
     /// A panel's x and y scales as its axes draw them. See `axisLayer`.
-    let axisScales (p: Panel) : PackedScale * PackedScale =
+    let internal axisScales (p: Panel) : PackedScale * PackedScale =
         fst (packedScales (axisLayer (Erase.seriesScales >> fst) p.Layers)),
         snd (packedScales (axisLayer (Erase.seriesScales >> snd) (primaryLayers p)))
 
     /// `axisScales`, across the erasure boundary.
-    let axisScalesErased (p: Panel) : IScaleErased * IScaleErased =
+    let internal axisScalesErased (p: Panel) : IScaleErased * IScaleErased =
         fst (Erase.seriesScales (axisLayer (Erase.seriesScales >> fst) p.Layers)),
         snd (Erase.seriesScales (axisLayer (Erase.seriesScales >> snd) (primaryLayers p)))
 
@@ -723,7 +723,7 @@ module Figure =
     /// so this is measure-safe even though the caller could not name the measure. It is how two
     /// layers on one panel come to share an axis: their domains are unioned as numbers and each
     /// series is rebuilt over the union in its own unit.
-    let withDomains (dx: (float * float) option) (dy: (float * float) option) (p: PackedSeries) : PackedSeries =
+    let internal withDomains (dx: (float * float) option) (dy: (float * float) option) (p: PackedSeries) : PackedSeries =
         p.Accept
             { new ISeriesConsumer<PackedSeries> with
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
@@ -748,7 +748,7 @@ module Figure =
     /// Change a packed series' scale kind. A log scale needs a positive domain, so switching to
     /// one re-derives the domain from the positive data rather than raising on the zero that a
     /// padded linear domain will usually contain.
-    let withKinds (kx: ScaleKind option) (ky: ScaleKind option) (p: PackedSeries) : PackedSeries =
+    let internal withKinds (kx: ScaleKind option) (ky: ScaleKind option) (p: PackedSeries) : PackedSeries =
         p.Accept
             { new ISeriesConsumer<PackedSeries> with
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
@@ -790,7 +790,7 @@ module Figure =
 
     // ---- Defaults ------------------------------------------------------------------------
 
-    let axisConfig: AxisConfig =
+    let internal axisConfig: AxisConfig =
         { Label = None
           // `None` means "take the theme's", which is what makes `Theme.tikz` sufficient on its
           // own. An `AxisConfig` cannot default to `Unicode` and still let a theme change it: an
@@ -812,7 +812,7 @@ module Figure =
           ShowTicks = true }
 
     /// `cfg` drawn with `look`; every other field kept.
-    let withLook (look: AxisLook) (cfg: AxisConfig) : AxisConfig =
+    let internal withLook (look: AxisLook) (cfg: AxisConfig) : AxisConfig =
         let shown visible ticks labels title =
             { cfg with
                 Visible = visible
@@ -827,7 +827,7 @@ module Figure =
         | AxisBare -> shown true false false false
         | AxisHidden -> shown false false false false
 
-    let panelOf (layers: Layer[]) : Panel =
+    let internal panelOf (layers: Layer[]) : Panel =
         { Title = ""
           Row = 0
           Col = 0
@@ -1081,7 +1081,7 @@ module Figure =
 
     /// Give every layer on a panel the same x and y domains, and run a reversed axis backwards.
     /// See `share`; every reader of a panel's axes goes through here.
-    let unify (p: Panel) : Panel = p |> share |> orient
+    let internal unify (p: Panel) : Panel = p |> share |> orient
 
     /// D179 — **the plot's height over its width that a panel asks for**, over the states of it a
     /// shot holds (one for a still figure), unified. Equal aspect takes the union of their domains,
@@ -1167,7 +1167,7 @@ module Figure =
     /// makes no cross-panel claim and is not checked. That is the whole answer to where the
     /// runtime `Dim` check lives once panels share scales: it is not a property of the figure, it
     /// is a property of the axis being shared.
-    let shareScales (mode: FacetScales) (fig: Figure) : Figure =
+    let internal shareScales (mode: FacetScales) (fig: Figure) : Figure =
         let drawn =
             fig.Panels
             |> Array.mapi (fun i p -> i, p)
@@ -1248,7 +1248,7 @@ module Figure =
     /// that asked for the sharing (D48). Only when it passes is the sharing recorded, as a group
     /// on each panel, and the group is what keeps the axis shared afterwards: a domain stated on
     /// one of its panels is stated on all of them, and the compiled figure shares them again.
-    let shareRecorded (mode: FacetScales) (fig: Figure) : Figure =
+    let internal shareRecorded (mode: FacetScales) (fig: Figure) : Figure =
         let shared = shareScales mode fig
         let next (pick: Panel -> int) = 1 + (fig.Panels |> Array.fold (fun acc p -> max acc (pick p)) 0)
         let gx = next (fun p -> p.XShare)
@@ -1267,7 +1267,7 @@ module Figure =
     let private inYGroup (p: Panel) (q: Panel) = (p.YShare <> 0 && q.YShare = p.YShare) || (q.Row = p.Row && q.Col = p.Col)
 
     /// D176 — a domain stated on one panel, stated on every panel its axis is shared with.
-    let withDomainsShared (target: Panel -> bool) (dx: (float * float) option) (dy: (float * float) option) (fig: Figure) : Figure =
+    let internal withDomainsShared (target: Panel -> bool) (dx: (float * float) option) (dy: (float * float) option) (fig: Figure) : Figure =
         let targets = fig.Panels |> Array.filter target
         let onX (q: Panel) = dx.IsSome && targets |> Array.exists (fun p -> inXGroup p q)
         let onY (q: Panel) = dy.IsSome && targets |> Array.exists (fun p -> inYGroup p q)
@@ -1287,7 +1287,7 @@ module Figure =
 
     /// D176 — renumber `b`'s share groups past `a`'s, so composing two figures never merges a
     /// group of one with a group of the other.
-    let offsetShares (a: Figure) (b: Figure) : Figure =
+    let internal offsetShares (a: Figure) (b: Figure) : Figure =
         let top (pick: Panel -> int) = a.Panels |> Array.fold (fun acc p -> max acc (pick p)) 0
         let dx, dy = top (fun p -> p.XShare), top (fun p -> p.YShare)
 
@@ -3047,7 +3047,7 @@ module Figure =
     /// touches, because `Chart`'s surface had no way to say "lay out once and draw many times":
     /// `toScene` computed its arrangement internally and `arrangement` computed a *second* one
     /// for inspection. Both are now this function.
-    let arrangeFor (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Shot =
+    let internal arrangeFor (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Shot =
         let fig = prepare fig
         let outer = Layout.arrange m extent (outerGrid None fig)
 
@@ -3112,7 +3112,7 @@ module Figure =
     /// Everything `arrangeUnion` says about the union holds: componentwise, the prefixes pinned
     /// from the union domain, the colour domains and quiver keys (D94) held across the states.
     /// `Samples` reports how many states there were.
-    let arrangeOver (m: ITextMeasurer) (extent: Extent<px>) (raw: Figure[]) : Shot =
+    let internal arrangeOver (m: ITextMeasurer) (extent: Extent<px>) (raw: Figure[]) : Shot =
         if raw.Length = 0 then
             invalidArg "raw" "Marey: a shot needs at least one state."
 
@@ -3285,7 +3285,7 @@ module Figure =
     /// union is only as good as it: an animation with a spike between two samples can still
     /// overflow. D72's default is 32 and this function does not supply it — a default belongs
     /// where a caller can see it.
-    let arrangeUnion
+    let internal arrangeUnion
         (samples: int)
         (m: ITextMeasurer)
         (extent: Extent<px>)
@@ -3313,7 +3313,7 @@ module Figure =
     /// frozen probe, under the frozen prefixes and colour domains, and the gutters that plan needs
     /// are compared with the frozen ones. A panel at a grid position the shot has no region for
     /// does not fit; a panel with no layers needs nothing.
-    let fitsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : bool =
+    let internal fitsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : bool =
         let fig = prepare fig
         let extent = shot.Outer.Extent
         let within (a: float<px>) (b: float<px>) = a <= b + 1e-9<px>
@@ -3360,7 +3360,7 @@ module Figure =
     /// rectangle comes from the shot's frozen inner grid through `innerGrid`, the function the
     /// drawing pass takes it from, and the scales from the panel after `unify`. A panel with no
     /// layers, or one the shot has no layout for, has nothing to point at and is left out.
-    let panelsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : PanelView[] =
+    let internal panelsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : PanelView[] =
         let fig = prepare fig
 
         let viewOf (row: int, col: int) (inset: int option) (p: Panel) (plot: Rect<px>) (f: PanelLayout) =
@@ -3414,7 +3414,7 @@ module Figure =
         |> Array.append insets
 
     /// D180 — one inset's domains, stated, raw, in each axis's own unit; `None` leaves an axis.
-    let withInsetDomains (row: int, col: int, inset: int) (dx: (float * float) option) (dy: (float * float) option) (fig: Figure) : Figure =
+    let internal withInsetDomains (row: int, col: int, inset: int) (dx: (float * float) option) (dy: (float * float) option) (fig: Figure) : Figure =
         { fig with
             Panels =
                 fig.Panels
@@ -3433,7 +3433,7 @@ module Figure =
                         p) }
 
     /// D177 — one panel's second y domain, stated, raw, in that axis's unit.
-    let withPanelDomainY2 (row: int, col: int) (lo: float, hi: float) (fig: Figure) : Figure =
+    let internal withPanelDomainY2 (row: int, col: int) (lo: float, hi: float) (fig: Figure) : Figure =
         { fig with
             Panels =
                 fig.Panels
@@ -3448,7 +3448,7 @@ module Figure =
 
     /// One panel's domains, stated: `Chart.withXDomain` for a panel other than the last. Raw
     /// values in each axis's own unit; `None` leaves an axis as it is.
-    let withPanelDomains
+    let internal withPanelDomains
         (row: int, col: int)
         (dx: (float * float) option)
         (dy: (float * float) option)
@@ -3464,7 +3464,7 @@ module Figure =
     /// already carries the surface it was arranged against, and a second extent beside it is a
     /// second chance to be inconsistent with no way to detect it. An arrangement is in device
     /// pixels for one surface; it does not travel to another.
-    let toSceneIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : Node =
+    let internal toSceneIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : Node =
         let fig = prepare fig
         let theme = fig.Theme
         let extent = shot.Outer.Extent
@@ -3625,7 +3625,7 @@ module Figure =
     /// every still figure in the library goes through. It is byte-for-byte what it was before the
     /// split — the two-pass tick solve, the estimate it plans against, and the grid it settles on
     /// are all unchanged, which is what the 46 golden baselines are for.
-    let toScene (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Node =
+    let internal toScene (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Node =
         toSceneIn m (arrangeFor m extent fig) fig
 
     /// The layout `toScene` chose. For tests, and for anyone debugging why a label landed where
@@ -3637,5 +3637,5 @@ module Figure =
     /// height of the title. §1 of the M3 plan predicted the class of the bug from the shape of
     /// the code ("two functions that must agree and have no test saying they do") without knowing
     /// it had already happened. There is now one grid and a test that says so.
-    let arrangement (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Arrangement =
+    let internal arrangement (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Arrangement =
         (arrangeFor m extent fig).Outer

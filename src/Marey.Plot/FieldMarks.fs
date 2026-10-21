@@ -84,7 +84,7 @@ type FieldPayload<[<Measure>] 'p> =
       W: float[] }
 
 [<RequireQualifiedAccess>]
-module FieldMarks =
+module internal FieldMarks =
 
     let private finite (v: float) = not (Double.IsNaN v || Double.IsInfinity v)
 
