@@ -9,8 +9,8 @@ open Fable.Core
 // The browser lays out and draws, so the measurer is the canvas's own `measureText`: synchronous,
 // and answered in the font the canvas will draw with. The trap is a web font that has not
 // arrived. `measureText` then measures the fallback face, layout fixes its gutters against it,
-// and the real face lands a moment later into labels sized for another one: D62's one
-// resolution, broken by a race nobody sees in development, where the font is cached.
+// and the real face lands a moment later into labels sized for another one: a font
+// resolved once, broken by a race nobody sees in development, where the font is cached.
 //
 // So the canvas measurer refuses to measure until `document.fonts` has finished loading, and the
 // way to get a measurer *now* says which one it is: the canvas's when the fonts are in, and

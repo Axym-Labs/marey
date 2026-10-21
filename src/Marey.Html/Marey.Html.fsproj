@@ -1,10 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- "a ~200-line package registering a .NET Interactive formatter so `figure` displays
-         inline as SVG. Do it at M1; it is how people will first meet the library."
+    <!-- This began as a .NET Interactive formatter so a figure displays inline as SVG.
 
-         **The host §6 named is dead.** Polyglot Notebooks was deprecated on 2026-02-11 and
+         **That host is dead.** Polyglot Notebooks was deprecated on 2026-02-11 and
          retired 2026-03-27; .NET Interactive, the engine under it, followed on 2026-04-24. The
          maintained successor is Verso, whose display pipeline is a different mechanism entirely
          (see `src/Marey.Verso/`). The registration half of this package — `Formatters.fs`, the

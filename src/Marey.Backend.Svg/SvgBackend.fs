@@ -38,8 +38,8 @@ open System.Text
 // Pre-transforming the geometry sidesteps all of it: the document's user space *is* device
 // space, so a px is a px everywhere, `stroke-width="1"` means one pixel, and the emitted
 // numbers are the numbers a reviewer can check against a ruler. The cost is that a `Transform`
-// node does not survive as a nameable thing in the output, which is a cost worth paying: §5.2
-// gives `Keyed` that job, and `Keyed` does emit a group.
+// node does not survive as a nameable thing in the output, which is a cost worth paying: `Keyed`
+// has that job, and `Keyed` does emit a group.
 //
 // The two places a transform attribute *does* appear are the two where geometry is not being
 // mapped: `rotate(...)` on text, whose size is typographic and must not scale, and
@@ -120,8 +120,8 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
     /// Path data. Commands are written out one per segment rather than using SVG's implicit
     /// repeat ("L1 2 3 4"), because a golden diff that shows one command per segment is a
     /// golden diff a human can read. The saving would have been one byte per point.
-    /// Nothing here allocates per segment beyond the formatted numbers themselves. §1.3 is
-    /// blunt about the hot path — "a 100 000-segment path as a cons list is 100 000 heap
+    /// Nothing here allocates per segment beyond the formatted numbers themselves. The hot
+    /// path cannot afford it — "a 100 000-segment path as a cons list is 100 000 heap
     /// objects" — and a writer that allocates a tuple array per segment would put them
     /// straight back.
     let pathData (ctm: Affine<nd, px>) (segs: PathSeg[]) =
@@ -273,7 +273,7 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
 
     // ---- markers ---------------------------------------------------------------------
 
-    // §5.1 is "the single biggest performance decision in the IR", and it is decided here.
+    // Batching is the single biggest performance decision in the IR, and it is decided here.
     //
     // One batch produces exactly one shape definition and one group; the group carries the
     // paint, and each point costs a single `<use>` that inherits it. A hundred thousand points
@@ -456,7 +456,7 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
 
         | Raster r -> drawRaster ctm depth r
 
-        // A Group is the identity-carrying container of §5's monoid and has no rendering
+        // A Group is the identity-carrying container of the scene's monoid and has no rendering
         // effect of its own, so it emits no element. Every `<g>` in the output therefore
         // carries meaning: an id, a clip, or semantics.
         | Group ns ->
@@ -722,20 +722,20 @@ type SvgBackend(?dpi: float<px / mm>, ?idPrefix: string) =
               Clipping = true
               Dashes = true
               Rasters = true
-              // §10 / Backend.fs: "False for the zero-dependency SVG backend, which delegates
+              // Backend.fs: "False for the zero-dependency SVG backend, which delegates
               // shaping to whatever opens the file." Kerning and ligatures do happen in the
               // output; this backend simply does not know where they land, which is exactly
               // what the flag is warning the layout layer about.
               TextShaping = false
               RotatedText = true
-              // §5.3 is implemented, not stubbed: role, aria-label and data-* all reach the
+              // Semantics are implemented, not stubbed: role, aria-label and data-* all reach the
               // document. `Capabilities.full` has this false because it describes a generic
               // vector backend; this one earns it.
               Semantics = true
               // `<g opacity>` is group opacity by definition: SVG composites the group
               // into its own buffer and fades the result. Nothing to degrade.
               GroupOpacity = true
-              // No instance-buffer ceiling: a text file has no hardware limit, and §5.1's
+              // No instance-buffer ceiling: a text file has no hardware limit, and batching's
               // whole point is that one batch stays one batch.
               MaxBatch = None }
 
@@ -819,7 +819,7 @@ module SvgBackend =
     /// share one id space: without this, frame 5's `url(#qc)` resolves to frame 0's clip path and
     /// its `<use xlink:href="#qm">` to frame 0's marker — which is visible exactly when the two
     /// differ, so a `highlight` that grows one mark renders at the wrong size and everything else
-    /// looks correct. D83, and `Html.filmAt` is the caller.
+    /// looks correct. `Html.filmAt` is the caller.
     ///
     /// The prefix is written verbatim, so it has to be a legal NCName start. `Html` uses
     /// `f0-`, `f1-`, … and nothing else in the repository calls this.

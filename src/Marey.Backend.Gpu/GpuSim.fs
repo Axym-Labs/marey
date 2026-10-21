@@ -19,7 +19,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // steps the two agree to about 10⁻⁴ of the field's maximum on radeonsi and on llvmpipe, and the
 // two drivers do not agree with each other to the bit.
 //
-// **The transfer is the price** (D147 (a)): 0.25 ms of upload and read-back at 256². `stamWith k`
+// **The transfer is the price**: 0.25 ms of upload and read-back at 256². `stamWith k`
 // runs k steps of h/k a call, one transfer for k steps.
 // ======================================================================================
 

@@ -17,17 +17,9 @@
     <Description>Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies.</Description>
     <PackageTags>fsharp visualization plotting process toolchain</PackageTags>
 
-    <!-- **Published as of M3 phase 6, and this is the flip the comment above predicted.**
-         D64's rule is that a facility ships with a producer, and D10 records what happens
-         otherwise: `Capabilities` sat in the tree as "a record nobody reads". Until now every
-         consumer of this module was in `Marey.Tests`, which needs a ProjectReference and not a
-         package.
-
-         The producer arrived: `Marey.Tools.Video` resolves and invokes `ffmpeg` through this
-         module and is published, and a published package may not depend on an unpublished one.
-         D79's TeX package will be the second. The package-count literal in `publish.yml` moved
-         from nine to eleven in the same commit, which is the check that exists so a project
-         cannot join a release unnoticed. -->
+    <!-- Published because published packages depend on it: `Marey.Tools.Video` resolves
+         `ffmpeg` through this module and `Marey.Tools.Tex` a TeX engine, and a published package
+         may not depend on an unpublished one. -->
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 

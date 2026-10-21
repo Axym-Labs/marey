@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- §6's GPU row, as D115 took it: Skia's GPU backend draws everything Skia draws, on an
-         OpenGL 3.3 core context, and the nodes Skia draws badly (§0.3 of the M5 inventory) are
+    <!-- Skia's GPU backend draws everything Skia draws, on an OpenGL 3.3 core context, and the
+         nodes Skia draws badly (large marker batches, LIC) are
          claimed through `SkiaPainter` and drawn here. Not Fable-compatible and does not claim
          to be: a GL context has no meaning in a notebook kernel's browser half.
 

@@ -7,7 +7,7 @@ open System
 //
 // The whole pipeline in a browser: a Fable app builds a `Figure`, compiles it with the same
 // compiler the kernel runs, and this draws the `Node` on a canvas. Nothing above `Node` is
-// written again, which is §13's promise and what the goldens under Node already showed
+// written again, which is the promise and what the goldens under Node already showed
 // for SVG.
 //
 // **The traversal is the Skia painter's, transcribed.** The same rules, for the same reasons,
@@ -216,8 +216,9 @@ type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, 
             if a >= 1.0 then
                 draw ctx ctm child
             elif a > 0.0 then
-                // D67, the canvas's `SaveLayer`: the group on a surface of its own, composited
-                // once at the group's alpha, so an overlap inside it does not read darker.
+                // Group opacity, the canvas's `SaveLayer`: the group on a surface of its own,
+                // composited once at the group's alpha, so an overlap inside it does not read
+                // darker.
                 let surface = ctx.canvas
                 let scratch = layer (int surface.width) (int surface.height)
                 scratch.setTransform (scale, 0.0, 0.0, scale, 0.0, 0.0)
@@ -274,7 +275,7 @@ type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, 
         if b.Points.Length > 0 then
             let shape = outline b.Shape (float b.Size)
 
-            // §5.1's batch: the paint state is set once, and only the outline is traced per mark.
+            // One batch: the paint state is set once, and only the outline is traced per mark.
             // A gradient fill is the exception, filled under the transform mark by mark.
             let solidFill =
                 match b.Fill with

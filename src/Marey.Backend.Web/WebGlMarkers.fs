@@ -25,10 +25,10 @@ open Fable.Core
 // the desktop drawer has do not exist here.
 //
 // What it costs is a clear and a full-surface `drawImage` per batch, so a batch smaller than
-// `MinimumBatch` is left to the canvas. Measured in Chromium on the M5 machine, median of seven:
-// the two are level at 2000 marks (0.4 ms each), the canvas is ahead below and WebGL2 above,
-// 7.2 against 77 ms at 10⁵ and 61 against 912 ms at 10⁶. Where WebGL2 is not available the canvas draws every batch, and says nothing, because the
-// picture is the same.
+// `MinimumBatch` is left to the canvas. Measured in Chromium, median of seven: the two are level at
+// 2000 marks (0.4 ms each), the canvas is ahead below and WebGL2 above, 7.2 against 77 ms at 10⁵
+// and 61 against 912 ms at 10⁶. Where WebGL2 is not available the canvas draws every batch, and
+// says nothing, because the picture is the same.
 // ======================================================================================
 
 /// The members of `WebGL2RenderingContext` the marker drawer calls, by their JavaScript names.

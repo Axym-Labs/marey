@@ -12,8 +12,8 @@ open Silk.NET.OpenGL
 ///
 /// **One pass is one full-screen triangle** into a framebuffer over one or more `R32F` or
 /// `RGBA32F` textures; a shader reads its inputs with `texelFetch` and writes one value per texel.
-/// Nothing scatters, so no compute shader is needed and D115's floor and CI's llvmpipe hold.
-/// Measured in the M5.6 inventory: a 256² Stam step in 43 passes took 0.084 ms on radeonsi and
+/// Nothing scatters, so no compute shader is needed and OpenGL 3.3 and CI's llvmpipe suffice.
+/// Measured: a 256² Stam step in 43 passes took 0.084 ms on radeonsi and
 /// 3.8 ms on llvmpipe, and a rerun was bit-identical on each.
 ///
 /// **Values cross as `float32`**: uploaded from `float[]`, read back into `float[]`. A GPU

@@ -11,14 +11,14 @@ open SkiaSharp
 /// let frames = Frames.render FramePass.Concurrent gpu.RenderPng 30.0 film
 /// ```
 ///
-/// **One context, one thread, any caller.** The renderer owns a thread, and the GL
-/// context, Skia's GPU context and one text measurer live on it for the renderer's lifetime.
-/// `RenderPng` and `RenderImage` may be called from any thread, concurrently: each call queues
-/// and waits its turn. That is what D77 asks of a renderer function, met by serialising rather
-/// than by building a backend per call, because building one is what a GPU renderer is for
-/// avoiding: a new `SkiaBackend` costs about 10 ms of font resolution before it draws a pixel,
-/// and this renderer pays it once. `Frames.render` with `FramePass.Concurrent` still compiles
-/// the frames' scenes in parallel; only the drawing takes turns.
+/// **One context, one thread, any caller.** The renderer owns a thread, and the GL context, Skia's
+/// GPU context and one text measurer live on it for the renderer's lifetime. `RenderPng` and
+/// `RenderImage` may be called from any thread, concurrently: each call queues and waits its turn.
+/// That is what any renderer function owes its callers, met by serialising rather than by building
+/// a backend per call, because building one is what a GPU renderer is for avoiding: a new
+/// `SkiaBackend` costs about 10 ms of font resolution before it draws a pixel, and this renderer
+/// pays it once. `Frames.render` with `FramePass.Concurrent` still compiles the frames' scenes in
+/// parallel; only the drawing takes turns.
 ///
 /// **The measurer is the one to lay out with.** As for `SkiaBackend`, text is drawn with the
 /// advances it was measured with, so a figure compiled against `Measurer` puts its labels

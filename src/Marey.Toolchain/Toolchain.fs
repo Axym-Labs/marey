@@ -9,8 +9,8 @@ open System.IO
 //
 // Marey drives three programs it does not ship — `pdflatex` compiles the TikZ goldens,
 // `pdftoppm` rasterises the compiled page for the ink gate, and `dotnet fsi` executes every
-// example and guide snippet — and M3 adds two more: `ffmpeg` for video export and a TeX
-// engine for the mathematical-typesetting package.
+// example and guide snippet — and two more: `ffmpeg` for video export and a TeX engine for the
+// mathematical-typesetting package.
 //
 // Before this file, "is the tool there?" was answered five times in four files. `onPath` was
 // written twice — once in `TexToolchain` and once, in a different spelling, in `GuideTests`,
@@ -22,23 +22,20 @@ open System.IO
 // fifth spelling gets in. This module is the one implementation, and the wording of "it is not
 // installed" is part of what it implements.
 //
-// **The convention, and it is D62's.** A tool is *resolved and reported*, or it is absent and
-// the absence names what to install. D62 chose that for fonts — "`Matched = None` with a
-// non-empty `Family` means every entry missed … the figure looks like nothing the theme asked
-// for, and now says so" — and M2.5's gate 8 chose the same shape for a missing native library:
-// a message naming the package, not a `DllNotFoundException` from three frames down. An
-// external process is the third instance of one pattern, not a third pattern.
+// **The convention.** A tool is *resolved and reported*, or it is absent and the absence names what
+// to install. Fonts follow it — "`Matched = None` with a non-empty `Family` means every entry
+// missed … the figure looks like nothing the theme asked for, and now says so" — and so does a
+// missing native library: a message naming the package, not a `DllNotFoundException` from three
+// frames down. An external process is the third instance of one pattern, not a third pattern.
 //
-// **What is deliberately not here yet.** The native-library half — gate 8's exception-chain
-// walk, which lives in `SkiaNative` in the Skia backend — is *not* promoted into this module,
-// even though it is visibly the same idea. It has exactly one implementation and one consumer
-// today, so promoting it now would put a facility here with no second caller, which is D10's
-// recorded failure ("`Capabilities` was a record nobody reads") and D64's rule ("this ships
-// with a producer"). It moves when D75's or D79's package needs it, and that is a one-file
-// change because the shape is already agreed.
+// **What is deliberately not here.** The native-library half — the exception-chain walk in
+// `SkiaNative` in the Skia backend — is *not* promoted into this module, even though it is
+// visibly the same idea. It has exactly one implementation and one consumer, and a facility with
+// no second caller is one nobody reads. It moves when a second package needs it, and that is a
+// one-file change because the shape is already agreed.
 //
-// **Zero package dependencies, and this is not `Marey.Core`.** Core is Fable-compatible by
-// §13 and defends it actively — `Color.fs` hand-rolls a cube root rather than call
+// **Zero package dependencies, and this is not `Marey.Core`.** Core is Fable-compatible and
+// defends it actively — `Color.fs` hand-rolls a cube root rather than call
 // `System.Math.Cbrt` for that reason alone — and a PATH walk and a `Process` are not
 // meaningfully Fable-compatible. So this is its own package rather than a file in Core, and it
 // takes no `PackageReference`, so nothing it is referenced from acquires a transitive one.

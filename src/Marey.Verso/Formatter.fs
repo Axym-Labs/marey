@@ -24,7 +24,7 @@ open Verso.Abstractions
 // would be able to fix from the outside, and it is not a coin we should be flipping.
 //
 // **And `Figure` could not have the member anyway.** `ToHtml()` on `Figure` would put HTML
-// rendering inside `Marey.Plot`, which would need the SVG backend to do it — and D21 says
+// rendering inside `Marey.Plot`, which would need the SVG backend to do it — and
 // `Marey.Plot` does not reference a backend. `Color[]` settles it beyond argument: an array
 // cannot be given a member at all.
 //

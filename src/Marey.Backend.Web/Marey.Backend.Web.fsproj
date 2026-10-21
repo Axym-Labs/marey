@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- §6's Web row, as D121 and D122 took it: the whole pipeline in a browser. A Fable app
+    <!-- The whole pipeline in a browser. A Fable app
          compiles a figure with the same compiler the kernel runs and this draws the scene on a
          canvas. Consumed from source by Fable (`fable/`); a .NET build compiles it and has
          nothing to draw on. -->

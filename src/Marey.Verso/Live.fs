@@ -16,9 +16,9 @@ open Verso.Abstractions
 // inside it: `Marey.Html` steps it, renders it, and writes the page, through the bridge.
 //
 // **What the host decides, and what this does not.** Re-running, clearing or deleting the cell
-// closes the channel, and a kernel restart closes it and tells the view (observed in M4.5's phase
-// 0 spike). A save asks `SnapshotProvider` for the page at the current state, so the file holds
-// what the reader was looking at, drawn static.
+// closes the channel, and a kernel restart closes it and tells the view (observed). A save asks
+// `SnapshotProvider` for the page at the current state, so the file holds what the reader was
+// looking at, drawn static.
 //
 // **The cell id is read by reflection.** A formatter learns its cell from `IFormatterContext.
 // CellId`, which a Verso with the formatter-context change carries and Verso 1.2 does not. This

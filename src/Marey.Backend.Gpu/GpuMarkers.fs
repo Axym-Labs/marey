@@ -4,7 +4,7 @@ open System
 open Silk.NET.OpenGL
 open SkiaSharp
 
-/// `Markers` as one instanced draw, the case §5.1's batch and finding 10 were about: Skia
+/// `Markers` as one instanced draw, the case batching is about: Skia
 /// builds and issues a path per mark on the CPU whichever surface it draws on, 212 ms for 10⁵,
 /// while one instanced draw of 10⁶ is about 2.5 ms.
 ///

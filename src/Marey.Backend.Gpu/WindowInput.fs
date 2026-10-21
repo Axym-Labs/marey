@@ -9,12 +9,12 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // The window has no interaction model of its own. A drag on the figure, a shifted drag, a double
 // click and the pointer passing over it become the `LiveMsg`s the notebook widget's script sends
 // for the same gestures, and the window steps them through `Live.step`, so zoom, pan, the readout
-// and recording are M4.5's and are not written twice. What the window adds is what a page has
-// and a GL surface does not: the controls, drawn here as a strip above the figure, worked by the
-// pointer and the keyboard, each move a `Set`.
+// and recording are `Marey.Interact`'s and are not written twice. What the window adds is what a
+// page has and a GL surface does not: the controls, drawn here as a strip above the figure, worked
+// by the pointer and the keyboard, each move a `Set`.
 //
 // **Pure, and the host calls nothing else.** `WindowSession.feed` is the whole of what happens
-// between a GLFW callback and a new `LiveState`, so gate 12 scripts the events a person would
+// between a GLFW callback and a new `LiveState`, so a test scripts the events a person would
 // cause and checks the state and the log without a display.
 //
 // Coordinates here are the window's, in px, top-left origin: what GLFW reports for the cursor.

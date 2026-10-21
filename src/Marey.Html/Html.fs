@@ -17,10 +17,10 @@ open System.Text
 // ======================================================================================
 // HTML FRAGMENTS FOR A NOTEBOOK CELL.
 //
-// "a ~200-line package registering a .NET Interactive formatter so `figure` displays inline
-// as SVG. Do it at M1; it is how people will first meet the library."
+// This began as a .NET Interactive formatter so a figure displays inline as SVG, since a
+// notebook is how people first meet the library.
 //
-// **The host named in that sentence no longer exists.** Polyglot Notebooks was deprecated on
+// **That host no longer exists.** Polyglot Notebooks was deprecated on
 // 2026-02-11 and retired on 2026-03-27; .NET Interactive followed on 2026-04-24. This file
 // outlived both without a line changing, and the reason is the only architectural claim worth
 // making about it: **it holds no reference to any notebook host.** Every function is
@@ -256,12 +256,11 @@ module Html =
     //
     // A FILM PLAYS IN THE CELL, AS A FLIPBOOK OF ITS OWN FRAMES.
     //
-    // M3 made the library animate and gave it three ways to get the result out: a numbered
-    // directory, an `.mp4` and — with `Codec = None` — a `.gif`. All three end in a file, and
-    // two of them need ffmpeg. None of them is a notebook, which is where §6 says people first
-    // meet the library, so `Anim`, `Film`, `Story` and `Shot` all displayed as a record field
-    // table: the milestone's whole output, invisible in the one place it should have been
-    // easiest to see.
+    // An animation has three ways out: a numbered directory, an `.mp4` and — with
+    // `Codec = None` — a `.gif`. All three end in a file, and two of them need ffmpeg. None of
+    // them is a notebook, which is where people first meet the library, so without this `Anim`,
+    // `Film`, `Story` and `Shot` would display as a record field table, invisible in the one
+    // place they should be easiest to see.
     //
     // **Why SMIL and not CSS.** Rule 1 of this file's header is absolute — no `<style>` block,
     // ever, because a notebook output cell does not scope one: it leaks into the whole document,
@@ -274,7 +273,7 @@ module Html =
     // **Why not a GIF or an `<img>` of a video.** Both would put `Marey.Tools.Video` — and
     // therefore ffmpeg — on the *display* path. A reader without ffmpeg would then get a still
     // where a colleague gets motion, from the same notebook, with nothing saying so. That is the
-    // silent degradation D62 refused for a font and D75 refused for an encoder, in the one place
+    // silent degradation refused for a font and for an encoder, in the one place
     // where the reader cannot check. A flipbook needs no tool at all: `Marey.Html` already
     // depends on `Marey.Backend.Svg`, and this adds no reference to anything.
     //
@@ -506,10 +505,10 @@ module Html =
 
     /// What `Palette.validate` found.
     ///
-    /// Not in the plan's list, and included anyway: §9 asks for "a validator that checks
-    /// contrast and CVD-safety, because a physics library that renders fields in jet is
-    /// embarrassing", and a validator whose output is a record you have to squint at is only
-    /// half of that. Four rows, one per vision model, is the whole story.
+    /// Included because a theme is validated for contrast and colour-vision safety, "because a
+    /// physics library that renders fields in jet is embarrassing", and a validator whose output is
+    /// a record you have to squint at is only half of that. Four rows, one per vision model, is the
+    /// whole story.
     let paletteReport (r: PaletteReport) : string =
         let b = StringBuilder(512)
 
@@ -712,7 +711,7 @@ module Html =
     //
     // **The controls are written from the state**, not from their initial values. A snapshot
     // taken after the reader moved a slider is a document of that state, and its slider has to
-    // be where the figure says it is. The phase 0 spike shipped a 3.7 Hz figure under a slider
+    // be where the figure says it is. An early version showed a 3.7 Hz figure under a slider
     // at 1 Hz, which is the bug this sentence is about.
     // ======================================================================================
 
@@ -1358,7 +1357,7 @@ module Html =
         | _ -> [||]
 
     /// **A step on a canvas page**: `wpatch` and a patch's bytes when the arrangement held
-    /// and the patch is at most half the whole scene's bytes (D103's rule), and the whole scene
+    /// and the patch is at most half the whole scene's bytes, and the whole scene
     /// otherwise. A view that cannot be drawn is answered `same`: a canvas page has no place for
     /// the error box an SVG page shows, and the labels still move.
     let private canvasAnswer (live: Live) (before: LiveState) (after: LiveState) : string[] =
