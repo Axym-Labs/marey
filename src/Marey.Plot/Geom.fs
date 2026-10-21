@@ -50,8 +50,8 @@ type BoxSpan<[<Measure>] 'p> =
       Median: float<'p>
       Q3: float<'p>
       Upper: float<'p>
-      /// Everything outside the whiskers, drawn as points. D52's rule, one geom down: a datum
-      /// the box cannot describe is still drawn, because a box plot that quietly discards its
+      /// Everything outside the whiskers, drawn as points. The library's rule, one geom down: a
+      /// datum the box cannot describe is still drawn, because a box plot that quietly discards its
       /// tails is a summary of a sample nobody measured.
       Outliers: float<'p>[] }
 
@@ -109,7 +109,7 @@ type ArrowStyle =
     /// `connectionstyle="arc3,rad=…"`.
     | ArrowArc of bend: float
 
-/// M0's geoms (§16: "line/scatter/errorbar" by name), and M2 phase 6's.
+/// The geoms.
 ///
 /// **`'p` is the space the numeric payloads live in**, and there are exactly two. A `Geom` —
 /// `GeomOf<1>`, what every constructor returns and every `Layer` holds — carries them in the
@@ -169,15 +169,14 @@ type GeomOf<[<Measure>] 'p> =
     /// A user-supplied RGBA image filling a box.
     ///
     /// The one geom in this file that does **not** bottom out in `Path`, `Markers` or `Text`:
-    /// it is the only producer of §5's `Raster` node anywhere above the IR, and until M2.5
-    /// there was none, which is why `renderWithAssets` had no customer and D31's "M2 door" had
-    /// nothing to walk through it.
+    /// it is the only producer of the IR's `Raster` node anywhere above the IR, and so the
+    /// customer `renderWithAssets` exists for.
     ///
-    /// **D55 does not apply here, and the reason is worth stating.** Every other geom carrying
-    /// its own payload carries a per-*point* array and must be told which rows a channel batch
-    /// renumbered it to. This one carries a whole image and one box — scalars, not arrays — so
-    /// a batched subset draws the same image in the same place, which is correct rather than
-    /// lucky. A channel over an image layer has nothing to say.
+    /// **The row-renumbering hazard does not apply here, and the reason is worth stating.** Every
+    /// other geom carrying its own payload carries a per-*point* array and must be told which rows
+    /// a channel batch renumbered it to. This one carries a whole image and one box — scalars, not
+    /// arrays — so a batched subset draws the same image in the same place, which is correct rather
+    /// than lucky. A channel over an image layer has nothing to say.
     | GeomImage of image: Image * bounds: Rect<'p> * smooth: bool
     /// A field: a grid of values, drawn as a heatmap, contour lines or filled bands. The
     /// one geom computed on the panel rather than from its points, because a raster's pixels and
@@ -204,10 +203,10 @@ type Geom = GeomOf<1>
 /// ### Why geoms consume `PackedSeries` and not `Series('ux,'uy)`
 ///
 /// A geom needs positions, and positions are `Vec2(nd)` — the measures are gone by then, by
-/// construction (§2.3: "erase *once*, at the point where a series becomes a scale"). Making
+/// construction: measures are erased *once*, at the point where a series becomes a scale. Making
 /// geoms measure-generic would push two type parameters through `Layer`, `Panel` and `Figure`,
 /// and a figure with a metres panel beside a joules panel could then never be one value. That
-/// is the exact problem §2.3's rank-2 encoding exists to solve, so geoms take the erased side of
+/// is the exact problem the rank-2 encoding exists to solve, so geoms take the erased side of
 /// it and `Erase.projectXY` is the whole of the conversion.
 ///
 /// The measures are not thrown away, though — they are *spent* first. Everything that needs
@@ -309,7 +308,7 @@ module Geom =
 
     /// Where zero on this scale falls in panel space, clamped into the panel.
     ///
-    /// Not what `area` and `bar` store any more: since D97 they store the data value zero and
+    /// Not what `area` and `bar` store: they store the data value zero and
     /// `project` clamps it against the panel's final scale, because a baseline computed here is
     /// computed against a domain the panel may yet widen past zero.
     let internal baselineOf (scale: Scale<'u>) : float<nd> =
@@ -424,9 +423,9 @@ module Geom =
     /// Both measures are checked, so the box cannot be given its width in the y unit — the same
     /// guarantee `rect` makes, for the same reason and by the same route.
     ///
-    /// The box is projected corner by corner rather than as an origin plus a size, which is
-    /// D57's correction applied before it can become a bug: on a log axis a size in data units
-    /// is not a size on the panel, so an image placed by one corner and a width would be the
+    /// The box is projected corner by corner rather than as an origin plus a size, which is the
+    /// correction for rectangles applied before it can become a bug: on a log axis a size in data
+    /// units is not a size on the panel, so an image placed by one corner and a width would be the
     /// right size only in the middle of the domain.
     let image (_s: Series<'ux, 'uy>) (img: Image) (x0: float<'ux>) (y0: float<'uy>) (x1: float<'ux>) (y1: float<'uy>) (smooth: bool) : Geom =
         GeomImage(
@@ -509,7 +508,7 @@ module Geom =
             max 0.05 (min 1.0 widthFraction)
         )
 
-    // ---- Projection: D97 -----------------------------------------------------------------
+    // ---- Projection, through the panel's final scales ------------------------------------
 
     /// Put a geom on a panel: every payload through the panel's **final** scales, the ones the
     /// layer's points are projected through, at the same moment.
@@ -608,7 +607,8 @@ module Geom =
 
     /// A geom put on the panel its **own** series' scales describe — what a figure would give it
     /// if nothing else shared the panel. For drawing a geom outside a figure; inside one,
-    /// `Figure.fs` projects through the panel's final scales instead, which is the point of D97.
+    /// `Figure.fs` projects through the panel's final scales instead, which is the point of
+    /// projecting late.
     let internal onSeries (s: Series<'ux, 'uy>) (geom: Geom) : GeomOf<nd> =
         project
             (fun v -> s.XScale.Forward(LanguagePrimitives.FloatWithMeasure<'ux> v))
@@ -619,7 +619,7 @@ module Geom =
 
     /// Draw a field layer, given the colour each value takes. `Figure.fs` passes the
     /// layer's colour channel through its own quantiser, so the heatmap, its contours and its
-    /// colorbar take every colour from the same call (D91, gate 7). Without a channel, every
+    /// colorbar take every colour from the same call. Without a channel, every
     /// value is the layer's colour. `colourOf` gives colours before the layer's opacity, which
     /// is applied here.
     ///
@@ -794,7 +794,7 @@ module Geom =
                     line [| pt (x0 + t0 * dx) (y0 + t0 * dy); pt (x0 + t1 * dx) (y0 + t1 * dy) |]
 
     /// One annotation: its text, and an arrow from the text to the point it marks,
-    /// or `None` when that point is outside the panel (counted by the caller, D52). Text placed
+    /// or `None` when that point is outside the panel (counted by the caller). Text placed
     /// in the panel (`TextInPanel`) marks no point and is always drawn.
     ///
     /// The text is anchored on the side facing the point: offset up and to the right, it starts
@@ -913,8 +913,7 @@ module Geom =
     /// function a subset of the rows renumbered from zero. Without the indirection the second
     /// colour batch of an error bar reads the first batch's spans: every bar is still drawn,
     /// the figure looks entirely reasonable, and every uncertainty belongs to a different
-    /// point. Phase 2 introduced that hazard for `GeomErrorY` and `GeomErrorX`; phase 6 would
-    /// have introduced it six more times.
+    /// point. The hazard exists for every geom that carries its own per-point array.
     let rec private compileWith
         (address: ((int -> Key) * int[]) option)
         (spacing: float option)
@@ -965,8 +964,8 @@ module Geom =
                 // The row travels beside the point because the filter below destroys the
                 // correspondence otherwise: a non-finite y in the middle of a series shifts
                 // every later mark's position within the batch by one, and a key built from
-                // that position names a different datum. Which is D55's defect, and D68 wrote
-                // the rule this obeys — a mark's key is its original row.
+                // that position names a different datum. The rule this obeys is that a mark's
+                // key is its original row.
                 let kept =
                     [| for i in 0 .. pts.Length - 1 do
                            if finite pts.[i] then
@@ -1071,7 +1070,7 @@ module Geom =
                 else
                     Path(segs, Some { stroke with Width = stroke.Width * 0.6 }, Some(fillOf st), NonZero)
 
-            // §5.5's named example, and it is three line segments per point in one `Path`.
+            // The textbook example of a compiled geom: three line segments per point in one `Path`.
             | GeomErrorY(low, high) ->
                 let capHalf =
                     if plotSize.Width = 0.0<px> then
@@ -1144,7 +1143,7 @@ module Geom =
             //
             // Seven geoms, and every one of them still bottoms out in `Path`, `Markers` or
             // `Text`. No `Node` case was added and none was wanted, which is the standing claim
-            // of §5.5 tested rather than repeated.
+            // tested rather than repeated.
 
             | GeomStep align ->
                 // The staircase is built in data space and then warped, so a step under a polar
@@ -1394,7 +1393,7 @@ module Geom =
                       if rules.Count > 0 then
                           Path(rules.ToArray(), Some { stroke with Cap = Butt }, None, NonZero)
                       // Hollow, so an outlier sitting on a whisker cap is still countable -- and
-                      // one `Markers` node for every outlier in the layer, because §5.1's rule
+                      // one `Markers` node for every outlier in the layer, because batching
                       // does not stop applying just because the points are meant to be rare.
                       if outliers.Count > 0 then
                           Markers
@@ -1412,7 +1411,7 @@ module Geom =
                 // non-identity coordinate — a polar panel — the box's corners are mapped and
                 // their bounding box is used, and the image inside it is *not* resampled along
                 // the warp. Doing that honestly needs a resampler, which is a rasteriser inside
-                // a zero-dependency package, and D64 rules that out of this milestone by name.
+                // a zero-dependency package, which is ruled out.
                 // Under the identity coord, which is every Cartesian figure and so every figure
                 // `Chart.image` is for, this is exact.
                 let corners =
@@ -1494,19 +1493,19 @@ module Geom =
     /// panel transform. Dividing by the panel's own pixel size is what makes a 3 px cap 3 px
     /// wide after that scaling, on both a wide panel and a tall one.
     ///
-    /// `indices` is D46's **channel batch**: the rows this call draws, out of `all`. `None`
+    /// `indices` is a **channel batch**: the rows this call draws, out of `all`. `None`
     /// draws the whole layer, which is not the same thing as `Some [| 0 .. n - 1 |]` — see the
     /// spacing note below.
     ///
-    /// `address` is D69's **named rows**, with the key each one's node carries: `Keys.mark` by
-    /// row, or `Keys.datum` when the data supplied keys. Only
-    /// `GeomPoint` can honour it, because `Markers` is the only node in this file that batches
-    /// N data points into one; a `Path` is one shape, not a batch of marks, and splitting it in
-    /// three would change the joins between the pieces rather than name one of them.
+    /// `address` is the storyboard's **named rows**, with the key each one's node carries:
+    /// `Keys.mark` by row, or `Keys.datum` when the data supplied keys. Only `GeomPoint` can honour
+    /// it, because `Markers` is the only node in this file that batches N data points into one; a
+    /// `Path` is one shape, not a batch of marks, and splitting it in three would change the joins
+    /// between the pieces rather than name one of them.
     ///
     /// `compile` and `compileSubset` are this function with one or both of them absent. They
-    /// are two names for one body rather than two bodies, which is the shape D72 arrived at the
-    /// hard way in `Figure.fs`.
+    /// are two names for one body rather than two bodies, which is the shape `Figure.fs`
+    /// arrived at the hard way.
     let internal compileFor
         (address: ((int -> Key) * int[]) option)
         (indices: int[] option)

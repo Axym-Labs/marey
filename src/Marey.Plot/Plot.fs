@@ -2,13 +2,13 @@ namespace Marey
 
 /// **The stat a block runs between its data and its geom**, if it runs one.
 ///
-/// D47's finding is that stats do not have one shape, and this type is that finding written
+/// Stats do not have one shape, and this type is that finding written
 /// down. `fit` takes the block's two positional channels and adds a *third* thing to draw;
 /// `histogram`, `density` and `ecdf` take the x channel alone and **manufacture y**. A single
 /// pipeline node over a channel pair would have fitted the first and forced a y channel on the
 /// other three that is ignored — so there is no such node, and the cases are enumerated
 /// instead. The compiler then has to be told what each one means, which is the whole argument
-/// D45 makes for putting the levels in `ScaleKind`.
+/// for putting the levels in `ScaleKind`.
 ///
 /// Nothing here computes: every case is one call into `Marey.Core`'s `Stat`, which is where the
 /// arithmetic lives and where the measures are still typed.
@@ -44,11 +44,10 @@ type internal FacetSpec =
 /// **A layer's geom, resolved after the block has reunified its channels.**
 ///
 /// `layer GeomLine` names a geom that exists before the block runs, and most do. `GeomArea` and
-/// `GeomBar` do not: their baseline is `Geom.baselineOf s.YScale`, and the y scale does not
-/// exist until `Run` reunifies two channels that were each erased where they were declared (D44
-/// finding 2). D54 recorded that as an accepted imprecision — the two geoms were "not usefully
-/// reachable from a block", because passing a baseline by hand compiles and draws a number the
-/// caller has no way to compute.
+/// `GeomBar` do not: their baseline is `Geom.baselineOf s.YScale`, and the y scale does not exist
+/// until `Run` reunifies two channels that were each erased where they were declared. That was once
+/// an accepted imprecision — the two geoms were "not usefully reachable from a block", because
+/// passing a baseline by hand compiles and draws a number the caller has no way to compute.
 ///
 /// The fix is the encoding this codebase already uses four times: a rank-2 consumer, invoked at
 /// the one point where the measures are back. A `layer` wraps its geom in a constant one; `area`
@@ -186,7 +185,7 @@ module private PlotCompile =
 
     /// **The fitted line, built where both measures exist and nowhere else**.
     ///
-    /// `Stat.regression` is typed — its slope is `float<'uy/'ux>` — and D44 finding 3 says the
+    /// `Stat.regression` is typed — its slope is `float<'uy/'ux>` — and the
     /// only scope in which that type can be written is the body of the inner `Apply`. So the
     /// call is here, and what comes back out is an ordinary `PackedSeries` of two points: the
     /// line, with the slope spent on it. A caller who wants the *number* calls
@@ -224,7 +223,7 @@ module private PlotCompile =
     ///
     /// * **`y` is refused** because the stat is what y *is*. Accepting one and dropping it would
     ///   let a caller write a y channel and never learn it was not drawn.
-    /// * **A channel is refused** because a stat changes the row count. D53 makes a channel the
+    /// * **A channel is refused** because a stat changes the row count. A channel is the
     ///   block's rather than a layer's, and every channel is one `Array.map` over the block's
     ///   rows — which is exactly the array a histogram replaces with one entry per bin. There is
     ///   no correspondence left to attach.
@@ -300,11 +299,11 @@ module private PlotCompile =
         let packed =
             Erase.channelSeries spec.Name (required "x" spec.X) (required "y" spec.Y)
 
-        // D50 through the block. A bar is read as a length from zero, so zero is in the domain —
-        // and the widening has to happen *before* the geoms are built, because a baseline is
-        // computed against the scale it will be drawn on. Unpadded, and only on the side it is
-        // missing from, exactly as `Chart.bar` does it: padding below zero lifts the baseline off
-        // the axis, which is the thing being fixed.
+        // The zero baseline, through the block. A bar is read as a length from zero, so zero is in
+        // the domain — and the widening has to happen *before* the geoms are built, because a
+        // baseline is computed against the scale it will be drawn on. Unpadded, and only on the
+        // side it is missing from, exactly as `Chart.bar` does it: padding below zero lifts the
+        // baseline off the axis, which is the thing being fixed.
         let packed =
             if spec.Layers |> List.exists (fun (g, _) -> g.NeedsZero) then
                 let _, y = Erase.seriesScales packed
@@ -382,12 +381,12 @@ module private PlotCompile =
         // **The fitted line is a layer, and it is appended — the order is load-bearing**.
         //
         // It carries no channels, because it has two points and the channels have one entry per
-        // row; and it is not in the legend, because D54 makes the layers of a block one series
+        // row; and it is not in the legend, because the layers of a block are one series
         // and a fit is a statement *about* that series rather than a second one. Appending is
-        // what keeps both true without touching the legend rule: D53 puts the whole legend entry
-        // — the layer's name *and* its channels' levels — on the first layer, so a fit line
+        // what keeps both true without touching the legend rule: the whole legend entry
+        // — the layer's name *and* its channels' levels — is on the first layer, so a fit line
         // prepended instead would take the legend with it and silently drop every level of a
-        // categorical channel. That is D53's near-miss arrived at from the other side.
+        // categorical channel. That is the same near-miss arrived at from the other side.
         let layers =
             match spec.Stat with
             | StatFit restyle ->
@@ -468,8 +467,8 @@ module private PlotCompile =
         | Some facet -> runFaceted facet spec
         | None ->
             // `facetScales` on its own is a statement about panels the block does not have. It is
-            // refused rather than ignored, for D47's reason: a caller who wrote it believes it did
-            // something.
+            // refused rather than ignored, for the stats' reason: a caller who wrote it believes it
+            // did something.
             if spec.FacetShare.IsSome then
                 failwith
                     "Marey: `facetScales` says which axes the panels of a facet share, and this block has no facet. Add `facetWrap (fun r -> …)`, or remove it."
@@ -529,7 +528,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
     /// **Colour by a category.** One colour per level, one batch per level, one legend entry per
     /// level — and the levels come from the keys themselves, in first-appearance order.
     ///
-    /// Applied together with `shape` over the same keys this is §9's colour-blind-safe scatter,
+    /// Applied together with `shape` over the same keys this is the colour-blind-safe scatter,
     /// and it is still one batch per level: both channels read the same level number, so the
     /// grouping does not take their product.
     [<CustomOperation("color")>]
@@ -679,12 +678,12 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
     /// }
     /// ```
     ///
-    /// The block draws the line and does not report the slope, which is D47's split rather than
-    /// an omission: the slope of metres against seconds is a `float&lt;m/s&gt;`, and that type
-    /// exists only inside the scope where the two channels are reunified. A
-    /// caller who wants the number calls `Stat.regression` on the same two arrays, where it is
-    /// still typed, still bindable to an annotated `float&lt;m/s&gt;`, and comes with `R2`, `N`
-    /// and the count of non-finite pairs the fit ignored.
+    /// The block draws the line and does not report the slope, which is the stats' split rather
+    /// than an omission: the slope of metres against seconds is a `float&lt;m/s&gt;`, and that type
+    /// exists only inside the scope where the two channels are reunified. A caller who wants the
+    /// number calls `Stat.regression` on the same two arrays, where it is still typed, still
+    /// bindable to an annotated `float&lt;m/s&gt;`, and comes with `R2`, `N` and the count of
+    /// non-finite pairs the fit ignored.
     [<CustomOperation("fit")>]
     member _.Fit(spec: PlotSpec) : PlotSpec = { spec with Stat = StatFit id }
 
@@ -822,23 +821,23 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
 ///
 /// ### The witness is stated, and that is permanent
 ///
-/// §9 originally had the block *infer* the unit from the accessor's return type. It cannot be
+/// The block was once meant to *infer* the unit from the accessor's return type. It cannot be
 /// built: a measure parameter cannot be reflected on, cannot carry a member constraint, and
 /// cannot be dispatched on by overload, because erasure makes `'r -> float&lt;s&gt;` and
 /// `'r -> float&lt;m&gt;` the same signature. So a positional channel takes its witness exactly
 /// as `Chart.line` does — and then **checks the accessor against it**: naming `r.Displacement`
 /// under `U.second` is a compile error, in the measures, at the call site.
 ///
-/// **The witness may also be left out.** Under `open Marey` alone each channel that takes
-/// a witness has a second form without one, `x (fun r -> r.Value)`, over an accessor returning
-/// plain `float`, and the axis is then `U.unspecified`. The forms differ in arity, not in
-/// measure, so the overload is resolvable where D43's was not, and a witness that disagrees with
-/// its accessor is still FS0001 naming both measures. Under `open Marey.UnitsOfMeasure`, `plot`
-/// returns `Marey.UnitsOfMeasure.PlotBuilder`, which has the witness forms only, so leaving one out
-/// is FS3099.
+/// **The witness may also be left out.** Under `open Marey` alone each channel that takes a witness
+/// has a second form without one, `x (fun r -> r.Value)`, over an accessor returning plain `float`,
+/// and the axis is then `U.unspecified`. The forms differ in arity, not in measure, so the overload
+/// is resolvable where one on measures is not, and a witness that disagrees with its accessor is
+/// still FS0001 naming both measures. Under `open Marey.UnitsOfMeasure`, `plot` returns
+/// `Marey.UnitsOfMeasure.PlotBuilder`, which has the witness forms only, so leaving one out is
+/// FS3099.
 ///
 /// What the block adds is therefore composition and not inference: channels beyond x and y,
-/// layers over one dataset, a stat between the data and the geom, and — from phase 5 — facets.
+/// layers over one dataset, a stat between the data and the geom, and facets.
 /// Everything downstream of the witness is still derived from it and never configured: the
 /// scale, the domain, the prefix, the ticks and both axis titles.
 ///
@@ -925,6 +924,6 @@ module Grammar =
     /// Open an encoding block over a dataset.
     ///
     /// The row type `'r` arrives here and is carried by the builder, which is what makes an
-    /// accessor over an unrelated record a compile error rather than a runtime one (D44
-    /// finding 4). The sequence is materialized once, so a lazy one is safe.
+    /// accessor over an unrelated record a compile error rather than a runtime one. The sequence is
+    /// materialized once, so a lazy one is safe.
     let plot (data: 'r seq) : PlotBuilder<'r> = PlotBuilder<'r>(Seq.toArray data)
