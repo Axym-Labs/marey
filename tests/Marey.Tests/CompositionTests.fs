@@ -518,6 +518,20 @@ module ``D177 a twin y`` =
         Assert.Equal(2, views.Length)
         Assert.Equal(views.[0].Y.Domain, views.[1].Y.Domain)
 
+    /// `toRightAxis` moves the last layer onto a right y axis after the fact: a pressure added
+    /// over a temperature cannot share its axis, and once moved it draws against one of its own.
+    [<Fact>]
+    let ``toRightAxis moves the last layer onto a right axis of its own`` () =
+        let added = left |> Chart.addLine U.second Derived.pascal ts pressure
+        Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent added |> ignore) |> ignore
+
+        let moved = added |> Chart.toRightAxis
+        let panel = moved.Panels.[0]
+        Assert.True(panel.Y2Axis.IsSome)
+        Assert.Equal<bool[]>([| false; true |], panel.Layers |> Array.map (fun l -> l.SecondaryY))
+        let scene = Chart.toSceneWith measurer extent moved
+        Assert.True((keyed (Keys.axisY2 (Keys.panel 0 0)) scene).IsSome)
+
 module ``D178 secondary axes`` =
 
     let private nm = 1e-9<m>
