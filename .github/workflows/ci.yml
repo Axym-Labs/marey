@@ -204,6 +204,11 @@ jobs:
             readme=$(grep -o '<readme>[^<]*</readme>' /tmp/nuspec.xml | sed 's:<readme>::;s:</readme>::')
             [ -n "$readme" ] || { echo "::error::$pkg declares no readme"; exit 1; }
             grep -q '<license type="expression">MIT</license>' /tmp/nuspec.xml || { echo "::error::$pkg has no license"; exit 1; }
+            # Marey's packages reach each other's internals, so each must depend on exactly the
+            # version of the others it was built with (Directory.Build.targets pins it).
+            if grep -o 'id="Marey\.[^"]*" version="[^"]*"' /tmp/nuspec.xml | grep -v 'version="\[[^],]*\]"'; then
+              echo "::error::$pkg depends on a Marey package by a range, not an exact version"; exit 1
+            fi
             unzip -l "$pkg" | grep -q "$readme" || { echo "::error::$pkg declares $readme but does not contain it"; exit 1; }
             echo "  $(basename "$pkg"): $readme"
           done

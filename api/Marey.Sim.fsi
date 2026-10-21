@@ -1,5 +1,3 @@
-namespace FSharp
-
 namespace Marey
 
     type Step<'s,[<Measure>] 't> = float<'t> -> float<'t> -> 's -> 's

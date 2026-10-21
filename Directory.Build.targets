@@ -59,4 +59,41 @@
     <OtherFlags>$(OtherFlags) --sig:$(MareyApiSig)/$(MSBuildProjectName).$(TargetFramework).fsi</OtherFlags>
   </PropertyGroup>
 
+
+  <!-- 1.0 review — Marey's packages share their internals with each other and with the two test
+       projects, so plumbing one package needs from another (an axis spec from an erased scale, a
+       prefix for a symbol) is `internal` rather than public surface a user meets and 1.0 has to
+       keep. The packages pin each other exactly (below), so a user cannot mix versions that
+       disagree about an internal. A new package joins this list. -->
+  <ItemGroup Condition="'$(IsPackable)' != 'false' AND $(MSBuildProjectName.StartsWith('Marey.'))">
+    <InternalsVisibleTo Include="Marey.Anim" />
+    <InternalsVisibleTo Include="Marey.Backend.Gpu" />
+    <InternalsVisibleTo Include="Marey.Backend.Skia" />
+    <InternalsVisibleTo Include="Marey.Backend.Svg" />
+    <InternalsVisibleTo Include="Marey.Backend.Tikz" />
+    <InternalsVisibleTo Include="Marey.Backend.Web" />
+    <InternalsVisibleTo Include="Marey.Core" />
+    <InternalsVisibleTo Include="Marey.Fields" />
+    <InternalsVisibleTo Include="Marey.Html" />
+    <InternalsVisibleTo Include="Marey.Interact" />
+    <InternalsVisibleTo Include="Marey.Plot" />
+    <InternalsVisibleTo Include="Marey.Sim" />
+    <InternalsVisibleTo Include="Marey.Toolchain" />
+    <InternalsVisibleTo Include="Marey.Tools.Tex" />
+    <InternalsVisibleTo Include="Marey.Tools.Video" />
+    <InternalsVisibleTo Include="Marey.Units" />
+    <InternalsVisibleTo Include="Marey.Verso" />
+    <InternalsVisibleTo Include="Marey.Tests" />
+    <InternalsVisibleTo Include="Marey.CSharp.Tests" />
+  </ItemGroup>
+
+  <!-- Marey's packages are released together and reach each other's internals, so each depends on
+       exactly the version of the others it was built with: `[1.0.0]`, not `>= 1.0.0`. Without the
+       pin a user could upgrade one package past the internals another one calls. -->
+  <Target Name="PinMareyProjectReferences" AfterTargets="_GetProjectReferenceVersions">
+    <ItemGroup>
+      <_ProjectReferencesWithVersions Update="@(_ProjectReferencesWithVersions)" ProjectVersion="[%(ProjectVersion)]" />
+    </ItemGroup>
+  </Target>
+
 </Project>

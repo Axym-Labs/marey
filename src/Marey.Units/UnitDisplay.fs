@@ -265,7 +265,7 @@ module UnitDisplay =
     /// falls back to an explicit `10ⁿ` multiplier instead of silently dropping the prefix. A
     /// dropped prefix would leave rescaled tick values under an unrescaled unit, which is the
     /// worst possible failure mode: a plot that is quietly wrong by nine orders of magnitude.
-    let renderPrefixedWith
+    let internal renderPrefixedWith
         (style: UnitStyle)
         (registry: UnitRegistry)
         (factors: (string * int) list)
@@ -331,7 +331,7 @@ module UnitDisplay =
     /// share a dimension with an SI unit of a different size, so canonicalising from `Dim`
     /// would name the wrong unit and, worse, name it confidently. `unitText` decides which of
     /// the two paths applies, on evidence from the witness rather than by inspecting strings.
-    let renderSymbol (style: UnitStyle) (p: Prefix) (symbol: string) =
+    let internal renderSymbol (style: UnitStyle) (p: Prefix) (symbol: string) =
         if System.String.IsNullOrEmpty symbol then
             ""
         else
@@ -359,7 +359,7 @@ module UnitDisplay =
     /// only `IScaleErased`, and the `ToSI <> 1.0` test is what makes an electronvolt axis read
     /// `keV` rather than `kJ` (D16). Sharing one implementation is what keeps the erased path
     /// and the measured path from disagreeing.
-    let unitTextErasedWith
+    let internal unitTextErasedWith
         (style: UnitStyle)
         (registry: UnitRegistry)
         (p: Prefix)
@@ -381,7 +381,7 @@ module UnitDisplay =
 
     /// The factorless form, kept because most callers have no witness to hand — a bare
     /// `Symbol`/`Dim`/`ToSI` triple still renders exactly as it did before `U.Factors` existed.
-    let unitTextErased
+    let internal unitTextErased
         (style: UnitStyle)
         (registry: UnitRegistry)
         (p: Prefix)

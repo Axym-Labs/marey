@@ -1,5 +1,3 @@
-namespace FSharp
-
 namespace Marey
 
     [<NoComparison>]

@@ -104,8 +104,22 @@ let clean (text: string) =
 
     out.AddRange attrs
 
+    // A namespace with nothing in it (the SDK's generated AssemblyInfo opens `namespace FSharp`)
+    // says nothing about the API.
+    let lines = List.ofSeq out
+
+    let rec dropEmpty (ls: string list) =
+        match ls with
+        | l :: rest when l.StartsWith "namespace " ->
+            match rest |> List.skipWhile ((=) "") with
+            | [] -> []
+            | next :: _ when next.StartsWith "namespace " -> dropEmpty rest
+            | _ -> l :: dropEmpty rest
+        | l :: rest -> l :: dropEmpty rest
+        | [] -> []
+
     // One blank line at most between declarations, none at either end.
-    out
+    dropEmpty lines
     |> Seq.fold
         (fun (acc: string list) l ->
             match acc with

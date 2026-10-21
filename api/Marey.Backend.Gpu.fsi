@@ -1,13 +1,3 @@
-namespace FSharp
-
-namespace Marey
-
-namespace Marey
-
-namespace Marey
-
-namespace Marey
-
 namespace Marey
 
     [<Sealed>]

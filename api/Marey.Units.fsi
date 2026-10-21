@@ -1,5 +1,3 @@
-namespace FSharp
-
 namespace Marey
 
     [<Measure>]
@@ -414,16 +412,7 @@ namespace Marey
 
         val select: lo: float * hi: float -> Prefix
 
-        val isPrefixableDim: registry: UnitRegistry -> dim: Dim -> bool
-
         val selectFor: dim: Dim -> float * float -> Prefix
-
-        val nonMetric: Set<string>
-
-        val selectForErased:
-          symbol: string ->
-            dim: Dim ->
-            toSI: float -> offsetSI: float -> float * float -> Prefix
 
         val selectForUnit: u: U<'u> -> float * float -> Prefix
 
@@ -451,32 +440,9 @@ namespace Marey
 
         val renderSi: style: UnitStyle -> dim: Dim -> string
 
-        val renderPrefixedWith:
-          style: UnitStyle ->
-            registry: UnitRegistry ->
-            factors: (string * int) list -> p: Prefix -> dim: Dim -> string
-
         val renderPrefixed:
           style: UnitStyle ->
             registry: UnitRegistry -> p: Prefix -> dim: Dim -> string
-
-        val renderSymbol:
-          style: UnitStyle -> p: Prefix -> symbol: string -> string
-
-        val unitTextErasedWith:
-          style: UnitStyle ->
-            registry: UnitRegistry ->
-            p: Prefix ->
-            symbol: string ->
-            factors: (string * int) list ->
-            dim: Dim -> toSI: float -> offsetSI: float -> string
-
-        val unitTextErased:
-          style: UnitStyle ->
-            registry: UnitRegistry ->
-            p: Prefix ->
-            symbol: string ->
-            dim: Dim -> toSI: float -> offsetSI: float -> string
 
         val unitText:
           style: UnitStyle ->
@@ -573,66 +539,8 @@ namespace Marey
 
         val title: label: string -> unitText: string -> string
 
-        [<Literal>]
-        val MaxStatedTicks: int = 50
-
-        val ofScaleTicked:
-          ticks: TickSpec ->
-            minor: MinorSpec ->
-            format: TickFormat ->
-            pin: Prefix option ->
-            style: UnitStyle ->
-            registry: UnitRegistry ->
-            tickCount: int -> label: string -> scale: Scale<'u> -> AxisSpec
-
-        val ofScalePinnedWith:
-          pin: Prefix option ->
-            style: UnitStyle ->
-            registry: UnitRegistry ->
-            tickCount: int -> label: string -> scale: Scale<'u> -> AxisSpec
-
-        val ofScaleWith:
-          style: UnitStyle ->
-            registry: UnitRegistry ->
-            tickCount: int -> label: string -> scale: Scale<'u> -> AxisSpec
-
         val auto:
           style: UnitStyle -> label: string -> scale: Scale<'u> -> AxisSpec
-
-        val ofPackedWith:
-          style: UnitStyle ->
-            registry: UnitRegistry ->
-            tickCount: int -> label: string -> packed: PackedScale -> AxisSpec
-
-        val ofPacked:
-          style: UnitStyle -> label: string -> packed: PackedScale -> AxisSpec
-
-        val ofPackedPinnedWith:
-          pin: Prefix option ->
-            style: UnitStyle ->
-            registry: UnitRegistry ->
-            tickCount: int -> label: string -> packed: PackedScale -> AxisSpec
-
-        val ofPackedTicked:
-          ticks: TickSpec ->
-            minor: MinorSpec ->
-            format: TickFormat ->
-            pin: Prefix option ->
-            style: UnitStyle ->
-            registry: UnitRegistry ->
-            tickCount: int -> label: string -> packed: PackedScale -> AxisSpec
-
-        val domainOfPacked: packed: PackedScale -> float * float
-
-        val prefixForPacked: float * float -> packed: PackedScale -> Prefix
-
-        val ofErasedWith:
-          style: UnitStyle ->
-            registry: UnitRegistry ->
-            tickCount: int -> label: string -> scale: IScaleErased -> AxisSpec
-
-        val ofErased:
-          style: UnitStyle -> label: string -> scale: IScaleErased -> AxisSpec
 
 namespace Marey
 

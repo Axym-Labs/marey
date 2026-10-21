@@ -235,7 +235,7 @@ module Axis =
     /// The most ticks a stated step may produce. A step given in the wrong prefix — 50 for 50 nm
     /// on a metre axis — would otherwise draw a solid bar of a hundred million of them.
     [<Literal>]
-    let MaxStatedTicks = 50
+    let internal MaxStatedTicks = 50
 
     /// D166 — the stated values inside the domain, in order, and the step their labels need.
     let private statedTicks (ticks: TickSpec) (domain: float * float) (axisUnit: string) : float[] * float option =
@@ -333,7 +333,7 @@ module Axis =
         | MinorCount n, _, Some major when n > 1 -> multiples (major / float n)
         | _ -> [||]
 
-    let ofScaleTicked<[<Measure>] 'u>
+    let internal ofScaleTicked<[<Measure>] 'u>
         (ticks: TickSpec)
         (minor: MinorSpec)
         (format: TickFormat)
@@ -479,7 +479,7 @@ module Axis =
     /// It is deliberately not a `Prefix` with a "none means auto" convention, because
     /// `Prefix.none` is a real prefix — an axis pinned to unprefixed metres is a thing a caller
     /// may want, and it must not read as "choose for me".
-    let ofScalePinnedWith<[<Measure>] 'u>
+    let internal ofScalePinnedWith<[<Measure>] 'u>
         (pin: Prefix option)
         (style: UnitStyle)
         (registry: UnitRegistry)
@@ -490,7 +490,7 @@ module Axis =
         ofScaleTicked TicksAuto MinorAuto FormatAuto pin style registry tickCount label scale
 
     /// The full form: choose the registry, the style, the tick count and the label.
-    let ofScaleWith<[<Measure>] 'u>
+    let internal ofScaleWith<[<Measure>] 'u>
         (style: UnitStyle)
         (registry: UnitRegistry)
         (tickCount: int)
@@ -509,17 +509,17 @@ module Axis =
 
     /// Recover the measure from §2.3's rank-2 package and take the `Scale<'u>` path. This is
     /// the right way to build an axis from a heterogeneous `PackedSeries list`.
-    let ofPackedWith (style: UnitStyle) (registry: UnitRegistry) (tickCount: int) (label: string) (packed: PackedScale) =
+    let internal ofPackedWith (style: UnitStyle) (registry: UnitRegistry) (tickCount: int) (label: string) (packed: PackedScale) =
         packed.Accept
             { new IScaleConsumer<AxisSpec> with
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) =
                     ofScaleWith style registry tickCount label s }
 
-    let ofPacked (style: UnitStyle) (label: string) (packed: PackedScale) =
+    let internal ofPacked (style: UnitStyle) (label: string) (packed: PackedScale) =
         ofPackedWith style UnitRegistry.si DefaultTickCount label packed
 
     /// `ofPackedWith` with the prefix decided elsewhere — D73. See `ofScalePinnedWith`.
-    let ofPackedPinnedWith
+    let internal ofPackedPinnedWith
         (pin: Prefix option)
         (style: UnitStyle)
         (registry: UnitRegistry)
@@ -533,7 +533,7 @@ module Axis =
                     ofScalePinnedWith pin style registry tickCount label s }
 
     /// D166 — `ofPackedPinnedWith` with the ticks stated.
-    let ofPackedTicked
+    let internal ofPackedTicked
         (ticks: TickSpec)
         (minor: MinorSpec)
         (format: TickFormat)
@@ -556,7 +556,7 @@ module Axis =
     /// domains, and the measure is the same on every one of them by construction: it is the
     /// same axis of the same figure at a different time. The measure is recovered where it
     /// matters, in `prefixForPacked`, which is the only thing that consumes this.
-    let domainOfPacked (packed: PackedScale) : float * float =
+    let internal domainOfPacked (packed: PackedScale) : float * float =
         packed.Accept
             { new IScaleConsumer<float * float> with
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) =
@@ -566,7 +566,7 @@ module Axis =
     /// The prefix this axis *would* choose if its numbers were `domain` rather than its own —
     /// D73's other half. The unit comes from the scale, the range from the caller, and a log
     /// scale over a wide range takes none, as `ofScaleWith` would decide.
-    let prefixForPacked (domain: float * float) (packed: PackedScale) : Prefix =
+    let internal prefixForPacked (domain: float * float) (packed: PackedScale) : Prefix =
         packed.Accept
             { new IScaleConsumer<Prefix> with
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) = prefixFor s.Kind (Prefix.selectForUnit s.Unit) domain }
@@ -590,7 +590,7 @@ module Axis =
     ///
     /// Labels are recomputed from `TickLabel.Value` rather than reused, because the erased
     /// labels were formatted before any prefix was chosen.
-    let ofErasedWith
+    let internal ofErasedWith
         (style: UnitStyle)
         (registry: UnitRegistry)
         (tickCount: int)
@@ -641,5 +641,5 @@ module Axis =
           Ticks = ticks
           Minor = [||] }
 
-    let ofErased (style: UnitStyle) (label: string) (scale: IScaleErased) =
+    let internal ofErased (style: UnitStyle) (label: string) (scale: IScaleErased) =
         ofErasedWith style UnitRegistry.si DefaultTickCount label scale

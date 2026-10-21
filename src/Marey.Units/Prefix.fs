@@ -171,7 +171,7 @@ module Prefix =
     /// The predicate is exposed because a caller may want to know *which* form it will get, but
     /// the renderer re-derives it structurally rather than calling this — the two must agree,
     /// and a shared match is easier to keep honest than a shared boolean.
-    let isPrefixableDim (registry: UnitRegistry) (dim: Dim) =
+    let internal isPrefixableDim (registry: UnitRegistry) (dim: Dim) =
         if Dim.isDimensionless dim then
             false
         elif (UnitRegistry.tryCanonical registry dim).IsSome then
@@ -221,7 +221,7 @@ module Prefix =
     /// string being composed, so §12.6 does not apply. Everything absent from this set and
     /// dimensionally sensible does take prefixes, which is why `keV`, `mbar`, `kcal`, `kDa`,
     /// `Mpc`, `mG` and `mL` all come out right while `kmin` and `kau` never appear.
-    let nonMetric =
+    let internal nonMetric =
         set
             [ NonSi.minute.Symbol
               NonSi.hour.Symbol
@@ -251,7 +251,7 @@ module Prefix =
     /// this rather than re-deriving the branches is what stops the two from drifting: an earlier
     /// version of `Axis.ofErasedWith` re-implemented the decision, got it wrong, and labelled a
     /// reloaded electronvolt axis `kJ`.
-    let selectForErased (symbol: string) (dim: Dim) (toSI: float) (offsetSI: float) (range: float * float) : Prefix =
+    let internal selectForErased (symbol: string) (dim: Dim) (toSI: float) (offsetSI: float) (range: float * float) : Prefix =
         if offsetSI <> 0.0 then none
         elif toSI <> 1.0 then
             if nonMetric.Contains symbol then none else select range
