@@ -240,12 +240,12 @@ module private PlotCompile =
 
         if not (List.isEmpty spec.Channels) then
             failwithf
-                "Marey: a `%s` block cannot carry a colour, size or shape channel. The stat changes the row count, so a per-row channel has nothing left to line up with (D47). Facet the block instead, or bin each group yourself and add the series."
+                "Marey: a `%s` block cannot carry a colour, size or shape channel. The stat changes the row count, so a per-row channel has nothing left to line up with. Facet the block instead, or bin each group yourself and add the series."
                 what
 
         if spec.Keys.IsSome then
             failwithf
-                "Marey: a `%s` block cannot carry a `key`. The stat makes its own rows (bins, a curve, a staircase), and none of them is a row of the data, so there is nothing for a key to name (D104)."
+                "Marey: a `%s` block cannot carry a `key`. The stat makes its own rows (bins, a curve, a staircase), and none of them is a row of the data, so there is nothing for a key to name."
                 what
 
         if not (List.isEmpty spec.Layers) then

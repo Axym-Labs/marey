@@ -1521,7 +1521,7 @@ namespace Marey
         val ofEcdf: e: Stat.Ecdf<'u> -> Figure
 
         [<System.Obsolete
-          ("Chart.Plain is retired (D109). Use Chart.Line(xs, ys), which leaves the units unspecified, or pass U.one where the data is dimensionless.");
+          ("Chart.Plain is retired. Use Chart.Line(xs, ys), which leaves the units unspecified, or pass U.one where the data is dimensionless.");
           RequireQualifiedAccess>]
         module Plain =
 

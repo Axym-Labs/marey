@@ -639,7 +639,7 @@ module Chart =
     /// constructors take its place — `Chart.Line(xs, ys)` leaves both units unspecified (D127),
     /// which claims nothing — and `U.one` remains a value to pass where the data really has no
     /// dimension, `Chart.Line(xs, ys, yUnit = U.one)`.
-    [<Obsolete("Chart.Plain is retired (D109). Use Chart.Line(xs, ys), which leaves the units unspecified, or pass U.one where the data is dimensionless.")>]
+    [<Obsolete("Chart.Plain is retired. Use Chart.Line(xs, ys), which leaves the units unspecified, or pass U.one where the data is dimensionless.")>]
     [<RequireQualifiedAccess>]
     module Plain =
 

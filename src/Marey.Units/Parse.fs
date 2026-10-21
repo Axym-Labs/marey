@@ -238,9 +238,9 @@ module UnitParsing =
             if isNull text || String.IsNullOrWhiteSpace text then
                 Error "Marey: an empty string is not a unit. Leave the unit out, or use U.unspecified, for numbers nobody named."
             elif text.Contains " since " || text.StartsWith "since " then
-                Error(sprintf "Marey: \"%s\" is a timestamp. Timestamps are not units Marey reads (D110); convert the times to a duration first." text)
+                Error(sprintf "Marey: \"%s\" is a timestamp, a point in time rather than a unit; convert the times to a duration first." text)
             elif text = "dB" || text = "B" || text.Contains "lg(" || text.Contains "ln(" || text.Contains "lb(" || text.StartsWith "dB" then
-                Error(sprintf "Marey: \"%s\" is a logarithmic unit. Logarithmic units are not units Marey reads (D110)." text)
+                Error(sprintf "Marey: \"%s\" is a logarithmic unit. Marey has no logarithmic units; convert to the linear quantity (a power ratio, a pressure) and use a log axis." text)
             else
                 try
                     Ok(parseTokens text (tokens (text.Trim())))
