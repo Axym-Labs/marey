@@ -143,8 +143,8 @@ module internal Legend =
           Y1 = y0 + size.Height }
 
     /// Compile the legend into the box `b`, in device px, in `columns` columns, with its
-    /// frame drawn or not. The corner placements and the outside ones are both this, at a box
-    /// chosen for them.
+    /// frame drawn or not, and its background filled or not. The corner placements and the
+    /// outside ones are both this, at a box chosen for them.
     let compileIn
         (m: ITextMeasurer)
         (theme: Theme)
@@ -152,6 +152,7 @@ module internal Legend =
         (b: Rect<px>)
         (columns: int)
         (framed: bool)
+        (filled: bool)
         (entries: LegendEntry[])
         : Node =
         if entries.Length = 0 then
@@ -169,7 +170,10 @@ module internal Legend =
                     else
                         None
 
-                Scene.rect stroke (Some(Solid theme.LegendBackground)) r
+                if framed || filled then
+                    Scene.rect stroke (if filled then Some(Solid theme.LegendBackground) else None) r
+                else
+                    Scene.empty
 
             let cols = columnsOf columns entries
             let mutable x0 = b.X0 + theme.LegendPadding
@@ -266,4 +270,4 @@ module internal Legend =
         else
             let size = measure m theme entries
             let plotPx = Layout.pxRect extent plot
-            compileIn m theme extent (cornerBox theme plotPx size placement) 1 theme.ShowLegendFrame entries
+            compileIn m theme extent (cornerBox theme plotPx size placement) 1 theme.ShowLegendFrame true entries

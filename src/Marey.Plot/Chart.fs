@@ -1409,7 +1409,8 @@ module Chart =
     /// Lay the last panel's legend out in `columns` columns, filled down then across.
     let withLegendColumns (columns: int) (fig: Figure) = mapLast (fun p -> { p with LegendColumns = max 1 columns }) fig
 
-    /// Draw the last panel's legend with or without its frame, whatever the theme says.
+    /// Draw the last panel's legend with or without its frame, whatever the theme says. Without
+    /// one it has no background either, so it does not mask the data under it.
     let withLegendFrame (framed: bool) (fig: Figure) = mapLast (fun p -> { p with LegendFrame = Some framed }) fig
 
     /// **One legend for the whole figure**, beside or below its panels, gathering every

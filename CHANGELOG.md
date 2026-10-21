@@ -14,6 +14,9 @@ land in a minor release.
 
 ### Changed
 
+- **`withLegendFrame false` takes the legend's background with it**, as matplotlib's
+  `frameon=False` does, so a frameless legend no longer masks the data under it. A theme whose
+  own legend is borderless keeps its fill. `figure-legends` is the one baseline that moves.
 - **Every unit witness is in `U`.** `U.joule`, `U.tesla`, `U.electronvolt`, `U.hour`,
   `U.degreeCelsius` and the rest, where they were `Derived.…` and `NonSi.…`; the two modules are
   gone. C#'s `Units.*` is unchanged. `Derived.newtonByComposition` and its four siblings are no

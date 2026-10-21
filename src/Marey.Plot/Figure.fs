@@ -2308,7 +2308,11 @@ module Figure =
                 // scores make least covered.
                 let legend =
                     let framed = defaultArg p.LegendFrame theme.ShowLegendFrame
-                    let draw (box: Rect<px>) = Legend.compileIn m theme extent box p.LegendColumns framed entries
+                    // A frame turned off by hand takes the background with it, as matplotlib's
+                    // `frameon=False` does, so the legend stops masking the data under it. A
+                    // theme's own borderless box keeps its fill: that is a look, not a request.
+                    let filled = p.LegendFrame <> Some false
+                    let draw (box: Rect<px>) = Legend.compileIn m theme extent box p.LegendColumns framed filled entries
 
                     // Through nd and back, as the legend has always been placed: the round trip is
                     // a last-bit change against `plotPx`, and the baselines record it.
@@ -3616,7 +3620,7 @@ module Figure =
                     | FigureLegendBottom -> (cell.X0 + cell.X1 - size.Width) / 2.0
 
                 let box: Rect<px> = { X0 = x0; Y0 = cell.Y0; X1 = x0 + size.Width; Y1 = cell.Y0 + size.Height }
-                [| Keyed(Keys.figureLegend, Legend.compileIn m theme extent box 1 theme.ShowLegendFrame entries) |]
+                [| Keyed(Keys.figureLegend, Legend.compileIn m theme extent box 1 theme.ShowLegendFrame true entries) |]
             | _ -> [||]
 
         Scene.prune (
