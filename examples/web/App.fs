@@ -40,7 +40,7 @@ let figure (f: float<1 / s>) (gamma: float<1 / s>) : Figure =
     |> Chart.overlay (Chart.scatter U.second U.metre ts xs)
     |> Chart.withTitle "A damped oscillator, compiled in the browser"
 
-/// A cloud of `n` points: the batch WebGL2 draws (D122). Seeded, so a count always draws the same
+/// A cloud of `n` points: the batch WebGL2 draws. Seeded, so a count always draws the same
 /// cloud.
 let cloud (n: int) : Figure =
     let rng = Rng.seeded 7UL
@@ -101,12 +101,13 @@ let private drawCloud (m: WebMeasurer) =
             (Num.upTo 1 (drawn - compiled))
             (if isChecked webgl then "on" else "off"))
 
-// ---- A simulation in the page (M5.5) ---------------------------------------------------------
+// ---- A simulation in the page --------------------------------------------------------------------
 //
-// The oscillator gate 10 runs under Node and the .NET suite runs too: a mass on a spring of period
-// 1 s, stepped by velocity Verlet at 1 ms. Its state at 10 s is printed to twelve decimals, which
-// `tests/Marey.Tests/golden/sim-runs.txt` holds as `verlet 10`. A chaotic system would not agree
-// (D141); this one does, digit for digit.
+// The oscillator the test suite runs under Node and under .NET: a mass on a spring of period 1 s,
+// stepped by velocity Verlet at 1 ms. Its state at 10 s is printed to twelve decimals, which
+// `tests/Marey.Tests/golden/sim-runs.txt` holds as `verlet 10`. A chaotic system would not agree,
+// since JavaScript's `sin` and `exp` differ from .NET's in the last bit; this one does, digit for
+// digit.
 
 let private omega2 = 4.0 * Math.PI * Math.PI * 1.0</s^2>
 

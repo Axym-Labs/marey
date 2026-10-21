@@ -10,6 +10,8 @@ visualization system for F#. Pure F#, **zero dependencies**, `netstandard2.1`.
 open Marey
 open Marey.UnitsOfMeasure
 
+let t = Array.init 24 (fun i -> float i * 0.025<s>)
+let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
 let figure = Chart.line U.second U.metre t x
 
 // To a string, or straight to a file.
@@ -35,5 +37,5 @@ knows what to do with one, without an extension installed.
 
 Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else.
 
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [The guide on output](https://github.com/Axym-Labs/marey/blob/main/docs/guide/01-start.md)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

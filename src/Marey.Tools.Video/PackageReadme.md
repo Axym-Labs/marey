@@ -5,9 +5,16 @@ visualization system for F#. **The frame sequence is the product; the mux is a c
 it.**
 
 ```fsharp
+#r "nuget: Marey"
+#r "nuget: Marey.Backend.Skia"
 #r "nuget: Marey.Tools.Video"
 
 open Marey
+open Marey.UnitsOfMeasure
+
+let film =
+    Anim.ofSeconds 1.0<s> (fun t -> Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; t * 1.0<m/s> + 0.1<m> |])
+    |> Film.ofFigures 24 (Chart.size 320.0 200.0)
 
 let sequence =
     film |> Frames.write FramePass.Concurrent SkiaBackend.renderPng (FrameTarget.into "frames" ".png") 25.0
@@ -57,5 +64,5 @@ Depends on [`Marey.Plot`](https://www.nuget.org/packages/Marey.Plot) and
 [`Marey.Toolchain`](https://www.nuget.org/packages/Marey.Toolchain), and on nothing outside this
 repository.
 
-- [The guide, §20](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md#20-video)
+- [The guide on frames and video](https://github.com/Axym-Labs/marey/blob/main/docs/guide/10-storyboard.md)
 - [examples/video.fsx](https://github.com/Axym-Labs/marey/blob/main/examples/video.fsx)

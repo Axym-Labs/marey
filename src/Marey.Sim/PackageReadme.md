@@ -50,6 +50,6 @@ Compiles under Fable. A chaotic system run in a browser and the same one under .
 trajectories after tens of seconds, because JavaScript's `sin` and `exp` differ in the last bit;
 both are correct to the integrator's order.
 
-- [The guide's chapter](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md#25-simulation)
+- [The guide on simulation](https://github.com/Axym-Labs/marey/blob/main/docs/guide/08-simulation.md)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples): `integrators.fsx`,
   `double-pendulum.fsx`, `double-gyre.fsx`, `heat.fsx`, `fluid.fsx`, `cylinder.fsx`

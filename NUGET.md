@@ -1,6 +1,8 @@
 # Marey
 
-A plotting library for F# where the compiler checks your units, and the axes label themselves.
+Figures, fields, simulations and animations for F#, where the compiler checks the units and the
+axes label themselves. `Marey` is the library in one reference: units, the plotting grammar,
+fields, simulations, animation, live figures, and SVG, TikZ and HTML output.
 
 ```fsharp
 #r "nuget: Marey"
@@ -8,67 +10,49 @@ A plotting library for F# where the compiler checks your units, and the axes lab
 open Marey
 open Marey.UnitsOfMeasure
 
-let t = Array.init 24 (fun i -> float i * 0.4<s>)
-let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
+let t = Array.init 400 (fun i -> float i * 0.01<s>)
+let x = t |> Array.map (fun t -> 0.012<m> * exp (-t / 1.5<s>) * cos (2.0 * System.Math.PI * 1.2<Hz> * t))
+let stiffness = 40.0<N/m>
 
-Chart.line U.second U.metre t x
-|> Chart.withTitle "Free fall"
-|> Chart.toSvg SvgBackend.render "fall.svg" (Chart.size 800.0 500.0)
+let spring =
+    Chart.line U.second U.metre t x
+    |> Chart.above (Chart.line U.second U.joule t (x |> Array.map (fun x -> 0.5 * stiffness * x * x)))
+    |> Chart.shareX
+    |> Chart.withTitle "A damped spring"
+
+spring |> Chart.toSvg SvgBackend.render "spring.svg" (Chart.size 720.0 480.0)
 ```
 
-That prints an x axis reading `t [s]` and a y axis reading `x [m]` with **nothing configured**.
-The scale, the domain, the SI prefix, the tick values, the tick labels and both axis titles are
-derived from the two unit witnesses — and plotting seconds against seconds on these axes is a
-compile error.
+Nothing set an axis. The displacement was computed in metres and reads `x [mm]`; the energy,
+`½ k x²` with `k` in N/m, is a `float<J>` because the compiler worked it out, and reads in mJ.
+Plotting seconds against a metres axis does not compile. Under `Theme.tikz` the same figure is a
+`tikzpicture`, typeset by the LaTeX document with `siunitx` units.
 
-Swapping the theme turns the same figure into `tikzpicture` source, typeset by the LaTeX
-document's own engine and fonts, with axis titles set by `siunitx`. Swapping the *renderer* turns
-it into a PNG or a vector PDF, through `Marey.Backend.Skia`, with text shaped by HarfBuzz rather
-than estimated.
-
-When the data is a table rather than two arrays, `plot` declares what each column means in one
-place — positional channels, colour, shape and size, a statistic, and small multiples:
-
-```fsharp
-plot trials {
-    x U.second (fun r -> r.Time)
-    y U.metre  (fun r -> r.Displacement)
-    color      (fun r -> r.Sample)
-    layer GeomPoint
-    fit
-}
-```
-
-Units are opt-in. `open Marey.UnitsOfMeasure` is the mode above, with a witness per axis checked at
-compile time; without it a chart takes plain arrays and a unit per axis that may be stated or left
-out, `Chart.Line(ts, xs, yUnit = U.metre)`, which is also the mode C# has, under `using
-Marey.CSharp`. A unit known only as text is read with `U.parse "V/m"`.
+In a [Verso](https://github.com/DataficationSDK/Verso) notebook, a first cell of
+`#!extension Marey.Verso` makes a figure display as a figure and a figure with controls live.
 
 ## The packages
 
+`Marey` depends on every package below that needs no native library or external program. The
+others are separate references.
+
 | Package | |
 |---|---|
-| `Marey` | The packages below that need no native library or external tool, in one reference: Core, Units, Plot, Svg, Tikz, Anim, Fields, Sim, Interact and Html. Carries no code. |
-| `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the scene IR. Zero dependencies. |
-| `Marey.Units` | SI, derived and non-SI unit witnesses; canonicalisation, prefix selection, and four rendering styles. |
-| `Marey.Plot` | `Chart` and the `plot` encoding block, thirteen geoms, channels, statistics (loess and bootstrap intervals among them), facets, themes, colour-blind-safe palettes, layout, the `scene` storyboard block, and the parallel frame writer. No backend reference. |
-| `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, deterministic. |
-| `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX. |
-| `Marey.Backend.Skia` | PNG and vector PDF, with real text shaping. Depends on SkiaSharp. |
-| `Marey.Backend.Gpu` | The Skia backend's drawing on an OpenGL 3.3 context, offscreen or in a window, with a million points in milliseconds; the fluid solvers and LIC on the GPU. |
-| `Marey.Backend.Web` | A canvas in a browser, for a Fable app that compiles its figures in the page. |
-| `Marey.Anim` | Animation as a pure function of time: a seekable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
-| `Marey.Fields` | Fields on dimensioned planes, phase spaces included: derivatives in the units the types work out; heatmaps, contours, bands, quivers, streamlines and line-integral convolution; fixed points found and classified. |
-| `Marey.Sim` | Simulation: typed ODE integrators, trajectories that seek as animations, invariants, events and collisions, Poincaré sections, pathlines and particles, heat, wave and Poisson solvers on a grid, and fluids by stable fluids and lattice Boltzmann. |
-| `Marey.Tools.Video` | Encoding a rendered frame sequence to video with `ffmpeg`, resolved on `PATH` and reported. |
-| `Marey.Tools.Tex` | Mathematical typesetting: TeX source becomes vector outlines through `latex` and `dvisvgm`, so every backend draws it. Opt-in, and degrades to plain text. |
-| `Marey.Toolchain` | Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies. |
-| `Marey.Interact` | A figure with typed controls (a slider over kelvin hands the view kelvin), stepped by a pure function a notebook drives: zoom, pan, a readout in the axes' units, and recordings that replay as films. |
-| `Marey.Html` | HTML renderings for a notebook cell, including a film as a playing flipbook and a live figure's page. Host-neutral. |
-| `Marey.Verso` | The Verso notebook extension. A figure displays as a figure, a film plays, and a figure with controls is live. |
+| `Marey.Core`, `Marey.Units` | Dimensions, unit witnesses, scales, colour, and the scene every backend draws. |
+| `Marey.Plot` | `Chart`, the `plot` block, layout, themes, the storyboard. |
+| `Marey.Anim`, `Marey.Fields`, `Marey.Sim` | Animation, fields, simulation. |
+| `Marey.Interact`, `Marey.Html` | Live figures, and HTML for a notebook cell. |
+| `Marey.Backend.Svg`, `Marey.Backend.Tikz` | SVG, and `tikzpicture` source for LaTeX. |
+| `Marey.Backend.Skia` | PNG and vector PDF with text shaped by HarfBuzz. Not in `Marey`: it brings SkiaSharp's natives. |
+| `Marey.Backend.Gpu` | The GPU, offscreen or in a window. Not in `Marey`. |
+| `Marey.Backend.Web` | A canvas in a browser, for a Fable app. Not in `Marey`. |
+| `Marey.Tools.Tex`, `Marey.Tools.Video` | Typeset text through `latex` and `dvisvgm`, video through `ffmpeg`. Not in `Marey`. |
+| `Marey.Verso` | The Verso notebook extension, loaded by `#!extension Marey.Verso`. |
 
-Pre-1.0, and versioned accordingly. The API is still free to move. MIT licensed.
+Pre-1.0: the next release is 1.0.0, and the compatibility page says what it will promise. MIT
+licensed.
 
-- [Repository](https://github.com/Axym-Labs/marey)
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide/README.md)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)
+- [Compatibility](https://github.com/Axym-Labs/marey/blob/main/docs/compatibility.md)
+- [Repository](https://github.com/Axym-Labs/marey)

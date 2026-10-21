@@ -69,7 +69,7 @@ System.IO.File.Copy(sequence.Files.[sequence.Files.Length - 1], "video-poster.pn
 
 // ---------------------------------------------------------------------------------------------
 // The command. It is a pure function of the options and the sequence, so it can be printed,
-// diffed and reproduced — which is the whole reason D75 refused a wrapper that builds argv.
+// diffed and reproduced, which a wrapper that builds the arguments itself would not allow.
 // ---------------------------------------------------------------------------------------------
 
 printfn "ffmpeg %s" (String.concat " " (Video.args MuxOptions.Default sequence "video.mp4"))
@@ -110,7 +110,8 @@ match Video.mux MuxOptions.Default sequence "video.mp4" with
         // own time — a frame occupies the interval that starts at its time.
         printfn "it plays for as long as the frames last: %b" (abs (float info.Duration - float info.FrameCount / info.Fps) < 1e-3)
 
-        // D76: the container carries nothing naming the build that wrote it. Without
+        // The container carries nothing naming the build that wrote it, so two machines write the
+        // same file. Without
         // `-fflags +bitexact` this list is `Lavf…` and `Lavc… libx264`.
         printfn "the container names no ffmpeg build: %b" (List.isEmpty info.BuildTags)
 

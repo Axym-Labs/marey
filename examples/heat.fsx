@@ -10,7 +10,7 @@
 
     The plate is stepped by Crank–Nicolson (ADI), which is stable at any step: here 1 s, eight
     times the explicit limit on this grid. Asked for the same step, forward Euler refuses and says
-    by how much. The film's colour scale is the union of every frame's range (D94), so one colour
+    by how much. The film's colour scale is the union of every frame's range, so one colour
     is one temperature throughout. The live figure is the same trajectory under a time control
     that a notebook plays or scrubs; written out here as a static page. *)
 

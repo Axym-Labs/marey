@@ -25,7 +25,7 @@ let at (x: float) (y: float) : Vec2<nd> =
 
 // The picture is a 3 x 2 filmstrip in a 900 x 340 surface, so each cell is 300 x 170 device px.
 // `nd` is normalised per axis, so a shape that is round on screen is *wider* than it is tall in
-// nd by exactly this ratio — D12's anisotropy, met the first time anyone draws a circle by hand.
+// nd by exactly this ratio, which anyone drawing a circle by hand meets first.
 let aspect = 170.0 / 300.0
 
 /// A regular n-gon, from the angle `phase`, as a closed subpath.
@@ -36,7 +36,7 @@ let poly (n: int) (phase: float) (cx: float) (cy: float) (r: float) =
            if i = 0 then yield MoveTo p else yield LineTo p
        yield ClosePath |]
 
-/// A circle, as four cubics — D11's "no arcs", one layer up.
+/// A circle, as four cubics: the scene has no arc, only lines and Béziers.
 let circle (cx: float) (cy: float) (r: float) =
     let rx = r * aspect
     let kx = 0.5522847498307936 * rx
@@ -113,7 +113,7 @@ let frame (a: PathSeg[]) (b: PathSeg[]) (t: float) =
 
 /// Cell `(row, col)` of a 3 x 2 grid, in nd. Squeeze into the cell, then slide to it:
 /// `Affine.compose f g` is "f then g", and the IR's transform node carries the composed affine
-/// rather than a closure — D1, and the reason two identically-built scenes compare equal.
+/// rather than a closure, which is why two identically built scenes compare equal.
 let cell (row: int) (col: int) (node: Node) =
     let squeeze: Affine<nd, nd> = Affine.scale (1.0 / 3.0) 0.5
 

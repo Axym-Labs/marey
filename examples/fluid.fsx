@@ -12,8 +12,8 @@
 
     Each step advects the velocity and the heat semi-Lagrangian, adds the buoyancy and the source,
     diffuses implicitly, and projects the velocity onto a divergence-free field by multigrid on a
-    staggered grid (D148): the divergence it leaves is the solver's alone, a few parts in ten
-    million of |u|/H, checked below. With a GPU the same step runs there (D147), five steps a call,
+    staggered grid: the divergence it leaves is the solver's alone, a few parts in ten
+    million of |u|/H, checked below. With a GPU the same step runs there, five steps a call,
     and its result agrees with the CPU's to a few parts in a million; the step times are printed. *)
 
 #r "nuget: Marey.Sim"

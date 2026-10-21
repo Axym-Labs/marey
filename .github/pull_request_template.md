@@ -11,7 +11,7 @@
 - [ ] `dotnet build` is warning-free
 - [ ] `dotnet test` is green
 - [ ] The TeX gates ran, or the output says `SKIPPED:` and I have said so below
-- [ ] New public API has a runnable example in `docs/guide.md` or `examples/`
+- [ ] New public API has a runnable example in `docs/guide/` or `examples/`
 - [ ] `CHANGELOG.md` updated under `[Unreleased]`, if this is user-visible
 
 ## Golden baselines

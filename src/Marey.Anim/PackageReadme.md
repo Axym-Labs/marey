@@ -44,21 +44,31 @@ mutable scene graph cannot offer, and what a scrubbable timeline needs.
 
 `Marey.Anim` is generic in what it animates and mentions no `Figure`: tweening a `float<m>`
 does not make you install the grammar. To render an `Anim<Figure>`, lay out **once** for the
-whole shot and draw each frame inside that arrangement:
+whole shot and draw each frame inside that arrangement, which is what `Film.ofFigures` in
+`Marey.Plot` does:
 
 ```fsharp
-let shot = Chart.arrangeUnion 32 TextMeasure.approx extent (fun u -> Anim.atFraction u anim)
-let frame u = Chart.toSceneIn TextMeasure.approx shot (Anim.atFraction u anim)
+#r "nuget: Marey"
+
+open Marey.UnitsOfMeasure
+
+let rising =
+    Anim.ofSeconds 2.0<s> (fun t ->
+        let ts = [| 0.0<s>; t + 1.0<s> |]
+        Chart.line U.second U.metre ts (ts |> Array.map (fun t -> 50.0<m/s> * t)))
+
+let film = Film.ofFigures 32 (Chart.size 640.0 400.0) rising
+printfn "a %.0f s film, laid out once" (float film.Duration)
 ```
 
 Re-laying out per frame makes the panel *breathe* — the plot rectangle is what is left after the
 widest tick label has taken its room, so a domain gaining a digit moves the axis while the data
-is what is supposed to be moving. `arrangeUnion` sizes the gutters against every sampled state at
+is what is supposed to be moving. A film sizes the gutters against every sampled state at
 once and pins the unit prefix to the same union, so neither the panel nor the axis title steps
 mid-shot.
 
 Depends only on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core), and is
 Fable-compatible.
 
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [The guide on animation](https://github.com/Axym-Labs/marey/blob/main/docs/guide/09-animation.md)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

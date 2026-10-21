@@ -5,11 +5,17 @@ visualization system for F#. A [Fable](https://fable.io) app builds a figure, la
 same compiler a notebook kernel runs, and draws it on a canvas. Consumed from source by Fable;
 `Fable.Core` is its one dependency.
 
-```fsharp
+```fsharp norun
+open Fable.Core
 open Marey
 open Marey.UnitsOfMeasure
 
-let ctx = Canvas.context (Canvas.byId "plot")
+[<Emit("document.getElementById($0)")>]
+let canvasById (_id: string) : CanvasElement = jsNative
+
+let ctx = (canvasById "plot").getContext "2d"
+let t = Array.init 24 (fun i -> float i * 0.025<s>)
+let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
 let extent = Chart.size 720.0 450.0
 
 WebText.measurer ()

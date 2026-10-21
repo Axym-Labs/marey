@@ -7,7 +7,7 @@
     every 10 s: the standard test field for transport in an unsteady flow. Four kinds of thing move
     through it, and they differ only in how particles are seeded and what is kept:
 
-      * the instantaneous streamlines, M4's picture of the field at one moment, drawn in pixels;
+      * the instantaneous streamlines, the field's picture at one moment, drawn in pixels;
       * pathlines, where three particles went, a trajectory in metres;
       * a streakline, every particle released from one point so far, which is what dye shows;
       * the particles themselves, the streak's current positions.

@@ -8,7 +8,7 @@
     draws the potential as a heatmap, its equipotentials, and the electric field's lines over
     them, recomputed from that instant's field.
 
-    What stays still is the point. The panel does not move (D72), and **neither does the colour
+    What stays still is the point. The panel does not move, and **neither does the colour
     scale**. By default a frame's colours are drawn against the union of every sampled frame's
     range rather than its own, so one colour means one number of volts throughout the film.
     Without that, each frame would stretch its own range over the whole ramp, and a field that
@@ -63,8 +63,8 @@ let anim = Anim.ofSeconds period figureAt
 let extent = Chart.size 560.0 380.0
 let measurer = MemoTextMeasurer TextMeasure.approx
 
-// D72's union, taken over 32 sampled instants: the panel's gutters and the colour domain. Every
-// frame states the same domain, so the union is that domain.
+// The film is laid out once, over 32 sampled instants: the panel's gutters and the colour domain.
+// Every frame states the same domain, so the union is that domain.
 let clock = System.Diagnostics.Stopwatch.StartNew()
 let film = Film.ofFiguresWith 32 measurer extent anim
 let arranging = clock.Elapsed.TotalMilliseconds

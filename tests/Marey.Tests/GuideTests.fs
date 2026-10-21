@@ -1,10 +1,10 @@
-/// `docs/guide.md` is executable, and this is what executes it.
+/// The guide, `docs/guide/`, is executable, and this is what executes it.
 ///
-/// Every ```` ```fsharp ```` block in the guide is extracted **in order**, concatenated into one
-/// script and run under `dotnet fsi`. The guide is written as a single continuous session for
-/// exactly this reason: a binding introduced in §2 is still in scope in §14, so the examples read
-/// as one worked session rather than fourteen disconnected fragments, and the checker gets to
-/// compile them as one unit.
+/// Every ```` ```fsharp ```` block of its pages is extracted **in order**, page by page,
+/// concatenated into one script and run under `dotnet fsi`. The guide is written as a single
+/// continuous session for exactly this reason: a binding introduced in §1 is still in scope in
+/// §15, so the examples grow from one section to the next, and the checker compiles them as one
+/// unit. The README's example is a session of its own.
 ///
 /// ### Why this is a test and not a chore for a human
 ///
@@ -14,17 +14,12 @@
 /// assumption under the Verso extension; trusting prose about the API would be the one place it
 /// took someone's word for it.
 ///
-/// It has already earned the trouble. Writing the guide against the public surface produced four
-/// wrong examples that all looked plausible — `U.newton` and `U.volt` (both live in `Derived`),
-/// `Scale.domainOf` applied to a scale rather than to the data it is derived from, and a claim
-/// that the composed and named newton print the same symbol. They do not: the composed one is
-/// `kg·m/s²`, which is the entire reason the `Dim`-keyed registry exists. That last one would have
-/// been a paragraph confidently teaching the opposite of the design.
+/// ### The rules the guide has to follow
 ///
-/// ### The two rules the guide has to follow
-///
-/// * A block that is **meant** not to compile is fenced ```` ```fsharp-error ```` and skipped
-///   here. The guide has one, showing what a dimensional mismatch looks like.
+/// * A block that is **meant** not to compile is fenced ```` ```fsharp-error ```` and skipped.
+///   A block that compiles but must not run here, a window or code for a browser, says `norun`.
+/// * A block in the unit-optional mode says `optional`, and runs in a second session, since the
+///   first opens `Marey.UnitsOfMeasure`, under which a unit-optional call does not compile.
 /// * `#r "nuget: …"` lines are stripped, because the guide quotes the published-package
 ///   experience while the checker must test *this* working tree. The assemblies come from the
 ///   test's own output directory, so the guide is always checked against the build in hand.
@@ -71,53 +66,12 @@ let private assemblies =
       // M5 phase 10, with the GPU and window chapter.
       "Marey.Backend.Gpu" ]
 
-let private guidePath =
-    lazy (Path.Combine(Golden.repoRoot.Force(), "docs", "guide.md"))
-
-/// Fenced blocks whose info string is exactly `fsharp`. `fsharp-error` does not match, which is
-/// the whole mechanism for opting a block out.
-let private blockPattern =
-    Regex(@"^```fsharp\r?$\r?\n(.*?)^```\r?$", RegexOptions.Multiline ||| RegexOptions.Singleline)
-
-let private blocks (markdown: string) =
-    blockPattern.Matches markdown
-    |> Seq.map (fun m -> m.Groups.[1].Value)
-    |> Seq.toArray
-
-/// Blocks fenced ```` ```fsharp optional ````, in the unit-optional mode. They are a second
-/// session, run in order like the first, because the first opens `Marey.UnitsOfMeasure` in §1 and
-/// under that `open` a unit-optional constructor is a compile error by design. GitHub highlights
-/// the info string by its first word, so a reader sees F#.
-let private optionalPattern =
-    Regex(@"^```fsharp optional\r?$\r?\n(.*?)^```\r?$", RegexOptions.Multiline ||| RegexOptions.Singleline)
-
-let private optionalBlocks (markdown: string) =
-    optionalPattern.Matches markdown
-    |> Seq.map (fun m -> m.Groups.[1].Value)
-    |> Seq.toArray
-
 /// `dotnet` on PATH, or `None`.
 ///
 /// This was a second copy of `TexToolchain.onPath` — its own doc comment said so — and it is now
 /// the shared registry entry. A gate that cannot run should say so rather than pass quietly, and
 /// saying so is `Toolchain`'s job in one wording rather than this file's in another.
 let private dotnetTool = Tools.dotnet
-
-[<Fact>]
-let ``the guide has examples, and they are the ones being checked`` () =
-    let markdown = File.ReadAllText(guidePath.Force(), Encoding.UTF8)
-    let found = blocks markdown
-
-    // A regex that silently matched nothing would make the run below vacuously green — the exact
-    // failure mode the TeX gate had and that cost a day. Pin a floor.
-    Assert.True(
-        found.Length >= 25,
-        sprintf "expected the guide to hold at least 25 fsharp blocks, found %d" found.Length
-    )
-
-    // And pin that the opt-out works, so the one block that must not compile really is excluded.
-    Assert.DoesNotContain("Chart.line U.second U.metre t t", String.concat "\n" found)
-    Assert.Contains("fsharp-error", markdown)
 
 /// Run one session under `dotnet fsi`: the assemblies, a prelude, then the blocks in order. `source`
 /// names the session in the failure message and the script's file name. A session `expectsOutput`
@@ -178,31 +132,12 @@ let private runBlocksWith (expectsOutput: bool) (source: string) (name: string) 
 
 let private runBlocks = runBlocksWith true
 
-/// Run one session of `docs/guide.md`.
-let private runSession (name: string) (pick: string -> string[]) =
-    let markdown = File.ReadAllText(guidePath.Force(), Encoding.UTF8)
-    runBlocks "guide.md" name "" (Path.GetTempPath()) (pick markdown)
-
-[<Fact>]
-let ``every example in the guide compiles and runs`` () = runSession "" blocks
-
-[<Fact>]
-let ``the unit-optional examples are there, and checked apart`` () =
-    let markdown = File.ReadAllText(guidePath.Force(), Encoding.UTF8)
-    let found = optionalBlocks markdown
-    Assert.True(found.Length >= 3, sprintf "expected at least 3 `fsharp optional` blocks, found %d" found.Length)
-    // Not swept into the first session, where they would fail by design.
-    Assert.DoesNotContain(found.[0], String.concat "\n" (blocks markdown))
-
-[<Fact>]
-let ``every unit-optional example in the guide compiles and runs`` () = runSession "-optional" optionalBlocks
-
 // ======================================================================================
-// The tour: `docs/guide/`, one file per section
+// The guide: `docs/guide/`, one file per section
 // ======================================================================================
 
-/// The guide as a tour, one page per section, read in file-name order and run as the one session
-/// `guide.md` is. A block whose fence says ```` ```fsharp output=dipole ```` ends on the value it
+/// The guide is a tour, one page per section, read in file-name order and run as one session. A
+/// block whose fence says ```` ```fsharp output=dipole ```` ends on the value it
 /// shows, a figure or a scene; the run draws it to `docs/figures/dipole.svg`, and the page shows
 /// that file under the block. The figures are committed, so the guide reads on GitHub with its
 /// pictures, and a figure that no longer matches what its block draws fails here, as a golden
@@ -237,7 +172,7 @@ module ``the tour`` =
     let private framesAttr = Regex(@"\bframes=(\d+)")
 
     /// The blocks of a page, in order. `fsharp-error` does not match the fence, so a block meant
-    /// not to compile is left out as in `guide.md`, and `norun` leaves out one that compiles but
+    /// not to compile is left out, and `norun` leaves out one that compiles but
     /// must not run here: it opens a window, or it is compiled by Fable for a browser.
     let blocksOf (markdown: string) =
         [ for m in fence.Matches markdown do
@@ -328,6 +263,22 @@ module GuideOutput =
         pages ()
         |> Array.collect (fun (_, md) -> blocksOf md |> List.filter (fun b -> b.Optional = optional) |> Array.ofList)
         |> Array.mapi (fun i b -> captured dir i b)
+
+    /// A pattern that silently matched nothing would make the runs below vacuously green, as the
+    /// TeX gate once was. Pin a floor, and pin that the opt-outs are left out.
+    [<Fact>]
+    let ``the guide has examples, and they are the ones being checked`` () =
+        let all = pages () |> Array.map snd |> String.concat "\n"
+        let run = pages () |> Array.toList |> List.collect (fun (_, md) -> blocksOf md)
+        let main = run |> List.filter (fun b -> not b.Optional)
+        let optional = run |> List.filter (fun b -> b.Optional)
+        let code = run |> List.map (fun b -> b.Code) |> String.concat "\n"
+
+        Assert.True(main.Length >= 40, sprintf "expected the guide to hold at least 40 fsharp blocks, found %d" main.Length)
+        Assert.True(optional.Length >= 1, "expected at least one `fsharp optional` block")
+        Assert.True(Regex.Matches(all, "^```fsharp-error", RegexOptions.Multiline).Count >= 3, "expected the guide's `fsharp-error` blocks")
+        Assert.DoesNotContain("Chart.line U.second U.metre tModel tModel", code)
+        Assert.DoesNotContain("Live.show explorer", code)
 
     [<Fact>]
     let ``the tour has pages, and each output is shown on its page`` () =
@@ -420,3 +371,21 @@ module GuideOutput =
                 runBlocks "docs/guide" "-tour-optional" prelude work blocks
         finally
             try Directory.Delete(work, true) with _ -> ()
+
+    let packageReadmes: obj[] seq =
+        Directory.GetFiles(Path.Combine(Golden.repoRoot.Force(), "src"), "PackageReadme.md", SearchOption.AllDirectories)
+        |> Array.sort
+        |> Array.map (fun p -> Path.GetRelativePath(Golden.repoRoot.Force(), p).Replace('\\', '/'))
+        |> Array.append [| "NUGET.md" |]
+        |> Seq.map (fun p -> [| box p |])
+
+    /// Each package's readme is the first page of it a reader sees on nuget.org, and its example is a
+    /// session of its own. `NUGET.md` is the readme of a package that has none of its own, `Marey`.
+    [<Theory>]
+    [<MemberData(nameof packageReadmes)>]
+    let ``a package readme's example runs`` (readme: string) =
+        let text = File.ReadAllText(Path.Combine(Golden.repoRoot.Force(), readme), Encoding.UTF8).Replace("\r\n", "\n")
+        let blocks = blocksOf text |> List.filter (fun b -> not b.Optional)
+
+        if not blocks.IsEmpty then
+            runAndCompare false readme ("readme-" + (match Path.GetDirectoryName readme with "" -> "nuget" | d -> Path.GetFileName d)) blocks

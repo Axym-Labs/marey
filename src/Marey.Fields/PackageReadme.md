@@ -84,4 +84,4 @@ because ∂ω̇/∂θ and ∂θ̇/∂ω are in different units and their differe
 ## Links
 
 - [The repository](https://github.com/Axym-Labs/marey)
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [The guide on fields](https://github.com/Axym-Labs/marey/blob/main/docs/guide/07-fields.md)

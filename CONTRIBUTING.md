@@ -23,7 +23,7 @@ Programs the library does not ship are driven by the suite, and by two of the pa
 |---|---|
 | `pdflatex` | compiles every golden `.tex` baseline — the only authority on whether emitted TeX is valid |
 | `pdftoppm` | rasterises a PDF to check the page is not blank: the compiled TeX one, and since M2.5 the Skia backend's own |
-| `dotnet fsi` | runs every `docs/guide.md` snippet, every `examples/*.fsx`, and the encoding-block compile checks |
+| `dotnet fsi` | runs every `docs/guide/` snippet, the README's example, every `examples/*.fsx`, and the encoding-block compile checks |
 | `ffmpeg` / `ffprobe` | `Marey.Tools.Video` encodes a frame sequence, and the container is read back rather than trusted |
 | `latex` / `dvisvgm` | `Marey.Tools.Tex` sets a formula and converts it to outlines. `latex`, not `pdflatex`: dvisvgm reads DVI, and the two ask different questions |
 
@@ -152,9 +152,11 @@ not touched by any of this.
 - Branch from `main` and open the pull request against it. CI runs on every pull request and on `main`.
 - `dotnet build` warning-free and `dotnet test` green before review.
 - One logical change per pull request. A baseline move, a new geom and a refactor are three.
-- New public API needs a runnable example. Every example in `docs/guide.md` and `examples/` is
+- New public API needs a runnable example. Every example in `docs/guide/` and `examples/` is
   extracted and executed by the test suite, so an example that stops working is a failing test
-  rather than a stale document.
+  rather than a stale document. A guide block that ends on a figure and says `output=NAME` draws
+  `docs/figures/NAME.svg`; a changed drawing fails like a golden, and `MAREY_UPDATE_GOLDEN=1`
+  accepts it.
 
 ## Reporting a defect
 

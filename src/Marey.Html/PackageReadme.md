@@ -13,6 +13,9 @@ backend with it.
 open Marey
 open Marey.UnitsOfMeasure
 
+let t = Array.init 24 (fun i -> float i * 0.025<s>)
+let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
+
 let figure = Chart.line U.second U.metre t x
 
 // something -> string. No kernel, no display call, no global registry.
@@ -51,18 +54,17 @@ inherits the notebook's theme rather than fighting it.
 
 ## To make a bare value display
 
-In [Verso](https://github.com/DataficationSDK/Verso), install
-[`Marey.Verso`](https://www.nuget.org/packages/Marey.Verso) into the notebook host and a cell whose
-value is a `Figure` shows the figure. Referencing this package and installing that extension are
-separate steps that cannot substitute for each other: this one provides the types, the extension
-provides the rendering.
+In a [Verso](https://github.com/DataficationSDK/Verso) notebook, a first cell of
+`#!extension Marey.Verso` loads [`Marey.Verso`](https://www.nuget.org/packages/Marey.Verso), and
+from then on a cell whose value is a `Figure` shows the figure. This package provides the
+renderings; the extension hands them to the host.
 
-Without any extension, render to SVG and let the host's built-in SVG formatter draw it — that path
-needs nothing installed:
+Without any extension, render to SVG and let the host's built-in SVG formatter draw it, with
+nothing installed:
 
 ```fsharp
 figure |> Chart.render SvgBackend.render (Chart.size 720.0 450.0)
 ```
 
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide/11-notebooks.md)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

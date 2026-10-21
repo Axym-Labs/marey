@@ -101,5 +101,5 @@ Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core),
 [`Marey.Anim`](https://www.nuget.org/packages/Marey.Anim) — the last because the storyboard names
 an `Anim` and a `Figure` in one signature. It is 36 KB and has no dependencies of its own.
 
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide/README.md)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)
