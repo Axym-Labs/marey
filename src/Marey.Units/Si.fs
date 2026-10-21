@@ -109,7 +109,7 @@ module SiWitnesses =
         let metrePerSecond: U<m / s> = U<m / s>("m/s", dimOf 1 0 -1 0 0 0 0, 1.0)
         let metrePerSecondSquared: U<m / s^2> = U<m / s^2>("m/s²", dimOf 1 0 -2 0 0 0 0, 1.0)
         let kilogramPerCubicMetre: U<kg / m^3> = U<kg / m^3>("kg/m³", dimOf -3 1 0 0 0 0 0, 1.0)
-        let perSecond: U<1 / s> = U<1 / s>("1/s", dimOf 0 0 -1 0 0 0 0, 1.0)
+        let perSecond: U<1 / s> = U<1 / s>("1/s", dimOf 0 0 -1 0 0 0 0, 1.0, 0.0, [ ("s", -1) ])
 
         /// The gram, as a *scaled* kilogram. Note the measure is still `kg`: grams and kilograms
         /// are the same physical quantity and F# measures cannot express the 10⁻³ between them —

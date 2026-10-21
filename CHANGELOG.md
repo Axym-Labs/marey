@@ -14,6 +14,10 @@ land in a minor release.
 
 ### Changed
 
+- **A rate reads `s⁻¹`, a frequency `Hz`.** A unit written as the reciprocal of one base unit
+  (`U.perSecond`, `U.recip U.second`) is shown as written, so a vorticity, a decay constant or a
+  growth rate is no longer labelled as a frequency; `U.hertz` still reads `Hz`. Draw a frequency
+  with `U.hertz`. A small rate keeps its power of ten rather than reading `ks⁻¹`.
 - **A reciprocal axis takes the inverse prefix on its unit:** a wavenumber reads `k [nm⁻¹]`, where
   it read `k [10⁹·m⁻¹]`, as SI reads a prefix before the exponent. The kilogram keeps the
   multiplier. `figure-ticks` moves.

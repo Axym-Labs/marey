@@ -179,7 +179,8 @@ module Fluid =
         let xs, ys = centres f
         { Xs = xs; Ys = ys; Values = f.Pressure }
 
-    /// The vorticity at the cells' centres, `∂v/∂x − ∂u/∂y` of `velocity`.
+    /// The vorticity at the cells' centres, `∂v/∂x − ∂u/∂y` of `velocity`, in s⁻¹. Draw it
+    /// with `U.perSecond`, which writes a rate as `s⁻¹` rather than as a frequency in `Hz`.
     let vorticity<[<Measure>] 'x, [<Measure>] 'q> (f: Fluid<'x, 'q>) : ScalarGrid<'x, 'x, 1 / s> = Field.curl (velocity f)
 
 /// A fluid's step, on the CPU. `GpuSim.stam` is the same step on the GPU.

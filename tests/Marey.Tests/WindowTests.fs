@@ -19,7 +19,7 @@ let private wave (f: float<1 / s>) (damped: bool) =
 
 let private live () =
     interact {
-        let! f = Control.slider (U.recip U.second) "f" 0.5<1 / s> 5.0<1 / s> 1.0<1 / s>
+        let! f = Control.slider U.hertz "f" 0.5<1 / s> 5.0<1 / s> 1.0<1 / s>
         and! damped = Control.checkbox "damped" false
         return wave f damped
     }

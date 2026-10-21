@@ -197,7 +197,8 @@ module Lattice =
     let velocity<[<Measure>] 'x> (l: Lattice<'x>) : VectorGrid<'x, 'x, 'x / s, 'x / s> =
         velocityUnder (LanguagePrimitives.FloatWithMeasure 0.0, LanguagePrimitives.FloatWithMeasure 0.0) l
 
-    /// The vorticity at each cell's centre, `∂v/∂x − ∂u/∂y` of `velocity`.
+    /// The vorticity at each cell's centre, `∂v/∂x − ∂u/∂y` of `velocity`, in s⁻¹. Draw it
+    /// with `U.perSecond`, which writes a rate as `s⁻¹` rather than as a frequency in `Hz`.
     let vorticity<[<Measure>] 'x> (l: Lattice<'x>) : ScalarGrid<'x, 'x, 1 / s> = Field.curl (velocity l)
 
     /// The fluid's mass over its reference density, per unit depth: the area it would fill at the

@@ -209,8 +209,15 @@ module UnitDisplay =
     /// newton metre` remains `J` rather than becoming `N·m`. The registry's name for a dimension —
     /// unless the factorisation carries an angle, which the dimension cannot see. `rad·s⁻¹` and
     /// `Hz` share `s⁻¹`; naming the first by the second is a factor of 2π said confidently.
+    /// The registry's name for a dimension, unless the unit says otherwise: an angle in its
+    /// factors, or a unit written as the reciprocal of one base unit. `U.perSecond` is a rate —
+    /// a vorticity, a decay constant, an eigenvalue — and reads `s⁻¹`; a frequency is declared
+    /// as `U.hertz` and reads `Hz`, though the two share a dimension.
     let private canonicalFor (registry: UnitRegistry) (factors: (string * int) list) (dim: Dim) =
-        if U.angleExponentOf "" factors <> 0 then None else UnitRegistry.tryCanonical registry dim
+        match factors with
+        | _ when U.angleExponentOf "" factors <> 0 -> None
+        | [ (sym, -1) ] when Dim.basis |> List.exists (fun (b, _) -> b = sym) -> None
+        | _ -> UnitRegistry.tryCanonical registry dim
 
     let private bodyOfWith style (registry: UnitRegistry) (factors: (string * int) list) (dim: Dim) =
         match canonicalFor registry factors dim with
@@ -279,10 +286,11 @@ module UnitDisplay =
         else
             // A reciprocal takes the inverse prefix on its unit: 10⁹ m⁻¹ is nm⁻¹, which is
             // (10⁻⁹ m)⁻¹, because SI reads a prefix before the exponent. That is how a
-            // wavenumber is written. The kilogram keeps the multiplier, for the gram shift.
+            // wavenumber is written. Only a sub-unit is glued: 10⁻³ s⁻¹ keeps its multiplier
+            // rather than reading `ks⁻¹`. The kilogram keeps it too, for the gram shift.
             let reciprocal =
                 match canonicalFor registry factors dim, Dim.exponents dim, Prefix.ofExponent -p.Exponent with
-                | None, [ (sym, -1) ], Some inverse when sym <> "kg" ->
+                | None, [ (sym, -1) ], Some inverse when sym <> "kg" && inverse.Exponent < 0 ->
                     let us = baseSymbol sym
 
                     let glued =

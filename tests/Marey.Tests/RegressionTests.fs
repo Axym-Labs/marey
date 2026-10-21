@@ -795,6 +795,8 @@ module ``D41 a supplied factorisation is displayed`` =
         Assert.Equal("\\mathrm{nm}^{-1}", text Latex giga perMetre)
         Assert.Equal("\\qty{}{\\per\\nano\\metre}", text Siunitx giga perMetre)
         Assert.Equal("m⁻¹", text Unicode Prefix.none perMetre)
+        // Only a sub-unit is glued: a small rate keeps its power of ten rather than reading `ks⁻¹`.
+        Assert.Equal("10⁻³·s⁻¹", text Unicode (Prefix.ofExponent -3 |> Option.get) U.perSecond)
         // The kilogram keeps the multiplier: an inverse prefix on `kg` would need the gram.
         Assert.StartsWith("10", text Unicode giga (U.recip U.kilogram))
 
@@ -875,7 +877,11 @@ module ``D98 an angle is not a frequency`` =
         Assert.Equal("rad·s⁻¹", text radPerSecond)
         Assert.Equal("rad·s⁻²", text (U.div radPerSecond U.second))
         Assert.Equal("Hz", text U.hertz)
-        Assert.Equal("Hz", text (U.recip U.second))
+        // A rate is not a frequency either: written as a reciprocal it reads as one, and a
+        // frequency says so by being declared as `U.hertz`.
+        Assert.Equal("s⁻¹", text (U.recip U.second))
+        Assert.Equal("s⁻¹", text U.perSecond)
+        Assert.Equal("m⁻¹", text (U.recip U.metre))
         Assert.Equal("rad", text U.radian)
 
     /// The erased path reads the same factors, so a reloaded figure labels itself the same.

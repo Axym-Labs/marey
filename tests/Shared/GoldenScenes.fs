@@ -518,7 +518,7 @@ let aspectSurface: Extent<px> = { Width = 760.0<px>; Height = 300.0<px> }
 /// A resonance with its peak drawn again in an inset, the zoom marked on the host. A
 /// Lorentzian, rational.
 let insetFigure: Figure =
-    let hz = U.div U.one U.second
+    let hz = U.hertz
     let fs = Array.init 401 (fun i -> float i * 0.05<s^-1>)
     // A product rather than `** 2.0`: `Math.Pow` is not correctly rounded on every platform, and
     // under Node two of the inset's points came out a bit apart from .NET's.
