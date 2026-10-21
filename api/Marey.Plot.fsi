@@ -311,40 +311,6 @@ namespace Marey
 
 namespace Marey
 
-    [<RequireQualifiedAccess>]
-    type Track =
-
-        | Fixed of size: float<px>
-
-        | Frac of weight: float
-
-        | Content of minimum: float<px>
-
-    [<NoComparison>]
-    type GridCell =
-        {
-          Key: string
-          Row: int
-          Col: int
-          RowSpan: int
-          ColSpan: int
-          Measure: (ITextMeasurer -> Extent<px>)
-        }
-
-    [<NoComparison>]
-    type Grid =
-        {
-          Rows: Track array
-          Cols: Track array
-          RowGap: float<px>
-          ColGap: float<px>
-          PadLeft: float<px>
-          PadTop: float<px>
-          PadRight: float<px>
-          PadBottom: float<px>
-          Cells: GridCell array
-        }
-
     [<NoComparison>]
     type Arrangement =
         {
@@ -366,60 +332,7 @@ namespace Marey
         | AxisTop
         | AxisRight
 
-    [<NoComparison>]
-    type TickPlan =
-        {
-
-          Kept: int array
-
-          Rotation: float<rad>
-          Rule: string
-        }
-
-    [<NoComparison>]
-    type AxisRender =
-        {
-
-          Spec: AxisSpec
-          Side: AxisSide
-          Plan: TickPlan
-
-          Panel: Rect<nd>
-
-          Extent: Extent<px>
-          Theme: Theme
-          ShowSpine: bool
-          ShowTicks: bool
-          ShowLabels: bool
-          ShowTitle: bool
-
-          TitleOffset: float<px>
-
-          Direction: TickDirection
-          Mirror: bool
-
-          ShowMinor: bool
-        }
-
 namespace Marey
-
-    [<NoComparison>]
-    type LegendMark =
-        | LegendLine of dash: float<px> array
-        | LegendMarker of MarkerShape
-        | LegendLineMarker of dash: float<px> array * shape: MarkerShape
-
-        | LegendSwatch
-
-        | LegendSizedMarker of shape: MarkerShape * size: float<px>
-
-    [<NoComparison>]
-    type LegendEntry =
-        {
-          Name: string
-          Color: Color
-          Mark: LegendMark
-        }
 
     type LegendPlacement =
         | LegendNone
@@ -1681,61 +1594,8 @@ namespace Marey
 namespace Marey
 
     [<NoComparison; NoEquality>]
-    type StatSpec =
-        | StatNone
-
-        | StatFit of restyle: (GeomStyle -> GeomStyle)
-
-        | StatHistogram of bins: int option
-
-        | StatDensity of points: int option
-
-        | StatEcdf
-
-    [<NoComparison; NoEquality>]
-    type FacetSpec =
-        {
-
-          Labels: string array
-
-          Group: int array
-
-          Cols: int option
-        }
-
-    type IGeomFor =
-
-        abstract For: Series<'ux,'uy> -> Geom
-
-        abstract NeedsZero: bool
-
-    [<NoComparison; NoEquality>]
     type PlotSpec =
-        {
-
-          Name: string
-
-          X: PackedChannel option
-          Y: PackedChannel option
-
-          Channels: (Theme -> Channel) list
-
-          ColorLabel: string
-
-          Layers: (IGeomFor * (GeomStyle -> GeomStyle)) list
-
-          Stat: StatSpec
-
-          Keys: string array option
-
-          Facet: FacetSpec option
-
-          FacetShare: FacetScales option
-
-          Frame: Stat.Frame option
-          Theme: Theme
-          Coord: Coord
-        }
+        internal
 
     type PlotBuilderBase<'r> =
 
@@ -1911,25 +1771,9 @@ namespace Marey
 
         val empty: Stage
 
-    [<RequireQualifiedAccess>]
-    type MarkRef =
-        | Row of int
-        | Datum of string
-
     [<NoComparison>]
     type Handle =
-        {
-
-          Key: Key
-
-          Introduced: float<Data.UnitSystems.SI.UnitSymbols.s>
-
-          MarkLayer: Key option
-
-          Mark: (Key * MarkRef) option
-
-          MarkKeys: string array
-        }
+        internal
 
         member Item: row: int -> Handle with get
 

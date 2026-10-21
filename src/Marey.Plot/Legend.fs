@@ -3,7 +3,7 @@ namespace Marey
 /// What a legend entry's swatch looks like. Derived from the geom, not chosen separately: a
 /// legend that does not look like the thing it labels is worse than no legend.
 [<NoComparison>]
-type LegendMark =
+type internal LegendMark =
     | LegendLine of dash: float<px>[]
     | LegendMarker of MarkerShape
     | LegendLineMarker of dash: float<px>[] * shape: MarkerShape
@@ -21,7 +21,7 @@ type LegendMark =
     | LegendSizedMarker of shape: MarkerShape * size: float<px>
 
 [<NoComparison>]
-type LegendEntry =
+type internal LegendEntry =
     { Name: string
       Color: Color
       Mark: LegendMark }

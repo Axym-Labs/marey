@@ -6,7 +6,7 @@ namespace Marey
 /// *whatever is left*, and *ask the content*. Facets, colourbars, shared axes and inset axes all
 /// decompose into those three, and ad-hoc layout does not (§9).
 [<RequireQualifiedAccess>]
-type Track =
+type internal Track =
     /// Exactly this many device pixels, regardless of content.
     | Fixed of size: float<px>
     /// A share of whatever is left after the fixed and content tracks have taken theirs.
@@ -27,7 +27,7 @@ type Track =
 /// Layout values never enter the IR and are never serialized, so the function field costs
 /// nothing here that D1 was protecting against in `Node`.
 [<NoComparison>]
-type GridCell =
+type internal GridCell =
     { Key: string
       Row: int
       Col: int
@@ -37,7 +37,7 @@ type GridCell =
 
 /// A constraint grid, à la Makie's `GridLayout` (§9).
 [<NoComparison>]
-type Grid =
+type internal Grid =
     { Rows: Track[]
       Cols: Track[]
       RowGap: float<px>

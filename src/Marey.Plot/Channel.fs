@@ -211,7 +211,7 @@ module internal Channel =
 
     /// One batch of a split layer: which points, and how their style differs from the layer's.
     [<NoComparison>]
-    type Batch =
+    type internal Batch =
         { /// Indices into the layer's point array, ascending.
           Indices: int[]
           /// The layer's base style with every channel's bucket applied.

@@ -14,7 +14,7 @@ type AxisSide =
 /// avoidance ... is where plotting libraries actually die"; a library that thins your ticks
 /// should at least be able to say why.
 [<NoComparison>]
-type TickPlan =
+type internal TickPlan =
     { /// Indices into `AxisSpec.Ticks` that survive.
       Kept: int[]
       /// Counter-clockwise in `nd` (y-up). The backend converts to its own sense — D13.
@@ -23,7 +23,7 @@ type TickPlan =
 
 /// Everything the axis compiler needs, resolved. Nothing here is decided by the backend.
 [<NoComparison>]
-type AxisRender =
+type internal AxisRender =
     { /// From `Marey.Units`' `Axis.auto` — title, prefix and rescaled tick labels, already
       /// correct. This layer does not re-derive any of it.
       Spec: AxisSpec

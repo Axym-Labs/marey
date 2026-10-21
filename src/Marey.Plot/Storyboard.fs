@@ -96,32 +96,33 @@ module Stage =
 /// Which mark a handle names: a row of the layer, or — when the data supplied keys (D104) — the
 /// datum with that key, wherever it sits.
 [<RequireQualifiedAccess>]
-type MarkRef =
+type internal MarkRef =
     | Row of int
     | Datum of string
 
 /// D69 — a name for something on stage, and the duration it arrived over.
 [<NoComparison>]
 type Handle =
-    { /// The subtree this handle names.
-      Key: Key
+    internal
+        { /// The subtree this handle names.
+          Key: Key
 
-      /// How long it was introduced over. The default duration of every verb applied to it,
-      /// which is what stops those verbs needing a constant of their own.
-      Introduced: float<s>
+          /// How long it was introduced over. The default duration of every verb applied to it,
+          /// which is what stops those verbs needing a constant of their own.
+          Introduced: float<s>
 
-      /// The layer `.[i]` counts marks within. `None` when there is no single layer to count
-      /// in — a figure with two scatters has two mark 42s and this refuses to guess.
-      MarkLayer: Key option
+          /// The layer `.[i]` counts marks within. `None` when there is no single layer to count
+          /// in — a figure with two scatters has two mark 42s and this refuses to guess.
+          MarkLayer: Key option
 
-      /// The layer and mark this handle names, when it names one **mark** rather than a
-      /// subtree. What `highlight` needs, and what tells `curve.[42]` apart from `curve`.
-      Mark: (Key * MarkRef) option
+          /// The layer and mark this handle names, when it names one **mark** rather than a
+          /// subtree. What `highlight` needs, and what tells `curve.[42]` apart from `curve`.
+          Mark: (Key * MarkRef) option
 
-      /// D104 — the keys of `MarkLayer`'s rows when it was drawn, or empty when its data
-      /// supplied none. With keys, `curve.[42]` names the datum that was row 42, and keeps
-      /// naming it after a morph has moved it.
-      MarkKeys: string[] }
+          /// D104 — the keys of `MarkLayer`'s rows when it was drawn, or empty when its data
+          /// supplied none. With keys, `curve.[42]` names the datum that was row 42, and keeps
+          /// naming it after a morph has moved it.
+          MarkKeys: string[] }
 
     /// **`curve.[42]`** — D69's most quotable line, and the one §5.1 made structurally
     /// impossible. It resolves to `Keys.mark`'s spelling of row 42 of the layer this handle

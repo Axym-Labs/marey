@@ -13,7 +13,7 @@ namespace Marey
 /// Nothing here computes: every case is one call into `Marey.Core`'s `Stat`, which is where the
 /// arithmetic lives and where the measures are still typed.
 [<NoComparison; NoEquality>]
-type StatSpec =
+type internal StatSpec =
     | StatNone
     /// A least-squares line over the block's own x and y, as an extra layer. The transform
     /// styles that layer, against the block's base style.
@@ -33,7 +33,7 @@ type StatSpec =
 /// is left is the one thing a facet actually needs: the arrays are index-aligned, so splitting the
 /// block is splitting an `int[]` and applying it to each of them.
 [<NoComparison; NoEquality>]
-type FacetSpec =
+type internal FacetSpec =
     { /// One panel title per level, in the order the levels first appear.
       Labels: string[]
       /// The level number of every row.
@@ -53,7 +53,7 @@ type FacetSpec =
 /// The fix is the encoding this codebase already uses four times: a rank-2 consumer, invoked at
 /// the one point where the measures are back. A `layer` wraps its geom in a constant one; `area`
 /// and `bars` supply a real one, and are handed the typed series inside `Run`'s own `Accept`.
-type IGeomFor =
+type internal IGeomFor =
     abstract For<[<Measure>] 'ux, [<Measure>] 'uy> : Series<'ux, 'uy> -> Geom
 
     /// True when this geom is read as a **length from a baseline**, so the y domain has to
@@ -79,35 +79,36 @@ type IGeomFor =
 /// mattered.
 [<NoComparison; NoEquality>]
 type PlotSpec =
-    { /// The series name. One legend entry, on the first layer only — see `PlotBuilder.Run`.
-      Name: string
-      /// The positional channels, each erased where it was declared (D44 finding 2).
-      X: PackedChannel option
-      Y: PackedChannel option
-      /// Non-positional channels, in declaration order, as functions of the final theme.
-      Channels: (Theme -> Channel) list
-      /// The quantity name a continuous colour channel puts in front of its unit: `T` in
-      /// `T [K]`. Empty means "read it from the dimension", exactly as an axis does.
-      ColorLabel: string
-      /// One entry per `layer`, in declaration order, with its style transform.
-      Layers: (IGeomFor * (GeomStyle -> GeomStyle)) list
-      /// The stat, if any. **One per block, not one per layer** — see `StatSpec`.
-      Stat: StatSpec
-      /// D104 — the data's own name for each row, if the block states one with `key`.
-      Keys: string[] option
-      /// D48 — the key this block facets by, if it facets.
-      Facet: FacetSpec option
-      /// D48 — which axes the panels share. `None` is `ShareBoth`, which is what a facet means;
-      /// stating anything else is stating that one axis makes no cross-panel claim.
-      FacetShare: FacetScales option
-      /// D48 — stat parameters fixed over the **whole** sample, for a faceted distribution.
-      ///
-      /// Written by `Run` and by nothing else: it is how a facet stops each panel from choosing
-      /// its own bin edges or its own bandwidth, which would make the panels incomparable in
-      /// exactly the way that makes drawing them side by side pointless.
-      Frame: Stat.Frame option
-      Theme: Theme
-      Coord: Coord }
+    internal
+        { /// The series name. One legend entry, on the first layer only — see `PlotBuilder.Run`.
+          Name: string
+          /// The positional channels, each erased where it was declared (D44 finding 2).
+          X: PackedChannel option
+          Y: PackedChannel option
+          /// Non-positional channels, in declaration order, as functions of the final theme.
+          Channels: (Theme -> Channel) list
+          /// The quantity name a continuous colour channel puts in front of its unit: `T` in
+          /// `T [K]`. Empty means "read it from the dimension", exactly as an axis does.
+          ColorLabel: string
+          /// One entry per `layer`, in declaration order, with its style transform.
+          Layers: (IGeomFor * (GeomStyle -> GeomStyle)) list
+          /// The stat, if any. **One per block, not one per layer** — see `StatSpec`.
+          Stat: StatSpec
+          /// D104 — the data's own name for each row, if the block states one with `key`.
+          Keys: string[] option
+          /// D48 — the key this block facets by, if it facets.
+          Facet: FacetSpec option
+          /// D48 — which axes the panels share. `None` is `ShareBoth`, which is what a facet means;
+          /// stating anything else is stating that one axis makes no cross-panel claim.
+          FacetShare: FacetScales option
+          /// D48 — stat parameters fixed over the **whole** sample, for a faceted distribution.
+          ///
+          /// Written by `Run` and by nothing else: it is how a facet stops each panel from choosing
+          /// its own bin edges or its own bandwidth, which would make the panels incomparable in
+          /// exactly the way that makes drawing them side by side pointless.
+          Frame: Stat.Frame option
+          Theme: Theme
+          Coord: Coord }
 
 /// The parts of `Run` that are generic over a measure, and the empty spec.
 ///

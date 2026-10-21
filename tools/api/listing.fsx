@@ -10,9 +10,9 @@
     compiler prints in source order, so the listing is stable and reads like the code.
 
     Taken out: doc comments (a reworded comment is not an API change), and every declaration
-    marked `private` or `internal`, with its body and its attributes. Kept: attributes on what
-    stays, `[<Obsolete>]` among them, and a type's `private` representation, which is public
-    knowledge that the representation is hidden.
+    marked `private` or `internal`, with its body and its attributes, and the fields of a record
+    or union whose representation is hidden. Kept: attributes on what stays, `[<Obsolete>]`
+    among them, and the bare `internal` or `private` that says the representation is hidden.
 
     The listing is the compiler's spelling, so another compiler may spell the same API another
     way. CI checks it on the SDK band the repository is built and released with (`global.json`),
@@ -75,20 +75,32 @@ let clean (text: string) =
     let attrs = Collections.Generic.List<string>()
     let mutable skipping: int option = None
     let mutable header: string option = None
+    let mutable skippedBlank = false
+    let mutable inAttribute = false
 
     for raw in text.Replace("\r\n", "\n").Split('\n') do
         let line = raw.TrimEnd()
         let trimmed = line.TrimStart()
 
         match skipping with
-        | Some k when trimmed = "" || indentOf line > k -> ()
+        | Some k when trimmed = "" || indentOf line > k -> if trimmed = "" then skippedBlank <- true
         | _ ->
+            if skipping.IsSome && skippedBlank then out.Add ""
             skipping <- None
+            skippedBlank <- false
 
             if trimmed.StartsWith "///" then
                 ()
-            elif trimmed.StartsWith "[<" && trimmed.EndsWith ">]" then
+            elif inAttribute || trimmed.StartsWith "[<" then
+                // An attribute, over one line or several, belongs to the declaration it precedes.
                 attrs.Add line
+                inAttribute <- not (trimmed.Contains ">]")
+            elif trimmed = "internal" || trimmed = "private" then
+                // A hidden representation: that it is hidden is part of the API, its fields are not.
+                out.AddRange attrs
+                attrs.Clear()
+                out.Add line
+                skipping <- Some(indentOf line)
             elif header.IsNone && bareMember.IsMatch line then
                 header <- Some line
             elif hidden.IsMatch line then
