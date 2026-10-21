@@ -25,7 +25,7 @@
          with the `SKFont` and `SKShaper` it measured against, so the two cannot disagree. -->
     <Compile Include="SkiaText.fs" />
     <Compile Include="SkiaBackend.fs" />
-    <!-- D124 — the C# surface, `using Marey.CSharp`. -->
+    <!-- The C# surface, `using Marey.CSharp`. -->
     <Compile Include="CSharp.fs" />
   </ItemGroup>
 

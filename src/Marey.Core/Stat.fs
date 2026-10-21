@@ -8,7 +8,7 @@ open System
 /// settles where that leaves them once measures are involved, and the answer is: *below* the
 /// erasure boundary rather than across it. A stat is called while both measures are still
 /// alive — in the caller's own scope on the quick path, and inside `Erase.reunify`'s inner
-/// `Apply` on the grammar path (D44 finding 3) — and it returns a **typed** result. Nothing
+/// `Apply` on the grammar path — and it returns a **typed** result. Nothing
 /// here takes or returns a `PackedChannel`.
 ///
 /// That is what makes the milestone's headline claim sayable at all. A fit of `float&lt;m&gt;`

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- §6: "a ~200-line package registering a .NET Interactive formatter so `figure` displays
+    <!-- "a ~200-line package registering a .NET Interactive formatter so `figure` displays
          inline as SVG. Do it at M1; it is how people will first meet the library."
 
          **The host §6 named is dead.** Polyglot Notebooks was deprecated on 2026-02-11 and
@@ -39,7 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- D157: the script a canvas page draws a scene with, built from src/Marey.Html.View by
+    <!-- The script a canvas page draws a scene with, built from src/Marey.Html.View by
          tools/view/build.sh and committed. CI rebuilds it and fails on a difference. -->
     <EmbeddedResource Include="view/marey-view.js" LogicalName="marey-view.js" />
   </ItemGroup>

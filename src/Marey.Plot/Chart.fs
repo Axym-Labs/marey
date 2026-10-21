@@ -101,7 +101,7 @@ module Chart =
         figureOf [| layerOf s.Name Theme.initial 0 g (Erase.packSeries s) |]
 
     /// A figure from an already-reunified `PackedSeries` — the door the encoding CE comes
-    /// through. The reunifier lives in `Marey.Core` (D44 finding 3) and terminates there; this
+    /// through. The reunifier lives in `Marey.Core` and terminates there; this
     /// is what lets it, so nothing in `Marey.Plot` has to write a rank-2 consumer of its own.
     let ofPacked (g: Geom) (p: PackedSeries) : Figure =
         figureOf [| layerOf (Erase.seriesName p) Theme.initial 0 g p |]
@@ -1583,7 +1583,7 @@ module Chart =
                 | None -> { p with Y2Axis = Some { (defaultArg p.Y2Axis Figure.axisConfig) with Label = Some label } })
             fig
 
-    // ---- D179: aspect ----------------------------------------------------------------------
+    // ---- Aspect ----------------------------------------------------------------------
 
     /// **One unit as long on y as on x** on the last panel: the plot is shrunk to the
     /// domain's shape and centred in its cell. A frame of an animation or a zoom whose domains have
@@ -1613,7 +1613,7 @@ module Chart =
 
         mapLast (fun p -> { p with Aspect = Some(Aspect.Box heightOverWidth) }) fig
 
-    // ---- D180: insets ------------------------------------------------------------------------
+    // ---- Insets ------------------------------------------------------------------------
 
     /// **A one-panel figure drawn over the last panel's plot**, its own plot at
     /// `(x0, y0, x1, y1)` in fractions of the host's plot, y up (matplotlib's `inset_axes`). Its
@@ -1663,7 +1663,7 @@ module Chart =
                 { p with Insets = p.Insets |> Array.mapi (fun i ins -> if i = p.Insets.Length - 1 then { ins with Indicate = true } else ins) })
             fig
 
-    // ---- D178: secondary axes -------------------------------------------------------------
+    // ---- Secondary axes -------------------------------------------------------------
 
     let internal withSecondary (onX: bool) (u: U<1>) (map: SecondaryMap option) (fig: Figure) : Figure =
         let sa: SecondaryAxis = { Unit = u; Map = map; Label = None }

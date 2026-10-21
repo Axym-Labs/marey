@@ -5,7 +5,7 @@ open System.Runtime.InteropServices
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// M4.5 — TYPED CONTROLS
+// TYPED CONTROLS
 //
 // A control is a source of one value, owned by the widget and read-only to the code that uses
 // it. Controls compose *applicatively*: `interact { let! t = … and! on = … in return view t on }`.
@@ -31,7 +31,7 @@ type ControlKind =
     | Select of options: string[]
     /// 1 for on, 0 for off.
     | Checkbox
-    /// M5.5, D137 — a time in seconds from `Lo` to `Hi`, scrubbed like a slider and played by the
+    /// A time in seconds from `Lo` to `Hi`, scrubbed like a slider and played by the
     /// host on its own clock, one second a second, which posts the values as `Set`s. `Samples`
     /// states along the range are what a live figure is arranged over, in place of the two ends,
     /// so a view of the current state does not re-arrange as it plays. At the end, play wraps to

@@ -4,7 +4,7 @@ open System
 open Fable.Core
 
 // ======================================================================================
-// M5 — MARKER BATCHES ON WEBGL2
+// MARKER BATCHES ON WEBGL2
 //
 // The GPU backend's instanced draw, in the browser: one quad per mark, each shape a signed
 // distance in device pixels, filled then stroked in one pass and composited on its own.

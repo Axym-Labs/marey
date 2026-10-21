@@ -5,7 +5,7 @@ open System.Globalization
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// M4.5 — THE PURE STEP
+// THE PURE STEP
 //
 // A live figure is a value: its controls, and a view from their values to a `Figure`. What a
 // host does with it is a fold. `Live.init` gives the first state, `Live.step` the next one for

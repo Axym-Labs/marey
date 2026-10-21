@@ -36,7 +36,7 @@
     <Compile Include="Fdm.fs" />
     <Compile Include="Fluid.fs" />
     <Compile Include="Lattice.fs" />
-    <!-- D109 — the unit-required mode, after the implementations it reaches. -->
+    <!-- The unit-required mode, after the implementations it reaches. -->
     <Compile Include="UnitsOfMeasure.fs" />
   </ItemGroup>
 

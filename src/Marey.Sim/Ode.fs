@@ -78,7 +78,7 @@ module Tangent =
             fun a (struct (dq1, dv1)) b (struct (dq2, dv2)) ->
                 struct (Array.map2 (fun x y -> a * x + b * y) dq1 dq2, Array.map2 (fun x y -> a * x + b * y) dv1 dv2) }
 
-// ---- D143: adaptive steps -----------------------------------------------------------------------
+// ---- Adaptive steps -----------------------------------------------------------------------
 
 /// What an adaptive integrator carries from one step to the next: the step it proposes, and the
 /// previous step's error, which the PI controller weighs against the current one. Both belong in a

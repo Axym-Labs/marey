@@ -21,7 +21,7 @@ open System
 // Outside its grid, or outside its snapshots' times, a field has no velocity: NaN, which a
 // particle then carries and a scatter does not draw (D52: what is not there is not invented).
 //
-// Streamlines (M4) integrate in pixels on the unit direction and stay as they are: a streamline is
+// Streamlines integrate in pixels on the unit direction and stay as they are: a streamline is
 // a picture of a field, a pathline is a trajectory in the field's own units.
 // ======================================================================================
 

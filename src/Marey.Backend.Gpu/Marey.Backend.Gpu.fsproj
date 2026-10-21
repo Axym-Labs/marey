@@ -30,9 +30,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
     <ProjectReference Include="..\Marey.Backend.Skia\Marey.Backend.Skia.fsproj" />
-    <!-- The window (D118) shows a `Figure` or a live value and steps it with `Live.step`. -->
+    <!-- The window shows a `Figure` or a live value and steps it with `Live.step`. -->
     <ProjectReference Include="..\Marey.Interact\Marey.Interact.fsproj" />
-    <!-- D151: the GPU solvers step `Marey.Sim`'s states, and share this package's context and
+    <!-- The GPU solvers step `Marey.Sim`'s states, and share this package's context and
          thread (D117), so they live here rather than in a package of their own. -->
     <ProjectReference Include="..\Marey.Sim\Marey.Sim.fsproj" />
   </ItemGroup>

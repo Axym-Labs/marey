@@ -82,7 +82,7 @@ type PlotSpec =
     internal
         { /// The series name. One legend entry, on the first layer only — see `PlotBuilder.Run`.
           Name: string
-          /// The positional channels, each erased where it was declared (D44 finding 2).
+          /// The positional channels, each erased where it was declared.
           X: PackedChannel option
           Y: PackedChannel option
           /// Non-positional channels, in declaration order, as functions of the final theme.
@@ -313,7 +313,7 @@ module private PlotCompile =
             else
                 packed
 
-        // The one place both measures of the block are alive again (D44 finding 3). Every layer
+        // The one place both measures of the block are alive again. Every layer
         // whose geom depends on the scales is built here and nowhere else.
         let geomOf (f: IGeomFor) =
             packed.Accept
@@ -422,7 +422,7 @@ module private PlotCompile =
     /// The block runs once per level over a *slice* of itself, and the slices are taken by row
     /// index: `Erase.selectChannel` for the positional channels, `Channel.select` for the rest.
     /// Nothing is recomputed from the data, because there is no data left to recompute from — the
-    /// accessors were spent at declaration (D44 finding 2) — and nothing needs to be, because
+    /// accessors were spent at declaration — and nothing needs to be, because
     /// every array in the block is one `Array.map` over the same rows.
     ///
     /// **What is computed before the split is the part that has to be the same in every panel.** A
@@ -681,7 +681,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
     ///
     /// The block draws the line and does not report the slope, which is D47's split rather than
     /// an omission: the slope of metres against seconds is a `float&lt;m/s&gt;`, and that type
-    /// exists only inside the scope where the two channels are reunified (D44 finding 3). A
+    /// exists only inside the scope where the two channels are reunified. A
     /// caller who wants the number calls `Stat.regression` on the same two arrays, where it is
     /// still typed, still bindable to an annotated `float&lt;m/s&gt;`, and comes with `R2`, `N`
     /// and the count of non-finite pairs the fit ignored.
@@ -871,7 +871,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
 type PlotBuilder<'r>(rows: 'r[]) =
     inherit PlotBuilderBase<'r>(rows)
 
-    // ---- D109 — the channels without a witness ------------------------------------------------
+    // ---- The channels without a witness ------------------------------------------------
     //
     // Each is the witness form at `U.unspecified`: no bracket, no prefix, no dimensional claim.
 

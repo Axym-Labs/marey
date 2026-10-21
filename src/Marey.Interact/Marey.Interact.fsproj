@@ -32,7 +32,7 @@
     <Compile Include="Control.fs" />
     <Compile Include="Recording.fs" />
     <Compile Include="Live.fs" />
-    <!-- D109 — the unit-required mode, after the implementations it reaches. -->
+    <!-- The unit-required mode, after the implementations it reaches. -->
     <Compile Include="UnitsOfMeasure.fs" />
   </ItemGroup>
 

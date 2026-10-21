@@ -113,7 +113,7 @@ type IQuantityConsumer<'r> =
 type PackedQuantity =
     abstract Accept: IQuantityConsumer<'r> -> 'r
 
-/// D44 finding 2 — **one witness and one array**: a single encoding channel, packed before
+/// **one witness and one array**: a single encoding channel, packed before
 /// anything knows which pair of channels will become a series.
 ///
 /// `PackedQuantity` above carries one witness and one *value*; `PackedSeries` carries a witness
@@ -129,7 +129,7 @@ type PackedChannel =
 
 /// Both measures of a channel *pair*, recovered together.
 ///
-/// D44 finding 3: reunification is rank-2 twice, nested, and the two measures exist together in
+/// Reunification is rank-2 twice, nested, and the two measures exist together in
 /// exactly one scope — the body of the inner `Apply` — and cannot be returned from it. Anything
 /// that wants the typed pair (`Erase.series`, `Chart.ofSeries`, a regression whose slope is
 /// `float<'uy/'ux>`) has to be *called* at that innermost point. This interface names that call
@@ -267,7 +267,7 @@ module Erase =
     /// **A subset of a channel, taken by row index** — the operation a facet is made of.
     ///
     /// A facet does not re-read the data: by the time the block runs, every array in it has
-    /// already been erased where it was declared (D44 finding 2) and the accessors are gone. But
+    /// already been erased where it was declared and the accessors are gone. But
     /// each of those arrays is one `Array.map` over the *same* rows — which is D53's argument for
     /// a channel belonging to the block — so they are all index-aligned, and splitting the block
     /// by a key is splitting one `int[]` of row indices and applying it to each.

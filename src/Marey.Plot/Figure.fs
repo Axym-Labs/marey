@@ -1239,7 +1239,7 @@ module Figure =
                                     { l with
                                         Data = withDomains dx (if onSecond p l then None else dy) l.Data }) }) }
 
-    // ---- D176: share groups ------------------------------------------------------------------
+    // ---- Share groups ------------------------------------------------------------------
 
     let private sharesX (mode: FacetScales) = mode <> ShareY
     let private sharesY (mode: FacetScales) = mode <> ShareX
@@ -2624,7 +2624,7 @@ module Figure =
                     key, (if shaped.LegendScores.Length = 4 then { shaped with LegendScores = rescore key region shaped } else shaped)
             | _ -> key, l)
 
-    // ---- D180: insets ------------------------------------------------------------------------
+    // ---- Insets ------------------------------------------------------------------------
 
     /// An inset's name in a shot: its host's, and its index.
     let private insetKey (p: Panel) (i: int) = sprintf "panel-%d-%d/inset-%d" p.Row p.Col i
@@ -2955,7 +2955,7 @@ module Figure =
 
             outer2, probed
 
-    // ---- D94: what a shot pins besides the gutters -------------------------------------------
+    // ---- What a shot pins besides the gutters -------------------------------------------
     //
     // A frame normalises two things to its own data: a continuous colour channel's domain is the
     // range of its values, and a quiver's length scale is set against its largest magnitude.

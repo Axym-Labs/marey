@@ -34,17 +34,17 @@
     <!-- After Storyboard.fs: `Film.ofStory` names a `Story`, and `Frames` is what a storyboard
          is finally *for*. D77. -->
     <Compile Include="Frames.fs" />
-    <!-- D109 — the unit-required mode. Last: it reaches the implementations in Chart.fs and
+    <!-- The unit-required mode. Last: it reaches the implementations in Chart.fs and
          inherits the block's operations from Plot.fs. -->
     <Compile Include="UnitsOfMeasure.fs" />
-    <!-- D124 — the C# surface, `using Marey.CSharp`. -->
+    <!-- The C# surface, `using Marey.CSharp`. -->
     <Compile Include="CSharp.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
     <ProjectReference Include="..\Marey.Units\Marey.Units.fsproj" />
-    <!-- D69 — the storyboard CE names `Anim` and `Figure` in one signature, and there is no
+    <!-- The storyboard CE names `Anim` and `Figure` in one signature, and there is no
          third place for it to stand. D72 refused this edge for `arrangeUnion` and was right to:
          a `float -> Figure` sampler made the dependency unnecessary there. It is necessary here,
          and the direction is chosen by weight. Marey.Anim is 36 KB with zero dependencies, so a

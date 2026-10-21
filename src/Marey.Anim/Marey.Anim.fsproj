@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- §7: "Animation is a pure function of time, not a mutation." That is a statement about
+    <!-- "Animation is a pure function of time, not a mutation." That is a statement about
          values, and it needs nothing but `Marey.Core`: an `Anim<'a>` is generic in what it
          animates, so this project never mentions a Figure, a Scene or a backend.
 

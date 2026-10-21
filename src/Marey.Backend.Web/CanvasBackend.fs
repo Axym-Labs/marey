@@ -3,7 +3,7 @@ namespace Marey
 open System
 
 // ======================================================================================
-// M5 — THE CANVAS2D BACKEND
+// THE CANVAS2D BACKEND
 //
 // The whole pipeline in a browser: a Fable app builds a `Figure`, compiles it with the same
 // compiler the kernel runs, and this draws the `Node` on a canvas. Nothing above `Node` is

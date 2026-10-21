@@ -4,7 +4,7 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// M4.5 — A RECORDING, AND SAMPLING IT
+// A RECORDING, AND SAMPLING IT
 //
 // `sample : Signal<'a> -> Anim<'a>` cannot be total: an `Anim` has a duration and a value at every
 // instant of it, and a live widget has neither until it stops. What can be sampled is a

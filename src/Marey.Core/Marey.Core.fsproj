@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- §13: "Marey.Core having zero dependencies is non-negotiable: it is what lets the
+    <!-- "Marey.Core having zero dependencies is non-negotiable: it is what lets the
          same IR run in a notebook, in a browser via Fable, and in an AOT-compiled native
          binary." netstandard2.1 is the Fable-compatible floor.
 

@@ -4,7 +4,7 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// M5 — THE WINDOW'S INPUT, AS MESSAGES
+// THE WINDOW'S INPUT, AS MESSAGES
 //
 // The window has no interaction model of its own. A drag on the figure, a shifted drag, a double
 // click and the pointer passing over it become the `LiveMsg`s the notebook widget's script sends

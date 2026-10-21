@@ -692,7 +692,7 @@ module Html =
     // dependency on Marey at all**. It is a bridge, not an integration, and it keeps working
     // across Marey versions as long as these two signatures hold.
     // ======================================================================================
-    // M4.5 — A LIVE FIGURE'S DOCUMENT
+    // A LIVE FIGURE'S DOCUMENT
     //
     // Not a fragment: a whole page, which a host draws in a frame of its own (Verso's
     // `text/x-verso-widget`). Rule 1 therefore does not bind inside it — a `<style>` in a framed
@@ -1253,7 +1253,7 @@ module Html =
                 ""
         | _ -> ""
 
-    // ---- The live half of the bridge (M4.5, D100) ------------------------------------------
+    // ---- The live half of the bridge ------------------------------------------
     //
     // Six more functions the extension reaches by reflection, for the same reason as the two
     // above: nothing typed in a Marey assembly can cross the load-context boundary, so every

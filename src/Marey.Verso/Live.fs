@@ -8,7 +8,7 @@ open System.Threading.Tasks
 open Verso.Abstractions
 
 // ======================================================================================
-// M4.5 — A LIVE FIGURE IN A VERSO CELL.
+// A LIVE FIGURE IN A VERSO CELL.
 //
 // The formatter writes the page once; this keeps it in conversation with the kernel for as long
 // as the session holds the channel, which is after the cell has finished — the time someone is

@@ -4,7 +4,7 @@ open System
 open Fable.Core
 
 // ======================================================================================
-// M5 — TEXT IN THE BROWSER
+// TEXT IN THE BROWSER
 //
 // The browser lays out and draws, so the measurer is the canvas's own `measureText`: synchronous,
 // and answered in the font the canvas will draw with. The trap is a web font that has not

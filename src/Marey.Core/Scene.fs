@@ -135,7 +135,7 @@ type TextRun =
       ///
       /// §10's three routes to mathematical typesetting all read this one field — shelling out
       /// to LaTeX, MathJax/KaTeX on the web backend at M3, and native OpenType MATH layout at
-      /// M6 — which is why it is worth a field now rather than a migration later.
+      /// Which is why it is worth a field now rather than a migration later.
       ///
       /// **Known imprecision:** layout is measured against `Text` while a TeX backend typesets
       /// `Tex`, and the two have different widths. Axis titles and tick labels are

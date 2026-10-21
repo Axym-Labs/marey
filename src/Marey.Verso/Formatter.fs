@@ -94,7 +94,7 @@ type MareyFormatter() =
             && Bridge.canRender value
 
         member _.FormatAsync(value: obj, context: IFormatterContext) =
-            // M4.5 — a live figure is a page, live over a channel when the host offers one and
+            // A live figure is a page, live over a channel when the host offers one and
             // static otherwise. See `Live.fs`.
             match Live.format value context with
             | Some output -> output

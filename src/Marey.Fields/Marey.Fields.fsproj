@@ -29,9 +29,9 @@
     <Compile Include="Grid.fs" />
     <Compile Include="Field.fs" />
     <Compile Include="Phase.fs" />
-    <!-- D109 — the unit-required mode, after the implementations it reaches. -->
+    <!-- The unit-required mode, after the implementations it reaches. -->
     <Compile Include="UnitsOfMeasure.fs" />
-    <!-- D124 — the C# surface, `using Marey.CSharp`. -->
+    <!-- The C# surface, `using Marey.CSharp`. -->
     <Compile Include="CSharp.fs" />
   </ItemGroup>
 
