@@ -267,52 +267,53 @@ type FacetScales =
 /// not its contents. An animation whose numbers change and whose labels do not is not showing the
 /// numbers changing.
 type PanelLayout =
-    { TitleH: float<px>
-      TopPad: float<px>
-      XTicksH: float<px>
-      XTitleH: float<px>
-      YTitleW: float<px>
-      YTicksW: float<px>
-      RightPad: float<px>
-      BarGap: float<px>
-      BarW: float<px>
-      /// D171 — an outside legend's column (right) or row (bottom), and the gap before it.
-      LegendGap: float<px>
-      LegendW: float<px>
-      LegendH: float<px>
-      /// D171 — for `LegendBest`, the share of the panel's drawn samples under the legend's box
-      /// in each inside corner (top right, top left, bottom left, bottom right). A shot keeps the
-      /// largest each corner had in any frame, and the legend goes where that is least.
-      LegendScores: float[]
-      /// The plot rectangle the tick plan is measured against.
-      Probe: Extent<px>
-      /// D73 — the prefix the x axis is pinned to. `None` chooses one from this figure's own
-      /// domain, which is what a still figure does and has always done.
-      XPrefix: Prefix option
-      YPrefix: Prefix option
-      /// D173 — room left empty at each outer edge of the panel's region, so that its gutters
-      /// add up to those of the widest panel on the same grid line and the plot rectangles line
-      /// up. Zero until the figure's panels are aligned, and always zero for a panel alone.
-      SlackLeft: float<px>
-      SlackRight: float<px>
-      SlackTop: float<px>
-      SlackBottom: float<px>
-      /// D177 — the second y axis's tick labels and title, on the right of the plot; zero for a
-      /// panel with one y axis.
-      Y2TicksW: float<px>
-      Y2TitleW: float<px>
-      /// D177 — the prefix the axis on the right is pinned to, as `YPrefix` is for the first: a
-      /// second y axis's, or a secondary y axis's (D178). A panel has one right side.
-      Y2Prefix: Prefix option
-      /// D178 — a secondary x axis's tick labels and title, above the plot.
-      X2TicksH: float<px>
-      X2TitleH: float<px>
-      /// D178 — the prefix a secondary x axis is pinned to.
-      X2Prefix: Prefix option
-      /// D164 — room for an annotation's text past the plot's left and bottom edges, beyond what
-      /// the axis already takes there. `RightPad` and `TopPad` take it on the other two sides.
-      LeftPad: float<px>
-      BottomPad: float<px> }
+    internal
+        { TitleH: float<px>
+          TopPad: float<px>
+          XTicksH: float<px>
+          XTitleH: float<px>
+          YTitleW: float<px>
+          YTicksW: float<px>
+          RightPad: float<px>
+          BarGap: float<px>
+          BarW: float<px>
+          /// D171 — an outside legend's column (right) or row (bottom), and the gap before it.
+          LegendGap: float<px>
+          LegendW: float<px>
+          LegendH: float<px>
+          /// D171 — for `LegendBest`, the share of the panel's drawn samples under the legend's box
+          /// in each inside corner (top right, top left, bottom left, bottom right). A shot keeps the
+          /// largest each corner had in any frame, and the legend goes where that is least.
+          LegendScores: float[]
+          /// The plot rectangle the tick plan is measured against.
+          Probe: Extent<px>
+          /// D73 — the prefix the x axis is pinned to. `None` chooses one from this figure's own
+          /// domain, which is what a still figure does and has always done.
+          XPrefix: Prefix option
+          YPrefix: Prefix option
+          /// D173 — room left empty at each outer edge of the panel's region, so that its gutters
+          /// add up to those of the widest panel on the same grid line and the plot rectangles line
+          /// up. Zero until the figure's panels are aligned, and always zero for a panel alone.
+          SlackLeft: float<px>
+          SlackRight: float<px>
+          SlackTop: float<px>
+          SlackBottom: float<px>
+          /// D177 — the second y axis's tick labels and title, on the right of the plot; zero for a
+          /// panel with one y axis.
+          Y2TicksW: float<px>
+          Y2TitleW: float<px>
+          /// D177 — the prefix the axis on the right is pinned to, as `YPrefix` is for the first: a
+          /// second y axis's, or a secondary y axis's (D178). A panel has one right side.
+          Y2Prefix: Prefix option
+          /// D178 — a secondary x axis's tick labels and title, above the plot.
+          X2TicksH: float<px>
+          X2TitleH: float<px>
+          /// D178 — the prefix a secondary x axis is pinned to.
+          X2Prefix: Prefix option
+          /// D164 — room for an annotation's text past the plot's left and bottom edges, beyond what
+          /// the axis already takes there. `RightPad` and `TopPad` take it on the other two sides.
+          LeftPad: float<px>
+          BottomPad: float<px> }
 
 [<RequireQualifiedAccess>]
 module PanelLayout =

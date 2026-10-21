@@ -793,46 +793,7 @@ namespace Marey
         | ShareY
 
     type PanelLayout =
-        {
-          TitleH: float<px>
-          TopPad: float<px>
-          XTicksH: float<px>
-          XTitleH: float<px>
-          YTitleW: float<px>
-          YTicksW: float<px>
-          RightPad: float<px>
-          BarGap: float<px>
-          BarW: float<px>
-
-          LegendGap: float<px>
-          LegendW: float<px>
-          LegendH: float<px>
-
-          LegendScores: float array
-
-          Probe: Extent<px>
-
-          XPrefix: Prefix option
-          YPrefix: Prefix option
-
-          SlackLeft: float<px>
-          SlackRight: float<px>
-          SlackTop: float<px>
-          SlackBottom: float<px>
-
-          Y2TicksW: float<px>
-          Y2TitleW: float<px>
-
-          Y2Prefix: Prefix option
-
-          X2TicksH: float<px>
-          X2TitleH: float<px>
-
-          X2Prefix: Prefix option
-
-          LeftPad: float<px>
-          BottomPad: float<px>
-        }
+        internal
 
     [<RequireQualifiedAccess>]
     module PanelLayout =
