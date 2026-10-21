@@ -10,14 +10,14 @@ type AxisSide =
 /// The outcome of tick-label collision avoidance.
 ///
 /// `Rule` names the rung of the ladder that succeeded, so the decision is inspectable from the
-/// outside rather than being a mystery in the output. §15 is blunt that "axis label collision
-/// avoidance ... is where plotting libraries actually die"; a library that thins your ticks
+/// outside rather than being a mystery in the output. Axis label collision avoidance is where
+/// plotting libraries actually die; a library that thins your ticks
 /// should at least be able to say why.
 [<NoComparison>]
 type internal TickPlan =
     { /// Indices into `AxisSpec.Ticks` that survive.
       Kept: int[]
-      /// Counter-clockwise in `nd` (y-up). The backend converts to its own sense — D13.
+      /// Counter-clockwise in `nd` (y-up). The backend converts to its own sense.
       Rotation: float<rad>
       Rule: string }
 
@@ -31,7 +31,7 @@ type internal AxisRender =
       Plan: TickPlan
       /// The plot area, in **figure** nd.
       Panel: Rect<nd>
-      /// The figure surface: needed for every px offset in the theme — D12.
+      /// The figure surface: needed for every px offset in the theme.
       Extent: Extent<px>
       Theme: Theme
       ShowSpine: bool
@@ -68,8 +68,8 @@ module internal Axes =
 
     /// The quantity name an axis gets when the caller does not supply one.
     ///
-    /// §9's payoff sentence is "`x (fun r -> r.Time)` where `Time : float(s)` gives you a linear
-    /// scale over seconds with the axis labelled `t [s]`, **with no configuration**." In the
+    /// The payoff: `x (fun r -> r.Time)` where `Time : float(s)` gives a linear scale over
+    /// seconds with the axis labelled `t [s]`, **with no configuration**. In the
     /// grammar the `t` comes from the accessor. `Chart.line (ts, xs)` has no accessor and no
     /// field name — but it does have the `Dim`, and physics has a settled convention for what
     /// each dimension is called. A time axis is `t`. A length axis is `x`. Reading the
@@ -137,7 +137,7 @@ module internal Axes =
             { new IScaleConsumer<int> with
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) = U.angleExponentOf s.Unit.Symbol s.Unit.Factors }
 
-    /// The `Dim` behind a packed scale, recovered through §2.3's rank-2 encoding.
+    /// The `Dim` behind a packed scale, recovered through the rank-2 encoding.
     let dimOf (packed: PackedScale) =
         packed.Accept
             { new IScaleConsumer<Dim> with
@@ -335,7 +335,7 @@ module internal Axes =
 
     /// How far a tick label sticks out past the *end* of the axis, on each side. A centred label
     /// at position 0 hangs half its width off the left edge of the panel, and if layout does not
-    /// reserve that the figure clips it. This is half of §13's "labels inside bounds".
+    /// reserve that the figure clips it. This is half of keeping labels inside bounds.
     let labelOverhang (m: ITextMeasurer) (theme: Theme) (side: AxisSide) (spec: AxisSpec) (plan: TickPlan) : float<px> =
         let kept = keptTicks spec plan
 
@@ -433,8 +433,8 @@ module internal Axes =
         // ---- tick marks: one Path, many subpaths --------------------------------------
         //
         // A mark runs from `inward` lengths inside the spine to `outward` lengths outside
-        // it, and a mirrored side repeats the marks on the opposite edge of the frame. D167's
-        // minor marks are more subpaths of the same path, shorter.
+        // it, and a mirrored side repeats the marks on the opposite edge of the frame. Minor
+        // marks are more subpaths of the same path, shorter.
         let outward, inward =
             match a.Direction with
             | TickOut -> 1.0, 0.0

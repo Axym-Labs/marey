@@ -765,7 +765,7 @@ module Storyboard =
     let animateWith (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (story: Story<unit>) : Anim<Node> =
         snd (shoot samples m extent story)
 
-    /// `animateWith`, measured with the zero-dependency default measurer — `Chart.toScene`'s
-    /// relationship to `Chart.toSceneWith`, one milestone later.
+    /// `animateWith`, measured with the zero-dependency default measurer — the same
+    /// relationship as `Chart.toScene`'s to `Chart.toSceneWith`.
     let animate (samples: int) (extent: Extent<px>) (story: Story<unit>) : Anim<Node> =
         animateWith samples TextMeasure.approx extent story

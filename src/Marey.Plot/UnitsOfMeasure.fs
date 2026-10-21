@@ -43,8 +43,8 @@ module Chart =
     let line (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         Marey.Chart.line ux uy x y
 
-    /// Scatter. **One `Markers` node for the whole series**, however many points — §5.1, "the
-    /// single biggest performance decision in the IR". Verifiable with `Scene.count`.
+    /// Scatter. **One `Markers` node for the whole series**, however many points — batching,
+    /// the single biggest performance decision in the IR. Verifiable with `Scene.count`.
     let scatter (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         Marey.Chart.scatter ux uy x y
 
@@ -111,8 +111,8 @@ module Chart =
     /// where smoothing invents values that were never recorded.
     ///
     /// **This is the only thing in Marey that produces a `Raster`**, and until it existed
-    /// `renderWithAssets` had no customer — which is D10's failure mode, and the reason D64
-    /// insists the two ship together. `Chart.heatmap` is *tiles*, not a raster, and always was.
+    /// `renderWithAssets` had no customer — a facility nobody reads, which is why the two
+    /// ship together. `Chart.heatmap` is *tiles*, not a raster, and always was.
     ///
     /// Both backends draw it: SVG inlines a `data:` URI, and TikZ writes a sidecar `.png`
     /// through `TikzBackend.renderToFileWithAssets`. `TikzBackend.render` returns a bare string
@@ -163,7 +163,7 @@ module Chart =
     /// rebuilds every layer's scale over the union. It also checks that the added series has the
     /// *same physical dimension* as the existing ones and raises if not — the one runtime
     /// dimensional check in the library, and it is runtime only because the two series have
-    /// already crossed §2.3's existential and F# can no longer compare their measures.
+    /// already crossed the rank-2 existential and F# can no longer compare their measures.
     let addLine (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
         Marey.Chart.addLine ux uy x y fig
 
@@ -222,7 +222,7 @@ module Chart =
     /// Add a least-squares fit of y against x to the last panel, as a two-point line over the
     /// range of the data.
     ///
-    /// **The slope is not returned, and that is D47's split rather than an omission.** The fit
+    /// **The slope is not returned, and that is the stats' split rather than an omission.** The fit
     /// is a number — `float<'uy/'ux>`, and for a displacement against a time that is a velocity
     /// the caller can bind, print, and do arithmetic with. Handing it back through a `Figure`
     /// would mean packing it into an existential to get it out of this function, so a caller
@@ -352,7 +352,7 @@ module Chart =
     // ---- Rules and spans ----------------------------------------------------------------
 
     /// A horizontal rule at `y`, across the last panel wherever its domain ends up, and without
-    /// moving that domain (D163; `withDomainIncluded` lets it). The witness is the y axis's, so a
+    /// moving that domain (`withDomainIncluded` lets it). The witness is the y axis's, so a
     /// rule at `9.81<m/s^2>` on a metre axis does not compile. Unnamed it is furniture and stays
     /// out of the legend; `withName` puts it in.
     let addHLine (uy: U<'uy>) (y: float<'uy>) (fig: Figure) : Figure = Marey.Chart.addHLine uy y fig
@@ -532,7 +532,7 @@ module Chart =
     [<Obsolete("Marey.UnitsOfMeasure is open, so a chart takes a witness per axis: Chart.sizeByWith. Chart.SizeByWith(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
     let SizeByWith (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
 
-    /// D45's categorical door in the unit-required mode: the values take a witness, the keys are
+    /// The categorical door in the unit-required mode: the values take a witness, the keys are
     /// data. `Chart.Category.count`, which takes no witness, is the core's and resolves there.
     [<RequireQualifiedAccess>]
     module Category =
@@ -546,7 +546,7 @@ module Chart =
             Marey.Chart.Category.bar uy keys values
 
         /// The same axis with points instead of bars — a dot plot, and the shape a categorical
-        /// colour channel will hang off in phase 2.
+        /// colour channel hangs off.
         let scatter (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
             Marey.Chart.Category.scatter uy keys values
 
@@ -567,13 +567,13 @@ module Chart =
         /// **A violin per level**: the same split, drawn as a density instead of a
         /// summary.
         ///
-        /// **The bandwidth comes from the undivided sample** (`Stat.frameOf`), not from each
-        /// group, and that is D48's facet argument arriving in a second place. A bandwidth
-        /// chosen per group smooths the sparse ones harder and invents a difference in *shape*
-        /// that is not in the data — the quiet kind of wrong, because the figure looks fine. It
-        /// also removes a failure: a group of one value has no bandwidth of its own and a
-        /// density over it raises, where under a shared one it draws the whole sample's kernel
-        /// over its single point, which is what it is.
+        /// **The bandwidth comes from the undivided sample** (`Stat.frameOf`), not from each group,
+        /// and that is the facets' shared-scale argument arriving in a second place. A bandwidth
+        /// chosen per group smooths the sparse ones harder and invents a difference in *shape* that
+        /// is not in the data — the quiet kind of wrong, because the figure looks fine. It also
+        /// removes a failure: a group of one value has no bandwidth of its own and a density over
+        /// it raises, where under a shared one it draws the whole sample's kernel over its single
+        /// point, which is what it is.
         ///
         /// A sample with no spread at all still has no density to estimate, and says so.
         let violin (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =

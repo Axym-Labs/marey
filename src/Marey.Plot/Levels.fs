@@ -3,13 +3,13 @@ namespace Marey
 /// **An ordered level set**: the distinct values of a categorical key, in the order
 /// they will be laid out.
 ///
-/// This is the half of the discrete scale that a category type actually reaches. D45 put the
-/// scale itself in `Marey.Core` as `ScaleKind.Ordinal` over `float<1>`, indexed by *level
+/// This is the half of the discrete scale that a category type actually reaches. The
+/// scale itself is in `Marey.Core` as `ScaleKind.Ordinal` over `float<1>`, indexed by *level
 /// number* rather than by the key — because a `Series` holds `float[]` and something has to turn
 /// `"treated"` into a number before the erasure boundary. This type is that something, and it
 /// lives here because here is where the key type `'k` is still known.
 ///
-/// It carries no function fields, for D1's reason: two independently built level sets over the
+/// It carries no function fields, for the IR's reason: two independently built level sets over the
 /// same data must compare equal, and a closure has reference equality.
 type Levels<'k when 'k: equality> =
     { /// The distinct key values, in layout order. Level `i` is `Values.[i]`.

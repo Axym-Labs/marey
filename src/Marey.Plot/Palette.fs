@@ -1,7 +1,7 @@
 namespace Marey
 
-/// The three dichromacies. §9: "a validator that checks contrast and CVD-safety, because a
-/// physics library that renders fields in jet is embarrassing."
+/// The three dichromacies, for a validator that checks contrast and colour-vision safety,
+/// because a physics library that renders fields in jet is embarrassing.
 ///
 /// Anomalous trichromacy (protanomaly and friends) is deliberately absent: it is a *severity*
 /// parameter on the same axis, and the dichromatic end of that axis is the conservative test.
@@ -14,7 +14,7 @@ type Cvd =
 /// A colour ramp as **data**, not a closure.
 ///
 /// A function field would make every enclosing record — `Theme` above all — compare unequal to
-/// an identically-constructed copy, which is the same reference-equality trap D1 keeps out of
+/// an identically-constructed copy, which is the same reference-equality trap kept out of
 /// the IR. Stops are a value; `Ramp.at` is the evaluator.
 ///
 /// Stops are in ascending position order over [0,1] and are interpolated by `Interp.stops`,
@@ -345,7 +345,7 @@ module Palette =
     [<Literal>]
     let ContrastFloor = 3.0
 
-    /// §9's validator. Measures rather than asserts: every field of the report is a number you
+    /// The validator. Measures rather than asserts: every field of the report is a number you
     /// can put in a commit message.
     let validate (background: Color) (cs: Color[]) : PaletteReport =
         let seps =

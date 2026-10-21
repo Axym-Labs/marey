@@ -25,7 +25,7 @@ type internal Track =
 /// is known.
 ///
 /// Layout values never enter the IR and are never serialized, so the function field costs
-/// nothing here that D1 was protecting against in `Node`.
+/// nothing here that keeping closures out of `Node` protects against.
 [<NoComparison>]
 type internal GridCell =
     { Key: string
@@ -64,7 +64,7 @@ type internal Grid =
 type Arrangement =
     { /// The device-space box this grid was arranged into.
       Region: Rect<px>
-      /// The figure surface. Needed for every px to nd conversion — D12.
+      /// The figure surface. Needed for every px to nd conversion.
       Extent: Extent<px>
       ColSizes: float<px>[]
       RowSizes: float<px>[]
@@ -103,7 +103,7 @@ type Arrangement =
 [<RequireQualifiedAccess>]
 module internal Layout =
 
-    // ---- px <-> nd, the D12 boundary ---------------------------------------------------
+    // ---- px <-> nd, the unit boundary --------------------------------------------------
 
     /// A horizontal device distance as a fraction of the figure width.
     let ndX (e: Extent<px>) (x: float<px>) : float<nd> =
@@ -182,7 +182,7 @@ module internal Layout =
     /// Overflow is handled rather than ignored: if the fixed and content tracks together exceed
     /// the space, content tracks shrink proportionally, and only if that is not enough do fixed
     /// tracks shrink too. A negative track size would put a label outside the figure, which is
-    /// one of the two layout invariants §13 asks to be testable.
+    /// one of the two layout invariants the tests check.
     let private resolveTracks (tracks: Track[]) (gap: float<px>) (available: float<px>) (demand: float<px>[]) : float<px>[] =
         let n = tracks.Length
 
@@ -389,7 +389,7 @@ module internal Layout =
         | Some r -> r
         | None -> failwithf "Marey.Layout: no cell named '%s' in this arrangement." key
 
-    // ---- Invariants (§13: "layout invariants — no overlapping panels, labels inside bounds")
+    // ---- Invariants: no overlapping panels, labels inside bounds
 
     /// Pairs of cells whose device rectangles overlap. Cells that share a track legitimately
     /// touch, so a shared edge is not an overlap; the test is strict interior intersection,

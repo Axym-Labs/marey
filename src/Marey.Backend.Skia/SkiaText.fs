@@ -270,8 +270,8 @@ type internal ShapedRun =
       /// `Measure`); a *run*-wide maximum is the same argument one level up — a run that
       /// reserved only the Latin band would have its CJK glyphs hang out of it, and a run that
       /// reserved only the CJK band would make a Latin label taller than the label beside it.
-      /// Including the primary unconditionally is what keeps every number this milestone
-      /// measured unchanged: a run the primary covers on its own folds over exactly one face.
+      /// Including the primary unconditionally is what keeps every number measured without
+      /// fallback unchanged: a run the primary covers on its own folds over exactly one face.
       Ascent: float32
       Descent: float32 }
 

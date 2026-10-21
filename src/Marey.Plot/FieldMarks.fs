@@ -999,12 +999,12 @@ module internal FieldMarks =
     // samples are not deposited — another seed covers them with a whole window. Where the line
     // stops at the edge or a fixed point, the window is what there is.
     //
-    // **The noise is D95's generator**, one uniform draw per raster pixel in row order from the
-    // stated seed. Nothing else is random, and the tracing runs in row order on one thread, so a
-    // seed, a field and a plot size name one image on every runtime: the arithmetic is +, ×, ÷ and
-    // √, which IEEE 754 rounds the same everywhere.
+    // **The noise is the library's one generator**, one uniform draw per raster pixel in row order
+    // from the stated seed. Nothing else is random, and the tracing runs in row order on one
+    // thread, so a seed, a field and a plot size name one image on every runtime: the arithmetic is
+    // +, ×, ÷ and √, which IEEE 754 rounds the same everywhere.
     //
-    // **Only the per-pixel passes after the tracing run in parallel** (M5, D119 as taken). Fast LIC
+    // **Only the per-pixel passes after the tracing run in parallel**. Fast LIC
     // seeds a line only at a pixel no earlier line crossed, so the lines traced depend on the
     // order they are traced in, and tracing in parallel would change the image a seed names. The
     // intensity and the colouring each write one pixel from values nothing else writes, so they
@@ -1013,7 +1013,7 @@ module internal FieldMarks =
     // **A backend may convolve instead**. When the compile measurer is an `ILicConvolver`
     // that answers, its intensities replace the traced ones: the GPU renderer's computes each
     // pixel's own window, the exact convolution at its centre, which correlates 0.90 with fast
-    // LIC's averaged windows on the same noise (measured in the M5.6 inventory). The stretch and
+    // LIC's averaged windows on the same noise (measured). The stretch and
     // the colouring below are the same either way. Any other measurer leaves the image as it was,
     // to the byte.
     //

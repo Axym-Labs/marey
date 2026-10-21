@@ -5,8 +5,7 @@ namespace Marey
 /// Four cases, and the pairing is not an accident: a category can drive colour or shape, a
 /// quantity can drive colour or size, and nothing else is possible. There is no continuous
 /// shape (a shape does not interpolate) and no categorical size (a size that is not ordered
-/// says nothing), so the DU has exactly the four arms the two halves of §9's channel list
-/// allow.
+/// says nothing), so the DU has exactly the four arms those two halves allow.
 ///
 /// The **categorical** arms index by level number, exactly as `ScaleKind.Ordinal` does:
 /// `Levels` is what the key reached before the erasure boundary, and a channel's values are
@@ -19,7 +18,7 @@ type ChannelMap =
     /// One colour per level. `levels` is index-aligned with `colors` and is what the legend
     /// prints.
     | ColorByLevel of levels: string[] * colors: Color[]
-    /// One marker shape per level — §9's redundant encoding, and the reason `MarkerShape` is
+    /// One marker shape per level — the redundant encoding, and the reason `MarkerShape` is
     /// on the batched node at all.
     | ShapeByLevel of levels: string[] * shapes: MarkerShape[]
     /// A ramp over a dimensioned scale. Values are raw, in the scale's own unit.
@@ -45,13 +44,13 @@ type Channel =
 
 /// **The quantiser, and the grouping it makes possible.**
 ///
-/// The problem this module exists for is stated in §5.1 and D11: `MarkerBatch` carries one
+/// The problem this module exists for: `MarkerBatch` carries one
 /// paint for the whole batch, so a colour that varies per point has nowhere to live. The two
 /// obvious answers are both bad — per-point arrays on the IR node is one variant against six
 /// backends, and one batch per point defeats the batching in exactly the case that motivated
 /// it (measured: 310 ms and 13 MB of TeX for 100 000 points).
 ///
-/// D46's answer is that neither is needed, because a continuous channel does not have to reach
+/// Neither is needed, because a continuous channel does not have to reach
 /// the output at higher resolution than the output has. A 256-step ramp is off by 0.00180 in
 /// Oklab; the 8-bit hex both backends write is off by 0.00187 anyway. So the channel is
 /// **quantised into buckets**, points are grouped by bucket, and each group is one ordinary
@@ -62,12 +61,12 @@ type Channel =
 ///
 /// ### Why the bucket key is an integer and not a tuple
 ///
-/// Several channels can drive one layer at once — colour *and* shape over the same levels is
-/// §9's colour-blind-safe scatter, and it must not produce the product of the two batch counts
-/// when both key off the same levels. So a point's group is the combination of its buckets
-/// across every channel, mixed into one `int64` by known strides. A tuple or a list would be
-/// correct and would allocate one object per point, which is the GC pressure §1.3 warns about
-/// in the one place this library promises not to create it.
+/// Several channels can drive one layer at once — colour *and* shape over the same levels is the
+/// colour-blind-safe scatter, and it must not produce the product of the two batch counts when both
+/// key off the same levels. So a point's group is the combination of its buckets across every
+/// channel, mixed into one `int64` by known strides. A tuple or a list would be correct and would
+/// allocate one object per point, which is GC pressure in the one place this library promises not
+/// to create it.
 [<RequireQualifiedAccess>]
 module internal Channel =
 
@@ -178,7 +177,7 @@ module internal Channel =
 
     /// Where a bucket sits along its ramp: the **midpoint** of the step, never its edge.
     ///
-    /// The midpoint is what makes D49's colorbar agree with the marks rather than merely
+    /// The midpoint is what makes the colorbar agree with the marks rather than merely
     /// resemble them. A strip drawn for bucket `i` and a mark assigned bucket `i` take their
     /// colour from the same call, so the two cannot drift apart when the step count changes.
     let stepMidpoint (steps: int) (i: int) = (float i + 0.5) / float steps
@@ -220,7 +219,7 @@ module internal Channel =
     /// **Group `n` points into batches by the combination of every channel's bucket.**
     ///
     /// Batches come out in ascending key order, which makes the output a function of the data
-    /// alone: §13's determinism gate compares two renders of the same figure byte for byte, and
+    /// alone: the determinism test compares two renders of the same figure byte for byte, and
     /// a `Dictionary`'s enumeration order would not survive that.
     ///
     /// Returns the batches and the number of points that had no bucket — see `bucketOf`.
@@ -320,7 +319,7 @@ module internal Channel =
           Map = ColorByLevel(levels, levelColors theme levels.Length) }
 
     /// A categorical shape channel over the theme's shape cycle. Paired with `colorByLevel` on
-    /// the same levels it is §9's redundant encoding, and the two produce one batch per level
+    /// the same levels it is the redundant encoding, and the two produce one batch per level
     /// rather than one per combination — the level number is the same in both.
     let shapeByLevel (theme: Theme) (levels: string[]) (values: float[]) : Channel =
         { Label = ""

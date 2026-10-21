@@ -434,8 +434,8 @@ module PanelLayout =
 ///
 /// A still figure has one of these too, over a single sample. That is not a courtesy: it is what
 /// makes `toScene` and this type the same code path, and the reason `Figure.arrangement` — the
-/// hand-written second copy that this replaces — could disagree with the renderer for two
-/// milestones without a test noticing.
+/// hand-written second copy that this replaces — could disagree with the renderer for a long
+/// time without a test noticing.
 [<NoComparison>]
 type Shot =
     { /// The figure's outer grid: the head row, and one region per panel.
@@ -3460,7 +3460,7 @@ module Figure =
     /// **`Shot -> Figure -> Node`.** Draw this figure inside a layout that has already been
     /// decided — the frame renderer's entry point.
     ///
-    /// There is no `Extent<px>` parameter, and the plan that asked for one was wrong: the shot
+    /// There is no `Extent<px>` parameter, deliberately: the shot
     /// already carries the surface it was arranged against, and a second extent beside it is a
     /// second chance to be inconsistent with no way to detect it. An arrangement is in device
     /// pixels for one surface; it does not travel to another.

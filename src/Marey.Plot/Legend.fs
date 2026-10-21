@@ -12,8 +12,8 @@ type internal LegendMark =
     /// A marker drawn at a stated diameter rather than the theme's: the size key of a
     /// continuous size channel, three of them at the domain's ends and middle.
     ///
-    /// **A new case here is cheap in a way an IR case is not**, which is the whole of D11's
-    /// "one variant against six backends" read the other way. `LegendMark` is a `Marey.Plot`
+    /// **A new case here is cheap in a way an IR case is not**, which is "one variant
+    /// against six backends" read the other way. `LegendMark` is a `Marey.Plot`
     /// type with exactly one consumer — the `match` inside `Legend.compile` — and it is
     /// compiled into `Path`/`Markers` before any backend sees it. So the size key is a case
     /// and the colorbar is a sibling compiler: the question is never whether a new case is
@@ -28,8 +28,8 @@ type internal LegendEntry =
 
 /// Where the legend sits: a corner of the plot area, outside it, the emptiest corner, or off.
 ///
-/// Outside placement waited from M0 to M8 because it changes the panel's width and the tick
-/// plan is measured against that width. D49's colorbar showed the way round: a column of the
+/// Outside placement is hard because it changes the panel's width and the tick plan is
+/// measured against that width. The colorbar shows the way round: a column of the
 /// panel's own grid, sized before the ticks are planned, so the loop is still two passes.
 type LegendPlacement =
     | LegendNone
@@ -53,12 +53,12 @@ type FigureLegend =
 
 /// A legend is not an IR node either. It is a `Path` for the box, a `Path` or `Markers`
 /// per swatch, and a `Text` per entry, wrapped in `Annotated` with `RoleLegend` so that a later
-/// milestone can make it clickable without the scene having to be rebuilt to carry the
-/// information (§5.3: "retrofitting this is painful; it costs almost nothing now").
+/// version can make it clickable without the scene having to be rebuilt to carry the
+/// information (retrofitting this is painful; it costs almost nothing now).
 ///
 /// Sizing goes through `ITextMeasurer`, like everything else that has to know how wide a string
-/// is. §15's warning that "legend layout … is where plotting libraries actually die" is the
-/// reason the box is measured rather than estimated from a character count.
+/// is. Legend layout is where plotting libraries actually die, which is the reason the box is
+/// measured rather than estimated from a character count.
 [<RequireQualifiedAccess>]
 module internal Legend =
 

@@ -28,7 +28,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // before any of them drew a pixel. So `MemoTextMeasurer` memoises `Measure` on
 // `(FontSpec, string)`: after frame 0 the hit path is a lock-free dictionary read.
 //
-// That works *because of D72*. A shot is laid out once against the union of every sampled
+// That works *because of the shot*. A shot is laid out once against the union of every sampled
 // state, so every frame asks the same questions about the same strings. Without the frozen
 // arrangement the cache would still be correct and would mostly miss.
 //
@@ -58,7 +58,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // and is where the producer of an `Anim<Node>` lives. The graph does not move.
 // ======================================================================================
 
-/// **A memoising decorator over any `ITextMeasurer`** — D77's answer to the contention that
+/// **A memoising decorator over any `ITextMeasurer`** — the answer to the contention that
 /// sharing one measurer across a parallel render creates.
 ///
 /// It measures nothing itself. Every distinct `(FontSpec, string)` reaches `inner` exactly
@@ -93,10 +93,10 @@ type MemoTextMeasurer(inner: ITextMeasurer) =
 #endif
     let mutable measurements = 0
 
-    /// The measurer underneath, as the interface. The decorator forwards nothing but `Measure`
-    /// and D150's `ILicConvolver`, so it cannot go stale when the thing it wraps grows a member — and a caller who needs a
-    /// concrete measurer's own surface, `SkiaTextMeasurer.ResolvedFaces` above all, keeps their
-    /// own reference to it rather than downcasting this.
+    /// The measurer underneath, as the interface. The decorator forwards nothing but `Measure` and
+    /// `ILicConvolver`, so it cannot go stale when the thing it wraps grows a member — and a caller
+    /// who needs a concrete measurer's own surface, `SkiaTextMeasurer.ResolvedFaces` above all,
+    /// keeps their own reference to it rather than downcasting this.
     member _.Inner: ITextMeasurer = inner
 
     /// Calls that reached the inner measurer.
@@ -152,7 +152,7 @@ type FramePass =
 /// **An animation and the layout its frames are drawn inside**, which between them decide
 /// everything about a frame except when it is.
 ///
-/// The pair is a type rather than two arguments for D72's reason, restated one layer up: the
+/// The pair is a type rather than two arguments for the shot's reason, restated one layer up: the
 /// surface a shot was arranged against is already in the `Shot`, and a second `Extent<px>`
 /// passed beside it to a renderer is a second chance to disagree with nothing able to notice.
 /// Rendering a film laid out for 320 x 220 onto an 800 x 500 surface is not an error anything
@@ -174,7 +174,7 @@ type Film =
 [<RequireQualifiedAccess>]
 module Film =
 
-    /// A film from an `Anim<Figure>` — D72's primitive, without the storyboard block.
+    /// A film from an `Anim<Figure>` — the shot's primitive, without the storyboard block.
     ///
     /// `samples` is the union: that many states are arranged and the gutters are the
     /// componentwise maximum. No default, for `Chart.arrangeUnion`'s reason.
@@ -192,8 +192,8 @@ module Film =
     /// A film from a storyboard.
     ///
     /// **Pass a `MemoTextMeasurer` here** when the measurer behind it costs anything — this is
-    /// the one place a whole render's measuring is decided, and D77 is the reason it is one
-    /// place.
+    /// the one place a whole render's measuring is decided, and one measurer per render is
+    /// the reason it is one place.
     let ofStoryWith (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (story: Story<unit>) : Film =
         let shot, frames = Storyboard.shoot samples m extent story
         { Shot = shot; Frames = frames }
@@ -266,7 +266,7 @@ type FrameSequence =
       /// function's call to make.
       Stale: string[] }
 
-/// **The frame writer.** §7's parallel render, with D77's contract around it.
+/// **The frame writer.** A parallel render, with the one-measurer contract around it.
 [<RequireQualifiedAccess>]
 module Frames =
 

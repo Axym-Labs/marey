@@ -50,11 +50,10 @@ open SkiaSharp.HarfBuzz
 //   baselines, which is the argument `tests/Marey.Tests/Raster.fs` already makes at length for
 //   the TikZ compile gate.
 // * **Its measurer is not the others'.** `SkiaTextMeasurer` shapes with HarfBuzz, so a figure
-//   laid out through `Chart.renderTo` against this backend has *different gutters* from the
-//   same figure through the SVG backend. That is a result rather than a regression and it is
-//   the milestone's headline — but it is also why the cross-backend oracle below compares
-//   scenes under a **stated** measurer rather than comparing whatever each backend
-//   happens to lay out against.
+// laid out through `Chart.renderTo` against this backend has *different gutters* from the same
+// figure through the SVG backend. That is a result rather than a regression and it is the point of
+// measuring text properly — but it is also why the cross-backend oracle below compares scenes under
+// a **stated** measurer rather than comparing whatever each backend happens to lay out against.
 // ======================================================================================
 
 /// What a Skia render produces. One traversal, two containers.
