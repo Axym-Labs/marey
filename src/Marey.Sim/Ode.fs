@@ -296,21 +296,39 @@ module Ode =
     // The tableau, and the error weights `b − b̂`. The fifth-order solution is propagated (local
     // extrapolation), and the seventh stage is the derivative at the step's end.
     let private a21 = 1.0 / 5.0
-    let private a31, a32 = 3.0 / 40.0, 9.0 / 40.0
-    let private a41, a42, a43 = 44.0 / 45.0, -56.0 / 15.0, 32.0 / 9.0
-    let private a51, a52, a53, a54 = 19372.0 / 6561.0, -25360.0 / 2187.0, 64448.0 / 6561.0, -212.0 / 729.0
-    let private a61, a62, a63, a64, a65 = 9017.0 / 3168.0, -355.0 / 33.0, 46732.0 / 5247.0, 49.0 / 176.0, -5103.0 / 18656.0
-    let private b1, b3, b4, b5, b6 = 35.0 / 384.0, 500.0 / 1113.0, 125.0 / 192.0, -2187.0 / 6784.0, 11.0 / 84.0
-    let private e1, e3, e4, e5, e6, e7 = 71.0 / 57600.0, -71.0 / 16695.0, 71.0 / 1920.0, -17253.0 / 339200.0, 22.0 / 525.0, -1.0 / 40.0
+    let private a31 = 3.0 / 40.0
+    let private a32 = 9.0 / 40.0
+    let private a41 = 44.0 / 45.0
+    let private a42 = -56.0 / 15.0
+    let private a43 = 32.0 / 9.0
+    let private a51 = 19372.0 / 6561.0
+    let private a52 = -25360.0 / 2187.0
+    let private a53 = 64448.0 / 6561.0
+    let private a54 = -212.0 / 729.0
+    let private a61 = 9017.0 / 3168.0
+    let private a62 = -355.0 / 33.0
+    let private a63 = 46732.0 / 5247.0
+    let private a64 = 49.0 / 176.0
+    let private a65 = -5103.0 / 18656.0
+    let private b1 = 35.0 / 384.0
+    let private b3 = 500.0 / 1113.0
+    let private b4 = 125.0 / 192.0
+    let private b5 = -2187.0 / 6784.0
+    let private b6 = 11.0 / 84.0
+    let private e1 = 71.0 / 57600.0
+    let private e3 = -71.0 / 16695.0
+    let private e4 = 71.0 / 1920.0
+    let private e5 = -17253.0 / 339200.0
+    let private e6 = 22.0 / 525.0
+    let private e7 = -1.0 / 40.0
 
     // Shampine's fourth-order continuous extension, as Hairer's DOPRI5 writes it.
-    let private d1, d3, d4, d5, d6, d7 =
-        -12715105075.0 / 11282082432.0,
-        87487479700.0 / 32700410799.0,
-        -10690763975.0 / 1880347072.0,
-        701980252875.0 / 199316789632.0,
-        -1453857185.0 / 822651844.0,
-        69997945.0 / 29380423.0
+    let private d1 = -12715105075.0 / 11282082432.0
+    let private d3 = 87487479700.0 / 32700410799.0
+    let private d4 = -10690763975.0 / 1880347072.0
+    let private d5 = 701980252875.0 / 199316789632.0
+    let private d6 = -1453857185.0 / 822651844.0
+    let private d7 = 69997945.0 / 29380423.0
 
     /// The weights of `k₁…k₇` in the dense output at `θ ∈ [0, 1]`: `y(θ) = y₀ + h Σ wᵢ kᵢ`. Hairer's
     /// nested form, `θ(r₂ + (1−θ)(r₃ + θ(r₄ + (1−θ)r₅)))`, with each `r` expanded into the stages.

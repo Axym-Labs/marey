@@ -126,54 +126,6 @@ namespace Marey
             struct (float<'q> array * float<'q/'t> array) ->
             struct (float<'q> array * float<'q/'t> array)
 
-        val a32: float
-
-        val a43: float
-
-        val a42: float
-
-        val a54: float
-
-        val a53: float
-
-        val a52: float
-
-        val a65: float
-
-        val a64: float
-
-        val a63: float
-
-        val a62: float
-
-        val b6: float
-
-        val b5: float
-
-        val b4: float
-
-        val b3: float
-
-        val e7: float
-
-        val e6: float
-
-        val e5: float
-
-        val e4: float
-
-        val e3: float
-
-        val d7: float
-
-        val d6: float
-
-        val d5: float
-
-        val d4: float
-
-        val d3: float
-
         val dopri5With:
           tangent: Tangent<'s,'ds,'t> ->
             norm: ErrorNorm<'s,'ds,'t> ->
