@@ -233,23 +233,26 @@ module ``the tour`` =
     let private framesAttr = Regex(@"\bframes=(\d+)")
 
     /// The blocks of a page, in order. `fsharp-error` does not match the fence, so a block meant
-    /// not to compile is left out as in `guide.md`.
+    /// not to compile is left out as in `guide.md`, and `norun` leaves out one that compiles but
+    /// must not run here: it opens a window, or it is compiled by Fable for a browser.
     let blocksOf (markdown: string) =
         [ for m in fence.Matches markdown do
               let attrs = m.Groups.[1].Value
-              let output = outputAttr.Match attrs
-              let size = sizeAttr.Match attrs
-              let frames = framesAttr.Match attrs
 
-              { Code = m.Groups.[2].Value
-                Optional = Regex.IsMatch(attrs, @"\boptional\b")
-                Output = if output.Success then Some output.Groups.[1].Value else None
-                Size =
-                  if size.Success then
-                      float size.Groups.[1].Value, float size.Groups.[2].Value
-                  else
-                      720.0, 450.0
-                Frames = if frames.Success then int frames.Groups.[1].Value else 24 } ]
+              if not (Regex.IsMatch(attrs, @"\bnorun\b")) then
+                  let output = outputAttr.Match attrs
+                  let size = sizeAttr.Match attrs
+                  let frames = framesAttr.Match attrs
+
+                  { Code = m.Groups.[2].Value
+                    Optional = Regex.IsMatch(attrs, @"\boptional\b")
+                    Output = if output.Success then Some output.Groups.[1].Value else None
+                    Size =
+                      if size.Success then
+                          float size.Groups.[1].Value, float size.Groups.[2].Value
+                      else
+                          720.0, 450.0
+                    Frames = if frames.Success then int frames.Groups.[1].Value else 24 } ]
 
     /// Where the value a block ends on begins: its last line at the left margin that does not
     /// continue an expression above it.
