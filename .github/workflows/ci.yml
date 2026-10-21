@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
-    branches: [main, dev]
+    branches: [main]
   workflow_dispatch:
 
 # The workflow only reads the repository. Publishing lives in publish.yml, which is a
@@ -164,6 +164,16 @@ jobs:
       # a pack failure that a build-and-test workflow would never have seen.
       - name: Pack
         run: dotnet pack Marey.slnx --configuration Release --no-build -o artifacts -p:Version=0.0.0-ci
+
+      # 1.0 (C3, G1) — the public API is what api/ says it is. The listing is the compiler's own
+      # signature of each package with private and internal declarations and doc comments taken
+      # out (tools/api/listing.fsx), so a rename, a changed parameter or a changed unit of measure
+      # fails here until api/ is regenerated in the same change. Only on the band the repository
+      # is built and released with: another compiler may print the same API differently. After
+      # Pack, because it rebuilds with `--no-incremental` to have every project emit its signature.
+      - name: Public API listing
+        if: matrix.sdk == '10.0.1xx'
+        run: dotnet fsi tools/api/listing.fsx --check
 
       # The readme filename is deliberately not pinned. Directory.Build.targets packs a project's
       # own PackageReadme.md when it has one and falls back to NUGET.md when it does not, so a
