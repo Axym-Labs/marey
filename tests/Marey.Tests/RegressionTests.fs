@@ -784,6 +784,20 @@ module ``D41 a supplied factorisation is displayed`` =
         Assert.EndsWith("V·m⁻¹", text Unicode Prefix.none voltPerMetre)
         Assert.EndsWith("V·m⁻¹", text Unicode mega voltPerMetre)
 
+    /// A reciprocal takes the inverse prefix on its unit, as SI reads a prefix before the
+    /// exponent: 10⁹ m⁻¹ is (10⁻⁹ m)⁻¹, a wavenumber in nm⁻¹, in every style.
+    [<Fact>]
+    let ``a reciprocal takes the inverse prefix on its unit`` () =
+        let giga = Prefix.ofExponent 9 |> Option.get
+        let perMetre = U.recip U.metre
+        Assert.Equal("nm⁻¹", text Unicode giga perMetre)
+        Assert.Equal("nm^-1", text Ascii giga perMetre)
+        Assert.Equal("\\mathrm{nm}^{-1}", text Latex giga perMetre)
+        Assert.Equal("\\qty{}{\\per\\nano\\metre}", text Siunitx giga perMetre)
+        Assert.Equal("m⁻¹", text Unicode Prefix.none perMetre)
+        // The kilogram keeps the multiplier: an inverse prefix on `kg` would need the gram.
+        Assert.StartsWith("10", text Unicode giga (U.recip U.kilogram))
+
     [<Fact>]
     let ``a registered name still beats the factorisation`` () =
         // D18's rule, and the reason the registry is consulted first: `N·m` is a joule.

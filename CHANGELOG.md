@@ -14,6 +14,9 @@ land in a minor release.
 
 ### Changed
 
+- **A reciprocal axis takes the inverse prefix on its unit:** a wavenumber reads `k [nm⁻¹]`, where
+  it read `k [10⁹·m⁻¹]`, as SI reads a prefix before the exponent. The kilogram keeps the
+  multiplier. `figure-ticks` moves.
 - **`withLegendFrame false` takes the legend's background with it**, as matplotlib's
   `frameon=False` does, so a frameless legend no longer masks the data under it. A theme whose
   own legend is borderless keeps its fill. `figure-legends` is the one baseline that moves.

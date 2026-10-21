@@ -277,45 +277,66 @@ module UnitDisplay =
             // unprefixed field axis read `kg·m·s⁻³·A⁻¹` while a prefixed one read `MV·m⁻¹`.
             wrapQty style (bodyOfWith style registry factors dim)
         else
-            let target =
-                match canonicalFor registry factors dim with
-                | Some us -> Some(p, us)
-                | None ->
-                    match Dim.exponents dim with
-                    | [ ("kg", 1) ] -> Prefix.shift 3 p |> Option.map (fun pg -> pg, gram)
-                    | [ (sym, 1) ] -> Some(p, baseSymbol sym)
-                    | _ -> None
+            // A reciprocal takes the inverse prefix on its unit: 10⁹ m⁻¹ is nm⁻¹, which is
+            // (10⁻⁹ m)⁻¹, because SI reads a prefix before the exponent. That is how a
+            // wavenumber is written. The kilogram keeps the multiplier, for the gram shift.
+            let reciprocal =
+                match canonicalFor registry factors dim, Dim.exponents dim, Prefix.ofExponent -p.Exponent with
+                | None, [ (sym, -1) ], Some inverse when sym <> "kg" ->
+                    let us = baseSymbol sym
 
-            match target with
-            | Some(pfx, us) -> wrapQty style (prefixText style pfx + symText style us)
-            | None when not (List.isEmpty factors) ->
-                // A composed unit takes its prefix on the leading factor: `MV·m⁻¹` is mega on
-                // the volt, and that is how it is read aloud and how siunitx spells it.
-                //
-                // Only when that factor has exponent exactly 1, and only when it is not the
-                // kilogram. `M` on an `m²` factor would mean 10⁶ m² where the rescaling applied
-                // 10⁶ to the value — wrong by a squared decade — and the kilogram needs the
-                // gram shift the branch above performs. Both fall through to the honest
-                // `10ⁿ·` multiplier rather than guessing.
-                match factors with
-                | (sym, 1) :: rest when sym <> "kg" ->
-                    let head = prefixText style p + symText style (factorSpelling registry sym)
+                    let glued =
+                        UnitSymbol.create
+                            (inverse.Symbol + us.Unicode)
+                            (inverse.Ascii + us.Ascii)
+                            (inverse.Latex + us.LatexCore)
+                            (inverse.Siunitx + us.Siunitx)
 
-                    let body =
-                        if List.isEmpty rest then
-                            head
-                        else
-                            let tail = expandedBodyWith (factorSpelling registry) style rest
+                    Some(wrapQty style (expandedBodyWith (fun _ -> glued) style [ (sym, -1) ]))
+                | _ -> None
 
-                            match style with
-                            | Siunitx -> head + tail
-                            | Ascii -> head + "." + tail
-                            | Latex -> head + "\\," + tail
-                            | _ -> head + "·" + tail
+            match reciprocal with
+            | Some text -> text
+            | None ->
+                let target =
+                    match canonicalFor registry factors dim with
+                    | Some us -> Some(p, us)
+                    | None ->
+                        match Dim.exponents dim with
+                        | [ ("kg", 1) ] -> Prefix.shift 3 p |> Option.map (fun pg -> pg, gram)
+                        | [ (sym, 1) ] -> Some(p, baseSymbol sym)
+                        | _ -> None
 
-                    wrapQty style body
-                | _ -> multiplier style p.Exponent (bodyOfWith style registry factors dim)
-            | None -> multiplier style p.Exponent (bodyOf style registry dim)
+                match target with
+                | Some(pfx, us) -> wrapQty style (prefixText style pfx + symText style us)
+                | None when not (List.isEmpty factors) ->
+                    // A composed unit takes its prefix on the leading factor: `MV·m⁻¹` is mega on
+                    // the volt, and that is how it is read aloud and how siunitx spells it.
+                    //
+                    // Only when that factor has exponent exactly 1, and only when it is not the
+                    // kilogram. `M` on an `m²` factor would mean 10⁶ m² where the rescaling applied
+                    // 10⁶ to the value — wrong by a squared decade — and the kilogram needs the
+                    // gram shift the branch above performs. Both fall through to the honest
+                    // `10ⁿ·` multiplier rather than guessing.
+                    match factors with
+                    | (sym, 1) :: rest when sym <> "kg" ->
+                        let head = prefixText style p + symText style (factorSpelling registry sym)
+
+                        let body =
+                            if List.isEmpty rest then
+                                head
+                            else
+                                let tail = expandedBodyWith (factorSpelling registry) style rest
+
+                                match style with
+                                | Siunitx -> head + tail
+                                | Ascii -> head + "." + tail
+                                | Latex -> head + "\\," + tail
+                                | _ -> head + "·" + tail
+
+                        wrapQty style body
+                    | _ -> multiplier style p.Exponent (bodyOfWith style registry factors dim)
+                | None -> multiplier style p.Exponent (bodyOf style registry dim)
 
     let renderPrefixed (style: UnitStyle) (registry: UnitRegistry) (p: Prefix) (dim: Dim) =
         renderPrefixedWith style registry [] p dim
