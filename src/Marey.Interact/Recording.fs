@@ -4,16 +4,15 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// M4.5 — A RECORDING, AND SAMPLING IT (D102)
+// A RECORDING, AND SAMPLING IT
 //
 // `sample : Signal<'a> -> Anim<'a>` cannot be total: an `Anim` has a duration and a value at every
 // instant of it, and a live widget has neither until it stops. What can be sampled is a
 // **recording**: values with the times they arrived, finished.
 //
 // **The times are the view's.** The browser stamps each event with its own monotonic clock and
-// sends the reading with the message; the kernel never reads a clock (D76's removal, D80's
-// promise). So a recording is data, and the same gesture recorded once gives one film however
-// late the messages arrived.
+// sends the reading with the message; the kernel never reads a clock. So a recording is data, and
+// the same gesture recorded once gives one film however late the messages arrived.
 //
 // **Sample and hold, not interpolation.** A slider's values are what the reader chose. Anything
 // between two of them is a value nobody chose, and a film that shows one is not a replay.
@@ -23,6 +22,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 type Recording<'a> =
     { Events: (float<s> * 'a)[] }
 
+/// Recordings of a live session: built from its events, sampled at a time, mapped.
 [<RequireQualifiedAccess>]
 module Recording =
 

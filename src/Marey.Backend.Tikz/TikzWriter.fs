@@ -14,7 +14,7 @@ open System.Text
 //
 //   * **No scientific notation, ever.** SVG merely fails to parse `1e-05` in path data. TeX
 //     cannot read it as a dimension *at all*: `\path (1e-05bp, 0bp)` is a hard error, not a
-//     wrong coordinate. `Num.at` cannot emit an exponent by construction.
+//     wrong coordinate. `Num.upTo` cannot emit an exponent by construction.
 //   * **Invariant culture.** A German locale writes `0,5`, and `(0,5bp, 0bp)` is a TikZ
 //     coordinate with three components. Also a hard error.
 //
@@ -40,7 +40,7 @@ open System.Text
 // TEXT: two kinds of string, and conflating them corrupts the document.
 // ---------------------------------------------------------------------------------------
 //
-// `TextRun.Tex` (D32) is TeX source and goes to the output verbatim. `TextRun.Text` is literal
+// `TextRun.Tex` is TeX source and goes to the output verbatim. `TextRun.Text` is literal
 // content and must be escaped: a title containing `50% yield` comments out the rest of the line
 // and a `_` outside maths is an error. `runContent` is the only function that decides which is
 // which, so no traversal code has to remember.
@@ -60,7 +60,7 @@ open System.Text
 /// Public because the golden suite asserts on the formatting and escaping rules directly, not
 /// only through rendered documents — the same reason `Svg` is public.
 [<RequireQualifiedAccess>]
-module Tikz =
+module internal Tikz =
 
     // ---- numbers ---------------------------------------------------------------------
 
@@ -76,14 +76,14 @@ module Tikz =
 
     /// Decimal places for colour components. sRGB at 8 bits has a quantum of 1/255 = 3.9e-3, so
     /// six places is four orders of magnitude finer than anything a display can show — but it is
-    /// cheap, and F1 measures the Oklab round-trip floor at 9.4e-7, which would be visible in a
+    /// cheap, and the Oklab round-trip floor measures 9.4e-7, which would be visible in a
     /// diff at three places and invisible at six.
     [<Literal>]
     let ColorDecimals = 6
 
-    let num (v: float) : string = Num.at CoordDecimals v
+    let num (v: float) : string = Num.upTo CoordDecimals v
 
-    let ratio (v: float) : string = Num.at RatioDecimals v
+    let ratio (v: float) : string = Num.upTo RatioDecimals v
 
     /// The largest magnitude, in `bp`, that may be written as a TeX dimension.
     ///
@@ -93,7 +93,7 @@ module Tikz =
     /// and past about 2^31 the number scanner raises `Number too big` before even converting.
     /// Both are hard errors: the document does not compile.
     ///
-    /// **This is not a hypothetical, and D9 is why.** `Scale.Forward` deliberately does not
+    /// **This is not a hypothetical.** `Scale.Forward` deliberately does not
     /// clamp — "clamping would pile out-of-range data onto the panel edge, which is a lie about
     /// the data" — so out-of-domain points legitimately project far outside [0,1] and are removed
     /// by the panel's `Clip` node. SVG writes those coordinates without complaint and the clip
@@ -117,7 +117,7 @@ module Tikz =
     /// faithful document but no document at all. Geometrically correct clipping belongs to the
     /// compiler layer, not to a number formatter.
     ///
-    /// Non-finite values are tested for **before** clamping, and go to `Num.at`'s zero rather than
+    /// Non-finite values are tested for **before** clamping, and go to `Num.upTo`'s zero rather than
     /// to the boundary. `infinity > MaxDim` is true, so clamping first would send an infinity to
     /// `16000bp` while the SVG backend writes `0` for it — and the two backends agreeing on
     /// degenerate input is what lets a cross-backend test compare their coordinates at all.
@@ -144,9 +144,9 @@ module Tikz =
     /// What to typeset for a text run: its TeX source if it has any, otherwise its escaped plain
     /// text.
     ///
-    /// D32's whole point, in one function. An empty `Tex` is treated as absent rather than as an
-    /// instruction to typeset nothing, which matches `Scene.prune`'s rule that a run is empty
-    /// only when *both* forms are.
+    /// The point of a run's `Tex` field, in one function. An empty `Tex` is treated as absent
+    /// rather than as an instruction to typeset nothing, which matches `Scene.prune`'s rule that a
+    /// run is empty only when *both* forms are.
     let runContent (tex: string option) (text: string) : string =
         match tex with
         | Some t when not (String.IsNullOrEmpty t) -> t
@@ -187,11 +187,11 @@ module Tikz =
             else v
 
         String.Concat
-            [| Num.at ColorDecimals (clamp c.R)
+            [| Num.upTo ColorDecimals (clamp c.R)
                ","
-               Num.at ColorDecimals (clamp c.G)
+               Num.upTo ColorDecimals (clamp c.G)
                ","
-               Num.at ColorDecimals (clamp c.B) |]
+               Num.upTo ColorDecimals (clamp c.B) |]
 
     /// A `\definecolor` line. Alpha is not part of it — TikZ carries opacity as a separate
     /// `opacity`/`fill opacity`/`draw opacity` key, exactly as SVG carries `fill-opacity`.
@@ -266,7 +266,7 @@ type internal TikzDocument() =
     let mutable footer = ""
     let mutable nextId = 0
 
-    /// Sidecar files this picture refers to but does not contain (D64). Assigned in traversal
+    /// Sidecar files this picture refers to but does not contain. Assigned in traversal
     /// order, which is what makes `RenderedDocument.Assets` deterministic in order as well as
     /// in name — a render that produced `marey-raster-0.png` and `marey-raster-1.png` in
     /// swapped order would be a golden diff for no reason.

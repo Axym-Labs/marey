@@ -10,20 +10,20 @@ type AxisSide =
 /// The outcome of tick-label collision avoidance.
 ///
 /// `Rule` names the rung of the ladder that succeeded, so the decision is inspectable from the
-/// outside rather than being a mystery in the output. §15 is blunt that "axis label collision
-/// avoidance ... is where plotting libraries actually die"; a library that thins your ticks
+/// outside rather than being a mystery in the output. Axis label collision avoidance is where
+/// plotting libraries actually die; a library that thins your ticks
 /// should at least be able to say why.
 [<NoComparison>]
-type TickPlan =
+type internal TickPlan =
     { /// Indices into `AxisSpec.Ticks` that survive.
       Kept: int[]
-      /// Counter-clockwise in `nd` (y-up). The backend converts to its own sense — D13.
+      /// Counter-clockwise in `nd` (y-up). The backend converts to its own sense.
       Rotation: float<rad>
       Rule: string }
 
 /// Everything the axis compiler needs, resolved. Nothing here is decided by the backend.
 [<NoComparison>]
-type AxisRender =
+type internal AxisRender =
     { /// From `Marey.Units`' `Axis.auto` — title, prefix and rescaled tick labels, already
       /// correct. This layer does not re-derive any of it.
       Spec: AxisSpec
@@ -31,7 +31,7 @@ type AxisRender =
       Plan: TickPlan
       /// The plot area, in **figure** nd.
       Panel: Rect<nd>
-      /// The figure surface: needed for every px offset in the theme — D12.
+      /// The figure surface: needed for every px offset in the theme.
       Extent: Extent<px>
       Theme: Theme
       ShowSpine: bool
@@ -41,26 +41,26 @@ type AxisRender =
       /// Distance from the panel edge to the title anchor, in device px. Layout computes it
       /// from the measured tick labels; the axis compiler does not guess.
       TitleOffset: float<px>
-      /// D168 — which way the marks point, and whether they are repeated, unlabelled, on the
+      /// Which way the marks point, and whether they are repeated, unlabelled, on the
       /// opposite side of the frame.
       Direction: TickDirection
       Mirror: bool
-      /// D167 — whether `Spec.Minor` is drawn.
+      /// Whether `Spec.Minor` is drawn.
       ShowMinor: bool }
 
-/// §5.5 — **an axis is compiled into `Path` and `Text`. There is no `Axis` node and there never
+/// **An axis is compiled into `Path` and `Text`. There is no `Axis` node and there never
 /// will be.**
 ///
 /// Everything this module emits bottoms out in the nine cases of `Node`: the spine and the tick
 /// marks are `Path`, the labels and the title are `Text`, gridlines are one `Path` routed
-/// through `Coord.Grid` so that polar curves them without this module knowing polar exists (§4),
-/// and the whole thing is wrapped in `Annotated` with `RoleAxis` or `RoleDecoration` (§5.3).
+/// through `Coord.Grid` so that polar curves them without this module knowing polar exists,
+/// and the whole thing is wrapped in `Annotated` with `RoleAxis` or `RoleDecoration`.
 ///
 /// The titles and the tick labels are **not computed here.** They come from `Marey.Units`'
 /// `Axis.auto`, which already owns prefix selection, rescaling and the `t [s]` convention. This
 /// module's contribution is where the glyphs go.
 [<RequireQualifiedAccess>]
-module Axes =
+module internal Axes =
 
     let private tag (x: float) : float<nd> = x * 1.0<nd>
 
@@ -68,8 +68,8 @@ module Axes =
 
     /// The quantity name an axis gets when the caller does not supply one.
     ///
-    /// §9's payoff sentence is "`x (fun r -> r.Time)` where `Time : float(s)` gives you a linear
-    /// scale over seconds with the axis labelled `t [s]`, **with no configuration**." In the
+    /// The payoff: `x (fun r -> r.Time)` where `Time : float(s)` gives a linear scale over
+    /// seconds with the axis labelled `t [s]`, **with no configuration**. In the
     /// grammar the `t` comes from the accessor. `Chart.line (ts, xs)` has no accessor and no
     /// field name — but it does have the `Dim`, and physics has a settled convention for what
     /// each dimension is called. A time axis is `t`. A length axis is `x`. Reading the
@@ -80,7 +80,7 @@ module Axes =
     /// Anything not in the table falls back to the axis's own name, `x` or `y`, which is what a
     /// plot of an unnamed compound quantity should say.
     ///
-    /// D98 — `angle` is the witness's power of angle (`U.angleExponentOf`), which `Dim` cannot
+    /// `angle` is the witness's power of angle (`U.angleExponentOf`), which `Dim` cannot
     /// see. An angle is `θ`, an angular velocity `ω`, an angular acceleration `α`; any other
     /// quantity carrying an angle falls back to the axis's name rather than borrowing the name of
     /// the angle-free quantity with the same dimension — which is how `rad/s` was titled `f`.
@@ -131,13 +131,13 @@ module Axes =
     /// The name a quantity gets from its dimension alone, for a witness that carries no angle.
     let defaultLabel (side: AxisSide) (d: Dim) = defaultLabelFor side 0 d
 
-    /// The power of angle behind a packed scale (D98).
+    /// The power of angle behind a packed scale.
     let angleOf (packed: PackedScale) =
         packed.Accept
             { new IScaleConsumer<int> with
                 member _.Apply<[<Measure>] 'u>(s: Scale<'u>) = U.angleExponentOf s.Unit.Symbol s.Unit.Factors }
 
-    /// The `Dim` behind a packed scale, recovered through §2.3's rank-2 encoding.
+    /// The `Dim` behind a packed scale, recovered through the rank-2 encoding.
     let dimOf (packed: PackedScale) =
         packed.Accept
             { new IScaleConsumer<Dim> with
@@ -145,10 +145,10 @@ module Axes =
 
     /// Build the axis spec, with the quantity name defaulted from the dimension when the caller
     /// did not name it. The unit half is entirely `Marey.Units`' work.
-    /// D73 — the prefix may be decided elsewhere. The only caller that passes anything but
+    /// The prefix may be decided elsewhere. The only caller that passes anything but
     /// `None` is the one laying out a whole animation against a union domain; see
     /// `Axis.ofScalePinnedWith` for why an animation needs it.
-    /// D166 — `specOfPinned` with the ticks stated, in the axis's own numbers.
+    /// `specOfPinned` with the ticks stated, in the axis's own numbers.
     let specTicked
         (ticks: TickSpec)
         (minor: MinorSpec)
@@ -190,7 +190,7 @@ module Axes =
         | AxisRight -> false
 
     /// The angle a rotated tick label gets. −45° in the reader's sense; +45° counter-clockwise
-    /// in `nd`, which is y-up (D13).
+    /// in `nd`, which is y-up.
     let private slant = System.Math.PI / 4.0 * 1.0<rad>
 
     /// Footprint of a label *along the axis*, at a given rotation.
@@ -218,7 +218,7 @@ module Axes =
     /// tilting them costs. The rung that fired is recorded in `TickPlan.Rule`.
     ///
     /// Ticks are never *moved* and never relabelled: `Marey.Units` already guaranteed the
-    /// labels are injective (§4), and a thinned axis is still a correct axis.
+    /// labels are injective, and a thinned axis is still a correct axis.
     let planTicks
         (m: ITextMeasurer)
         (font: FontSpec)
@@ -307,7 +307,7 @@ module Axes =
     /// How much room the tick labels need *across* the axis: their height on a horizontal axis,
     /// their width on a vertical one. Includes the tick mark and the label gap.
     /// The room a side's ticks and their labels take outside the plot area. An inward tick takes
-    /// none: its length is inside the plot (D168).
+    /// none: its length is inside the plot.
     let tickExtentWith (direction: TickDirection) (m: ITextMeasurer) (theme: Theme) (side: AxisSide) (spec: AxisSpec) (plan: TickPlan) : float<px> =
         let kept = keptTicks spec plan
 
@@ -335,7 +335,7 @@ module Axes =
 
     /// How far a tick label sticks out past the *end* of the axis, on each side. A centred label
     /// at position 0 hangs half its width off the left edge of the panel, and if layout does not
-    /// reserve that the figure clips it. This is half of §13's "labels inside bounds".
+    /// reserve that the figure clips it. This is half of keeping labels inside bounds.
     let labelOverhang (m: ITextMeasurer) (theme: Theme) (side: AxisSide) (spec: AxisSpec) (plan: TickPlan) : float<px> =
         let kept = keptTicks spec plan
 
@@ -432,9 +432,9 @@ module Axes =
 
         // ---- tick marks: one Path, many subpaths --------------------------------------
         //
-        // D168 — a mark runs from `inward` lengths inside the spine to `outward` lengths outside
-        // it, and a mirrored side repeats the marks on the opposite edge of the frame. D167's
-        // minor marks are more subpaths of the same path, shorter.
+        // A mark runs from `inward` lengths inside the spine to `outward` lengths outside
+        // it, and a mirrored side repeats the marks on the opposite edge of the frame. Minor
+        // marks are more subpaths of the same path, shorter.
         let outward, inward =
             match a.Direction with
             | TickOut -> 1.0, 0.0
@@ -565,7 +565,7 @@ module Axes =
 
     /// Gridlines, **through `Coord.Grid`**.
     ///
-    /// §4: "Cartesian is the identity `Coord`. Polar warps and gives circular gridlines … and
+    /// "Cartesian is the identity `Coord`. Polar warps and gives circular gridlines … and
     /// nothing else in the system needs to know polar exists." That property is what this
     /// function is protecting: it asks the coord for the paths and never draws a straight line
     /// itself, so a polar panel's gridlines are arcs without a line of polar-aware code here.

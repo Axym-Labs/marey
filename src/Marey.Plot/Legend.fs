@@ -3,17 +3,17 @@ namespace Marey
 /// What a legend entry's swatch looks like. Derived from the geom, not chosen separately: a
 /// legend that does not look like the thing it labels is worse than no legend.
 [<NoComparison>]
-type LegendMark =
+type internal LegendMark =
     | LegendLine of dash: float<px>[]
     | LegendMarker of MarkerShape
     | LegendLineMarker of dash: float<px>[] * shape: MarkerShape
     /// A filled rectangle: areas and bars.
     | LegendSwatch
-    /// D49 — a marker drawn at a stated diameter rather than the theme's: the size key of a
+    /// A marker drawn at a stated diameter rather than the theme's: the size key of a
     /// continuous size channel, three of them at the domain's ends and middle.
     ///
-    /// **A new case here is cheap in a way an IR case is not**, which is the whole of D11's
-    /// "one variant against six backends" read the other way. `LegendMark` is a `Marey.Plot`
+    /// **A new case here is cheap in a way an IR case is not**, which is "one variant
+    /// against six backends" read the other way. `LegendMark` is a `Marey.Plot`
     /// type with exactly one consumer — the `match` inside `Legend.compile` — and it is
     /// compiled into `Path`/`Markers` before any backend sees it. So the size key is a case
     /// and the colorbar is a sibling compiler: the question is never whether a new case is
@@ -21,15 +21,15 @@ type LegendMark =
     | LegendSizedMarker of shape: MarkerShape * size: float<px>
 
 [<NoComparison>]
-type LegendEntry =
+type internal LegendEntry =
     { Name: string
       Color: Color
       Mark: LegendMark }
 
 /// Where the legend sits: a corner of the plot area, outside it, the emptiest corner, or off.
 ///
-/// Outside placement waited from M0 to M8 (D171) because it changes the panel's width and the tick
-/// plan is measured against that width. D49's colorbar showed the way round: a column of the
+/// Outside placement is hard because it changes the panel's width and the tick plan is
+/// measured against that width. The colorbar shows the way round: a column of the
 /// panel's own grid, sized before the ticks are planned, so the loop is still two passes.
 type LegendPlacement =
     | LegendNone
@@ -37,30 +37,30 @@ type LegendPlacement =
     | LegendTopLeft
     | LegendBottomRight
     | LegendBottomLeft
-    /// D171 — a column of its own to the right of the plot (and of a colorbar).
+    /// A column of its own to the right of the plot (and of a colorbar).
     | LegendOutsideRight
-    /// D171 — a row of its own below the x axis's title.
+    /// A row of its own below the x axis's title.
     | LegendOutsideBottom
-    /// D171 — the inside corner whose box covers the fewest drawn marks, or outside right when
+    /// The inside corner whose box covers the fewest drawn marks, or outside right when
     /// every corner is covered. Decided once for an animation, over all its frames, so the legend
     /// does not jump.
     | LegendBest
 
-/// D171 — the legend shared by every panel of a figure (`Chart.withFigureLegend`).
+/// The legend shared by every panel of a figure (`Chart.withFigureLegend`).
 type FigureLegend =
     | FigureLegendRight
     | FigureLegendBottom
 
-/// §5.5 — a legend is not an IR node either. It is a `Path` for the box, a `Path` or `Markers`
+/// A legend is not an IR node either. It is a `Path` for the box, a `Path` or `Markers`
 /// per swatch, and a `Text` per entry, wrapped in `Annotated` with `RoleLegend` so that a later
-/// milestone can make it clickable without the scene having to be rebuilt to carry the
-/// information (§5.3: "retrofitting this is painful; it costs almost nothing now").
+/// version can make it clickable without the scene having to be rebuilt to carry the
+/// information (retrofitting this is painful; it costs almost nothing now).
 ///
 /// Sizing goes through `ITextMeasurer`, like everything else that has to know how wide a string
-/// is. §15's warning that "legend layout … is where plotting libraries actually die" is the
-/// reason the box is measured rather than estimated from a character count.
+/// is. Legend layout is where plotting libraries actually die, which is the reason the box is
+/// measured rather than estimated from a character count.
 [<RequireQualifiedAccess>]
-module Legend =
+module internal Legend =
 
     /// The drawn size of a swatch: the theme's, unless the entry states one.
     let private swatchSize (theme: Theme) (e: LegendEntry) =
@@ -81,7 +81,7 @@ module Legend =
         entries
         |> Array.fold (fun acc e -> max acc (swatchSize theme e)) theme.LegendSwatchWidth
 
-    /// D171 — the entries split into `columns` columns, filled down then across.
+    /// The entries split into `columns` columns, filled down then across.
     let private columnsOf (columns: int) (entries: LegendEntry[]) : LegendEntry[][] =
         let columns = max 1 (min columns entries.Length)
         let perColumn = (entries.Length + columns - 1) / columns
@@ -142,9 +142,9 @@ module Legend =
           X1 = x0 + size.Width
           Y1 = y0 + size.Height }
 
-    /// D171 — compile the legend into the box `b`, in device px, in `columns` columns, with its
-    /// frame drawn or not. The corner placements and the outside ones are both this, at a box
-    /// chosen for them.
+    /// Compile the legend into the box `b`, in device px, in `columns` columns, with its
+    /// frame drawn or not, and its background filled or not. The corner placements and the
+    /// outside ones are both this, at a box chosen for them.
     let compileIn
         (m: ITextMeasurer)
         (theme: Theme)
@@ -152,6 +152,7 @@ module Legend =
         (b: Rect<px>)
         (columns: int)
         (framed: bool)
+        (filled: bool)
         (entries: LegendEntry[])
         : Node =
         if entries.Length = 0 then
@@ -169,7 +170,10 @@ module Legend =
                     else
                         None
 
-                Scene.rect stroke (Some(Solid theme.LegendBackground)) r
+                if framed || filled then
+                    Scene.rect stroke (if filled then Some(Solid theme.LegendBackground) else None) r
+                else
+                    Scene.empty
 
             let cols = columnsOf columns entries
             let mutable x0 = b.X0 + theme.LegendPadding
@@ -266,4 +270,4 @@ module Legend =
         else
             let size = measure m theme entries
             let plotPx = Layout.pxRect extent plot
-            compileIn m theme extent (cornerBox theme plotPx size placement) 1 theme.ShowLegendFrame entries
+            compileIn m theme extent (cornerBox theme plotPx size placement) 1 theme.ShowLegendFrame true entries

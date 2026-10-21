@@ -35,16 +35,16 @@ let start = struct (0.1<m>, 0.0<m/s>)
 
 let euler =
     Sim.ofStep h (Ode.euler flow) start
-    |> Sim.withInvariant "energy" Derived.joule (fun (struct (x, v)) -> energyOf x v)
+    |> Sim.withInvariant "energy" U.joule (fun (struct (x, v)) -> energyOf x v)
 
 let rk4 =
     Sim.ofStep h (Ode.rk4 flow) start
-    |> Sim.withInvariant "energy" Derived.joule (fun (struct (x, v)) -> energyOf x v)
+    |> Sim.withInvariant "energy" U.joule (fun (struct (x, v)) -> energyOf x v)
 
 // Verlet over positions and velocities, with the acceleration in m/s².
 let verlet =
     Sim.ofStep h (Ode.verlet (fun _ (q: float<m>[]) -> q |> Array.map (fun x -> -omega2 * x))) (struct ([| 0.1<m> |], [| 0.0<m/s> |]))
-    |> Sim.withInvariant "energy" Derived.joule (fun (struct (q, v)) -> energyOf q.[0] v.[0])
+    |> Sim.withInvariant "energy" U.joule (fun (struct (q, v)) -> energyOf q.[0] v.[0])
 
 // Each simulation as a trajectory, checkpointed once a period and sampled twenty times a period,
 // so that Verlet's band is seen whole rather than at one phase of it. The drift is in joules

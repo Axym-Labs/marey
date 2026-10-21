@@ -7,13 +7,13 @@ open System.Numerics
 // ======================================================================================
 // DETERMINISTIC NUMBER FORMATTING FOR TEXT BACKENDS.
 //
-// §13's test strategy is "golden-image snapshots against the SVG backend (text-diffable,
-// reviewable in a PR)", and §6 calls the SVG backend the spec. Both require the same thing:
+// The tests are golden snapshots against the SVG backend, text-diffable and reviewable in a PR,
+// and the SVG backend is the spec. Both require the same thing:
 // **the same Scene must produce byte-identical output on every machine, every run.**
 //
 // These rules started life inside the SVG writer, where they are documented at length. They
-// are here because a second text backend needs every one of them, and F2 states the rule for
-// exactly this situation: duplication is dangerous in the one place a change to one copy would
+// are here because a second text backend needs every one of them, and the rule for exactly
+// this situation is: duplication is dangerous in the one place a change to one copy would
 // silently disagree with the other, so promote on the appearance of a second consumer.
 //
 // The rules, and why each is not negotiable:
@@ -33,7 +33,7 @@ open System.Numerics
 //   * non-finite values become "0". A singular transform must not be able to write "NaN" into
 //     a document that then fails to parse, or "inf" into a TeX dimension.
 //
-//   * D129 — no rounding and no formatting is left to the platform. Under Fable the "same
+//   * No rounding and no formatting is left to the platform. Under Fable the "same
 //     compiler" is JavaScript's arithmetic, and the two runtimes disagree on exact halves:
 //     Fable reads `Math.Round(x, MidpointRounding.AwayFromZero)` as rounding to one decimal
 //     place, ignores the mode in `Math.Round(x, d, mode)`, calls anything within 10⁻⁸ of a half
@@ -42,7 +42,7 @@ open System.Numerics
 //     makes exact on both, and each function below reproduces what .NET produced before it,
 //     which is what keeps every golden byte-identical.
 //
-// Zero dependencies, so this costs `Marey.Core` nothing (§13).
+// Zero dependencies, so this costs `Marey.Core` nothing.
 // ======================================================================================
 
 /// Culture- and platform-invariant number formatting. Every number a text backend emits goes
@@ -55,7 +55,7 @@ module Num =
 #endif
 
     /// The nearest integer, a half rounded away from zero. `Math.Round(x,
-    /// MidpointRounding.AwayFromZero)` without the platform (D129): the fraction is exact, so the
+    /// MidpointRounding.AwayFromZero)` without the platform: the fraction is exact, so the
     /// comparison with one half is too.
     let roundAway (x: float) : float =
         let t = Math.Truncate x
@@ -63,7 +63,7 @@ module Num =
         if abs (x - t) >= 0.5 then t + float (sign x) else t
 
     /// The nearest integer, a half rounded to the even one. `Math.Round(x)` without the platform
-    /// (D129): Fable's version calls anything within 10⁻⁸ of a half a tie, so it rounds 2.500000001
+    ///: Fable's version calls anything within 10⁻⁸ of a half a tie, so it rounds 2.500000001
     /// down and 3.4999999999 up. The fraction is exact, so a tie here is an exact half.
     let roundEven (x: float) : float =
         let t = Math.Truncate x
@@ -140,7 +140,7 @@ module Num =
     /// three million doubles, halves included. Past 10¹⁵ the integer is no longer exact in a
     /// double, so the value itself is written exactly at `d` places (`fixedPoint`) rather than to
     /// the fifteen significant digits the custom format used. No coordinate is that large.
-    let at (decimals: int) (v: float) : string =
+    let upTo (decimals: int) (v: float) : string =
         if Double.IsNaN v || Double.IsInfinity v then
             "0"
         else
@@ -188,7 +188,7 @@ module Num =
     ///
     /// Both runtimes specify the same digits — the shortest that round-trip, the closest when
     /// two are as short — and differ only in how they are written, so under Fable JavaScript's
-    /// string is rewritten in .NET's notation (D129). The notation rule was measured against
+    /// string is rewritten in .NET's notation. The notation rule was measured against
     /// "R" on four million doubles.
     let shortest (x: float) : string =
 #if FABLE_COMPILER
@@ -228,7 +228,7 @@ module Num =
     /// U+207B SUPERSCRIPT MINUS, not a hyphen — the hyphen sits on the baseline next to
     /// superscript digits and looks like a typesetting bug in every font. Here rather than in
     /// `Marey.Units` because a log axis's `10⁻⁸` is written in Core (`Ticks.formatPower`) and a
-    /// unit's `s⁻²` in `UnitDisplay`, and the two must not drift apart (F2).
+    /// unit's `s⁻²` in `UnitDisplay`, and the two must not drift apart.
     let superscript (n: int) : string =
         let digits = string (abs (int64 n))
         let sb = System.Text.StringBuilder()

@@ -1,5 +1,3 @@
-namespace FSharp
-
 namespace Marey
 
     [<AllowNullLiteral>]
@@ -120,43 +118,11 @@ namespace Marey
 
         abstract strokeStyle: obj with get, set
 
-    [<RequireQualifiedAccess>]
-    module Canvas =
-
-        [<Fable.Core.Emit
-          ("(typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas($0, $1) : Object.assign(document.createElement('canvas'), { width: $0, height: $1 }))")>]
-        val scratch: width: int -> height: int -> CanvasContext
-
-        val context: canvas: CanvasElement -> CanvasContext
-
-        [<Fable.Core.Emit ("document.getElementById($0)")>]
-        val byId: _id: string -> CanvasElement
-
-        [<Fable.Core.Emit
-          ("if ($0.style) { $0.style.width = $1 + 'px'; $0.style.height = $2 + 'px'; }")>]
-        val setCssSize:
-          _canvas: CanvasElement -> _width: float -> _height: float -> unit
-
-        [<Fable.Core.Emit
-          ("(typeof window !== 'undefined' && window.devicePixelRatio) || 1")>]
-        val devicePixelRatio: unit -> float
-
 namespace Marey
-
-    [<RequireQualifiedAccess>]
-    module CssFont =
-
-        val family: families: string -> string
-
-        val ofSpec: font: FontSpec -> string
 
     [<RequireQualifiedAccess>]
     module WebFonts =
 
-        [<Fable.Core.Emit
-          ("(typeof document === 'undefined' || !document.fonts) ? 'loaded' : document.fonts.status")>]
-        [<Fable.Core.Emit
-          ("(typeof document === 'undefined' || !document.fonts) ? Promise.resolve() : document.fonts.ready.then(function () {})")>]
         val ready: unit -> bool
 
         val whenReady: unit -> Fable.Core.JS.Promise<unit>
@@ -200,11 +166,6 @@ namespace Marey
         static member Shared: WebGlMarkers
 
 namespace Marey
-
-    [<RequireQualifiedAccess>]
-    module CssColor =
-
-        val ofColor: c: Color -> string
 
     [<Sealed>]
     type CanvasPainter =

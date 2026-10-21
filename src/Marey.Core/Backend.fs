@@ -7,28 +7,27 @@ type TextMetrics =
       Ascent: float<px>
       Descent: float<px> }
 
-/// §9 / §10 — Text measurement, abstracted from day one.
+/// Text measurement, abstracted from day one.
 ///
-/// §9: "Axis label sizes depend on text metrics, which depend on the backend, so layout is a
-/// *measure–arrange* pass against `IBackend.MeasureText`." The design's `IBackend` has no such
-/// member, so this is that member, split out as its own capability because §10 asks for
-/// exactly that: "architect `ITextShaper` as a capability from day one".
+/// "Axis label sizes depend on text metrics, which depend on the backend, so layout is a
+/// *measure–arrange* pass against `IBackend.MeasureText`." `IBackend` has no such member, so
+/// this is that member, split out as a capability of its own.
 ///
-/// §15 puts the stakes plainly: "Text and layout eat 40% of the effort. Everyone
-/// underestimates this." Having one seam here is what makes it possible to start with an
-/// approximation and swap in HarfBuzz at M2 without touching the layout code.
+/// Text and layout are where most of the effort in a plotting library goes. Having one seam here is
+/// what makes it possible to start with an approximation and swap in HarfBuzz without touching the
+/// layout code.
 ///
-/// ### D77 — an implementation must be thread-safe, and one instance serves a whole render
+/// ### An implementation must be thread-safe, and one instance serves a whole render
 ///
 /// This is a requirement on the implementer, not an observation about the implementations. A
-/// measurer is called from layout, and since M3 layout runs once per frame of an animation
+/// measurer is called from layout, and layout runs once per frame of an animation
 /// across `Array.Parallel.map`. `Measure` must therefore be safe to call from several threads
 /// at once. `ApproxTextMeasurer` is stateless and satisfies it for free; `SkiaTextMeasurer`
 /// caches native handles and satisfies it with a lock.
 ///
 /// **And exactly one instance is shared across every frame of one render.** The alternative —
 /// a measurer per thread — is not a performance question, it is a correctness one: font
-/// resolution walks a family stack against whatever is installed (D62), so N independent
+/// resolution walks a family stack against whatever is installed, so N independent
 /// resolutions are N chances for one frame of a video to be set in a different typeface from
 /// the frame before it. That is invisible in a single frame, invisible in review, and
 /// unfixable after the render. One measurer means one resolution and one `ResolvedFaces`
@@ -36,12 +35,12 @@ type TextMetrics =
 ///
 /// The cost of sharing is contention on whatever lock the implementation needs, and the answer
 /// is a cache rather than more measurers: `MemoTextMeasurer` in `Marey.Plot` memoises this
-/// method on `(FontSpec, string)`, which is enough because a shot is laid out once (D72) and
+/// method on `(FontSpec, string)`, which is enough because a shot is laid out once and
 /// every frame therefore asks about the same strings.
 type ITextMeasurer =
     abstract Measure: FontSpec -> string -> TextMetrics
 
-/// D150 — a line integral convolution, posed for a backend to compute: a vector field on a
+/// A line integral convolution, posed for a backend to compute: a vector field on a
 /// rectilinear grid in panel units, a raster over the grid, one noise value per raster pixel, and
 /// the kernel. Raster rows run from the bottom, x fastest.
 type LicJob =
@@ -63,8 +62,8 @@ type LicJob =
       /// A speed, in raster pixels per unit of time, at or below which the field has no direction.
       Slowest: float }
 
-/// D150 — what a measurer offers when the backend it measures for can convolve. A figure is
-/// compiled with its backend's measurer (D62), so the measurer is how compilation reaches the
+/// What a measurer offers when the backend it measures for can convolve. A figure is
+/// compiled with its backend's measurer, so the measurer is how compilation reaches the
 /// backend: `FieldMarks` asks the compile measurer for this, and a measurer that wraps another
 /// forwards it.
 type ILicConvolver =
@@ -72,7 +71,7 @@ type ILicConvolver =
     /// the field has no direction there; `ValueNone` when this measurer cannot.
     abstract Convolve: LicJob -> float[] voption
 
-/// §5 — "`Capabilities` matters because TikZ and SVG have genuinely different power. The
+/// "`Capabilities` matters because TikZ and SVG have genuinely different power. The
 /// compiler layer queries caps and *degrades* rather than silently producing wrong output."
 ///
 /// Every field is a thing some real backend cannot do, not a speculative switch.
@@ -91,7 +90,7 @@ type Capabilities =
       /// Can carry `Annotated` metadata into the output — `aria-label` on SVG, nothing on a
       /// raster target.
       Semantics: bool
-      /// D67 — can composite a subtree and fade the *result*: SVG's `opacity` on a `<g>`,
+      /// Can composite a subtree and fade the *result*: SVG's `opacity` on a `<g>`,
       /// Skia's `SaveLayer` with an alpha paint. False for a backend that can only set alpha
       /// per shape, which is a visibly different picture wherever the group's own shapes
       /// overlap. `Degrade.forCaps` folds the node into paint alpha when this is false, which
@@ -108,7 +107,7 @@ type Capabilities =
       /// backend has a real instance-buffer ceiling and the compiler must split at it.
       MaxBatch: int option }
 
-/// §5 — The backend contract. Adding a `Node` case breaks every implementation at compile
+/// The backend contract. Adding a `Node` case breaks every implementation at compile
 /// time, which is the behaviour we want.
 ///
 /// `Finish` returns `unit`, not the rendered artifact. Backends produce genuinely different
@@ -116,11 +115,11 @@ type Capabilities =
 /// concrete type (`SvgBackend.Result`) while the *protocol* stays uniform enough to hold a
 /// heterogeneous list of backends and drive them all from one scene.
 ///
-/// ### D77 — the concurrency contract
+/// ### The concurrency contract
 ///
 /// **An `IBackend` is single-threaded. One instance per thread, and never two threads at
 /// once.** `Begin` / `Draw` / `Finish` is a state machine over a mutable surface, so this is
-/// what the interface has always meant; it was never written down, and M3 renders frames in
+/// what the interface has always meant; and frames are rendered in
 /// parallel, so it is written down here where an implementer reads it. An instance may be
 /// *reused* serially — `Begin` starts a new document — and both built backends support that.
 ///
@@ -144,7 +143,7 @@ type IBackend =
 /// One file that a rendered document refers to but does not contain.
 ///
 /// `Bytes` is compared structurally and that is O(bytes), for the same reason `Image` carries
-/// the warning it does (§5.2). Compare `Name` first if you are diffing.
+/// the warning it does. Compare `Name` first if you are diffing.
 [<NoComparison>]
 type RenderedAsset =
     { /// A file name, not a path. The backend that emitted it chose it; the caller decides
@@ -155,11 +154,9 @@ type RenderedAsset =
 
 /// A document that does not stand alone: the text, plus the files it refers to.
 ///
-/// **D64 — this ships with a producer.** `renderWithAssets` was named at M1 as "the M2 door"
-/// for TikZ's `Rasters = false`, and D10 records what happens to a facility with no caller:
-/// `Capabilities` was "a record nobody reads" until the TikZ backend needed it. So this type
-/// arrives in the same milestone as `Chart.image`, which is the thing that finally puts a
-/// `Raster` node into a scene — nothing above the IR produced one before M2.5, which is why
+/// **This ships with a producer.** `renderWithAssets` is how TikZ, with `Rasters = false`,
+/// gets a raster out of a scene, and `Chart.image` is what puts a `Raster` node into one —
+/// nothing above the IR produces one otherwise, which is why
 /// `golden/figure-heatmap.svg` contains no raster and never did.
 ///
 /// **Not a member of `IBackend`.** A backend that needs no sidecar does not implement this and
@@ -175,6 +172,7 @@ type RenderedDocument =
     { Document: string
       Assets: RenderedAsset[] }
 
+/// Stock capability sets a backend starts from: `full` and `vector`.
 [<RequireQualifiedAccess>]
 module Capabilities =
 
@@ -183,7 +181,7 @@ module Capabilities =
     /// It must stay that way. An earlier version had `Semantics = false` here, which is a
     /// trap rather than a default: `Degrade.forCaps` strips every `Annotated` node when
     /// `Semantics` is false, so a backend author starting from `full` would silently lose all
-    /// of §5.3's accessibility and hit-testing output and have no reason to suspect it.
+    /// of the accessibility and hit-testing output and have no reason to suspect it.
     ///
     /// A preset named `full` that is not full is worse than no preset. Advertise less by
     /// starting from `vector` or by overriding explicitly.
@@ -203,7 +201,7 @@ module Capabilities =
     /// text shaping, which such a backend delegates to whatever finally renders the file.
     let vector = { full with TextShaping = false }
 
-/// §5 — Capability degradation.
+/// Capability degradation.
 ///
 /// Without this, `Capabilities` is a field nobody reads. These rewrites are the difference
 /// between "TikZ silently drops your gradient" and "TikZ renders a defensible approximation
@@ -225,10 +223,10 @@ module Degrade =
                 let mid = Interp.stops (stops |> Array.map (fun s -> s.Offset, s.Color)) 0.5
                 Solid mid
 
-    /// Multiply a constant into every alpha a subtree paints with — D67's approximation of
-    /// group opacity, for a target that cannot composite a subtree and fade the result.
+    /// Multiply a constant into every alpha a subtree paints with — the approximation of
+    /// group opacity for a target that cannot composite a subtree and fade the result.
     ///
-    /// This is D11's `Color.A` route, applied to a whole group at once, and it is the
+    /// This is the `Color.A` route, applied to a whole group at once, and it is the
     /// approximation `Node.Opacity` names: identical to true group opacity everywhere the
     /// group's shapes do not overlap, and darker than it where they do, because each shape is
     /// composited separately and an overlap is therefore painted twice.
@@ -331,7 +329,7 @@ module Degrade =
 
             | Clip(_, child) when not caps.Clipping -> child
 
-            // D67. Note that this fires *bottom-up*, so nested opacities compose the way they
+            // Note that this fires *bottom-up*, so nested opacities compose the way they
             // read: an inner `Opacity(0.5, x)` is already folded into `x`'s paints by the time
             // the enclosing `Opacity(0.4, _)` gets here, and the result carries 0.2.
             | Opacity(a, child) when not caps.GroupOpacity -> foldOpacity a child
@@ -342,7 +340,7 @@ module Degrade =
 
         Scene.transform rewrite n
 
-    /// Split oversized marker batches to fit `MaxBatch`. Keeps §5.1's one-node-per-batch
+    /// Split oversized marker batches to fit `MaxBatch`. Keeps the one-node-per-batch
     /// promise everywhere it can be kept, and breaks it in the smallest possible way where
     /// hardware forces the issue.
     let splitBatches (caps: Capabilities) (n: Node) : Node =
@@ -364,8 +362,8 @@ module Degrade =
 /// accurate to a few percent for Latin text, which is enough for axis-label collision
 /// avoidance and legend sizing.
 ///
-/// It exists because `Marey.Core` may not take a dependency (§13) and because layout cannot
-/// wait for M2's SkiaSharp. `Capabilities.TextShaping = false` is the honest advertisement of
+/// It exists because `Marey.Core` may not take a dependency and because layout cannot
+/// wait for SkiaSharp. `Capabilities.TextShaping = false` is the honest advertisement of
 /// what this is.
 [<Sealed>]
 type ApproxTextMeasurer(?dpi: float<px / mm>) =
@@ -450,6 +448,7 @@ type ApproxTextMeasurer(?dpi: float<px / mm>) =
               Ascent = AscentEm * sizePx
               Descent = DescentEm * sizePx }
 
+/// The default text measurer, and the box a run occupies under an anchor, baseline and rotation.
 [<RequireQualifiedAccess>]
 module TextMeasure =
 

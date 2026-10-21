@@ -2,16 +2,15 @@ namespace Marey
 
 open System
 
-/// §9 / D47 — **the stats, as pure functions over typed arrays.**
+/// **The stats, as pure functions over typed arrays.**
 ///
-/// The design lists them as "pure, composable transforms" between the data and the geom. D47
-/// settles where that leaves them once measures are involved, and the answer is: *below* the
-/// erasure boundary rather than across it. A stat is called while both measures are still
-/// alive — in the caller's own scope on the quick path, and inside `Erase.reunify`'s inner
-/// `Apply` on the grammar path (D44 finding 3) — and it returns a **typed** result. Nothing
+/// Stats are pure, composable transforms between the data and the geom. Once measures are involved,
+/// that puts them *below* the erasure boundary rather than across it. A stat is called while both
+/// measures are still alive — in the caller's own scope on the quick path, and inside
+/// `Erase.reunify`'s inner `Apply` on the grammar path — and it returns a **typed** result. Nothing
 /// here takes or returns a `PackedChannel`.
 ///
-/// That is what makes the milestone's headline claim sayable at all. A fit of `float&lt;m&gt;`
+/// That is what makes the headline claim sayable at all. A fit of `float&lt;m&gt;`
 /// against `float&lt;s&gt;` has a slope of `float&lt;m/s&gt;`, and a caller can bind it to an
 /// annotated `float&lt;m/s&gt;`; had the stats been defined as a pipeline node over erased
 /// channels, the slope would have been an existential to *everyone*, including the person who
@@ -35,10 +34,10 @@ open System
 ///
 /// ### Non-finite input
 ///
-/// Every stat here filters NaN and infinity out of its input and **reports how many it
-/// dropped**, in a `Dropped` field. That is D52's rule — a value the pipeline cannot use is not
-/// silently treated as if it were a measurement — applied one layer earlier: the alternative is
-/// a mean of NaN, or a domain of NaN, and a blank figure with no explanation.
+/// Every stat here filters NaN and infinity out of its input and **reports how many it dropped**,
+/// in a `Dropped` field. That is the library's rule — a value the pipeline cannot use is not
+/// silently treated as if it were a measurement — applied one layer earlier: the alternative is a
+/// mean of NaN, or a domain of NaN, and a blank figure with no explanation.
 [<RequireQualifiedAccess>]
 module Stat =
 
@@ -148,8 +147,8 @@ module Stat =
 
     /// A histogram over a **stated** domain and bin count. Values outside the domain are
     /// counted in `Dropped` rather than folded into the end bins, because folding them in draws
-    /// a spike that is an artefact of the domain rather than a feature of the data — D52's
-    /// rule, and the same reason a colour channel does not clamp.
+    /// a spike that is an artefact of the domain rather than a feature of the data, and for the
+    /// same reason a colour channel does not clamp.
     let binIn (u: U<'u>) (count: int) (domain: float<'u> * float<'u>) (xs: float<'u>[]) : Histogram<'u> =
         if count < 1 then
             invalidArg "count" "Marey: a histogram needs at least one bin."
@@ -212,7 +211,7 @@ module Stat =
 
     /// How many rows carry each distinct key, **in first-appearance order**.
     ///
-    /// The order is `Levels.ofSeq`'s and for its reason (D45): a category usually arrives in an
+    /// The order is `Levels.ofSeq`'s and for its reason: a category usually arrives in an
     /// order that is itself information, and sorting destroys it in exactly that case. The two
     /// agree by construction, so counting a key set and laying it out on a categorical axis
     /// cannot disagree about which band is which.
@@ -395,10 +394,10 @@ module Stat =
         densityWith u (bandwidth xs) DefaultDensityPoints xs
 
     // ======================================================================================
-    // frameOf — the parameters a facet fixes before it splits (D48)
+    // frameOf — the parameters a facet fixes before it splits
     // ======================================================================================
 
-    /// §9 / D48 — **what a whole sample asks for, so that its parts can agree.**
+    /// **What a whole sample asks for, so that its parts can agree.**
     ///
     /// Raw numbers rather than measured ones, because the caller is the encoding block, which is
     /// below the erasure boundary and cannot name the measure: the values are reattached inside
@@ -452,7 +451,7 @@ module Stat =
         let kept, _ = finiteOf xs
         quantileSorted (max 0.0 (min 1.0 p)) (Array.sort kept)
 
-    /// §9 / D55 — **a five-number summary with Tukey whiskers**, which is what a box plot is
+    /// **A five-number summary with Tukey whiskers**, which is what a box plot is
     /// before it is a picture.
     ///
     /// Every field is `float&lt;'u&gt;`, including the outliers: a summary of a sample of
@@ -463,7 +462,7 @@ module Stat =
     /// extreme datum still inside that reach — not the min and max, and not a percentile pair.
     /// The consequence is that the whisker ends are *observations*, so the figure never draws a
     /// line reaching a value nothing in the sample attained, and everything past them is
-    /// enumerated in `Outliers` rather than absorbed into the whisker. That is D52's rule
+    /// enumerated in `Outliers` rather than absorbed into the whisker. That is the same rule
     /// applied to a summary: a point the box cannot describe is reported, not hidden.
     type Summary<[<Measure>] 'u> =
         { Unit: U<'u>
@@ -575,20 +574,20 @@ module Stat =
 
             buckets.[slot].Add values.[i]
 
-        // The dictionary is an index, never an enumeration source: gate 6 is determinism, and
-        // enumerating a `Dictionary` is exactly the thing that reaches the output in a
-        // machine-dependent order. `order` is a list appended to in row order.
+        // The dictionary is an index, never an enumeration source: the output must be
+        // deterministic, and enumerating a `Dictionary` is exactly the thing that reaches the
+        // output in a machine-dependent order. `order` is a list appended to in row order.
         Array.init order.Count (fun i -> order.[i], buckets.[i].ToArray())
 
     // ======================================================================================
-    // regression — the typed slope, and M2's headline claim
+    // regression — the typed slope
     // ======================================================================================
 
     /// An ordinary least-squares fit of y against x.
     ///
     /// **`Slope` is `float&lt;'uy/'ux&gt;`.** A fit of metres against seconds has a slope in
-    /// metres per second, and this is the type that says so — the claim §9 makes for the
-    /// grammar, and the one gate that proves the units story survived the stat boundary rather
+    /// metres per second, and this is the type that says so — the claim the grammar makes,
+    /// and the one test that proves the units story survived the stat boundary rather
     /// than being dropped at it. It is checkable by *compiling* `let v: float&lt;m/s&gt; =
     /// fit.Slope`, which is what `ChannelTests` does.
     type Fit<[<Measure>] 'ux, [<Measure>] 'uy> =
@@ -596,10 +595,9 @@ module Stat =
           Intercept: float<'uy>
           /// The witness for `Slope`, `U.div uy ux`.
           ///
-          /// D18's argument applies unchanged: the quotient records the factorisation the
-          /// caller wrote, so a fit of `V` against `m` reports `V·m⁻¹` rather than the base-unit
-          /// expansion its `Dim` alone would give. Without this the slope would be a number the
-          /// library could compute and not name.
+          /// The quotient records the factorisation the caller wrote, so a fit of `V` against `m`
+          /// reports `V·m⁻¹` rather than the base-unit expansion its `Dim` alone would give.
+          /// Without this the slope would be a number the library could compute and not name.
           SlopeUnit: U<'uy / 'ux>
           InterceptUnit: U<'uy>
           /// Coefficient of determination, in `[0, 1]`. Dimensionless by construction — it is a
@@ -647,7 +645,7 @@ module Stat =
             failwithf
                 "Marey: a least-squares fit needs x to vary, and every one of these %d values is %s %s. The slope of a vertical line is not a number."
                 n
-                (Num.at 6 mx)
+                (Num.upTo 6 mx)
                 (if String.IsNullOrEmpty ux.Symbol then "(dimensionless)" else "[" + ux.Symbol + "]")
 
         let slope = sxy / sxx
@@ -679,20 +677,20 @@ module Stat =
 
         [| lo; hi |], [| predict f lo; predict f hi |]
 
-    /// **The slope, on its way out of the scope that knows its measure** (D47).
+    /// **The slope, on its way out of the scope that knows its measure**.
     ///
     /// Inside `Erase.reunify` both measures exist and `Slope` is `float&lt;'uy/'ux&gt;`; outside
     /// it neither does, and F# has no way to return the type. `PackedQuantity` is the encoding —
     /// the witness travels with the number, so whoever receives it can still *print* `m·s⁻¹`
     /// even though they can no longer *say* it. This is the escape the grammar path takes, and
-    /// the reason `PackedQuantity` has been in `Erased.fs` since M0 with no consumer.
+    /// the reason `PackedQuantity` is in `Erased.fs`.
     let slopeQuantity (f: Fit<'ux, 'uy>) : PackedQuantity = Erase.packQuantity f.SlopeUnit f.Slope
 
     let interceptQuantity (f: Fit<'ux, 'uy>) : PackedQuantity =
         Erase.packQuantity f.InterceptUnit f.Intercept
 
-    // ======================================================================================
-    // hexbin — D93, a two-dimensional density
+    // ====================================================================================== hexbin
+    // — a two-dimensional density
     // ======================================================================================
 
     /// Scattered points counted into a hexagonal lattice, and the count as a **density in
@@ -821,8 +819,8 @@ module Stat =
     let hexbin (ux: U<'ux>) (uy: U<'uy>) (xs: float<'ux>[]) (ys: float<'uy>[]) : Hexbin<'ux, 'uy> =
         hexbinWith ux uy DefaultHexagons xs ys
 
-    // ======================================================================================
-    // loess — M2's deferred tail, a local regression
+    // ====================================================================================== loess
+    // — a local regression
     // ======================================================================================
 
     /// A loess curve: the smooth evaluated at `X`, in the data's own units.
@@ -1002,7 +1000,7 @@ module Stat =
         loessWith ux uy DefaultSpan DefaultLoessPoints xs ys
 
     // ======================================================================================
-    // bootstrap — M2's deferred tail, and D95's second consumer of randomness
+    // bootstrap — the second consumer of randomness
     // ======================================================================================
 
     /// A bootstrap confidence interval for a statistic, in the statistic's own unit.

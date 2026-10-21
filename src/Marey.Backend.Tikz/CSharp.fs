@@ -2,7 +2,7 @@ namespace Marey.CSharp
 
 open Marey
 
-/// D124 — the TikZ backend as a C# delegate: `fig.Save(TikzRenderer.Render, "plot.tex", 800, 500)`.
+/// The TikZ backend as a C# delegate: `fig.Save(TikzRenderer.Render, "plot.tex", 800, 500)`.
 [<AbstractClass; Sealed>]
 type TikzRenderer =
 

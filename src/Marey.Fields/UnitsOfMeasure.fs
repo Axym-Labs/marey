@@ -3,13 +3,13 @@ namespace Marey.UnitsOfMeasure
 open System
 open Marey
 
-/// D109 — the field geoms in the unit-required mode: a witness per axis and for the value,
+/// The field geoms in the unit-required mode: a witness per axis and for the value,
 /// checked at compile time against the grid's measures. See `Marey.UnitsOfMeasure.Chart` for the
 /// pattern and the shadows. Sampling, derivatives and grids are the core's in both modes.
 [<RequireQualifiedAccess>]
 module Field =
 
-    /// A scalar grid as an image coloured along `ramp`, with a colorbar in `'v` (D91). `smooth`
+    /// A scalar grid as an image coloured along `ramp`, with a colorbar in `'v`. `smooth`
     /// interpolates between nodes; otherwise every node is a flat cell.
     let heatmapWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ramp: Ramp)
@@ -30,7 +30,7 @@ module Field =
         : Figure =
         Marey.Field.heatmap ux uy uv g
 
-    /// Contour lines at stated levels, in the theme's foreground colour (D88).
+    /// Contour lines at stated levels, in the theme's foreground colour.
     let contoursAt<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (levels: float<'v>[])
         (ux: U<'x>)
@@ -48,7 +48,7 @@ module Field =
         : Figure =
         Marey.Field.contours ux uy g
 
-    /// Filled bands between stated levels, coloured along `ramp` with a colorbar in `'v` (D88).
+    /// Filled bands between stated levels, coloured along `ramp` with a colorbar in `'v`.
     let bandsWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ramp: Ramp)
         (levels: float<'v>[])
@@ -71,7 +71,7 @@ module Field =
 
     /// A quiver: an arrow at every node, its length the vector's magnitude through the quiver's
     /// own scale, and a key in the plot area's corner saying what one length means — `2 m/s`,
-    /// set with the prefix the value would be ticked in (D87). Both components must be in one
+    /// set with the prefix the value would be ticked in. Both components must be in one
     /// unit, `'v`, because a length is a magnitude; a phase space has `directions` instead.
     ///
     /// Arrows are drawn at every node, so sample a quiver at the density it should be read at — a
@@ -104,7 +104,7 @@ module Field =
         Marey.Field.directions ux uy g
 
     /// Evenly spaced streamlines `separation` apart on the page, with arrowheads pointing
-    /// downstream (D89). Any vector grid, a phase space included: a streamline is a curve, and
+    /// downstream. Any vector grid, a phase space included: a streamline is a curve, and
     /// needs a direction, not a magnitude.
     ///
     /// The separation is in **pixels**, because evenly spaced is a visual property. The same
@@ -136,7 +136,7 @@ module Field =
         Marey.Field.streamlinesBy ux uy uv g
 
     /// A line-integral convolution in grey: noise smeared along the field's streamlines, so the
-    /// texture is the flow at every pixel (D90). Any vector grid, a phase space included, because
+    /// texture is the flow at every pixel. Any vector grid, a phase space included, because
     /// it needs a direction and not a magnitude.
     ///
     /// **It is a raster at the plot area's resolution** times `options.Oversample`, on every
@@ -239,7 +239,7 @@ module Field =
     [<Obsolete("Marey.UnitsOfMeasure is open, so this takes a witness per unit: Field.licBy. Field.LicBy(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
     let LicBy (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."
 
-/// D109 — phase portraits in the unit-required mode. See `Field` above.
+/// Phase portraits in the unit-required mode. See `Field` above.
 [<RequireQualifiedAccess>]
 module Phase =
 
@@ -298,7 +298,7 @@ module Phase =
     [<Obsolete("Marey.UnitsOfMeasure is open, so this takes a witness per unit: FixedPoint.describe. Phase.Describe(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
     let Describe (_: obj) : string = invalidOp "Marey: unreachable — an error-obsolete shadow."
 
-/// D109 — `describe` in the unit-required mode. See `Field` above.
+/// `describe` in the unit-required mode. See `Field` above.
 [<RequireQualifiedAccess>]
 module FixedPoint =
 
@@ -308,8 +308,7 @@ module FixedPoint =
     ///     centre (linear) at (0 rad, 0 rad·s⁻¹), λ = ±3.116i s⁻¹
     ///
     /// The eigenvalues are converted to SI and written in base units, never through the registry,
-    /// because the registry names s⁻¹ hertz and an eigenvalue is a rate, not a frequency (D98's
-    /// error in a different place).
+    /// because the registry names s⁻¹ hertz and an eigenvalue is a rate, not a frequency.
     let describe<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
         (ux: U<'x>)
         (uy: U<'y>)

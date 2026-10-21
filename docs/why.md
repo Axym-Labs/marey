@@ -99,11 +99,11 @@ string exists.
 Composing two witnesses gets the *dimension* right while the naive symbol comes out as `kg·m/s/s·m`
 for what is plainly `J`, which is why an axis is never labelled from a composed symbol. The unit
 registry is keyed on the seven-element SI dimension vector, so anything that composes to a newton
-prints `N`, whether it was written as `Derived.newton` or built out of kilograms and metres per
+prints `N`, whether it was written as `U.newton` or built out of kilograms and metres per
 second squared.
 
 Where the dimension has no registered name, the factorisation *as supplied* is used instead:
-`U.div Derived.volt U.metre` renders `V·m⁻¹`, and `MV·m⁻¹` once prefixed, rather than the
+`U.div U.volt U.metre` renders `V·m⁻¹`, and `MV·m⁻¹` once prefixed, rather than the
 technically correct and unreadable `kg·m·s⁻³·A⁻¹`.
 
 ### 5. A string cannot object to its neighbours
@@ -187,7 +187,7 @@ at the boundary.
 
 **Nothing is inferred from a bare dimension.** A supplied factorisation is read back and a
 registered name is looked up, but a dimension handed over on its own is never factorised, since the
-dimension of `J/K` is also the dimension of `N·m/K`. The cost is verbosity: `U.div Derived.volt
+dimension of `J/K` is also the dimension of `N·m/K`. The cost is verbosity: `U.div U.volt
 U.metre` rather than something shorter.
 
 **Affine units carry an offset from day one.** °C is not a scaled kelvin, it is a shifted one, so

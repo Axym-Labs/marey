@@ -6,17 +6,16 @@ open System.Globalization
 open System.Xml.Linq
 
 // ======================================================================================
-// D79 — THE HALF THAT NEEDS NO TEX INSTALLED.
+// THE HALF THAT NEEDS NO TEX INSTALLED.
 //
-// §10 names three routes to mathematical typesetting and D79 took the first: shell out to
+// Of the routes to mathematical typesetting, this package takes the first: shell out to
 // LaTeX, render DVI to vector paths, and ship it as an opt-in package — "acceptable as a
 // plugin, unacceptable as a dependency". The paths are the point. Once a formula is outlines,
 // *every* backend draws it: SVG, TikZ and Skia alike, with no capability flag and no per-backend
-// typesetting story. That is what option 1 buys over option 2, which would have worked on a web
-// backend that does not exist until M4.
+// typesetting story.
 //
-// This file is the reading half, and it is deliberately **pure**. D75's phase said the mux was
-// "testable only for exit status and container-level facts" and was wrong about its own package:
+// This file is the reading half, and it is deliberately **pure**. A tool's output is easy to
+// call "testable only for exit status and container-level facts", which was wrong for video:
 // `Video.args` turned out to be a pure function, so the part where the risk actually lived was
 // gated on a machine with no ffmpeg at all. The same is true here and more so. Everything that
 // can silently produce a *wrong picture* — a misparsed cubic, a dropped subpath, a `<use>`
@@ -42,7 +41,7 @@ open System.Xml.Linq
 // future dvisvgm or a TikZ-bearing snippet may use them, and **refuses by name** on anything
 // left over.
 //
-// **Refusing is the whole discipline here.** D33's incident was a perfectly valid document
+// **Refusing is the whole discipline here.** An earlier incident was a perfectly valid document
 // containing no visible ink, and the lesson it left is that silently dropping a drawing
 // instruction is the worst available failure: the caller gets a formula with a piece missing and
 // nothing anywhere says so. So an unknown element, an unknown path command and an unresolvable
@@ -123,7 +122,7 @@ type TexOutline =
 /// check every number, on a machine with no TeX and no dvisvgm — which is the only way the
 /// arithmetic in `S` and `T`, the reflected control points, ever gets checked at all.
 [<RequireQualifiedAccess>]
-module SvgPathData =
+module internal SvgPathData =
 
     /// A number, an optional comma or whitespace, or a command letter. SVG's grammar allows
     /// numbers to run together without a separator (`.5.5` is two numbers, and `1-2` is two),
@@ -549,7 +548,7 @@ module TexOutline =
     ///
     /// The origin is moved to the box's top-left corner on the way out, so a consumer never sees
     /// dvisvgm's `-72`.
-    let ofSvg (box: TexBox) (svg: string) : Result<TexOutline, string> =
+    let internal ofSvg (box: TexBox) (svg: string) : Result<TexOutline, string> =
         let doc =
             try
                 Ok(XDocument.Parse svg)
@@ -647,7 +646,7 @@ module TexOutline =
                     match defs.TryGetValue id with
                     | false, _ ->
                         // The failure this catches is a whole glyph missing from the picture,
-                        // which is D33's "valid document, no visible ink" in miniature.
+                        // which is "valid document, no visible ink" in miniature.
                         failure <- Some(sprintf "<use> refers to '%s', which is not in the document" id)
                     | true, segs ->
                         match number "x" e 0.0, number "y" e 0.0 with

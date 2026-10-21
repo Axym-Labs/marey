@@ -310,7 +310,7 @@ restore
 save
 font = 500 13.333px "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif
 fillStyle = rgba(20,24,31,1)
-fillText 563.718 257.24 "k [10⁹·m⁻¹]"
+fillText 571.498 257.24 "k [nm⁻¹]"
 restore
 beginPath
 moveTo 450.523 222.567

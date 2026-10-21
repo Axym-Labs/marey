@@ -17,16 +17,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- `Marey.Plot`, because `FrameSequence` is what this encodes and phase 5 put it there.
+    <!-- `Marey.Plot`, because `FrameSequence` is what this encodes and it lives there.
          That drags the whole plotting stack, and it costs nothing: a `FrameSequence` cannot
          exist without having been produced by `Frames.write`, so every possible consumer of
          this package already has the reference. Taking the sequence's *fields* instead — a
-         directory, a pattern, a rate — would have avoided the edge and reintroduced D72's
-         hazard, a second statement of a decided fact with nothing able to notice a
+         directory, a pattern, a rate — would have avoided the edge and reintroduced the
+         hazard a second statement of a decided fact with nothing able to notice a
          disagreement; `FrameSequence.Stale` in particular is a warning only this package is in
          a position to act on.
 
-         NOTHING may be added to <PackageReference> here. The point of D75's shell-out is that
+         NOTHING may be added to <PackageReference> here. The point of shelling out is that
          ffmpeg's licence stays ffmpeg's problem, and a managed wrapper would put the audit back
          on every consumer — which is exactly what the decision refused. -->
     <ProjectReference Include="..\Marey.Plot\Marey.Plot.fsproj" />

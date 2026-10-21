@@ -3,12 +3,12 @@ namespace Marey
 open System
 
 // ======================================================================================
-// D85 — A FIELD IS SAMPLED ONTO A GRID, AND THE GRID IS THE REPRESENTATION.
+// A FIELD IS SAMPLED ONTO A GRID, AND THE GRID IS THE REPRESENTATION.
 //
 // Every field algorithm in this package reads values at points it chooses: marching squares at
 // grid nodes, RK4 at stage points, a line-integral convolution along every pixel's streamline. A
 // field can arrive as a function, which is exact anywhere and of unknown cost, or as a grid,
-// which is how real data arrives — a simulation's output, a file, every solver M5 will ship. One
+// which is how real data arrives — a simulation's output, a file, every solver in `Marey.Sim`. One
 // input type for every geom means the grid: a function is sampled into one, once, at a stated
 // resolution, and a grid from data is used as it is.
 //
@@ -21,9 +21,9 @@ open System
 // `'v`. A vector grid holds two components, `'u` along x and `'w` along y, and the four measure
 // parameters are independent: a spatial field is `VectorGrid<m, m, V/m, V/m>` and a pendulum's
 // phase flow is `VectorGrid<rad, rad/s, rad/s, rad/s²>`. Which derived quantities exist is then
-// a question the type system answers — see `Field.div` and `Field.curl` (D84).
+// a question the type system answers — see `Field.div` and `Field.curl`.
 //
-// **Values that are not values** (D52). A point charge's field is infinite at the charge. A
+// **Values that are not values**. A point charge's field is infinite at the charge. A
 // sample that is not finite is stored as it is, is not drawn, and is counted: `missing`.
 // ======================================================================================
 
@@ -46,7 +46,7 @@ type VectorGrid<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w> 
       U: float<'u>[]
       W: float<'w>[] }
 
-/// D124 — inside a module F# opens with the namespace, so `Grid.linear` reads as it always has
+/// Inside a module F# opens with the namespace, so `Grid.linear` reads as it always has
 /// while the CLR name, `Marey.GridAxes+Grid`, stops colliding with Marey.Plot's layout type
 /// `Marey.Grid`, which C# could not tell apart from it (CS0433). See `SiWitnesses` in Marey.Units.
 [<AutoOpen>]
@@ -58,7 +58,7 @@ module GridAxes =
 
         /// The resolution a function is sampled at when nobody states one: 64 nodes a side. Fixed,
         /// not derived from the panel's pixel size, so the same figure at two sizes shows the same
-        /// field (D85).
+        /// field.
         [<Literal>]
         let DefaultCount = 64
 
@@ -147,6 +147,7 @@ module GridAxes =
                 a + (b - a) * fy
             | _ -> nan
 
+/// Scalar grids: built from data or sampled from a function, and read back.
 [<RequireQualifiedAccess>]
 module ScalarGrid =
 
@@ -192,7 +193,7 @@ module ScalarGrid =
         : float<'v> =
         LanguagePrimitives.FloatWithMeasure<'v>(Grid.bilinear (Grid.raw g.Xs) (Grid.raw g.Ys) (Grid.raw g.Values) (float x) (float y))
 
-    /// How many nodes hold a value that is not finite (D52): not drawn, and reported.
+    /// How many nodes hold a value that is not finite: not drawn, and reported.
     let missing<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v> (g: ScalarGrid<'x, 'y, 'v>) : int =
         g.Values |> Array.sumBy (fun v -> if Grid.isMissing (float v) then 1 else 0)
 
@@ -211,6 +212,7 @@ module ScalarGrid =
           Ys = g.Ys
           Values = Array.map f g.Values }
 
+/// Vector grids: built from data or sampled from a field, and read back.
 [<RequireQualifiedAccess>]
 module VectorGrid =
 
@@ -286,7 +288,7 @@ module VectorGrid =
           Ys = g.Ys
           Values = Array.map2 (fun (a: float<'v>) (b: float<'v>) -> sqrt (a * a + b * b)) g.U g.W }
 
-    /// How many nodes have a component that is not finite (D52).
+    /// How many nodes have a component that is not finite.
     let missing<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w> (g: VectorGrid<'x, 'y, 'u, 'w>) : int =
         Array.fold2
             (fun acc (a: float<'u>) (b: float<'w>) -> if Grid.isMissing (float a) || Grid.isMissing (float b) then acc + 1 else acc)

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- D130 — gate 1 of the M5 plan. Not a .NET test project and not in Marey.slnx: it is
+    <!-- Gate 1 of the M5 plan. Not a .NET test project and not in Marey.slnx: it is
          compiled by Fable and run by Node (`ci.yml`'s `fable` job), and what it proves is that
          the projects claiming Fable write the SVG goldens byte for byte under JavaScript. -->
     <OutputType>Exe</OutputType>

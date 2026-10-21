@@ -8,7 +8,7 @@ open System.Threading.Tasks
 open Verso.Abstractions
 
 // ======================================================================================
-// M4.5 — A LIVE FIGURE IN A VERSO CELL (D99, D100).
+// A LIVE FIGURE IN A VERSO CELL.
 //
 // The formatter writes the page once; this keeps it in conversation with the kernel for as long
 // as the session holds the channel, which is after the cell has finished — the time someone is
@@ -16,9 +16,9 @@ open Verso.Abstractions
 // inside it: `Marey.Html` steps it, renders it, and writes the page, through the bridge.
 //
 // **What the host decides, and what this does not.** Re-running, clearing or deleting the cell
-// closes the channel, and a kernel restart closes it and tells the view (observed in M4.5's phase
-// 0 spike). A save asks `SnapshotProvider` for the page at the current state, so the file holds
-// what the reader was looking at, drawn static.
+// closes the channel, and a kernel restart closes it and tells the view (observed). A save asks
+// `SnapshotProvider` for the page at the current state, so the file holds what the reader was
+// looking at, drawn static.
 //
 // **The cell id is read by reflection.** A formatter learns its cell from `IFormatterContext.
 // CellId`, which a Verso with the formatter-context change carries and Verso 1.2 does not. This
@@ -55,7 +55,7 @@ type internal LiveSession(value: obj, initial: obj, channel: IOutputChannel) =
                 payload.["svg"] <- box parts.[1]
                 payload.["shown"] <- rest 2
                 true
-            // Step F (D159): a canvas page's whole scene, its size and its bytes, and a patch's bytes.
+            // Step F: a canvas page's whole scene, its size and its bytes, and a patch's bytes.
             | "scene" when parts.Length >= 4 ->
                 payload.["w"] <- box parts.[1]
                 payload.["h"] <- box parts.[2]
@@ -85,7 +85,7 @@ type internal LiveSession(value: obj, initial: obj, channel: IOutputChannel) =
                 payload.["shown"] <- box (Array.sub parts 1 (parts.Length - 1))
             | None -> ()
 
-        // D103 — `size` is the view's hello, sent when it mounts and again when it cannot
+        // `size` is the view's hello, sent when it mounts and again when it cannot
         // apply a patch, so it is always answered with the whole figure: whatever the view
         // is showing, it is not something a patch can be taken against.
         let answer =
@@ -106,7 +106,7 @@ type internal LiveSession(value: obj, initial: obj, channel: IOutputChannel) =
             | _ -> if not (put parts) then whole true
         | None -> whole (m.Type = "size")
 
-        // D105 — every answer says what the pointer reads, an empty one included, so a
+        // Every answer says what the pointer reads, an empty one included, so a
         // readout the pointer has left is taken down by the reply that says so.
         match Bridge.liveReadout value after with
         | Some parts -> payload.["readout"] <- box parts

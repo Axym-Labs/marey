@@ -1,4 +1,4 @@
-/// M4.6 — *Surface*: units opt-in (D109), and the witness a caller did not state (D127).
+/// *Surface*: units opt-in, and the witness a caller did not state.
 ///
 /// `U.unspecified` is what an axis carries when nobody said what its numbers are. It is not
 /// `U.one`: `one` claims the quantity has no dimension, which the axis-sharing check acts on, and
@@ -33,7 +33,7 @@ module TheWitness =
     let ``every declared witness is stated, and only unspecified is not`` () =
         Assert.True(U.metre.Stated)
         Assert.True(U.one.Stated)
-        Assert.True(Derived.volt.Stated)
+        Assert.True(U.volt.Stated)
         Assert.False(U.unspecified.Stated)
 
     /// What is composed from an unstated unit is unstated: a density over numbers nobody named is
@@ -47,7 +47,7 @@ module TheWitness =
         Assert.False((U.scaled "k" 1000.0 U.unspecified).Stated)
         Assert.True((U.div U.metre U.second).Stated)
 
-    /// D128 — the relabel. Measures are erased, so a stated witness comes back as itself, and
+    /// The relabel. Measures are erased, so a stated witness comes back as itself, and
     /// `null`, the omitted optional parameter, is the one place `unspecified` is decided.
     [<Fact>]
     let ``erase returns the witness it was given, and null is unspecified`` () =
@@ -114,7 +114,7 @@ module UnspecifiedMakesNoClaim =
         let fig =
             plain [| 0.0; 1.0; 2.0 |]
             |> Chart.colorBy U.unspecified [| 3.0; 4.0; 5.0 |]
-            |> Chart.withColorDomain NonSi.degreeCelsius 0.0<degC> 10.0<degC>
+            |> Chart.withColorDomain U.degreeCelsius 0.0<degC> 10.0<degC>
 
         Chart.toScene extent fig |> ignore
 
@@ -201,22 +201,22 @@ module OneImplementation =
     /// would land 273.15 away.
     [<Fact>]
     let ``an affine unit, a heatmap, and the channels that take data`` () =
-        same (Marey.Chart.Line(t', raw temps, xUnit = U.second, yUnit = NonSi.degreeCelsius)) (Chart.line U.second NonSi.degreeCelsius t temps)
+        same (Marey.Chart.Line(t', raw temps, xUnit = U.second, yUnit = U.degreeCelsius)) (Chart.line U.second U.degreeCelsius t temps)
 
         same
-            (Marey.Chart.Heatmap(t', x', raw temps, xUnit = U.second, yUnit = U.metre, valueUnit = NonSi.degreeCelsius))
-            (Chart.heatmap U.second U.metre NonSi.degreeCelsius t x temps)
+            (Marey.Chart.Heatmap(t', x', raw temps, xUnit = U.second, yUnit = U.metre, valueUnit = U.degreeCelsius))
+            (Chart.heatmap U.second U.metre U.degreeCelsius t x temps)
 
         let optional () = Marey.Chart.Scatter(t', x', xUnit = U.second, yUnit = U.metre)
         let curried () = Chart.scatter U.second U.metre t x
 
         same
-            (optional () |> Marey.Chart.ColorBy(raw temps, unit = NonSi.degreeCelsius) |> Marey.Chart.WithColorDomain(280.0, 300.0, unit = U.kelvin))
-            (curried () |> Chart.colorBy NonSi.degreeCelsius temps |> Chart.withColorDomain U.kelvin 280.0<K> 300.0<K>)
+            (optional () |> Marey.Chart.ColorBy(raw temps, unit = U.degreeCelsius) |> Marey.Chart.WithColorDomain(280.0, 300.0, unit = U.kelvin))
+            (curried () |> Chart.colorBy U.degreeCelsius temps |> Chart.withColorDomain U.kelvin 280.0<K> 300.0<K>)
 
         same
-            (optional () |> Marey.Chart.ColorByWith(Palette.viridis, raw temps, unit = NonSi.degreeCelsius))
-            (curried () |> Chart.colorByWith Palette.viridis NonSi.degreeCelsius temps)
+            (optional () |> Marey.Chart.ColorByWith(Palette.viridis, raw temps, unit = U.degreeCelsius))
+            (curried () |> Chart.colorByWith Palette.viridis U.degreeCelsius temps)
 
         same (optional () |> Marey.Chart.SizeBy(raw err, unit = U.metre)) (curried () |> Chart.sizeBy U.metre err)
 
@@ -224,7 +224,7 @@ module OneImplementation =
             (optional () |> Marey.Chart.SizeByWith(2.0<px>, 9.0<px>, raw err, unit = U.metre))
             (curried () |> Chart.sizeByWith 2.0<px> 9.0<px> U.metre err)
 
-    /// D125 — `add` is `addLine` and its siblings, for every constructor: the next palette slot
+    /// `add` is `addLine` and its siblings, for every constructor: the next palette slot
     /// of the figure being added to.
     [<Fact>]
     let ``add is the add family`` () =
@@ -381,7 +381,7 @@ module Coverage =
         m.GetParameters() |> Array.exists (fun p -> p.ParameterType = typeof<U<1>>)
 
     /// Curried, and no member: the add family is `Chart.add` over a constructor in the
-    /// unit-optional mode (D125).
+    /// unit-optional mode.
     let private curriedOnly =
         set [ "addLine"; "addScatter"; "addArea"; "addErrorbar"; "addStep"; "addRibbon"; "addSegment"; "addFit"; "addLoess"; "addLoessWith"
               "addHLine"; "addVLine"; "addHSpan"; "addVSpan"; "addLineThrough"
@@ -389,7 +389,7 @@ module Coverage =
               "annotate"; "withTextAt"
               // Axis modifiers: Marey.Chart's take the axis's own numbers, these a witness to check them by.
               "withXTicksEvery"; "withYTicksEvery"; "withXTicksAt"; "withYTicksAt"; "withXTicksNamed"; "withYTicksNamed"
-              // D178: Marey.Chart's take the map in raw numbers, these typed in both directions.
+              // Marey.Chart's take the map in raw numbers, these typed in both directions.
               "withTopAxisMapped"; "withRightAxisMapped" ]
 
     let private pairs: (Type * Type) list =
@@ -634,7 +634,7 @@ module TheBlock =
             Assert.Contains("error FS0001", output)
             Assert.Contains("'s' does not match the unit of measure 'm'", output)
 
-/// Gate 8, its first half (D124): **no two Marey assemblies export one type name.** C# resolves a
+/// Gate 8, its first half: **no two Marey assemblies export one type name.** C# resolves a
 /// type by its full CLR name and refuses one that two referenced assemblies both define (CS0433),
 /// so a duplicate is a type no C# caller can name — and, for `Marey.U` until M4.6, every witness.
 /// F# merges modules of one name across assemblies and never notices, which is why it went
@@ -685,7 +685,7 @@ module OneNamePerType =
         Assert.True(clash.IsEmpty, sprintf "ambiguous under both usings: %s" (String.concat ", " clash))
 
 
-/// Gate 9 — a parsed unit is a composed one (D110).
+/// Gate 9 — a parsed unit is a composed one.
 module Parsing =
 
     let private svgOf (u: IUnit) =
@@ -701,18 +701,18 @@ module Parsing =
 
     [<Fact>]
     let ``a quotient is the composition, factors and label included`` () =
-        same (U.div Derived.volt U.metre) (U.parse "V/m")
+        same (U.div U.volt U.metre) (U.parse "V/m")
         same (U.mul (U.mul U.kilogram U.metre) (U.recip (U.square U.second))) (U.parse "kg m s-2")
         same (U.recip U.second) (U.parse "1/s")
 
     [<Fact>]
     let ``a declared symbol is the declared witness`` () =
         Assert.Same(U.metre :> obj, U.parse "m" :> obj)
-        Assert.Same(NonSi.degreeCelsius :> obj, U.parse "°C" :> obj)
-        Assert.Same(NonSi.degreeCelsius :> obj, U.parse "degC" :> obj)
-        Assert.Same(Derived.ohm :> obj, U.parse "ohm" :> obj)
+        Assert.Same(U.degreeCelsius :> obj, U.parse "°C" :> obj)
+        Assert.Same(U.degreeCelsius :> obj, U.parse "degC" :> obj)
+        Assert.Same(U.ohm :> obj, U.parse "ohm" :> obj)
         Assert.Same(U.candela :> obj, U.parse "cd" :> obj)
-        Assert.Same(NonSi.minute :> obj, U.parse "min" :> obj)
+        Assert.Same(U.minute :> obj, U.parse "min" :> obj)
         Assert.Equal(273.15, (U.parse "degC").OffsetSI)
 
     [<Fact>]
@@ -764,7 +764,7 @@ module Parsing =
         refused "" "empty"
         Assert.Throws<System.FormatException>(fun () -> U.parse "furlong" |> ignore) |> ignore
 
-    /// The checked assertion, not a cast: the dimension decides, and the angle (D98) with it.
+    /// The checked assertion, not a cast: the dimension decides, and the angle with it.
     [<Fact>]
     let ``tryAs asserts a measure back, checked`` () =
         match U.tryAs U.metre (U.parse "km") with
@@ -774,6 +774,6 @@ module Parsing =
         | None -> failwith "km is a length"
 
         Assert.True((U.tryAs U.metre (U.parse "s")).IsNone)
-        Assert.True((U.tryAs Derived.hertz (U.parse "rad/s")).IsNone)
+        Assert.True((U.tryAs U.hertz (U.parse "rad/s")).IsNone)
         Assert.True((U.tryAs U.metre U.unspecified).IsNone)
-        Assert.True((U.tryAs NonSi.degreeCelsius (U.parse "K")).IsSome)
+        Assert.True((U.tryAs U.degreeCelsius (U.parse "K")).IsSome)

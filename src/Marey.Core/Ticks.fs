@@ -1,13 +1,13 @@
 namespace Marey
 
-/// §4 — Tick generation.
+/// Tick generation.
 ///
 /// The spike's `TickHint` returns `n+1` evenly spaced values across the domain, which puts
 /// ticks at 3.7142857 and is not shippable. Real tick selection is the "1-2-5" nice-number
 /// search: pick the coarsest step from {1, 2, 5} x 10^k that still yields roughly the
 /// requested count.
 ///
-/// This module is where §4's property tests bite:
+/// This module is where the property tests bite:
 ///
 /// * `TickHint n` returns between `n/2` and `2n` ticks — the 1-2-5 ladder gives ~[0.6n, 1.5n]
 ///   before boundary alignment, comfortably inside.
@@ -20,7 +20,7 @@ namespace Marey
 /// goes — decimals, and powers of ten on a wide log axis. Prefix selection and unit symbols live
 /// in `Marey.Units`, because they need the `Dim`, and Core does not know what a kilometre is.
 [<RequireQualifiedAccess>]
-module Ticks =
+module internal Ticks =
 
     /// The coarsest "nice" step at most `raw`-ish. Rounds `raw` to the nearest member of the
     /// 1-2-5 ladder rather than always rounding up, which is what keeps the count centred on
@@ -43,7 +43,7 @@ module Ticks =
     /// Decimal places needed to render values on a grid of `step` without two of them
     /// colliding. `step = 0.25` needs 2; `step = 20` needs 0.
     ///
-    /// This is the injectivity guarantee from §4, and it is the reason the step is a return
+    /// This is the injectivity guarantee, and it is the reason the step is a return
     /// value of tick generation rather than an implementation detail.
     let decimalsFor (step: float) =
         if step <= 0.0 || System.Double.IsNaN step || System.Double.IsInfinity step then
@@ -204,7 +204,7 @@ module Ticks =
     /// when the domain is wide, or when a tick lies outside [10⁻³, 10³].
     ///
     /// The second condition covers a narrow axis no prefix brought near 1: a dimensionless one,
-    /// one in a unit that takes no prefix (`h`), or one whose prefix was pinned elsewhere (D73).
+    /// one in a unit that takes no prefix (`h`), or one whose prefix was pinned elsewhere.
     /// [10⁻³, 10³] is the range a prefix leaves a narrow axis in, so a tick outside it is a
     /// number a prefix would have shortened.
     let logInPowers (domain: float * float) (values: float[]) : bool =

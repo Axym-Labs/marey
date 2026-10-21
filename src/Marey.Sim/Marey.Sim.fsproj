@@ -1,28 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- §8.2–§8.3 and `m5.5-plan.md`: a simulation is a step function, and everything else is
-         already an `Anim`. The integrators are typed in three tiers (D134): a second-order state
-         with one unit for its coordinates, a 2-D first-order flow with time, and any state given
-         a `Tangent`. None of them is erased: a `float[]` integrator checks nothing and was the
-         slowest of the four shapes measured.
+    <!-- A simulation is a step function, and everything else is already an `Anim`. The
+         integrators are typed in three tiers: a second-order state with one unit for its
+         coordinates, a 2-D first-order flow with time, and any state given a `Tangent`. None of
+         them is erased: a `float[]` integrator checks nothing and was the slowest of the four
+         shapes measured.
 
-         → Core, Anim, and Fields for the grids the solvers of phase 10 step (which brings Plot).
-         netstandard2.1 and Fable-compatible from the first commit (D141): the ODE half is
-         arithmetic, so it runs in a browser page from the same source. A chaotic trajectory
-         there is a different trajectory after tens of seconds, because Node's `sin` and `exp`
-         differ from .NET's in the last bit; the documents say so. Nothing .NET-only goes in a
-         claimed source file. NOTHING may be added to <PackageReference>. -->
+         → Core, Anim, and Fields for the grids the solvers step (which brings Plot).
+         netstandard2.1 and Fable-compatible: the ODE half is arithmetic, so it runs in a browser
+         page from the same source. A chaotic trajectory there is a different trajectory after
+         tens of seconds, because Node's `sin` and `exp` differ from .NET's in the last bit; the
+         documents say so. Nothing .NET-only goes in a claimed source file. NOTHING may be added
+         to <PackageReference>. -->
     <TargetFramework>netstandard2.1</TargetFramework>
     <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Sim</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
     <Description>Simulation for Marey: ODE integrators typed by units of measure (Euler, RK4, Dormand-Prince, velocity Verlet, leapfrog), trajectories that seek like any other animation, invariants, events and collisions, Poincare sections, pathlines and particles, finite-difference heat, wave and Poisson solvers, and fluids by stable fluids and lattice Boltzmann.</Description>
     <PackageTags>fsharp simulation ode integrator runge-kutta verlet symplectic fluid lattice-boltzmann units-of-measure scientific</PackageTags>
-    <!-- Published from M5.5 phase 2, with the integrators as its producer: a step is usable
-         alone, folded by hand or by `Sim.run`. Both workflows' package counts went 16 -> 17 and
-         their Fable counts 8 -> 9 in the same commit (gate 16). Its own PackageReadme.md from
-         phase 12. -->
+    <!-- Its producer is the integrators: a step is usable alone, folded by hand or by
+         `Sim.run`. -->
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
@@ -36,7 +34,7 @@
     <Compile Include="Fdm.fs" />
     <Compile Include="Fluid.fs" />
     <Compile Include="Lattice.fs" />
-    <!-- D109 — the unit-required mode, after the implementations it reaches. -->
+    <!-- The unit-required mode, after the implementations it reaches. -->
     <Compile Include="UnitsOfMeasure.fs" />
   </ItemGroup>
 

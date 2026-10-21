@@ -42,7 +42,7 @@ type StepAlign =
 
 /// One box of a box plot — the five-number summary after `Geom.boxplot` has spent the measures
 /// on it. In the series' data space on a `Geom`, and in panel-local nd once `Geom.project` has
-/// put it on a panel (D97).
+/// put it on a panel.
 [<NoComparison>]
 type BoxSpan<[<Measure>] 'p> =
     { Lower: float<'p>
@@ -50,8 +50,8 @@ type BoxSpan<[<Measure>] 'p> =
       Median: float<'p>
       Q3: float<'p>
       Upper: float<'p>
-      /// Everything outside the whiskers, drawn as points. D52's rule, one geom down: a datum
-      /// the box cannot describe is still drawn, because a box plot that quietly discards its
+      /// Everything outside the whiskers, drawn as points. The library's rule, one geom down: a
+      /// datum the box cannot describe is still drawn, because a box plot that quietly discards its
       /// tails is a summary of a sample nobody measured.
       Outliers: float<'p>[] }
 
@@ -67,12 +67,12 @@ type ViolinProfile<[<Measure>] 'p> =
     { At: float<'p>[]
       Width: float[] }
 
-/// D162 — a mark across the whole panel: `axhline`, `axvline`, `axline`, `axhspan`, `axvspan`.
+/// A mark across the whole panel: `axhline`, `axvline`, `axline`, `axhspan`, `axvspan`.
 ///
 /// Each says where it is on **one** axis (or through two points), and nothing about where it
 /// ends, because it ends where the panel does. That is only known once the panel's domain is
 /// final — after `unify`, a facet's sharing, a stated domain, the union over a shot, a zoom — so
-/// a rule is carried in data space like every geom here (D97) and laid across the panel when it
+/// a rule is carried in data space like every geom here and laid across the panel when it
 /// is compiled.
 [<NoComparison>]
 type RuleSpec<[<Measure>] 'p> =
@@ -88,7 +88,7 @@ type RuleSpec<[<Measure>] 'p> =
     /// The band between two x values, up the panel.
     | SpanV of lo: float<'p> * hi: float<'p>
 
-/// D164 — where an annotation's text stands.
+/// Where an annotation's text stands.
 [<NoComparison>]
 type TextPlacement<[<Measure>] 'p> =
     /// A device offset from the point it marks, y up — matplotlib's `textcoords='offset
@@ -97,11 +97,11 @@ type TextPlacement<[<Measure>] 'p> =
     | TextOffset of Vec2<px>
     /// A second place in data space.
     | TextAt of x: float<'p> * y: float<'p>
-    /// D165 — a place in the plot area, as fractions of its width and height from the bottom
+    /// A place in the plot area, as fractions of its width and height from the bottom
     /// left, with no point to mark: a panel's "(a)", a note in a corner. It ignores the coord.
     | TextInPanel of x: float * y: float
 
-/// D164 — the arrow from an annotation's text to the point it marks.
+/// The arrow from an annotation's text to the point it marks.
 type ArrowStyle =
     | ArrowNone
     | ArrowStraight
@@ -109,7 +109,7 @@ type ArrowStyle =
     /// `connectionstyle="arc3,rad=…"`.
     | ArrowArc of bend: float
 
-/// M0's geoms (§16: "line/scatter/errorbar" by name), and M2 phase 6's.
+/// The geoms.
 ///
 /// **`'p` is the space the numeric payloads live in**, and there are exactly two. A `Geom` —
 /// `GeomOf<1>`, what every constructor returns and every `Layer` holds — carries them in the
@@ -120,7 +120,7 @@ type ArrowStyle =
 /// `GeomOf<nd>` is the same geom put on a panel by `Geom.project`, and it is what the compiler
 /// draws.
 ///
-/// **D97 — projected when the points are, not when the geom is built.** Until 0.3.1 the payloads
+/// **Projected when the points are, not when the geom is built.** Until 0.3.1 the payloads
 /// went to `nd` at construction, through the series' scales as they were then, while the
 /// layer's points were projected at compile time through the scales the panel ended up with. A
 /// second layer (`Figure.unify`), `Chart.withXDomain` or a switch to a log axis moved the points
@@ -154,7 +154,7 @@ type GeomOf<[<Measure>] 'p> =
     /// second case would be a second branch in every consumer for no difference in what is
     /// drawn.
     | GeomRect of x0: float<'p>[] * y0: float<'p>[] * x1: float<'p>[] * y1: float<'p>[]
-    /// D93 — a closed polygon per point, its vertices in data space and projected one by one,
+    /// A closed polygon per point, its vertices in data space and projected one by one,
     /// so a hexagon's edges are straight on the panel whatever the axes. Filled and edged in the
     /// fill's own paint, as a tile is, because polygons that tessellate must not draw a grid.
     | GeomPolygon of xs: float<'p>[][] * ys: float<'p>[][]
@@ -166,37 +166,36 @@ type GeomOf<[<Measure>] 'p> =
     | GeomBox of spans: BoxSpan<'p>[] * widthFraction: float
     /// Mirrored density profiles, one per point; width as a fraction of the median x spacing.
     | GeomViolin of profiles: ViolinProfile<'p>[] * widthFraction: float
-    /// A user-supplied RGBA image filling a box (D64).
+    /// A user-supplied RGBA image filling a box.
     ///
     /// The one geom in this file that does **not** bottom out in `Path`, `Markers` or `Text`:
-    /// it is the only producer of §5's `Raster` node anywhere above the IR, and until M2.5
-    /// there was none, which is why `renderWithAssets` had no customer and D31's "M2 door" had
-    /// nothing to walk through it.
+    /// it is the only producer of the IR's `Raster` node anywhere above the IR, and so the
+    /// customer `renderWithAssets` exists for.
     ///
-    /// **D55 does not apply here, and the reason is worth stating.** Every other geom carrying
-    /// its own payload carries a per-*point* array and must be told which rows a channel batch
-    /// renumbered it to. This one carries a whole image and one box — scalars, not arrays — so
-    /// a batched subset draws the same image in the same place, which is correct rather than
-    /// lucky. A channel over an image layer has nothing to say.
+    /// **The row-renumbering hazard does not apply here, and the reason is worth stating.** Every
+    /// other geom carrying its own payload carries a per-*point* array and must be told which rows
+    /// a channel batch renumbered it to. This one carries a whole image and one box — scalars, not
+    /// arrays — so a batched subset draws the same image in the same place, which is correct rather
+    /// than lucky. A channel over an image layer has nothing to say.
     | GeomImage of image: Image * bounds: Rect<'p> * smooth: bool
-    /// D86 — a field: a grid of values, drawn as a heatmap, contour lines or filled bands. The
+    /// A field: a grid of values, drawn as a heatmap, contour lines or filled bands. The
     /// one geom computed on the panel rather than from its points, because a raster's pixels and
     /// a contour's vertices depend on where the panel's final scales put the nodes. The layer's
     /// points are the nodes, so the axes cover the grid and a colour channel over the values
     /// gets its colorbar exactly as a scatter's would.
     | GeomField of field: FieldPayload<'p> * mark: FieldMark
-    /// D162 — a rule or a span, laid across the panel when it is compiled. The layer's points
+    /// A rule or a span, laid across the panel when it is compiled. The layer's points
     /// are not drawn; they are there so that its unit is checked against the axes like any
     /// layer's, and so that `withDomainIncluded` has a value to put in the domain.
     | GeomRule of RuleSpec<'p>
-    /// D164 / D165 — one piece of text, at a place relative to the layer's one point (the
+    /// One piece of text, at a place relative to the layer's one point (the
     /// point it marks) or in the plot area, with an optional arrow to the point.
     | GeomAnnotation of text: string * placement: TextPlacement<'p> * arrow: ArrowStyle
 
 /// A geom in the series' data space — what every constructor returns and every `Layer` holds.
 type Geom = GeomOf<1>
 
-/// §5.5 — **"error bars … are compiled into `Path`/`Text`/`Markers` by the layer above."**
+/// **"error bars … are compiled into `Path`/`Text`/`Markers` by the layer above."**
 ///
 /// Every geom in this module bottoms out in `Path` or `Markers`. There is no error-bar node, no
 /// bar node and no area node, and the whole file is the argument that none is needed.
@@ -204,10 +203,10 @@ type Geom = GeomOf<1>
 /// ### Why geoms consume `PackedSeries` and not `Series('ux,'uy)`
 ///
 /// A geom needs positions, and positions are `Vec2(nd)` — the measures are gone by then, by
-/// construction (§2.3: "erase *once*, at the point where a series becomes a scale"). Making
+/// construction: measures are erased *once*, at the point where a series becomes a scale. Making
 /// geoms measure-generic would push two type parameters through `Layer`, `Panel` and `Figure`,
 /// and a figure with a metres panel beside a joules panel could then never be one value. That
-/// is the exact problem §2.3's rank-2 encoding exists to solve, so geoms take the erased side of
+/// is the exact problem the rank-2 encoding exists to solve, so geoms take the erased side of
 /// it and `Erase.projectXY` is the whole of the conversion.
 ///
 /// The measures are not thrown away, though — they are *spent* first. Everything that needs
@@ -242,8 +241,8 @@ module Geom =
           Font = theme.TickFont }
 
     /// Style for series `i` of a theme: colour and marker shape cycle together, so that shape is
-    /// a redundant encoding of colour rather than a decoration (D5).
-    let styleFor (theme: Theme) (i: int) : GeomStyle =
+    /// a redundant encoding of colour rather than a decoration.
+    let internal styleFor (theme: Theme) (i: int) : GeomStyle =
         { style theme (Palette.pick theme.Categorical i) with
             Shape =
                 if theme.MarkerShapes.Length = 0 then
@@ -251,10 +250,10 @@ module Geom =
                 else
                     theme.MarkerShapes.[((i % theme.MarkerShapes.Length) + theme.MarkerShapes.Length) % theme.MarkerShapes.Length] }
 
-    /// D162 — the style a rule or a span starts with. It is furniture rather than data, so it
+    /// The style a rule or a span starts with. It is furniture rather than data, so it
     /// takes no palette colour: a rule is drawn in the theme's axis colour at the axis's width,
     /// dashed, and a span is the foreground at a tenth of its strength.
-    let ruleStyle (theme: Theme) (rule: RuleSpec<'p>) : GeomStyle =
+    let internal ruleStyle (theme: Theme) (rule: RuleSpec<'p>) : GeomStyle =
         match rule with
         | SpanH _
         | SpanV _ -> { style theme theme.Foreground with FillOpacity = 0.1 }
@@ -266,17 +265,17 @@ module Geom =
                 Dash = [| 4.0<px>; 3.0<px> |]
                 Cap = Butt }
 
-    /// D164 — the style an annotation starts with: the theme's foreground, in the tick face, its
+    /// The style an annotation starts with: the theme's foreground, in the tick face, its
     /// arrow as wide as the axis. An annotation is read with the axes, not as a series, so it
     /// takes no palette colour.
-    let annotationStyle (theme: Theme) : GeomStyle =
+    let internal annotationStyle (theme: Theme) : GeomStyle =
         { style theme theme.Foreground with
             Width = theme.AxisWidth
             Cap = Butt }
 
     /// The style a layer drawing `geom` starts with in palette slot `i`: what a constructor gives
     /// it, and what `Chart.withTheme` compares against to tell a default from a choice.
-    let styleOf (theme: Theme) (i: int) (geom: GeomOf<'p>) : GeomStyle =
+    let internal styleOf (theme: Theme) (i: int) (geom: GeomOf<'p>) : GeomStyle =
         match geom with
         | GeomRule r -> ruleStyle theme r
         | GeomAnnotation _ -> annotationStyle theme
@@ -309,10 +308,10 @@ module Geom =
 
     /// Where zero on this scale falls in panel space, clamped into the panel.
     ///
-    /// Not what `area` and `bar` store any more: since D97 they store the data value zero and
+    /// Not what `area` and `bar` store: they store the data value zero and
     /// `project` clamps it against the panel's final scale, because a baseline computed here is
     /// computed against a domain the panel may yet widen past zero.
-    let baselineOf (scale: Scale<'u>) : float<nd> =
+    let internal baselineOf (scale: Scale<'u>) : float<nd> =
         clampBaseline (scale.Forward(LanguagePrimitives.FloatWithMeasure<'u> 0.0))
 
     /// Symmetric error bars on y.
@@ -357,7 +356,7 @@ module Geom =
     // code, and what reaches the DU is the data value with its measure stripped. Every one of
     // these takes the series it will be drawn against, so the arrays it is handed are checked
     // against that series' units by the compiler. They are projected by the scales the panel
-    // ends up with, beside the points (D97) -- which is what makes a ribbon on a log axis
+    // ends up with, beside the points -- which is what makes a ribbon on a log axis
     // asymmetric, correctly, and a tile on one the right size.
 
     let private lengthCheck (s: Series<'ux, 'uy>) (field: string) (n: int) =
@@ -419,14 +418,14 @@ module Geom =
             s.Y |> Array.map (fun y -> float (y + hh))
         )
 
-    /// An RGBA image filling a box given in the series' own units (D64).
+    /// An RGBA image filling a box given in the series' own units.
     ///
     /// Both measures are checked, so the box cannot be given its width in the y unit — the same
     /// guarantee `rect` makes, for the same reason and by the same route.
     ///
-    /// The box is projected corner by corner rather than as an origin plus a size, which is
-    /// D57's correction applied before it can become a bug: on a log axis a size in data units
-    /// is not a size on the panel, so an image placed by one corner and a width would be the
+    /// The box is projected corner by corner rather than as an origin plus a size, which is the
+    /// correction for rectangles applied before it can become a bug: on a log axis a size in data
+    /// units is not a size on the panel, so an image placed by one corner and a width would be the
     /// right size only in the middle of the domain.
     let image (_s: Series<'ux, 'uy>) (img: Image) (x0: float<'ux>) (y0: float<'uy>) (x1: float<'ux>) (y1: float<'uy>) (smooth: bool) : Geom =
         GeomImage(
@@ -509,7 +508,7 @@ module Geom =
             max 0.05 (min 1.0 widthFraction)
         )
 
-    // ---- Projection: D97 -----------------------------------------------------------------
+    // ---- Projection, through the panel's final scales ------------------------------------
 
     /// Put a geom on a panel: every payload through the panel's **final** scales, the ones the
     /// layer's points are projected through, at the same moment.
@@ -517,7 +516,7 @@ module Geom =
     /// `fx` and `fy` are the layer's erased `Project`s after `Figure.unify`. A baseline is
     /// clamped into the panel here rather than at construction, because only now is it known
     /// whether the domain reaches zero.
-    let project (fx: float -> float<nd>) (fy: float -> float<nd>) (geom: Geom) : GeomOf<nd> =
+    let internal project (fx: float -> float<nd>) (fy: float -> float<nd>) (geom: Geom) : GeomOf<nd> =
         match geom with
         | GeomLine -> GeomLine
         | GeomPoint -> GeomPoint
@@ -608,8 +607,9 @@ module Geom =
 
     /// A geom put on the panel its **own** series' scales describe — what a figure would give it
     /// if nothing else shared the panel. For drawing a geom outside a figure; inside one,
-    /// `Figure.fs` projects through the panel's final scales instead, which is the point of D97.
-    let onSeries (s: Series<'ux, 'uy>) (geom: Geom) : GeomOf<nd> =
+    /// `Figure.fs` projects through the panel's final scales instead, which is the point of
+    /// projecting late.
+    let internal onSeries (s: Series<'ux, 'uy>) (geom: Geom) : GeomOf<nd> =
         project
             (fun v -> s.XScale.Forward(LanguagePrimitives.FloatWithMeasure<'ux> v))
             (fun v -> s.YScale.Forward(LanguagePrimitives.FloatWithMeasure<'uy> v))
@@ -617,16 +617,16 @@ module Geom =
 
     // ---- Compilation ---------------------------------------------------------------------
 
-    /// D86 — draw a field layer, given the colour each value takes. `Figure.fs` passes the
+    /// Draw a field layer, given the colour each value takes. `Figure.fs` passes the
     /// layer's colour channel through its own quantiser, so the heatmap, its contours and its
-    /// colorbar take every colour from the same call (D91, gate 7). Without a channel, every
+    /// colorbar take every colour from the same call. Without a channel, every
     /// value is the layer's colour. `colourOf` gives colours before the layer's opacity, which
     /// is applied here.
     ///
-    /// `plotSize`, `measurer` and `background` are for the arrows (D87): the quiver's length
+    /// `plotSize`, `measurer` and `background` are for the arrows: the quiver's length
     /// scale is chosen in pixels against the grid's pitch, and its key is measured and set on a
     /// box of the panel's colour.
-    let compileField
+    let internal compileField
         (coord: Coord)
         (plotSize: Extent<px>)
         (measurer: ITextMeasurer)
@@ -727,11 +727,11 @@ module Geom =
                 let sorted = Array.sort gaps
                 sorted.[sorted.Length / 2]
 
-    /// D162 — lay a rule across the panel, or `None` when it falls outside it, which the caller
-    /// counts (D52). The rule has been put on the panel by `project`, so the panel is the unit
+    /// Lay a rule across the panel, or `None` when it falls outside it, which the caller
+    /// counts. The rule has been put on the panel by `project`, so the panel is the unit
     /// square here. Under a coord that is not the identity the path is sampled before it is
     /// warped, so a horizontal rule under `Coord.polar` is a circle rather than a chord.
-    let compileRule (coord: Coord) (st: GeomStyle) (rule: RuleSpec<nd>) : Node option =
+    let internal compileRule (coord: Coord) (st: GeomStyle) (rule: RuleSpec<nd>) : Node option =
         let edge = 1e-9
         let inside (v: float) = v >= -edge && v <= 1.0 + edge
         let pt (x: float) (y: float) : Vec2<nd> = at (nd x) (nd y)
@@ -793,15 +793,15 @@ module Geom =
                 else
                     line [| pt (x0 + t0 * dx) (y0 + t0 * dy); pt (x0 + t1 * dx) (y0 + t1 * dy) |]
 
-    /// D164 / D165 — one annotation: its text, and an arrow from the text to the point it marks,
-    /// or `None` when that point is outside the panel (counted by the caller, D52). Text placed
+    /// One annotation: its text, and an arrow from the text to the point it marks,
+    /// or `None` when that point is outside the panel (counted by the caller). Text placed
     /// in the panel (`TextInPanel`) marks no point and is always drawn.
     ///
     /// The text is anchored on the side facing the point: offset up and to the right, it starts
     /// at its place and sits on it, so the place is the corner of its box nearest the point and
     /// the arrow can leave from there without measuring the text. The arrow stops 3 px short of
     /// the point, and its head is the streamlines' (`FieldMarks.arrowhead`).
-    let compileAnnotation
+    let internal compileAnnotation
         (coord: Coord)
         (plotSize: Extent<px>)
         (st: GeomStyle)
@@ -913,8 +913,7 @@ module Geom =
     /// function a subset of the rows renumbered from zero. Without the indirection the second
     /// colour batch of an error bar reads the first batch's spans: every bar is still drawn,
     /// the figure looks entirely reasonable, and every uncertainty belongs to a different
-    /// point. Phase 2 introduced that hazard for `GeomErrorY` and `GeomErrorX`; phase 6 would
-    /// have introduced it six more times.
+    /// point. The hazard exists for every geom that carries its own per-point array.
     let rec private compileWith
         (address: ((int -> Key) * int[]) option)
         (spacing: float option)
@@ -958,15 +957,15 @@ module Geom =
 
                     Path(segs, Some stroke, None, NonZero)
 
-            // §5.1 — "a 100 000-point scatter must be *one* IR node". One `Markers`, always —
-            // unless a row was **addressed** (D69), and then it is three, which is the whole
+            // "a 100 000-point scatter must be *one* IR node". One `Markers`, always —
+            // unless a row was **addressed**, and then it is three, which is the whole
             // cost of being able to name a single mark.
             | GeomPoint ->
                 // The row travels beside the point because the filter below destroys the
                 // correspondence otherwise: a non-finite y in the middle of a series shifts
                 // every later mark's position within the batch by one, and a key built from
-                // that position names a different datum. Which is D55's defect, and D68 wrote
-                // the rule this obeys — a mark's key is its original row.
+                // that position names a different datum. The rule this obeys is that a mark's
+                // key is its original row.
                 let kept =
                     [| for i in 0 .. pts.Length - 1 do
                            if finite pts.[i] then
@@ -1071,7 +1070,7 @@ module Geom =
                 else
                     Path(segs, Some { stroke with Width = stroke.Width * 0.6 }, Some(fillOf st), NonZero)
 
-            // §5.5's named example, and it is three line segments per point in one `Path`.
+            // The textbook example of a compiled geom: three line segments per point in one `Path`.
             | GeomErrorY(low, high) ->
                 let capHalf =
                     if plotSize.Width = 0.0<px> then
@@ -1144,7 +1143,7 @@ module Geom =
             //
             // Seven geoms, and every one of them still bottoms out in `Path`, `Markers` or
             // `Text`. No `Node` case was added and none was wanted, which is the standing claim
-            // of §5.5 tested rather than repeated.
+            // tested rather than repeated.
 
             | GeomStep align ->
                 // The staircase is built in data space and then warped, so a step under a polar
@@ -1309,7 +1308,7 @@ module Geom =
             | GeomText(labels, anchor, baseline, offset) ->
                 // The offset is a device length and this function's output is about to be
                 // scaled by the panel transform, so it is divided by the panel's own pixel
-                // size -- the correction an error bar's cap makes, for the same reason (D12).
+                // size -- the correction an error bar's cap makes, for the same reason.
                 let dx =
                     if plotSize.Width = 0.0<px> then
                         0.0
@@ -1394,7 +1393,7 @@ module Geom =
                       if rules.Count > 0 then
                           Path(rules.ToArray(), Some { stroke with Cap = Butt }, None, NonZero)
                       // Hollow, so an outlier sitting on a whisker cap is still countable -- and
-                      // one `Markers` node for every outlier in the layer, because §5.1's rule
+                      // one `Markers` node for every outlier in the layer, because batching
                       // does not stop applying just because the points are meant to be rare.
                       if outliers.Count > 0 then
                           Markers
@@ -1405,14 +1404,14 @@ module Geom =
                                 Stroke = Some { stroke with Width = stroke.Width * 0.75 } } ]
 
             | GeomImage(image, bounds, smooth) ->
-                // The only `Raster` this library produces above the IR (D64).
+                // The only `Raster` this library produces above the IR.
                 //
                 // **The pixels are not warped, and that is a limit rather than an oversight.**
                 // `RasterNode.Bounds` is an axis-aligned `Rect<nd>` by construction, so under a
                 // non-identity coordinate — a polar panel — the box's corners are mapped and
                 // their bounding box is used, and the image inside it is *not* resampled along
                 // the warp. Doing that honestly needs a resampler, which is a rasteriser inside
-                // a zero-dependency package, and D64 rules that out of this milestone by name.
+                // a zero-dependency package, which is ruled out.
                 // Under the identity coord, which is every Cartesian figure and so every figure
                 // `Chart.image` is for, this is exact.
                 let corners =
@@ -1490,24 +1489,24 @@ module Geom =
     /// **The one compile**, with the two things a whole unaddressed layer does not have.
     ///
     /// `plotSize` is the plot area's device size, and it is here for exactly one reason: an error
-    /// bar's cap is `px` wide (D12) while this function's output is about to be scaled by the
+    /// bar's cap is `px` wide while this function's output is about to be scaled by the
     /// panel transform. Dividing by the panel's own pixel size is what makes a 3 px cap 3 px
     /// wide after that scaling, on both a wide panel and a tall one.
     ///
-    /// `indices` is D46's **channel batch**: the rows this call draws, out of `all`. `None`
+    /// `indices` is a **channel batch**: the rows this call draws, out of `all`. `None`
     /// draws the whole layer, which is not the same thing as `Some [| 0 .. n - 1 |]` — see the
     /// spacing note below.
     ///
-    /// `address` is D69's **named rows**, with the key each one's node carries: `Keys.mark` by
-    /// row, or `Keys.datum` when the data supplied keys (D104). Only
-    /// `GeomPoint` can honour it, because `Markers` is the only node in this file that batches
-    /// N data points into one; a `Path` is one shape, not a batch of marks, and splitting it in
-    /// three would change the joins between the pieces rather than name one of them.
+    /// `address` is the storyboard's **named rows**, with the key each one's node carries:
+    /// `Keys.mark` by row, or `Keys.datum` when the data supplied keys. Only `GeomPoint` can honour
+    /// it, because `Markers` is the only node in this file that batches N data points into one; a
+    /// `Path` is one shape, not a batch of marks, and splitting it in three would change the joins
+    /// between the pieces rather than name one of them.
     ///
     /// `compile` and `compileSubset` are this function with one or both of them absent. They
-    /// are two names for one body rather than two bodies, which is the shape D72 arrived at the
-    /// hard way in `Figure.fs`.
-    let compileFor
+    /// are two names for one body rather than two bodies, which is the shape `Figure.fs`
+    /// arrived at the hard way.
+    let internal compileFor
         (address: ((int -> Key) * int[]) option)
         (indices: int[] option)
         (coord: Coord)
@@ -1549,10 +1548,10 @@ module Geom =
             compileWith address spacing (Some ix) coord plotSize st geom (ix |> Array.map (fun i -> all.[i]))
 
     /// A whole layer, nothing addressed. The path every static figure takes.
-    let compile (coord: Coord) (plotSize: Extent<px>) (st: GeomStyle) (geom: GeomOf<nd>) (pts: Vec2<nd>[]) : Node =
+    let internal compile (coord: Coord) (plotSize: Extent<px>) (st: GeomStyle) (geom: GeomOf<nd>) (pts: Vec2<nd>[]) : Node =
         compileFor None None coord plotSize st geom pts
 
-    /// D46 — **one channel batch of a layer**: the points named by `indices`, drawn with
+    /// **One channel batch of a layer**: the points named by `indices`, drawn with
     /// everything that belongs to the *layer* still taken from the layer.
     ///
     /// Only bar width is such a thing today, and it is enough to justify the second entry
@@ -1560,7 +1559,7 @@ module Geom =
     /// the gaps between its own two bars as the data's rhythm, so the bars would come out
     /// twice as wide as an uncoloured chart's. The geometry a channel changes is the paint,
     /// not the layout.
-    let compileSubset
+    let internal compileSubset
         (coord: Coord)
         (plotSize: Extent<px>)
         (st: GeomStyle)
@@ -1571,7 +1570,7 @@ module Geom =
         compileFor None (Some indices) coord plotSize st geom all
 
     /// The legend swatch that matches a geom. Derived, never chosen separately.
-    let legendMark (geom: GeomOf<'p>) (st: GeomStyle) : LegendMark =
+    let internal legendMark (geom: GeomOf<'p>) (st: GeomStyle) : LegendMark =
         match geom with
         | GeomLine -> LegendLine st.Dash
         | GeomPoint -> LegendMarker st.Shape

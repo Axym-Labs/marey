@@ -9,22 +9,14 @@ open System.Text
 open System.Text.RegularExpressions
 
 // ======================================================================================
-// D79 — MATHEMATICAL TYPESETTING, BY THE DOOR §10 LEFT OPEN.
+// MATHEMATICAL TYPESETTING, BY SHELLING OUT.
 //
-// §10: *"A maths visualization library that cannot set `\frac{\partial \vec{E}}{\partial t}` is
-// not a maths visualization library."* It gives three options and calls the third the right
-// answer and a multi-month subproject; M6 is where that lands. The recommendation for now is
-// "ship (1) as an opt-in package and (2) automatically on the web backend at M3", and D79 found
-// the contradiction in that: **M3 has no web backend.** §14 puts the Fable backend at M4 and
-// both previous plans restate it, so §14's M3 line promised MathJax on a target that does not
-// exist for another milestone.
-//
-// D79 took door 3: ship option 1 now. It needs no web backend, it reads the `TextRun.Tex` field
-// D32 added at M1 for exactly this, and the machinery was already in this repository's test
-// suite — M1's gate has compiled every golden `.tex` through `pdflatex` since the TikZ backend
-// shipped. §14's M3 line is corrected in this phase rather than in the documents sweep, because
-// a roadmap line that outlives the decision that changed it is how the next reader gets it
-// wrong.
+// *"A maths visualization library that cannot set `\frac{\partial \vec{E}}{\partial t}` is
+// not a maths visualization library."* There are three routes: shell out to LaTeX, render on a
+// web page with MathJax, or lay out OpenType MATH natively, which is the right answer and a
+// multi-month subproject. This takes the first. It needs no web backend, it reads the
+// `TextRun.Tex` field that exists for exactly this, and the machinery was already in this
+// repository's test suite, which compiles every golden `.tex` through `pdflatex`.
 //
 // ---------------------------------------------------------------------------------------
 // WHAT IT PRODUCES, AND WHY THAT IS THE WHOLE POINT
@@ -34,26 +26,26 @@ open System.Text.RegularExpressions
 // same shape as `Degrade.forCaps`: it walks a `Node`, and every `Text` run carrying a `Tex` form
 // becomes a `Path` of filled outlines. After it, the formula is ordinary geometry — so the SVG
 // backend, the TikZ backend and the Skia backend all draw it, unchanged, with no capability flag
-// between them and no second implementation. That is what option 1 buys over option 2, and it is
-// why the pass lives here rather than inside a backend.
+// between them and no second implementation. That is what outlines buy over a renderer on the page,
+// and it is why the pass lives here rather than inside a backend.
 //
 // It also means a figure is never *worse* for the package being absent. A run keeps its plain
-// `Text` — `TextRun.Text` is always set, which is D32's rule and the reason this is possible —
+// `Text` — `TextRun.Text` is always set, which is the reason this is possible —
 // so a missing TeX installation costs the typesetting and nothing else.
 //
-// ---------------------------------------------------------------------------------------
-// TWO TOOLS, RESOLVED SEPARATELY (D75'S SHAPE, THIRD TIME)
+// --------------------------------------------------------------------------------------- TWO
+// TOOLS, RESOLVED SEPARATELY
 // ---------------------------------------------------------------------------------------
 //
 // `latex` writes DVI; `dvisvgm` turns DVI into paths. They are separate binaries from separate
 // packages and a container image can carry one without the other, so each is resolved on its own
 // and `report` says which is missing — the same argument `Video` makes for `ffmpeg` and
-// `ffprobe`, and the same one D62 makes for a font.
+// `ffprobe`, and the same one made for a font.
 //
-// **`latex`, not `pdflatex`.** DVI is what dvisvgm reads, and §10 says so: "Renders DVI → SVG
-// paths". Going through PDF would mean a second converter with its own opinions about fonts.
-// The test suite's own gate uses `pdflatex` and stays as it is: it is asking a different
-// question — does this document compile — and the answer must not depend on this package.
+// **`latex`, not `pdflatex`.** DVI is what dvisvgm reads. Going through PDF would mean a second
+// converter with its own opinions about fonts. The test suite's own gate uses `pdflatex` and stays
+// as it is: it is asking a different question — does this document compile — and the answer must
+// not depend on this package.
 //
 // ---------------------------------------------------------------------------------------
 // ONE ENGINE RUN PER SNIPPET, MEMOISED — AND THE ALTERNATIVE, WHICH WAS MEASURED
@@ -69,11 +61,11 @@ open System.Text.RegularExpressions
 // twelve. It does not span calls, because it cannot: it is a local in `sceneWith`, and a
 // process-wide one would be a mutable keyed on a preamble that two callers with different
 // preambles would silently share (`runOnce` says so). So typesetting an animation frame by frame
-// pays the figure's fifth of a second *per frame* — measured at M3 phase 9, 235 ms for the first
+// pays the figure's fifth of a second *per frame* — measured, 235 ms for the first
 // frame and 1060 ms for five. An earlier draft of this header claimed the opposite and the guide
 // repeated it; `TypesetTests` now pins the real number so the claim cannot drift back.
 //
-// **D96 — a cache that outlives a call, when the caller holds one.** `TexCache` is a value, not
+// **A cache that outlives a call, when the caller holds one.** `TexCache` is a value, not
 // a global: a film creates one and passes it to every frame's pass (`sceneCached`), and the first
 // frame pays for the figure's formulas while the rest pay nothing. It is keyed on everything that
 // changes an outline — the source, the preamble, the class options, the base size, and the two
@@ -95,8 +87,8 @@ open System.Text.RegularExpressions
 // The imprecision that buys is stated in `TexOptions.BaseSize`.
 // ======================================================================================
 
-/// The TeX toolchain, resolved and *reported* — D62's rule in its fourth currency, after a font,
-/// a native library and an encoder.
+/// The TeX toolchain, resolved and *reported* — the rule for a font, a native library and an
+/// encoder, in a fourth currency.
 [<NoComparison>]
 type TexReport =
     { /// The engine that writes DVI.
@@ -144,6 +136,7 @@ type TexOptions =
       /// of that, and a `latex` sitting at an interactive prompt never returns at all.
       TimeoutMs: int }
 
+/// The TeX pipeline's default options.
 [<RequireQualifiedAccess>]
 module TexOptions =
 
@@ -185,7 +178,7 @@ type TypesetResult =
       /// `TexOutline.Recoloured`.
       Recoloured: int }
 
-/// What an outline depends on: the snippet, and every option and tool that shapes it (D96).
+/// What an outline depends on: the snippet, and every option and tool that shapes it.
 /// The extent and the resolution are absent on purpose — they act when an outline is placed.
 [<Struct; CustomEquality; NoComparison>]
 type internal TexCacheKey =
@@ -210,7 +203,7 @@ type internal TexCacheKey =
     override k.GetHashCode() =
         HashCode.Combine(k.Source, k.Preamble, k.ClassOptions, k.BaseSize, k.Engine, k.Dvisvgm)
 
-/// **D96 — typeset outlines that outlive one call**, for a film whose every frame carries the
+/// **Typeset outlines that outlive one call**, for a film whose every frame carries the
 /// same formulas. Hold one, pass it to `Typeset.sceneCached` for each frame, and only the first
 /// frame runs the engine.
 ///
@@ -256,7 +249,7 @@ type TypesetOutcome =
     /// The tools ran. Read `Failed` — it may be empty, and usually is.
     | Typeset of TypesetResult
 
-/// **Mathematical typesetting, by shelling out.** §10's option 1, D79's door 3.
+/// **Mathematical typesetting, by shelling out.**
 ///
 /// The module is `Typeset` rather than `Tex` because `Marey.Core` already owns `Tex` — the
 /// escaping table that `Marey.Units` and the TikZ backend share. Two modules of one name in one
@@ -272,8 +265,7 @@ module Typeset =
     let private dvisvgmInstall =
         "dvisvgm — `apt install dvisvgm`, `brew install dvisvgm`, or it ships inside MiKTeX and MacTeX"
 
-    /// The engine. `latex` rather than `pdflatex`: dvisvgm reads DVI, and §10 says "DVI → SVG
-    /// paths".
+    /// The engine. `latex` rather than `pdflatex`: dvisvgm reads DVI.
     [<Literal>]
     let Engine = "latex"
 
@@ -339,7 +331,7 @@ module Typeset =
     ///
     /// Public because it is pure, and because a caller debugging a rejected snippet wants the
     /// document TeX actually saw rather than a description of it.
-    let document (options: TexOptions) (source: string) : string =
+    let internal document (options: TexOptions) (source: string) : string =
         String.Concat
             [| "\\documentclass["
                options.ClassOptions
@@ -381,7 +373,7 @@ module Typeset =
     ///
     /// Public and pure for the reason the whole of `TexOutline.fs` is: this is where a factor of
     /// 1.00375 can hide, and a gate should be able to hand it a log line.
-    let parseBox (log: string) : Result<TexBox, string> =
+    let internal parseBox (log: string) : Result<TexBox, string> =
         let m = boxPattern.Match log
 
         if not m.Success then
@@ -610,7 +602,7 @@ module Typeset =
             )
         else
 
-        // Keyed on the source and everything that shapes an outline (D96). The size is a scale
+        // Keyed on the source and everything that shapes an outline. The size is a scale
         // applied at placement, so one engine run serves every size the same formula appears at.
         let mutable engineRuns = 0
         let mutable typeset = 0
@@ -711,13 +703,13 @@ module Typeset =
     /// `sceneWith` with the tools this process resolved. One implementation of the pass,
     /// projected — the same rule `TexToolchain.compileWith` states in the test suite, and the
     /// reason the degrade gate below can be written at all: **a gate on a machine that has TeX
-    /// installed cannot otherwise check what happens on one that does not**, and gate 13 is
+    /// installed cannot otherwise check what happens on one that does not**, and a test is
     /// precisely that check. `Video.muxWith` exists for the same reason and was the precedent.
     let scene (options: TexOptions) (extent: Extent<px>) (node: Node) : TypesetOutcome =
         let tools = toolchain ()
         sceneWith tools.Engine tools.Dvisvgm options extent node
 
-    /// D96 — `scene` through a cache the caller holds, so a film's frames after the first run
+    /// `scene` through a cache the caller holds, so a film's frames after the first run
     /// no engine for the formulas the first one typeset. `EngineRuns` counts the runs this call
     /// caused; `TexCache.EngineRuns` counts them all.
     let sceneCached (cache: TexCache) (options: TexOptions) (extent: Extent<px>) (node: Node) : TypesetOutcome =
@@ -727,9 +719,9 @@ module Typeset =
     /// The scene to draw, whatever happened, and a line saying what happened.
     ///
     /// **Degrading is the documented behaviour, so it is a function rather than a pattern every
-    /// caller writes.** D62's shape a fourth time: the figure renders on a machine with no TeX,
-    /// and the difference is *reported* instead of being invisible. A caller who wants to fail
-    /// on a missing toolchain matches `scene`'s outcome instead — which is the point of there
+    /// caller writes.** Resolved and reported a fourth time: the figure renders on a machine with
+    /// no TeX, and the difference is *reported* instead of being invisible. A caller who wants to
+    /// fail on a missing toolchain matches `scene`'s outcome instead — which is the point of there
     /// being two entry points rather than one that guesses.
     let sceneOrPlain (options: TexOptions) (extent: Extent<px>) (node: Node) : Node * string =
         match scene options extent node with

@@ -41,7 +41,7 @@ let xs = Grid.linear -1.6<m> 1.6<m> 96
 let ys = Grid.linear -1.0<m> 1.0<m> 60
 
 let theme = Theme.initial
-let fieldUnit = U.div Derived.volt U.metre
+let fieldUnit = U.div U.volt U.metre
 
 let figureAt (t: float<s>) =
     let phi = Field.sampleScalar xs ys (potential t)
@@ -51,8 +51,8 @@ let figureAt (t: float<s>) =
     // The potential is singular at each charge, so the union of the frames' ranges is set by
     // whichever grid nodes land nearest one — ±5 V here — and the field around them is drawn in
     // the ramp's pale middle. A stated domain says what the colours should span instead.
-    Field.heatmapWith theme.Diverging true U.metre U.metre Derived.volt phi
-    |> Chart.withColorDomain Derived.volt -2.0<V> 2.0<V>
+    Field.heatmapWith theme.Diverging true U.metre U.metre U.volt phi
+    |> Chart.withColorDomain U.volt -2.0<V> 2.0<V>
     |> Chart.withColorLabel "φ"
     |> Chart.overlay (Field.contoursAt levels U.metre U.metre phi)
     |> Chart.overlay (Field.streamlinesWith 20.0<px> U.metre U.metre e)

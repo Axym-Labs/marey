@@ -1,4 +1,4 @@
-/// §7 / D70 / D71 — the animation algebra, the two clocks, and the easing catalogue.
+/// The animation algebra, the two clocks, and the easing catalogue.
 ///
 /// **Gate 5** ("overshoot survives, per `Interp` instance") and **gate 6** ("the algebra's laws,
 /// by FsCheck: monoid, applicative, `stretch` composition, `At` total") both live here, because
@@ -199,7 +199,7 @@ module Clock =
     /// answers at the first frame for every input rather than poisoning the picture.
     [<Fact>]
     let ``a zero-duration animation answers everywhere`` () =
-        let a = Anim.pure' 7.0
+        let a = Anim.constant 7.0
         Assert.Equal(7.0, a.At 0.0<s>, 15)
         Assert.Equal(7.0, a.At 5.0<s>, 15)
         Assert.Equal(7.0, a.At -5.0<s>, 15)
@@ -285,13 +285,13 @@ module Algebra =
 
         l.Duration = r.Duration && l.At t' = r.At t'
 
-    /// `pure'` is an exact left identity because `andThen` gives the earlier animation the
+    /// `constant` is an exact left identity because `andThen` gives the earlier animation the
     /// half-open interval `[0, d1)`: an animation of zero duration owns nothing, so it cannot
     /// cost `x` its first frame.
     [<Property>]
-    let ``pure' is a left identity`` (a: AnimSpec) (FiniteFloat v) (Seek t) =
+    let ``constant is a left identity`` (a: AnimSpec) (FiniteFloat v) (Seek t) =
         let x = animOf a
-        let l = Anim.andThen (Anim.pure' v) x
+        let l = Anim.andThen (Anim.constant v) x
         let t' = t * 1.0<s>
 
         l.Duration = x.Duration && l.At t' = x.At t'
@@ -302,9 +302,9 @@ module Algebra =
     /// mean special-casing zero durations, and the special case is undecidable when *both*
     /// components have zero duration.
     [<Property>]
-    let ``pure' is a right identity everywhere but the last instant`` (a: AnimSpec) (FiniteFloat v) (Seek t) =
+    let ``constant is a right identity everywhere but the last instant`` (a: AnimSpec) (FiniteFloat v) (Seek t) =
         let x = animOf a
-        let r = Anim.andThen x (Anim.pure' v)
+        let r = Anim.andThen x (Anim.constant v)
         let t' = max 0.0 t * 1.0<s>
 
         r.Duration = x.Duration
@@ -361,7 +361,7 @@ module Algebra =
     let ``applicative identity`` (a: AnimSpec) (Seek t) =
         let x = animOf a
         let t' = t * 1.0<s>
-        let l = ap (Anim.pure' id) x
+        let l = ap (Anim.constant id) x
 
         l.Duration = x.Duration && l.At t' = x.At t'
 
@@ -369,7 +369,7 @@ module Algebra =
     let ``applicative homomorphism`` (FiniteFloat k) (FiniteFloat v) (Seek t) =
         let f (x: float) = x + k
         let t' = t * 1.0<s>
-        let l = ap (Anim.pure' f) (Anim.pure' v)
+        let l = ap (Anim.constant f) (Anim.constant v)
 
         l.Duration = 0.0<s> && l.At t' = f v
 
@@ -377,8 +377,8 @@ module Algebra =
     let ``applicative interchange`` (a: AnimSpec) (FiniteFloat y) (Seek t) =
         let u = Anim.map (fun k -> (fun (x: float) -> k + x)) (animOf a)
         let t' = t * 1.0<s>
-        let l = ap u (Anim.pure' y)
-        let r = ap (Anim.pure' (fun (g: float -> float) -> g y)) u
+        let l = ap u (Anim.constant y)
+        let r = ap (Anim.constant (fun (g: float -> float) -> g y)) u
 
         l.Duration = r.Duration && l.At t' = r.At t'
 
@@ -390,7 +390,7 @@ module Algebra =
         let t' = t * 1.0<s>
 
         let compose =
-            Anim.pure' (fun (g: float -> float) (h: float -> float) (x: float) -> g (h x))
+            Anim.constant (fun (g: float -> float) (h: float -> float) (x: float) -> g (h x))
 
         let l = ap (ap (ap compose u) v) w
         let r = ap u (ap v w)
@@ -444,7 +444,7 @@ module Algebra =
     [<Fact>]
     let ``stretch refuses a factor that is not a speed`` () =
         for k in [ 0.0; -2.0; Double.PositiveInfinity; Double.NaN ] do
-            Assert.Throws<ArgumentException>(fun () -> Anim.stretch k (Anim.pure' 1.0) |> ignore)
+            Assert.Throws<ArgumentException>(fun () -> Anim.stretch k (Anim.constant 1.0) |> ignore)
             |> ignore
 
     /// Easing twice is easing once with the composed curve — note the order: the outer easing

@@ -24,7 +24,7 @@ open Verso.Abstractions
 // would be able to fix from the outside, and it is not a coin we should be flipping.
 //
 // **And `Figure` could not have the member anyway.** `ToHtml()` on `Figure` would put HTML
-// rendering inside `Marey.Plot`, which would need the SVG backend to do it — and D21 says
+// rendering inside `Marey.Plot`, which would need the SVG backend to do it — and
 // `Marey.Plot` does not reference a backend. `Color[]` settles it beyond argument: an array
 // cannot be given a member at all.
 //
@@ -94,12 +94,12 @@ type MareyFormatter() =
             && Bridge.canRender value
 
         member _.FormatAsync(value: obj, context: IFormatterContext) =
-            // M4.5 — a live figure is a page, live over a channel when the host offers one and
+            // A live figure is a page, live over a channel when the host offers one and
             // static otherwise. See `Live.fs`.
             match Live.format value context with
             | Some output -> output
             | None ->
-            // Step F (D160) — a figure drawn on a canvas is a page in a frame, because an `Html`
+            // Step F — a figure drawn on a canvas is a page in a frame, because an `Html`
             // output is inserted as markup and its script would never run.
             match Bridge.document context.MaxWidth context.MaxHeight value with
             | Some doc -> Task.FromResult(CellOutput.Widget doc)

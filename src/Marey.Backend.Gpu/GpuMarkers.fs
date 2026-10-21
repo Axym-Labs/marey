@@ -4,19 +4,19 @@ open System
 open Silk.NET.OpenGL
 open SkiaSharp
 
-/// D119 — `Markers` as one instanced draw, the case §5.1's batch and finding 10 were about: Skia
+/// `Markers` as one instanced draw, the case batching is about: Skia
 /// builds and issues a path per mark on the CPU whichever surface it draws on, 212 ms for 10⁵,
 /// while one instanced draw of 10⁶ is about 2.5 ms.
 ///
 /// **The same marks as `SkiaPainter` draws.** Each shape is the outline `markerOutline` builds, as
 /// a signed distance in device pixels, and the polygons are the intersections of their edges'
 /// half-planes, so a stroke's corners are mitered as Skia's default join miters them. Each mark is
-/// filled and then stroked and composited on its own (D132), in one pass: `S + F·(1 − S.a)` over
+/// filled and then stroked and composited on its own, in one pass: `S + F·(1 − S.a)` over
 /// the destination is the same as filling and then stroking it. A rectangular clip is applied in
 /// the shader with an antialiased edge, as Skia's clip has.
 ///
 /// Coordinates reach the GPU as `float32` in device pixels, after the panel transform has been
-/// applied in `float` (D116, §15): a coordinate on a 4000-pixel surface keeps a sub-pixel of
+/// applied in `float`: a coordinate on a 4000-pixel surface keeps a sub-pixel of
 /// precision to spare.
 [<Sealed>]
 type internal MarkerDrawer(gl: GL) =

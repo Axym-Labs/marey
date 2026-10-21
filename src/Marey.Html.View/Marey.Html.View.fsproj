@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- Step F, D157: the script a notebook page draws a scene with. Compiled by Fable and bundled
+    <!-- The script a notebook page draws a scene with. Compiled by Fable and bundled
          by esbuild into src/Marey.Html/view/marey-view.js (tools/view/build.sh), which is committed
          and embedded in Marey.Html; CI rebuilds it and fails on a difference. Not packed, and not
          in the solution: .NET has nothing to draw on, and a contributor's build needs no Node. -->

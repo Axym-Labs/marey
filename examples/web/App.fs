@@ -46,7 +46,7 @@ let cloud (n: int) : Figure =
     let x = Array.init n (fun i -> sqrt (-2.0 * log (1.0 - u.[2 * i])) * cos (2.0 * Math.PI * u.[2 * i + 1]) * 1.0<m>)
     let y = Array.init n (fun i -> (sqrt (-2.0 * log (1.0 - u.[2 * i])) * sin (2.0 * Math.PI * u.[2 * i + 1]) + 0.3 * float x.[i]) * 1.0<V>)
 
-    Chart.scatter U.metre Derived.volt x y
+    Chart.scatter U.metre U.volt x y
     |> Chart.withTitle (sprintf "%s points" (n.ToString "N0"))
 
 let private canvas = Canvas.byId "plot"
@@ -62,7 +62,7 @@ let private draw (m: WebMeasurer) =
     let scene = Chart.toSceneWith m.Measurer extent fig
     CanvasBackend.draw m.Measurer ctx extent scene
 
-    let took = Num.at 1 (now () - started)
+    let took = Num.upTo 1 (now () - started)
 
     setText
         status
@@ -94,8 +94,8 @@ let private drawCloud (m: WebMeasurer) =
         cloudStatus
         (sprintf
             "Compiled in %s ms, drawn in %s ms, WebGL2 markers %s."
-            (Num.at 1 (compiled - started))
-            (Num.at 1 (drawn - compiled))
+            (Num.upTo 1 (compiled - started))
+            (Num.upTo 1 (drawn - compiled))
             (if isChecked webgl then "on" else "off"))
 
 // ---- A simulation in the page (M5.5) ---------------------------------------------------------

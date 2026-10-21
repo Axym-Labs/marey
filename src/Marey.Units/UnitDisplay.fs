@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §2.2 — the four typographies the library can emit for a unit.
+/// The four typographies the library can emit for a unit.
 ///
 /// "The TikZ backend emits `\qty{}{\kilogram\metre\per\second\squared}` for siunitx; the SVG
 /// backend emits `kg·m·s⁻²`. Same `Dim`, different renderer. Get this right once and every
@@ -14,16 +14,16 @@ type UnitStyle =
     | Ascii
     /// `\mathrm{kg}\,\mathrm{m}\,\mathrm{s}^{-2}` — plain LaTeX math, no packages required.
     | Latex
-    /// `\qty{}{\kilogram\metre\per\second\squared}` — siunitx macros, so the figure inherits
-    /// the document's unit formatting. §6 calls this "a killer feature almost nobody offers",
-    /// and it is why the registry stores a macro rather than a glyph.
+    /// `\qty{}{\kilogram\metre\per\second\squared}` — siunitx macros, so the figure inherits the
+    /// document's unit formatting, which almost no plotting library offers, and it is why the
+    /// registry stores a macro rather than a glyph.
     | Siunitx
 
-/// §2.2 / §12.6 — unit rendering, driven **from `Dim`**.
+/// Unit rendering, driven **from `Dim`**.
 ///
-/// The rule this module exists to enforce, quoting §12.6 in full: *"`mul force metre` produced
-/// the symbol `kg·m/s/s·m` for what is `J`. The `Dim` was correct (`L=2, M=1, T=-2`); only the
-/// string was wrong. Never compose display strings, always canonicalise from `Dim`."*
+/// The rule this module exists to enforce: `mul force metre` once produced the symbol
+/// `kg·m/s/s·m` for what is `J`. The `Dim` was correct (`L=2, M=1, T=-2`); only the string was
+/// wrong. **Never compose display strings, always canonicalise from `Dim`.**
 ///
 /// Every public entry point here therefore takes a `Dim` (or a witness, from which it takes the
 /// `Dim`) and never a symbol — with exactly one documented exception, `renderSymbol`, for units
@@ -36,7 +36,7 @@ module UnitDisplay =
     let private intText (n: int) = n.ToString(invariant)
 
     /// Unicode superscript for an integer exponent: `-2` becomes `⁻²`. See `Num.superscript`.
-    let superscript (n: int) = Num.superscript n
+    let internal superscript (n: int) = Num.superscript n
 
     // ---- Spelling tables --------------------------------------------------------------
 
@@ -130,7 +130,7 @@ module UnitDisplay =
         | Siunitx -> p.Siunitx
 
     /// siunitx spells exponents as words, and only positive ones: the sign is carried by
-    /// `\per`. `\per\second\squared` is s⁻², which is what §2.2's worked example relies on.
+    /// `\per`. `\per\second\squared` is s⁻².
     let private siunitxPower (e: int) =
         match e with
         | 1 -> ""
@@ -148,8 +148,7 @@ module UnitDisplay =
         | Siunitx -> body + siunitxPower e
 
     /// The base-unit decomposition, unwrapped. Iteration order is `Dim.basis` — kg, m, s, A, K,
-    /// mol, cd — which is both SI's canonical order and, not coincidentally, the order §2.2's
-    /// siunitx example is written in.
+    /// mol, cd — which is SI's canonical order and the order siunitx expects.
     /// `spelling` is how a factor's symbol becomes typography: `baseSymbol` for the seven-base
     /// decomposition of a `Dim`, `factorSpelling registry` for a caller-supplied composition.
     /// The layout is identical either way, which is the reason this takes a function rather
@@ -203,16 +202,22 @@ module UnitDisplay =
     /// The unit body, in preference order: a registered name for the whole dimension, then the
     /// caller's own factorisation, then the seven-base decomposition.
     ///
-    /// The middle rung is the one D18 does not cover and does not conflict with. D18 refuses to
-    /// *infer* `J·K⁻¹` from a bare `Dim` because inference is ambiguous and non-confluent —
-    /// the same vector is `J/K` and `N·m/K`, and picking one is a guess. `factors` is not a
-    /// guess: it is what the caller wrote. The registry still wins, so `mul newton metre`
-    /// remains `J` rather than becoming `N·m`.
-    /// The registry's name for a dimension — unless the factorisation carries an angle, which
-    /// the dimension cannot see (D98). `rad·s⁻¹` and `Hz` share `s⁻¹`; naming the first by the
-    /// second is a factor of 2π said confidently.
+    /// The middle rung is one the library can take without inferring a factorisation, which it
+    /// refuses to do: it will not *infer* `J·K⁻¹` from a bare `Dim` because inference is ambiguous
+    /// and non-confluent — the same vector is `J/K` and `N·m/K`, and picking one is a guess.
+    /// `factors` is not a guess: it is what the caller wrote. The registry still wins, so `mul
+    /// newton metre` remains `J` rather than becoming `N·m`. The registry's name for a dimension —
+    /// unless the factorisation carries an angle, which the dimension cannot see. `rad·s⁻¹` and
+    /// `Hz` share `s⁻¹`; naming the first by the second is a factor of 2π said confidently.
+    /// The registry's name for a dimension, unless the unit says otherwise: an angle in its
+    /// factors, or a unit written as the reciprocal of one base unit. `U.perSecond` is a rate —
+    /// a vorticity, a decay constant, an eigenvalue — and reads `s⁻¹`; a frequency is declared
+    /// as `U.hertz` and reads `Hz`, though the two share a dimension.
     let private canonicalFor (registry: UnitRegistry) (factors: (string * int) list) (dim: Dim) =
-        if U.angleExponentOf "" factors <> 0 then None else UnitRegistry.tryCanonical registry dim
+        match factors with
+        | _ when U.angleExponentOf "" factors <> 0 -> None
+        | [ (sym, -1) ] when Dim.basis |> List.exists (fun (b, _) -> b = sym) -> None
+        | _ -> UnitRegistry.tryCanonical registry dim
 
     let private bodyOfWith style (registry: UnitRegistry) (factors: (string * int) list) (dim: Dim) =
         match canonicalFor registry factors dim with
@@ -225,7 +230,7 @@ module UnitDisplay =
 
     // ---- Public rendering -------------------------------------------------------------
 
-    /// §2.2's `render`. Canonicalises through the registry, falls back to the normalised
+    /// Render a dimension. Canonicalises through the registry, falls back to the normalised
     /// exponent form.
     ///
     /// A dimensionless `Dim` renders as the **empty string**, not `"1"`. Core's `Dim.show`
@@ -241,7 +246,7 @@ module UnitDisplay =
     /// The base-unit form, ignoring the registry. Force renders as `kg·m·s⁻²` rather than `N`.
     ///
     /// Worth having as a first-class function rather than "call `render` with an empty
-    /// registry": it is what §2.2's own siunitx example shows, it is what a dimensional-analysis
+    /// registry": it is the form siunitx examples show, it is what a dimensional-analysis
     /// readout wants, and it is the form a reader falls back on when a canonical symbol is
     /// unfamiliar.
     let renderExpanded (style: UnitStyle) (dim: Dim) =
@@ -265,7 +270,7 @@ module UnitDisplay =
     /// falls back to an explicit `10ⁿ` multiplier instead of silently dropping the prefix. A
     /// dropped prefix would leave rescaled tick values under an unrescaled unit, which is the
     /// worst possible failure mode: a plot that is quietly wrong by nine orders of magnitude.
-    let renderPrefixedWith
+    let internal renderPrefixedWith
         (style: UnitStyle)
         (registry: UnitRegistry)
         (factors: (string * int) list)
@@ -279,59 +284,81 @@ module UnitDisplay =
             // unprefixed field axis read `kg·m·s⁻³·A⁻¹` while a prefixed one read `MV·m⁻¹`.
             wrapQty style (bodyOfWith style registry factors dim)
         else
-            let target =
-                match canonicalFor registry factors dim with
-                | Some us -> Some(p, us)
-                | None ->
-                    match Dim.exponents dim with
-                    | [ ("kg", 1) ] -> Prefix.shift 3 p |> Option.map (fun pg -> pg, gram)
-                    | [ (sym, 1) ] -> Some(p, baseSymbol sym)
-                    | _ -> None
+            // A reciprocal takes the inverse prefix on its unit: 10⁹ m⁻¹ is nm⁻¹, which is
+            // (10⁻⁹ m)⁻¹, because SI reads a prefix before the exponent. That is how a
+            // wavenumber is written. Only a sub-unit is glued: 10⁻³ s⁻¹ keeps its multiplier
+            // rather than reading `ks⁻¹`. The kilogram keeps it too, for the gram shift.
+            let reciprocal =
+                match canonicalFor registry factors dim, Dim.exponents dim, Prefix.ofExponent -p.Exponent with
+                | None, [ (sym, -1) ], Some inverse when sym <> "kg" && inverse.Exponent < 0 ->
+                    let us = baseSymbol sym
 
-            match target with
-            | Some(pfx, us) -> wrapQty style (prefixText style pfx + symText style us)
-            | None when not (List.isEmpty factors) ->
-                // A composed unit takes its prefix on the leading factor: `MV·m⁻¹` is mega on
-                // the volt, and that is how it is read aloud and how siunitx spells it.
-                //
-                // Only when that factor has exponent exactly 1, and only when it is not the
-                // kilogram. `M` on an `m²` factor would mean 10⁶ m² where the rescaling applied
-                // 10⁶ to the value — wrong by a squared decade — and the kilogram needs the
-                // gram shift the branch above performs. Both fall through to the honest
-                // `10ⁿ·` multiplier rather than guessing.
-                match factors with
-                | (sym, 1) :: rest when sym <> "kg" ->
-                    let head = prefixText style p + symText style (factorSpelling registry sym)
+                    let glued =
+                        UnitSymbol.create
+                            (inverse.Symbol + us.Unicode)
+                            (inverse.Ascii + us.Ascii)
+                            (inverse.Latex + us.LatexCore)
+                            (inverse.Siunitx + us.Siunitx)
 
-                    let body =
-                        if List.isEmpty rest then
-                            head
-                        else
-                            let tail = expandedBodyWith (factorSpelling registry) style rest
+                    Some(wrapQty style (expandedBodyWith (fun _ -> glued) style [ (sym, -1) ]))
+                | _ -> None
 
-                            match style with
-                            | Siunitx -> head + tail
-                            | Ascii -> head + "." + tail
-                            | Latex -> head + "\\," + tail
-                            | _ -> head + "·" + tail
+            match reciprocal with
+            | Some text -> text
+            | None ->
+                let target =
+                    match canonicalFor registry factors dim with
+                    | Some us -> Some(p, us)
+                    | None ->
+                        match Dim.exponents dim with
+                        | [ ("kg", 1) ] -> Prefix.shift 3 p |> Option.map (fun pg -> pg, gram)
+                        | [ (sym, 1) ] -> Some(p, baseSymbol sym)
+                        | _ -> None
 
-                    wrapQty style body
-                | _ -> multiplier style p.Exponent (bodyOfWith style registry factors dim)
-            | None -> multiplier style p.Exponent (bodyOf style registry dim)
+                match target with
+                | Some(pfx, us) -> wrapQty style (prefixText style pfx + symText style us)
+                | None when not (List.isEmpty factors) ->
+                    // A composed unit takes its prefix on the leading factor: `MV·m⁻¹` is mega on
+                    // the volt, and that is how it is read aloud and how siunitx spells it.
+                    //
+                    // Only when that factor has exponent exactly 1, and only when it is not the
+                    // kilogram. `M` on an `m²` factor would mean 10⁶ m² where the rescaling applied
+                    // 10⁶ to the value — wrong by a squared decade — and the kilogram needs the
+                    // gram shift the branch above performs. Both fall through to the honest
+                    // `10ⁿ·` multiplier rather than guessing.
+                    match factors with
+                    | (sym, 1) :: rest when sym <> "kg" ->
+                        let head = prefixText style p + symText style (factorSpelling registry sym)
+
+                        let body =
+                            if List.isEmpty rest then
+                                head
+                            else
+                                let tail = expandedBodyWith (factorSpelling registry) style rest
+
+                                match style with
+                                | Siunitx -> head + tail
+                                | Ascii -> head + "." + tail
+                                | Latex -> head + "\\," + tail
+                                | _ -> head + "·" + tail
+
+                        wrapQty style body
+                    | _ -> multiplier style p.Exponent (bodyOfWith style registry factors dim)
+                | None -> multiplier style p.Exponent (bodyOf style registry dim)
 
     let renderPrefixed (style: UnitStyle) (registry: UnitRegistry) (p: Prefix) (dim: Dim) =
         renderPrefixedWith style registry [] p dim
 
-    /// **The documented exception to §12.6.** Renders a unit by its *declared* symbol rather
-    /// than from its dimension.
+    /// **The documented exception to canonicalising from `Dim`.** Renders a unit by its *declared*
+    /// symbol rather than from its dimension.
     ///
-    /// §12.6 forbids composing display strings, and this does not compose anything: it takes a
+    /// Composing display strings is forbidden, and this does not compose anything: it takes a
     /// symbol that a witness author wrote down deliberately and typesets it. It exists because
     /// `Dim` is genuinely insufficient for one class of unit — eV, cal, bar, min, Å and °C all
     /// share a dimension with an SI unit of a different size, so canonicalising from `Dim`
     /// would name the wrong unit and, worse, name it confidently. `unitText` decides which of
     /// the two paths applies, on evidence from the witness rather than by inspecting strings.
-    let renderSymbol (style: UnitStyle) (p: Prefix) (symbol: string) =
+    let internal renderSymbol (style: UnitStyle) (p: Prefix) (symbol: string) =
         if System.String.IsNullOrEmpty symbol then
             ""
         else
@@ -342,7 +369,7 @@ module UnitDisplay =
     /// an unlabelled angle axis is a regression from a labelled one. Same policy-table pattern
     /// as `Prefix.nonMetric`, and same justification: this is a fact about units, not a display
     /// string being assembled.
-    let private angleSymbols = set [ Derived.radian.Symbol; Derived.steradian.Symbol ]
+    let private angleSymbols = set [ U.radian.Symbol; U.steradian.Symbol ]
 
     /// The unit text for an *axis*, from a witness plus a chosen prefix. This is the function
     /// that decides between the two rendering paths, and it decides on witness metadata alone:
@@ -351,15 +378,15 @@ module UnitDisplay =
     ///   *different* unit of the same dimension. Use the declared symbol. This is what makes an
     ///   electronvolt axis say `keV` rather than `kJ`.
     /// * dimensionless — nothing to render, unless it is an angle (see `angleSymbols`).
-    /// * otherwise — SI-coherent, so the `Dim` **is** the unit, and §12.6's rule applies with
+    /// * otherwise — SI-coherent, so the `Dim` **is** the unit, and the rule applies with
     ///   full force. Anything built by `U.mul`/`U.div` out of coherent parts lands here, which
     ///   is precisely the case where the composed `Symbol` is junk.
     /// The same rendering decision, stated over the *erased* witness metadata rather than a
-    /// `U<'u>`. See `Prefix.selectForErased` for why this pair exists: §15's reloaded figure has
+    /// `U<'u>`. See `Prefix.selectForErased` for why this pair exists: a reloaded figure has
     /// only `IScaleErased`, and the `ToSI <> 1.0` test is what makes an electronvolt axis read
-    /// `keV` rather than `kJ` (D16). Sharing one implementation is what keeps the erased path
+    /// `keV` rather than `kJ`. Sharing one implementation is what keeps the erased path
     /// and the measured path from disagreeing.
-    let unitTextErasedWith
+    let internal unitTextErasedWith
         (style: UnitStyle)
         (registry: UnitRegistry)
         (p: Prefix)
@@ -381,7 +408,7 @@ module UnitDisplay =
 
     /// The factorless form, kept because most callers have no witness to hand — a bare
     /// `Symbol`/`Dim`/`ToSI` triple still renders exactly as it did before `U.Factors` existed.
-    let unitTextErased
+    let internal unitTextErased
         (style: UnitStyle)
         (registry: UnitRegistry)
         (p: Prefix)
@@ -397,7 +424,7 @@ module UnitDisplay =
 
     /// A number already written, and the unit text it was written in: `2 kV·m⁻¹`, or the number
     /// alone when the unit has no text. `quantityIn` ends here, and so does a live figure's
-    /// readout (D105), which has its unit text from the axis rather than from a witness.
+    /// readout, which has its unit text from the axis rather than from a witness.
     let withUnit (unitText: string) (shown: string) : string =
         if unitText = "" then shown else shown + " " + unitText
 
@@ -415,8 +442,8 @@ module UnitDisplay =
 
     /// A value and its unit as one string: `2 kV·m⁻¹`, `300 K`, `0 rad`.
     ///
-    /// The one place a single quantity is written for a reader. The quiver key (D87) and
-    /// `FixedPoint.describe` (D92) each had a private copy, and the two already disagreed on the
+    /// The one place a single quantity is written for a reader. The quiver key and
+    /// `FixedPoint.describe` each had a private copy, and the two already disagreed on the
     /// prefix; a control's label would have made a third. What the callers legitimately differ in
     /// is an argument here rather than a reason to copy it: `prefixed` chooses the prefix the value
     /// would be ticked in (`Prefix.selectForUnit`) or none, and `number` writes the scaled value,

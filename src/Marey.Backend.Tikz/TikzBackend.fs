@@ -6,7 +6,7 @@ open System.Text
 // ======================================================================================
 // THE TIKZ BACKEND.
 //
-// §6: "Emits `\begin{tikzpicture}`. Figures that inherit the document's fonts and `siunitx`
+// "Emits `\begin{tikzpicture}`. Figures that inherit the document's fonts and `siunitx`
 // units. For a physics/maths audience this is a killer feature almost nobody offers, and it is
 // *cheap* — it's a text emitter."
 //
@@ -24,7 +24,7 @@ open System.Text
 // `nd`**, so this backend's root transform is a pure scale into points and nothing is inverted.
 //
 // That is a smaller change than it sounds and a bigger one than it looks. Smaller: one matrix.
-// Bigger: it removes the mirror from the text-rotation problem. D13 has the SVG backend negating
+// Bigger: it removes the mirror from the text-rotation problem. The SVG backend negates
 // a run's own rotation when `det(CTM) < 0`, because the y flip alone mirrors and a mirror reverses
 // the sense of a rotation. Here the determinant is positive, TikZ's `rotate=` is
 // counter-clockwise-positive in a y-up space, and `TextRun.Rotation` in `rad` converted to degrees
@@ -38,10 +38,10 @@ open System.Text
 // 2. GEOMETRY IS PRE-TRANSFORMED; NO PICTURE-LEVEL `scale` IS EMITTED.
 // ---------------------------------------------------------------------------------------
 //
-// D15's decision, for a stronger reason. TikZ's `scale=` multiplies coordinates but leaves
-// `line width`, `dash pattern` and node font sizes alone. Since Scene.fs puts stroke widths and
-// marker sizes in **px** precisely so a hairline stays a hairline at any output size, combining a
-// picture scale with them produces widths that are right only by accident and marker sizes that
+// The SVG backend's decision, for a stronger reason. TikZ's `scale=` multiplies coordinates but
+// leaves `line width`, `dash pattern` and node font sizes alone. Since Scene.fs puts stroke widths
+// and marker sizes in **px** precisely so a hairline stays a hairline at any output size, combining
+// a picture scale with them produces widths that are right only by accident and marker sizes that
 // are right only at scale 1.
 //
 // So coordinates are baked into device points and written out as `bp`. A bp is a bp everywhere in
@@ -76,16 +76,18 @@ type TikzFontMode =
     /// Emit `\fontsize{s}{1.2s}\selectfont` so the size layout assumed is the size TeX uses, and
     /// let the *family* come from the document. The honest middle, and the default.
     ///
-    /// §6 sells this backend on figures that "inherit the document's fonts", and taken literally —
-    /// emit no font information at all — the figure is typeset in a face whose metrics have nothing
-    /// to do with the `ApproxTextMeasurer` widths that the measure–arrange pass and D23's collision
-    /// ladder were computed against. Labels would collide in the PDF while layout believed they fit.
+    /// This backend's figures "inherit the document's fonts", and taken literally — emit no font
+    /// information at all — the figure is typeset in a face whose metrics have nothing to do with
+    /// the `ApproxTextMeasurer` widths that the measure–arrange pass and the tick-label collision
+    /// ladder were computed against. Labels would collide in the PDF while layout believed they
+    /// fit.
     | PinSize
     /// Emit no font information whatsoever: the figure takes the document's size as well as its
     /// family. Maximum integration, and the caller accepts that layout was computed against a
     /// different size than the one used.
     | InheritFont
 
+/// The TikZ backend's options: resolution, font handling, comments and what the document carries.
 [<NoComparison>]
 type TikzOptions =
     { /// Resolution used to turn the px-denominated parts of the IR — stroke widths, marker
@@ -94,8 +96,8 @@ type TikzOptions =
       Dpi: float<px / mm>
       FontMode: TikzFontMode
       /// Emit `%` comments for `Keyed` and `Annotated` nodes. On by default: it costs a line,
-      /// keeps a golden diff readable, and is how §5.3's structure survives into a format with no
-      /// `aria-label`.
+      /// keeps a golden diff readable, and is how the semantic structure survives into a format
+      /// with no `aria-label`.
       Comments: bool }
 
     static member Default =
@@ -142,7 +144,7 @@ type TikzBackend(?options: TikzOptions) =
         if finished then
             invalidOp "Marey.TikzBackend: Draw cannot be called after Finish; call Begin again to start a new document."
 
-    /// px → bp, for the parts of the IR that are in device units (D12).
+    /// px → bp, for the parts of the IR that are in device units.
     let bp (v: float<px>) = float (Space.ptOfPx opts.Dpi v)
 
     // ---- geometry --------------------------------------------------------------------
@@ -279,7 +281,7 @@ type TikzBackend(?options: TikzOptions) =
 
     // ---- markers ---------------------------------------------------------------------
 
-    // D33 / §5.1. One macro per distinct (shape, size), then one call per point inside a scope
+    // One macro per distinct (shape, size), then one call per point inside a scope
     // that carries the batch's paint. The direct mirror of SVG's `<defs>` + `<use>` + `<g>`.
     //
     // `\def` rather than `\providecommand`, and this matters: `\providecommand` does *not*
@@ -384,8 +386,8 @@ type TikzBackend(?options: TikzOptions) =
 
     /// The `font=` value.
     ///
-    /// **No font family is ever emitted, and that is the feature.** §6 sells this backend on
-    /// figures that "inherit the document's fonts", and D35 states the split: the *size* is pinned
+    /// **No font family is ever emitted, and that is the feature.** This backend's figures
+    /// "inherit the document's fonts", split this way: the *size* is pinned
     /// and the *family* is inherited. Emitting `\rmfamily` because a `Theme` happens to name a
     /// serif stack would override the host document — a figure dropped into a sans-serif paper
     /// would come out in the wrong face, and the one thing this backend exists to do would be the
@@ -400,7 +402,7 @@ type TikzBackend(?options: TikzOptions) =
     /// bold title stays bold in any document, which is what a theme asking for bold means.
     ///
     /// `FontSpec.Size` goes to `\fontsize` **unconverted**, deliberately rather than as an
-    /// oversight about D28: TeX's `pt` is 1/72.27 inch against Core's 1/72, but a font size is a
+    /// oversight about units: TeX's `pt` is 1/72.27 inch against Core's 1/72, but a font size is a
     /// typographic request handed to the typesetter, not a length being drawn. The consequence is
     /// that TeX sets the text 0.37% smaller than layout measured it — the safe direction, since a
     /// label narrower than measured cannot collide with its neighbour.
@@ -473,8 +475,8 @@ type TikzBackend(?options: TikzOptions) =
 
         | Raster r -> drawRaster ctm depth r
 
-        // A Group is §5's identity-carrying container and has no rendering effect, so it emits
-        // nothing. Every scope in the output therefore carries meaning.
+        // A Group is the scene's identity-carrying container and has no rendering effect, so it
+        // emits nothing. Every scope in the output therefore carries meaning.
         | Group ns ->
             for child in ns do
                 draw ctm depth child
@@ -504,7 +506,7 @@ type TikzBackend(?options: TikzOptions) =
                 draw ctm (depth + 1) child
                 sb.Append(indent depth).Append("\\end{scope}\n") |> ignore
 
-        // D67 — this backend advertises `GroupOpacity = false`, so `Degrade.forCaps` normally
+        // This backend advertises `GroupOpacity = false`, so `Degrade.forCaps` normally
         // folds the node away before the traversal sees it and this branch is for a caller
         // driving `IBackend` by hand. It performs the identical fold rather than inventing a
         // second answer.
@@ -524,7 +526,7 @@ type TikzBackend(?options: TikzOptions) =
 
             draw ctm depth (Degrade.foldOpacity a child)
 
-        // §5.2 — stable identity. There is no `id` attribute in TeX, so the key becomes a comment:
+        // Stable identity. There is no `id` attribute in TeX, so the key becomes a comment:
         // it survives into the output for a reviewer and for anyone diffing two pictures, which is
         // what the key is for at this stage.
         | Keyed(Key name, child) ->
@@ -549,16 +551,16 @@ type TikzBackend(?options: TikzOptions) =
 
             draw ctm depth child
 
-    /// D64 — a raster becomes a sidecar `.png` and an `\includegraphics`.
+    /// A raster becomes a sidecar `.png` and an `\includegraphics`.
     ///
-    /// This is the paragraph of D31 that is superseded. `Rasters` was `false` at M1 on the
-    /// argument that "an honest raster needs a sidecar .png and `\includegraphics`, which breaks
-    /// the one-string-output contract" — which was true, and is what `renderWithAssets` and
-    /// `RenderedDocument` now exist to fix. The capability is a property of the *entry point*,
-    /// not of TeX: `renderWithAssets` can carry the sidecar and `render` cannot, so `render`
-    /// keeps degrading rasters away and says so where the reviewer of a golden diff sees it.
+    /// `Rasters` was once `false` on the argument that "an honest raster needs a sidecar .png and
+    /// `\includegraphics`, which breaks the one-string-output contract" — which was true, and is
+    /// what `renderWithAssets` and `RenderedDocument` now exist to fix. The capability is a
+    /// property of the *entry point*, not of TeX: `renderWithAssets` can carry the sidecar and
+    /// `render` cannot, so `render` keeps degrading rasters away and says so where the reviewer of
+    /// a golden diff sees it.
     ///
-    /// **No y flip, and that is D29 again.** `Image` rows run top-first, and `\includegraphics`
+    /// **No y flip, as for text.** `Image` rows run top-first, and `\includegraphics`
     /// places row 0 at the top of its box. TeX is y-up, so the top of the box is the larger
     /// `nd` y and the rows land the right way up with nothing done. The SVG backend needs an
     /// extra in-box flip for precisely the opposite reason — its root transform inverts y.
@@ -583,7 +585,7 @@ type TikzBackend(?options: TikzOptions) =
                 )
                 |> ignore
 
-            // The four corners individually, for D57's reason in a different mark: under a
+            // The four corners individually, for the same reason as a rectangle: under a
             // non-uniform or reflecting transform the box's extent is not the transform of its
             // extent, and converting one corner and one size gets the size wrong everywhere the
             // map is not a pure translation.
@@ -601,7 +603,7 @@ type TikzBackend(?options: TikzOptions) =
             // arriving through a user-built `Transform`; `cm` is TikZ's arbitrary matrix and
             // handles it, at the cost of coordinates a golden diff reads less easily. Detected
             // rather than assumed away, because silently drawing an unrotated image would be
-            // the "silently producing wrong output" §5 exists to prevent.
+            // the "silently producing wrong output" capabilities exist to prevent.
             let skewed = abs (float ctm.M12) > 1e-9 || abs (float ctm.M21) > 1e-9
 
             // `\includegraphics` fills the box exactly; the destination is a box, not a
@@ -788,7 +790,7 @@ type TikzBackend(?options: TikzOptions) =
     /// check emitted coordinates against the transform that produced them.
     member _.RootTransform: Affine<nd, pt> = root
 
-    /// The sidecar files this picture refers to, in traversal order (D64).
+    /// The sidecar files this picture refers to, in traversal order.
     ///
     /// Empty for every figure that contains no `Raster`, which is every figure Marey produced
     /// before `Chart.image` — so a caller who never draws an image never learns this exists.
@@ -801,24 +803,22 @@ type TikzBackend(?options: TikzOptions) =
 
     interface IBackend with
 
-        /// D31. Every `false` here is a thing this backend genuinely cannot do, not a switch.
+        /// Every `false` here is a thing this backend genuinely cannot do, not a switch.
         member _.Caps =
             { // PGF shadings are two-stop and axis-constrained. A multi-stop
               // `\pgfdeclarehorizontalshading` covers only the axis-aligned linear case, so
               // advertising `true` and quietly emitting a two-stop approximation of a five-stop
-              // ramp is exactly the "silently producing wrong output" §5 exists to prevent.
-              // `Degrade.forCaps` collapses a gradient to its Oklab midpoint instead — and this
-              // is the first backend that actually needs it, which retires D10 from being a
-              // facility nobody reads.
+              // ramp is exactly the "silently producing wrong output" capabilities exist to
+              // prevent. `Degrade.forCaps` collapses a gradient to its Oklab midpoint instead — and
+              // this is the first backend that actually needs it.
               Gradients = false
               RadialGradients = false
               Clipping = true
               Dashes = true
-              // D64 supersedes D31's paragraph here. `false` was correct while the only exit
-              // from this backend was a `string`: "an honest raster needs a sidecar .png and
-              // `\includegraphics`, which breaks the one-string-output contract". M2.5 opened
-              // the door D31 named — `renderWithAssets` returns a `RenderedDocument`, so the
-              // sidecar has somewhere to go and `graphicx` is in the preamble.
+              // `false` would be correct if the only exit from this backend were a `string`: "an
+              // honest raster needs a sidecar .png and `\includegraphics`, which breaks the
+              // one-string-output contract". `renderWithAssets` returns a `RenderedDocument`, so
+              // the sidecar has somewhere to go and `graphicx` is in the preamble.
               //
               // The capability is genuine, but it belongs to the *entry point* rather than to
               // TeX: `TikzBackend.render` still promises a bare `string`, so it degrades with
@@ -833,15 +833,15 @@ type TikzBackend(?options: TikzOptions) =
               // `Degrade.forCaps` strips every `Annotated` node when this is false, which would
               // discard the structure the golden diff is there to review.
               Semantics = true
-              // D67, and the one `false` this flag has anywhere in the project — which is what
-              // makes it a capability rather than a speculative switch. pgf's scope `opacity=`
+              // Group opacity: the one `false` this flag has anywhere in the project — which is
+              // what makes it a capability rather than a speculative switch. pgf's scope `opacity=`
               // is inherited per path, not composited over the scope, so it is the *degraded*
-              // picture; `transparency group` is the one that composites and the pgf manual
-              // gates it on driver support, which a `string` this backend hands to an unknown
-              // preamble cannot assume. `Degrade.forCaps` folds the node into paint alpha, and
-              // the two agree except where the group's own shapes overlap.
+              // picture; `transparency group` is the one that composites and the pgf manual gates
+              // it on driver support, which a `string` this backend hands to an unknown preamble
+              // cannot assume. `Degrade.forCaps` folds the node into paint alpha, and the two agree
+              // except where the group's own shapes overlap.
               GroupOpacity = false
-              // A text file has no instance-buffer ceiling, and §5.1's whole point is that one
+              // A text file has no instance-buffer ceiling, and batching's whole point is that one
               // batch stays one batch.
               MaxBatch = None }
 
@@ -901,7 +901,7 @@ module TikzBackend =
     /// is cheap insurance on an older one and it documents which macros the emitter relies on.
     ///
     /// `graphicx` is where `\includegraphics` comes from, and a raster is the only thing that
-    /// needs it (D64). It is loaded unconditionally rather than only when a picture contains an
+    /// needs it. It is loaded unconditionally rather than only when a picture contains an
     /// image, because a preamble that changes with the figure is a preamble a host document
     /// cannot be written against once.
     [<Literal>]
@@ -919,7 +919,7 @@ module TikzBackend =
     /// through `Chart.renderTo` as well costs nothing.
     /// The capabilities of a *`string`-shaped* render, as opposed to the backend's own.
     ///
-    /// D64. The backend advertises `Rasters = true` because it can now emit a raster — as an
+    /// The backend advertises `Rasters = true` because it can now emit a raster — as an
     /// `\includegraphics` plus a sidecar file. A function whose whole return value is a
     /// `string` has nowhere to put the sidecar, so from its point of view the capability is
     /// absent, and it degrades accordingly: the image is dropped and the skip comment says so
@@ -927,7 +927,7 @@ module TikzBackend =
     ///
     /// The alternative — emitting the `\includegraphics` and discarding the bytes —
     /// produces a `.tex` that fails to compile with a missing-file error, which is the
-    /// "silently producing wrong output" §5 exists to prevent, arriving as somebody else's
+    /// "silently producing wrong output" capabilities exist to prevent, arriving as somebody else's
     /// build error.
     let private documentOnlyCaps (caps: Capabilities) = { caps with Rasters = false }
 
@@ -949,11 +949,10 @@ module TikzBackend =
         renderInto backend (documentOnlyCaps (backend :> IBackend).Caps) extent node
         backend.Result
 
-    /// Render a scene as a picture plus the sidecar files it refers to (D64).
+    /// Render a scene as a picture plus the sidecar files it refers to.
     ///
-    /// This is the door D31 named and did not build. A `Raster` becomes an
-    /// `\includegraphics` of a `.png` that comes back in `Assets`, so the caller writes
-    /// both and `pdflatex` finds the image next to the `.tex`. Host documents need
+    /// A `Raster` becomes an `\includegraphics` of a `.png` that comes back in `Assets`, so the
+    /// caller writes both and `pdflatex` finds the image next to the `.tex`. Host documents need
     /// `graphicx`, which `Preamble` loads.
     ///
     /// `renderToFileWithAssets` is the one-call version and is what most callers want, because
@@ -988,11 +987,11 @@ module TikzBackend =
     /// Render a scene and write the picture to a file as UTF-8 with no byte-order mark.
     ///
     /// The encoding is pinned rather than left to the default because these files are golden
-    /// masters (§13): a BOM appearing or disappearing would show up as a whole-file diff.
+    /// masters: a BOM appearing or disappearing would show up as a whole-file diff.
     let renderToFile (path: string) (extent: Extent<px>) (node: Node) : unit =
         IO.File.WriteAllText(path, render extent node, UTF8Encoding false)
 
-    /// Render a scene to a `.tex` file and write its sidecar images beside it (D64).
+    /// Render a scene to a `.tex` file and write its sidecar images beside it.
     ///
     /// The sidecars go in the **same directory as `path`**, because that is the only place
     /// `\\includegraphics{marey-raster-0.png}` will look for them without the host

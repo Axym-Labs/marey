@@ -1,7 +1,7 @@
 namespace Marey
 
 // ---------------------------------------------------------------------------------------
-// §2.4 — Common non-SI units.
+// Common non-SI units.
 //
 // **These are opaque measures, not abbreviations, and that is the opposite choice from
 // Derived.fs.** The reason is the conversion factor. `[<Measure>] type eV = J` would make
@@ -57,11 +57,11 @@ type d
 [<Measure>]
 type yr
 
-/// **Degree Celsius — affine.** See `NonSi.degreeCelsius`.
+/// **Degree Celsius — affine.** See `U.degreeCelsius`.
 [<Measure>]
 type degC
 
-/// **Degree Fahrenheit — affine.** See `NonSi.degreeFahrenheit`.
+/// **Degree Fahrenheit — affine.** See `U.degreeFahrenheit`.
 [<Measure>]
 type degF
 
@@ -93,81 +93,86 @@ type Gs
 [<Measure>]
 type cal
 
-/// §2.4 — Witnesses for the non-SI units a physics audience actually uses.
-[<RequireQualifiedAccess>]
-module NonSi =
+/// Witnesses for the non-SI units a physics audience actually uses.
+[<AutoOpen>]
+module NonSiWitnesses =
 
-    // The helper is spelled out rather than aliased to a one-letter name: `d` is a *measure*
-    // in this file (the day), and a value shadowing a measure name in the same file is exactly
-    // the kind of thing that costs an hour to read back.
-    //                                        L  M  T  I Th  N  J
-    let private length = U.dimOf 1 0 0 0 0 0 0
-    let private area = U.dimOf 2 0 0 0 0 0 0
-    let private volume = U.dimOf 3 0 0 0 0 0 0
-    let private energy = U.dimOf 2 1 -2 0 0 0 0
-    let private pressure = U.dimOf -1 1 -2 0 0 0 0
-    let private magneticFluxDensity = U.dimOf 0 1 -2 -1 0 0 0
+    /// Units outside SI that physics uses: the electronvolt, ångström, astronomical unit, bar, litre,
+    /// hour, degree Celsius and the rest.
+    [<RequireQualifiedAccess>]
+    module U =
 
-    // ---- Energy ----------------------------------------------------------------------
+        // The helper is spelled out rather than aliased to a one-letter name: `d` is a *measure*
+        // in this file (the day), and a value shadowing a measure name in the same file is exactly
+        // the kind of thing that costs an hour to read back.
+        //                                        L  M  T  I Th  N  J
+        let private length = U.dimOf 1 0 0 0 0 0 0
+        let private area = U.dimOf 2 0 0 0 0 0 0
+        let private volume = U.dimOf 3 0 0 0 0 0 0
+        let private energy = U.dimOf 2 1 -2 0 0 0 0
+        let private pressure = U.dimOf -1 1 -2 0 0 0 0
+        let private magneticFluxDensity = U.dimOf 0 1 -2 -1 0 0 0
 
-    let electronvolt: U<eV> = U<eV>("eV", energy, 1.602176634e-19)
-    let calorie: U<cal> = U<cal>("cal", energy, 4.184)
+        // ---- Energy ----------------------------------------------------------------------
 
-    // ---- Length ----------------------------------------------------------------------
+        let electronvolt: U<eV> = U<eV>("eV", energy, 1.602176634e-19)
+        let calorie: U<cal> = U<cal>("cal", energy, 4.184)
 
-    let angstrom: U<angstrom> = U<angstrom>("Å", length, 1e-10)
-    let astronomicalUnit: U<au> = U<au>("au", length, 1.495978707e11)
-    let lightYear: U<ly> = U<ly>("ly", length, 9.4607304725808e15)
-    let parsec: U<pc> = U<pc>("pc", length, 3.0856775814913673e16)
+        // ---- Length ----------------------------------------------------------------------
 
-    // ---- Area, volume ----------------------------------------------------------------
+        let angstrom: U<angstrom> = U<angstrom>("Å", length, 1e-10)
+        let astronomicalUnit: U<au> = U<au>("au", length, 1.495978707e11)
+        let lightYear: U<ly> = U<ly>("ly", length, 9.4607304725808e15)
+        let parsec: U<pc> = U<pc>("pc", length, 3.0856775814913673e16)
 
-    let barn: U<barn> = U<barn>("b", area, 1e-28)
-    let litre: U<L> = U<L>("L", volume, 1e-3)
+        // ---- Area, volume ----------------------------------------------------------------
 
-    // ---- Pressure --------------------------------------------------------------------
+        let barn: U<barn> = U<barn>("b", area, 1e-28)
+        let litre: U<L> = U<L>("L", volume, 1e-3)
 
-    let bar: U<bar> = U<bar>("bar", pressure, 1e5)
-    let atmosphere: U<atm> = U<atm>("atm", pressure, 101325.0)
+        // ---- Pressure --------------------------------------------------------------------
 
-    // ---- Time ------------------------------------------------------------------------
+        let bar: U<bar> = U<bar>("bar", pressure, 1e5)
+        let atmosphere: U<atm> = U<atm>("atm", pressure, 101325.0)
 
-    let minute: U<minute> = U<minute>("min", Dim.time, 60.0)
-    let hour: U<h> = U<h>("h", Dim.time, 3600.0)
-    let day: U<d> = U<d>("d", Dim.time, 86400.0)
-    let year: U<yr> = U<yr>("yr", Dim.time, 31557600.0)
+        // ---- Time ------------------------------------------------------------------------
 
-    // ---- Mass ------------------------------------------------------------------------
+        let minute: U<minute> = U<minute>("min", Dim.time, 60.0)
+        let hour: U<h> = U<h>("h", Dim.time, 3600.0)
+        let day: U<d> = U<d>("d", Dim.time, 86400.0)
+        let year: U<yr> = U<yr>("yr", Dim.time, 31557600.0)
 
-    let dalton: U<Da> = U<Da>("Da", Dim.mass, 1.66053906660e-27)
+        // ---- Mass ------------------------------------------------------------------------
 
-    // ---- Magnetism -------------------------------------------------------------------
+        let dalton: U<Da> = U<Da>("Da", Dim.mass, 1.66053906660e-27)
 
-    let gauss: U<Gs> = U<Gs>("G", magneticFluxDensity, 1e-4)
+        // ---- Magnetism -------------------------------------------------------------------
 
-    // ---- Affine units ----------------------------------------------------------------
-    //
-    // Everything below this line has a non-zero `OffsetSI`, and everything below this line
-    // must not be composed.
+        let gauss: U<Gs> = U<Gs>("G", magneticFluxDensity, 1e-4)
 
-    /// **Affine — do not compose.** `T/K = T/°C + 273.15`.
-    ///
-    /// `U.mul` and `U.div` both hard-code `0.0` for the offset of their result, and that is
-    /// correct rather than lazy: "°C per second" is a *rate*, and a rate of change of an
-    /// affine quantity has no offset — the constant differentiates away. But it means
-    /// `U.mul degreeCelsius x` silently produces a unit whose zero is absolute zero, which is
-    /// almost never what a caller who wrote it meant. Check `U.isAffine` before composing, or
-    /// convert to `U.kelvin` first with `U.convert`.
-    ///
-    /// A prefix on this unit is meaningless for the same reason (a "milli-°C" scale would have
-    /// to rescale the offset too), so `Prefix.selectForUnit` refuses it outright.
-    let degreeCelsius: U<degC> = U<degC>("°C", Dim.temperature, 1.0, 273.15)
+        // ---- Affine units ----------------------------------------------------------------
+        //
+        // Everything below this line has a non-zero `OffsetSI`, and everything below this line
+        // must not be composed.
 
-    /// **Affine — do not compose.** `T/K = (T/°F + 459.67) × 5/9`.
-    ///
-    /// Same rules as `degreeCelsius`: no products, no quotients, no prefixes. The factor and
-    /// the offset are both non-trivial here, which makes it the better regression test of the
-    /// two — a witness that only carried `ToSI` would round-trip Celsius by accident and
-    /// Fahrenheit never.
-    let degreeFahrenheit: U<degF> =
-        U<degF>("°F", Dim.temperature, 5.0 / 9.0, 459.67 * 5.0 / 9.0)
+        /// **Affine — do not compose.** `T/K = T/°C + 273.15`.
+        ///
+        /// `U.mul` and `U.div` both hard-code `0.0` for the offset of their result, and that is
+        /// correct rather than lazy: "°C per second" is a *rate*, and a rate of change of an
+        /// affine quantity has no offset — the constant differentiates away. But it means
+        /// `U.mul degreeCelsius x` silently produces a unit whose zero is absolute zero, which is
+        /// almost never what a caller who wrote it meant. Check `U.isAffine` before composing, or
+        /// convert to `U.kelvin` first with `U.convert`.
+        ///
+        /// A prefix on this unit is meaningless for the same reason (a "milli-°C" scale would have
+        /// to rescale the offset too), so `Prefix.selectForUnit` refuses it outright.
+        let degreeCelsius: U<degC> = U<degC>("°C", Dim.temperature, 1.0, 273.15)
+
+        /// **Affine — do not compose.** `T/K = (T/°F + 459.67) × 5/9`.
+        ///
+        /// Same rules as `degreeCelsius`: no products, no quotients, no prefixes. The factor and
+        /// the offset are both non-trivial here, which makes it the better regression test of the
+        /// two — a witness that only carried `ToSI` would round-trip Celsius by accident and
+        /// Fahrenheit never.
+        let degreeFahrenheit: U<degF> =
+            U<degF>("°F", Dim.temperature, 5.0 / 9.0, 459.67 * 5.0 / 9.0)

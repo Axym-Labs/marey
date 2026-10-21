@@ -1,9 +1,3 @@
-namespace FSharp
-
-namespace Marey.Verso
-
-namespace Marey.Verso
-
 namespace Marey.Verso
 
     [<Verso.Abstractions.VersoExtension; Sealed>]

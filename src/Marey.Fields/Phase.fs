@@ -4,10 +4,10 @@ open System
 open System.Runtime.InteropServices
 
 // ======================================================================================
-// D92 — PHASE PORTRAITS: NULLCLINES, FIXED POINTS, AND WHAT KIND EACH ONE IS.
+// PHASE PORTRAITS: NULLCLINES, FIXED POINTS, AND WHAT KIND EACH ONE IS.
 //
-// **Nullclines** are where one component of the flow vanishes: the zero contours of `u` and of
-// `w`, which D88's marching squares already draws. Where they cross, both vanish, and that is a
+// **Nullclines** are where one component of the flow vanishes: the zero contours of `u` and of `w`,
+// which the contour's marching squares already draws. Where they cross, both vanish, and that is a
 // fixed point.
 //
 // **Fixed points are found on the interpolant.** A cell whose four `u` corners do not all share
@@ -32,7 +32,7 @@ open System.Runtime.InteropServices
 // 0.6% per revolution), and says "centre (linear)" when it describes one.
 // ======================================================================================
 
-/// What the linearisation says a fixed point is (D92).
+/// What the linearisation says a fixed point is.
 [<RequireQualifiedAccess>]
 type FixedPointKind =
     /// Real eigenvalues of opposite sign: one direction in, one out.
@@ -68,6 +68,7 @@ type FixedPoint<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> =
       /// positive imaginary part first.
       Eigenvalues: Eigenvalue<'t> * Eigenvalue<'t> }
 
+/// Reading a classified fixed point.
 [<RequireQualifiedAccess>]
 module FixedPoint =
 
@@ -113,7 +114,7 @@ module FixedPoint =
 
         sprintf "%s at (%s, %s), λ = %s" (kindName p.Kind) (coord ux p.X) (coord uy p.Y) (withUnit lambda)
 
-/// Phase portraits (D92): a flow's nullclines, its fixed points and what kind each one is, and
+/// Phase portraits: a flow's nullclines, its fixed points and what kind each one is, and
 /// the three drawn together over its streamlines.
 [<RequireQualifiedAccess>]
 module Phase =
@@ -381,7 +382,7 @@ module Phase =
         : Figure =
         portraitWith (Field.DefaultSeparation * 1.0<px>) ux uy g
 
-/// D109 — phase portraits in the unit-optional mode. See `type Field`.
+/// Phase portraits in the unit-optional mode. See `type Field`.
 [<AbstractClass; Sealed>]
 type Phase =
 

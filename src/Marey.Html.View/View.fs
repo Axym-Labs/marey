@@ -1,9 +1,9 @@
-/// Step F, D157 and D159 — what a notebook page draws a scene with.
+/// What a notebook page draws a scene with.
 ///
 /// The bundle esbuild makes of this file is a classic script that defines one global,
 /// `MareyView`, so the widget's own script, which runs in document order, can call it at once.
 /// The page holds one scene: the one it was shown last, with the text metrics its layout used
-/// (D156), and it redraws the whole canvas on every change, because a canvas has no element to
+///, and it redraws the whole canvas on every change, because a canvas has no element to
 /// replace.
 module Marey.View
 
@@ -40,7 +40,7 @@ let show (canvas: CanvasElement) (base64: string) (width: float) (height: float)
 /// **Apply a patch** to the scene shown: its bytes from `Wire.encodePatchWith`, as base64.
 /// `false` when nothing is shown, the bytes do not decode, or the patch replaces a key the scene
 /// does not hold. Then the page and the kernel disagree about what is drawn, and the page asks
-/// for the whole scene again (D103's resync).
+/// for the whole scene again.
 let patch (base64: string) : bool =
     match shown, Wire.decodePatchWith (Convert.FromBase64String base64) with
     | Some s, Ok(Whole scene, metrics) ->

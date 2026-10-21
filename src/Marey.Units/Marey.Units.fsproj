@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <!-- M5 phase 2: packed with its sources under fable/, so a Fable app can reference the
+    <!-- Packed with its sources under fable/, so a Fable app can reference the
          package (Directory.Build.targets). -->
     <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Units</AssemblyName>
@@ -19,9 +19,9 @@
     <Compile Include="Prefix.fs" />
     <Compile Include="UnitDisplay.fs" />
     <Compile Include="Axis.fs" />
-    <!-- D110 — U.parse, the UDUNITS-2 syntax. After every witness it can name. -->
+    <!-- U.parse, the UDUNITS-2 syntax. After every witness it can name. -->
     <Compile Include="Parse.fs" />
-    <!-- D124 — the C# surface, `using Marey.CSharp`. Last: it names every witness above. -->
+    <!-- The C# surface, `using Marey.CSharp`. Last: it names every witness above. -->
     <Compile Include="CSharp.fs" />
   </ItemGroup>
 

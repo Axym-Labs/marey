@@ -17,7 +17,7 @@ open System.Text
 // `Marey.Core` is the only ancestor those two share — a backend must not depend on
 // `Marey.Units` (a renderer has no business knowing about physical dimensions), and
 // `Marey.Units` must not depend on a backend. So this lives here, for exactly the reason `Num`
-// does: two consumers, no other common ancestor, zero dependencies, and F2's rule that shared
+// does: two consumers, no other common ancestor, zero dependencies, and the rule that shared
 // text-emission rules get promoted rather than copied.
 //
 // The Unicode-to-macro table (`Δ` -> `\ensuremath{\Delta}`, `·` -> `\textperiodcentered{}`) lives
@@ -74,7 +74,7 @@ module Tex =
     /// backend interleaving its own substitutions — a Unicode-to-macro map, superscript runs —
     /// can reuse it instead of keeping a second copy that drifts. Returning `None` for the
     /// common case keeps the string path allocation-free.
-    let tryEscapeChar (c: char) : string option =
+    let internal tryEscapeChar (c: char) : string option =
         match c with
         | '\\' -> Some "\\textbackslash{}"
         | '{' -> Some "\\{"
@@ -122,7 +122,7 @@ module Tex =
         else None
 
     /// Greek letters, as math-mode macros. **A quantity's conventional name is Greek as often as
-    /// not** — ρ for a density, θ, ω and α for an angle and its rates (D98). Math mode because a
+    /// not** — ρ for a density, θ, ω and α for an angle and its rates. Math mode because a
     /// quantity symbol is set in italic, which is what `\theta` gives and what physics writes.
     ///
     /// µ and the capital omega are absent here on purpose: `tryMacro` maps them first, to the
@@ -182,9 +182,9 @@ module Tex =
         | '°' -> Some "\\textdegree{}" // ° DEGREE SIGN
         | '\u00B5' // MICRO SIGN — what Prefix.micro uses
         | '\u03BC' -> Some "\\textmu{}" // GREEK SMALL LETTER MU
-        | '\u03A9' // GREEK CAPITAL LETTER OMEGA — what Derived.ohm uses
+        | '\u03A9' // GREEK CAPITAL LETTER OMEGA — what U.ohm uses
         | '\u2126' -> Some "\\textohm{}" // OHM SIGN
-        | '\u00C5' // LATIN CAPITAL LETTER A WITH RING ABOVE — what NonSi.angstrom uses
+        | '\u00C5' // LATIN CAPITAL LETTER A WITH RING ABOVE — what U.angstrom uses
         | '\u212B' -> Some "\\AA{}" // ANGSTROM SIGN
         | '−' -> Some "\\ensuremath{-}" // − MINUS SIGN, not a hyphen
         | '×' -> Some "\\ensuremath{\\times}"
@@ -250,7 +250,7 @@ module Tex =
 
     /// True when `escape` would leave the string unchanged — i.e. it contains no TeX special
     /// character and none of the non-ASCII characters `escape` rewrites.
-    let isLiteralSafe (s: string) : bool =
+    let internal isLiteralSafe (s: string) : bool =
         isNull s
         || s
            |> Seq.forall (fun c ->

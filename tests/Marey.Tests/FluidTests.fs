@@ -1,4 +1,4 @@
-/// M5.6 phase 1 — Stam's stable fluids on the CPU (D148). Gates 1 and 2 of `m5.6-plan.md`; gate 3,
+/// M5.6 phase 1 — Stam's stable fluids on the CPU. Gates 1 and 2 of `m5.6-plan.md`; gate 3,
 /// the units, is with the other compile gates in `SimTests`.
 ///
 /// **The projection is held to its solver.** On a staggered grid the divergence of a pressure

@@ -3,7 +3,7 @@ namespace Marey.UnitsOfMeasure
 open System
 open Marey
 
-/// D109 — the controls that take a witness, in the unit-required mode: a slider over a quantity,
+/// The controls that take a witness, in the unit-required mode: a slider over a quantity,
 /// handing its view that quantity's measure. See `Marey.UnitsOfMeasure.Chart` for the pattern and
 /// the shadows. Every other control takes no witness and is the core's in both modes.
 [<RequireQualifiedAccess>]
@@ -24,12 +24,12 @@ module Control =
     let slider<[<Measure>] 'u> (u: U<'u>) (label: string) (lo: float<'u>) (hi: float<'u>) (init: float<'u>) =
         Marey.Control.slider u label lo hi init
 
-    /// D137 — a time control over `[lo, hi]` in seconds that loops, arranged over 60 states.
+    /// A time control over `[lo, hi]` in seconds that loops, arranged over 60 states.
     /// The core's, in both modes; here so that this module answers for every control.
     let time (label: string) (lo: float<Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols.s>) (hi: float<Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols.s>) =
         Marey.Control.time label lo hi
 
-    /// D137 — `time` with its sample count and whether it loops.
+    /// `time` with its sample count and whether it loops.
     let timeWith (samples: int) (loop: bool) (label: string) (lo: float<Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols.s>) (hi: float<Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols.s>) =
         Marey.Control.timeWith samples loop label lo hi
 

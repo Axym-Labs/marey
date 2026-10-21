@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- §6: "Emits `\begin{tikzpicture}`. Figures that inherit the document's fonts and
+    <!-- "Emits `\begin{tikzpicture}`. Figures that inherit the document's fonts and
          `siunitx` units. For a physics/maths audience this is a killer feature almost nobody
          offers, and it is *cheap* — it's a text emitter."
 
@@ -17,7 +17,7 @@
   <ItemGroup>
     <Compile Include="TikzWriter.fs" />
     <Compile Include="TikzBackend.fs" />
-    <!-- D124 — the C# surface, `using Marey.CSharp`. -->
+    <!-- The C# surface, `using Marey.CSharp`. -->
     <Compile Include="CSharp.fs" />
   </ItemGroup>
 

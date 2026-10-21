@@ -24,7 +24,7 @@ let potential = Field.sampleScalar xs ys phi            // ScalarGrid<m, m, V>
 let e = Field.grad potential                             // VectorGrid<m, m, V/m, V/m>
 let rho = Field.div e                                    // ScalarGrid<m, m, V/m²>
 
-Field.heatmap U.metre U.metre Derived.volt potential
+Field.heatmap U.metre U.metre U.volt potential
 |> Chart.overlay (Field.contours U.metre U.metre potential)
 |> Chart.render SvgBackend.render (Chart.size 640.0 420.0)
 ```

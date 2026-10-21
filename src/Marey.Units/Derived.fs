@@ -1,14 +1,14 @@
 namespace Marey
 
 // ---------------------------------------------------------------------------------------
-// §2 — The 22 named SI derived units, as measure **abbreviations**.
+// The 22 named SI derived units, as measure **abbreviations**.
 //
 // Abbreviations rather than opaque measures is the load-bearing choice. `[<Measure>] type N`
 // on its own would be a fresh, incompatible measure, and `U.mul U.kilogram
-// U.metrePerSecondSquared` would not be a `U<N>` — the witness algebra of §2.1 would stop
+// U.metrePerSecondSquared` would not be a `U<N>` — the witness algebra would stop
 // being able to *derive* anything. As abbreviations they normalise to the same measure the
-// algebra produces, so the compiler unifies them and §2.1's "inferred" comments come true.
-// `Derived.newtonByComposition` and `Derived.jouleByComposition` at the bottom of this file
+// algebra produces, so the compiler unifies them and the "inferred" comments come true.
+// `U.newtonByComposition` and `U.jouleByComposition` at the bottom of this file
 // are that claim written as a compile-time assertion.
 //
 // Three consequences fall out of abbreviating, and all three are real:
@@ -34,7 +34,7 @@ type N = kg m / s^2
 [<Measure>]
 type Pa = N / m^2
 
-/// Joule — N·m. §12.6's running example: `U.mul force metre` composes the *symbol*
+/// Joule — N·m. The running example: `U.mul force metre` composes the *symbol*
 /// `kg·m/s/s·m` for what is plainly `J`, while the `Dim` comes out right. Never compose
 /// display strings.
 [<Measure>]
@@ -117,63 +117,67 @@ type Sv = J / kg
 [<Measure>]
 type kat = mol / s
 
-/// §2.1 — Witnesses for the named SI derived units.
+/// Witnesses for the named SI derived units.
 ///
 /// Every `Dim` here is written out rather than derived through `U.mul`/`U.div`, so that the
 /// witness is a *statement* of the unit's dimension that a reader can check against SI, not a
 /// value that happens to fall out of an expression. `newtonByComposition` and
 /// `jouleByComposition` then check the two representations agree at compile time.
-[<RequireQualifiedAccess>]
-module Derived =
+[<AutoOpen>]
+module DerivedWitnesses =
 
-    let private d = U.dimOf
+    /// The named SI derived units, from the hertz to the katal, with the radian and the steradian.
+    [<RequireQualifiedAccess>]
+    module U =
 
-    //                                              L   M   T   I  Th   N   J
-    let hertz: U<Hz> = U<Hz>("Hz", d 0 0 -1 0 0 0 0, 1.0)
-    let newton: U<N> = U<N>("N", d 1 1 -2 0 0 0 0, 1.0)
-    let pascal: U<Pa> = U<Pa>("Pa", d -1 1 -2 0 0 0 0, 1.0)
-    let joule: U<J> = U<J>("J", d 2 1 -2 0 0 0 0, 1.0)
-    let watt: U<W> = U<W>("W", d 2 1 -3 0 0 0 0, 1.0)
-    let coulomb: U<C> = U<C>("C", d 0 0 1 1 0 0 0, 1.0)
-    let volt: U<V> = U<V>("V", d 2 1 -3 -1 0 0 0, 1.0)
-    let farad: U<F> = U<F>("F", d -2 -1 4 2 0 0 0, 1.0)
-    let ohm: U<ohm> = U<ohm>("Ω", d 2 1 -3 -2 0 0 0, 1.0)
-    let siemens: U<S> = U<S>("S", d -2 -1 3 2 0 0 0, 1.0)
-    let weber: U<Wb> = U<Wb>("Wb", d 2 1 -2 -1 0 0 0, 1.0)
-    let tesla: U<T> = U<T>("T", d 0 1 -2 -1 0 0 0, 1.0)
-    let henry: U<H> = U<H>("H", d 2 1 -2 -2 0 0 0, 1.0)
-    let lumen: U<lm> = U<lm>("lm", d 0 0 0 0 0 0 1, 1.0)
-    let lux: U<lx> = U<lx>("lx", d -2 0 0 0 0 0 1, 1.0)
-    let becquerel: U<Bq> = U<Bq>("Bq", d 0 0 -1 0 0 0 0, 1.0)
-    let gray: U<Gy> = U<Gy>("Gy", d 2 0 -2 0 0 0 0, 1.0)
-    let sievert: U<Sv> = U<Sv>("Sv", d 2 0 -2 0 0 0 0, 1.0)
-    let katal: U<kat> = U<kat>("kat", d 0 0 -1 0 0 1 0, 1.0)
+        let private d = U.dimOf
 
-    /// Radian. The witness for Core's graphics tag, so an angle axis can label itself. `Dim`
-    /// is zero because angle is dimensionless in SI.
-    let radian: U<rad> = U<rad>("rad", Dim.zero, 1.0)
+        //                                              L   M   T   I  Th   N   J
+        let hertz: U<Hz> = U<Hz>("Hz", d 0 0 -1 0 0 0 0, 1.0)
+        let newton: U<N> = U<N>("N", d 1 1 -2 0 0 0 0, 1.0)
+        let pascal: U<Pa> = U<Pa>("Pa", d -1 1 -2 0 0 0 0, 1.0)
+        let joule: U<J> = U<J>("J", d 2 1 -2 0 0 0 0, 1.0)
+        let watt: U<W> = U<W>("W", d 2 1 -3 0 0 0 0, 1.0)
+        let coulomb: U<C> = U<C>("C", d 0 0 1 1 0 0 0, 1.0)
+        let volt: U<V> = U<V>("V", d 2 1 -3 -1 0 0 0, 1.0)
+        let farad: U<F> = U<F>("F", d -2 -1 4 2 0 0 0, 1.0)
+        let ohm: U<ohm> = U<ohm>("Ω", d 2 1 -3 -2 0 0 0, 1.0)
+        let siemens: U<S> = U<S>("S", d -2 -1 3 2 0 0 0, 1.0)
+        let weber: U<Wb> = U<Wb>("Wb", d 2 1 -2 -1 0 0 0, 1.0)
+        let tesla: U<T> = U<T>("T", d 0 1 -2 -1 0 0 0, 1.0)
+        let henry: U<H> = U<H>("H", d 2 1 -2 -2 0 0 0, 1.0)
+        let lumen: U<lm> = U<lm>("lm", d 0 0 0 0 0 0 1, 1.0)
+        let lux: U<lx> = U<lx>("lx", d -2 0 0 0 0 0 1, 1.0)
+        let becquerel: U<Bq> = U<Bq>("Bq", d 0 0 -1 0 0 0 0, 1.0)
+        let gray: U<Gy> = U<Gy>("Gy", d 2 0 -2 0 0 0 0, 1.0)
+        let sievert: U<Sv> = U<Sv>("Sv", d 2 0 -2 0 0 0 0, 1.0)
+        let katal: U<kat> = U<kat>("kat", d 0 0 -1 0 0 1 0, 1.0)
 
-    /// Steradian. Dimensionless, like `radian`.
-    let steradian: U<sr> = U<sr>("sr", Dim.zero, 1.0)
+        /// Radian. The witness for Core's graphics tag, so an angle axis can label itself. `Dim`
+        /// is zero because angle is dimensionless in SI.
+        let radian: U<rad> = U<rad>("rad", Dim.zero, 1.0)
 
-    // ---- Compile-time proof that the abbreviations unify with the witness algebra ------
-    //
-    // These are not tests-that-run; they are tests-that-typecheck. If someone ever turns `N`
-    // into an opaque measure, the build breaks here rather than three layers up in a plot.
+        /// Steradian. Dimensionless, like `radian`.
+        let steradian: U<sr> = U<sr>("sr", Dim.zero, 1.0)
 
-    /// §2.1 — `mul kilogram accel` **is** a `U<N>`, inferred, not annotated into place.
-    let newtonByComposition: U<N> = U.mul U.kilogram U.metrePerSecondSquared
+        // ---- Compile-time proof that the abbreviations unify with the witness algebra ------
+        //
+        // These are not tests-that-run; they are tests-that-typecheck. If someone ever turns `N`
+        // into an opaque measure, the build breaks here rather than three layers up in a plot.
 
-    /// §2.1 / §12.6 — `mul force metre` **is** a `U<J>` at the type level, while its `Symbol`
-    /// is the useless `kg·m/s²·m`. The `Dim` is right; the string is not. That is the entire
-    /// argument for `UnitDisplay`.
-    let jouleByComposition: U<J> = U.mul newtonByComposition U.metre
+        /// `mul kilogram accel` **is** a `U<N>`, inferred, not annotated into place.
+        let internal newtonByComposition: U<N> = U.mul U.kilogram U.metrePerSecondSquared
 
-    /// `div joule second` is a watt.
-    let wattByComposition: U<W> = U.div jouleByComposition U.second
+        /// `mul force metre` **is** a `U<J>` at the type level, while its `Symbol`
+        /// is the useless `kg·m/s²·m`. The `Dim` is right; the string is not. That is the entire
+        /// argument for `UnitDisplay`.
+        let internal jouleByComposition: U<J> = U.mul newtonByComposition U.metre
 
-    /// `recip second` is a hertz — "frequency, and the type of a frame rate".
-    let hertzByComposition: U<Hz> = U.recip U.second
+        /// `div joule second` is a watt.
+        let internal wattByComposition: U<W> = U.div jouleByComposition U.second
 
-    /// `mul candela steradian` is a lumen.
-    let lumenByComposition: U<lm> = U.mul U.candela steradian
+        /// `recip second` is a hertz — "frequency, and the type of a frame rate".
+        let internal hertzByComposition: U<Hz> = U.recip U.second
+
+        /// `mul candela steradian` is a lumen.
+        let internal lumenByComposition: U<lm> = U.mul U.candela steradian

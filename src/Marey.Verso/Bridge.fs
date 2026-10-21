@@ -42,12 +42,12 @@ module internal Bridge =
     [<Literal>]
     let Render = "renderForHost"
 
-    /// Step F (D160) — a page for a frame instead of markup, for a figure drawn on a canvas.
+    /// Step F — a page for a frame instead of markup, for a figure drawn on a canvas.
     /// Optional: a `Marey.Html` without it is always rendered as markup.
     [<Literal>]
     let Document = "documentForHost"
 
-    // M4.5 — the live half. Four more signatures, optional as a set: a `Marey.Html` from before
+    // The live half. Four more signatures, optional as a set: a `Marey.Html` from before
     // 0.5 has none of them, and then a live figure is drawn as a figure and nothing is opened.
     [<Literal>]
     let LiveInit = "liveInitForHost"
@@ -61,11 +61,11 @@ module internal Bridge =
     [<Literal>]
     let LiveReply = "liveReplyForHost"
 
-    // D103 — optional on its own: without it every step is answered with the whole figure.
+    // Optional on its own: without it every step is answered with the whole figure.
     [<Literal>]
     let LiveAnswer = "liveAnswerForHost"
 
-    // D105 — optional on its own: without it the view shows no readout.
+    // Optional on its own: without it the view shows no readout.
     [<Literal>]
     let LiveReadout = "liveReadoutForHost"
 
@@ -208,7 +208,7 @@ module internal Bridge =
             with _ ->
                 None
 
-    // ---- The live half (M4.5, D100) -----------------------------------------------------------
+    // ---- The live half -----------------------------------------------------------
 
     type private LiveMethods =
         { Init: MethodInfo

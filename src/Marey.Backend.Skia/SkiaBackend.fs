@@ -5,23 +5,22 @@ open SkiaSharp
 open SkiaSharp.HarfBuzz
 
 // ======================================================================================
-// §6 / §14 — THE SKIA BACKEND: PNG, AND PDF.
+// THE SKIA BACKEND: PNG, AND PDF.
 //
-// The third implementation of the `IBackend` contract, and the first whose artifact is
-// **bytes**. Two containers share one traversal — `SkiaFormat.Png` and `SkiaFormat.Pdf` — and
-// the whole of the difference is in `Begin`, `Finish` and the page unit. "Raster backend" is
-// the name §6 gives it and it is half wrong from phase 4 onward: the PDF path keeps paths as
-// paths and glyphs as glyphs, and is what a caller wants for a publication figure without a
-// TeX installation. §6 puts it after SVG and TikZ for a reason worth restating: this is a traversal
-// against a contract that already has two independent implementations to be read against, so
-// where this file disagrees with `SvgBackend.fs` about where something lands, this file is
-// wrong until proved otherwise. §6 on the SVG backend: "treat it as the spec."
+// The third implementation of the `IBackend` contract, and the first whose artifact is **bytes**.
+// Two containers share one traversal — `SkiaFormat.Png` and `SkiaFormat.Pdf` — and the whole of the
+// difference is in `Begin`, `Finish` and the page unit. "Raster backend" is half wrong: the PDF
+// path keeps paths as paths and glyphs as glyphs, and is what a caller wants for a publication
+// figure without a TeX installation. It came after SVG and TikZ for a reason worth restating: this
+// is a traversal against a contract that already has two independent implementations to be read
+// against, so where this file disagrees with `SvgBackend.fs` about where something lands, this file
+// is wrong until proved otherwise. The SVG backend is the spec.
 //
 // ---------------------------------------------------------------------------------------
 // COORDINATES: pre-transformed, and the canvas matrix stays the identity.
 // ---------------------------------------------------------------------------------------
 //
-// D15 and D30 already argued this for the two text backends, and the argument is *stronger*
+// The two text backends do the same, and the argument is *stronger*
 // here rather than weaker. `Stroke.Width`, `Stroke.Dash`, `Stroke.DashOffset` and
 // `MarkerBatch.Size` are all in `px` — "a hairline must stay a hairline when the figure is
 // rendered at 4K" — and Skia scales the pen with the canvas matrix exactly as SVG scales it
@@ -44,18 +43,17 @@ open SkiaSharp.HarfBuzz
 // * **`Semantics = false`.** A PNG has nowhere to put an `aria-label`. That is not a gap to be
 //   filled later; it is the property `Capabilities.full`'s comment warns backend authors
 //   about, because `Degrade.forCaps` strips every `Annotated` node when it is false. This is
-//   the first backend for which that stripping actually happens, and §5.3's structure is
+//   the first backend for which that stripping actually happens, and the semantic structure is
 //   simply not reviewable through this path — the SVG goldens keep that job.
-// * **The output has no reviewable diff.** §13 wants text-diffable artefacts, and a bitmap is
-//   not one. So this backend is covered by structure, determinism and *ink* rather than by
+// * **The output has no reviewable diff.** The goldens are text-diffable, and a bitmap is
+//   not. So this backend is covered by structure, determinism and *ink* rather than by
 //   baselines, which is the argument `tests/Marey.Tests/Raster.fs` already makes at length for
 //   the TikZ compile gate.
 // * **Its measurer is not the others'.** `SkiaTextMeasurer` shapes with HarfBuzz, so a figure
-//   laid out through `Chart.renderTo` against this backend has *different gutters* from the
-//   same figure through the SVG backend. That is a result rather than a regression and it is
-//   the milestone's headline — but it is also why the cross-backend oracle below compares
-//   scenes under a **stated** measurer (D61) rather than comparing whatever each backend
-//   happens to lay out against.
+// laid out through `Chart.renderTo` against this backend has *different gutters* from the same
+// figure through the SVG backend. That is a result rather than a regression and it is the point of
+// measuring text properly — but it is also why the cross-backend oracle below compares scenes under
+// a **stated** measurer rather than comparing whatever each backend happens to lay out against.
 // ======================================================================================
 
 /// What a Skia render produces. One traversal, two containers.
@@ -70,7 +68,8 @@ type SkiaFormat =
     /// A single-page vector PDF, at the exact `pt` size of the requested `px` extent.
     | Pdf
 
-/// A PDF's document information dictionary — **fixed, never discovered**. D63.
+/// A PDF's document information dictionary — **fixed, never discovered**, so the same figure
+/// writes the same bytes.
 ///
 /// Every field here is a string the caller chose. What is *not* here is the interesting part:
 /// there is no creation date and no modification date, and that is the decision rather than an
@@ -98,6 +97,7 @@ type PdfMetadata =
       Creator: string
       Producer: string }
 
+/// A PDF's document information, fixed rather than discovered.
 [<RequireQualifiedAccess>]
 module PdfMetadata =
 
@@ -130,16 +130,16 @@ type SkiaOptions =
       /// sub-pixel widths, and `Stroke.Width` is in px precisely so that hairlines exist.
       Antialias: bool
       /// A font file to use for **every** run, in place of resolving the theme's family stack
-      /// against the machine. D62's reproducibility answer.
+      /// against the machine. That is what makes a render reproducible on another machine.
       ///
       /// `None` resolves the stack and reports what it got on `SkiaBackend.ResolvedFaces`,
       /// which is what a user wants; `Some` is what a golden, a regression test or a paper
       /// figure wants, because it is the only way two machines produce the same pixels.
       ///
-      /// **A stated file is obeyed alone and never falls back** (D78). One face is the whole
+      /// **A stated file is obeyed alone and never falls back**. One face is the whole
       /// answer, and a codepoint it lacks is a `.notdef` box — reported, not hidden.
       FontFile: string option
-      /// D78's new option shape: a stated *list* of font files, in priority order. The first
+      /// A stated *list* of font files, in priority order. The first
       /// covers what it can, the rest cover what it cannot, and a codepoint none of them has is
       /// a reported `.notdef`.
       ///
@@ -154,6 +154,7 @@ type SkiaOptions =
       /// The document information dictionary written into a PDF. Ignored by a PNG render.
       Pdf: PdfMetadata }
 
+/// The Skia backend's default options.
 [<RequireQualifiedAccess>]
 module SkiaOptions =
 
@@ -188,7 +189,7 @@ type PainterClip =
     /// An enclosing clip is not an axis-aligned rectangle.
     | Shaped
 
-/// D131 — Skia's traversal of a `Node`, on a canvas the caller owns.
+/// Skia's traversal of a `Node`, on a canvas the caller owns.
 ///
 /// `SkiaBackend` creates a surface or a PDF page and hands its canvas here; the GPU backend hands
 /// the canvas of a surface on its own framebuffer. Both draw with the same code, so text,
@@ -202,7 +203,7 @@ type PainterClip =
 /// the framebuffer would not be faded with the rest of its group.
 ///
 /// Not thread-safe, like the canvas it draws on. The measurer is shared, and must be the one
-/// layout ran against (D62): the traversal centres text with the advances it measured.
+/// layout ran against: the traversal centres text with the advances it measured.
 [<Sealed>]
 type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, claim: (Affine<nd, px> -> Node -> bool) option) =
 
@@ -453,10 +454,10 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
     /// The sign convention is the trap. Skia's `Ascent` is **negative** (above the baseline)
     /// while Core's `TextMetrics.Ascent` is positive, so every use of it here converts first.
     ///
-    /// **The band comes from the run, not from a font.** D78 splits a run across faces, and a
+    /// **The band comes from the run, not from a font.** A run is split across faces, and a
     /// mixed-script run's band is the maximum over the faces it uses — the fold `ShapedRun`
     /// carries. Reading `Metrics` off the first segment's font here would place a CJK title
-    /// against a Latin ascent while layout had reserved the CJK one, which is D62's
+    /// against a Latin ascent while layout had reserved the CJK one, which is the
     /// measuring-and-drawing-disagree bug in the vertical direction.
     let textOrigin (ascent: float32) (descent: float32) (t: TextRun) (advance: float32) (x: float32) (y: float32) =
         let ox =
@@ -508,7 +509,7 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
 
         | Raster r -> drawRaster ctm r
 
-        // A `Group` is §5's identity-carrying container and has no rendering effect.
+        // A `Group` is the scene's identity-carrying container and has no rendering effect.
         | Group ns ->
             for child in ns do
                 draw ctm child
@@ -538,7 +539,7 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
             clip <- outer
             canvas.Restore()
 
-        // D67 — `SaveLayer` *is* group opacity: the subtree is drawn into an offscreen layer
+        // `SaveLayer` *is* group opacity: the subtree is drawn into an offscreen layer
         // and the layer is composited back with the paint's alpha, so an overlap inside the
         // group does not read darker than the rest of it. Setting `canvas.Alpha` or folding
         // the value into each paint would be the degraded picture, which is what
@@ -561,7 +562,7 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
                 layers <- layers - 1
                 canvas.Restore()
 
-        // §5.2's stable identity has nowhere to land in a bitmap and is not an error: the node
+        // A key's stable identity has nowhere to land in a bitmap and is not an error: the node
         // is a container, so its child is drawn and the name is dropped. Unlike `Annotated`
         // below, this is *not* something `Degrade` removes — a key is not a capability — so
         // the traversal has to handle it.
@@ -582,7 +583,7 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
             // face and per size and disposes them with this backend. Disposing them here would
             // free a handle the next run is about to use.
             //
-            // **D78 — one run, one *or more* faces.** `Segments` splits the string by which
+            // **One run, one *or more* faces.** `Segments` splits the string by which
             // face has each codepoint and hands back the pieces with the font and shaper that
             // draw each. A Latin run is one segment and this loop is what it always was; a CJK
             // title against a Latin theme is several, and drawing it with the first segment's
@@ -648,10 +649,10 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
 
     and drawMarkers (ctm: Affine<nd, px>) (b: MarkerBatch) =
         if b.Points.Length > 0 then
-            // §5.1 — "a 100 000-point scatter must be *one* IR node", and one outline and one
+            // "a 100 000-point scatter must be *one* IR node", and one outline and one
             // pair of paints here, built once for the batch.
             //
-            // **D132 — but each mark is composited on its own, filled and then stroked.** That is
+            // **But each mark is composited on its own, filled and then stroked.** That is
             // what the SVG backend's `<use>`s and TikZ's per-mark paths do, and what a scatter
             // plot means: two translucent marks that overlap are darker where they overlap,
             // which is how a dense region shows. Until 0.4.0 this backend added the whole batch to
@@ -819,13 +820,13 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
     let mutable document: SKDocument = null
     let mutable pdfStream: SKDynamicMemoryWStream = null
 
-    // D131 — the traversal, on whichever canvas `Begin` made.
+    // The traversal, on whichever canvas `Begin` made.
     let mutable painter: SkiaPainter option = None
 
     let mutable root: Affine<nd, px> =
         Affine.scaleUniform (LanguagePrimitives.FloatWithMeasure<px / nd> 1.0)
 
-    /// The SkiaSharp shape of D63's pinned dictionary. An empty string is left unset, so the
+    /// The SkiaSharp shape of the pinned dictionary. An empty string is left unset, so the
     /// key is absent rather than present and empty — and `Creation`/`Modified` are never set at
     /// all, which is the decision.
     let pdfMetadata () =
@@ -840,7 +841,7 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
         // snaps the `MediaBox` to a whole number of device pixels at this resolution, so a
         // 187.5 pt page is written as `188` at the default 72 and as `187.5` at 96 — where
         // 187.5 pt is exactly 250 px. Setting it from the render's own dpi is both what makes
-        // gate 4's fractional half true and what it should have been anyway: it is the
+        // the page size exact to the fractional half and what it should have been anyway: it is the
         // resolution Skia rasterises at for anything it cannot express as vectors.
         md.RasterDpi <- float32 (float (Space.pxOfPt opts.Dpi 72.0<pt>))
 
@@ -919,10 +920,10 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
 
     /// Every font this backend has actually opened, in the order the scene first asked for it.
     ///
-    /// D62's reporting half, and the answer to "why does this PNG look different on your
-    /// machine": a `ResolvedFace` whose `Matched` is `None` fell through the whole stack onto
-    /// Skia's default, and one whose `File` is `Some` came from a path the caller stated and is
-    /// therefore the same face everywhere.
+    /// The reporting half of font resolution, and the answer to "why does this PNG look different
+    /// on your machine": a `ResolvedFace` whose `Matched` is `None` fell through the whole stack
+    /// onto Skia's default, and one whose `File` is `Some` came from a path the caller stated and
+    /// is therefore the same face everywhere.
     ///
     /// **Empty before anything has been measured or drawn**, because resolution is lazy. Read
     /// it after `Finish`.
@@ -961,20 +962,20 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
               // for which `Semantics = false`, so it is the first time `Degrade.forCaps`
               // actually strips `Annotated` — which `Capabilities.full`'s comment warns about
               // and which no scene had ever had done to it. The cost is real and accepted:
-              // §5.3's structure cannot be reviewed through this path, and the SVG goldens
+              // the semantic structure cannot be reviewed through this path, and the SVG goldens
               // keep that job.
               //
               // A *tagged* PDF could carry structure, and that is not an argument for flipping
               // this to `true`: `Caps` belongs to the backend and both of its formats go
               // through the same traversal, SkiaSharp exposes no tagging API at 4.151.1, and a
               // capability advertised on one format out of two is a capability that lies half
-              // the time. If tagging ever arrives it wants the D64 treatment — the capability
-              // moving to the entry point.
+              // the time. If tagging ever arrives, the capability should move to the entry
+              // point.
               Semantics = false
-              // D67 — `SKCanvas.SaveLayer` composites the subtree and fades the result, which
+              // `SKCanvas.SaveLayer` composites the subtree and fades the result, which
               // is exactly the node's meaning. Nothing to degrade.
               GroupOpacity = true
-              // No instance-buffer ceiling. Skia takes a path of any size, and §5.1's whole
+              // No instance-buffer ceiling. Skia takes a path of any size, and batching's whole
               // point is that one batch stays one batch. The GPU backend is where `MaxBatch`
               // finally has a real value.
               MaxBatch = None }
@@ -1011,8 +1012,8 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
                 | SkiaFormat.Pdf ->
                     // **The page is not rounded.** A PDF page is measured in points and points are
                     // not pixels, so 400 x 250 px at the screen convention is a 300 x 187.5 pt page
-                    // — exactly, fractional part included. M1 proved that claim for TikZ, whose
-                    // `bp` is this same unit; this is the second, unrelated producer of it.
+                    // — exactly, fractional part included. TikZ, whose `bp` is this same unit,
+                    // makes the same claim; this is the second, unrelated producer of it.
                     let wPt = Space.ptOfPx opts.Dpi extent.Width
                     let hPt = Space.ptOfPx opts.Dpi extent.Height
 
@@ -1025,10 +1026,10 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
                     canvas <- document.BeginPage(float32 (float wPt), float32 (float hPt))
 
                     // **The one canvas transform in the whole backend, and it is a unit
-                    // conversion.** D15/D30 keep group transforms out of the canvas because
-                    // `Stroke.Width`, `Dash`, `DashOffset` and `MarkerBatch.Size` are in `px` and an
-                    // anisotropic panel scale would stop a hairline being a hairline. This scale is
-                    // the opposite case: it is uniform, it is the device resolution, and a 1 px
+                    // conversion.** Group transforms stay out of the canvas because `Stroke.Width`,
+                    // `Dash`, `DashOffset` and `MarkerBatch.Size` are in `px` and an anisotropic
+                    // panel scale would stop a hairline being a hairline. This scale is the
+                    // opposite case: it is uniform, it is the device resolution, and a 1 px
                     // hairline *should* become 0.75 pt on the page, because that is the same
                     // physical mark. Not scaling it would put a 1 pt rule on a page laid out for a
                     // 1 px one, 33% too heavy — and it is what TikZ already does by converting
@@ -1092,8 +1093,9 @@ module SkiaBackend =
 
     /// Render a scene to PNG bytes at the given surface size.
     ///
-    /// **Degrades against this backend's own capabilities before drawing**, for D31's reason
-    /// and with more to lose than TikZ had: `Chart.render`, `Chart.toFile` and `Chart.toScene`
+    /// **Degrades against this backend's own capabilities before drawing**, so a scene that
+    /// asks for more than the format can carry is drawn as it can be rather than wrongly, with
+    /// more to lose than TikZ had: `Chart.render`, `Chart.toFile` and `Chart.toScene`
     /// do not degrade — only `Chart.renderTo` does — so a caller writing
     /// `fig |> Chart.toFileBytes SkiaBackend.renderPng "f.png" size` would otherwise hand an
     /// un-degraded scene to a backend advertising `Semantics = false`. It is idempotent, so
@@ -1126,14 +1128,14 @@ module SkiaBackend =
     /// Render a scene and write it to a file as PNG.
     ///
     /// No encoding, deliberately and unlike every other `renderToFile` in the library: a PNG
-    /// that acquired a byte-order mark would not open. That asymmetry is the whole of D60.
+    /// that acquired a byte-order mark would not open. That asymmetry is deliberate.
     let renderPngToFile (path: string) (extent: Extent<px>) (node: Node) : unit =
         IO.File.WriteAllBytes(path, renderPng extent node)
 
     /// Render a scene to a one-page PDF at the `pt` size of the given `px` extent.
     ///
     /// 400 x 250 px is a 300 x 187.5 pt page at the screen convention — exact, fractional part
-    /// included. That is M1's claim for TikZ, made by a second producer that shares none of its
+    /// included. That is TikZ's claim too, made by a second producer that shares none of its
     /// code.
     ///
     /// **Vector output from the raster backend**, which is only a contradiction in the name:
@@ -1141,7 +1143,7 @@ module SkiaBackend =
     /// stay paths and the glyphs stay glyphs. It is the answer for a caller who wants a
     /// publication figure without a TeX installation.
     ///
-    /// Degrades first, for D31's reason and `renderPng`'s.
+    /// Degrades first, for `renderPng`'s reason.
     let renderPdf (extent: Extent<px>) (node: Node) : byte[] =
         use backend = new SkiaBackend(SkiaOptions.Default, SkiaFormat.Pdf)
         let sink = backend :> IBackend

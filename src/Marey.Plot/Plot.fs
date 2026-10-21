@@ -1,19 +1,19 @@
 namespace Marey
 
-/// §9 / D47 — **the stat a block runs between its data and its geom**, if it runs one.
+/// **The stat a block runs between its data and its geom**, if it runs one.
 ///
-/// D47's finding is that stats do not have one shape, and this type is that finding written
+/// Stats do not have one shape, and this type is that finding written
 /// down. `fit` takes the block's two positional channels and adds a *third* thing to draw;
 /// `histogram`, `density` and `ecdf` take the x channel alone and **manufacture y**. A single
 /// pipeline node over a channel pair would have fitted the first and forced a y channel on the
 /// other three that is ignored — so there is no such node, and the cases are enumerated
 /// instead. The compiler then has to be told what each one means, which is the whole argument
-/// D45 makes for putting the levels in `ScaleKind`.
+/// for putting the levels in `ScaleKind`.
 ///
 /// Nothing here computes: every case is one call into `Marey.Core`'s `Stat`, which is where the
 /// arithmetic lives and where the measures are still typed.
 [<NoComparison; NoEquality>]
-type StatSpec =
+type internal StatSpec =
     | StatNone
     /// A least-squares line over the block's own x and y, as an extra layer. The transform
     /// styles that layer, against the block's base style.
@@ -25,15 +25,15 @@ type StatSpec =
     /// The empirical CDF, as a staircase.
     | StatEcdf
 
-/// §9 / D48 — **the split a block makes before it draws**: one panel per level of a key.
+/// **The split a block makes before it draws**: one panel per level of a key.
 ///
-/// The key is erased exactly as a categorical channel is (D45) — a level set in
+/// The key is erased exactly as a categorical channel is — a level set in
 /// first-appearance order, and one level number per row — because by the time `Run` sees the
 /// block the accessors are gone and every array in it has already been mapped over the rows. What
 /// is left is the one thing a facet actually needs: the arrays are index-aligned, so splitting the
 /// block is splitting an `int[]` and applying it to each of them.
 [<NoComparison; NoEquality>]
-type FacetSpec =
+type internal FacetSpec =
     { /// One panel title per level, in the order the levels first appear.
       Labels: string[]
       /// The level number of every row.
@@ -41,23 +41,22 @@ type FacetSpec =
       /// The wrap width. `None` is as square as the panel count allows.
       Cols: int option }
 
-/// §9 / D56 — **a layer's geom, resolved after the block has reunified its channels.**
+/// **A layer's geom, resolved after the block has reunified its channels.**
 ///
 /// `layer GeomLine` names a geom that exists before the block runs, and most do. `GeomArea` and
-/// `GeomBar` do not: their baseline is `Geom.baselineOf s.YScale`, and the y scale does not
-/// exist until `Run` reunifies two channels that were each erased where they were declared (D44
-/// finding 2). D54 recorded that as an accepted imprecision — the two geoms were "not usefully
-/// reachable from a block", because passing a baseline by hand compiles and draws a number the
-/// caller has no way to compute.
+/// `GeomBar` do not: their baseline is `Geom.baselineOf s.YScale`, and the y scale does not exist
+/// until `Run` reunifies two channels that were each erased where they were declared. That was once
+/// an accepted imprecision — the two geoms were "not usefully reachable from a block", because
+/// passing a baseline by hand compiles and draws a number the caller has no way to compute.
 ///
 /// The fix is the encoding this codebase already uses four times: a rank-2 consumer, invoked at
 /// the one point where the measures are back. A `layer` wraps its geom in a constant one; `area`
 /// and `bars` supply a real one, and are handed the typed series inside `Run`'s own `Accept`.
-type IGeomFor =
+type internal IGeomFor =
     abstract For<[<Measure>] 'ux, [<Measure>] 'uy> : Series<'ux, 'uy> -> Geom
 
     /// True when this geom is read as a **length from a baseline**, so the y domain has to
-    /// reach zero (D50).
+    /// reach zero.
     ///
     /// It cannot be derived from the geom the factory returns, because by then the baseline has
     /// already been computed against a domain that may not contain zero — the clamp in
@@ -66,7 +65,7 @@ type IGeomFor =
     /// scales are final.
     abstract NeedsZero: bool
 
-/// §9 / D43 / D44 — **the accumulated encoding block**, before it becomes a `Figure`.
+/// **The accumulated encoding block**, before it becomes a `Figure`.
 ///
 /// Public only because `PlotBuilder`'s members are, and F# requires a type to be at least as
 /// accessible as the signatures it appears in. Nothing constructs one by hand: every field is
@@ -79,35 +78,36 @@ type IGeomFor =
 /// mattered.
 [<NoComparison; NoEquality>]
 type PlotSpec =
-    { /// The series name. One legend entry, on the first layer only — see `PlotBuilder.Run`.
-      Name: string
-      /// The positional channels, each erased where it was declared (D44 finding 2).
-      X: PackedChannel option
-      Y: PackedChannel option
-      /// Non-positional channels, in declaration order, as functions of the final theme.
-      Channels: (Theme -> Channel) list
-      /// The quantity name a continuous colour channel puts in front of its unit: `T` in
-      /// `T [K]`. Empty means "read it from the dimension", exactly as an axis does.
-      ColorLabel: string
-      /// One entry per `layer`, in declaration order, with its style transform.
-      Layers: (IGeomFor * (GeomStyle -> GeomStyle)) list
-      /// The stat, if any. **One per block, not one per layer** — see `StatSpec`.
-      Stat: StatSpec
-      /// D104 — the data's own name for each row, if the block states one with `key`.
-      Keys: string[] option
-      /// D48 — the key this block facets by, if it facets.
-      Facet: FacetSpec option
-      /// D48 — which axes the panels share. `None` is `ShareBoth`, which is what a facet means;
-      /// stating anything else is stating that one axis makes no cross-panel claim.
-      FacetShare: FacetScales option
-      /// D48 — stat parameters fixed over the **whole** sample, for a faceted distribution.
-      ///
-      /// Written by `Run` and by nothing else: it is how a facet stops each panel from choosing
-      /// its own bin edges or its own bandwidth, which would make the panels incomparable in
-      /// exactly the way that makes drawing them side by side pointless.
-      Frame: Stat.Frame option
-      Theme: Theme
-      Coord: Coord }
+    internal
+        { /// The series name. One legend entry, on the first layer only — see `PlotBuilder.Run`.
+          Name: string
+          /// The positional channels, each erased where it was declared.
+          X: PackedChannel option
+          Y: PackedChannel option
+          /// Non-positional channels, in declaration order, as functions of the final theme.
+          Channels: (Theme -> Channel) list
+          /// The quantity name a continuous colour channel puts in front of its unit: `T` in
+          /// `T [K]`. Empty means "read it from the dimension", exactly as an axis does.
+          ColorLabel: string
+          /// One entry per `layer`, in declaration order, with its style transform.
+          Layers: (IGeomFor * (GeomStyle -> GeomStyle)) list
+          /// The stat, if any. **One per block, not one per layer** — see `StatSpec`.
+          Stat: StatSpec
+          /// The data's own name for each row, if the block states one with `key`.
+          Keys: string[] option
+          /// The key this block facets by, if it facets.
+          Facet: FacetSpec option
+          /// Which axes the panels share. `None` is `ShareBoth`, which is what a facet means;
+          /// stating anything else is stating that one axis makes no cross-panel claim.
+          FacetShare: FacetScales option
+          /// Stat parameters fixed over the **whole** sample, for a faceted distribution.
+          ///
+          /// Written by `Run` and by nothing else: it is how a facet stops each panel from choosing
+          /// its own bin edges or its own bandwidth, which would make the panels incomparable in
+          /// exactly the way that makes drawing them side by side pointless.
+          Frame: Stat.Frame option
+          Theme: Theme
+          Coord: Coord }
 
 /// The parts of `Run` that are generic over a measure, and the empty spec.
 ///
@@ -139,7 +139,7 @@ module private PlotCompile =
         | None -> LanguagePrimitives.FloatWithMeasure<'u> 0.0, LanguagePrimitives.FloatWithMeasure<'u> 1.0
 
     /// A categorical channel's two arrays: the level set the keys themselves define, in
-    /// first-appearance order, and one level number per row (D45).
+    /// first-appearance order, and one level number per row.
     let leveled (keys: 'k[]) : string[] * float[] =
         let levels = Levels.ofSeq keys
         levels.Labels, Levels.positions levels keys
@@ -183,9 +183,9 @@ module private PlotCompile =
                 what
                 what
 
-    /// **The fitted line, built where both measures exist and nowhere else** (D47).
+    /// **The fitted line, built where both measures exist and nowhere else**.
     ///
-    /// `Stat.regression` is typed — its slope is `float<'uy/'ux>` — and D44 finding 3 says the
+    /// `Stat.regression` is typed — its slope is `float<'uy/'ux>` — and the
     /// only scope in which that type can be written is the body of the inner `Apply`. So the
     /// call is here, and what comes back out is an ordinary `PackedSeries` of two points: the
     /// line, with the slope spent on it. A caller who wants the *number* calls
@@ -214,7 +214,7 @@ module private PlotCompile =
         { fig with
             Panels = fig.Panels |> Array.map (fun p -> { p with Coord = c }) }
 
-    /// §9 / D47 — **a block whose y comes from a stat rather than from the data.**
+    /// **A block whose y comes from a stat rather than from the data.**
     ///
     /// `histogram`, `density` and `ecdf` are one-channel stats: they take a sample and produce a
     /// distribution over it, so the block states `x` and the stat supplies y. Everything a
@@ -223,7 +223,7 @@ module private PlotCompile =
     ///
     /// * **`y` is refused** because the stat is what y *is*. Accepting one and dropping it would
     ///   let a caller write a y channel and never learn it was not drawn.
-    /// * **A channel is refused** because a stat changes the row count. D53 makes a channel the
+    /// * **A channel is refused** because a stat changes the row count. A channel is the
     ///   block's rather than a layer's, and every channel is one `Array.map` over the block's
     ///   rows — which is exactly the array a histogram replaces with one entry per bin. There is
     ///   no correspondence left to attach.
@@ -240,12 +240,12 @@ module private PlotCompile =
 
         if not (List.isEmpty spec.Channels) then
             failwithf
-                "Marey: a `%s` block cannot carry a colour, size or shape channel. The stat changes the row count, so a per-row channel has nothing left to line up with (D47). Facet the block instead, or bin each group yourself and add the series."
+                "Marey: a `%s` block cannot carry a colour, size or shape channel. The stat changes the row count, so a per-row channel has nothing left to line up with. Facet the block instead, or bin each group yourself and add the series."
                 what
 
         if spec.Keys.IsSome then
             failwithf
-                "Marey: a `%s` block cannot carry a `key`. The stat makes its own rows (bins, a curve, a staircase), and none of them is a row of the data, so there is nothing for a key to name (D104)."
+                "Marey: a `%s` block cannot carry a `key`. The stat makes its own rows (bins, a curve, a staircase), and none of them is a row of the data, so there is nothing for a key to name."
                 what
 
         if not (List.isEmpty spec.Layers) then
@@ -260,7 +260,7 @@ module private PlotCompile =
                 { new IChannelConsumer<Figure> with
                     member _.Apply<[<Measure>] 'u>(u: U<'u>, xs: float<'u>[]) =
                         // `Frame` is the facet's, and where it is present it overrides the
-                        // rule a stat would apply to its own rows — see `Stat.frameOf` (D48).
+                        // rule a stat would apply to its own rows — see `Stat.frameOf`.
                         // The measure is reattached here, which is where it is known again.
                         let tagged (v: float) = LanguagePrimitives.FloatWithMeasure<'u> v
 
@@ -299,11 +299,11 @@ module private PlotCompile =
         let packed =
             Erase.channelSeries spec.Name (required "x" spec.X) (required "y" spec.Y)
 
-        // D50 through the block. A bar is read as a length from zero, so zero is in the domain —
-        // and the widening has to happen *before* the geoms are built, because a baseline is
-        // computed against the scale it will be drawn on. Unpadded, and only on the side it is
-        // missing from, exactly as `Chart.bar` does it: padding below zero lifts the baseline off
-        // the axis, which is the thing being fixed.
+        // The zero baseline, through the block. A bar is read as a length from zero, so zero is in
+        // the domain — and the widening has to happen *before* the geoms are built, because a
+        // baseline is computed against the scale it will be drawn on. Unpadded, and only on the
+        // side it is missing from, exactly as `Chart.bar` does it: padding below zero lifts the
+        // baseline off the axis, which is the thing being fixed.
         let packed =
             if spec.Layers |> List.exists (fun (g, _) -> g.NeedsZero) then
                 let _, y = Erase.seriesScales packed
@@ -312,7 +312,7 @@ module private PlotCompile =
             else
                 packed
 
-        // The one place both measures of the block are alive again (D44 finding 3). Every layer
+        // The one place both measures of the block are alive again. Every layer
         // whose geom depends on the scales is built here and nowhere else.
         let geomOf (f: IGeomFor) =
             packed.Accept
@@ -372,21 +372,21 @@ module private PlotCompile =
                   // front door plays by.
                   ShowInLegend = i = 0
                   Addressed = [||]
-                  // D104 — every layer of the block draws the same rows, so every layer names
+                  // Every layer of the block draws the same rows, so every layer names
                   // them the same way. The fit below draws two points of its own and has none.
                   RowKeys = defaultArg spec.Keys [||]
                   InDomain = (true, true)
                   SecondaryY = false })
 
-        // **The fitted line is a layer, and it is appended — the order is load-bearing** (D47).
+        // **The fitted line is a layer, and it is appended — the order is load-bearing**.
         //
         // It carries no channels, because it has two points and the channels have one entry per
-        // row; and it is not in the legend, because D54 makes the layers of a block one series
+        // row; and it is not in the legend, because the layers of a block are one series
         // and a fit is a statement *about* that series rather than a second one. Appending is
-        // what keeps both true without touching the legend rule: D53 puts the whole legend entry
-        // — the layer's name *and* its channels' levels — on the first layer, so a fit line
+        // what keeps both true without touching the legend rule: the whole legend entry
+        // — the layer's name *and* its channels' levels — is on the first layer, so a fit line
         // prepended instead would take the legend with it and silently drop every level of a
-        // categorical channel. That is D53's near-miss arrived at from the other side.
+        // categorical channel. That is the same near-miss arrived at from the other side.
         let layers =
             match spec.Stat with
             | StatFit restyle ->
@@ -409,19 +409,19 @@ module private PlotCompile =
 
         { Figure.create [| panel |] with Theme = theme }
 
-    /// Which of the two shapes of block this is (D47).
+    /// Which of the two shapes of block this is.
     let private runOne (spec: PlotSpec) : Figure =
         match spec.Stat with
         | StatNone
         | StatFit _ -> runPositional spec
         | distribution -> runDistribution distribution spec
 
-    /// §9 / D48 — **one block, one panel per level of a key.**
+    /// **One block, one panel per level of a key.**
     ///
     /// The block runs once per level over a *slice* of itself, and the slices are taken by row
     /// index: `Erase.selectChannel` for the positional channels, `Channel.select` for the rest.
     /// Nothing is recomputed from the data, because there is no data left to recompute from — the
-    /// accessors were spent at declaration (D44 finding 2) — and nothing needs to be, because
+    /// accessors were spent at declaration — and nothing needs to be, because
     /// every array in the block is one `Array.map` over the same rows.
     ///
     /// **What is computed before the split is the part that has to be the same in every panel.** A
@@ -467,15 +467,15 @@ module private PlotCompile =
         | Some facet -> runFaceted facet spec
         | None ->
             // `facetScales` on its own is a statement about panels the block does not have. It is
-            // refused rather than ignored, for D47's reason: a caller who wrote it believes it did
-            // something.
+            // refused rather than ignored, for the stats' reason: a caller who wrote it believes it
+            // did something.
             if spec.FacetShare.IsSome then
                 failwith
                     "Marey: `facetScales` says which axes the panels of a facet share, and this block has no facet. Add `facetWrap (fun r -> …)`, or remove it."
 
             runOne spec
 
-/// §9 — the operations of the encoding block that both modes share: everything but the
+/// The operations of the encoding block that both modes share: everything but the
 /// witness-free forms the unit-optional mode adds. See `PlotBuilder` for the block itself.
 type PlotBuilderBase<'r>(rows: 'r[]) =
 
@@ -504,7 +504,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
         { spec with
             Y = Some(Erase.packChannel u (Array.map f rows)) }
 
-    /// **D104 — the data's own name for each row.** A mark is then keyed by it rather than by
+    /// **The data's own name for each row.** A mark is then keyed by it rather than by
     /// its row, so it keeps its name when the data is edited, and a storyboard's morph pairs it
     /// with the datum of the same name. Keys are formatted with `string`, and must be unique:
     /// a duplicate is refused here, by name.
@@ -514,7 +514,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
         Keys.validate rows.Length keys
         { spec with Keys = Some keys }
 
-    // ---- Non-positional channels (D46, D49, D51) ----------------------------------------------
+    // ---- Non-positional channels ----------------------------------------------
     //
     // Colour is the only channel spelled two ways, and the reason is `ChannelMap`'s four arms: a
     // category can drive colour or shape, a quantity can drive colour or size, and nothing else
@@ -528,7 +528,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
     /// **Colour by a category.** One colour per level, one batch per level, one legend entry per
     /// level — and the levels come from the keys themselves, in first-appearance order.
     ///
-    /// Applied together with `shape` over the same keys this is §9's colour-blind-safe scatter,
+    /// Applied together with `shape` over the same keys this is the colour-blind-safe scatter,
     /// and it is still one batch per level: both channels read the same level number, so the
     /// grouping does not take their product.
     [<CustomOperation("color")>]
@@ -537,7 +537,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
         PlotCompile.append spec (fun theme -> Channel.colorByLevel theme labels positions)
 
     /// **Shape by a category** — the redundant encoding that keeps a scatter readable in
-    /// greyscale and under colour-vision deficiency (D5).
+    /// greyscale and under colour-vision deficiency.
     [<CustomOperation("shape")>]
     member _.Shape(spec: PlotSpec, key: 'r -> 'k) : PlotSpec =
         let labels, positions = PlotCompile.leveled (Array.map key rows)
@@ -546,7 +546,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
     /// **Colour by a quantity**, over the theme's sequential ramp.
     ///
     /// The witness buys here what it buys on an axis: the colorbar labels itself `T [K]`, picks
-    /// its own prefix, and takes its ticks from the axis compiler (D49).
+    /// its own prefix, and takes its ticks from the axis compiler.
     [<CustomOperation("colorBy")>]
     member _.ColorBy(spec: PlotSpec, u: U<'u>, f: 'r -> float<'u>) : PlotSpec =
         let values = Array.map f rows
@@ -569,7 +569,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
     /// **Size by a quantity**, over a range centred on the theme's marker size.
     ///
     /// Interpolated in area rather than in diameter, because area is what the eye takes off a
-    /// disc (D51). Size is the weakest channel for accurate reading, so it is the one to reach
+    /// disc. Size is the weakest channel for accurate reading, so it is the one to reach
     /// for last: what it produces is three marks in the legend, not a bar.
     [<CustomOperation("size")>]
     member _.Size(spec: PlotSpec, u: U<'u>, f: 'r -> float<'u>) : PlotSpec =
@@ -616,9 +616,9 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
         { spec with
             Layers = spec.Layers @ [ PlotCompile.constant g, restyle ] }
 
-    /// D56 — **the encoding, filled to zero.** The baseline is the block's own y scale's zero,
+    /// **The encoding, filled to zero.** The baseline is the block's own y scale's zero,
     /// computed inside `Run` where the measures are back, and the y domain is widened to reach
-    /// it (D50) before the baseline is taken.
+    /// it before the baseline is taken.
     ///
     /// ```fsharp
     /// plot readings {
@@ -639,7 +639,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
         { spec with
             Layers = spec.Layers @ [ PlotCompile.areaFor, restyle ] }
 
-    /// D56 — **the encoding, as bars from zero.** Plural, because `bar` reads as one mark and
+    /// **The encoding, as bars from zero.** Plural, because `bar` reads as one mark and
     /// this is the whole layer.
     ///
     /// The width comes from the data's own rhythm, as everywhere else — and a colour channel
@@ -656,7 +656,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
         { spec with
             Layers = spec.Layers @ [ PlotCompile.barsFor, restyle ] }
 
-    // ---- Stats (§9, D47) --------------------------------------------------------------------
+    // ---- Stats --------------------------------------------------------------------
     //
     // **One stat per block, and the last one written wins** — the same rule a repeated `x`
     // plays by. A block with two stats would have to say what a density of a histogram means,
@@ -678,12 +678,12 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
     /// }
     /// ```
     ///
-    /// The block draws the line and does not report the slope, which is D47's split rather than
-    /// an omission: the slope of metres against seconds is a `float&lt;m/s&gt;`, and that type
-    /// exists only inside the scope where the two channels are reunified (D44 finding 3). A
-    /// caller who wants the number calls `Stat.regression` on the same two arrays, where it is
-    /// still typed, still bindable to an annotated `float&lt;m/s&gt;`, and comes with `R2`, `N`
-    /// and the count of non-finite pairs the fit ignored.
+    /// The block draws the line and does not report the slope, which is the stats' split rather
+    /// than an omission: the slope of metres against seconds is a `float&lt;m/s&gt;`, and that type
+    /// exists only inside the scope where the two channels are reunified. A caller who wants the
+    /// number calls `Stat.regression` on the same two arrays, where it is still typed, still
+    /// bindable to an annotated `float&lt;m/s&gt;`, and comes with `R2`, `N` and the count of
+    /// non-finite pairs the fit ignored.
     [<CustomOperation("fit")>]
     member _.Fit(spec: PlotSpec) : PlotSpec = { spec with Stat = StatFit id }
 
@@ -739,9 +739,9 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
     [<CustomOperation("ecdf")>]
     member _.Ecdf(spec: PlotSpec) : PlotSpec = { spec with Stat = StatEcdf }
 
-    // ---- Facets (D48) ----------------------------------------------------------------------
+    // ---- Facets ----------------------------------------------------------------------
 
-    /// §9 / D48 — **one panel per level of a key**, over shared axes.
+    /// **One panel per level of a key**, over shared axes.
     ///
     /// ```fsharp
     /// plot measurements {
@@ -759,7 +759,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
     /// bandwidth — and the key is drawn once rather than in every panel.
     ///
     /// Levels come from the keys themselves in first-appearance order, exactly as `color`'s do
-    /// (D45), so the panels are laid out in the order the data introduces them.
+    ///, so the panels are laid out in the order the data introduces them.
     [<CustomOperation("facetWrap")>]
     member _.FacetWrap(spec: PlotSpec, key: 'r -> 'k) : PlotSpec =
         let labels, positions = PlotCompile.leveled (Array.map key rows)
@@ -806,7 +806,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
     [<CustomOperation("coord")>]
     member _.Coord(spec: PlotSpec, c: Coord) : PlotSpec = { spec with Coord = c }
 
-/// §9 — **the grammar-of-graphics front door**: one dataset, several channels, several layers.
+/// **The grammar-of-graphics front door**: one dataset, several channels, several layers.
 ///
 /// ```fsharp
 /// plot measurements {
@@ -819,29 +819,29 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
 /// }
 /// ```
 ///
-/// ### The witness is stated, and that is permanent (D43)
+/// ### The witness is stated, and that is permanent
 ///
-/// §9 originally had the block *infer* the unit from the accessor's return type. It cannot be
+/// The block was once meant to *infer* the unit from the accessor's return type. It cannot be
 /// built: a measure parameter cannot be reflected on, cannot carry a member constraint, and
 /// cannot be dispatched on by overload, because erasure makes `'r -> float&lt;s&gt;` and
 /// `'r -> float&lt;m&gt;` the same signature. So a positional channel takes its witness exactly
 /// as `Chart.line` does — and then **checks the accessor against it**: naming `r.Displacement`
 /// under `U.second` is a compile error, in the measures, at the call site.
 ///
-/// **D109 — the witness may also be left out.** Under `open Marey` alone each channel that takes
-/// a witness has a second form without one, `x (fun r -> r.Value)`, over an accessor returning
-/// plain `float`, and the axis is then `U.unspecified` (D127). The forms differ in arity, not in
-/// measure, so the overload is resolvable where D43's was not, and a witness that disagrees with
-/// its accessor is still FS0001 naming both measures. Under `open Marey.UnitsOfMeasure`, `plot`
-/// returns `Marey.UnitsOfMeasure.PlotBuilder`, which has the witness forms only, so leaving one out
-/// is FS3099.
+/// **The witness may also be left out.** Under `open Marey` alone each channel that takes a witness
+/// has a second form without one, `x (fun r -> r.Value)`, over an accessor returning plain `float`,
+/// and the axis is then `U.unspecified`. The forms differ in arity, not in measure, so the overload
+/// is resolvable where one on measures is not, and a witness that disagrees with its accessor is
+/// still FS0001 naming both measures. Under `open Marey.UnitsOfMeasure`, `plot` returns
+/// `Marey.UnitsOfMeasure.PlotBuilder`, which has the witness forms only, so leaving one out is
+/// FS3099.
 ///
 /// What the block adds is therefore composition and not inference: channels beyond x and y,
-/// layers over one dataset, a stat between the data and the geom, and — from phase 5 — facets.
+/// layers over one dataset, a stat between the data and the geom, and facets.
 /// Everything downstream of the witness is still derived from it and never configured: the
 /// scale, the domain, the prefix, the ticks and both axis titles.
 ///
-/// ### A block has one stat, and the stat decides the block's shape (D47)
+/// ### A block has one stat, and the stat decides the block's shape
 ///
 /// `fit` adds a least-squares line over the block's own two channels. `histogram`, `density` and
 /// `ecdf` take the x channel *alone* and manufacture y — a count, a density, a probability — so
@@ -849,7 +849,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
 /// dropping it. The two shapes are why `StatSpec` enumerates rather than abstracting: a single
 /// pipeline node over a channel pair fits the first and forces a dead y channel on the rest.
 ///
-/// ### The block is flat, and that is a type check rather than a taste (D44)
+/// ### The block is flat, and that is a type check rather than a taste
 ///
 /// There is no nested `encode { … }`. It does not parse — a custom operation and a builder
 /// value cannot share a name — and where it does parse it severs the row type: the inner
@@ -870,7 +870,7 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
 type PlotBuilder<'r>(rows: 'r[]) =
     inherit PlotBuilderBase<'r>(rows)
 
-    // ---- D109 — the channels without a witness ------------------------------------------------
+    // ---- The channels without a witness ------------------------------------------------
     //
     // Each is the witness form at `U.unspecified`: no bracket, no prefix, no dimensional claim.
 
@@ -917,13 +917,13 @@ type PlotBuilder<'r>(rows: 'r[]) =
         let scale = Scale.linear U.unspecified (PlotCompile.domainFor values)
         PlotCompile.append spec (fun _ -> Channel.sizeByValue "" smallest largest scale values)
 
-/// §9 — the encoding block's one entry point.
+/// The encoding block's one entry point.
 [<AutoOpen>]
 module Grammar =
 
     /// Open an encoding block over a dataset.
     ///
     /// The row type `'r` arrives here and is carried by the builder, which is what makes an
-    /// accessor over an unrelated record a compile error rather than a runtime one (D44
-    /// finding 4). The sequence is materialized once, so a lazy one is safe.
+    /// accessor over an unrelated record a compile error rather than a runtime one. The sequence is
+    /// materialized once, so a lazy one is safe.
     let plot (data: 'r seq) : PlotBuilder<'r> = PlotBuilder<'r>(Seq.toArray data)

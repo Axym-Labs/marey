@@ -100,7 +100,7 @@ module internal WindowScene =
                 let widget =
                     match c.Kind with
                     | Slider(lo, hi, _) -> slider lo hi
-                    // D137 — a slider with a play button: a triangle, or two bars while it plays.
+                    // A slider with a play button: a triangle, or two bars while it plays.
                     | Time(lo, hi, _, _) ->
                         let b = WindowStrip.playButton r
                         let cx, cy = (b.X0 + b.X1) / 2.0, (b.Y0 + b.Y1) / 2.0
@@ -207,7 +207,7 @@ module internal WindowScene =
 
         [ root, degrade strip; placed, figure; root, degrade (Scene.group [ band; readout ]) ]
 
-/// **A live figure, or a figure, in a window on the screen (D118).**
+/// **A live figure, or a figure, in a window on the screen.**
 ///
 /// ```fsharp
 /// Chart.show fig                 // blocks until the window is closed
@@ -413,7 +413,7 @@ type GpuWindow private (live: Live, recorder: Recorder option, title: string, si
             while not closing && not window.IsClosing do
                 lock GlfwLibrary.gate (fun () -> glfw.WaitEventsTimeout 0.01)
 
-                // D137 — a time control playing advances on this loop, by this clock, through
+                // A time control playing advances on this loop, by this clock, through
                 // the same feed as everything else, so a recording replays the playback.
                 if session.Gesture.Playing.IsSome then
                     post WindowEvent.Frame
@@ -467,7 +467,7 @@ type GpuWindow private (live: Live, recorder: Recorder option, title: string, si
     static member Open(live: Live, ?title: string, ?size: Extent<px>, ?options: SkiaOptions, ?visible: bool) : GpuWindow =
         new GpuWindow(live, None, defaultArg title "Marey", defaultArg size GpuWindow.DefaultSize, defaultArg options SkiaOptions.Default, defaultArg visible true)
 
-    /// Open a recorder's live figure, noting what the reader does as a notebook would (D102).
+    /// Open a recorder's live figure, noting what the reader does as a notebook would.
     /// `Recorder.stop` gives the log, once the window is closed or while it is open.
     static member Open(recorder: Recorder, ?title: string, ?size: Extent<px>, ?options: SkiaOptions, ?visible: bool) : GpuWindow =
         new GpuWindow(recorder.Live, Some recorder, defaultArg title "Marey", defaultArg size GpuWindow.DefaultSize, defaultArg options SkiaOptions.Default, defaultArg visible true)
@@ -485,7 +485,7 @@ type GpuWindow private (live: Live, recorder: Recorder option, title: string, si
     member _.Post(e: WindowEvent) : unit = post e
 
     /// The session as it stands, once every event posted before the call has been stepped.
-    member _.Session: WindowSession = invoke (fun () -> session)
+    member internal _.Session: WindowSession = invoke (fun () -> session)
 
     /// The live state as it stands, as `Session`.
     member this.State: LiveState = this.Session.State
@@ -516,7 +516,7 @@ type GpuWindow private (live: Live, recorder: Recorder option, title: string, si
             closed.Wait()
 
 /// The window's entry points, beside the modules they extend. Nested in a module of their own so
-/// that no two Marey assemblies export one type name (D124): a C# caller reaches them as
+/// that no two Marey assemblies export one type name: a C# caller reaches them as
 /// `GpuShow.Chart.Show`, and an F# caller, for whom this module opens with `Marey`, as `Chart.show`.
 [<AutoOpen>]
 module GpuShow =

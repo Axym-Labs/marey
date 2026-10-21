@@ -1,4 +1,4 @@
-/// §5 / §5.2 / D1 — the Scene IR.
+/// The Scene IR.
 ///
 /// The headline property here is **D1**: two independently constructed, identical scenes must
 /// compare equal. That is not a nicety. §5.2 defines re-rendering as "build a new `Scene`, diff
@@ -343,7 +343,7 @@ module Constructors =
         | Path(segs, _, _, _) -> segs.Length = 5 && segs.[0] = MoveTo { X = r.X0; Y = r.Y0 } && segs.[4] = ClosePath
         | _ -> false
 
-/// §5 — "**The most important constraint in the project: this type is small, closed, total, and
+/// "**The most important constraint in the project: this type is small, closed, total, and
 /// backend-agnostic. Every addition costs you six backend implementations.**" and, at the bottom
 /// of Scene.fs, "Nine cases. Guard it obsessively."
 ///
@@ -366,7 +366,7 @@ module CaseCounts =
             cases
         )
 
-    /// D5 — the shape table each backend fills in once. Seven cases, and adding an eighth is a
+    /// The shape table each backend fills in once. Seven cases, and adding an eighth is a
     /// change every backend has to make.
     [<Fact>]
     let ``MarkerShape has exactly seven cases`` () =
@@ -389,7 +389,7 @@ module CaseCounts =
         Assert.False(FSharpType.IsFunction fields.[0].PropertyType)
 
 // ======================================================================================
-// D67 — THE TENTH CASE
+// THE TENTH CASE
 //
 // `Opacity` is a container, so most of what it has to satisfy is already stated above as a
 // property over generated trees: `count`, `primitiveCount`, structural equality and the
@@ -404,7 +404,7 @@ module GroupOpacity =
 
     /// The constructor clamps and the case does not, which is deliberate: a `Node` is a value
     /// anyone may build, and refusing to represent 1.4 would mean `Opacity` could not round-trip
-    /// through serialization (§15) without a validating parser. Clamping at the constructor is
+    /// through serialization without a validating parser. Clamping at the constructor is
     /// where the three backends stop having to each invent an answer.
     [<Fact>]
     let ``Scene.opacity clamps into zero to one`` () =
@@ -509,7 +509,7 @@ module GroupOpacity =
         | other -> failwithf "expected a Raster, got %A" other
 
 // ======================================================================================
-// §5.2 / D68 — ADDRESSING A SUBTREE BY KEY
+// ADDRESSING A SUBTREE BY KEY
 //
 // `Keyed` was decoration until M3: the whole library produced one of them, at the root of every
 // figure, so the diff the IR was designed around had a granularity of one. These two functions

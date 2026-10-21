@@ -3,17 +3,17 @@ namespace Marey
 open System
 
 // ======================================================================================
-// D134 — THE SHAPE OF A STATE, AND THE INTEGRATOR'S TYPE.
+// THE SHAPE OF A STATE, AND THE INTEGRATOR'S TYPE.
 //
-// §8.3 asks for integrators "unit-generic over state", and F# cannot write `'s / s` for a record
+// Integrators should be unit-generic over state, and F# cannot write `'s / s` for a record
 // `'s`. Three tiers cover every state without an erased one:
 //
 //   * **Second order, one unit for the coordinates.** `q̈ = a(t, q)`, with `q: float<'q>[]`,
 //     `v: float<'q/'t>[]` and `a: float<'q/'t²>[]`. Every mechanical system is this shape — its
-//     positions share a unit, or its angles do — so velocity Verlet, the default §8.3 asks for,
+//     positions share a unit, or its angles do — so velocity Verlet, the default,
 //     is typed by measures alone. An acceleration in `m/s` is a compile error.
-//   * **First order in two dimensions, with time.** `Flow2T`, M4's `Flow` with a clock. Typed by
-//     measures alone and allocation-free: the state is a struct pair.
+// * **First order in two dimensions, with time.** `Flow2T`, `Marey.Fields`' `Flow` with a clock.
+//     Typed by measures alone and allocation-free: the state is a struct pair.
 //   * **Anything else, given a `Tangent`.** A mixed first-order state (a reactor's kelvin and
 //     mol/m³) is a record, and the integrator reaches it through two functions: advance a state
 //     along a derivative, and combine two derivatives. A `Tangent` whose advance forgets `h` is
@@ -29,15 +29,15 @@ open System
 // checkpoint would then see a different force than the straight run did.
 //
 // **Every public function declares its measure parameters**, as `Marey.Fields` does: inferred,
-// they narrow silently (§12.1).
+// they narrow silently.
 // ======================================================================================
 
 /// One step of an integrator: from the state at time `t`, the state at `t + h`.
-type Step<'s, [<Measure>] 't> = float<'t> -> float<'t> -> 's -> 's
+type Stepper<'s, [<Measure>] 't> = float<'t> -> float<'t> -> 's -> 's
 
-/// A 2-D first-order system with time: at `(t, x, y)`, the rates `dx/dt` and `dy/dt`. M4's
-/// `Flow` with a clock, for a driven pendulum or an unsteady field. `Ode.ofFlow` lifts a `Flow`
-/// that does not depend on time.
+/// A 2-D first-order system with time: at `(t, x, y)`, the rates `dx/dt` and `dy/dt`.
+/// `Marey.Fields`' `Flow` with a clock, for a driven pendulum or an unsteady field. `Ode.ofFlow`
+/// lifts a `Flow` that does not depend on time.
 type Flow2T<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> =
     float<'t> -> float<'x> -> float<'y> -> struct (float<'x / 't> * float<'y / 't>)
 
@@ -78,17 +78,18 @@ module Tangent =
             fun a (struct (dq1, dv1)) b (struct (dq2, dv2)) ->
                 struct (Array.map2 (fun x y -> a * x + b * y) dq1 dq2, Array.map2 (fun x y -> a * x + b * y) dv1 dv2) }
 
-// ---- D143: adaptive steps -----------------------------------------------------------------------
+// ---- Adaptive steps -----------------------------------------------------------------------
 
 /// What an adaptive integrator carries from one step to the next: the step it proposes, and the
 /// previous step's error, which the PI controller weighs against the current one. Both belong in a
-/// checkpoint (D143): a replay that restarted the controller from anything else would choose
+/// checkpoint: a replay that restarted the controller from anything else would choose
 /// different steps than the straight run did.
 [<Struct>]
 type Controller<[<Measure>] 't> =
     { H: float<'t>
       ErrOld: float }
 
+/// The adaptive integrators' step-size controller.
 [<RequireQualifiedAccess>]
 module Controller =
 
@@ -119,6 +120,7 @@ type AdaptiveStep<'s, [<Measure>] 't> = float<'t> -> Controller<'t> -> 's -> Acc
 /// state of mixed units weighs each component by its own.
 type ErrorNorm<'s, 'ds, [<Measure>] 't> = float<'t> -> 'ds -> 's -> 's -> float
 
+/// The norms an adaptive integrator measures a step's error with.
 [<RequireQualifiedAccess>]
 module ErrorNorm =
 
@@ -163,7 +165,7 @@ module ErrorNorm =
 
             if q0.Length = 0 then 0.0 else sqrt (sum / float (2 * q0.Length))
 
-/// §8.3's integrators. Each returns a `Step`, so `Sim.ofStep h (Ode.rk4 f) s0` is a whole
+/// The integrators. Each returns a `Stepper`, so `Sim.ofStep h (Ode.rk4 f) s0` is a whole
 /// simulation, and a step is usable on its own: `step t h s`.
 [<RequireQualifiedAccess>]
 module Ode =
@@ -176,11 +178,11 @@ module Ode =
 
     /// Forward Euler, first order: `s + h·f(t, s)`. A teaching foil: it gains energy on every
     /// oscillator, which is what the drift figure shows.
-    let eulerWith<'s, 'ds, [<Measure>] 't> (tangent: Tangent<'s, 'ds, 't>) (f: float<'t> -> 's -> 'ds) : Step<'s, 't> =
+    let eulerWith<'s, 'ds, [<Measure>] 't> (tangent: Tangent<'s, 'ds, 't>) (f: float<'t> -> 's -> 'ds) : Stepper<'s, 't> =
         fun t h s -> tangent.Axpy h (f t s) s
 
     /// The classical fourth-order Runge–Kutta step.
-    let rk4With<'s, 'ds, [<Measure>] 't> (tangent: Tangent<'s, 'ds, 't>) (f: float<'t> -> 's -> 'ds) : Step<'s, 't> =
+    let rk4With<'s, 'ds, [<Measure>] 't> (tangent: Tangent<'s, 'ds, 't>) (f: float<'t> -> 's -> 'ds) : Stepper<'s, 't> =
         fun t h s ->
             let half = 0.5 * h
             let k1 = f t s
@@ -196,13 +198,13 @@ module Ode =
     // the tangent's, term for term, so the two agree bit for bit, and a test holds them to it.
 
     /// Forward Euler over a 2-D flow. `eulerWith Tangent.flow2`, bit for bit.
-    let euler<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (f: Flow2T<'x, 'y, 't>) : Step<struct (float<'x> * float<'y>), 't> =
+    let euler<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (f: Flow2T<'x, 'y, 't>) : Stepper<struct (float<'x> * float<'y>), 't> =
         fun t h (struct (x, y)) ->
             let struct (dx, dy) = f t x y
             struct (x + h * dx, y + h * dy)
 
     /// RK4 over a 2-D flow, allocating nothing. `rk4With Tangent.flow2`, bit for bit.
-    let rk4<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (f: Flow2T<'x, 'y, 't>) : Step<struct (float<'x> * float<'y>), 't> =
+    let rk4<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (f: Flow2T<'x, 'y, 't>) : Stepper<struct (float<'x> * float<'y>), 't> =
         fun t h (struct (x, y)) ->
             let half = 0.5 * h
             let struct (k1x, k1y) = f t x y
@@ -224,7 +226,7 @@ module Ode =
     /// last one.
     let verlet<[<Measure>] 'q, [<Measure>] 't>
         (a: float<'t> -> float<'q>[] -> float<'q / 't ^ 2>[])
-        : Step<struct (float<'q>[] * float<'q / 't>[]), 't> =
+        : Stepper<struct (float<'q>[] * float<'q / 't>[]), 't> =
         fun t h (struct (q, v)) ->
             let n = q.Length
             let half = 0.5 * h
@@ -249,7 +251,7 @@ module Ode =
     /// order and symplectic like `verlet`, with one evaluation of `a` a step.
     let leapfrog<[<Measure>] 'q, [<Measure>] 't>
         (a: float<'t> -> float<'q>[] -> float<'q / 't ^ 2>[])
-        : Step<struct (float<'q>[] * float<'q / 't>[]), 't> =
+        : Stepper<struct (float<'q>[] * float<'q / 't>[]), 't> =
         fun t h (struct (q, v)) ->
             let n = q.Length
             let half = 0.5 * h
@@ -280,7 +282,7 @@ module Ode =
     /// with its own state.
     let verletInPlace<[<Measure>] 'q, [<Measure>] 't>
         (kick: float<'t> -> float<'q>[] -> float<'t> -> float<'q / 't>[] -> unit)
-        : Step<struct (float<'q>[] * float<'q / 't>[]), 't> =
+        : Stepper<struct (float<'q>[] * float<'q / 't>[]), 't> =
         fun t h (struct (q, v)) ->
             let half = 0.5 * h
             kick t q half v
@@ -291,26 +293,44 @@ module Ode =
             kick (t + h) q half v
             struct (q, v)
 
-    // ---- Dormand–Prince 4(5) (D143) ---------------------------------------------------------------
+    // ---- Dormand–Prince 4(5) ---------------------------------------------------------------
 
     // The tableau, and the error weights `b − b̂`. The fifth-order solution is propagated (local
     // extrapolation), and the seventh stage is the derivative at the step's end.
     let private a21 = 1.0 / 5.0
-    let private a31, a32 = 3.0 / 40.0, 9.0 / 40.0
-    let private a41, a42, a43 = 44.0 / 45.0, -56.0 / 15.0, 32.0 / 9.0
-    let private a51, a52, a53, a54 = 19372.0 / 6561.0, -25360.0 / 2187.0, 64448.0 / 6561.0, -212.0 / 729.0
-    let private a61, a62, a63, a64, a65 = 9017.0 / 3168.0, -355.0 / 33.0, 46732.0 / 5247.0, 49.0 / 176.0, -5103.0 / 18656.0
-    let private b1, b3, b4, b5, b6 = 35.0 / 384.0, 500.0 / 1113.0, 125.0 / 192.0, -2187.0 / 6784.0, 11.0 / 84.0
-    let private e1, e3, e4, e5, e6, e7 = 71.0 / 57600.0, -71.0 / 16695.0, 71.0 / 1920.0, -17253.0 / 339200.0, 22.0 / 525.0, -1.0 / 40.0
+    let private a31 = 3.0 / 40.0
+    let private a32 = 9.0 / 40.0
+    let private a41 = 44.0 / 45.0
+    let private a42 = -56.0 / 15.0
+    let private a43 = 32.0 / 9.0
+    let private a51 = 19372.0 / 6561.0
+    let private a52 = -25360.0 / 2187.0
+    let private a53 = 64448.0 / 6561.0
+    let private a54 = -212.0 / 729.0
+    let private a61 = 9017.0 / 3168.0
+    let private a62 = -355.0 / 33.0
+    let private a63 = 46732.0 / 5247.0
+    let private a64 = 49.0 / 176.0
+    let private a65 = -5103.0 / 18656.0
+    let private b1 = 35.0 / 384.0
+    let private b3 = 500.0 / 1113.0
+    let private b4 = 125.0 / 192.0
+    let private b5 = -2187.0 / 6784.0
+    let private b6 = 11.0 / 84.0
+    let private e1 = 71.0 / 57600.0
+    let private e3 = -71.0 / 16695.0
+    let private e4 = 71.0 / 1920.0
+    let private e5 = -17253.0 / 339200.0
+    let private e6 = 22.0 / 525.0
+    let private e7 = -1.0 / 40.0
 
     // Shampine's fourth-order continuous extension, as Hairer's DOPRI5 writes it.
-    let private d1, d3, d4, d5, d6, d7 =
-        -12715105075.0 / 11282082432.0,
-        87487479700.0 / 32700410799.0,
-        -10690763975.0 / 1880347072.0,
-        701980252875.0 / 199316789632.0,
-        -1453857185.0 / 822651844.0,
-        69997945.0 / 29380423.0
+    let private d1 = -12715105075.0 / 11282082432.0
+    let private d3 = 87487479700.0 / 32700410799.0
+    let private d4 = -10690763975.0 / 1880347072.0
+    let private d5 = 701980252875.0 / 199316789632.0
+    let private d6 = -1453857185.0 / 822651844.0
+    let private d7 = 69997945.0 / 29380423.0
 
     /// The weights of `k₁…k₇` in the dense output at `θ ∈ [0, 1]`: `y(θ) = y₀ + h Σ wᵢ kᵢ`. Hairer's
     /// nested form, `θ(r₂ + (1−θ)(r₃ + θ(r₄ + (1−θ)r₅)))`, with each `r` expanded into the stages.

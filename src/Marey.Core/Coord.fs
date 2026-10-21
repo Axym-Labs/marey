@@ -12,7 +12,7 @@ type GridSpec =
       /// emits two-point lines; polar needs ~64 to look round.
       Samples: int }
 
-/// §4 — Coordinate systems, which sit *above* scales.
+/// Coordinate systems, which sit *above* scales.
 ///
 /// "Cartesian is the identity `Coord`. Polar warps and gives circular gridlines and a circular
 /// clip. **Nothing else in the system needs to know polar exists** — which is exactly the
@@ -40,6 +40,8 @@ type Coord =
     /// what the compiler feeds to the IR's `Clip` node.
     abstract Clip: PathSeg[]
 
+/// Coordinate systems for a panel: Cartesian, flipped, polar and polar sectors, and warping a
+/// polyline through one.
 [<RequireQualifiedAccess>]
 module Coord =
 
@@ -173,6 +175,6 @@ module Coord =
             out.ToArray()
 
     /// True when the coord is the identity, so callers can skip resampling entirely.
-    /// A hint, not a question about *which* coord it is — the distinction that keeps §4's
+    /// A hint, not a question about *which* coord it is — the distinction that keeps
     /// "nothing else needs to know polar exists" honest.
     let isIdentity (c: Coord) = System.Object.ReferenceEquals(c, cartesian)

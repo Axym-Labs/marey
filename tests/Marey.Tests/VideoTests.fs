@@ -1,4 +1,4 @@
-/// D75 / D76 — **the mux, and what a gate on a video can actually be.**
+/// **the mux, and what a gate on a video can actually be.**
 ///
 /// D75 said the mux "is testable only for exit status and container-level facts". That turned
 /// out to undersell it in one direction and oversell it in another, and both corrections are in

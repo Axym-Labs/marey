@@ -14,6 +14,36 @@ land in a minor release.
 
 ### Changed
 
+- **A rate reads `s⁻¹`, a frequency `Hz`.** A unit written as the reciprocal of one base unit
+  (`U.perSecond`, `U.recip U.second`) is shown as written, so a vorticity, a decay constant or a
+  growth rate is no longer labelled as a frequency; `U.hertz` still reads `Hz`. Draw a frequency
+  with `U.hertz`. A small rate keeps its power of ten rather than reading `ks⁻¹`.
+- **A reciprocal axis takes the inverse prefix on its unit:** a wavenumber reads `k [nm⁻¹]`, where
+  it read `k [10⁹·m⁻¹]`, as SI reads a prefix before the exponent. The kilogram keeps the
+  multiplier. `figure-ticks` moves.
+- **`withLegendFrame false` takes the legend's background with it**, as matplotlib's
+  `frameon=False` does, so a frameless legend no longer masks the data under it. A theme whose
+  own legend is borderless keeps its fill. `figure-legends` is the one baseline that moves.
+- **Every unit witness is in `U`.** `U.joule`, `U.tesla`, `U.electronvolt`, `U.hour`,
+  `U.degreeCelsius` and the rest, where they were `Derived.…` and `NonSi.…`; the two modules are
+  gone. C#'s `Units.*` is unchanged. `Derived.newtonByComposition` and its four siblings are no
+  longer public: compose the unit, `U.mul U.kilogram U.metrePerSecondSquared`.
+- **Renamed:** `Num.at` is `Num.upTo` (up to that many decimals, trailing zeros dropped);
+  `Anim.pure'` is `Anim.constant`; `Anim<'a>.AtSeconds` is `AtUnclamped`, which says how it differs
+  from `At`; `Marey.Sim`'s `Step<'s,'t>` is `Stepper<'s,'t>`, so it no longer shares a name with the
+  storyboard's `Step`. The auto-opened `interp` and `interpWith` are gone: `Interp.between` and
+  `Interp.betweenWith`.
+- **C# reaches every verb.** New: `WithXAxis`/`WithYAxis` with `Figures.Axis(label)`,
+  `WithXScaleKind`/`WithYScaleKind`, `WithCoord`, `ToRightAxis`, `WithTopAxisLabel`,
+  `WithPanelXDomain`/`WithPanelYDomain`; and `Themes.Publication`, `Coords.Polar` and
+  `Prefixes.Nano` in place of `ThemeModule.publication`, `CoordModule.polar` and
+  `PrefixModule.nano`.
+- **A smaller public surface.** What turns a figure into a scene is internal: the layout, axis,
+  legend, colorbar, field-mark and channel modules, the geom compilers, the arranging functions
+  `Chart.*` already exposes, the tick generator, the SVG and TikZ writers' helpers, the GPU window's
+  control strip and input session, and the TeX pipeline's parsers. `PlotSpec`, `Handle`,
+  `PanelLayout`, `LiveZoom`, `Story` and `Step` keep their names with their fields hidden. Marey's
+  packages now depend on each other by exact version, since they share internals.
 - **A stated proportion holds beside a side of another shape.** `withRowHeights [| 3.0; 1.0 |]`
   beside a stack of three drew 1.70 : 1, and the stack uneven, because `beside` subdivided both
   sides to the least common multiple of their rows and every line of one side then crossed the

@@ -4,8 +4,8 @@ namespace Marey
 /// [0,1].
 ///
 /// sRGB is the storage and interchange format because that is what every backend wants. It is
-/// emphatically *not* the interpolation format — see `Oklab` and §7.1: "colour (in Oklab, not
-/// sRGB — sRGB lerp goes grey through the middle)".
+/// emphatically *not* the interpolation format — see `Oklab`: an sRGB lerp goes grey through the
+/// middle.
 [<Struct>]
 type Color =
     { R: float
@@ -17,9 +17,9 @@ type Color =
 /// `a`/`b` are green–red and blue–yellow opponent axes, roughly in [-0.4, 0.4].
 ///
 /// Two things in the design depend on this being here rather than bolted on later:
-/// §7.1 (colour tweening that does not desaturate through the midpoint) and §9 (a
-/// "perceptually-uniform diverging palette in Oklab for signed fields — because a physics
-/// library that renders fields in jet is embarrassing").
+/// colour tweening that does not desaturate through the midpoint, and a
+/// perceptually uniform diverging palette for signed fields, because a physics library that
+/// renders fields in jet is embarrassing.
 [<Struct>]
 type Oklab = { L: float; A: float; B: float; Alpha: float }
 
@@ -33,6 +33,8 @@ type Oklch =
       H: float<rad>
       Alpha: float }
 
+/// Colours: built from sRGB or hex, converted to Oklab and Oklch, mixed perceptually, and measured
+/// for contrast.
 [<RequireQualifiedAccess>]
 module Color =
 
@@ -65,7 +67,7 @@ module Color =
 
     // ---- Oklab -----------------------------------------------------------------------
 
-    /// Cube root. `System.Math.Cbrt` exists but Core must stay Fable-compatible (§13), and
+    /// Cube root. `System.Math.Cbrt` exists but Core must stay Fable-compatible, and
     /// `**` is accurate enough here — measured at 6.7e-16 relative, which is the double
     /// precision floor. A Newton refinement step on top makes it *worse*, not better.
     ///
@@ -152,7 +154,7 @@ module Color =
         let s = s.Trim().TrimStart('#')
 
         // Digit by digit rather than `Int32.TryParse` with `HexNumber`, which Fable cannot honour
-        // (D113) and which also took "ff 000" for #ff0000 by allowing white space inside a field.
+        // and which also took "ff 000" for #ff0000 by allowing white space inside a field.
         let hex (i: int) (n: int) =
             let digit (c: char) =
                 if c >= '0' && c <= '9' then int c - int '0'
@@ -206,9 +208,9 @@ module Color =
     let relativeLuminance (c: Color) =
         0.2126 * toLinear c.R + 0.7152 * toLinear c.G + 0.0722 * toLinear c.B
 
-    /// WCAG contrast ratio in [1, 21]. §9 asks for "a validator that checks contrast and
-    /// CVD-safety"; this is the contrast half, and it belongs in Core so the theme layer and
-    /// the test suite share one implementation.
+    /// WCAG contrast ratio in [1, 21]. A theme is validated for contrast and colour-vision safety;
+    /// this is the contrast half, and it belongs in Core so the theme layer and the test suite
+    /// share one implementation.
     let contrastRatio (a: Color) (b: Color) =
         let la = relativeLuminance a
         let lb = relativeLuminance b

@@ -52,7 +52,7 @@ Kilopascals are labelled as kilopascals:
 
 The unit registry is keyed on the seven-element SI dimension vector rather than on strings, so
 anything that composes to a newton prints `N`. Units with no SI name are covered as long as the
-composition is stated: `U.div Derived.volt U.metre` renders `V·m⁻¹`, and `MV·m⁻¹` when prefixed.
+composition is stated: `U.div U.volt U.metre` renders `V·m⁻¹`, and `MV·m⁻¹` when prefixed.
 Nothing is inferred — a bare dimension is never factorised, because the same vector is both `J/K`
 and `N·m/K`.
 

@@ -18,7 +18,7 @@ let ringdown (f: float<Hz>) (damped: bool) =
 
 let live =
     interact {
-        let! f = Control.slider Derived.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
+        let! f = Control.slider U.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
         and! damped = Control.checkbox "damped" false
         return ringdown f damped
     }

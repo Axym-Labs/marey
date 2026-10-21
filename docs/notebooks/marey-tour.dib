@@ -190,7 +190,7 @@ interesting one: affine, so its conversion to SI is not a factor alone.
 
 #!fsharp
 
-NonSi.degreeCelsius
+U.degreeCelsius
 
 #!markdown
 

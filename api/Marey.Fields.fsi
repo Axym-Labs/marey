@@ -1,5 +1,3 @@
-namespace FSharp
-
 namespace Marey
 
     type ScalarGrid<[<Measure>] 'x,[<Measure>] 'y,[<Measure>] 'v> =

@@ -2,13 +2,13 @@ namespace Marey
 
 open System
 
-/// D110 — **a unit read from a string**, in the syntax of UDUNITS-2, Unidata's C library:
+/// **A unit read from a string**, in the syntax of UDUNITS-2, Unidata's C library:
 /// `"kg m s-2"`, `"V/m"`, `"kPa"`, `"degC"`.
 ///
 /// It is the only route to a unit first seen at run time — a netCDF attribute, a CSV header, a
 /// configuration file — and the spelling a C# caller will use for anything composed. Written in
 /// F# rather than bound, because a native dependency would end `Marey.Units`' and the core's
-/// zero-dependency rule and the byte-identical SVG with them (D42).
+/// zero-dependency rule and the byte-identical SVG with them.
 ///
 /// ### What it reads
 ///
@@ -21,20 +21,20 @@ open System
 /// - **A prefix** on a unit that takes one, longest first: `"kPa"`, `"µs"` or `"us"`, `"dam"`.
 ///   A symbol that is a unit is read as that unit before it is read as a prefix and a unit, so
 ///   `"cd"` is the candela, `"min"` the minute and `"Pa"` the pascal.
-/// - **The symbols** every witness in `U`, `Derived` and `NonSi` is declared with, and the ASCII
+/// - **The symbols** every witness in `U` is declared with, and the ASCII
 ///   spellings UDUNITS-2 uses for the ones that are not ASCII: `degC`, `degF`, `ohm`, `Angstrom`.
 ///
 /// ### What it refuses, by name
 ///
-/// A timestamp (`"days since 1970-01-01"`) and a logarithmic unit (`dB`, `lg(re 1 mW)`): D110
-/// left both out, and each is refused with a message saying so rather than as an unknown symbol.
+/// A timestamp (`"days since 1970-01-01"`) and a logarithmic unit (`dB`, `lg(re 1 mW)`): both
+/// are left out, and each is refused with a message saying so rather than as an unknown symbol.
 /// A number other than an exponent or a reciprocal's `1` is refused too — `"1000 m"` is a scale
 /// factor, which is `U.scaled`'s job and is not syntax this reads.
 ///
 /// ### What it returns
 ///
 /// The witness the same composition in F# would produce, at measure 1: `"V/m"` is `U.div volt
-/// metre`, with the factorisation `[V,1; m,-1]` (D41), not a `Dim` canonicalised into base units.
+/// metre`, with the factorisation `[V,1; m,-1]`, not a `Dim` canonicalised into base units.
 /// A single symbol returns the declared witness itself. The measure is lost, as it must be for a
 /// unit first seen at run time; `U.tryAs` asserts one back, checked.
 [<AutoOpen>]
@@ -47,15 +47,15 @@ module UnitParsing =
 
         [ of' U.metre; of' U.kilogram; of' U.second; of' U.ampere; of' U.kelvin; of' U.mole
           of' U.candela; of' U.gram
-          of' Derived.hertz; of' Derived.newton; of' Derived.pascal; of' Derived.joule; of' Derived.watt
-          of' Derived.coulomb; of' Derived.volt; of' Derived.farad; of' Derived.ohm; of' Derived.siemens
-          of' Derived.weber; of' Derived.tesla; of' Derived.henry; of' Derived.lumen; of' Derived.lux
-          of' Derived.becquerel; of' Derived.gray; of' Derived.sievert; of' Derived.katal
-          of' Derived.radian; of' Derived.steradian
-          of' NonSi.electronvolt; of' NonSi.calorie; of' NonSi.angstrom; of' NonSi.astronomicalUnit
-          of' NonSi.lightYear; of' NonSi.parsec; of' NonSi.barn; of' NonSi.litre; of' NonSi.bar
-          of' NonSi.atmosphere; of' NonSi.minute; of' NonSi.hour; of' NonSi.day; of' NonSi.year
-          of' NonSi.dalton; of' NonSi.gauss; of' NonSi.degreeCelsius; of' NonSi.degreeFahrenheit ]
+          of' U.hertz; of' U.newton; of' U.pascal; of' U.joule; of' U.watt
+          of' U.coulomb; of' U.volt; of' U.farad; of' U.ohm; of' U.siemens
+          of' U.weber; of' U.tesla; of' U.henry; of' U.lumen; of' U.lux
+          of' U.becquerel; of' U.gray; of' U.sievert; of' U.katal
+          of' U.radian; of' U.steradian
+          of' U.electronvolt; of' U.calorie; of' U.angstrom; of' U.astronomicalUnit
+          of' U.lightYear; of' U.parsec; of' U.barn; of' U.litre; of' U.bar
+          of' U.atmosphere; of' U.minute; of' U.hour; of' U.day; of' U.year
+          of' U.dalton; of' U.gauss; of' U.degreeCelsius; of' U.degreeFahrenheit ]
 
     let private aliases =
         [ "degC", "°C"; "deg_C", "°C"; "celsius", "°C"; "degF", "°F"; "deg_F", "°F"
@@ -230,32 +230,33 @@ module UnitParsing =
         | u, [] -> u
         | _, _ -> fail text "Something follows the unit that is not part of it."
 
+    /// Reading a unit from text, in UDUNITS-2's syntax, and narrowing a parsed unit to a typed one.
     [<RequireQualifiedAccess>]
     module U =
 
-        /// D110 — read a unit, or say why it cannot be read. See `UnitParsing` for the syntax.
+        /// Read a unit, or say why it cannot be read. See `UnitParsing` for the syntax.
         let tryParse (text: string) : Result<U<1>, string> =
             if isNull text || String.IsNullOrWhiteSpace text then
                 Error "Marey: an empty string is not a unit. Leave the unit out, or use U.unspecified, for numbers nobody named."
             elif text.Contains " since " || text.StartsWith "since " then
-                Error(sprintf "Marey: \"%s\" is a timestamp. Timestamps are not units Marey reads (D110); convert the times to a duration first." text)
+                Error(sprintf "Marey: \"%s\" is a timestamp, a point in time rather than a unit; convert the times to a duration first." text)
             elif text = "dB" || text = "B" || text.Contains "lg(" || text.Contains "ln(" || text.Contains "lb(" || text.StartsWith "dB" then
-                Error(sprintf "Marey: \"%s\" is a logarithmic unit. Logarithmic units are not units Marey reads (D110)." text)
+                Error(sprintf "Marey: \"%s\" is a logarithmic unit. Marey has no logarithmic units; convert to the linear quantity (a power ratio, a pressure) and use a log axis." text)
             else
                 try
                     Ok(parseTokens text (tokens (text.Trim())))
                 with :? FormatException as e ->
                     Error e.Message
 
-        /// D110 — read a unit: `U.parse "V/m"`. Raises `FormatException` with the reason when the
+        /// Read a unit: `U.parse "V/m"`. Raises `FormatException` with the reason when the
         /// text is not one; `tryParse` returns it instead.
         let parse (text: string) : U<1> =
             match tryParse text with
             | Ok u -> u
             | Error why -> raise (FormatException why)
 
-        /// D110 — **assert a measure onto a unit read at run time, checked.** `Some` when `u`
-        /// has `target`'s dimension and carries an angle exactly as often (D98), as a `U<'u>`
+        /// **Assert a measure onto a unit read at run time, checked.** `Some` when `u`
+        /// has `target`'s dimension and carries an angle exactly as often, as a `U<'u>`
         /// with everything `u` carries at run time — so `tryAs U.metre (U.parse "km")` is a
         /// `U<m>` whose `ToSI` is 1000, as `U.scaled "km" 1000.0 U.metre` is. `None` otherwise,
         /// and for an unstated unit, which makes no claim to check. A checked assertion, not a

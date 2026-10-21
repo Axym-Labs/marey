@@ -3,12 +3,12 @@ namespace Marey
 open System
 
 // ======================================================================================
-// D145 — UNSTEADY FIELDS, PATHLINES, PARTICLES.
+// UNSTEADY FIELDS, PATHLINES, PARTICLES.
 //
 // A pathline is an ODE trajectory through a velocity field that depends on time, so its input is
-// D134's tier-2 function itself: `t -> x -> y -> (dx/dt, dy/dt)`. An analytic field (the double
-// gyre, a rotating flow) is one already, exactly and without allocation. A gridded field reaches
-// it through one of two adapters, and both ship:
+// the integrators' second-tier function itself: `t -> x -> y -> (dx/dt, dy/dt)`. An analytic field
+// (the double gyre, a rotating flow) is one already, exactly and without allocation. A gridded
+// field reaches it through one of two adapters, and both ship:
 //
 //   * `ofSnapshots`: grids at stated times, bilinear in space and linear in time. Data arrives in
 //     this form, and a stage costs two bilinear reads. Linear in time is second order in the
@@ -19,9 +19,9 @@ open System
 //     stage, so a step builds one grid per stage time for all of them, never one per particle.
 //
 // Outside its grid, or outside its snapshots' times, a field has no velocity: NaN, which a
-// particle then carries and a scatter does not draw (D52: what is not there is not invented).
+// particle then carries and a scatter does not draw: what is not there is not invented.
 //
-// Streamlines (M4) integrate in pixels on the unit direction and stay as they are: a streamline is
+// Streamlines integrate in pixels on the unit direction and stay as they are: a streamline is
 // a picture of a field, a pathline is a trajectory in the field's own units.
 // ======================================================================================
 
@@ -29,6 +29,7 @@ open System
 /// dy/dt)`. `Flow2T` itself, named for what it holds here.
 type Unsteady<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> = Flow2T<'x, 'y, 't>
 
+/// Velocity fields that change in time, from a function or from snapshots on a grid.
 [<RequireQualifiedAccess>]
 module Unsteady =
 
@@ -86,7 +87,7 @@ module Unsteady =
     /// A field that does not change in time.
     let ofSteady<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (f: Flow<'x, 'y, 't>) : Unsteady<'x, 'y, 't> = Ode.ofFlow f
 
-    /// D145 — grids at stated times, bilinear between nodes and linear between snapshots. Every
+    /// Grids at stated times, bilinear between nodes and linear between snapshots. Every
     /// snapshot must be on the same grid, and the times strictly increasing; outside them, or
     /// outside the grid, the velocity is NaN. Second order in the snapshots' spacing.
     let ofSnapshots<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
@@ -124,7 +125,7 @@ module Unsteady =
     /// The last grid `ofFunction` built, and its time.
     type private Built = { T: float; Grid: Plain }
 
-    /// D145 — a grid built for whatever time is asked, bilinear between its nodes, NaN outside
+    /// A grid built for whatever time is asked, bilinear between its nodes, NaN outside
     /// it. The last grid is kept, so every particle a batch step evaluates at one stage time
     /// shares one build: step particles with `Particles.step`, never one at a time.
     ///
@@ -150,6 +151,7 @@ module Unsteady =
 /// Many particles in a plane, carried by a field: x and y per particle.
 type Particles<[<Measure>] 'x, [<Measure>] 'y> = (struct (float<'x>[] * float<'y>[]))
 
+/// Particles carried by an unsteady field, stepped together by RK4: pathlines.
 [<RequireQualifiedAccess>]
 module Particles =
 
@@ -157,7 +159,7 @@ module Particles =
     /// every particle's second, so a field built per stage time (`Unsteady.ofFunction`) is built
     /// three times a step whatever the count, rather than three times a particle. A particle the
     /// field has no velocity for becomes NaN and stays so.
-    let step<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (field: Unsteady<'x, 'y, 't>) : Step<Particles<'x, 'y>, 't> =
+    let step<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (field: Unsteady<'x, 'y, 't>) : Stepper<Particles<'x, 'y>, 't> =
         fun t h (struct (x, y)) ->
             let n = x.Length
 
@@ -193,7 +195,7 @@ module Particles =
         (seedsX: float<'x>[])
         (seedsY: float<'y>[])
         (field: Unsteady<'x, 'y, 't>)
-        : Step<Particles<'x, 'y>, 't> =
+        : Stepper<Particles<'x, 'y>, 't> =
         if seedsX.Length <> seedsY.Length then
             invalidArg "seedsY" "Marey: one y for every seed's x."
 

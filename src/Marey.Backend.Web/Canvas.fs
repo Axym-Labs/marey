@@ -3,12 +3,12 @@ namespace Marey
 open Fable.Core
 
 // ======================================================================================
-// M5 — THE CANVAS, AS THE BACKEND SEES IT (D122)
+// THE CANVAS, AS THE BACKEND SEES IT
 //
 // The members of the browser's 2-D canvas this package calls, by their JavaScript names, and
 // nothing else. Declared here rather than taken from `Fable.Browser.Dom`, whose bindings predate
 // `TextMetrics.fontBoundingBoxAscent`, `document.fonts` and the fill rule `fill` takes, which are
-// three of the things D122 and D123 need. A caller holding `Fable.Browser.Dom`'s
+// three of the things the canvas backend needs. A caller holding `Fable.Browser.Dom`'s
 // `CanvasRenderingContext2D` passes it with `unbox`: both are the same JavaScript object.
 //
 // Small on purpose. Gate 13 drives the backend under Node against a context that records each
@@ -83,7 +83,7 @@ and [<AllowNullLiteral>] CanvasContext =
 
 /// Where a backend gets the scratch surfaces an opacity group and a raster are drawn on.
 [<RequireQualifiedAccess>]
-module Canvas =
+module internal Canvas =
 
     [<Emit("(typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas($0, $1) : Object.assign(document.createElement('canvas'), { width: $0, height: $1 }))")>]
     let private create (_width: int) (_height: int) : CanvasElement = jsNative
@@ -103,7 +103,7 @@ module Canvas =
     /// at the size of its figure. An `OffscreenCanvas`, which has no style, is left alone.
     ///
     /// On .NET, which has no element to size, it does nothing, so the backend runs there against a
-    /// context a test supplies (step F's gate 5).
+    /// context a test supplies.
     [<Emit("if ($0.style) { $0.style.width = $1 + 'px'; $0.style.height = $2 + 'px'; }")>]
     let setCssSize (_canvas: CanvasElement) (_width: float) (_height: float) : unit = ()
 

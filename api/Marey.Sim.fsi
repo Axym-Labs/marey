@@ -1,8 +1,6 @@
-namespace FSharp
-
 namespace Marey
 
-    type Step<'s,[<Measure>] 't> = float<'t> -> float<'t> -> 's -> 's
+    type Stepper<'s,[<Measure>] 't> = float<'t> -> float<'t> -> 's -> 's
 
     type Flow2T<[<Measure>] 'x,[<Measure>] 'y,[<Measure>] 't> =
         float<'t> ->
@@ -128,54 +126,6 @@ namespace Marey
             struct (float<'q> array * float<'q/'t> array) ->
             struct (float<'q> array * float<'q/'t> array)
 
-        val a32: float
-
-        val a43: float
-
-        val a42: float
-
-        val a54: float
-
-        val a53: float
-
-        val a52: float
-
-        val a65: float
-
-        val a64: float
-
-        val a63: float
-
-        val a62: float
-
-        val b6: float
-
-        val b5: float
-
-        val b4: float
-
-        val b3: float
-
-        val e7: float
-
-        val e6: float
-
-        val e5: float
-
-        val e4: float
-
-        val e3: float
-
-        val d7: float
-
-        val d6: float
-
-        val d5: float
-
-        val d4: float
-
-        val d3: float
-
         val dopri5With:
           tangent: Tangent<'s,'ds,'t> ->
             norm: ErrorNorm<'s,'ds,'t> ->
@@ -279,7 +229,7 @@ namespace Marey
 
         | Fixed of
           h: float<Data.UnitSystems.SI.UnitSymbols.s> *
-          step: Step<'s,Data.UnitSystems.SI.UnitSymbols.s>
+          step: Stepper<'s,Data.UnitSystems.SI.UnitSymbols.s>
 
         | Adaptive of
           h0: float<Data.UnitSystems.SI.UnitSymbols.s> *
@@ -323,7 +273,7 @@ namespace Marey
 
         val ofStep:
           h: float<Data.UnitSystems.SI.UnitSymbols.s> ->
-            step: Step<'s,Data.UnitSystems.SI.UnitSymbols.s> ->
+            step: Stepper<'s,Data.UnitSystems.SI.UnitSymbols.s> ->
             initial: 's -> Sim<'s>
 
         val ofAdaptive:
@@ -455,7 +405,8 @@ namespace Marey
         val withBroadPhaseAbove: n: int -> c: Collider<'q> -> Collider<'q>
 
         val step:
-          col: Collider<'q> -> Step<Discs<'q>,Data.UnitSystems.SI.UnitSymbols.s>
+          col: Collider<'q> ->
+            Stepper<Discs<'q>,Data.UnitSystems.SI.UnitSymbols.s>
 
 namespace Marey
 
@@ -508,7 +459,7 @@ namespace Marey
         val streakStep:
           seedsX: float<'x> array ->
             seedsY: float<'y> array ->
-            field: Unsteady<'x,'y,'t> -> Step<Particles<'x,'y>,'t>
+            field: Unsteady<'x,'y,'t> -> Stepper<Particles<'x,'y>,'t>
 
         val pathlines:
           times: float<Data.UnitSystems.SI.UnitSymbols.s> array ->
@@ -565,12 +516,12 @@ namespace Marey
         val heat:
           alpha: float<'x ^ 2/Data.UnitSystems.SI.UnitSymbols.s> ->
             boundaries: Boundaries<'x,'v> ->
-            Step<ScalarGrid<'x,'x,'v>,Data.UnitSystems.SI.UnitSymbols.s>
+            Stepper<ScalarGrid<'x,'x,'v>,Data.UnitSystems.SI.UnitSymbols.s>
 
         val heatImplicit:
           alpha: float<'x ^ 2/Data.UnitSystems.SI.UnitSymbols.s> ->
             boundaries: Boundaries<'x,'v> ->
-            Step<ScalarGrid<'x,'x,'v>,Data.UnitSystems.SI.UnitSymbols.s>
+            Stepper<ScalarGrid<'x,'x,'v>,Data.UnitSystems.SI.UnitSymbols.s>
 
         val waveLimit:
           c: float<'x/Data.UnitSystems.SI.UnitSymbols.s> ->
@@ -580,10 +531,10 @@ namespace Marey
         val wave:
           c: float<'x/Data.UnitSystems.SI.UnitSymbols.s> ->
             boundaries: Boundaries<'x,'v> ->
-            Step<struct
-                   (ScalarGrid<'x,'x,'v> *
-                    ScalarGrid<'x,'x,'v/Data.UnitSystems.SI.UnitSymbols.s>),
-                 Data.UnitSystems.SI.UnitSymbols.s>
+            Stepper<struct
+                      (ScalarGrid<'x,'x,'v> *
+                       ScalarGrid<'x,'x,'v/Data.UnitSystems.SI.UnitSymbols.s>),
+                    Data.UnitSystems.SI.UnitSymbols.s>
 
         val poisson:
           boundaries: Boundaries<'x,'u> ->
@@ -688,7 +639,7 @@ namespace Marey
 
         val step:
           options: StamOptions<'x,'q> ->
-            Step<Fluid<'x,'q>,Data.UnitSystems.SI.UnitSymbols.s>
+            Stepper<Fluid<'x,'q>,Data.UnitSystems.SI.UnitSymbols.s>
 
 namespace Marey
 

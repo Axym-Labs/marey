@@ -3,7 +3,7 @@ namespace Marey
 open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
-/// §7 — an animation is a value, not a mutation.
+/// An animation is a value, not a mutation.
 ///
 /// Manim's objects are mutable and its scene replays a timeline from the start. That single
 /// decision is why a Manim render cannot be scrubbed, cannot produce frames out of order, and
@@ -14,17 +14,17 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 ///
 /// ### One clock, three doors, and only one of them clamps
 ///
-/// D70 and D71 had to be taken together, and they resolve in opposite directions.
+/// The two decisions about clamping go together, and they resolve in opposite directions.
 ///
 /// * `At` is the **public seek**, and it clamps to `[0, Duration]`. It is therefore total on
 ///   every `float`, `nan` and both infinities included: before the start holds the first frame,
 ///   past the end holds the last. That is what makes `map2`'s "duration = max" mean something —
 ///   the shorter component holds through the tail rather than running off its own schedule —
-///   and what makes `andThen`'s `t - d1` well-defined everywhere. D9 refused to clamp
-///   `Scale.Forward` because clamping piles out-of-range data onto the panel edge and lies about
+///   and what makes `andThen`'s `t - d1` well-defined everywhere. `Scale.Forward` does not clamp,
+///   because clamping piles out-of-range data onto the panel edge and lies about
 ///   a measurement; an animation is a schedule, not a measurement, and holding a final frame is
 ///   not a claim about anything.
-/// * `AtSeconds` and `AtFraction` are the **combinator doors**, and neither clamps.
+/// * `AtUnclamped` and `AtFraction` are the **combinator doors**, and neither clamps.
 ///   `AtFraction 1.3` extrapolates, which is what lets `Ease.backOut` overshoot past 1 and
 ///   settle back. Clamping there would leave a library in which the interesting half of the
 ///   easing catalogue compiles, runs, and does nothing.
@@ -94,7 +94,7 @@ type Anim<'a>(duration: float<s>, atSeconds: float<s> -> 'a) =
     /// The raw clock, in seconds and **not** clamped. This is what a combinator reaches for
     /// when it needs to shift or scale time without the endpoints getting in the way;
     /// `Anim.stretch` is three characters of arithmetic on top of it.
-    member _.AtSeconds(t: float<s>) : 'a = atSeconds t
+    member _.AtUnclamped(t: float<s>) : 'a = atSeconds t
 
     /// The **normalised** clock, `0.0` the first frame and `1.0` the last, and not clamped
     /// either. This is the door `ease` composes into and the reason `Ease.backOut` does
@@ -103,16 +103,16 @@ type Anim<'a>(duration: float<s>, atSeconds: float<s> -> 'a) =
     member _.AtFraction(u: float) : 'a = atSeconds (u * duration)
 
 
-/// §7 — the algebra. Six combinators and two constructors; the laws are stated and tested in
+/// The algebra. Six combinators and two constructors; the laws are stated and tested in
 /// `AnimProperties` rather than asserted here.
 ///
-/// **What actually holds**, because §7's one-line summary ("`(Anim<'a>, andThen, pure')` is a
+/// **What actually holds**, because the one-line summary ("`(Anim<'a>, andThen, constant)` is a
 /// monoid") is one word too strong and the difference is a single instant:
 ///
 /// * `andThen` is **associative**, exactly, at every time.
-/// * `pure' v` is an exact **left identity**: an animation of zero duration occupies no time, so
+/// * `constant v` is an exact **left identity**: an animation of zero duration occupies no time, so
 ///   putting one in front of `x` does not cost `x` its first frame.
-/// * `pure' v` is a right identity **everywhere except the final instant**, where it supplies
+/// * `constant v` is a right identity **everywhere except the final instant**, where it supplies
 ///   `v`. That is not a defect to be patched. `andThen` gives the earlier animation the
 ///   half-open interval `[0, d1)` and the later one the seam and the tail, so a zero-duration
 ///   animation is invisible unless it is last — where it is the final frame, which is exactly
@@ -153,20 +153,20 @@ module Anim =
 
     /// A constant, of zero duration. The identity of `andThen` on the left, and on the right
     /// everywhere but the last instant.
-    let pure' (v: 'a) : Anim<'a> = Anim<'a>(0.0<s>, (fun _ -> v))
+    let constant (v: 'a) : Anim<'a> = Anim<'a>(0.0<s>, (fun _ -> v))
 
     let map (f: 'a -> 'b) (a: Anim<'a>) : Anim<'b> =
-        Anim<'b>(a.Duration, (fun t -> f (a.AtSeconds t)))
+        Anim<'b>(a.Duration, (fun t -> f (a.AtUnclamped t)))
 
     /// Parallel composition; the duration is the **maximum**, and the shorter component holds
-    /// its final value through the tail. That hold is D70's clamp doing its job, which is why
+    /// its final value through the tail. That hold is `At`'s clamp doing its job, which is why
     /// the components are reached through `At` rather than through the raw door.
     let map2 (f: 'a -> 'b -> 'c) (a: Anim<'a>) (b: Anim<'b>) : Anim<'c> =
         Anim<'c>(max a.Duration b.Duration, (fun t -> f (a.At t) (b.At t)))
 
     /// Sequential composition; the duration is the **sum**. The earlier animation owns the
     /// half-open interval `[0, d1)` and the later one owns the seam and everything after, which
-    /// is what makes `pure'` an exact left identity.
+    /// is what makes `constant` an exact left identity.
     let andThen (a: Anim<'a>) (b: Anim<'a>) : Anim<'a> =
         let d1 = a.Duration
 
@@ -181,9 +181,9 @@ module Anim =
         if not (k > 0.0) || Double.IsInfinity k then
             invalidArg "k" "Marey: stretch takes a positive, finite factor."
 
-        Anim<'a>(k * a.Duration, (fun t -> a.AtSeconds(t / k)))
+        Anim<'a>(k * a.Duration, (fun t -> a.AtUnclamped(t / k)))
 
-    /// Reparameterise the normalised clock. The result of `f` is **not** clamped — D71 — so an
+    /// Reparameterise the normalised clock. The result of `f` is **not** clamped, so an
     /// easing that leaves `[0, 1]` reaches the interpolation underneath and extrapolates.
     let ease (f: float -> float) (a: Anim<'a>) : Anim<'a> =
         let d = a.Duration
@@ -194,11 +194,11 @@ module Anim =
     /// combinator tweens `float<m>`, `float32`, `Vec2`, `Vec3`, `Color` and `Rect`, with no
     /// boxing and no per-type overload here.
     ///
-    /// The constraint is restated in full, per §12.2: omitting it compiles, and then the second
+    /// The constraint is restated in full: omitting it compiles, and then the second
     /// call site in the program fails with a type error naming the first one.
     let inline tween< ^T when (Interpolate or ^T): (static member Interp: ^T * ^T * float -> ^T)>
         (d: float<s>)
         (a: ^T)
         (b: ^T)
         : Anim< ^T> =
-        ofFraction d (fun u -> interp< ^T> a b u)
+        ofFraction d (fun u -> Interp.between< ^T> a b u)

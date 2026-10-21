@@ -20,7 +20,7 @@ let trajectory = Sim.trajectory 1.0<s> 60.0<s> sim
 
 let path = Array.init 600 (fun i -> trajectory.At(float i * 0.1<s>))
 
-Chart.line Derived.radian (U.div Derived.radian U.second) (path |> Array.map (fun (struct (th, _)) -> th)) (path |> Array.map (fun (struct (_, om)) -> om))
+Chart.line U.radian (U.div U.radian U.second) (path |> Array.map (fun (struct (th, _)) -> th)) (path |> Array.map (fun (struct (_, om)) -> om))
 |> Chart.toSvg SvgBackend.render "pendulum.svg" (Chart.size 640.0 480.0)
 ```
 

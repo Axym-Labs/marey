@@ -228,7 +228,7 @@ module Sharing =
         Assert.Equal(1, distinct (List.toArray boxes))
 
 // ======================================================================================
-// The check that comes with sharing (D48)
+// The check that comes with sharing
 // ======================================================================================
 
 module TheCheck =
@@ -378,7 +378,7 @@ module Channels =
         Assert.All(fig.Panels, fun p -> Assert.Equal(1, p.Layers.[0].Channels.Length))
 
     /// The same rule for a continuous channel, whose key is a colorbar rather than a legend
-    /// (D49). This is the one that costs something: a repeated bar takes a column out of every
+    ///. This is the one that costs something: a repeated bar takes a column out of every
     /// panel, so four of them shrink the plots as well as saying the same thing four times.
     [<Fact>]
     let ``a colorbar is drawn once`` () =
@@ -566,7 +566,7 @@ module Refusals =
     let ``a facet needs at least one panel`` () =
         Assert.Throws<System.Exception>(fun () -> Chart.facet [||] |> ignore) |> ignore
 
-    /// A distribution block's three refusals (D47) survive the facet: the facet is not a channel,
+    /// A distribution block's three refusals survive the facet: the facet is not a channel,
     /// and it does not buy the block a `y`.
     [<Fact>]
     let ``a faceted histogram still refuses a channel`` () =

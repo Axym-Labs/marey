@@ -1,4 +1,4 @@
-/// D129 — numbers rounded and formatted by Marey's arithmetic rather than the platform's, and
+/// Numbers rounded and formatted by Marey's arithmetic rather than the platform's, and
 /// gate 2 of `m5-plan.md` on the .NET side.
 ///
 /// Each function replaced a platform call whose output every golden depends on, so each is
@@ -17,7 +17,7 @@ let private invariant = Globalization.CultureInfo.InvariantCulture
 
 let private patterns = [| "0"; "0.#"; "0.##"; "0.###"; "0.####"; "0.#####"; "0.######" |]
 
-/// What `Num.at` was before D129.
+/// What `Num.upTo` was before D129.
 let private atBefore (decimals: int) (v: float) =
     if Double.IsNaN v || Double.IsInfinity v then
         "0"
@@ -61,29 +61,29 @@ let ``at writes what Math.Round and a custom format wrote, halves included`` () 
         let d = rng.Next 7
 
         if abs v * 10.0 ** float d < 1e15 then
-            Assert.True((Num.at d v = atBefore d v), sprintf "at %d %.17g: %s, before %s" d v (Num.at d v) (atBefore d v))
+            Assert.True((Num.upTo d v = atBefore d v), sprintf "at %d %.17g: %s, before %s" d v (Num.upTo d v) (atBefore d v))
 
 [<Property>]
 let ``at agrees with the platform at every precision`` (FsCheck.NormalFloat v) (d: byte) =
     let d = int d % 7
-    abs v * 10.0 ** float d >= 1e15 || Num.at d v = atBefore d v
+    abs v * 10.0 ** float d >= 1e15 || Num.upTo d v = atBefore d v
 
 [<Fact>]
 let ``at on the cases that differ between the runtimes`` () =
-    Assert.Equal("0.13", Num.at 2 0.125)
-    Assert.Equal("-0.13", Num.at 2 -0.125)
-    Assert.Equal("2.68", Num.at 2 2.675)
-    Assert.Equal("1.001", Num.at 3 1.0005)
-    Assert.Equal("0", Num.at 3 -0.0001)
-    Assert.Equal("0", Num.at 2 nan)
+    Assert.Equal("0.13", Num.upTo 2 0.125)
+    Assert.Equal("-0.13", Num.upTo 2 -0.125)
+    Assert.Equal("2.68", Num.upTo 2 2.675)
+    Assert.Equal("1.001", Num.upTo 3 1.0005)
+    Assert.Equal("0", Num.upTo 3 -0.0001)
+    Assert.Equal("0", Num.upTo 2 nan)
 
 /// Past 10¹⁵ at the requested places the scaled integer is no longer exact, and `at` writes the
 /// rounded value exactly where the custom format stopped at fifteen significant digits
 /// (`4339842218598.28`). Nothing Marey draws is that large; this pins what it does.
 [<Fact>]
 let ``at past ten to the fifteenth writes the rounded value exactly`` () =
-    Assert.Equal("4339842218598.27783", Num.at 5 4339842218598.2778)
-    Assert.Equal("100000000000000000000", Num.at 3 1e20)
+    Assert.Equal("4339842218598.27783", Num.upTo 5 4339842218598.2778)
+    Assert.Equal("100000000000000000000", Num.upTo 3 1e20)
 
 [<Fact>]
 let ``fixedPoint writes what "F" writes, halves included`` () =

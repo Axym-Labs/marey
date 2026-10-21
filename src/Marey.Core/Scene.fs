@@ -1,35 +1,34 @@
 namespace Marey
 
 // ======================================================================================
-// §5 — THE SCENE IR
+// THE SCENE IR
 //
 // "The most important constraint in the project: this type is small, closed, total, and
 //  backend-agnostic. Every addition costs you six backend implementations."
 //
 // Read this before adding anything below:
 //
-//   §5.5 — what is deliberately NOT here: axes, legends, titles, colorbars, facets, error
+//   What is deliberately NOT here: axes, legends, titles, colorbars, facets, error
 //   bars, box plots. Those are *compiled into* Path/Text/Markers by the layer above. "If you
 //   find yourself wanting `| Axis of ...`, the design has failed."
 //
 // Two departures from the design sketch, both forced by other parts of the same design:
 //
 //   1. `Transform` carries an `Affine<nd,nd>`, not a function. A closure has reference
-//      equality, which would silently destroy the structural-equality diffing that §5.2
-//      depends on, and it cannot be serialized (§15). See Affine.fs.
+//      equality, which would silently destroy the structural-equality diffing that scene
+//      updates depend on, and it cannot be serialized. See Affine.fs.
 //
-//   2. Collections are arrays, not lists. §1.3: "Per-frame allocation of records will destroy
+//   2. Collections are arrays, not lists. Per-frame allocation of records would destroy
 //      a 60 fps loop. The hot path (scene -> backend, particle stepping) must be struct/array
 //      -based, not list-based." A 100 000-segment path as a cons list is 100 000 heap objects.
 //
-// One omission, now closed, and left legible rather than tidied away. Through M2.5 there was
-// **no group-opacity node**, on the argument that `Color.A` covers the common case, that the
-// two differ only where a group's own shapes overlap, and that when M3 forced the issue it
-// should be a costed decision — one variant, six backends — not a reflex.
+// Group opacity is a node of its own (`Opacity`). `Color.A` covers the common case, and the
+// two differ only where a group's own shapes overlap, so the node had to earn its place: one
+// variant, six backends.
 //
-// M3 forced it. Fading a group in is what a storyboard asks for, and per-shape alpha cannot
+// It earned it. Fading a group in is what a storyboard asks for, and per-shape alpha cannot
 // express it: the moment two shapes in the group overlap, the fade shows a seam that is not in
-// the figure. D67 pays the cost as it was quoted — one variant, one `Capabilities` field, one
+// the figure. The node costs what it was quoted at — one variant, one `Capabilities` field, one
 // `Degrade` rule — and nothing else was let in alongside it.
 // ======================================================================================
 
@@ -40,8 +39,8 @@ type GradientStop = { Offset: float; Color: Color }
 /// How a region is filled.
 ///
 /// `Capabilities.Gradients` exists because TikZ's gradient support is genuinely weaker than
-/// SVG's (§5, backend contract): "The compiler layer queries caps and *degrades* rather than
-/// silently producing wrong output."
+/// SVG's, and the compiler layer queries capabilities and *degrades* rather than silently
+/// producing wrong output.
 [<NoComparison>]
 type Paint =
     | Solid of Color
@@ -50,11 +49,13 @@ type Paint =
     /// Centre, radius in panel space, stops from centre outward.
     | RadialGradient of centre: Vec2<nd> * radius: float<nd> * stops: GradientStop[]
 
+/// How an open stroke ends.
 type LineCap =
     | Butt
     | Round
     | Square
 
+/// How two segments of a stroke meet.
 type LineJoin =
     | Miter
     | RoundJoin
@@ -66,6 +67,7 @@ type FillRule =
     | NonZero
     | EvenOdd
 
+/// How an outline is drawn: paint, width in px, dashes, caps and joins.
 [<NoComparison>]
 type Stroke =
     { Paint: Paint
@@ -79,7 +81,7 @@ type Stroke =
       Join: LineJoin
       MiterLimit: float }
 
-/// §5 — Path segments. Four cases, and it stays four cases.
+/// Path segments. Four cases, and it stays four cases.
 ///
 /// No arcs and no quadratic curves: both are exactly representable (arcs to within any
 /// tolerance) as cubics, and every extra case is a case in six backends. Polar gridlines,
@@ -91,8 +93,8 @@ type PathSeg =
     | CubicTo of c1: Vec2<nd> * c2: Vec2<nd> * until: Vec2<nd>
     | ClosePath
 
-/// A font request. Resolution to an actual face is the backend's business — §10 makes
-/// `ITextShaper` a capability precisely because the answer differs per target.
+/// A font request. Resolution to an actual face is the backend's business, which is why
+/// `ITextShaper` is a capability precisely because the answer differs per target.
 [<Struct>]
 type FontSpec =
     { Family: string
@@ -101,16 +103,20 @@ type FontSpec =
       Weight: int
       Italic: bool }
 
+/// Where a text run's anchor point sits along its advance.
 type TextAnchor =
     | AnchorStart
     | AnchorMiddle
     | AnchorEnd
 
+/// Which line of a text run its anchor point sits on.
 type TextBaseline =
     | BaselineAlphabetic
     | BaselineMiddle
     | BaselineHanging
 
+/// A run of text in the scene: its plain and optional TeX form, position, font, paint, anchor,
+/// baseline and rotation.
 [<NoComparison>]
 type TextRun =
     { /// The plain-Unicode form of this run. **Always set**, even when `Tex` is present.
@@ -133,9 +139,9 @@ type TextRun =
       /// backend that cannot typeset TeX has a lossless-enough fallback by construction and
       /// there is nothing to degrade. That is what keeps `Capabilities` at ten fields.
       ///
-      /// §10's three routes to mathematical typesetting all read this one field — shelling out
-      /// to LaTeX, MathJax/KaTeX on the web backend at M3, and native OpenType MATH layout at
-      /// M6 — which is why it is worth a field now rather than a migration later.
+      /// Every route to mathematical typesetting reads this one field — shelling out
+      /// to LaTeX, MathJax/KaTeX on the web backend, and native OpenType MATH layout at
+      /// Which is why it is worth a field now rather than a migration later.
       ///
       /// **Known imprecision:** layout is measured against `Text` while a TeX backend typesets
       /// `Tex`, and the two have different widths. Axis titles and tick labels are
@@ -151,13 +157,13 @@ type TextRun =
       /// Rotation about `At`. Measured, so a degrees/radians mix-up is a compile error.
       Rotation: float<rad> }
 
-/// §5.1 — Marker shapes.
+/// Marker shapes.
 ///
 /// The design's node is `Markers of Vec2<nd>[] * float<px> * Paint` — no shape. Shape is a
 /// standard encoding channel and the *only* redundant encoding for colour, so a
-/// colour-blind-safe scatter (§9) needs it. Without a shape field the compiler layer has to
-/// emit one `Path` per point to vary it, which defeats §5.1 — "the single biggest performance
-/// decision in the IR" — in the exact case that motivated batching.
+/// colour-blind-safe scatter needs it. Without a shape field the compiler layer has to
+/// emit one `Path` per point to vary it, which defeats batching, the single biggest
+/// performance decision in the IR, in the exact case that motivated batching.
 ///
 /// A closed enum on an existing node is the cheap way to have it: no new backend dispatch,
 /// just a shape table each backend fills once.
@@ -170,7 +176,7 @@ type MarkerShape =
     | MarkCross
     | MarkPlus
 
-/// §5.1 — "A 100 000-point scatter must be *one* IR node, not 100 000 `Path` nodes."
+/// "A 100 000-point scatter must be *one* IR node, not 100 000 `Path` nodes."
 ///
 /// The GPU backend turns this into one instanced draw call; SVG into a `<use>`/`<symbol>`
 /// pair. Any geometry that can appear ten thousand times gets a batched node.
@@ -186,7 +192,7 @@ type MarkerBatch =
 /// Raw RGBA8 pixels, row-major, top row first.
 ///
 /// Note that structural equality on this is O(pixels), which makes a `Raster` an expensive
-/// thing to diff (§5.2). A key does not help: two rasters under the same key are not therefore
+/// thing to diff. A key does not help: two rasters under the same key are not therefore
 /// the same raster, and `Scene.diff` compares what is under a key. Only **reference** equality
 /// lets a diff skip the bytes, so a producer that wants an unchanged raster skipped has to hand
 /// back the same array, which `mapKey`'s sharing does and a field recomputed for a new state
@@ -197,6 +203,7 @@ type Image =
       Height: int
       Rgba: byte[] }
 
+/// An image drawn into a box in panel space.
 [<NoComparison>]
 type RasterNode =
     { Image: Image
@@ -206,7 +213,7 @@ type RasterNode =
       /// discrete data, where smoothing invents values that were never measured.
       Smooth: bool }
 
-/// §5.2 — Stable identity for diffing.
+/// Stable identity for diffing.
 ///
 /// "Scene graphs are immutable F# values with structural equality. Re-render on interaction =
 /// build a new `Scene`, diff against the previous one, emit only the changed subtrees.
@@ -215,7 +222,7 @@ type RasterNode =
 [<Struct>]
 type Key = Key of string
 
-/// §5.3 — What a shape *means*.
+/// What a shape *means*.
 ///
 /// "Hit-testing, tooltips, `aria-label`s on SVG output, and clickable legends all need the IR
 /// to remember what a shape means, not just where it is. Retrofitting this is painful; it
@@ -230,6 +237,8 @@ type SemanticRole =
     | RoleDecoration
     | RoleOther of string
 
+/// What a subtree means — its role, a readable label and metadata — for accessibility and hit
+/// testing, carried by `Annotated`.
 [<NoComparison>]
 type Semantics =
     { Role: SemanticRole
@@ -240,7 +249,7 @@ type Semantics =
       /// comparable and Fable-friendly.
       Data: (string * string)[] }
 
-/// §5 — The IR. Ten cases. Guard it obsessively.
+/// The IR. Ten cases. Guard it obsessively.
 [<NoComparison>]
 type Node =
     | Path of segments: PathSeg[] * stroke: Stroke option * fill: Paint option * rule: FillRule
@@ -250,7 +259,7 @@ type Node =
     | Group of Node[]
     | Transform of Affine<nd, nd> * Node
     | Clip of PathSeg[] * Node
-    /// D67 — uniform opacity over the **composited** subtree. In [0,1]; `Scene.opacity` clamps.
+    /// Uniform opacity over the **composited** subtree. In [0,1]; `Scene.opacity` clamps.
     ///
     /// Not the same thing as multiplying `Color.A` through the subtree, and the difference is
     /// exactly where the group's own shapes overlap: with per-shape alpha an overlap shows both
@@ -266,7 +275,7 @@ type Node =
     | Keyed of Key * Node
     | Annotated of Semantics * Node
 
-/// §5.2 / D103 — what changed between two scenes, as replacements at the keys that hold them.
+/// What changed between two scenes, as replacements at the keys that hold them.
 [<NoComparison>]
 type Patch =
     /// Put each node under its key, in place of what is there now: the **child** of the
@@ -276,6 +285,7 @@ type Patch =
     /// new scene describes it.
     | Whole of Node
 
+/// Stroke constructors.
 [<RequireQualifiedAccess>]
 module Stroke =
 
@@ -290,6 +300,8 @@ module Stroke =
 
     let dashed (c: Color) (w: float<px>) (pattern: float<px>[]) = { solid c w with Dash = pattern }
 
+/// Building and walking scenes: a constructor per node, folds, rewrites by key, diffs and
+/// pruning.
 [<RequireQualifiedAccess>]
 module Scene =
 
@@ -386,7 +398,7 @@ module Scene =
         | Markers _
         | Raster _ -> state
 
-    /// §5.2 — the subtree a key names, or `None`.
+    /// The subtree a key names, or `None`.
     ///
     /// Returns the **child** of the matching `Keyed` node, not the node itself, so that it
     /// pairs with `mapKey`: what you can read is what you can replace, and neither can lose
@@ -426,7 +438,7 @@ module Scene =
 
         go n
 
-    /// §5.2 — rewrite the subtree a key names, leaving the rest of the scene alone.
+    /// Rewrite the subtree a key names, leaving the rest of the scene alone.
     ///
     /// `f` is applied to the *child* of the matching `Keyed` node and the wrapper is put back,
     /// so a rewrite cannot drop the key it was addressed by. This is what an animation holds a
@@ -475,7 +487,7 @@ module Scene =
 
         go n
 
-    /// **§5.2 / D103 — the diff.** Walk both scenes together, and answer with the smallest
+    /// **The diff.** Walk both scenes together, and answer with the smallest
     /// set of keyed subtrees whose replacement turns `before` into `after`.
     ///
     /// - A **reference-equal** pair is skipped without looking inside. That is what makes a
@@ -490,8 +502,8 @@ module Scene =
     /// and an id addresses one element.
     ///
     /// A scene rebuilt from data shares no references with the last one, so the walk falls back
-    /// to structural equality: O(scene), float arrays compared element by element. Gate 9 of
-    /// M4.5 states what that costs rather than assuming it.
+    /// to structural equality: O(scene), float arrays compared element by element. Its cost is
+    /// measured by a test rather than assumed.
     let diff (before: Node) (after: Node) : Patch =
         let same (a: Node) (b: Node) = System.Object.ReferenceEquals(a, b)
 
@@ -551,12 +563,12 @@ module Scene =
         | Replace reps -> reps |> Array.fold (fun n (k, child) -> mapKey k (fun _ -> child) n) before
 
     /// Total number of nodes. A cheap sanity check in tests, and the denominator when
-    /// arguing that §5.2's diff is actually O(changed).
+    /// arguing that the diff is actually O(changed).
     let count (n: Node) = fold (fun acc _ -> acc + 1) 0 n
 
     /// Number of *drawn primitives*, counting a batch as its element count. This is the
     /// number that predicts render cost — and the gap between it and `count` is exactly the
-    /// win §5.1 is buying.
+    /// win batching buys.
     let primitiveCount (n: Node) =
         fold
             (fun acc node ->
@@ -585,11 +597,11 @@ module Scene =
             | c when c = empty -> empty
             | c -> Clip(p, c)
         // **`Opacity(0.0, _)` is not pruned**, and the temptation to prune it is a trap an
-        // animation walks straight into. A group fading in from zero would have its whole
-        // subtree vanish at t = 0 and reappear at the next frame, so the node count would
-        // change between two frames that differ only in a float — which is exactly the diff
-        // instability §5.2 exists to prevent. `prune` drops what *cannot* draw; a transparent
-        // subtree is one that is not drawing *yet*.
+        // animation walks straight into. A group fading in from zero would have its whole subtree
+        // vanish at t = 0 and reappear at the next frame, so the node count would change between
+        // two frames that differ only in a float — which is exactly the diff instability keyed
+        // diffing exists to prevent. `prune` drops what *cannot* draw; a transparent subtree is one
+        // that is not drawing *yet*.
         | Opacity(a, c) ->
             match prune c with
             | c when c = empty -> empty

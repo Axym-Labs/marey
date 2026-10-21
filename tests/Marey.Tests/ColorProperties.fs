@@ -1,4 +1,4 @@
-/// §7.1 / §9 — colour.
+/// Colour.
 ///
 /// **decisions.md F1 governs every tolerance in this file.** The sRGB → Oklab → sRGB round trip
 /// has an irreducible error floor of ~1e-6: Ottosson's forward and inverse LMS matrices are
@@ -183,7 +183,7 @@ module Interchange =
 [<Properties(Arbitrary = [| typeof<MareyArbs> |], MaxTest = 300, Replay = Seed, QuietOnSuccess = true)>]
 module Degradation =
 
-    /// D10 — `Degrade.forCaps` is what stops `Capabilities` being "a record nobody reads". A
+    /// `Degrade.forCaps` is what stops `Capabilities` being "a record nobody reads". A
     /// gradient collapses to the solid colour at its Oklab midpoint, which is exactly
     /// `Interp.stops ... 0.5`, so the colour law and the degradation share one implementation.
     [<Property>]
@@ -200,7 +200,7 @@ module Degradation =
         | Path(_, _, Some(Solid c), _) -> Approx.colour c (Color.mix 0.5 a b)
         | _ -> false
 
-    /// D14 — "`Capabilities.full` must be genuinely full". An earlier version shipped with
+    /// "`Capabilities.full` must be genuinely full". An earlier version shipped with
     /// `Semantics = false`, which silently stripped every `Annotated` node for anyone starting
     /// from the preset. Pinned so it can never regress.
     [<Fact>]

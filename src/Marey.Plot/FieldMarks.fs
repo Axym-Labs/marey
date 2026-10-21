@@ -4,10 +4,10 @@ open System
 open System.Collections.Generic
 
 // ======================================================================================
-// D86 / D88 / D91 — WHAT A FIELD LAYER DRAWS, COMPUTED ON THE PANEL.
+// WHAT A FIELD LAYER DRAWS, COMPUTED ON THE PANEL.
 //
 // A field layer carries a grid in data space and is drawn at compile time, after `Geom.project`
-// has put its node coordinates on the panel through the panel's final scales (D97). Everything
+// has put its node coordinates on the panel through the panel's final scales. Everything
 // in this file therefore works in `nd`, on a rectilinear grid whose nodes are where the panel
 // says they are — which is what makes a heatmap, its contours and its bands line up with each
 // other and with every other layer, on a linear axis and a log one alike.
@@ -17,46 +17,46 @@ open System.Collections.Generic
 // the one a reader sees — a straight contour segment across a cell is straight on the page —
 // and it is the space a grid sampled with `Grid.log` is uniform in.
 //
-// **Missing values** (D52). A node that is not finite is not drawn: it is a transparent pixel,
+// **Missing values**. A node that is not finite is not drawn: it is a transparent pixel,
 // no contour line crosses a cell that has one, and every band treats it as below every level, so
 // no band covers it. It was counted when the grid was built.
 // ======================================================================================
 
-/// What a field layer draws (D86).
+/// What a field layer draws.
 type FieldMark =
     /// The scalar as an image, one pixel per node, coloured by the layer's colour channel.
-    /// `smooth` interpolates between nodes; otherwise each node is a flat cell (D91).
+    /// `smooth` interpolates between nodes; otherwise each node is a flat cell.
     | FieldHeatmap of smooth: bool
-    /// Iso-lines at the given values, raw in the field's unit (D88).
+    /// Iso-lines at the given values, raw in the field's unit.
     | FieldContours of levels: float[]
-    /// Filled bands between consecutive levels, each coloured at its midpoint value (D88).
+    /// Filled bands between consecutive levels, each coloured at its midpoint value.
     | FieldBands of levels: float[]
     /// An arrow at every node, as long as the vector's magnitude through the quiver's own length
-    /// scale, with a key saying what one length means (D87). The payload's `Values` are the
+    /// scale, with a key saying what one length means. The payload's `Values` are the
     /// magnitudes.
     | FieldQuiver of key: QuiverKey option
     /// An arrow at every node, all one length: direction only. What a phase space gets, where
     /// the two components are in different units and a magnitude does not exist.
     | FieldDirections
-    /// D89 — evenly spaced streamlines, `separation` apart on the panel, with arrowheads along
+    /// Evenly spaced streamlines, `separation` apart on the panel, with arrowheads along
     /// them. The payload's `Values` colour each line by their mean along it.
     | FieldStreamlines of separation: float<px>
-    /// D90 — line-integral convolution: a noise texture smeared along the field's streamlines,
+    /// Line-integral convolution: a noise texture smeared along the field's streamlines,
     /// rasterised at the plot area's resolution. Its brightness is the texture; its colour is the
     /// payload's `Values` through the layer's colour.
     | FieldLic of LicOptions
 
-/// D90 — what a line-integral convolution is computed with.
+/// What a line-integral convolution is computed with.
 and LicOptions =
     { /// The convolution kernel's full length along a streamline, on the page. Longer reads as
       /// smoother, more coherent strokes; shorter as grainier ones.
       Length: float<px>
       /// Raster pixels per page pixel along each axis: 1 for a screen, 2 or 3 for print.
       Oversample: int
-      /// The noise texture's seed (D95). The same seed, field and plot size draw the same image.
+      /// The noise texture's seed. The same seed, field and plot size draw the same image.
       Seed: uint64 }
 
-/// D87 — what one arrow length means: a round value of the magnitude and its label, prefix and
+/// What one arrow length means: a round value of the magnitude and its label, prefix and
 /// unit included, both decided from the data when the layer is built, and the magnitude the
 /// length scale is set against. The arrow it is drawn with
 /// is sized on the panel, so the label is the same at every figure size and the arrow is not.
@@ -66,7 +66,7 @@ and QuiverKey =
       /// The magnitude the length scale is set against: the longest arrow is 0.9 of the grid's
       /// pitch at this magnitude. The layer's own largest when it is built; across a film, the
       /// largest of every sampled frame's, so the arrows grow and shrink with the field rather
-      /// than being renormalised each frame (D94).
+      /// than being renormalised each frame.
       Largest: float }
 
 /// A grid with its measures spent: node coordinates in `'p` — data space on a layer, `nd` once
@@ -84,7 +84,7 @@ type FieldPayload<[<Measure>] 'p> =
       W: float[] }
 
 [<RequireQualifiedAccess>]
-module FieldMarks =
+module internal FieldMarks =
 
     let private finite (v: float) = not (Double.IsNaN v || Double.IsInfinity v)
 
@@ -93,7 +93,7 @@ module FieldMarks =
 
     /// A filled arrowhead's three corners, in px: the tip at (`tx`, `ty`), pointing along the unit
     /// direction (`dx`, `dy`), `head` long and 0.8 × `head` across its base. The streamlines' heads
-    /// and an annotation's arrow (D164) are this one shape.
+    /// and an annotation's arrow are this one shape.
     let arrowhead (head: float) (tx: float, ty: float) (dx: float, dy: float) : struct (float * float)[] =
         let baseX, baseY = tx - dx * head, ty - dy * head
         let nx, ny = -dy * head * 0.4, dx * head * 0.4
@@ -166,7 +166,7 @@ module FieldMarks =
 
     let private bilinearAt (p: Plane) (x: float) (y: float) = interpolate p p.V x y
 
-    // ---- The heatmap (D91) ----------------------------------------------------------------
+    // ---- The heatmap ----------------------------------------------------------------
 
     /// One pixel per node, the pixel centres on the nodes. A grid uneven in panel space — a log
     /// grid on a linear axis — is first resampled to the same counts, evenly, so that pixel
@@ -220,7 +220,7 @@ module FieldMarks =
                       Y1 = (ly.[ny - 1] + halfY) * 1.0<nd> }
                   Smooth = smooth }
 
-    // ---- Marching squares (D88) -------------------------------------------------------------
+    // ---- Marching squares -------------------------------------------------------------
     //
     // Each cell's boundary is walked counter-clockwise — bottom, right, top, left — and every
     // edge whose two ends straddle the level holds one crossing. A crossing where the walk goes
@@ -424,7 +424,7 @@ module FieldMarks =
 
                            yield Path(path, Some { stroke with Paint = paint }, None, NonZero) |]
 
-    // ---- Bands (D88) ------------------------------------------------------------------------
+    // ---- Bands ------------------------------------------------------------------------
     //
     // The region at or above a level is bounded by that level's contour and by the stretches of
     // the grid's edge where the field is above it. Because every contour is oriented with the
@@ -531,7 +531,7 @@ module FieldMarks =
                            if path.Length > 0 then
                                yield Path(path, None, Some(Solid(Color.withAlpha (c.A * opacity) c)), EvenOdd) |]
 
-    // ---- Arrows (D87) -----------------------------------------------------------------------
+    // ---- Arrows -----------------------------------------------------------------------
     //
     // An arrow is centred on its node and points along the vector's direction *on the panel*:
     // the components arrive already multiplied by the scales' derivatives (`Geom.project`), and
@@ -667,7 +667,7 @@ module FieldMarks =
             Group(Array.append drawn [| keyNode |])
         | _ -> Scene.empty
 
-    // ---- Streamlines (D89) --------------------------------------------------------------------
+    // ---- Streamlines --------------------------------------------------------------------
     //
     // **Integrated in pixels, along the unit direction.** Arc length on a phase space adds rad²
     // to rad²/s², which is not a quantity, and on a log axis it is not a visual one either: the
@@ -977,7 +977,7 @@ module FieldMarks =
                        yield Path(segs.ToArray(), None, Some(Solid c), NonZero) |]
         | _ -> Scene.empty
 
-    // ---- Line-integral convolution (D90) ------------------------------------------------------
+    // ---- Line-integral convolution ------------------------------------------------------
     //
     // **What it is.** Every pixel takes the mean of a white-noise texture along the streamline
     // through it, `Length` pixels long on the page and centred on the pixel (Cabral and Leedom,
@@ -999,21 +999,21 @@ module FieldMarks =
     // samples are not deposited — another seed covers them with a whole window. Where the line
     // stops at the edge or a fixed point, the window is what there is.
     //
-    // **The noise is D95's generator**, one uniform draw per raster pixel in row order from the
-    // stated seed. Nothing else is random, and the tracing runs in row order on one thread, so a
-    // seed, a field and a plot size name one image on every runtime: the arithmetic is +, ×, ÷ and
-    // √, which IEEE 754 rounds the same everywhere.
+    // **The noise is the library's one generator**, one uniform draw per raster pixel in row order
+    // from the stated seed. Nothing else is random, and the tracing runs in row order on one
+    // thread, so a seed, a field and a plot size name one image on every runtime: the arithmetic is
+    // +, ×, ÷ and √, which IEEE 754 rounds the same everywhere.
     //
-    // **Only the per-pixel passes after the tracing run in parallel** (M5, D119 as taken). Fast LIC
+    // **Only the per-pixel passes after the tracing run in parallel**. Fast LIC
     // seeds a line only at a pixel no earlier line crossed, so the lines traced depend on the
     // order they are traced in, and tracing in parallel would change the image a seed names. The
     // intensity and the colouring each write one pixel from values nothing else writes, so they
     // are parallel without the thread count reaching a byte.
     //
-    // **A backend may convolve instead** (D150). When the compile measurer is an `ILicConvolver`
+    // **A backend may convolve instead**. When the compile measurer is an `ILicConvolver`
     // that answers, its intensities replace the traced ones: the GPU renderer's computes each
     // pixel's own window, the exact convolution at its centre, which correlates 0.90 with fast
-    // LIC's averaged windows on the same noise (measured in the M5.6 inventory). The stretch and
+    // LIC's averaged windows on the same noise (measured). The stretch and
     // the colouring below are the same either way. Any other measurer leaves the image as it was,
     // to the byte.
     //

@@ -243,7 +243,7 @@ module ``sampling`` =
         Assert.Equal(0.1<m>, xs.[0])
         Assert.Equal(0.7<m>, xs.[6])
 
-    /// D52: a point charge's potential is infinite at the charge. The node is kept, counted, and
+    /// A point charge's potential is infinite at the charge. The node is kept, counted, and
     /// its neighbours' derivatives inherit it rather than being computed across it.
     [<Fact>]
     let ``a singular node is counted, and its neighbours' derivatives say so`` () =
@@ -277,7 +277,7 @@ module ``sampling`` =
         |> ignore
 
 // ======================================================================================
-// Phase 2 — the heatmap, contours and bands (D86, D88, D91). Gates 5, 6 and 7.
+// Phase 2 — the heatmap, contours and bands. Gates 5, 6 and 7.
 // ======================================================================================
 
 /// A grid as a field layer's projected payload, with the panel taken as the data itself — the
@@ -443,7 +443,7 @@ module ``a field on a figure`` =
     [<Fact>]
     let ``golden: the same potential in bands (tikz)`` () =
         let fig =
-            Field.bands U.metre U.metre Derived.volt potential
+            Field.bands U.metre U.metre U.volt potential
             |> Chart.overlay (Field.contours U.metre U.metre potential)
             |> Chart.withYLabel "y"
             |> Chart.withTitle "Two line charges"
@@ -459,7 +459,7 @@ module ``a field on a figure`` =
         | TexToolchain.Failed why -> failwithf "the bands baseline does not compile:\n%s" why
 
 // ======================================================================================
-// Phase 3 — the quiver (D87). Gate 8.
+// Phase 3 — the quiver. Gate 8.
 // ======================================================================================
 
 module ``arrows`` =
@@ -576,7 +576,7 @@ module ``arrows`` =
         // The arrow is built in pixels and stored in `nd`, and the plot area's two pixel scales
         // cancel out of its angle in `nd`, so the comparison needs neither. The bound is the
         // central difference `Geom.project` takes the derivative by: a thousandth of the node
-        // spacing, so an error of order 1e-7 on a log axis. Stated as a distance (D82).
+        // spacing, so an error of order 1e-7 on a log axis. Stated as a distance.
         for tail, tip in arrows do
             let cx = sx.Invert((tail.X + tip.X) / 2.0)
             let cy = sy.Invert((tail.Y + tip.Y) / 2.0)
@@ -589,7 +589,7 @@ module ``arrows`` =
     let ``a direction field's arrows are all one length, and it has no key`` () =
         let pendulum: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s ^ 2> * sin (float th) * 1.0<rad>)
         let flow = Field.sampleFlow (Grid.linear -3.0<rad> 3.0<rad> 7) (Grid.linear -4.0<rad / s> 4.0<rad / s> 6) pendulum
-        let scene = Chart.toScene (Chart.size 480.0 300.0) (Field.directions Derived.radian (U.div Derived.radian U.second) flow)
+        let scene = Chart.toScene (Chart.size 480.0 300.0) (Field.directions U.radian (U.div U.radian U.second) flow)
 
         Assert.True((keyOf scene).IsNone, "a direction field drew a key")
 
@@ -634,7 +634,7 @@ module ``arrows`` =
         | TexToolchain.Failed why -> failwithf "the quiver baseline does not compile:\n%s" why
 
 // ======================================================================================
-// Phase 4 — streamlines (D89). Gates 9 and 10.
+// Phase 4 — streamlines. Gates 9 and 10.
 // ======================================================================================
 
 module ``streamlines`` =
@@ -879,7 +879,7 @@ module ``opacity without a colour channel`` =
             Assert.InRange(a, 0.29, 0.31)
 
 // ======================================================================================
-// Phase 5 — line-integral convolution (D90). Gate 11, and the PNG baseline.
+// Phase 5 — line-integral convolution. Gate 11, and the PNG baseline.
 // ======================================================================================
 
 module ``line-integral convolution`` =
@@ -968,7 +968,7 @@ module ``line-integral convolution`` =
         let other = image { Field.licDefaults with Seed = 1UL } rotation
         Assert.False((first.Rgba = other.Rgba), "seed 1 drew seed 0's image")
 
-    /// A missing value is not drawn (D52): its pixels are transparent and the rest are opaque.
+    /// A missing value is not drawn: its pixels are transparent and the rest are opaque.
     [<Fact>]
     let ``a missing region is transparent`` () =
         let f = uniform 1.0 0.0
@@ -1007,7 +1007,7 @@ module ``line-integral convolution`` =
         Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 53) (Grid.linear -9.0<rad / s> 9.0<rad / s> 37) flow
 
     /// Small and untitled, because the sidecar is noise and the encoder stores it uncompressed.
-    let private portrait = Field.lic Derived.radian (U.div Derived.radian U.second) pendulum
+    let private portrait = Field.lic U.radian (U.div U.radian U.second) pendulum
 
     /// **The PNG baseline.** The `.tex` and the sidecar it names, as D64's image pair is: the
     /// bytes come from Marey's own encoder over pixels computed from a stated seed, so nothing
@@ -1173,11 +1173,11 @@ module ``phase portraits`` =
         Assert.Equal(FixedPointKind.Degenerate, (Assert.Single(Phase.fixedPoints g)).Kind)
 
     /// The description prints the eigenvalues in base units: s⁻¹, never `Hz`, which is what the
-    /// registry would call it and what an eigenvalue is not (D98).
+    /// registry would call it and what an eigenvalue is not.
     [<Fact>]
     let ``a fixed point describes itself, its eigenvalues in s⁻¹`` () =
         let centre = Phase.fixedPoints (pendulum 53) |> Array.find (fun p -> abs (float p.X) < 0.1)
-        let text = FixedPoint.describe Derived.radian (U.div Derived.radian U.second) U.second centre
+        let text = FixedPoint.describe U.radian (U.div U.radian U.second) U.second centre
         Assert.StartsWith("centre (linear) at (0 rad, 0 rad·s⁻¹), λ = ±3.11", text)
         Assert.EndsWith("i s⁻¹", text)
         Assert.DoesNotContain("Hz", text)
@@ -1201,7 +1201,7 @@ module ``phase portraits`` =
         | TexToolchain.Failed why -> failwithf "the portrait baseline does not compile:\n%s" why
 
 // ======================================================================================
-// Phase 7 — a field in motion (D94). Gate 14.
+// Phase 7 — a field in motion. Gate 14.
 // ======================================================================================
 
 module ``a field in motion`` =
@@ -1214,11 +1214,11 @@ module ``a field in motion`` =
             (1.0 + 9.0 * float t) * float p.X * float p.Y * 1.0<V>)
 
     let private heatmapFilm =
-        Anim.ofSeconds 1.0<s> (fun t -> Field.heatmap U.metre U.metre Derived.volt (growing t) |> Chart.withTitle "growing")
+        Anim.ofSeconds 1.0<s> (fun t -> Field.heatmap U.metre U.metre U.volt (growing t) |> Chart.withTitle "growing")
         |> Film.ofFigures 8 extent
 
     let private quiverFilm =
-        Anim.ofSeconds 1.0<s> (fun t -> Field.quiver U.metre U.metre (U.div Derived.volt U.metre) (Field.grad (growing t)))
+        Anim.ofSeconds 1.0<s> (fun t -> Field.quiver U.metre U.metre (U.div U.volt U.metre) (Field.grad (growing t)))
         |> Film.ofFigures 8 extent
 
     let private frames (film: Film) = Frames.times 10.0 film.Duration |> Array.map film.Frames.At
@@ -1312,15 +1312,15 @@ module ``a field in motion`` =
     let ``a stated colour domain is the domain`` () =
         let film =
             Anim.ofSeconds 1.0<s> (fun t ->
-                Field.heatmap U.metre U.metre Derived.volt (growing t) |> Chart.withColorDomain Derived.volt -20.0<V> 20.0<V>)
+                Field.heatmap U.metre U.metre U.volt (growing t) |> Chart.withColorDomain U.volt -20.0<V> 20.0<V>)
             |> Film.ofFigures 8 extent
 
         Assert.Equal((-20.0, 20.0), film.Shot.ColourDomains |> Array.exactlyOne |> snd)
 
     [<Fact>]
     let ``a colour domain in another unit is converted, and in another dimension refused`` () =
-        let fig = Field.heatmap U.metre U.metre Derived.volt (growing 0.0<s>)
-        let mv = U.scaled "mV" 1e-3 Derived.volt
+        let fig = Field.heatmap U.metre U.metre U.volt (growing 0.0<s>)
+        let mv = U.scaled "mV" 1e-3 U.volt
         let shot = Chart.arrangeFor TextMeasure.approx extent (fig |> Chart.withColorDomain mv -500.0<V> 500.0<V>)
         ignore shot
 

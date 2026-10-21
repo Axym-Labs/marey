@@ -4,17 +4,17 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D148 — STAM'S STABLE FLUIDS, ON A STAGGERED GRID.
+// STAM'S STABLE FLUIDS, ON A STAGGERED GRID.
 //
 // Incompressible flow in a box of square cells: semi-Lagrangian advection, implicit viscosity, and
 // a pressure projection, each unconditionally stable, so a step is as long as the picture wants.
 //
 // **The grid is staggered (MAC).** The x velocity lives on the cells' vertical faces and the y
-// velocity on their horizontal ones; the dye and the pressure potential at the centres. Then the divergence of a
-// pressure gradient is exactly the five-point Laplacian, and a projection leaves only its
-// solver's residual. The collocated grid of GPU Gems takes the divergence over two cells and the
-// Laplacian over one, and its projection stops at 8.8% of the divergence however long the solver
-// runs (measured in the M5.6 inventory).
+// velocity on their horizontal ones; the dye and the pressure potential at the centres. Then the
+// divergence of a pressure gradient is exactly the five-point Laplacian, and a projection leaves
+// only its solver's residual. The collocated grid of GPU Gems takes the divergence over two cells
+// and the Laplacian over one, and its projection stops at 8.8% of the divergence however long the
+// solver runs (measured).
 //
 // **The pressure by multigrid, a fixed number of V-cycles**, warm-started from the last step's
 // pressure, which is why it is part of the state; viscosity and diffusion by red-black
@@ -74,6 +74,8 @@ type StamOptions<[<Measure>] 'x, [<Measure>] 'q> =
       /// Red-black Gauss–Seidel sweeps for the viscous and the diffusive solve.
       Sweeps: int }
 
+/// A stable-fluids flow (Stam's method): a box of fluid with its dye and velocity, read as
+/// pressure, divergence and vorticity.
 [<RequireQualifiedAccess>]
 module Fluid =
 
@@ -177,10 +179,11 @@ module Fluid =
         let xs, ys = centres f
         { Xs = xs; Ys = ys; Values = f.Pressure }
 
-    /// The vorticity at the cells' centres, `∂v/∂x − ∂u/∂y` of `velocity`.
+    /// The vorticity at the cells' centres, `∂v/∂x − ∂u/∂y` of `velocity`, in s⁻¹. Draw it
+    /// with `U.perSecond`, which writes a rate as `s⁻¹` rather than as a frequency in `Hz`.
     let vorticity<[<Measure>] 'x, [<Measure>] 'q> (f: Fluid<'x, 'q>) : ScalarGrid<'x, 'x, 1 / s> = Field.curl (velocity f)
 
-/// D148 — a fluid's step, on the CPU. `GpuSim.stam` is the same step on the GPU.
+/// A fluid's step, on the CPU. `GpuSim.stam` is the same step on the GPU.
 [<RequireQualifiedAccess>]
 module Stam =
 
@@ -521,7 +524,7 @@ module Stam =
     /// source; viscosity and diffusion, implicit; and the projection. The forcing is sampled once
     /// for each geometry the step meets and kept, as one immutable value replaced whole, so two
     /// threads stepping at once can only sample it twice.
-    let step<[<Measure>] 'x, [<Measure>] 'q> (options: StamOptions<'x, 'q>) : Step<Fluid<'x, 'q>, s> =
+    let step<[<Measure>] 'x, [<Measure>] 'q> (options: StamOptions<'x, 'q>) : Stepper<Fluid<'x, 'q>, s> =
         if options.Sweeps < 1 || options.Cycles < 1 then
             invalidArg "options" (sprintf "Marey: a fluid's solves need at least one sweep and one cycle; got %d and %d." options.Sweeps options.Cycles)
 

@@ -2,11 +2,10 @@ namespace Marey
 
 /// What kind of scale this is, as *data*.
 ///
-/// The design's `Scale<'u>` is four function fields and a domain. That is enough to render
-/// and nothing else: you cannot serialize it (§15 — "design the file format for that from the
-/// start"), you cannot show it in a REPL, you cannot check in a test that `Scale.log10`
-/// actually built a log scale rather than a linear one that happens to agree at the endpoints,
-/// and you cannot generate the right ticks without asking the closure.
+/// The design's `Scale<'u>` is four function fields and a domain. That is enough to render and
+/// nothing else: you cannot serialize it, you cannot show it in a REPL, you cannot check in a test
+/// that `Scale.log10` actually built a log scale rather than a linear one that happens to agree at
+/// the endpoints, and you cannot generate the right ticks without asking the closure.
 ///
 /// One extra tag field fixes all four. It is the cheapest thing in this file.
 [<RequireQualifiedAccess>]
@@ -19,25 +18,25 @@ type ScaleKind =
     | Symlog of logBase: float * linthresh: float
     /// `x^exponent`. `Power 0.5` is the square-root scale.
     | Power of exponent: float
-    /// `1/x`. Arrhenius plots against `1/T`, and the reason it is on §4's ship list.
+    /// `1/x`. Arrhenius plots against `1/T`.
     | Reciprocal
 
-    /// §9 — **a categorical axis**, `n` named levels in `n` equal bands.
+    /// **A categorical axis**, `n` named levels in `n` equal bands.
     ///
-    /// D45: the levels ride in the tag because a category *is* its level set, and that is data
-    /// in exactly the sense the note at the top of this type argues for. It serializes (§15
-    /// reloads a categorical axis with its names intact, through `IScaleErased.Kind`, and no
+    /// The levels ride in the tag because a category *is* its level set, and that is data in
+    /// exactly the sense the note at the top of this type argues for. It serializes (a reloaded
+    /// figure keeps a categorical axis with its names intact, through `IScaleErased.Kind`, and no
     /// new erased interface is needed for it), it is inspectable in a test, and adding it here
-    /// makes the compiler enumerate every consumer that has to decide what a category means —
-    /// which a sibling type would not have done.
+    /// makes the compiler enumerate every consumer that has to decide what a category means — which
+    /// a sibling type would not have done.
     | Ordinal of levels: string[]
 
-/// §4 — A scale maps **data space to normalized panel space**.
+/// A scale maps **data space to normalized panel space**.
 ///
 /// `Forward` deliberately does *not* clamp. A point outside the domain projects outside
-/// `[0,1]` and is removed by the panel's `Clip` node in the IR (§5). Clamping here would
+/// `[0,1]` and is removed by the panel's `Clip` node in the IR. Clamping here would
 /// silently pile out-of-range data onto the panel edge, which is a lie about the data — and
-/// it would also break the `inverse (forward x) = x` round-trip that §4 asks to be proven.
+/// it would also break the `inverse (forward x) = x` round-trip the tests prove.
 type Scale<[<Measure>] 'u> =
     { /// The runtime unit witness. This is the field that makes an axis able to label itself.
       Unit: U<'u>
@@ -46,12 +45,13 @@ type Scale<[<Measure>] 'u> =
       Domain: float<'u> * float<'u>
       Forward: float<'u> -> float<nd>
       Inverse: float<nd> -> float<'u>
-      /// Ticks as an **array**, not the `list` of the design sketch. §1.3 warns that list
-      /// allocation on the hot path is the difference between 60 fps and 6; ticks are not a
-      /// hot path, but `Marey.Core.Ticks` produces arrays and converting at every axis
-      /// render is pure waste.
+      /// Ticks as an **array**, not a `list`. List allocation on the hot path is the difference
+      /// between 60 fps and 6; ticks are not a hot path, but `Marey.Core.Ticks` produces arrays and
+      /// converting at every axis render is pure waste.
       TickHint: int -> float<'u>[] }
 
+/// Scales: linear, logarithmic, symmetric-log, power, reciprocal and categorical, and the
+/// operations on them.
 [<RequireQualifiedAccess>]
 module Scale =
 
@@ -99,7 +99,7 @@ module Scale =
 
     /// Logarithm to an arbitrary base.
     ///
-    /// §4: "log10 of a dimensioned quantity is not itself dimensioned — a subtlety the type
+    /// "log10 of a dimensioned quantity is not itself dimensioned — a subtlety the type
     /// system will correctly force you to acknowledge." That acknowledgement is the
     /// `float lo` on the way in and the `FloatWithMeasure` on the way out; there is no way to
     /// write it that hides the fact, and there should not be.
@@ -166,7 +166,7 @@ module Scale =
 
     /// The label for a tick sitting at level index `v`, and the only place that mapping is
     /// written. `Erase.scale` and the axis compiler both format ordinal ticks through this, so
-    /// the measured and erased paths cannot drift — the same argument D16 makes for `ToSI`.
+    /// the measured and erased paths cannot drift — the same argument as for `ToSI`.
     let levelLabel (levels: string[]) (v: float) =
         let i = int (Num.roundEven v)
         if i >= 0 && i < levels.Length then levels.[i] else ""
@@ -192,7 +192,7 @@ module Scale =
           // and thinning them is the collision-avoidance layer's job, not this one's.
           TickHint = fun _ -> Array.init n (fun i -> tag<'u> (float i)) }
 
-    /// §9 / D45 — **a categorical axis**: `n` levels, one band each, level `i` at index `i`.
+    /// **A categorical axis**: `n` levels, one band each, level `i` at index `i`.
     ///
     /// The type is `Scale<1>` and not `Scale<'k>`, and that is the decision rather than an
     /// accident. A category has no measure, so a measure-indexed scale over one is a
@@ -213,7 +213,7 @@ module Scale =
     /// Rebuild a scale of a given kind, over a given domain: the one place the tag maps back
     /// to a constructor.
     ///
-    /// It was written three times before D45 — here twice and once in `Marey.Plot`'s
+    /// It was once written three times — here twice and once in `Marey.Plot`'s
     /// `Figure` — and adding a sixth `ScaleKind` is what made that expensive: three matches
     /// to extend, and nothing but a build error at each to connect them. One function, so a
     /// seventh kind is one branch.
@@ -241,7 +241,7 @@ module Scale =
 
     /// Rebuild the same kind of scale over a new domain. This is *the* zoom/pan primitive:
     /// interaction changes the domain and nothing else, so a zoom is a pure value change and
-    /// the diff in §5.2 sees exactly the subtree that moved.
+    /// the scene diff sees exactly the subtree that moved.
     let withDomain (domain: float<'u> * float<'u>) (s: Scale<'u>) : Scale<'u> =
         match s.Kind with
         // A categorical axis has no domain to widen, and accepting one here is how a shared

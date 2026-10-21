@@ -4,8 +4,8 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 /// What happens when one path has more subpaths than the other.
 ///
-/// There is no correct answer, only a choice that has to be made somewhere, and D74's argument
-/// is that a `static member Interp(a, b, t)` has nowhere to put it. Both cases here collapse the
+/// There is no correct answer, only a choice that has to be made somewhere, and a
+/// `static member Interp(a, b, t)` has nowhere to put it. Both cases here collapse the
 /// unmatched subpath to a *point of its own*, so an extra shape grows out of itself and shrinks
 /// back into itself rather than flying in from wherever the other path happens to be.
 type SubpathPadding =
@@ -29,7 +29,7 @@ type ClosurePolicy =
     /// occasionally what a caller wants and is never what they get by accident.
     | CloseWhenEither
 
-/// The three policies D74 says an `Interp` instance has nowhere to hold.
+/// The three policies an `Interp` instance has nowhere to hold.
 [<NoComparison>]
 type MorphOptions =
     { /// Points per subpath, per side. The output is a polyline, so this is the resolution of
@@ -40,7 +40,7 @@ type MorphOptions =
       Padding: SubpathPadding
       Closure: ClosurePolicy }
 
-/// §7.1 / D74 — **path morphing is a function, not an `Interp` instance.**
+/// **Path morphing is a function, not an `Interp` instance.**
 ///
 /// `interp a b t` on a `PathSeg[]` is not well defined without three policies: how subpaths are
 /// paired when the counts differ, how many samples the common parameterisation gets, and what a
@@ -51,7 +51,7 @@ type MorphOptions =
 ///
 /// ### What a morph actually is
 ///
-/// Both paths are flattened to polylines (D11 keeps this cheap: one curve kind, `CubicTo`, plus
+/// Both paths are flattened to polylines (the IR keeps this cheap: one curve kind, `CubicTo`, plus
 /// lines and closes — no arcs and no quadratics to special-case), split into subpaths, and each
 /// subpath is resampled to `Samples` points spaced evenly **by arc length**. Two paths in that
 /// form have the same shape, so they can be interpolated point by point.
@@ -254,10 +254,10 @@ module Morph =
         let acc = ResizeArray<PathSeg>()
 
         for pa, pb, closed in aligned do
-            acc.Add(MoveTo(interp pa.[0] pb.[0] t))
+            acc.Add(MoveTo(Interp.between pa.[0] pb.[0] t))
 
             for i in 1 .. pa.Length - 1 do
-                acc.Add(LineTo(interp pa.[i] pb.[i] t))
+                acc.Add(LineTo(Interp.between pa.[i] pb.[i] t))
 
             if closed then
                 acc.Add ClosePath
@@ -278,7 +278,7 @@ module Morph =
         emit (aligned |> Array.map (fun (_, pb, c) -> pb, c))
 
     /// Morph `a` into `b`. `t = 0` is the prepared `a`, `t = 1` the prepared `b`, and `t`
-    /// outside `[0, 1]` extrapolates — D71's overshoot reaches here like it reaches `tween`.
+    /// outside `[0, 1]` extrapolates — an easing's overshoot reaches here like it reaches `tween`.
     ///
     /// Prepares both sides on every call. Use `anim` in a render loop.
     let paths (opts: MorphOptions) (a: PathSeg[]) (b: PathSeg[]) (t: float) : PathSeg[] = blend t (align opts a b)

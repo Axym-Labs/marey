@@ -4,7 +4,7 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D144 — EVENTS.
+// EVENTS.
 //
 // An event is a function of the state, a direction and a response. Within a step whose ends
 // straddle a root in the stated direction, the root is located to a stated tolerance in time:
@@ -43,7 +43,7 @@ type Response<'s> =
     /// The simulation stops; past the event its state holds.
     | Stop
 
-/// D144 — a crossing of zero by a function of the state, and what to do there. Built by
+/// A crossing of zero by a function of the state, and what to do there. Built by
 /// `Event.create`, which takes the function in its own unit.
 type Event<'s> =
     { Name: string
@@ -51,7 +51,8 @@ type Event<'s> =
       Of: 's -> float
       Direction: Direction
       Response: Response<'s>
-      /// What a crossing too soon after the previous one does instead (D144's Zeno guard).
+      /// What a crossing too soon after the previous one does instead: the guard against Zeno
+      /// behaviour.
       Rest: ('s -> 's) option
       /// The least time between two firings before the guard takes over.
       MinSeparation: float<s> option
@@ -75,6 +76,8 @@ type Hit =
       Time: float<s>
       Kind: HitKind }
 
+/// Events: where a function of the state crosses zero, located in time, with a minimum
+/// separation and what a crossing too soon does instead.
 [<RequireQualifiedAccess>]
 module Event =
 
@@ -163,6 +166,7 @@ module Event =
 
         b
 
+/// Ready-made responses to an event: `reflect` a coordinate's velocity.
 [<RequireQualifiedAccess>]
 module Response =
 

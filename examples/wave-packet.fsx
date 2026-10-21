@@ -33,9 +33,9 @@ let envelope = xs |> Array.map (fun x -> p0 * exp (-(x * x) / (2.0 * sigma * sig
 let pressure = Array.map2 (fun (p: float<Pa>) x -> p * cos (k * x)) envelope xs
 
 let figure =
-    Chart.line U.metre Derived.pascal xs pressure
+    Chart.line U.metre U.pascal xs pressure
     |> Chart.withName "p(x)"
-    |> Chart.addLine U.metre Derived.pascal xs envelope
+    |> Chart.addLine U.metre U.pascal xs envelope
     |> Chart.withName "envelope"
     |> Chart.withDash [| 4.0<px>; 3.0<px> |]
     |> Chart.withLegend LegendTopRight
@@ -65,9 +65,9 @@ printfn "y axis chose kilopascals: %b" (svg.Contains "[kPa]")
 
     Pressure works here because `Pa` is a named SI entry, looked up from the dimension. Units with
     no name work too, as long as you say what they are made of. Had this been an electromagnetic
-    packet in volts per metre, `U.div Derived.volt U.metre` labels the axis `MV·m⁻¹` — not because
+    packet in volts per metre, `U.div U.volt U.metre` labels the axis `MV·m⁻¹` — not because
     Marey worked out that the dimension `kg·m·s⁻³·A⁻¹` factors that way, which would be a guess
     (the same dimension is `J/K` and `N·m/K`), but because the composition is the one you wrote. *)
 
-let fieldUnit = U.div Derived.volt U.metre
+let fieldUnit = U.div U.volt U.metre
 printfn "a unit with no SI name still reads well: %s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none fieldUnit)

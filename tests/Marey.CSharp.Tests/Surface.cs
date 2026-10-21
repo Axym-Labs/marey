@@ -77,7 +77,7 @@ public class Surface
         Assert.Equal(2, facet.Panels.Length);
     }
 
-    /// D162 — rules and spans from C#: built as figures and added, checked against the axis.
+    /// Rules and spans from C#: built as figures and added, checked against the axis.
     [Fact]
     public void RulesAndSpans()
     {
@@ -96,7 +96,7 @@ public class Surface
         Assert.ThrowsAny<Exception>(() => Svg(Chart.Line(X, Y, yUnit: Units.Metre).Add(Chart.HLine(1.0, Units.Second))));
     }
 
-    /// D164 / D165 — annotations, panel text and letters from C#.
+    /// Annotations, panel text and letters from C#.
     [Fact]
     public void AnnotationsAndLetters()
     {
@@ -117,7 +117,7 @@ public class Surface
         Assert.Contains("(b)", svg);
     }
 
-    /// D166 / D169 / D170 — stated ticks, a prefix and reversal from C#.
+    /// Stated ticks, a prefix and reversal from C#.
     [Fact]
     public void StatedTicks()
     {
@@ -135,7 +135,7 @@ public class Surface
         Assert.ThrowsAny<Exception>(() => Svg(fig.WithXTicksEvery(1.0, Units.Second)));
     }
 
-    /// D167 / D168 — minor ticks and the tick conventions of a theme, from C#.
+    /// Minor ticks and the tick conventions of a theme, from C#.
     [Fact]
     public void MinorTicksAndTickDirection()
     {
@@ -149,7 +149,7 @@ public class Surface
         Assert.Contains("[m]", Svg(Chart.Line(X, Y, yUnit: Units.Metre).WithTheme(ThemeModule.publication)));
     }
 
-    /// D169 — tick formats from C#, a custom one from a lambda.
+    /// Tick formats from C#, a custom one from a lambda.
     [Fact]
     public void TickFormats()
     {
@@ -162,7 +162,7 @@ public class Surface
         Assert.Contains("&lt;", svg);
     }
 
-    /// D171 — legends outside, in columns, without a frame, and shared by a figure, from C#.
+    /// Legends outside, in columns, without a frame, and shared by a figure, from C#.
     [Fact]
     public void Legends()
     {
@@ -191,8 +191,8 @@ public class Surface
     public void TheFacadeIsTheWitness()
     {
         Assert.Same(SiWitnesses.U.metre, Units.Metre);
-        Assert.Same(Derived.volt, Units.Volt);
-        Assert.Same(NonSi.degreeCelsius, Units.DegreeCelsius);
+        Assert.Same(DerivedWitnesses.U.volt, Units.Volt);
+        Assert.Same(NonSiWitnesses.U.degreeCelsius, Units.DegreeCelsius);
         Assert.False(Units.Unspecified.Stated);
         Assert.True(Units.One.Stated);
 
@@ -265,6 +265,45 @@ public class Surface
 
     /// An axis's look from C#, which cannot spell an `AxisConfig` record update. The drawn title goes;
     /// the axis's `aria-label` keeps it for a screen reader.
+    /// Composition from C#: one call from each group — spans and mosaics, ratios, sharing, a
+    /// twin y axis, secondary axes, aspect and insets — so a missing spelling fails the build.
+    [Fact]
+    public void Composition()
+    {
+        var a = Chart.Line(X, Y, xUnit: Units.Second, yUnit: Units.Metre);
+        var b = Chart.Scatter(X, Err, xUnit: Units.Second, yUnit: Units.Metre);
+
+        var grid = a.Above(b).WithRowHeights(3.0, 1.0).ShareX().Beside(a).WithColWidths(2.0, 1.0);
+        Assert.Equal(3, grid.Panels.Length);
+        Assert.Equal(3, Figures.Mosaic("AB;AC", "ABC", a, b, a).Panels.Length);
+
+        Assert.Contains("[K]", Svg(a.WithRightAxis(Chart.Line(X, Y, xUnit: Units.Second, yUnit: Units.Kelvin))));
+        Assert.Contains("[min]", Svg(a.WithTopAxisIn(Units.Minute)));
+        Assert.Contains(">period [", Svg(a.WithTopAxisMapped(Units.Second, t => 1.0 / (t + 1.0), p => 1.0 / p - 1.0).WithTopAxisLabel("period")));
+        Assert.Contains("[mK]", Svg(a.Add(Chart.Line(X, Err, xUnit: Units.Second, yUnit: Units.Kelvin)).ToRightAxis()));
+
+        Assert.NotEmpty(Svg(Chart.Line(X, Y, xUnit: Units.Metre, yUnit: Units.Metre).WithEqualAspect()));
+        Assert.NotEmpty(Svg(a.WithBoxAspect(1.0)));
+        Assert.Single(a.WithInset(0.6, 0.6, 0.95, 0.95, b).WithInsetZoom().Panels[0].Insets);
+    }
+
+    /// The facade's names for what F# reaches through modules C# sees with a `Module` suffix:
+    /// themes, coordinate systems, prefixes, a whole axis configuration and a scale kind.
+    [Fact]
+    public void TheFacadesNames()
+    {
+        var a = Chart.Line(X, Y, xUnit: Units.Second, yUnit: Units.Metre);
+        Assert.Same(Themes.Publication, a.WithTheme(Themes.Publication).Theme);
+        Assert.Equal(6, Themes.All.Length);
+        Assert.NotEmpty(Svg(Chart.Line(X, Y).WithCoord(Coords.Polar)));
+        Assert.NotEmpty(Svg(Chart.Line(X, Y).WithCoord(Coords.PolarBetween(0.0, Math.PI, 0.3))));
+        Assert.Contains("[km]", Svg(a.WithYPrefix(Prefixes.Kilo)));
+        Assert.Equal(Prefixes.Nano, Prefixes.For(Units.Metre, 1e-9, 5e-9));
+        Assert.Contains(">time [s]<", Svg(a.WithXAxis(Figures.Axis("time"))));
+        Assert.NotEmpty(Svg(a.WithYScaleKind(ScaleKind.NewLog(10.0))));
+        Assert.NotEmpty(Svg(a.Beside(a).WithPanelXDomain(0, 1, 0.0, 10.0).WithPanelYDomain(0, 0, 0.0, 5.0)));
+    }
+
     [Fact]
     public void AnAxisLook()
     {

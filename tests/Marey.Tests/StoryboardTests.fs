@@ -1,4 +1,4 @@
-/// D69 — **the storyboard CE**, and the two claims underneath it.
+/// **the storyboard CE**, and the two claims underneath it.
 ///
 /// The first is about composition: what `let!` binds, what a step's duration defaults to, and
 /// that `parallel'` inherits `Anim.map2`'s rule rather than restating it.

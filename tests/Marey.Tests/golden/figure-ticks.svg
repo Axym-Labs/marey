@@ -67,13 +67,13 @@
           </g>
         </g>
         <g id="figure_panel-0-1_axis-x">
-          <g role="graphics-object" data-marey-role="axis" aria-label="k [10⁹·m⁻¹]" data-side="bottom" data-unit="10⁹·m⁻¹" data-prefix="giga" data-ticks="3" data-tick-rule="all">
+          <g role="graphics-object" data-marey-role="axis" aria-label="k [nm⁻¹]" data-side="bottom" data-unit="nm⁻¹" data-prefix="giga" data-ticks="3" data-tick-rule="all">
             <path d="M450.523 222.567L737.66 222.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
             <path d="M450.523 222.567L450.523 225.567M594.092 222.567L594.092 225.567M737.66 222.567L737.66 225.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
             <text x="450.523" y="229.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">X</text>
             <text x="594.092" y="229.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">Γ</text>
             <text x="737.66" y="229.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">X</text>
-            <text x="594.092" y="247.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">k [10⁹·m⁻¹]</text>
+            <text x="594.092" y="247.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">k [nm⁻¹]</text>
           </g>
         </g>
         <g id="figure_panel-0-1_axis-y">

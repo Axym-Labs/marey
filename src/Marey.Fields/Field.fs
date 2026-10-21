@@ -4,17 +4,17 @@ open System
 open System.Runtime.InteropServices
 
 // ======================================================================================
-// D84 — §8.1'S FIELDS, AND THE ONE §8.1 COULD NOT TYPE.
+// FIELDS, AND THE ONE A VECTOR FIELD CANNOT TYPE.
 //
-// §8.1 declares `Field2<'x,'v> = Vec2<'x> -> Vec2<'v>` and then lists phase portraits among the
-// things to draw with it. A phase space has a different unit on each axis — a pendulum lives in
-// (θ: rad, ω: rad/s) — and `Vec2<'x>` has one measure for both components, so §8.1's type cannot
+// A vector field is `Field2<'x,'v> = Vec2<'x> -> Vec2<'v>`, and phase portraits are among the
+// things to draw with one. A phase space has a different unit on each axis — a pendulum lives in
+// (θ: rad, ω: rad/s) — and `Vec2<'x>` has one measure for both components, so that type cannot
 // hold one. `Flow` can: its axes are independent, and its components are the time derivatives of
 // its coordinates.
 //
-// As built, the function types are only the *inputs*. A field is used as a grid (D85), and one
+// As built, the function types are only the *inputs*. A field is used as a grid, and one
 // `VectorGrid<'x,'y,'u,'w>` holds both a spatial field (`'x = 'y`, `'u = 'w`) and a flow (`'u =
-// 'x/'t`, `'w = 'y/'t`), so D84's `asFlow` conversion turned out to have nothing to convert
+// 'x/'t`, `'w = 'y/'t`), so an `asFlow` conversion would have nothing to convert
 // between. The distinction moved to where it matters — the derivatives' signatures:
 //
 //   * `div` asks that ∂u/∂x and ∂w/∂y share a unit, which a spatial field and a flow both
@@ -26,32 +26,35 @@ open System.Runtime.InteropServices
 //
 // **Every public function here declares its measure parameters.** Written with inferred ones, a
 // mixed-axis curl narrowed itself silently to `'x = 'y` and compiled — only its caller saw an
-// error. Declared, the narrowing is FS0064, which the build treats as an error. §12.1's lesson,
-// as a rule for the whole package.
+// error. Declared, the narrowing is FS0064, which the build treats as an error. That is the rule
+// for the whole package.
 // ======================================================================================
 
 /// A flow on a plane whose axes may differ in unit: at `(x, y)`, the rates `dx/dt` and `dy/dt`.
 /// A pendulum is a `Flow<rad, rad/s, s>`.
 type Flow<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> = float<'x> -> float<'y> -> struct (float<'x / 't> * float<'y / 't>)
 
-/// §8.1's vector field: one unit on both axes, one on both components. An electric field is a
+/// A vector field: one unit on both axes, one on both components. An electric field is a
 /// `Field2<m, V/m>`.
 type Field2<[<Measure>] 'x, [<Measure>] 'v> = Vec2<'x> -> Vec2<'v>
 
-/// §8.1's scalar field. A potential is a `Scalar2<m, V>`.
+/// A scalar field. A potential is a `Scalar2<m, V>`.
 type Scalar2<[<Measure>] 'x, [<Measure>] 'v> = Vec2<'x> -> float<'v>
 
 /// The four partial derivatives of a vector grid, each in its own unit.
 ///
 /// On a phase space the off-diagonal entries are in units that match nothing else, and that is
 /// fine: the quantities a fixed point is classified by — the trace and the determinant — are
-/// sums and products the units do agree on (D92).
+/// sums and products the units do agree on.
 type Jacobian<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w> =
     { DuDx: ScalarGrid<'x, 'y, 'u / 'x>
       DuDy: ScalarGrid<'x, 'y, 'u / 'y>
       DwDx: ScalarGrid<'x, 'y, 'w / 'x>
       DwDy: ScalarGrid<'x, 'y, 'w / 'y> }
 
+/// Fields: their derivatives — gradient, divergence, curl, Laplacian, Jacobian — in the units the
+/// types work out, and the figures that draw them: heatmaps, contours, bands, quivers,
+/// streamlines and LIC.
 [<RequireQualifiedAccess>]
 module Field =
 
@@ -205,13 +208,13 @@ module Field =
           DwDx = dx w
           DwDy = dy w }
 
-    // ---- Drawing (D86, D88, D91) --------------------------------------------------------------
+    // ---- Drawing --------------------------------------------------------------
     //
     // A field layer is a `GeomField` over a series whose points are the grid's nodes: the axes
     // cover the grid, `Figure.unify` checks its dimensions against every other layer's, and a
     // colour channel over the node values gets its colorbar from the machinery a scatter's uses.
     // The picture itself is computed on the panel at compile time (`FieldMarks`), so it follows
-    // whatever domain and scale the panel ends up with (D97).
+    // whatever domain and scale the panel ends up with.
 
     let inline private raw (xs: float<'u>[]) = xs |> Array.map float
 
@@ -351,7 +354,7 @@ module Field =
         let levels = levelsFor 8 (lo, hi) |> Array.map LanguagePrimitives.FloatWithMeasure<'v>
         bandsWith Theme.initial.Sequential levels ux uy uv g
 
-    // ---- Arrows (D87) -----------------------------------------------------------------------
+    // ---- Arrows -----------------------------------------------------------------------
 
     /// A vector layer: `Values` are what colours and sizes an arrow, `U` and `W` its components.
     let private arrowLayerOf<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w, [<Measure>] 'v>
@@ -423,7 +426,7 @@ module Field =
 
         arrowLayerOf ux uy FieldDirections present g
 
-    // ---- Streamlines (D89) --------------------------------------------------------------------
+    // ---- Streamlines --------------------------------------------------------------------
 
     /// The separation streamlines are drawn at when nobody states one, in pixels on the page.
     [<Literal>]
@@ -464,7 +467,7 @@ module Field =
         arrowLayerOf ux uy (FieldStreamlines(DefaultSeparation * 1.0<px>)) magnitude g
         |> Marey.UnitsOfMeasure.Chart.colorBy uv magnitude.Values
 
-    // ---- Line-integral convolution (D90) ------------------------------------------------------
+    // ---- Line-integral convolution ------------------------------------------------------
 
     /// What `lic` computes with when nobody states otherwise: a 20 px kernel, one raster pixel per
     /// page pixel, and seed 0.
@@ -523,11 +526,11 @@ module Field =
         : Figure =
         licByWith licDefaults ux uy uv g
 
-/// D109, D111 — the field geoms in the unit-optional mode: a grid at measure 1, and a unit per
+/// The field geoms in the unit-optional mode: a grid at measure 1, and a unit per
 /// axis and for the value that may each be stated or left out. `Field.Heatmap(g, xUnit = U.metre,
 /// yUnit = U.metre, valueUnit = U.kelvin)`. A type beside `module Field`, as `type Chart` stands beside
 /// `module Chart`: sampling, derivatives and grids stay in the module and work at measure 1 unchanged.
-/// Every member is one line over the measure-generic implementation (D128).
+/// Every member is one line over the measure-generic implementation.
 [<AbstractClass; Sealed>]
 type Field =
 

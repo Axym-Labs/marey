@@ -6,35 +6,33 @@ open System.IO
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D75 / D76 — THE MUX, WHICH IS THE THIN HALF
+// THE MUX, WHICH IS THE THIN HALF
 //
-// **The frame sequence is the product; this is a convenience over it.** That is D75's wording
-// and it is the whole design. `Frames.write` (in `Marey.Plot`) renders a film in parallel and
+// **The frame sequence is the product; this is a convenience over it.** That is the whole
+// design. `Frames.write` (in `Marey.Plot`) renders a film in parallel and
 // leaves a numbered directory, and a numbered directory is already something: every video
 // editor imports one, every encoder reads one, and it is what a paper's supplementary material
 // wants anyway. This package turns it into a single file by running one program.
 //
-// **Why a subprocess and not a binding — licence, and D62 decided the same question already.**
-// `FFmpeg.AutoGen` links `libav*` into the process: LGPL at best, GPL the moment the build
-// carries x264, which puts a licence audit on every consumer of a plotting library. D62 refused
-// to bundle a font on exactly that ground — "package size and a licence every consumer would
-// have to audit". A subprocess boundary keeps ffmpeg's licence ffmpeg's problem. And a managed
-// wrapper (FFMpegCore, Xabe) buys nothing here, because they shell out too: the cost is a
-// dependency and its opinions about temporary files, in exchange for not writing one
-// `ProcessStartInfo` — and the hard part would have to be taken back regardless, since D76's
-// determinism is a property of the exact argv and a wrapper that builds argv is something to
-// fight rather than something to use.
+// **Why a subprocess and not a binding — licence, the same question fonts already answered.**
+// `FFmpeg.AutoGen` links `libav*` into the process: LGPL at best, GPL the moment the build carries
+// x264, which puts a licence audit on every consumer of a plotting library. Marey does not bundle a
+// font on exactly that ground — "package size and a licence every consumer would have to audit". A
+// subprocess boundary keeps ffmpeg's licence ffmpeg's problem. And a managed wrapper (FFMpegCore,
+// Xabe) buys nothing here, because they shell out too: the cost is a dependency and its opinions
+// about temporary files, in exchange for not writing one `ProcessStartInfo` — and the hard part
+// would have to be taken back regardless, since the video's determinism is a property of the exact
+// argv and a wrapper that builds argv is something to fight rather than something to use.
 //
 // **Missing ffmpeg degrades; it does not fail.** `MuxUnavailable` is an outcome, not an
 // exception, and its message says both what to install and that the frames are still on disk.
-// This is D62's shape once more, chosen over refusing to render.
+// Resolved and reported once more, chosen over refusing to render.
 //
-// **What is testable, and it is more than D75 expected.** D75 said "the mux is testable only
-// for exit status and container-level facts". That undersells it: `Video.args` is a pure
-// function, so the argv — which is where D76's bit-exactness *lives* — is gated exactly, on a
-// machine with no ffmpeg at all. What needs the binary is the determinism gate and
-// `Video.inspect`, and `inspect` is what turns "exit status" into container-level facts worth
-// asserting: frame count, dimensions, and the frame rate the container declares.
+// **What is testable, and it is more than "exit status and container-level facts".** `Video.args`
+// is a pure function, so the argv — which is where bit-exactness *lives* — is gated exactly, on a
+// machine with no ffmpeg at all. What needs the binary is the determinism gate and `Video.inspect`,
+// and `inspect` is what turns "exit status" into container-level facts worth asserting: frame
+// count, dimensions, and the frame rate the container declares.
 //
 // **Two tools, not one.** `ffprobe` ships with `ffmpeg` in every distribution of it, and
 // reading back what was written is the only way the encode's own claims are checked rather
@@ -42,8 +40,8 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // other reports which.
 // ======================================================================================
 
-/// `ffmpeg`, resolved and *reported* — D62's rule in its third currency, after a font and a
-/// native library.
+/// `ffmpeg`, resolved and *reported* — the rule for fonts and native libraries, in a third
+/// currency.
 ///
 /// `Version` is the first line of `ffmpeg -version`, which carries the build number and is the
 /// thing worth naming when a container turns out to differ between two machines.
@@ -62,7 +60,7 @@ type FfmpegReport =
 ///
 /// **There is no frame rate here, deliberately.** The sequence already carries the rate it was
 /// rendered at, and a second one beside it is a second chance to disagree with nothing able to
-/// notice — D72's argument about the extent, in a second place. A slow-motion pass is a
+/// notice — the same argument as for the shot's one extent. A slow-motion pass is a
 /// different render, not a different flag.
 [<NoComparison>]
 type MuxOptions =
@@ -89,7 +87,7 @@ type MuxOptions =
       ///
       /// `false` refuses, because the trap is silent: `-i frame-%05d.png` reads until the first
       /// gap, so a directory holding a previous longer render gives a video with a tail from a
-      /// shot that no longer exists. `FrameSequence.Stale` is how phase 5 reports it and this is
+      /// shot that no longer exists. `FrameSequence.Stale` reports it and this is
       /// the consumer it was reported for.
       AllowStale: bool
       /// ffmpeg's `-loglevel`. `warning` keeps `MuxResult.Log` empty on a clean encode and full
@@ -103,6 +101,7 @@ type MuxOptions =
       /// rather than a hung suite.
       TimeoutMs: int }
 
+/// Encoder settings for `Video.mux`.
 [<RequireQualifiedAccess>]
 module MuxOptions =
 
@@ -162,9 +161,9 @@ type MuxOutcome =
 
 /// What a container says about itself, read back with `ffprobe`.
 ///
-/// This is the "container-level facts" half of D75's gate. It exists because the alternative
-/// gate is `ExitCode = 0`, and an encoder that wrote thirteen of twenty-four frames exits zero —
-/// which is not hypothetical, it is what one misplaced `-r` does. See `Video.args`.
+/// This is the "container-level facts" half of the encoder's checks. It exists because the
+/// alternative gate is `ExitCode = 0`, and an encoder that wrote thirteen of twenty-four frames
+/// exits zero — which is not hypothetical, it is what one misplaced `-r` does. See `Video.args`.
 [<NoComparison>]
 type VideoInfo =
     { Codec: string
@@ -185,12 +184,12 @@ type VideoInfo =
       /// Tags on the video stream.
       StreamTags: Map<string, string> }
 
-    /// **Tags naming the ffmpeg build that wrote this file**, which is what D76 is about.
+    /// **Tags naming the ffmpeg build that wrote this file**, which is what bit-exactness is about.
     ///
     /// Left to itself, ffmpeg stamps `encoder=Lavf63.1.101` on the container and
     /// `encoder=Lavc63.1.101 libx264` on the stream. Neither varies between two runs, so a
     /// determinism gate that muxes twice and compares bytes passes without ever noticing them —
-    /// they vary between *builds*, which is D63's `/CreationDate` in a slower-moving currency.
+    /// they vary between *builds*, which is a PDF's `/CreationDate` in a slower-moving currency.
     /// `-fflags +bitexact` removes the first and strips the version from the second, and this is
     /// empty when it worked.
     member i.BuildTags: (string * string) list =
@@ -369,8 +368,8 @@ module Video =
     let private rate (fps: float) : string =
         fps.ToString("0.############", CultureInfo.InvariantCulture)
 
-    /// **The exact command `mux` runs.** Pure, so this is where D76 is gated — and it can be
-    /// gated on a machine with no ffmpeg installed at all.
+    /// **The exact command `mux` runs.** Pure, so this is where bit-exactness is checked — and it
+    /// can be gated on a machine with no ffmpeg installed at all.
     ///
     /// Every position in here was measured rather than copied, on ffmpeg n9.0.1 with libx264
     /// over a 24-frame PNG sequence:
@@ -389,7 +388,7 @@ module Video =
     ///   entries against a documented default that has moved before, and it makes the numbering
     ///   a stated fact rather than a recovered one.
     /// - **`-fflags +bitexact` must follow `-i`** to reach the muxer rather than the demuxer.
-    ///   This is the flag that does D76's work: without it the file carries
+    ///   This is the flag that does the bit-exactness work: without it the file carries
     ///   `encoder=Lavf63.1.101` and `encoder=Lavc63.1.101 libx264`, and with it the first is
     ///   gone and the second is `Lavc libx264`. See `VideoInfo.BuildTags`.
     /// - **`-flags +bitexact`** changed nothing for libx264 beyond what `-fflags` had already
@@ -448,7 +447,7 @@ module Video =
 
     /// `mux`, against a **stated** ffmpeg rather than the one on `PATH`.
     ///
-    /// D62's shape once more — resolved and reported, or stated and obeyed. A caller pinning a
+    /// Resolved and reported, or stated and obeyed, once more. A caller pinning a
     /// specific build (a bundled ffmpeg, or one whose licence they have audited) passes it here,
     /// and so does the gate that has to see what happens when there is none.
     let muxWith (found: FfmpegReport) (options: MuxOptions) (sequence: FrameSequence) (output: string) : MuxOutcome =

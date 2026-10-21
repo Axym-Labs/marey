@@ -1,4 +1,4 @@
-/// §3 / D1 — the affine laws.
+/// The affine laws.
 ///
 /// `compose f g` is "**f then g**". That is the reading Affine.fs chose deliberately —
 /// "the one thing every graphics codebase gets wrong at 2am is which side the new transform
@@ -294,7 +294,7 @@ module Constructors =
             && Approx.rel 1e-9 (float hi.X) (float dst.X1)
             && Approx.rel 1e-9 (float hi.Y) (float dst.Y1))
 
-    /// The y flip the SVG backend establishes in `Begin` (D15) is one `fromRects` call, so its
+    /// The y flip the SVG backend establishes in `Begin` is one `fromRects` call, so its
     /// sign convention is worth pinning: nd y = 0 must land at the *bottom* of the surface.
     [<Fact>]
     let ``the backend's nd-to-px map flips y`` () =

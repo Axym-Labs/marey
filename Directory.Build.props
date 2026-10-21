@@ -1,8 +1,8 @@
 <Project>
 
   <PropertyGroup>
-    <!-- §1.3 / §12: the design is only true if it compiles clean. Warnings are errors
-         everywhere, exactly as the spike does. FS0064 (measure over-constraint, §12.1)
+    <!-- The design is only true if it compiles clean. Warnings are errors
+         everywhere. FS0064 (measure over-constraint)
          is a *warning* by default — this is what turns it into a build failure. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsNotAsErrors></WarningsNotAsErrors>
@@ -40,7 +40,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
-  <!-- D146 — A pack with `NoBuild` packs what was built, so it must not build project
+  <!-- A pack with `NoBuild` packs what was built, so it must not build project
        references either. The F# SDK hooks `PackageFSharpDesignTimeTools` into a package's content,
        which depends on `_GetFrameworkAssemblyReferences` and so on `ResolveReferences`; on SDK
        10.0.1xx that builds every referenced project, and each fails with NETSDK1085. Without

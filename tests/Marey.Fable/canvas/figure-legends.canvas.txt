@@ -2241,14 +2241,6 @@ fillStyle = rgba(16,16,16,1)
 fillText 588.805 340.123 "no frame"
 restore
 beginPath
-moveTo 653.847 412.733
-lineTo 734.793 412.733
-lineTo 734.793 359.433
-lineTo 653.847 359.433
-closePath
-fillStyle = rgba(255,255,255,0.851)
-fill nonzero
-beginPath
 moveTo 659.847 370.983
 lineTo 679.847 370.983
 strokeStyle = rgba(0,114,178,1)

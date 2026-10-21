@@ -4,9 +4,9 @@ namespace Marey
 ///
 /// Three kinds, because those are the three answers to "how big is this?": *you tell me*,
 /// *whatever is left*, and *ask the content*. Facets, colourbars, shared axes and inset axes all
-/// decompose into those three, and ad-hoc layout does not (§9).
+/// decompose into those three, and ad-hoc layout does not.
 [<RequireQualifiedAccess>]
-type Track =
+type internal Track =
     /// Exactly this many device pixels, regardless of content.
     | Fixed of size: float<px>
     /// A share of whatever is left after the fixed and content tracks have taken theirs.
@@ -21,13 +21,13 @@ type Track =
 /// `Measure` is the measure half of measure–arrange. It is a function, not data, and that is
 /// deliberate: a cell's demand is "how wide is this tick label in *this* backend's font", which
 /// is exactly the question `ITextMeasurer` answers and exactly the question the layout layer
-/// cannot answer for itself (§9, D8). It is called **once per arrange**, before any track size
+/// cannot answer for itself. It is called **once per arrange**, before any track size
 /// is known.
 ///
 /// Layout values never enter the IR and are never serialized, so the function field costs
-/// nothing here that D1 was protecting against in `Node`.
+/// nothing here that keeping closures out of `Node` protects against.
 [<NoComparison>]
-type GridCell =
+type internal GridCell =
     { Key: string
       Row: int
       Col: int
@@ -35,9 +35,9 @@ type GridCell =
       ColSpan: int
       Measure: ITextMeasurer -> Extent<px> }
 
-/// A constraint grid, à la Makie's `GridLayout` (§9).
+/// A constraint grid, à la Makie's `GridLayout`.
 [<NoComparison>]
-type Grid =
+type internal Grid =
     { Rows: Track[]
       Cols: Track[]
       RowGap: float<px>
@@ -64,16 +64,16 @@ type Grid =
 type Arrangement =
     { /// The device-space box this grid was arranged into.
       Region: Rect<px>
-      /// The figure surface. Needed for every px to nd conversion — D12.
+      /// The figure surface. Needed for every px to nd conversion.
       Extent: Extent<px>
       ColSizes: float<px>[]
       RowSizes: float<px>[]
       Placements: (string * Rect<px>)[]
       Regions: (string * Rect<nd>)[] }
 
-/// §9 — **"Layout is a measure–arrange pass against `IBackend.MeasureText`."**
+/// **"Layout is a measure–arrange pass against `IBackend.MeasureText`."**
 ///
-/// ### The device-unit convention, stated once (D12)
+/// ### The device-unit convention, stated once
 ///
 /// Positions in the IR are `nd`. Stroke widths, font sizes, tick lengths and paddings are device
 /// units, because a hairline must stay a hairline at 4K. Layout is the only layer that holds
@@ -101,9 +101,9 @@ type Arrangement =
 /// is documented at `Figure.toScene`: the tick *plan* (how many labels survive, at what
 /// rotation) depends on the panel width, which depends on the arrangement.
 [<RequireQualifiedAccess>]
-module Layout =
+module internal Layout =
 
-    // ---- px <-> nd, the D12 boundary ---------------------------------------------------
+    // ---- px <-> nd, the unit boundary --------------------------------------------------
 
     /// A horizontal device distance as a fraction of the figure width.
     let ndX (e: Extent<px>) (x: float<px>) : float<nd> =
@@ -182,7 +182,7 @@ module Layout =
     /// Overflow is handled rather than ignored: if the fixed and content tracks together exceed
     /// the space, content tracks shrink proportionally, and only if that is not enough do fixed
     /// tracks shrink too. A negative track size would put a label outside the figure, which is
-    /// one of the two layout invariants §13 asks to be testable.
+    /// one of the two layout invariants the tests check.
     let private resolveTracks (tracks: Track[]) (gap: float<px>) (available: float<px>) (demand: float<px>[]) : float<px>[] =
         let n = tracks.Length
 
@@ -389,7 +389,7 @@ module Layout =
         | Some r -> r
         | None -> failwithf "Marey.Layout: no cell named '%s' in this arrangement." key
 
-    // ---- Invariants (§13: "layout invariants — no overlapping panels, labels inside bounds")
+    // ---- Invariants: no overlapping panels, labels inside bounds
 
     /// Pairs of cells whose device rectangles overlap. Cells that share a track legitimately
     /// touch, so a shared edge is not an overlap; the test is strict interior intersection,

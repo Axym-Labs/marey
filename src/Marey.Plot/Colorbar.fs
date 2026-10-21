@@ -1,34 +1,34 @@
 namespace Marey
 
-/// D49 — **the key a continuous colour channel gets, and why it is not a legend entry.**
+/// **The key a continuous colour channel gets, and why it is not a legend entry.**
 ///
-/// A legend *enumerates*: `n` rows, each a name beside a swatch. A colorbar *maps*: a domain
-/// along a strip, read by position. D46 makes that split unavoidable rather than stylistic — a
-/// continuous colour channel is 256 quantised steps, and enumerating 256 rows is not a legend.
-/// So this is a sibling of `Legend`, sharing the theme, the placement and `Layout`, and sharing
-/// with it the fact that neither is an IR node (§5.5).
+/// A legend *enumerates*: `n` rows, each a name beside a swatch. A colorbar *maps*: a domain along
+/// a strip, read by position. Quantisation makes that split unavoidable rather than stylistic — a
+/// continuous colour channel is 256 quantised steps, and enumerating 256 rows is not a legend. So
+/// this is a sibling of `Legend`, sharing the theme, the placement and `Layout`, and sharing with
+/// it the fact that neither is an IR node.
 ///
 /// ### Three things this module does not do, and each is a decision
 ///
 /// **It never emits a gradient.** The obvious implementation is one rect with a
 /// `LinearGradient` fill, and run through the TikZ backend's own capabilities that rect comes
 /// out as a single flat `#23908c` block: `Gradients = false`, so `Degrade.forCaps` collapses
-/// the ramp to its Oklab midpoint (D10). Valid TeX, clean golden diff, no colorbar — D33's
-/// failure mode exactly. The bar is strips, and the strips come from the same
+/// the ramp to its Oklab midpoint. Valid TeX, clean golden diff, no colorbar — a valid
+/// document with no visible ink. The bar is strips, and the strips come from the same
 /// `Channel.stepMidpoint` the marks do, so the bar and the data cannot disagree.
 ///
 /// **It does not label itself.** Ticks, values, prefix and title are `Axes.compile`'s, against
 /// the strip as its panel. A colour channel over `float<K>` prints `T [K]` with nothing
-/// configured, which is §2's payoff arriving in a third place after the axis and the legend.
+/// configured, which is the units' payoff arriving in a third place after the axis and the legend.
 ///
 /// **It does not choose where it goes.** `Figure` gives it a `Track.Content` column and hands
-/// it the rect. `Legend.fs` records that outside placement was kept out of M0 because it
+/// it the rect. `Legend.fs` records that outside placement is hard because it
 /// changes the panel's width and the tick plan has to be recomputed against it; that objection
 /// does not transfer here, because a colorbar's width is its strip, its labels and its title —
 /// none of which depends on the plot's width, since its axis runs vertically while the track it
 /// adds is horizontal.
 [<RequireQualifiedAccess>]
-module Colorbar =
+module internal Colorbar =
 
     /// The strip, the gap, the tick labels and the title — measured with the axis compiler's
     /// own helpers, so a colorbar's labels are budgeted by the code that budgets an axis's.
@@ -65,9 +65,9 @@ module Colorbar =
     let planTicks (m: ITextMeasurer) (theme: Theme) (height: float<px>) (spec: AxisSpec) : TickPlan =
         Axes.planTicks m theme.TickFont theme.LabelGap height AxisRight spec.Ticks
 
-    /// D46 / D49 — **`min(256, ⌈height in px⌉)`**.
+    /// **`min(256, ⌈height in px⌉)`**.
     ///
-    /// The same argument D46 makes for the marks: do not encode below the resolution of the
+    /// The same argument as for the marks: do not encode below the resolution of the
     /// output. Two strips inside one device pixel cannot differ on screen or on paper, and a
     /// reader takes a *position* off a colorbar, not a colour identity.
     let steps (height: float<px>) : int =

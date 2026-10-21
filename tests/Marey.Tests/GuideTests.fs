@@ -84,7 +84,7 @@ let private blocks (markdown: string) =
     |> Seq.map (fun m -> m.Groups.[1].Value)
     |> Seq.toArray
 
-/// D109 — blocks fenced ```` ```fsharp optional ````, in the unit-optional mode. They are a second
+/// Blocks fenced ```` ```fsharp optional ````, in the unit-optional mode. They are a second
 /// session, run in order like the first, because the first opens `Marey.UnitsOfMeasure` in §1 and
 /// under that `open` a unit-optional constructor is a compile error by design. GitHub highlights
 /// the info string by its first word, so a reader sees F#.

@@ -27,10 +27,10 @@
          That is the difference from `Marey.Tools.Video`, which references `Marey.Plot` because
          a `FrameSequence` lives there. Nothing here needs anything above the IR.
 
-         NOTHING may be added to <PackageReference>. §10 sanctions this route as "acceptable as
-         a plugin, unacceptable as a dependency", and a managed TeX or SVG library would put
+         NOTHING may be added to <PackageReference>. This route is "acceptable as a plugin,
+         unacceptable as a dependency", and a managed TeX or SVG library would put
          somebody else's transitive dependencies on every consumer of a plotting library,
-         which is the same argument D75 made for ffmpeg and D62 made for a font. `XDocument` is
+         which is the same argument made for ffmpeg and for a font. `XDocument` is
          in the framework and costs nothing. -->
     <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
     <ProjectReference Include="..\Marey.Toolchain\Marey.Toolchain.fsproj" />

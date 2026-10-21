@@ -1,5 +1,3 @@
-namespace FSharp
-
 namespace Marey
 
     [<RequireQualifiedAccess>]
@@ -31,14 +29,7 @@ namespace Marey
         }
 
     [<RequireQualifiedAccess>]
-    module SvgPathData =
-
-        val parse: d: string -> Result<TexSeg array,string>
-
-    [<RequireQualifiedAccess>]
     module TexOutline =
-
-        val ofSvg: box: TexBox -> svg: string -> Result<TexOutline,string>
 
 namespace Marey
 
@@ -126,10 +117,6 @@ namespace Marey
         val toolchain: unit -> TexReport
 
         val report: unit -> string
-
-        val document: options: TexOptions -> source: string -> string
-
-        val parseBox: log: string -> Result<TexBox,string>
 
         val sceneWithCache:
           engine: ResolvedTool ->

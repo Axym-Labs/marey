@@ -2,11 +2,11 @@ namespace Marey
 
 open Silk.NET.OpenGL
 
-/// D150 — line integral convolution on the GPU: one fragment per raster pixel, each tracing its
-/// own streamline both ways with `FieldMarks`' RK4 and stopping rules and averaging the noise
-/// it passes. The exact convolution at the pixel's centre, where D90's fast LIC averages several
-/// overlapping windows; on the same noise the two correlate 0.90 (the M5.6 inventory). 1.6 ms at
-/// 1920 × 1200 on radeonsi, against 1361 ms for fast LIC on the CPU.
+/// Line integral convolution on the GPU: one fragment per raster pixel, each tracing its own
+/// streamline both ways with `FieldMarks`' RK4 and stopping rules and averaging the noise it
+/// passes. The exact convolution at the pixel's centre, where the CPU's fast LIC averages several
+/// overlapping windows; on the same noise the two correlate 0.90 (measured). 1.6 ms at 1920 × 1200
+/// on radeonsi, against 1361 ms for fast LIC on the CPU.
 module internal GpuLic =
 
     let shader =

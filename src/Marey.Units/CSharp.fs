@@ -2,17 +2,17 @@ namespace Marey.CSharp
 
 open Marey
 
-/// D124 — **every unit witness, for C#, under one name**: `Units.Metre`, `Units.DegreeCelsius`,
+/// **Every unit witness, for C#, under one name**: `Units.Metre`, `Units.DegreeCelsius`,
 /// `Units.Div(Units.Volt, Units.Metre)`.
 ///
-/// F# reaches the witnesses as `U.metre`, `Derived.volt` and `NonSi.degreeCelsius`, three modules
-/// whose split follows how a unit is defined rather than how it is looked for; a C# caller should
-/// not have to know which is which, and should not read F#'s lowercase as a C# property. Each
+/// F# reaches the witnesses as `U.metre`, `U.volt` and `U.degreeCelsius`; a C# caller should
+/// not read F#'s lowercase as a C# property, nor have to know that F# opens three modules named
+/// `U` to put them under one name. Each
 /// member here is the F# witness itself, not a copy, so `Units.Metre` and `U.metre` are one
 /// object. Its type is `U<'u>`, which C# sees as the class `U`.
 ///
 /// The algebra takes `IUnit` and returns a witness at measure 1: the measure is F#'s, and C#
-/// gives it up by definition (D109). `Dim`, the symbol, the factors and the SI conversion are all
+/// gives it up by definition. `Dim`, the symbol, the factors and the SI conversion are all
 /// carried, so a quotient labels its axis as F#'s does.
 [<AbstractClass; Sealed>]
 type Units =
@@ -21,7 +21,7 @@ type Units =
     /// which an axis acts on; for numbers nobody named, leave the unit out, or pass `Unspecified`.
     static member One = U.one
 
-    /// The unit nobody stated (D127): no bracket, no prefix, no dimensional claim.
+    /// The unit nobody stated: no bracket, no prefix, no dimensional claim.
     static member Unspecified = U.unspecified
 
     static member Mul(a: IUnit, b: IUnit) : U<1> = U.mul (U.erase a) (U.erase b)
@@ -54,57 +54,52 @@ type Units =
     static member PerSecond = U.perSecond
     static member Gram = U.gram
 
-    // ---- SI derived units (`Derived`) -----------------------------------------------
+    // ---- SI derived units (`Derived.fs`) -----------------------------------------------
 
-    static member Hertz = Derived.hertz
-    static member Newton = Derived.newton
-    static member Pascal = Derived.pascal
-    static member Joule = Derived.joule
-    static member Watt = Derived.watt
-    static member Coulomb = Derived.coulomb
-    static member Volt = Derived.volt
-    static member Farad = Derived.farad
-    static member Ohm = Derived.ohm
-    static member Siemens = Derived.siemens
-    static member Weber = Derived.weber
-    static member Tesla = Derived.tesla
-    static member Henry = Derived.henry
-    static member Lumen = Derived.lumen
-    static member Lux = Derived.lux
-    static member Becquerel = Derived.becquerel
-    static member Gray = Derived.gray
-    static member Sievert = Derived.sievert
-    static member Katal = Derived.katal
-    static member Radian = Derived.radian
-    static member Steradian = Derived.steradian
-    static member NewtonByComposition = Derived.newtonByComposition
-    static member JouleByComposition = Derived.jouleByComposition
-    static member WattByComposition = Derived.wattByComposition
-    static member HertzByComposition = Derived.hertzByComposition
-    static member LumenByComposition = Derived.lumenByComposition
+    static member Hertz = U.hertz
+    static member Newton = U.newton
+    static member Pascal = U.pascal
+    static member Joule = U.joule
+    static member Watt = U.watt
+    static member Coulomb = U.coulomb
+    static member Volt = U.volt
+    static member Farad = U.farad
+    static member Ohm = U.ohm
+    static member Siemens = U.siemens
+    static member Weber = U.weber
+    static member Tesla = U.tesla
+    static member Henry = U.henry
+    static member Lumen = U.lumen
+    static member Lux = U.lux
+    static member Becquerel = U.becquerel
+    static member Gray = U.gray
+    static member Sievert = U.sievert
+    static member Katal = U.katal
+    static member Radian = U.radian
+    static member Steradian = U.steradian
 
-    // ---- units outside SI (`NonSi`) -------------------------------------------------
+    // ---- units outside SI (`NonSi.fs`) -------------------------------------------------
 
-    static member Electronvolt = NonSi.electronvolt
-    static member Calorie = NonSi.calorie
-    static member Angstrom = NonSi.angstrom
-    static member AstronomicalUnit = NonSi.astronomicalUnit
-    static member LightYear = NonSi.lightYear
-    static member Parsec = NonSi.parsec
-    static member Barn = NonSi.barn
-    static member Litre = NonSi.litre
-    static member Bar = NonSi.bar
-    static member Atmosphere = NonSi.atmosphere
-    static member Minute = NonSi.minute
-    static member Hour = NonSi.hour
-    static member Day = NonSi.day
-    static member Year = NonSi.year
-    static member Dalton = NonSi.dalton
-    static member Gauss = NonSi.gauss
-    static member DegreeCelsius = NonSi.degreeCelsius
-    static member DegreeFahrenheit = NonSi.degreeFahrenheit
+    static member Electronvolt = U.electronvolt
+    static member Calorie = U.calorie
+    static member Angstrom = U.angstrom
+    static member AstronomicalUnit = U.astronomicalUnit
+    static member LightYear = U.lightYear
+    static member Parsec = U.parsec
+    static member Barn = U.barn
+    static member Litre = U.litre
+    static member Bar = U.bar
+    static member Atmosphere = U.atmosphere
+    static member Minute = U.minute
+    static member Hour = U.hour
+    static member Day = U.day
+    static member Year = U.year
+    static member Dalton = U.dalton
+    static member Gauss = U.gauss
+    static member DegreeCelsius = U.degreeCelsius
+    static member DegreeFahrenheit = U.degreeFahrenheit
 
-    // ---- Read from text (D110) -----------------------------------------------------------------
+    // ---- Read from text -----------------------------------------------------------------
 
     /// A unit in UDUNITS-2's syntax: `Units.Parse("V/m")`, `Units.Parse("kg m s-2")`. Throws
     /// `FormatException` with the reason when the text is not one. See `U.parse`.
@@ -119,3 +114,40 @@ type Units =
         | Error _ ->
             result <- Unchecked.defaultof<_>
             false
+
+/// The SI prefixes, for C#: `fig.WithYPrefix(Prefixes.Nano)`. `None` writes the unit bare.
+[<AbstractClass; Sealed>]
+type Prefixes =
+
+    static member None = Prefix.none
+    static member Quecto = Prefix.quecto
+    static member Ronto = Prefix.ronto
+    static member Yocto = Prefix.yocto
+    static member Zepto = Prefix.zepto
+    static member Atto = Prefix.atto
+    static member Femto = Prefix.femto
+    static member Pico = Prefix.pico
+    static member Nano = Prefix.nano
+    static member Micro = Prefix.micro
+    static member Milli = Prefix.milli
+    static member Centi = Prefix.centi
+    static member Deci = Prefix.deci
+    static member Deca = Prefix.deca
+    static member Hecto = Prefix.hecto
+    static member Kilo = Prefix.kilo
+    static member Mega = Prefix.mega
+    static member Giga = Prefix.giga
+    static member Tera = Prefix.tera
+    static member Peta = Prefix.peta
+    static member Exa = Prefix.exa
+    static member Zetta = Prefix.zetta
+    static member Yotta = Prefix.yotta
+    static member Ronna = Prefix.ronna
+    static member Quetta = Prefix.quetta
+
+    /// Every prefix, smallest first.
+    static member All = Prefix.all
+
+    /// The prefix a range of values in `unit` would be written with.
+    static member For(unit: IUnit, lo: float, hi: float) =
+        Prefix.selectForErased unit.Symbol unit.Dim unit.ToSI unit.OffsetSI (lo, hi)

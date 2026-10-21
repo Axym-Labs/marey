@@ -3,7 +3,7 @@ namespace Marey
 open System
 open SkiaSharp
 
-/// The GPU renderer: Skia on an OpenGL 3.3 core context, offscreen (D115).
+/// The GPU renderer: Skia on an OpenGL 3.3 core context, offscreen.
 ///
 /// ```fsharp
 /// use gpu = new GpuRenderer()
@@ -11,27 +11,27 @@ open SkiaSharp
 /// let frames = Frames.render FramePass.Concurrent gpu.RenderPng 30.0 film
 /// ```
 ///
-/// **One context, one thread, any caller (D117).** The renderer owns a thread, and the GL
-/// context, Skia's GPU context and one text measurer live on it for the renderer's lifetime.
-/// `RenderPng` and `RenderImage` may be called from any thread, concurrently: each call queues
-/// and waits its turn. That is what D77 asks of a renderer function, met by serialising rather
-/// than by building a backend per call, because building one is what a GPU renderer is for
-/// avoiding: a new `SkiaBackend` costs about 10 ms of font resolution before it draws a pixel,
-/// and this renderer pays it once. `Frames.render` with `FramePass.Concurrent` still compiles
-/// the frames' scenes in parallel; only the drawing takes turns.
+/// **One context, one thread, any caller.** The renderer owns a thread, and the GL context, Skia's
+/// GPU context and one text measurer live on it for the renderer's lifetime. `RenderPng` and
+/// `RenderImage` may be called from any thread, concurrently: each call queues and waits its turn.
+/// That is what any renderer function owes its callers, met by serialising rather than by building
+/// a backend per call, because building one is what a GPU renderer is for avoiding: a new
+/// `SkiaBackend` costs about 10 ms of font resolution before it draws a pixel, and this renderer
+/// pays it once. `Frames.render` with `FramePass.Concurrent` still compiles the frames' scenes in
+/// parallel; only the drawing takes turns.
 ///
 /// **The measurer is the one to lay out with.** As for `SkiaBackend`, text is drawn with the
-/// advances it was measured with (D62), so a figure compiled against `Measurer` puts its labels
+/// advances it was measured with, so a figure compiled against `Measurer` puts its labels
 /// where its gutters expect them.
 ///
 /// The output is not the CPU raster's to the byte. The GPU antialiases glyph edges a little
-/// differently, so the comparison is a stated tolerance (D120) rather than equality.
+/// differently, so the comparison is a stated tolerance rather than equality.
 ///
 /// Construction fails, naming the reason, where no OpenGL 3.3 context can be made: a machine
 /// with no display, or a driver too old. Under Linux with no GPU, `xvfb-run` and Mesa's
 /// `llvmpipe` provide both.
 ///
-/// **Marker batches are one instanced draw each (D119)**, where the batch is one this renderer can
+/// **Marker batches are one instanced draw each**, where the batch is one this renderer can
 /// draw exactly as Skia would: solid paints, no dash, a mitered or circular outline, outside any
 /// opacity layer, under no clip or a rectangular one. Any other batch, and every other node, is
 /// Skia's. `instancedMarkers = false` sends every batch to Skia, for comparison.
@@ -68,7 +68,7 @@ type GpuRenderer(?options: SkiaOptions, ?instancedMarkers: bool) =
 
     let mutable disposed = false
 
-    // The measurer to lay out with is also the way compilation reaches this GPU (D150): a LIC
+    // The measurer to lay out with is also the way compilation reaches this GPU: a LIC
     // compiled against it is convolved here, per pixel, rather than traced on the CPU.
     let measurer =
         { new ITextMeasurer with
@@ -104,7 +104,7 @@ type GpuRenderer(?options: SkiaOptions, ?instancedMarkers: bool) =
 
             w, h, target.Read())
 
-    /// Run compute passes on the renderer's context, on its thread, queued with its drawing (D139).
+    /// Run compute passes on the renderer's context, on its thread, queued with its drawing.
     member internal _.Compute(f: GpuCompute -> 'a) : 'a =
         if disposed then
             raise (ObjectDisposedException "GpuRenderer")
@@ -114,8 +114,8 @@ type GpuRenderer(?options: SkiaOptions, ?instancedMarkers: bool) =
     /// The capabilities the renderer draws with. `Degrade.forCaps` is applied for the caller.
     member _.Caps: Capabilities = caps
 
-    /// The measurer to lay out with: the one the renderer draws text with. Thread-safe (D77). A
-    /// figure compiled with it has its LIC convolved on this GPU, per pixel (D150).
+    /// The measurer to lay out with: the one the renderer draws text with. Thread-safe. A
+    /// figure compiled with it has its LIC convolved on this GPU, per pixel.
     member _.Measurer: ITextMeasurer = measurer
 
     /// Every font the renderer has opened, as `SkiaBackend.ResolvedFaces` reports it.

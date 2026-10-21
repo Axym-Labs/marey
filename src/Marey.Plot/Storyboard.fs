@@ -3,9 +3,9 @@ namespace Marey
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// §7.2 / D69 — THE STORYBOARD, RE-SPELLED
+// THE STORYBOARD
 //
-// §7.2 sketched the CE in 2024's vocabulary:
+// The shape it was first sketched in:
 //
 //     let! axes  = draw (Axes.cartesian xScale yScale) |> over 0.8<s>
 //     let! curve = draw (Plot.line data)               |> over 1.2<s>
@@ -13,47 +13,44 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 //                     axes  |> zoomTo (0.0<m>, 5.0<m>)   |> over 2.0<s> ]
 //     do! highlight curve.[42] |> over 0.6<s>
 //
-// D69 settled that the *shape* is preserved and left the plan to re-spell the nouns against
-// the grammar M2 actually built. Three of them moved, and each move is a sentence about the
-// library rather than a rename.
+// The shape survives; three of the nouns moved, and each move is a sentence about the library
+// rather than a rename.
 //
-// **`Axes.cartesian` is gone, and it takes a `let!` with it.** A `Figure` carries its own
+// **There is no `Axes.cartesian`, and it takes a `let!` with it.** A `Figure` carries its own
 // axes, scales, theme and legend, so there is nothing to draw separately and nothing to bind.
-// The CE's line count goes down, which is what D69 predicted is the sign of a correct
-// re-spelling. `zoomTo` survives as `zoomToX`/`zoomToY` — M2 spells the still version
-// `Chart.withXDomain`, and naming the axis in the function name is that spelling.
+// The block gets shorter, which is the sign the nouns are right. `zoomTo` is `zoomToX`/`zoomToY`
+// — the still version is `Chart.withXDomain`, and naming the axis in the function name is that
+// spelling.
 //
 // **`morphTo` interpolates the data, not the drawn geometry** — and that is a finding, not a
-// convenience. In 2024's sketch `Plot.line data` *was* a drawn thing, so morphing it meant
-// morphing paths. A `Figure` carries its own scales, so two figures are two coordinate
-// systems: morphing a's path into b's path would put half of a's geometry on b's axes, and
-// the tick labels would be telling the truth about neither. Interpolating the *series*
-// instead — `Erase.tweenSeries` — leaves a real `Figure` at every instant, whose domain, ticks
-// and unit prefix are all derived from the numbers actually being shown. D74's `Morph.paths`
-// is still the right tool one layer down, for two paths in one coordinate system.
+// convenience. A `Figure` carries its own scales, so two figures are two coordinate systems:
+// morphing a's path into b's path would put half of a's geometry on b's axes, and the tick
+// labels would be telling the truth about neither. Interpolating the *series* instead —
+// `Erase.tweenSeries` — leaves a real `Figure` at every instant, whose domain, ticks and unit
+// prefix are all derived from the numbers actually being shown. `Morph.paths` is still the right
+// tool one layer down, for two paths in one coordinate system.
 //
-// **`highlight curve.[42]` needs a scatter, and §7.2 highlights a line.** A line is one
-// `Path`: point 42 has no node, and splitting a polyline in three changes the joins between
-// the pieces rather than naming one of them. §5.1's batching is what makes a mark addressable
-// at all, and `Markers` is the node that batches. So the re-spelled example scatters, which is
-// what the sentence meant — highlighting a *datum* is a scatter's idea.
+// **`highlight curve.[42]` needs a scatter, though the sketch highlights a line.** A line is one
+// `Path`: point 42 has no node, and splitting a polyline in three changes the joins between the
+// pieces rather than naming one of them. Batching is what makes a mark addressable at all, and
+// `Markers` is the node that batches. So the example scatters, which is what the sentence meant
+// — highlighting a *datum* is a scatter's idea.
 //
 // ### What `let!` binds, and why it is not the animation
 //
-// A `Handle`: a `Key`, plus the duration it was introduced over. Not an `Anim<Node>` — §7.2
-// uses `curve` twice after binding it, both times to refer to something already on stage, and
-// a handle that was the animation would make `morphTo` composition rather than reference. D1
-// resolved this tension in the IR's favour once already: the handle is a *name*, the scene is
-// a *value*, and the storyboard is a function from time to a scene in which that name
-// resolves.
+// A `Handle`: a `Key`, plus the duration it was introduced over. Not an `Anim<Node>` — the sketch
+// uses `curve` twice after binding it, both times to refer to something already on stage, and a
+// handle that was the animation would make `morphTo` composition rather than reference. The IR
+// resolves this tension the same way: the handle is a *name*, the scene is a *value*, and the
+// storyboard is a function from time to a scene in which that name resolves.
 //
 // The duration is not decoration. It is every verb's **default**: `do! highlight curve.[42]`
 // with no `over` runs for as long as `curve` took to arrive. A default that comes from the
 // storyboard beats a constant chosen in this file.
 //
-// ### What the CE accumulates, which is not what §7.2 said
+// ### What the block accumulates
 //
-// §7.2: *"a writer monad accumulating `Anim<Scene>` under `andThen`/`map2`"*. It cannot be.
+// Not *"a writer monad accumulating `Anim<Scene>` under `andThen`/`map2`"*: it cannot be.
 // `Anim.andThen a b` reaches `b` with no knowledge of `a`, so the second step of a storyboard
 // would draw its own contribution on an empty stage and everything drawn before it would
 // vanish. The accumulator is `Anim<Stage -> Stage>` — an animation of *what the stage becomes*
@@ -62,22 +59,22 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 //     andThen act1 (Anim.map (fun g -> g << act1.At act1.Duration) act2)
 //
 // Parallel composition is then `Anim.map2 (>>)` with nothing added, which is the part that
-// makes this worth doing: `map2`'s duration is the maximum and D70's clamp makes the shorter
-// branch *hold its final value* through the tail. That is exactly what a storyboard wants
-// from `parallel'`, and it is inherited rather than re-implemented.
+// makes this worth doing: `map2`'s duration is the maximum and `At`'s clamp makes the shorter
+// branch *hold its final value* through the tail. That is exactly what a storyboard wants from
+// `parallel'`, and it is inherited rather than re-implemented.
 // ======================================================================================
 
-/// D69 — what is on stage at one instant.
+/// What is on stage at one instant.
 ///
-/// One figure at a time, deliberately. M2 already spells "two charts on one surface"
+/// One figure at a time, deliberately. The library already spells "two charts on one surface"
 /// (`Chart.beside`, `Chart.above`, `Chart.facet`) and it spells it as *one* `Figure` with two
 /// panels; a second composition mechanism inside the storyboard would be a second layout
-/// system, and D68's keys are rooted at `figure`, so two figures on one stage would answer to
+/// system, and the keys are rooted at `figure`, so two figures on one stage would answer to
 /// the same names. A storyboard that shows two things shows a two-panel figure.
 ///
 /// `Edits` are rewrites applied to the compiled scene, each naming the subtree it changes.
-/// They are functions, which is the one place in this library where that is allowed: D1 keeps
-/// closures out of the *scene*, because a scene is a value that has to diff and compare. A
+/// They are functions, which is the one place in this library where that is allowed: closures
+/// stay out of the *scene*, because a scene is a value that has to diff and compare. A
 /// stage is neither — it is the storyboard's own intermediate, thrown away one frame later. A
 /// closed `Edit` union would be a second IR, and the constraint on the IR is that it does not
 /// grow to fit whatever arrives.
@@ -86,6 +83,7 @@ type Stage =
     { Figure: Figure option
       Edits: (Key * (Node -> Node))[] }
 
+/// The storyboard's stage: what is on it at an instant.
 [<RequireQualifiedAccess>]
 module Stage =
 
@@ -93,44 +91,46 @@ module Stage =
     let empty: Stage = { Figure = None; Edits = [||] }
 
 
-/// Which mark a handle names: a row of the layer, or — when the data supplied keys (D104) — the
+/// Which mark a handle names: a row of the layer, or — when the data supplied keys — the
 /// datum with that key, wherever it sits.
 [<RequireQualifiedAccess>]
-type MarkRef =
+type internal MarkRef =
     | Row of int
     | Datum of string
 
-/// D69 — a name for something on stage, and the duration it arrived over.
+/// A name for something on stage, and the duration it arrived over.
 [<NoComparison>]
 type Handle =
-    { /// The subtree this handle names.
-      Key: Key
+    internal
+        { /// The subtree this handle names.
+          Key: Key
 
-      /// How long it was introduced over. The default duration of every verb applied to it,
-      /// which is what stops those verbs needing a constant of their own.
-      Introduced: float<s>
+          /// How long it was introduced over. The default duration of every verb applied to it,
+          /// which is what stops those verbs needing a constant of their own.
+          Introduced: float<s>
 
-      /// The layer `.[i]` counts marks within. `None` when there is no single layer to count
-      /// in — a figure with two scatters has two mark 42s and this refuses to guess.
-      MarkLayer: Key option
+          /// The layer `.[i]` counts marks within. `None` when there is no single layer to count
+          /// in — a figure with two scatters has two mark 42s and this refuses to guess.
+          MarkLayer: Key option
 
-      /// The layer and mark this handle names, when it names one **mark** rather than a
-      /// subtree. What `highlight` needs, and what tells `curve.[42]` apart from `curve`.
-      Mark: (Key * MarkRef) option
+          /// The layer and mark this handle names, when it names one **mark** rather than a
+          /// subtree. What `highlight` needs, and what tells `curve.[42]` apart from `curve`.
+          Mark: (Key * MarkRef) option
 
-      /// D104 — the keys of `MarkLayer`'s rows when it was drawn, or empty when its data
-      /// supplied none. With keys, `curve.[42]` names the datum that was row 42, and keeps
-      /// naming it after a morph has moved it.
-      MarkKeys: string[] }
+          /// The keys of `MarkLayer`'s rows when it was drawn, or empty when its data
+          /// supplied none. With keys, `curve.[42]` names the datum that was row 42, and keeps
+          /// naming it after a morph has moved it.
+          MarkKeys: string[] }
 
-    /// **`curve.[42]`** — D69's most quotable line, and the one §5.1 made structurally
-    /// impossible. It resolves to `Keys.mark`'s spelling of row 42 of the layer this handle
-    /// counts in; addressing it is what splits that layer's `MarkerBatch` three ways.
+    /// **`curve.[42]`** — the storyboard's most quotable line, and the one batching makes
+    /// structurally impossible without addressing. It resolves to `Keys.mark`'s spelling of row 42
+    /// of the layer this handle counts in; addressing it is what splits that layer's `MarkerBatch`
+    /// three ways.
     ///
     /// The row is the datum's **original** row, not its position among the drawn marks. A
     /// non-finite point earlier in the series is not drawn, and counting drawn marks would
-    /// name a different datum from that point on — D55's defect, which D68 wrote the rule
-    /// against and `Geom.compileFor` obeys.
+    /// name a different datum from that point on — a defect the addressing rule forbids and
+    /// `Geom.compileFor` obeys.
     member this.Item
         with get (row: int): Handle =
             match this.MarkLayer with
@@ -147,7 +147,7 @@ type Handle =
                 invalidOp
                     "Marey: this handle does not name a single scatter, so mark 42 is ambiguous. Only a layer drawn with GeomPoint has addressable marks."
 
-    /// **`curve.["Bern"]`** — D104: the mark whose datum has this key. It names the datum rather
+    /// **`curve.["Bern"]`** — the mark whose datum has this key. It names the datum rather
     /// than a row, so it stays on the same station when an earlier one is filtered out. Needs a
     /// scatter whose data supplied keys (`Chart.withKeys`, or `key` in the encoding block).
     member this.Item
@@ -165,24 +165,25 @@ type Handle =
                     "Marey: this handle does not name a single scatter, so a mark is ambiguous. Only a layer drawn with GeomPoint has addressable marks."
 
 
-/// D69 — the CE's value. A function from the stage a story starts on to whatever it binds and
+/// The CE's value. A function from the stage a story starts on to whatever it binds and
 /// an animation of what the stage becomes.
 [<NoComparison; NoEquality>]
-type Story<'a> = Story of (Stage -> 'a * Anim<Stage -> Stage>)
+type Story<'a> = internal Story of (Stage -> 'a * Anim<Stage -> Stage>)
 
 /// A step whose duration has not been chosen yet. `over` chooses it; the CE uses `Default`
 /// when it is not written, and `Default` is the handle's own introduction.
 [<NoComparison; NoEquality>]
 type Step<'a> =
-    { Default: float<s>
-      Build: float<s> -> Story<'a> }
+    internal
+        { Default: float<s>
+          Build: float<s> -> Story<'a> }
 
 
-/// §7.2 / D69 — the storyboard.
+/// The storyboard.
 ///
-/// **Meant to be opened.** `scene { let! curve = draw fig |> over 1.2<s> }` is the shape §7.2
-/// asked for and `Storyboard.draw fig |> Storyboard.over 1.2<s>` is not, so this module is not
-/// `RequireQualifiedAccess` and the names inside it are chosen to survive an `open`.
+/// **Meant to be opened.** `scene { let! curve = draw fig |> over 1.2<s> }` is the shape the
+/// storyboard is written in and `Storyboard.draw fig |> Storyboard.over 1.2<s>` is not, so this
+/// module is not `RequireQualifiedAccess` and the names inside it are chosen to survive an `open`.
 ///
 /// ```fsharp
 /// open Marey
@@ -208,7 +209,7 @@ module Storyboard =
     // ---- The monad -------------------------------------------------------------------------
 
     let private ret (v: 'a) : Story<'a> =
-        Story(fun _ -> v, Anim.pure' identity)
+        Story(fun _ -> v, Anim.constant identity)
 
     /// Sequential composition, and the whole of why the accumulator is a *function* of the
     /// stage: `act2` is reached having already been composed with where `act1` left the stage.
@@ -222,6 +223,7 @@ module Storyboard =
             let b, act2 = unwrap (f a) (after s0)
             b, Anim.andThen act1 (Anim.map (fun g -> g << after) act2))
 
+    /// The builder behind `scene { … }`.
     [<Sealed>]
     type Builder() =
         member _.Bind(m: Story<'a>, f: 'a -> Story<'b>) : Story<'b> = bind m f
@@ -249,8 +251,8 @@ module Storyboard =
     let wait (d: float<s>) : Story<unit> =
         Story(fun _ -> (), Anim.ofSeconds d (fun _ -> identity))
 
-    /// **Reparameterise a step's clock.** §7.2's `|> ease Ease.cubicInOut`, and `Anim.ease` with
-    /// nothing added — so D71 holds here too: the result of `f` is **not** clamped, and an easing
+    /// **Reparameterise a step's clock.** `|> ease Ease.cubicInOut`, and `Anim.ease` with
+    /// nothing added — so the result of `f` is **not** clamped here either, and an easing
     /// that leaves `[0, 1]` reaches the interpolation underneath and extrapolates. A morph eased
     /// with `Ease.backOut` overshoots its target and settles back onto it.
     let ease (f: float -> float) (story: Story<'a>) : Story<'a> =
@@ -261,12 +263,12 @@ module Storyboard =
     /// Run every branch from the same starting stage, at the same time.
     ///
     /// The duration is the longest branch and the short ones **hold their final state** —
-    /// which is `Anim.map2`'s rule, not a rule invented here. D70 clamps the seek so that a
+    /// which is `Anim.map2`'s rule, not a rule invented here. `At` clamps the seek so that a
     /// component reached past its end gives its last frame, and that is exactly what a
     /// storyboard means by "the fade finished while the zoom was still going".
     ///
     /// Branches compose left to right, onto the stage as it stands, so two branches that write
-    /// the same property end with the later one's answer. §7.2's case — a morph beside a zoom —
+    /// the same property end with the later one's answer. The common case — a morph beside a zoom —
     /// composes: the morph writes each layer's values and the zoom writes its domain. They meet
     /// on the domain, because a morph's domain follows its own data, and there the later branch
     /// wins. Order the pair the way you want that read.
@@ -274,7 +276,7 @@ module Storyboard =
         Story(fun s0 ->
             let acts = branches |> List.map (fun b -> snd (unwrap b s0))
 
-            (), acts |> List.fold (fun acc a -> Anim.map2 (fun f g -> f >> g) acc a) (Anim.pure' identity))
+            (), acts |> List.fold (fun acc a -> Anim.map2 (fun f g -> f >> g) acc a) (Anim.constant identity))
 
     // ---- Reading the stage -----------------------------------------------------------------
 
@@ -373,8 +375,8 @@ module Storyboard =
                             else
                                 s)) }
 
-    /// D104 — a source channel value as another map reads it. A level is matched by name,
-    /// because the two figures numbered their levels separately (D45); a level the map does not
+    /// A source channel value as another map reads it. A level is matched by name,
+    /// because the two figures numbered their levels separately; a level the map does not
     /// have is NaN, which is not drawn and is counted, as any unmapped value is. A value map's
     /// numbers are raw in the channel's unit and pass through.
     let private translateChannel (src: ChannelMap) (dst: ChannelMap) (v: float) : float =
@@ -401,13 +403,13 @@ module Storyboard =
         | SizeByValue _, SizeByValue _ -> true
         | _ -> false
 
-    /// **D104 — a scatter morphed by key.** Each of the target's rows, in the target's order,
+    /// **A scatter morphed by key.** Each of the target's rows, in the target's order,
     /// paired with the source row of the same key or with nothing; then the source rows whose
     /// key the target does not have. Returned as the pairing for `Erase.tweenRows`, the keys in
     /// that order, and how many of them are the target's.
     ///
     /// `None` unless both layers are scatters with keys and their channels line up kind for kind:
-    /// only a scatter has a node per mark to fade (D69), and a channel of another kind has no
+    /// only a scatter has a node per mark to fade, and a channel of another kind has no
     /// value to carry a row across in. The morph then pairs by index, as it always did.
     let private pairByKey (src: Layer) (dst: Layer) : (struct (int * int)[] * string[] * int) option =
         let scatter (l: Layer) =
@@ -525,15 +527,15 @@ module Storyboard =
     ///
     /// The handle's key chooses the scope: a figure handle morphs every layer, a panel handle
     /// morphs that panel's, a layer handle morphs one. Layers are paired by panel position and
-    /// ordinal — D68's identity, and the same by-index rule D74 took for subpaths — and a layer
-    /// with no counterpart is left alone rather than guessed at.
+    /// ordinal — a key's identity, and the same by-index rule a path morph takes for subpaths — and
+    /// a layer with no counterpart is left alone rather than guessed at.
     ///
     /// The two sides need not have the same number of points: both are resampled to the longer
     /// of the two by index fraction. They *do* need matching dimensions, and the units may
     /// differ: `Erase.tweenSeries` converts through SI, so morphing kilometres into metres is a
     /// morph and not a factor of a thousand.
     ///
-    /// **D104 — a scatter whose rows have keys on both sides is paired by key**, not by index. A
+    /// **A scatter whose rows have keys on both sides is paired by key**, not by index. A
     /// datum moves to where the datum of the same name is going; one only the target has fades
     /// in where it is going, and one only the source has fades out where it was. That is what
     /// makes a filter animate truthfully: a station that was dropped leaves, and nothing slides
@@ -581,8 +583,8 @@ module Storyboard =
                                 Figure = Some blended
                                 Edits = Array.append s.Edits (fades.ToArray()) })) }
 
-    /// **Zoom an axis**, by animating its domain. §7.2's `zoomTo`, with the axis in the name
-    /// because that is how M2 spells the still version (`Chart.withXDomain`).
+    /// **Zoom an axis**, by animating its domain. The axis is in the name because that is how
+    /// the still version is spelled (`Chart.withXDomain`).
     ///
     /// The domain is raw numbers in the axis's own unit, for the same reason `Chart.withXDomain`
     /// takes them raw: the measure was erased into the figure and there is nothing left to check
@@ -628,10 +630,10 @@ module Storyboard =
     let zoomToX (domain: float * float) (h: Handle) : Step<unit> = zoom "zoomToX" true domain h
     let zoomToY (domain: float * float) (h: Handle) : Step<unit> = zoom "zoomToY" false domain h
 
-    /// Clamped, unlike a tween, and for `Scene.opacity`'s reason rather than in spite of D71: a
-    /// marker of negative size has no picture to draw, so an overshooting easing has nowhere to
-    /// put its overshoot. D71's rule is that the *interpolation* does not clamp; a style ramp
-    /// with a floor is not an interpolation between two styles.
+    /// Clamped, unlike a tween, and for `Scene.opacity`'s reason rather than in spite of unclamped
+    /// easing: a marker of negative size has no picture to draw, so an overshooting easing has
+    /// nowhere to put its overshoot. The rule is that the *interpolation* does not clamp; a style
+    /// ramp with a floor is not an interpolation between two styles.
     let private emphasise (theme: Theme) (u: float) (n: Node) : Node =
         let k =
             if u < 0.0 then 0.0
@@ -650,7 +652,7 @@ module Storyboard =
 
     /// **`highlight curve.[42]`** — grow one mark and ring it in the theme's foreground.
     ///
-    /// Two things happen, and the first is the one D69 is about: the row is **addressed**, which
+    /// Two things happen, and the first is the one that matters: the row is **addressed**, which
     /// splits its layer's `MarkerBatch` into before / the mark / after so that there is a
     /// subtree with that name to rewrite at all. The addressing persists for the rest of the
     /// storyboard, and so does the highlight — a highlight that undid itself at the end of its
@@ -668,7 +670,7 @@ module Storyboard =
 
                     let theme = (onStage "highlight" s0).Theme
 
-                    // D104 — a datum is found by its key on the stage as it stands, so a highlight
+                    // A datum is found by its key on the stage as it stands, so a highlight
                     // after a morph lands on the same datum at its new row. One that is not on
                     // stage when the step starts is refused, by name, rather than ringing nothing.
                     match mark with
@@ -718,18 +720,18 @@ module Storyboard =
     /// `compilePanel`'s reason: the layout the whole film is drawn inside, and the frames drawn
     /// inside it. Handing back only the second would make a renderer that needs the surface
     /// take it as a second argument, and a second extent beside a decided layout is a second
-    /// chance to disagree with nothing able to notice (D72). `Film` is built from this pair.
+    /// chance to disagree with nothing able to notice. `Film` is built from this pair.
     ///
-    /// `samples` is D72's union: the storyboard is sampled that many times, every state is
+    /// `samples` is the shot's union: the storyboard is sampled that many times, every state is
     /// arranged, and the gutters are the componentwise maximum, so the panel does not breathe
     /// while the data moves. There is deliberately no default — 32 is a good number and it
     /// belongs at the call site, where a reader can see it.
     ///
     /// **The union pass is where the fonts are resolved**, and that matters to a parallel
     /// render: it runs here, once, on the calling thread, before any frame exists. So a
-    /// measurer that resolves a face against the machine (D62) has done all of its resolving
+    /// measurer that resolves a face against the machine has done all of its resolving
     /// by the time `Array.Parallel.map` starts, and `ResolvedFaces` is in first-seen order
-    /// rather than in whichever order sixteen threads happened to ask. See D77.
+    /// rather than in whichever order sixteen threads happened to ask.
     let shoot (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (story: Story<unit>) : Shot * Anim<Node> =
         let st = stages story
         let total = st.Duration
@@ -765,7 +767,7 @@ module Storyboard =
     let animateWith (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (story: Story<unit>) : Anim<Node> =
         snd (shoot samples m extent story)
 
-    /// `animateWith`, measured with the zero-dependency default measurer — `Chart.toScene`'s
-    /// relationship to `Chart.toSceneWith`, one milestone later.
+    /// `animateWith`, measured with the zero-dependency default measurer — the same
+    /// relationship as `Chart.toScene`'s to `Chart.toSceneWith`.
     let animate (samples: int) (extent: Extent<px>) (story: Story<unit>) : Anim<Node> =
         animateWith samples TextMeasure.approx extent story

@@ -1,4 +1,4 @@
-/// M5 phase 6 — the window (D118), gate 12: a scripted sequence of window events gives the
+/// M5 phase 6 — the window, gate 12: a scripted sequence of window events gives the
 /// `LiveState` and the `Recording` the equivalent messages give through `Live.step`.
 ///
 /// The translation is pure (`WindowSession`) and is checked without a display. The host is then
@@ -19,7 +19,7 @@ let private wave (f: float<1 / s>) (damped: bool) =
 
 let private live () =
     interact {
-        let! f = Control.slider (U.recip U.second) "f" 0.5<1 / s> 5.0<1 / s> 1.0<1 / s>
+        let! f = Control.slider U.hertz "f" 0.5<1 / s> 5.0<1 / s> 1.0<1 / s>
         and! damped = Control.checkbox "damped" false
         return wave f damped
     }
@@ -211,7 +211,7 @@ module ``gate 12`` =
     let ``the window reads a wide log axis in powers of ten`` () =
         let t = Array.init 27 (fun i -> float i * 1.0<s>)
         let e = Array.init 27 (fun i -> 10.0 ** float (i - 18) * 1.0<J>)
-        let l = interact { return Chart.line U.second Derived.joule t e |> Chart.withYLog }
+        let l = interact { return Chart.line U.second U.joule t e |> Chart.withYLog }
         let strip = WindowStrip.height l.Controls
         let size: Extent<px> = { Width = 800.0<px>; Height = 500.0<px> + strip }
         let sized, _ = WindowSession.feed l (WindowSession.start l) (0.0<s>, WindowEvent.Resized size)
@@ -269,7 +269,7 @@ module ``the host`` =
 
             Assert.True((differing = 0), sprintf "%d channels of the figure differ from the renderer's" differing))
 
-    /// D137 — a hidden window plays a time control on its own loop: Tab and space, and the value
+    /// A hidden window plays a time control on its own loop: Tab and space, and the value
     /// moves on by the window's clock without another event, then holds once paused.
     [<Fact>]
     let ``a hidden window plays a time control on its frame loop`` () =
@@ -316,7 +316,7 @@ module ``the host`` =
 
         Assert.All(entries, (fun e -> Assert.NotNull e))
 
-/// M5.5 phase 7, gate 15 — the window plays a time control (D137): play, pause and scrub send the
+/// M5.5 phase 7, gate 15 — the window plays a time control: play, pause and scrub send the
 /// `Set`s the page would, stamped by the window's clock, and reach `Live.step`'s state.
 module ``gate 15`` =
 

@@ -1,4 +1,4 @@
-/// §13 — "`Dim` group laws".
+/// "`Dim` group laws".
 ///
 /// `Dim` under `add`/`neg` is the free abelian group on seven generators (Dim.fs says so in as
 /// many words). These laws are cheap and they catch the sign error in `U.div` or `U.recip` that

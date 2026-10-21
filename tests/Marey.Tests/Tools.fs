@@ -32,7 +32,7 @@ let pdflatex: Lazy<ResolvedTool> =
 let pdftoppm: Lazy<ResolvedTool> =
     lazy Toolchain.resolve "poppler-utils (see .github/tex-packages.txt)" "pdftoppm"
 
-/// The DVI engine and the DVI-to-paths converter behind `Marey.Tools.Tex` (D79).
+/// The DVI engine and the DVI-to-paths converter behind `Marey.Tools.Tex`.
 ///
 /// `latex` rather than `pdflatex`, which is a *different* entry from the one above and
 /// deliberately so: the TeX gates ask "does this document compile" through `pdflatex`, and the

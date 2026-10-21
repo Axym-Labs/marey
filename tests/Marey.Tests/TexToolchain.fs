@@ -114,7 +114,7 @@ let private errorLines (log: string) =
 /// This is the only implementation of the engine plumbing; `compile` is a projection of it. One
 /// implementation rather than two means the ink gate and the compile gate can never disagree
 /// about which flags the engine was given or how its failure was detected.
-/// `compileWith` with the sidecar files a `RenderedDocument` carries (D64).
+/// `compileWith` with the sidecar files a `RenderedDocument` carries.
 ///
 /// The assets are written into the same temporary directory as the `.tex`, because that is
 /// where `\includegraphics{marey-raster-0.png}` looks for them — and getting the two into one

@@ -4,7 +4,7 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D144 — HARD DISCS.
+// HARD DISCS.
 //
 // Particle–particle collisions are pairwise events, resolved inside a step in time order: the
 // earliest contact first, then the rest re-tested. Between contacts every disc moves in a
@@ -18,8 +18,8 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // margin was computed from; a pair the grid cannot see could not have touched.
 //
 // A step resolves at most a stated number of contacts. Past that the discs fly on without
-// colliding for the rest of the step, and the step is counted as capped (D52: what is not done is
-// counted). Hard discs only: no friction, no rotation, no soft contact. Two dimensions, as
+// colliding for the rest of the step, and the step is counted as capped: what is not done is
+// counted. Hard discs only: no friction, no rotation, no soft contact. Two dimensions, as
 // everything else here.
 // ======================================================================================
 
@@ -61,6 +61,8 @@ type Collider<[<Measure>] 'q> =
       /// Above this many discs, pairs are found through a grid rather than all against all.
       BroadPhaseAbove: int }
 
+/// Discs for a collision simulation: placed at positions and velocities, and their kinetic energy
+/// and momentum.
 [<RequireQualifiedAccess>]
 module Discs =
 
@@ -107,6 +109,7 @@ module Discs =
 
         struct (px, py)
 
+/// Hard discs colliding in a box: the collider and its step.
 [<RequireQualifiedAccess>]
 module Collide =
 
@@ -232,7 +235,7 @@ module Collide =
             let w = float w
             let hgt = float hgt
             // `floor (x + 0.5)` rather than `Math.Round`, which Fable rounds differently near a
-            // half (`upstream-fable.md` §2), and ties to even on .NET.
+            // half, and ties to even on .NET.
             dx <- dx - w * floor (dx / w + 0.5)
             dy <- dy - hgt * floor (dy / hgt + 0.5)
         | _ -> ()
@@ -283,7 +286,7 @@ module Collide =
         | _ -> struct (infinity, -1)
 
     /// A step of `h`: free flight, with every contact inside it resolved in time order.
-    let step<[<Measure>] 'q> (col: Collider<'q>) : Step<Discs<'q>, s> =
+    let step<[<Measure>] 'q> (col: Collider<'q>) : Stepper<Discs<'q>, s> =
         let e = col.Restitution
         let m = col.Masses
 

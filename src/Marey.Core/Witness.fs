@@ -1,6 +1,6 @@
 namespace Marey
 
-/// §2.1 — The unit witness: a phantom-typed record tying a compile-time `[<Measure>]` to
+/// The unit witness: a phantom-typed record tying a compile-time `[<Measure>]` to
 /// runtime metadata.
 ///
 /// Microsoft's own docs on units of measure: *"implementing a ToString function to print out
@@ -8,8 +8,8 @@ namespace Marey
 /// library needs a runtime handle on the unit. This is it.
 ///
 /// `Symbol` is the unit as *written by whoever declared it* — it is a presentation hint, and
-/// composing it is wrong (§2.2, §12.6). `Dim` is the truth.
-/// D111 — **the witness as a value that may be absent**: everything a `U<'u>` carries at run time,
+/// composing it is wrong. `Dim` is the truth.
+/// **The witness as a value that may be absent**: everything a `U<'u>` carries at run time,
 /// and nothing typed.
 ///
 /// The unit-optional mode takes its witness as an optional method parameter, and an optional
@@ -32,6 +32,8 @@ type IUnit =
     /// False only for `U.unspecified` and what is composed from it — see `U.Stated`.
     abstract Stated: bool
 
+/// A unit witness: the value that carries a measure's symbol, dimension and conversion to SI,
+/// so an axis can label and convert what the type system checks.
 [<Sealed>]
 type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, factors: (string * int) list, stated: bool) =
 
@@ -46,26 +48,26 @@ type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, f
     new(symbol, dim, toSI) = U<'u>(symbol, dim, toSI, 0.0, [])
 
     /// The symbol this unit was *declared* with. Never build one by concatenation — see
-    /// `Marey.Units.UnitDisplay` and §12.6.
+    /// `Marey.Units.UnitDisplay`.
     member _.Symbol = symbol
 
     /// The composition this unit was *built* from, as `(symbol, exponent)` pairs — empty for a
     /// declared unit, non-empty only for one produced by `U.mul`, `div`, `recip`, `square` or
     /// `cube`.
     ///
-    /// **This is not §12.6's forbidden string composition, and the difference is the whole
-    /// point.** §12.6's bug was `mul force metre` concatenating its way to `kg·m/s/s·m`: a
+    /// **This is not string composition, and the difference is the whole point.** The
+    /// string bug was `mul force metre` concatenating its way to `kg·m/s/s·m`: a
     /// string, appended to, with no way to cancel or combine like factors. This is structure.
     /// `U.mul` merges exponents per symbol, so the same call yields `[kg, 1; m, 2; s, -2]` —
     /// which is what the quantity *is*, in the terms the caller wrote it in, and cannot
     /// accumulate the duplicated `/s/s` that made the string wrong.
     ///
-    /// It exists because `Dim` alone cannot express a factorisation the caller supplied.
-    /// `U.div volt metre` has the dimension of `kg·m·s⁻³·A⁻¹` and no registered name, so
-    /// display falls back to base units and an electric-field axis reads `10⁶·kg·m·s⁻³·A⁻¹`
-    /// rather than `MV·m⁻¹`. D18 declines to *infer* a factorisation from a bare `Dim` because
-    /// inference is ambiguous — the same `Dim` is `J/K` and `N·m/K`. Nothing is inferred here:
-    /// the caller wrote `div volt metre` and this records which of those readings they meant.
+    /// It exists because `Dim` alone cannot express a factorisation the caller supplied. `U.div
+    /// volt metre` has the dimension of `kg·m·s⁻³·A⁻¹` and no registered name, so display falls
+    /// back to base units and an electric-field axis reads `10⁶·kg·m·s⁻³·A⁻¹` rather than `MV·m⁻¹`.
+    /// The library declines to *infer* a factorisation from a bare `Dim` because inference is
+    /// ambiguous — the same `Dim` is `J/K` and `N·m/K`. Nothing is inferred here: the caller wrote
+    /// `div volt metre` and this records which of those readings they meant.
     member _.Factors = factors
 
     /// SI dimension exponents. The source of truth for identity and for display.
@@ -74,17 +76,17 @@ type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, f
     /// Multiplicative factor to SI base units. `U.kilometre.ToSI = 1000.0`.
     member _.ToSI = toSI
 
-    /// Additive offset to SI base units, applied *after* scaling. Non-zero only for affine
-    /// units — degrees Celsius (273.15) and Fahrenheit. §2.4 flags this as the "°C offset
-    /// problem"; carrying the field from day one is what stops it becoming a breaking change
-    /// when the UDUNITS-2 type provider lands.
+    /// Additive offset to SI base units, applied *after* scaling. Non-zero only for affine units —
+    /// degrees Celsius (273.15) and Fahrenheit. This is the "°C offset problem"; carrying the field
+    /// from day one is what stops it becoming a breaking change when the UDUNITS-2 type provider
+    /// lands.
     member _.OffsetSI = offsetSI
 
     /// True for °C / °F and anything else where zero is not zero. An affine unit has no
     /// meaningful product or quotient — see `U.mul`.
     member _.IsAffine = offsetSI <> 0.0
 
-    /// D127 — whether anyone *said* what this unit is. True for every witness but
+    /// Whether anyone *said* what this unit is. True for every witness but
     /// `U.unspecified` and what is composed from it.
     ///
     /// **Unspecified is not dimensionless.** `U.one` claims the data has no dimension, and
@@ -105,7 +107,7 @@ type U<[<Measure>] 'u>(symbol: string, dim: Dim, toSI: float, offsetSI: float, f
         member _.OffsetSI = offsetSI
         member _.Stated = stated
 
-/// §12.1 — **The algebra lives in module-level functions with explicit `[<Measure>]` type
+/// **The algebra lives in module-level functions with explicit `[<Measure>]` type
 /// parameters, and it must never move into operator overloads on `U<'u>`.**
 ///
 /// ```fsharp
@@ -129,16 +131,16 @@ module U =
         else [ symbol, 1 ]
 
     /// Merge two factorisations, summing exponents per symbol and dropping anything that
-    /// cancels to zero. **This is the step §12.6's string concatenation could not perform**, and
+    /// cancels to zero. **This is the step string concatenation could not perform**, and
     /// the reason `mul force metre` yields `[kg,1; m,2; s,-2]` here where the string yielded
     /// `kg·m/s/s·m`.
     ///
     /// Order is first-appearance, left operand first, so `div volt metre` reads `V·m⁻¹` rather
     /// than `m⁻¹·V`: a caller who wrote a numerator first expects to read it first, and nothing
     /// downstream re-sorts.
-    /// D98 — how many powers of angle a witness carries: a radian counts once, a steradian twice
+    /// How many powers of angle a witness carries: a radian counts once, a steradian twice
     /// (solid angle is angle squared). Read from the factorisation, or from the declared symbol
-    /// when the witness was declared rather than built — `Derived.radian` is `rad` with no
+    /// when the witness was declared rather than built — `U.radian` is `rad` with no
     /// factors.
     ///
     /// **Angle is dimensionless in SI, so `Dim` cannot see it**, and this is the only place it
@@ -147,7 +149,7 @@ module U =
     ///
     /// A witness declared by hand with a compound symbol — `U<rad/s>("rad/s", …)` — has no
     /// factors and a symbol that is not `rad`, so it reads as carrying no angle. Build angular
-    /// units by composition, `U.div Derived.radian U.second`, and the angle is seen.
+    /// units by composition, `U.div U.radian U.second`, and the angle is seen.
     let angleExponentOf (symbol: string) (factors: (string * int) list) : int =
         let parts =
             if not (List.isEmpty factors) then factors
@@ -173,7 +175,7 @@ module U =
         factors |> List.map (fun (s, e) -> s, e * n)
 
     /// Product of two units. Verified generic across five distinct instantiations
-    /// (`m/s`, `m/s^2`, `kg*m/s^2`, `kg*m/s`, `kg*m^2/s^2`) — §12.1.
+    /// (`m/s`, `m/s^2`, `kg*m/s^2`, `kg*m/s`, `kg*m^2/s^2`).
     ///
     /// The composed `Symbol` is deliberately naive and deliberately not trusted: it is a
     /// debugging aid only. Display goes through `Dim`, or through `Factors` when `Dim` has no
@@ -239,16 +241,16 @@ module U =
     /// a count and a probability all get.
     let one: U<1> = U<1>("", Dim.zero, 1.0, 0.0)
 
-    /// D127 — the unit nobody stated: what the unit-optional mode draws an axis in when no
+    /// The unit nobody stated: what the unit-optional mode draws an axis in when no
     /// witness was given. No bracket, no prefix, and no claim for the axis-sharing check to act
     /// on. **Not `one`**, which says the quantity has no dimension — see `U.Stated`.
     let unspecified: U<1> = U<1>("", Dim.zero, 1.0, 0.0, [], false)
 
-    /// D128 — **a runtime unit, carried at measure 1.** The witness of the unit-optional mode,
+    /// **A runtime unit, carried at measure 1.** The witness of the unit-optional mode,
     /// where data is `float[]` and the unit arrives as a value: everything `u` carries at run
     /// time, under a measure that says nothing. `null` is `unspecified`.
     ///
-    /// After the erasure boundary (§2.3) the result is indistinguishable from `u`, which is why
+    /// After the erasure boundary the result is indistinguishable from `u`, which is why
     /// one measure-generic implementation serves both modes: a stat that derives a unit derives
     /// it from these runtime fields, so `density` over `erase U.metre` still reports `m⁻¹`. What
     /// is given up is the compile-time half, and that is the mode's definition.

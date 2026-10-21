@@ -1,13 +1,13 @@
 namespace Marey
 
 // ======================================================================================
-// D95 — A SPECIFIED PSEUDO-RANDOM GENERATOR.
+// A SPECIFIED PSEUDO-RANDOM GENERATOR.
 //
-// The library had no randomness until M4, and it gets exactly one generator, for two consumers:
-// the noise texture a line-integral convolution smears along a field, and the resampling behind
-// a bootstrap confidence interval. Both have to be reproducible from a seed the caller can
-// print, because a LIC that differs between two renders cannot have a golden baseline and a
-// confidence interval that differs between two runs of one script cannot be cited.
+// The library has exactly one random generator, for two consumers: the noise texture a
+// line-integral convolution smears along a field, and the resampling behind a bootstrap confidence
+// interval. Both have to be reproducible from a seed the caller can print, because a LIC that
+// differs between two renders cannot have a golden baseline and a confidence interval that differs
+// between two runs of one script cannot be cited.
 //
 // **Specified rather than borrowed.** `System.Random` would be the obvious choice and is the
 // wrong one: its algorithm is an implementation detail of the runtime, the seeded and unseeded
@@ -29,6 +29,7 @@ namespace Marey
 [<Struct>]
 type Rng = { State: uint64 }
 
+/// The seeded SplitMix64 generator: every draw returns its value and the next state.
 [<RequireQualifiedAccess>]
 module Rng =
 

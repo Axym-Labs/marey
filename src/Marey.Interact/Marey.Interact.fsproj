@@ -1,18 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- M4.5 (`m4.5-plan.md`): interaction as a pure step. Typed controls, the applicative
-         `interact { }` block that composes them into a figure, and the step a host drives with
-         the reader's messages (D100, D101). It names no host: the widget document is
+    <!-- Interaction as a pure step. Typed controls, the applicative `interact { }` block that
+         composes them into a figure, and the step a host drives with the reader's messages. It
+         names no host: the widget document is
          `Marey.Html`'s, and the channel is `Marey.Verso`'s.
 
          netstandard2.1 and Fable-compatible, like Core. NOTHING may be added to
          <PackageReference>.
 
-         `Marey.Anim` does not reference this project, and must not (D80's promise, M4.5 gate 12):
+         `Marey.Anim` does not reference this project, and must not, which a test checks:
          interaction is a source of values, not a kind of animation. -->
     <TargetFramework>netstandard2.1</TargetFramework>
-    <!-- M5 phase 2: packed with its sources under fable/, so a Fable app can reference the
+    <!-- Packed with its sources under fable/, so a Fable app can reference the
          package (Directory.Build.targets). -->
     <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Interact</AssemblyName>
@@ -20,11 +20,8 @@
     <Description>Interaction for Marey: typed controls (a slider over kelvin hands the view kelvin, and labels itself in them), composed into a live figure by an applicative block, and stepped by a pure function a notebook host drives: controls, zoom, pan, a readout in the axes' units, and recordings that replay as films.</Description>
     <PackageTags>fsharp visualization plotting interactive widgets notebook units-of-measure</PackageTags>
 
-    <!-- **Published from M4.5 phase 2**, D64's rule as `Marey.Anim` and `Marey.Fields` applied
-         it: a package ships with a producer. Phase 1 could step a figure and not draw a control;
-         phase 2's widget document (`Html.widget`) is the first picture. Both workflows' package
-         counts went 13 -> 14 in the same commit, and gate 15 holds them to the number of
-         packable projects. -->
+    <!-- A package ships with a producer: here, the widget document `Html.widget` draws what
+         this steps. -->
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
@@ -32,7 +29,7 @@
     <Compile Include="Control.fs" />
     <Compile Include="Recording.fs" />
     <Compile Include="Live.fs" />
-    <!-- D109 — the unit-required mode, after the implementations it reaches. -->
+    <!-- The unit-required mode, after the implementations it reaches. -->
     <Compile Include="UnitsOfMeasure.fs" />
   </ItemGroup>
 

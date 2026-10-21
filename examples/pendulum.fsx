@@ -20,8 +20,8 @@ open Marey
 open Marey.UnitsOfMeasure
 
 let gOverL = 9.81<1/s^2>
-let theta = Derived.radian
-let omega = U.div Derived.radian U.second
+let theta = U.radian
+let omega = U.div U.radian U.second
 
 let pendulum (friction: float<1/s>) : Flow<rad, rad/s, s> =
     fun th om -> struct (om, -gOverL * sin (float th) * 1.0<rad> - friction * om)

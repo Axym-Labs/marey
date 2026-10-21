@@ -3,7 +3,7 @@ namespace Marey
 /// A tick, resolved: where it sits, what it is, and what to print.
 ///
 /// Carrying `Position` alongside `Value` means the axis compiler never re-invokes `Project`,
-/// and — more importantly — a reloaded figure whose scale is gone (§15) still knows where its
+/// and — more importantly — a reloaded figure whose scale is gone still knows where its
 /// ticks belong.
 [<Struct>]
 type TickLabel =
@@ -17,7 +17,7 @@ type TickLabel =
       /// style. The rule is `AxisSpec.TitleTex`'s.
       LabelTex: string option }
 
-/// §2.3 — **The erasure boundary.**
+/// **The erasure boundary.**
 ///
 /// "The IR must not be measure-generic — a `Scene` holding `float<'u>` could never be put in a
 /// list with a differently-united scene. Erase *once*, at the point where a series becomes a
@@ -27,7 +27,7 @@ type TickLabel =
 /// There is exactly one implementation (`Erase.scale`), and that is the point: one boundary,
 /// crossed in one direction, in one place.
 type IScaleErased =
-    /// The unit's *declared* symbol. Presentation only — see §12.6.
+    /// The unit's *declared* symbol. Presentation only: a display is canonicalised from `Dim`.
     abstract Symbol: string
     /// The truth about this axis's physical dimension.
     abstract Dim: Dim
@@ -35,8 +35,7 @@ type IScaleErased =
     /// The unit's composition, when it had one — see `U.Factors`. Carried across the boundary
     /// for the same reason `ToSI` is: a factorisation the caller supplied is information that
     /// `Dim` cannot reconstruct, so dropping it here would mean a reloaded `V·m⁻¹` axis
-    /// relabelled itself `kg·m·s⁻³·A⁻¹` while the live one did not. §15 requires the two paths
-    /// to agree.
+    /// relabelled itself `kg·m·s⁻³·A⁻¹` while the live one did not. The two paths must agree.
     abstract Factors: (string * int) list
 
     /// Multiplicative factor to SI base units, and the additive offset for affine units.
@@ -47,8 +46,8 @@ type IScaleErased =
     /// is explicitly untrusted). Labelling either from `Dim` would then be wrong by 10^19 in
     /// the first case and by 273.15 in the second.
     ///
-    /// §15 makes this load-bearing rather than tidy: "reloading gives you `IScaleErased`, not
-    /// `Scale<'u>`". Without these fields a reloaded non-SI axis can never be relabelled
+    /// This is load-bearing rather than tidy: reloading a figure gives you `IScaleErased`, not
+    /// `Scale<'u>`. Without these fields a reloaded non-SI axis can never be relabelled
     /// correctly, because the information was destroyed at save time rather than merely
     /// hidden. `ToSI <> 1.0` is also the principled test for "this unit is not SI-coherent,
     /// so do not render its symbol from `Dim`".
@@ -56,7 +55,7 @@ type IScaleErased =
 
     abstract OffsetSI: float
 
-    /// D127 — whether the unit was stated, or is `U.unspecified`. An unstated axis makes no
+    /// Whether the unit was stated, or is `U.unspecified`. An unstated axis makes no
     /// dimensional claim, so the checks that compare two axes skip it — see `U.Stated`.
     abstract Stated: bool
 
@@ -70,15 +69,15 @@ type IScaleErased =
     abstract Invert: float<nd> -> float
     abstract Ticks: int -> TickLabel[]
 
-/// §2.3 — A dimensioned series, struct-of-arrays.
+/// A dimensioned series, struct-of-arrays.
 ///
 /// The design sketches this as `(float<'ux> * float<'uy>) []`. An array of reference tuples
 /// allocates one heap object per point: a 100 000-point scatter becomes 100 000 objects, which
-/// is precisely the GC pressure §1.3 warns will "destroy a 60 fps loop", and it contradicts
-/// §8.3's "struct-of-arrays layout" rule for the same data one layer down.
+/// is precisely the GC pressure that would destroy a 60 fps loop, and it contradicts the
+/// struct-of-arrays layout of the same data one layer down.
 ///
 /// Two parallel `float[]`s cost nothing, vectorise, and are what the batched `Markers` node
-/// (§5.1) wants anyway.
+/// wants anyway.
 type Series<[<Measure>] 'ux, [<Measure>] 'uy> =
     { Name: string
       X: float<'ux>[]
@@ -86,7 +85,7 @@ type Series<[<Measure>] 'ux, [<Measure>] 'uy> =
       XScale: Scale<'ux>
       YScale: Scale<'uy> }
 
-/// §2.3 / §12.5 — Rank-2 consumer. Both measures come back, fully typed, inside `Apply`.
+/// Rank-2 consumer. Both measures come back, fully typed, inside `Apply`.
 ///
 /// This is the mechanism that "makes a multi-panel figure with heterogeneous physical
 /// quantities possible at all": F# has no existential types, so a universally quantified
@@ -102,6 +101,7 @@ type PackedSeries =
 type IScaleConsumer<'r> =
     abstract Apply<[<Measure>] 'u> : Scale<'u> -> 'r
 
+/// A typed scale with its measure hidden, opened with an `IScaleConsumer`.
 type PackedScale =
     abstract Accept: IScaleConsumer<'r> -> 'r
 
@@ -110,26 +110,29 @@ type PackedScale =
 type IQuantityConsumer<'r> =
     abstract Apply<[<Measure>] 'u> : U<'u> * float<'u> -> 'r
 
+/// One dimensioned value with its unit, opened with an `IQuantityConsumer`.
 type PackedQuantity =
     abstract Accept: IQuantityConsumer<'r> -> 'r
 
-/// D44 finding 2 — **one witness and one array**: a single encoding channel, packed before
+/// **one witness and one array**: a single encoding channel, packed before
 /// anything knows which pair of channels will become a series.
 ///
 /// `PackedQuantity` above carries one witness and one *value*; `PackedSeries` carries a witness
-/// *pair* and two arrays. A channel is neither, and the gap is what the encoding CE (§9) walks
+/// *Pair* and two arrays. A channel is neither, and the gap is what the encoding CE walks
 /// into: it accumulates `x`, `y`, `color` … independently, each erased where it is declared,
 /// and only at the end decides which two of them are the positional pair. So this is a fourth
 /// instance of the rank-2 pattern this file already argues for three times, not a new idea.
 type IChannelConsumer<'res> =
     abstract Apply<[<Measure>] 'u> : U<'u> * float<'u>[] -> 'res
 
+/// One encoding channel, its unit and its values packed together, opened with an
+/// `IChannelConsumer`.
 type PackedChannel =
     abstract Accept: IChannelConsumer<'res> -> 'res
 
 /// Both measures of a channel *pair*, recovered together.
 ///
-/// D44 finding 3: reunification is rank-2 twice, nested, and the two measures exist together in
+/// Reunification is rank-2 twice, nested, and the two measures exist together in
 /// exactly one scope — the body of the inner `Apply` — and cannot be returned from it. Anything
 /// that wants the typed pair (`Erase.series`, `Chart.ofSeries`, a regression whose slope is
 /// `float<'uy/'ux>`) has to be *called* at that innermost point. This interface names that call
@@ -137,6 +140,8 @@ type PackedChannel =
 type IChannelPairConsumer<'res> =
     abstract Apply<[<Measure>] 'ux, [<Measure>] 'uy> : U<'ux> * float<'ux>[] * U<'uy> * float<'uy>[] -> 'res
 
+/// Packing typed scales, series and quantities into their erased forms, and opening them again
+/// through the rank-2 consumers.
 [<RequireQualifiedAccess>]
 module Erase =
 
@@ -145,7 +150,7 @@ module Erase =
     /// identical to `Chart.series`'s default, because a series built through the channels must
     /// not render differently from the same series built through the front door.
     ///
-    /// Public since M2 phase 4, on the rule stated in `Num.fs`: it acquired a second consumer.
+    /// Public on the rule stated in `Num.fs`: it has a second consumer.
     /// A stat that builds its own series inside `reunify` — a fitted line, which is two points
     /// and not the caller's data — needs the same default, and a private copy of it in
     /// `Marey.Plot` is exactly the duplication that goes silently out of step.
@@ -157,7 +162,7 @@ module Erase =
     /// **The** erasure. The only sanctioned crossing from measured to unmeasured space.
     ///
     /// Tick labels are formatted here with the decimal count derived from the tick step, which
-    /// is what makes them injective (§4). `Marey.Units` layers prefix selection on top by
+    /// is what makes them injective. `Marey.Units` layers prefix selection on top by
     /// wrapping the result; it does not need its own copy of this.
     let scale (s: Scale<'u>) : IScaleErased =
         { new IScaleErased with
@@ -183,8 +188,8 @@ module Erase =
 
                 // How the ticks become text, which is the one thing a categorical axis does
                 // differently from every other kind: its labels are names and there is no
-                // decimal count to derive. D45 puts the level array in `Kind` precisely so that
-                // this path — the erased one, all a reloaded figure has (§15) — can still read
+                // decimal count to derive. The level array is in `Kind` precisely so that
+                // this path — the erased one, all a reloaded figure has — can still read
                 // them.
                 let labels =
                     match s.Kind with
@@ -264,12 +269,12 @@ module Erase =
         { new PackedChannel with
             member _.Accept c = c.Apply<'u>(u, values) }
 
-    /// **A subset of a channel, taken by row index** — the operation a facet is made of (D48).
+    /// **A subset of a channel, taken by row index** — the operation a facet is made of.
     ///
     /// A facet does not re-read the data: by the time the block runs, every array in it has
-    /// already been erased where it was declared (D44 finding 2) and the accessors are gone. But
-    /// each of those arrays is one `Array.map` over the *same* rows — which is D53's argument for
-    /// a channel belonging to the block — so they are all index-aligned, and splitting the block
+    /// already been erased where it was declared and the accessors are gone. But
+    /// each of those arrays is one `Array.map` over the *same* rows — which is why a channel
+    /// belongs to the block — so they are all index-aligned, and splitting the block
     /// by a key is splitting one `int[]` of row indices and applying it to each.
     ///
     /// The measure is reattached inside `Apply`, where it is known, so this is measure-safe for a
@@ -319,7 +324,7 @@ module Erase =
     /// Not by arc length, which is what `Morph` does one layer down and what would be wrong
     /// here: arc length in data space is `sqrt(dx² + dy²)` over a metre and a second, which is
     /// not a quantity. The index is the one parameterisation a series has that does not mix its
-    /// two units, and pairing by index is the same rule D74 took for subpaths.
+    /// two units, and pairing by index is the same rule a path morph takes for subpaths.
     let private resampleTo (n: int) (xs: float[]) : float[] =
         if xs.Length = n then xs
         elif xs.Length = 0 then Array.zeroCreate n
@@ -350,8 +355,8 @@ module Erase =
                 member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
                     // Written twice rather than once over a pair: `'ux` and `'uy` are
                     // different type variables and one shared helper would be monomorphised by
-                    // whichever axis reached it first (§12.2).
-                    // D127 — an unstated side makes no claim to check.
+                    // whichever axis reached it first.
+                    // An unstated side makes no claim to check.
                     if s.XScale.Unit.Stated && bx.Stated && s.XScale.Unit.Dim <> bx.Dim then
                         invalidArg
                             "b"
@@ -402,7 +407,7 @@ module Erase =
                           XScale = xScale
                           YScale = yScale } }
 
-    /// **Interpolate one packed series into another**, D69's `morphTo` one layer down.
+    /// **Interpolate one packed series into another**, the storyboard's `morphTo` one layer down.
     ///
     /// The result wears `a`'s name, `a`'s units and `a`'s scale kinds, and holds
     /// `max (length a) (length b)` points: both sides are resampled to the longer of the two by
@@ -415,7 +420,7 @@ module Erase =
     /// The dimensions must match, and that is the only check there is to make: this is the
     /// runtime edge of the type system, exactly like `U.convert`.
     ///
-    /// `t` is **not** clamped (D71): an easing that overshoots reaches here and extrapolates,
+    /// `t` is **not** clamped: an easing that overshoots reaches here and extrapolates,
     /// which is what makes `Ease.backOut` visible on a morph.
     let tweenSeries (a: PackedSeries) (b: PackedSeries) (t: float) : PackedSeries =
         tweenAligned
@@ -426,7 +431,7 @@ module Erase =
             b
             t
 
-    /// **D104 — interpolate row by row, as the caller pairs them.** Each entry of `rows` is a
+    /// **Interpolate row by row, as the caller pairs them.** Each entry of `rows` is a
     /// row of `a` and a row of `b`, either of which may be `-1`: a row of `a` alone holds
     /// still where it is, and a row of `b` alone holds still where it is going. The result has
     /// one point per entry, in that order, and is otherwise `tweenSeries`: `a`'s name and units,

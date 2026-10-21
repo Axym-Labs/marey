@@ -1,4 +1,4 @@
-/// §13 — "Golden-image snapshots against the SVG backend (**text-diffable, reviewable in a PR**)".
+/// "Golden-image snapshots against the SVG backend (**text-diffable, reviewable in a PR**)".
 ///
 /// The two words in bold are the whole design of this file. A golden test that fails with
 /// "Assert.Equal() Failure: Strings differ" and 4 kB of SVG on each side is not reviewable, so
@@ -223,7 +223,7 @@ let check (name: string) (actual: string) : unit =
             if File.Exists candidate then
                 File.Delete candidate
 
-/// Compare rendered **bytes** against their baseline (D64).
+/// Compare rendered **bytes** against their baseline.
 ///
 /// The same three-way behaviour as `check`, and deliberately not the same failure message: a
 /// binary has no lines to diff, so what a reader gets instead is the first differing offset and
@@ -294,7 +294,7 @@ Re-run with %s=1 to accept the new output."
         elif File.Exists candidate then
             File.Delete candidate
 
-// The scene vocabulary and the figures moved to `tests/Shared/GoldenScenes.fs` (D130), where
+// The scene vocabulary and the figures moved to `tests/Shared/GoldenScenes.fs`, where
 // the Fable project compiles them too. These are the names the suite already uses.
 let surface = GoldenScenes.surface
 let font = GoldenScenes.font

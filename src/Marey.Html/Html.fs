@@ -17,10 +17,10 @@ open System.Text
 // ======================================================================================
 // HTML FRAGMENTS FOR A NOTEBOOK CELL.
 //
-// §6: "a ~200-line package registering a .NET Interactive formatter so `figure` displays inline
-// as SVG. Do it at M1; it is how people will first meet the library."
+// This began as a .NET Interactive formatter so a figure displays inline as SVG, since a
+// notebook is how people first meet the library.
 //
-// **The host named in that sentence no longer exists.** Polyglot Notebooks was deprecated on
+// **That host no longer exists.** Polyglot Notebooks was deprecated on
 // 2026-02-11 and retired on 2026-03-27; .NET Interactive followed on 2026-04-24. This file
 // outlived both without a line changing, and the reason is the only architectural claim worth
 // making about it: **it holds no reference to any notebook host.** Every function is
@@ -64,9 +64,9 @@ open System.Text
 //   value the user has already successfully constructed. So every entry point that can compile a
 //   figure is wrapped, and the exception is rendered *as the output*. See `guarded`.
 //
-// **4. Every number goes through `Num.at`.**
+// **4. Every number goes through `Num.upTo`.**
 //   Same rule as both backends, same reason: a German locale writes `0,5`, and `0,5` is not a
-//   length CSS can parse. `Num.at` is invariant and never emits an exponent.
+//   length CSS can parse. `Num.upTo` is invariant and never emits an exponent.
 //
 // One more thing this file deliberately does not do: rewrite the SVG it embeds. It would be easy
 // to strip the `width`/`height` attributes and let the `viewBox` scale the figure to the cell,
@@ -74,7 +74,7 @@ open System.Text
 // for. A figure that is wider than the cell scrolls; it does not shrink.
 // ======================================================================================
 
-/// **D161 — how a notebook page draws a figure.** `Auto` draws on a canvas from
+/// **How a notebook page draws a figure.** `Auto` draws on a canvas from
 /// `Html.CanvasThreshold` drawn elements on (`Scene.primitiveCount`: each mark, path and text run),
 /// and as SVG below it; `Svg` and `Canvas` choose for every figure.
 [<RequireQualifiedAccess>]
@@ -120,14 +120,14 @@ module Html =
     // the literal character (`—`, `·`, `×`, `°`, `Δ`), which is both valid XML and shorter.
 
     /// Escape a string for use as element content.
-    let text (s: string) : string = Svg.escapeText s
+    let internal text (s: string) : string = Svg.escapeText s
 
     /// Escape a string for use inside a double-quoted attribute value.
-    let attr (s: string) : string = Svg.escapeAttr s
+    let internal attr (s: string) : string = Svg.escapeAttr s
 
     // ---- Numbers and colours ---------------------------------------------------------
 
-    let private num (v: float) = Num.at 3 v
+    let private num (v: float) = Num.upTo 3 v
 
     /// `StringBuilder.Append(int)` formats through the *ambient* culture, which supplies the
     /// negative sign and the group separator. Neither differs for the small non-negative counts
@@ -254,14 +254,13 @@ module Html =
 
     // ---- Films -----------------------------------------------------------------------
     //
-    // D83 — A FILM PLAYS IN THE CELL, AS A FLIPBOOK OF ITS OWN FRAMES.
+    // A FILM PLAYS IN THE CELL, AS A FLIPBOOK OF ITS OWN FRAMES.
     //
-    // M3 made the library animate and gave it three ways to get the result out: a numbered
-    // directory, an `.mp4` and — with `Codec = None` — a `.gif`. All three end in a file, and
-    // two of them need ffmpeg. None of them is a notebook, which is where §6 says people first
-    // meet the library, so `Anim`, `Film`, `Story` and `Shot` all displayed as a record field
-    // table: the milestone's whole output, invisible in the one place it should have been
-    // easiest to see.
+    // An animation has three ways out: a numbered directory, an `.mp4` and — with
+    // `Codec = None` — a `.gif`. All three end in a file, and two of them need ffmpeg. None of
+    // them is a notebook, which is where people first meet the library, so without this `Anim`,
+    // `Film`, `Story` and `Shot` would display as a record field table, invisible in the one
+    // place they should be easiest to see.
     //
     // **Why SMIL and not CSS.** Rule 1 of this file's header is absolute — no `<style>` block,
     // ever, because a notebook output cell does not scope one: it leaks into the whole document,
@@ -274,7 +273,7 @@ module Html =
     // **Why not a GIF or an `<img>` of a video.** Both would put `Marey.Tools.Video` — and
     // therefore ffmpeg — on the *display* path. A reader without ffmpeg would then get a still
     // where a colleague gets motion, from the same notebook, with nothing saying so. That is the
-    // silent degradation D62 refused for a font and D75 refused for an encoder, in the one place
+    // silent degradation refused for a font and for an encoder, in the one place
     // where the reader cannot check. A flipbook needs no tool at all: `Marey.Html` already
     // depends on `Marey.Backend.Svg`, and this adds no reference to anything.
     //
@@ -364,8 +363,8 @@ module Html =
                 // `keyTimes` for discrete need not end at 1; the last value is held to the end
                 // of the cycle, which is why the first and last frames take two stops and every
                 // frame between them takes three.
-                let t0 = Num.at 6 (float i / float n)
-                let t1 = Num.at 6 (float (i + 1) / float n)
+                let t0 = Num.upTo 6 (float i / float n)
+                let t1 = Num.upTo 6 (float (i + 1) / float n)
 
                 let values, keyTimes =
                     if i = 0 then "1;0", "0;" + t1
@@ -378,7 +377,7 @@ module Html =
                     .Append("\" keyTimes=\"")
                     .Append(keyTimes)
                     .Append("\" calcMode=\"discrete\" dur=\"")
-                    .Append(Num.at 3 duration)
+                    .Append(Num.upTo 3 duration)
                     .Append("s\" repeatCount=\"indefinite\"/>")
                     .Append(svg)
                     .Append("</g>\n")
@@ -406,7 +405,7 @@ module Html =
     /// A colour: the chip, its hex, and its Oklch coordinates.
     ///
     /// Oklch is shown rather than HSL because it is the space the library actually works in
-    /// (§7.1) — `Color.mix`, every ramp, and the whole palette validator are Oklab. A hue in
+    /// — `Color.mix`, every ramp, and the whole palette validator are Oklab. A hue in
     /// degrees and a chroma you can compare between two colours is worth more here than a
     /// second spelling of the same sRGB triple.
     let color (c: Color) : string =
@@ -506,10 +505,10 @@ module Html =
 
     /// What `Palette.validate` found.
     ///
-    /// Not in the plan's list, and included anyway: §9 asks for "a validator that checks
-    /// contrast and CVD-safety, because a physics library that renders fields in jet is
-    /// embarrassing", and a validator whose output is a record you have to squint at is only
-    /// half of that. Four rows, one per vision model, is the whole story.
+    /// Included because a theme is validated for contrast and colour-vision safety, "because a
+    /// physics library that renders fields in jet is embarrassing", and a validator whose output is
+    /// a record you have to squint at is only half of that. Four rows, one per vision model, is the
+    /// whole story.
     let paletteReport (r: PaletteReport) : string =
         let b = StringBuilder(512)
 
@@ -615,7 +614,7 @@ module Html =
               "SI unit", text (UnitDisplay.renderSi Unicode d)
               "exponents", text exps ]
 
-    /// A unit witness: the value that carries a measure's meaning at runtime (§2.2).
+    /// A unit witness: the value that carries a measure's meaning at runtime.
     ///
     /// Generic in the measure, which costs nothing here: F# erases a measure in a *class's*
     /// type argument as thoroughly as in `float<'u>`, so `U<m>` and `U<s>` are one runtime type
@@ -692,7 +691,7 @@ module Html =
     // dependency on Marey at all**. It is a bridge, not an integration, and it keeps working
     // across Marey versions as long as these two signatures hold.
     // ======================================================================================
-    // M4.5 — A LIVE FIGURE'S DOCUMENT (D100, D106)
+    // A LIVE FIGURE'S DOCUMENT
     //
     // Not a fragment: a whole page, which a host draws in a frame of its own (Verso's
     // `text/x-verso-widget`). Rule 1 therefore does not bind inside it — a `<style>` in a framed
@@ -704,7 +703,7 @@ module Html =
     // **The script formats no number.** Every label it shows arrives from the kernel, written by
     // `UnitDisplay.quantityIn`; the script reads an input's value, posts it, and swaps in what
     // comes back. That keeps one formatter in one language until the Fable backend can make it
-    // two languages and still one formatter (D105).
+    // two languages and still one formatter.
     //
     // **Well-formed XML as well as HTML**, so the oracle `NotebookTests` holds every fragment to
     // holds this page too: self-closed inputs, valued boolean attributes, and the script in a
@@ -712,12 +711,12 @@ module Html =
     //
     // **The controls are written from the state**, not from their initial values. A snapshot
     // taken after the reader moved a slider is a document of that state, and its slider has to
-    // be where the figure says it is. The phase 0 spike shipped a 3.7 Hz figure under a slider
+    // be where the figure says it is. An early version showed a 3.7 Hz figure under a slider
     // at 1 Hz, which is the bug this sentence is about.
     // ======================================================================================
 
     /// A number for an attribute a browser parses rather than a person reads: round-trip
-    /// exact, invariant. A slider over nanometres has a step of 1E-10, which `Num.at` would round
+    /// exact, invariant. A slider over nanometres has a step of 1E-10, which `Num.upTo` would round
     /// to zero, and an HTML number may carry an exponent.
     let private exact (v: float) = v.ToString("R", System.Globalization.CultureInfo.InvariantCulture)
 
@@ -741,7 +740,7 @@ module Html =
 
                 sprintf "<select data-i=\"%d\"%s>%s</select>" i disabled opts
             | Checkbox -> sprintf "<input type=\"checkbox\" data-i=\"%d\"%s%s/>" i (if v <> 0.0 then " checked=\"checked\"" else "") disabled
-            // D137 — a range input the page's script plays on its own clock: the button starts
+            // A range input the page's script plays on its own clock: the button starts
             // and stops it, and every frame it plays is a `set`, as a drag of the input is.
             | Time(lo, hi, _, loop) ->
                 sprintf
@@ -777,29 +776,29 @@ module Html =
     /// and disables the controls when the channel closes. With no channel it disables them at
     /// once and does nothing else.
     ///
-    /// D103 — a reply carries either the whole figure (`svg`) or a patch: `defs`, which replaces
+    /// A reply carries either the whole figure (`svg`) or a patch: `defs`, which replaces
     /// the figure's `<defs>` whole, and `patch`, ids and markup in turn, each swapped in for the
     /// element with that id. A patch naming an element the view does not have means the view
     /// and the kernel disagree about what is drawn, so the view says hello again, and the
     /// kernel answers a `size` with the whole figure.
     ///
-    /// D105 — a drag on the figure draws a band and posts its two corners in the figure's own
+    /// A drag on the figure draws a band and posts its two corners in the figure's own
     /// px when the pointer comes up; with shift held it posts the pointer's movement instead,
     /// summing what waits behind the request in flight so no movement is dropped; a double
     /// click posts a reset. The script works out which pixel the pointer is on and nothing else:
     /// which panel that is, and what it measures, is the kernel's.
     ///
-    /// D105 — the pointer's position over the figure is posted as it moves, under one key so
+    /// The pointer's position over the figure is posted as it moves, under one key so
     /// only the newest waits, and its leaving is posted under the same key. What it reads comes
     /// back as `readout`: the plot rectangle in figure px, the corner, and the lines, which the
     /// script places and does not read.
     ///
-    /// D102 — every message carries one number more than its type needs: the event's
+    /// Every message carries one number more than its type needs: the event's
     /// `timeStamp`, by the page's monotonic clock, in milliseconds. A message waiting behind the
     /// one in flight carries the newest event's time with the newest value. The kernel reads no
     /// clock, so a recording's times are the reader's.
     ///
-    /// D159 — on a canvas page (`canvas = true`) the figure is a `<canvas>` that `MareyView` (D157)
+    /// On a canvas page (`canvas = true`) the figure is a `<canvas>` that `MareyView`
     /// draws from the scene's bytes in the page, first and with or without a channel. A reply
     /// carries `scene` with its size, or `wpatch`, in place of `svg` and `patch`, and a pixel is
     /// placed against the canvas's size in px. An SVG page's script is unchanged, line for line.
@@ -845,7 +844,7 @@ module Html =
               yield "      send('c' + i, 'set', [i, valueOf(el)], e.timeStamp);"
               yield "    });"
               yield "  });"
-              // D137: play advances a time control one second a second from where it was, on
+              // Play advances a time control one second a second from where it was, on
               // the page's clock, and posts each frame's value as a `set` stamped with that
               // frame's time. Scrubbing the input pauses it. The value sent is the exact one; the
               // input shows it rounded to its step.
@@ -1000,7 +999,7 @@ module Html =
               yield "})();"
               yield "//]]></script>" ]
 
-    /// **D157 — the script a canvas page draws a scene with**: `Marey.Core` and the canvas painter
+    /// **The script a canvas page draws a scene with**: `Marey.Core` and the canvas painter
     /// compiled by Fable from `src/Marey.Html.View`, bundled into one classic script that defines
     /// `MareyView.show` and `MareyView.patch`. Embedded in this assembly, read once.
     let viewScript: Lazy<string> =
@@ -1009,7 +1008,7 @@ module Html =
              use reader = new System.IO.StreamReader(stream, Encoding.UTF8)
              reader.ReadToEnd())
 
-    /// **D161 — the drawn elements from which `RenderMode.Auto` uses a canvas.** Measured in the
+    /// **The drawn elements from which `RenderMode.Auto` uses a canvas.** Measured in the
     /// built-in browser on 2026-10-11 (Chromium 152): a scatter's SVG and its canvas page, script
     /// included, are ready in about the same time near 3000 marks, the canvas three times sooner
     /// at 10⁴ and twenty at 10⁵. Below 5000 the SVG is never the slower.
@@ -1027,13 +1026,13 @@ module Html =
         | RenderMode.Auto -> Scene.primitiveCount scene >= CanvasThreshold
 
     /// The measurer a live figure is laid out with (`Live.fs`, one for the whole widget), whose
-    /// metrics a canvas page draws its text with (D156).
+    /// metrics a canvas page draws its text with.
     let private liveMeasurer = TextMeasure.approx
 
     /// A scene's bytes for a canvas page, as base64: the scene and its text metrics.
     let private sceneBase64 (scene: Node) = System.Convert.ToBase64String(Wire.encodeWith liveMeasurer scene)
 
-    /// D160 — a marker batch larger than this is left out of a canvas page's poster. A legend's
+    /// A marker batch larger than this is left out of a canvas page's poster. A legend's
     /// swatch is a batch of one, so the poster keeps the legend.
     [<Literal>]
     let private PosterBatch = 16
@@ -1061,7 +1060,7 @@ module Html =
         let poster = go scene
         poster, dropped
 
-    /// **D160 — a canvas figure, and what stands in for it without a script**: the poster, which
+    /// **A canvas figure, and what stands in for it without a script**: the poster, which
     /// is the scene's SVG without its large batches, under a canvas the page's script draws and
     /// which then removes the poster; and a line, shown only with scripting off, saying how many
     /// marks the poster leaves out. A reader whose viewer runs no script sees the axes, the titles
@@ -1084,7 +1083,7 @@ module Html =
     let widgetFigure (live: Live) (state: LiveState) : string =
         guarded "live figure" (fun () -> SvgBackend.render state.Shot.Outer.Extent (Live.scene live state))
 
-    /// **D161 — whether a live figure's page is a canvas**: decided by its scene the first time it
+    /// **Whether a live figure's page is a canvas**: decided by its scene the first time it
     /// is asked, and kept for as long as the figure lives, so a slider that carries the scene
     /// across the threshold does not leave the page and the kernel speaking two languages.
     let private pageKinds = System.Runtime.CompilerServices.ConditionalWeakTable<Live, obj>()
@@ -1109,7 +1108,7 @@ module Html =
         let aspect = float state.Size.Height / float state.Size.Width
         let canvas = onCanvas live state
 
-        // D159: a canvas page carries its scene's bytes and the script that draws them, ahead of
+        // A canvas page carries its scene's bytes and the script that draws them, ahead of
         // the widget's own script, which calls it.
         let figure, drawing =
             if canvas then
@@ -1211,7 +1210,7 @@ module Html =
         | :? Recorder as r -> guarded "live figure" (fun () -> scroller (widgetFigure r.Live (Live.init r.Live)))
         | _ -> ""
 
-    /// **D160 — a figure as a canvas page**, for a host that shows a page in a frame: the poster,
+    /// **A figure as a canvas page**, for a host that shows a page in a frame: the poster,
     /// the canvas, the scene's bytes and the script that draws them, and no controls. `None` when
     /// the figure is drawn as SVG under the current `renderMode`, which is what an `Html` output
     /// is for, because a host inserts that as markup and never runs its scripts.
@@ -1240,7 +1239,7 @@ module Html =
             None
 
     /// The page a host should show in a frame instead of `renderForHost`'s markup, or `""` when the
-    /// markup is right: a `Figure` drawn on a canvas (D160). Tupled for the bridge, as
+    /// markup is right: a `Figure` drawn on a canvas. Tupled for the bridge, as
     /// `renderForHost` is.
     let documentForHost (maxWidth: float, maxHeight: float, value: obj) : string =
         match value with
@@ -1253,7 +1252,7 @@ module Html =
                 ""
         | _ -> ""
 
-    // ---- The live half of the bridge (M4.5, D100) ------------------------------------------
+    // ---- The live half of the bridge ------------------------------------------
     //
     // Six more functions the extension reaches by reflection, for the same reason as the two
     // above: nothing typed in a Marey assembly can cross the load-context boundary, so every
@@ -1317,7 +1316,7 @@ module Html =
         | Some(l, s) -> widget l s isLive
         | None -> ""
 
-    /// **D103 — the step from `before` to `after` as the view should receive it.** A patch when
+    /// **The step from `before` to `after` as the view should receive it.** A patch when
     /// one describes the change and is at most half the document; the whole figure otherwise.
     ///
     /// Half, rather than merely smaller, because a patch is not free at the other end: each
@@ -1357,8 +1356,8 @@ module Html =
             Array.append [| widgetFigure l s |] shown
         | _ -> [||]
 
-    /// **D159 — a step on a canvas page**: `wpatch` and a patch's bytes when the arrangement held
-    /// and the patch is at most half the whole scene's bytes (D103's rule), and the whole scene
+    /// **A step on a canvas page**: `wpatch` and a patch's bytes when the arrangement held
+    /// and the patch is at most half the whole scene's bytes, and the whole scene
     /// otherwise. A view that cannot be drawn is answered `same`: a canvas page has no place for
     /// the error box an SVG page shows, and the labels still move.
     let private canvasAnswer (live: Live) (before: LiveState) (after: LiveState) : string[] =
@@ -1386,14 +1385,14 @@ module Html =
         with _ ->
             [| "same" |]
 
-    /// **D103 — the answer to one message**, laid out for the bridge: a kind, what the kind
+    /// **The answer to one message**, laid out for the bridge: a kind, what the kind
     /// carries, and then each control's label.
     ///
     /// - `same; labels…` — the figure did not change, and the view keeps it. A hover is answered
     ///   this way: it moved the pointer, which the figure is not drawn from.
     /// - `svg; document; labels…` — the whole figure.
     /// - `patch; defs; n; id₁; markup₁; … idₙ; markupₙ; labels…` — `SvgPatch`'s elements.
-    /// - on a canvas page (D159), `scene; width; height; bytes; labels…` or `wpatch; bytes;
+    /// - on a canvas page, `scene; width; height; bytes; labels…` or `wpatch; bytes;
     ///   labels…`, the bytes `Wire`'s, as base64.
     ///
     /// Empty for anything that is not a live figure. A figure that cannot be drawn, or a patch
@@ -1425,7 +1424,7 @@ module Html =
             Array.append body shown
         | _ -> [||]
 
-    /// **D159 — the whole figure at a state, in the page's kind**, for a view's hello (`size`):
+    /// **The whole figure at a state, in the page's kind**, for a view's hello (`size`):
     /// `svg; document; labels…` on an SVG page and `scene; width; height; bytes; labels…` on a
     /// canvas page. Empty for anything that is not a live figure.
     let liveWholeForHost (value: obj, state: obj) : string[] =
@@ -1446,7 +1445,7 @@ module Html =
             Array.append body shown
         | None -> [||]
 
-    /// **D105 — what the pointer reads**, laid out for the bridge: the plot rectangle it is over
+    /// **What the pointer reads**, laid out for the bridge: the plot rectangle it is over
     /// in figure px (`x0; y0; x1; y1`, round-trip exact), `left` or `right` for the corner the
     /// readout sits in, then one line per axis. Empty when the pointer is off every plot, and
     /// for anything that is not a live figure. The view places the lines and does not read them.

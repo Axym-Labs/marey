@@ -1,4 +1,4 @@
-/// M9 — **composition**: where panels sit, how big their plots are, and which axes they share.
+/// **composition**: where panels sit, how big their plots are, and which axes they share.
 ///
 /// Every gate here reads the plot rectangles back through `Chart.panelsIn`, which takes them from
 /// the same inner grid the drawing pass uses, so a rectangle that is right here is right in every
@@ -182,7 +182,7 @@ module ``D174 spans`` =
 
     [<Fact>]
     let ``three beside two takes a line wherever either has one`` () =
-        // D175: lines at a third and two thirds, and at a half, so four rows of 2 : 1 : 1 : 2.
+        // Lines at a third and two thirds, and at a half, so four rows of 2 : 1 : 1 : 2.
         let three = fit |> Chart.above fit |> Chart.above fit
         let two = fit |> Chart.above fit
         let fig = three |> Chart.beside two
@@ -410,7 +410,7 @@ module ``D177 a twin y`` =
     let private temperature = ts |> Array.map (fun t -> 300.0<K> + 60.0<K> * (t / (t + 150.0<s>)))
     let private pressure = temperature |> Array.mapi (fun i tk -> (101.3 * float tk / 300.0 + 0.4 * wobble i) * 1e3<Pa>)
     let private left = Chart.line U.second U.kelvin ts temperature |> Chart.withName "temperature"
-    let private right = Chart.line U.second Derived.pascal ts pressure |> Chart.withName "pressure"
+    let private right = Chart.line U.second U.pascal ts pressure |> Chart.withName "pressure"
     let private twin = left |> Chart.withRightAxis right
     let private extent = Chart.size 500.0 300.0
 
@@ -462,7 +462,7 @@ module ``D177 a twin y`` =
 
     [<Fact>]
     let ``a pressure added to the kelvin side is refused, naming both units (gate 5)`` () =
-        let fig = twin |> Chart.addLine U.second Derived.pascal ts pressure
+        let fig = twin |> Chart.addLine U.second U.pascal ts pressure
         let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
         Assert.Contains("y axis in K", e.Message)
         Assert.Contains("kg·m^-1·s^-2", e.Message)
@@ -471,14 +471,14 @@ module ``D177 a twin y`` =
     let ``in the unit-optional mode the same refusal comes from the same check (gate 5)`` () =
         let raw (xs: float<'u>[]) = xs |> Array.map float
         let left' = Marey.Chart.Line(raw ts, raw temperature, xUnit = U.second, yUnit = U.kelvin)
-        let right' = Marey.Chart.Line(raw ts, raw pressure, xUnit = U.second, yUnit = Derived.pascal)
-        let fig = left' |> Chart.withRightAxis right' |> Chart.add (Marey.Chart.Line(raw ts, raw pressure, xUnit = U.second, yUnit = Derived.pascal))
+        let right' = Marey.Chart.Line(raw ts, raw pressure, xUnit = U.second, yUnit = U.pascal)
+        let fig = left' |> Chart.withRightAxis right' |> Chart.add (Marey.Chart.Line(raw ts, raw pressure, xUnit = U.second, yUnit = U.pascal))
         let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
         Assert.Contains("y axis in K", e.Message)
 
     [<Fact>]
     let ``two sides that disagree on x are refused at the call`` () =
-        let metres = Chart.line U.metre Derived.pascal (ts |> Array.map (fun t -> float t * 1.0<m>)) pressure
+        let metres = Chart.line U.metre U.pascal (ts |> Array.map (fun t -> float t * 1.0<m>)) pressure
         let e = Assert.ThrowsAny<exn>(fun () -> left |> Chart.withRightAxis metres |> ignore)
         Assert.Contains("x axis", e.Message)
 
@@ -517,6 +517,20 @@ module ``D177 a twin y`` =
         let views = viewsOf (Chart.size 800.0 300.0) fig
         Assert.Equal(2, views.Length)
         Assert.Equal(views.[0].Y.Domain, views.[1].Y.Domain)
+
+    /// `toRightAxis` moves the last layer onto a right y axis after the fact: a pressure added
+    /// over a temperature cannot share its axis, and once moved it draws against one of its own.
+    [<Fact>]
+    let ``toRightAxis moves the last layer onto a right axis of its own`` () =
+        let added = left |> Chart.addLine U.second U.pascal ts pressure
+        Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent added |> ignore) |> ignore
+
+        let moved = added |> Chart.toRightAxis
+        let panel = moved.Panels.[0]
+        Assert.True(panel.Y2Axis.IsSome)
+        Assert.Equal<bool[]>([| false; true |], panel.Layers |> Array.map (fun l -> l.SecondaryY))
+        let scene = Chart.toSceneWith measurer extent moved
+        Assert.True((keyed (Keys.axisY2 (Keys.panel 0 0)) scene).IsSome)
 
 module ``D178 secondary axes`` =
 
@@ -559,7 +573,7 @@ module ``D178 secondary axes`` =
     let ``P2's top axis puts 2.0 eV at 619.92 nm (gate 6)`` () =
         let fig =
             spectrum
-            |> Chart.withTopAxisMapped NonSi.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
+            |> Chart.withTopAxisMapped U.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
 
         let v = (viewsOf extent fig).[0]
         let expected = float v.Plot.X0 + float (v.X.Project 619.9209920e-9) * float (v.Plot.X1 - v.Plot.X0)
@@ -571,7 +585,7 @@ module ``D178 secondary axes`` =
     let ``a right axis in °C reads 30 at 303.15 K (gate 6)`` () =
         let fig =
             Chart.line U.second U.kelvin [| 0.0<s>; 10.0<s> |] [| 280.0<K>; 330.0<K> |]
-            |> Chart.withRightAxisIn NonSi.degreeCelsius
+            |> Chart.withRightAxisIn U.degreeCelsius
 
         let v = (viewsOf extent fig).[0]
         let expected = float v.Plot.Y1 - float (v.Y.Project 303.15) * float (v.Plot.Y1 - v.Plot.Y0)
@@ -587,7 +601,7 @@ module ``D178 secondary axes`` =
 
     [<Fact>]
     let ``a map whose inverse is wrong is refused`` () =
-        let fig = spectrum |> Chart.withTopAxisMapped NonSi.electronvolt (fun l -> 1.24e-6 / l) (fun e -> 1.0e-6 / e)
+        let fig = spectrum |> Chart.withTopAxisMapped U.electronvolt (fun l -> 1.24e-6 / l) (fun e -> 1.0e-6 / e)
         let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
         Assert.Contains("inverse disagree", e.Message)
 
@@ -604,7 +618,7 @@ module ``D178 secondary axes`` =
         let fig =
             Chart.line U.second U.kelvin ts [| 280.0<K>; 330.0<K> |]
             |> Chart.withRightAxis (Chart.line U.second U.metre ts [| 1.0<m>; 2.0<m> |])
-            |> Chart.withRightAxisIn NonSi.degreeCelsius
+            |> Chart.withRightAxisIn U.degreeCelsius
         let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
         Assert.Contains("one right side", e.Message)
 
@@ -642,7 +656,7 @@ module ``D179 aspect`` =
     let ``ångström against metres are one dimension, compared in SI`` () =
         let xs = Array.init 11 (fun i -> float i * 1e-9<m>)
         let ys = Array.init 11 (fun i -> float (i * i) * 0.5<angstrom>)
-        let fig = Chart.scatter U.metre NonSi.angstrom xs ys |> Chart.withEqualAspect
+        let fig = Chart.scatter U.metre U.angstrom xs ys |> Chart.withEqualAspect
         let v = (viewsOf (Chart.size 500.0 400.0) fig).[0]
         let w, h = float (v.Plot.X1 - v.Plot.X0), float (v.Plot.Y1 - v.Plot.Y0)
         let (x0, x1), (y0, y1) = v.X.Domain, v.Y.Domain

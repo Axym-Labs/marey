@@ -5,12 +5,12 @@ open System.Collections.Generic
 open System.Text
 
 // ======================================================================================
-// §6 — THE SVG WRITER: the primitives the reference backend is built out of.
+// THE SVG WRITER: the primitives the reference backend is built out of.
 //
-// §6 says of the SVG backend: "Build this first and treat it as the spec." §13 says the test
-// strategy is "golden-image snapshots against the SVG backend (text-diffable, reviewable in a
-// PR)". Both sentences point at the same requirement, and it is the one this file exists to
-// satisfy: **the same Scene must produce byte-identical output on every machine, every run.**
+// The SVG backend is the spec, and the tests are "golden-image snapshots against the SVG backend
+// (text-diffable, reviewable in a PR)". Both sentences point at the same requirement, and it is the
+// one this file exists to satisfy: **the same Scene must produce byte-identical output on every
+// machine, every run.**
 //
 // That rules out more than it looks like:
 //
@@ -26,7 +26,7 @@ open System.Text
 //     invisible);
 //
 // Those five rules now live in `Marey.Core`'s `Num` module, because the TikZ backend needs
-// every one of them and F2's rule is to promote shared formatting on the appearance of a second
+// every one of them and the rule is to promote shared formatting on the appearance of a second
 // consumer rather than to copy it. `numAt` below is a forwarder, kept because the golden suite
 // asserts on the SVG spellings directly and because `CoordDecimals`/`RatioDecimals`/
 // `MatrixDecimals` are SVG's own policy, not Core's.
@@ -43,7 +43,7 @@ open System.Text
 /// test suite needs to assert on the formatting rules directly, not only through rendered
 /// documents.
 [<RequireQualifiedAccess>]
-module Svg =
+module internal Svg =
 
     /// Decimal places for device-space coordinates. A thousandth of a pixel is far below what
     /// any renderer resolves, and it is coarse enough that a re-associated float multiply
@@ -64,10 +64,10 @@ module Svg =
     /// a singular transform must not be able to write "NaN" into a document that then fails
     /// to parse.
     ///
-    /// A forwarder onto `Num.at` since the TikZ backend needed the same rules (F2's
-    /// promote-on-second-consumer rule). Kept as a member of this module because the golden
+    /// A forwarder onto `Num.upTo` since the TikZ backend needed the same rules
+    /// (promote on the second consumer). Kept as a member of this module because the golden
     /// suite asserts on the SVG spelling directly.
-    let numAt (decimals: int) (v: float) : string = Num.at decimals v
+    let numAt (decimals: int) (v: float) : string = Num.upTo decimals v
 
     /// Format a device-space coordinate.
     let num (v: float) : string = numAt CoordDecimals v
@@ -207,7 +207,7 @@ module Svg =
 ///
 /// `idPrefix` namespaces every id this document hands out — both the generated ones (`qc`, `qm`)
 /// and the `Keyed` names. Empty by default, which is every ordinary render. It exists for the
-/// flipbook (D83): SVG ids are scoped to the *document*, not to a nested `<svg>` element, so
+/// flipbook: SVG ids are scoped to the *document*, not to a nested `<svg>` element, so
 /// stacking N independently rendered frames inside one outer document makes frame 5's
 /// `url(#qc)` resolve to frame 0's clip path. Prefixing here rather than at the call sites is
 /// what makes that airtight — every id in this backend is allocated by `UniqueId`, including the

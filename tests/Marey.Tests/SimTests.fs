@@ -51,7 +51,7 @@ type private Scheme =
       Ns: int list
       Run: int -> float<s> -> struct (float<m> * float<m/s>) }
 
-let private flowScheme name order ns (step: Step<struct (float<m> * float<m/s>), s>) =
+let private flowScheme name order ns (step: Stepper<struct (float<m> * float<m/s>), s>) =
     { Name = name
       Order = order
       Ns = ns
@@ -60,7 +60,7 @@ let private flowScheme name order ns (step: Step<struct (float<m> * float<m/s>),
             let h = horizon / float n
             Sim.ofStep h step (struct (1.0<m>, 0.0<m/s>)) |> Sim.run n }
 
-let private secondScheme name order ns (step: Step<struct (float<m>[] * float<m/s>[]), s>) =
+let private secondScheme name order ns (step: Stepper<struct (float<m>[] * float<m/s>[]), s>) =
     { Name = name
       Order = order
       Ns = ns
@@ -134,7 +134,7 @@ module ``Verlet's energy stays in a band and RK4's does not`` =
     let private energy (x: float<m>) (v: float<m/s>) = 0.5 * v * v + 0.5 * omega * omega * x * x
 
     /// The relative energy error at the end of every period.
-    let private errors (step: Step<struct (float<m>[] * float<m/s>[]), s>) =
+    let private errors (step: Stepper<struct (float<m>[] * float<m/s>[]), s>) =
         let e0 = energy 1.0<m> 0.0<m/s>
         let mutable s = struct ([| 1.0<m> |], [| 0.0<m/s> |])
         let out = Array.zeroCreate periods
@@ -188,7 +188,7 @@ module ``the written-out tiers are the tangent's arithmetic`` =
         let xs, _ = Rng.units 2 (Rng.seeded seed)
         struct (xs.[0] * 4.0<m> - 2.0<m>, xs.[1] * 4.0<m/s> - 2.0<m/s>)
 
-    let private agree (written: Step<_, s>) (generic: Step<_, s>) =
+    let private agree (written: Stepper<_, s>) (generic: Stepper<_, s>) =
         for seed in seeds do
             let h = 0.01<s>
             let mutable a = start seed
@@ -389,7 +389,7 @@ module ``a wrong unit does not compile`` =
         | None -> skipped ()
         | Some(code, path, output) -> Assert.True((code = 0), sprintf "the control did not compile: %s\n%s" path output)
 
-        refuses "invariant" (sim + "\nlet e = sim |> Sim.withInvariant \"energy\" Derived.joule (fun (struct (_, v)) -> 2.0<kg> * v)") "'J' does not match the unit of measure 'kg m/s'"
+        refuses "invariant" (sim + "\nlet e = sim |> Sim.withInvariant \"energy\" U.joule (fun (struct (_, v)) -> 2.0<kg> * v)") "'J' does not match the unit of measure 'kg m/s'"
 
     /// M5.6 gate 3: a fluid's options in the wrong units. The control is the same record, right.
     [<Fact>]
@@ -546,13 +546,13 @@ module ``a trajectory seeks to what a run reaches`` =
                 Assert.True(sameState serial.[i] again.[i], sprintf "%s: a second seek differs at %g s" name (float ts.[i]))
 
     [<Fact>]
-    let ``time is clamped at every door, AtSeconds included`` () =
+    let ``time is clamped at every door, AtUnclamped included`` () =
         let sim = Sim.ofStep h (Ode.verlet second) (start ())
         let traj = Sim.trajectory 1.0<s> 2.0<s> sim
         Assert.Equal(2.0, float traj.Duration)
-        Assert.True(sameState (traj.At 0.0<s>) (traj.AtSeconds -5.0<s>))
-        Assert.True(sameState (traj.At 0.0<s>) (traj.AtSeconds(nan * 1.0<s>)))
-        Assert.True(sameState (traj.At 2.0<s>) (traj.AtSeconds 50.0<s>))
+        Assert.True(sameState (traj.At 0.0<s>) (traj.AtUnclamped -5.0<s>))
+        Assert.True(sameState (traj.At 0.0<s>) (traj.AtUnclamped(nan * 1.0<s>)))
+        Assert.True(sameState (traj.At 2.0<s>) (traj.AtUnclamped 50.0<s>))
         Assert.True(sameState (traj.At 2.0<s>) (traj.AtFraction 1.5))
         Assert.True(sameState (Sim.run 200 sim) (traj.At 2.0<s>))
 
@@ -770,7 +770,7 @@ module ``Dormand–Prince`` =
             Assert.True(sameFlow (traj.At t) (straight 0.01<s> (Ode.dopri5 1e-3<m> 1e-3<m/s> 1e-3 Driven.flow) start t), sprintf "differs at %g" (float t))
 
 // ======================================================================================
-// Phase 5 — invariants and drift (D136)
+// Phase 5 — invariants and drift
 // ======================================================================================
 
 module ``invariants and drift`` =
@@ -779,9 +779,9 @@ module ``invariants and drift`` =
     let private energy (x: float<m>) (v: float<m/s>) : float<J> = 0.5 * 1.0<kg> * (v * v + omega * omega * x * x)
     let private flow: Flow2T<m, m/s, s> = fun _ x v -> struct (v, -omega * omega * x)
 
-    let private sim (step: Step<struct (float<m> * float<m/s>), s>) =
+    let private sim (step: Stepper<struct (float<m> * float<m/s>), s>) =
         Sim.ofStep 0.01<s> step (struct (0.1<m>, 0.0<m/s>))
-        |> Sim.withInvariant "energy" Derived.joule (fun (struct (x, v)) -> energy x v)
+        |> Sim.withInvariant "energy" U.joule (fun (struct (x, v)) -> energy x v)
         |> Sim.withInvariant "momentum" (U.mul U.kilogram (U.div U.metre U.second)) (fun (struct (_, v)) -> 1.0<kg> * v)
 
     [<Fact>]
@@ -813,7 +813,7 @@ module ``invariants and drift`` =
 
         let v =
             Sim.ofStep 0.01<s> (Ode.verlet (fun _ (q: float<m>[]) -> q |> Array.map (fun x -> -omega * omega * x))) (struct ([| 0.1<m> |], [| 0.0<m/s> |]))
-            |> Sim.withInvariant "energy" Derived.joule (fun (struct (q, v)) -> energy q.[0] v.[0])
+            |> Sim.withInvariant "energy" U.joule (fun (struct (q, v)) -> energy q.[0] v.[0])
             |> first
 
         let last (d: Drift) = d.Values.[d.Values.Length - 1]
@@ -871,7 +871,7 @@ module ``invariants and drift`` =
         Assert.False(s.Invariants.Head.Unit.Stated)
 
 // ======================================================================================
-// Phase 6 — events (D144): gate 7's bouncing ball, and gate 4 with events
+// Phase 6 — events: gate 7's bouncing ball, and gate 4 with events
 // ======================================================================================
 
 /// A ball over a floor at `y = 0`. `Resting` is the modelling decision D144 leaves to the user: at
@@ -1237,7 +1237,7 @@ module ``hard discs`` =
         Assert.Throws<ArgumentException>(fun () -> Collide.create [| 1.0<m> |] [| 1.0 |] 1.2 Box.Open |> ignore) |> ignore
 
 // ======================================================================================
-// Phase 8 — Poincaré sections (D142): gate 8
+// Phase 8 — Poincaré sections: gate 8
 // ======================================================================================
 
 module ``Poincaré sections`` =
@@ -1276,7 +1276,7 @@ module ``Poincaré sections`` =
               let t = (1.5 * Math.PI + 2.0 * Math.PI * float k) / omega
               if t <= horizon then yield t ]
 
-    let private section (direction: Direction) (step: Step<struct (float<m> * float<m/s>), s>) (h: float<s>) =
+    let private section (direction: Direction) (step: Stepper<struct (float<m> * float<m/s>), s>) (h: float<s>) =
         Sim.ofStep h step (struct (1.0<m>, 0.0<m/s>))
         |> Poincare.section direction (fun (struct (x: float<m>, _)) -> x) 20.0<s>
 
@@ -1301,9 +1301,9 @@ module ``Poincaré sections`` =
         let timeErrors (points: SectionPoint<'s>[]) =
             Array.map2 (fun (p: SectionPoint<'s>) t -> abs (float (p.Time - t))) points (Array.ofList (crossings 20.0<s>)) |> Array.max
 
-        let errorAt (step: Step<_, s>) (h: float<s>) = timeErrors (section Direction.Rising step h)
+        let errorAt (step: Stepper<_, s>) (h: float<s>) = timeErrors (section Direction.Rising step h)
 
-        let order (step: Step<_, s>) (hs: float<s> list) =
+        let order (step: Stepper<_, s>) (hs: float<s> list) =
             let xs = hs |> List.map (float >> log) |> Array.ofList
             let ys = hs |> List.map (errorAt step >> log) |> Array.ofList
             slope xs ys
@@ -1358,7 +1358,7 @@ module ``Poincaré sections`` =
         Assert.Equal(1, (Poincare.stroboscopic 5.0<s> traj).Length)
 
 // ======================================================================================
-// Phase 9 — unsteady fields, pathlines, particles (D142, D145): gate 11
+// Phase 9 — unsteady fields, pathlines, particles: gate 11
 // ======================================================================================
 
 module ``pathlines and particles`` =
@@ -1497,7 +1497,7 @@ module ``pathlines and particles`` =
         Assert.Throws<ArgumentException>(fun () -> Unsteady.ofSnapshots [| 1.0<s>; 0.0<s> |] [| grid 0.0<s>; grid 1.0<s> |] |> ignore) |> ignore
 
 // ======================================================================================
-// Phase 10 — grid solvers (D138): gates 12 and 13
+// Phase 10 — grid solvers: gates 12 and 13
 // ======================================================================================
 
 module ``grid solvers`` =
@@ -1580,9 +1580,9 @@ module ``grid solvers`` =
     let ``gate 12: Crank–Nicolson is second order in time`` () =
         let mode = square 21 0.0<m> 1.0<m> (fun x y -> sin (Math.PI * float x) * sin (Math.PI * float y) * 1.0<K>)
         let a = 0.05<m^2/s>
-        let at (step: Step<ScalarGrid<m, m, K>, s>) (dt: float<s>) = Sim.ofStep dt step mode |> Sim.run (int (Math.Round(0.2<s> / dt)))
+        let at (step: Stepper<ScalarGrid<m, m, K>, s>) (dt: float<s>) = Sim.ofStep dt step mode |> Sim.run (int (Math.Round(0.2<s> / dt)))
         let reference = at (Fdm.heatImplicit a cold) 1e-4<s>
-        let err (step: Step<ScalarGrid<m, m, K>, s>) (dt: float) = maxAbs (Array.map2 (-) (at step (dt * 1.0<s>)).Values reference.Values)
+        let err (step: Stepper<ScalarGrid<m, m, K>, s>) (dt: float) = maxAbs (Array.map2 (-) (at step (dt * 1.0<s>)).Values reference.Values)
         let dts = [ 0.02; 0.01; 0.005; 0.0025 ]
         let order step = slope (dts |> List.map log |> Array.ofList) (dts |> List.map (err step >> log) |> Array.ofList)
         let cn = order (Fdm.heatImplicit a cold)

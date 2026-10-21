@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- §6: "Build this first and treat it as the spec." Reference implementation and golden
+    <!-- "Build this first and treat it as the spec." Reference implementation and golden
          -image test oracle. Zero dependencies, so it works under Fable and in notebooks. -->
     <TargetFramework>netstandard2.1</TargetFramework>
-    <!-- M5 phase 2: packed with its sources under fable/, so a Fable app can reference the
+    <!-- Packed with its sources under fable/, so a Fable app can reference the
          package (Directory.Build.targets). -->
     <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Backend.Svg</AssemblyName>
@@ -16,7 +16,7 @@
   <ItemGroup>
     <Compile Include="SvgWriter.fs" />
     <Compile Include="SvgBackend.fs" />
-    <!-- D124 — the C# surface, `using Marey.CSharp`. -->
+    <!-- The C# surface, `using Marey.CSharp`. -->
     <Compile Include="CSharp.fs" />
   </ItemGroup>
 

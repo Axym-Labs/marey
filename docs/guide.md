@@ -155,21 +155,23 @@ placed on a single axis.
 the library can canonicalise, prefix and label without parsing strings.
 
 ```fsharp
-printfn "newton dim:  %s" (Dim.show (U.dim Derived.newton))
-printfn "joule:       %s" (U.symbol Derived.joule)
-printfn "celsius affine: %b" (U.isAffine NonSi.degreeCelsius)
+printfn "newton dim:  %s" (Dim.show (U.dim U.newton))
+printfn "joule:       %s" (U.symbol U.joule)
+printfn "celsius affine: %b" (U.isAffine U.degreeCelsius)
 ```
 
 `degreeCelsius` is affine, so its conversion to SI is not a factor alone.
 
 Composing witnesses gets the *measure* right and the *name* wrong, which is the reason the
-registry exists. `Derived.newtonByComposition` is built with `U.mul`/`U.div` from base witnesses
-rather than stated outright, and stands next to the named one for comparison:
+registry exists. A newton built with `U.mul` from base witnesses, rather than stated outright,
+stands next to the named one for comparison; the compiler infers that it is a `U<N>`:
 
 ```fsharp
-printfn "named:    %s" (U.symbol Derived.newton)
-printfn "composed: %s" (U.symbol Derived.newtonByComposition)
-printfn "same dimension: %b" (U.dim Derived.newton = U.dim Derived.newtonByComposition)
+let newtonComposed = U.mul U.kilogram U.metrePerSecondSquared
+
+printfn "named:    %s" (U.symbol U.newton)
+printfn "composed: %s" (U.symbol newtonComposed)
+printfn "same dimension: %b" (U.dim U.newton = U.dim newtonComposed)
 ```
 
 The composed symbol is `kg·m/s²` — correct, and not what an axis is labelled with. The registry is
@@ -177,7 +179,7 @@ keyed by the `Dim` itself, so the canonical name is recovered from the dimension
 matching strings, in all four spellings the renderers need:
 
 ```fsharp
-let canonical = UnitRegistry.tryCanonical UnitRegistry.si (U.dim Derived.newtonByComposition)
+let canonical = UnitRegistry.tryCanonical UnitRegistry.si (U.dim newtonComposed)
 printfn "canonical: %A" (canonical |> Option.map (fun u -> u.Unicode, u.Ascii, u.Siunitx))
 ```
 
@@ -187,7 +189,7 @@ units. An electric field is one: `V/m` is not in SI's table, and its dimension s
 dimension, the axis is labelled from the composition as written:
 
 ```fsharp
-let fieldUnit = U.div Derived.volt U.metre
+let fieldUnit = U.div U.volt U.metre
 printfn "field: %s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none fieldUnit)
 printfn "siunitx: %s" (UnitDisplay.unitText Siunitx UnitRegistry.si Prefix.none fieldUnit)
 ```
@@ -195,7 +197,7 @@ printfn "siunitx: %s" (UnitDisplay.unitText Siunitx UnitRegistry.si Prefix.none 
 That is `V·m⁻¹` and `\qty{}{\volt\per\metre}` — and a prefix lands on the leading factor, so a
 megavolt-per-metre axis reads `MV·m⁻¹`. A bare dimension is never factorised: the dimension of
 `J/K` is also the dimension of `N·m/K`, so only a supplied factorisation is read back. A registered
-name still wins, so `U.mul Derived.newton U.metre` is `J`.
+name still wins, so `U.mul U.newton U.metre` is `J`.
 
 **Except where the composition carries an angle.** The radian is dimensionless in SI, so `rad/s`
 has the dimension of a hertz, and the registry would name it one. An angular velocity is not a
@@ -203,17 +205,17 @@ frequency: they differ by 2π. So a factorisation that contains `rad` or `sr` is
 written, and the axis takes the angle's own quantity name:
 
 ```fsharp
-let angularVelocity = U.div Derived.radian U.second
+let angularVelocity = U.div U.radian U.second
 printfn "angular velocity: %s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none angularVelocity)
-printfn "frequency:        %s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none Derived.hertz)
+printfn "frequency:        %s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none U.hertz)
 ```
 
 That is `rad·s⁻¹` and `Hz`. An axis in `rad·s⁻¹` is titled `ω`, one in `rad` `θ`, and one in
 `rad·s⁻²` `α`, and a layer in `rad/s` refuses to share an axis with a layer in `Hz`, as metres
 refuse joules. The angle is seen in the factors a witness was **composed** from, or in the symbol
-`rad` of `Derived.radian` itself. A witness declared by hand with a compound symbol,
+`rad` of `U.radian` itself. A witness declared by hand with a compound symbol,
 `U<rad/s>("rad/s", …)`, has no factors to read, so it renders and unifies as a plain s⁻¹: build
-angular units with `U.div` and `U.mul` from `Derived.radian`.
+angular units with `U.div` and `U.mul` from `U.radian`.
 
 Non-SI witnesses cover the units physics actually writes in: `electronvolt`, `angstrom`,
 `parsec`, `lightYear`, `dalton`, `atmosphere`, `bar`, `barn`, `calorie`, `gauss`, `litre`,
@@ -383,7 +385,7 @@ let decades = [| 1.0<m>; 10.0<m>; 100.0<m>; 1000.0<m>; 10000.0<m> |]
 let response = [| 1.0<V>; 0.5<V>; 0.25<V>; 0.125<V>; 0.0625<V> |]
 
 let logFigure =
-    Chart.line U.metre Derived.volt decades response
+    Chart.line U.metre U.volt decades response
     |> Chart.withXLog
     |> Chart.withTitle "Response against distance"
 ```
@@ -412,12 +414,8 @@ let framed =
     |> Chart.withXDomain 0.0 10.0
 ```
 
-Ticks walk a 1-2-5 ladder and return what falls out, so a theme's `TickCount` is a *target*
-rather than a promise:
-
-```fsharp
-printfn "ticks: %A" (Ticks.linear 5 (0.0, 9.2))
-```
+Ticks walk a 1-2-5 ladder and keep what falls out, so a theme's `TickCount` is a *target*
+rather than a promise.
 
 ---
 
@@ -650,7 +648,7 @@ Scale kinds and domains, set per axis:
 
 ```fsharp
 let axisWork =
-    Chart.line U.metre Derived.volt decades response
+    Chart.line U.metre U.volt decades response
     |> Chart.withXScaleKind (ScaleKind.Log 10.0)
     |> Chart.withYDomain 0.0 1.2
 ```
@@ -676,7 +674,7 @@ printfn "ticks in nm: %b" (spectrumSvg.Contains ">450<" && spectrumSvg.Contains 
 
 A step that would give more than 50 ticks is refused, naming the step and the domain — it is
 almost always a step stated in the wrong prefix. A step in another unit of the axis's dimension
-is converted (`withXTicksEvery NonSi.minute 0.5<minute>` on a seconds axis ticks every 30 s).
+is converted (`withXTicksEvery U.minute 0.5<minute>` on a seconds axis ticks every 30 s).
 `withXTicksAt` states the values, and `withXTicksNamed` states each label too, which is how a band
 structure's axis reads `X Γ X`; named ticks keep the unit in the title and are never dropped
 to make room.
@@ -716,7 +714,7 @@ let pressure = t |> Array.map (fun s -> 101.3e3<Pa> * exp (-s / 6.0<s>))
 let twin =
     Chart.line U.second U.kelvin t temperature
     |> Chart.withName "temperature"
-    |> Chart.withRightAxis (Chart.line U.second Derived.pascal t pressure |> Chart.withName "pressure")
+    |> Chart.withRightAxis (Chart.line U.second U.pascal t pressure |> Chart.withName "pressure")
     |> Chart.withLegend LegendBest
 ```
 
@@ -741,7 +739,7 @@ the units themselves, offset included. Through a map, `withTopAxisMapped` and
 directions.
 
 ```fsharp
-let celsius = Chart.line U.second U.kelvin t temperature |> Chart.withRightAxisIn NonSi.degreeCelsius
+let celsius = Chart.line U.second U.kelvin t temperature |> Chart.withRightAxisIn U.degreeCelsius
 
 let hc = 1.239841984e-6<eV * m>
 let wavelengths = Array.init 61 (fun i -> (400.0 + 5.0 * float i) * 1e-9<m>)
@@ -749,7 +747,7 @@ let band (l: float<m>) = let d = (l - 550e-9<m>) / 40e-9<m> in exp (-d * d)
 
 let energyAxis =
     Chart.line U.metre U.one wavelengths (wavelengths |> Array.map band)
-    |> Chart.withTopAxisMapped NonSi.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
+    |> Chart.withTopAxisMapped U.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
     |> Chart.withTopAxisLabel "E"
 ```
 
@@ -1291,11 +1289,11 @@ puts one figure's layers over another's panel:
 
 ```fsharp
 let equipotentials =
-    Field.heatmap U.metre U.metre Derived.volt phi
+    Field.heatmap U.metre U.metre U.volt phi
     |> Chart.overlay (Field.contoursAt [| -1.0<V>; -0.5<V>; 0.0<V>; 0.5<V>; 1.0<V> |] U.metre U.metre phi)
     |> Chart.withYLabel "y"
 
-let banded = Field.bands U.metre U.metre Derived.volt phi
+let banded = Field.bands U.metre U.metre U.volt phi
 ```
 
 Every field mark is computed when the figure is compiled, against the panel's final scales, so a
@@ -1355,12 +1353,12 @@ let nonsense = Field.curl phaseGrid
 saddle, stable or unstable node or focus, centre, or degenerate. The eigenvalues are in `1/'t`:
 
 ```fsharp
-let omegaUnit = U.div Derived.radian U.second
+let omegaUnit = U.div U.radian U.second
 
 for p in Phase.fixedPoints phaseGrid do
-    printfn "%s" (FixedPoint.describe Derived.radian omegaUnit U.second p)
+    printfn "%s" (FixedPoint.describe U.radian omegaUnit U.second p)
 
-let portrait = Phase.portrait Derived.radian omegaUnit phaseGrid
+let portrait = Phase.portrait U.radian omegaUnit phaseGrid
 ```
 
 That prints a centre at 0 and ±2π and a saddle at ±π, the eigenvalues ±3.13i s⁻¹ and ±3.13 s⁻¹.
@@ -1383,7 +1381,7 @@ let growing (time: float<s>) =
     Field.sampleScalar fieldXs fieldYs (fun p -> (1.0 + float time) * dipolePotential p)
 
 let growingFilm =
-    Anim.ofSeconds 2.0<s> (fun time -> Field.heatmap U.metre U.metre Derived.volt (growing time))
+    Anim.ofSeconds 2.0<s> (fun time -> Field.heatmap U.metre U.metre U.volt (growing time))
     |> Film.ofFigures 16 (Chart.size 480.0 300.0)
 ```
 
@@ -1396,8 +1394,8 @@ potential above:
 
 ```fsharp
 let stated =
-    Field.heatmap U.metre U.metre Derived.volt phi
-    |> Chart.withColorDomain Derived.volt -2.0<V> 2.0<V>
+    Field.heatmap U.metre U.metre U.volt phi
+    |> Chart.withColorDomain U.volt -2.0<V> 2.0<V>
 ```
 
 Streamlines are recomputed from each frame's field, and their seeds follow the field, so a film of
@@ -1668,7 +1666,7 @@ let animTwice = Anim.andThen animClimb (Anim.tween 1.0<s> 100.0<m> 0.0<m>)
 printfn "up then down lasts %.1f s" (float (Anim.duration animTwice))
 ```
 
-`Anim.stretch` scales a duration and `Anim.ease` reparameterises the clock. `Anim.pure'` is a
+`Anim.stretch` scales a duration and `Anim.ease` reparameterises the clock. `Anim.constant` is a
 constant of zero duration.
 
 ### The clock clamps; the fraction does not
@@ -2352,7 +2350,7 @@ the same code as every other figure in this guide.
 ```fsharp
 #r "nuget: Marey.Interact"
 
-let lineCharge = U.div Derived.coulomb U.metre
+let lineCharge = U.div U.coulomb U.metre
 let epsilon0 = 8.8541878128e-12<F/m>
 
 // Two line charges, +λ and −λ, a distance 2·half apart on the x axis.
@@ -2365,8 +2363,8 @@ let pairMap (lambda: float<C/m>) (half: float<m>) (contoured: bool) =
     let grid = Field.sampleScalar fieldXs fieldYs (pairPotential lambda half)
 
     let map =
-        Field.heatmap U.metre U.metre Derived.volt grid
-        |> Chart.withColorDomain Derived.volt -100.0<V> 100.0<V>
+        Field.heatmap U.metre U.metre U.volt grid
+        |> Chart.withColorDomain U.volt -100.0<V> 100.0<V>
         |> Chart.withYLabel "y"
 
     if contoured then
@@ -2707,7 +2705,7 @@ start is zero:
 ```fsharp
 let springEnergy (struct (q: float<m>[], v: float<m/s>[])) : float<J/kg> = 0.5 * v.[0] * v.[0] + 0.5 * springRate * q.[0] * q.[0]
 
-let watched = springSim |> Sim.withInvariant "energy" (U.div Derived.joule U.kilogram) springEnergy
+let watched = springSim |> Sim.withInvariant "energy" (U.div U.joule U.kilogram) springEnergy
 let energyDrift = Sim.drift 201 (Sim.trajectory 1.0<s> 20.0<s> watched) watched
 let driftChart = Drift.chart energyDrift
 ```

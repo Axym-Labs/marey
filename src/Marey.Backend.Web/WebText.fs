@@ -4,13 +4,13 @@ open System
 open Fable.Core
 
 // ======================================================================================
-// M5 — TEXT IN THE BROWSER (D123)
+// TEXT IN THE BROWSER
 //
 // The browser lays out and draws, so the measurer is the canvas's own `measureText`: synchronous,
 // and answered in the font the canvas will draw with. The trap is a web font that has not
 // arrived. `measureText` then measures the fallback face, layout fixes its gutters against it,
-// and the real face lands a moment later into labels sized for another one: D62's one
-// resolution, broken by a race nobody sees in development, where the font is cached.
+// and the real face lands a moment later into labels sized for another one: a font
+// resolved once, broken by a race nobody sees in development, where the font is cached.
 //
 // So the canvas measurer refuses to measure until `document.fonts` has finished loading, and the
 // way to get a measurer *now* says which one it is: the canvas's when the fonts are in, and
@@ -20,7 +20,7 @@ open Fable.Core
 
 /// A font as CSS writes it, from the IR's `FontSpec`.
 [<RequireQualifiedAccess>]
-module CssFont =
+module internal CssFont =
 
     let private generic =
         set [ "serif"; "sans-serif"; "monospace"; "cursive"; "fantasy"; "system-ui"; "ui-serif"; "ui-sans-serif"; "ui-monospace"; "math" ]
@@ -45,7 +45,7 @@ module CssFont =
             "%s%d %spx %s"
             (if font.Italic then "italic " else "")
             font.Weight
-            (Num.at 3 px)
+            (Num.upTo 3 px)
             (family font.Family)
 
 /// Whether the document's web fonts have arrived.
@@ -65,7 +65,7 @@ module WebFonts =
     /// Resolves when `ready` is true.
     let whenReady () : JS.Promise<unit> = readyPromise ()
 
-/// **D123 — the canvas's own measurer**, which refuses until the fonts are ready.
+/// **The canvas's own measurer**, which refuses until the fonts are ready.
 ///
 /// Advances are `measureText`'s width; the ascent and descent are the font's box, as Skia's
 /// measurer reports a face's, so a centred label sits where the canvas will draw it. A browser
@@ -117,6 +117,7 @@ type WebMeasurer =
       /// `ApproxTextMeasurer`: a figure compiled with it is approximated, and should say so.
       Approximated: string option }
 
+/// Measuring text in the browser, once the page's fonts have loaded.
 [<RequireQualifiedAccess>]
 module WebText =
 

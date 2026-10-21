@@ -3,7 +3,7 @@ namespace Marey
 open System
 open System.Runtime.InteropServices
 
-/// §9 — **the quick, matplotlib-shaped front door.**
+/// **The quick, matplotlib-shaped front door.**
 ///
 /// ```fsharp
 /// Chart.line U.second U.metre ts positions
@@ -13,21 +13,20 @@ open System.Runtime.InteropServices
 ///
 /// ### Why the witnesses are arguments and cannot be anything else
 ///
-/// §9 sketches `Chart.line (ts, positions) |> Chart.withXAxis (Axis.auto U.second)`, and the
-/// witness appears in that sketch too — because §1.3 leaves no alternative. `float(s)` **is**
-/// `float` at runtime; a `float(s)[]` carries no evidence that it is seconds. Something has to
-/// hand the library the runtime witness, exactly once, and `U.second` is that something.
+/// There is no alternative to passing them. `float(s)` **is** `float` at runtime; a `float(s)[]`
+/// carries no evidence that it is seconds. Something has to hand the library the runtime
+/// witness, exactly once, and `U.second` is that something.
 ///
 /// What is *not* configured is everything downstream of it: the scale, the domain, the prefix,
 /// the tick values, the tick labels and both axis titles. `Chart.line U.second U.metre ts xs`
 /// prints `t [s]` and `x [m]`, and the same call on data spanning 1e-9…5e-9 m prints `x [nm]`
-/// with ticks reading 1, 2, 3, 4, 5 (§2.2). That is the payoff, and it survives being handed the
+/// with ticks reading 1, 2, 3, 4, 5. That is the payoff, and it survives being handed the
 /// witness because the witness is the *only* thing supplied.
 ///
 /// ### Nothing here mutates
 ///
-/// §1.1 indicts Plotly.NET for exactly one thing this module could get wrong: "styling functions
-/// *mutate* the chart (documented caveat)." Every `with*` and `add*` below returns a new
+/// Plotly.NET's documented caveat is exactly the one thing this module could get wrong: its
+/// styling functions *mutate* the chart. Every `with*` and `add*` below returns a new
 /// `Figure`; there is no `mutable` in this file and no member on any type in this package that
 /// changes one. `Chart.withTitle` on a figure you have already rendered gives you a second
 /// figure and leaves the first alone.
@@ -101,7 +100,7 @@ module Chart =
         figureOf [| layerOf s.Name Theme.initial 0 g (Erase.packSeries s) |]
 
     /// A figure from an already-reunified `PackedSeries` — the door the encoding CE comes
-    /// through. The reunifier lives in `Marey.Core` (D44 finding 3) and terminates there; this
+    /// through. The reunifier lives in `Marey.Core` and terminates there; this
     /// is what lets it, so nothing in `Marey.Plot` has to write a rank-2 consumer of its own.
     let ofPacked (g: Geom) (p: PackedSeries) : Figure =
         figureOf [| layerOf (Erase.seriesName p) Theme.initial 0 g p |]
@@ -332,7 +331,7 @@ module Chart =
         | None -> fig
         | Some p -> fig |> addLayers (fun _ -> p.Layers)
 
-    /// D125 — **add a figure's layers as the next series**: `Chart.add (Chart.Line(xs, ys)) fig`.
+    /// **Add a figure's layers as the next series**: `Chart.add (Chart.Line(xs, ys)) fig`.
     ///
     /// The unit-optional mode's one spelling for what `addLine` and its nine siblings do. Unlike
     /// `overlay`, which keeps the top figure's styles because the field marks are built to be
@@ -407,12 +406,12 @@ module Chart =
         fig
         |> addLayers (fun i -> [| layerOf "" fig.Theme i (Geom.segment s x1 y1) (Erase.packSeries s) |])
 
-    // ---- Rules and spans (D162) ----------------------------------------------------------------
+    // ---- Rules and spans ----------------------------------------------------------------
 
     /// A rule's layer. Its data is one point, or two for a span, on the axis it marks and NaN
     /// on the other: enough for `unify` to check its unit against the axis and for
     /// `withDomainIncluded` to have a value to put in, and nothing for an axis it does not
-    /// constrain. Out of the domain on both axes (D163), in the rule's own style, and in the
+    /// constrain. Out of the domain on both axes, in the rule's own style, and in the
     /// legend only once it is named.
     let private ruleLayer (theme: Theme) (i: int) (rule: RuleSpec<1>) (data: PackedSeries) : Layer =
         { layerOf "" theme i (GeomRule rule) data with
@@ -479,12 +478,12 @@ module Chart =
         let rule, s = throughRule ux uy x y slope
         addRule rule s fig
 
-    // ---- Stats (§9, D47) ----------------------------------------------------------------------
+    // ---- Stats ----------------------------------------------------------------------
 
     /// The y domain of a quantity that cannot be negative and is read from zero: zero exactly,
     /// to the maximum plus breathing room *above only*.
     ///
-    /// D50 widens a bar's domain to reach zero; this is the same rule for a quantity that never
+    /// A bar's domain is widened to reach zero; this is the same rule for a quantity that never
     /// leaves the positive half-line, and it differs from `withZero (paddedOr …)` in the case
     /// that matters here. An empty histogram bin, or a density that reaches the axis, has the
     /// value zero — and padding below it draws a strip of negative count under the baseline,
@@ -498,7 +497,7 @@ module Chart =
 
         tag<'u> 0.0, tag<'u> (if hi <= 0.0 then 1.0 else hi * 1.05)
 
-    /// §9 / D47 — **the bar series a histogram is drawn as**: bin centres against counts, bars
+    /// **The bar series a histogram is drawn as**: bin centres against counts, bars
     /// touching, y from zero.
     ///
     /// **The x measure is the sample's and the y measure is `float<1>`**, and nothing had to be
@@ -545,7 +544,7 @@ module Chart =
     /// interpolated between observations asserts data between them that was not observed.
     ///
     /// **`GeomStep` exists now and this still does not use it**, which is worth stating because
-    /// the obvious reading of phase 6 is that it should. `GeomStep StepAfter` draws the riser
+    /// the obvious reading is that it should. `GeomStep StepAfter` draws the riser
     /// *between* two points, so it has no riser to draw at the first observation — and the jump
     /// from zero to `1/n` at the smallest datum is the one an ECDF is read for. The doubled
     /// array draws it. `Chart.step` is the geom's own front door for the data that has no such
@@ -630,16 +629,16 @@ module Chart =
 
     // ---- Dimensionless ------------------------------------------------------------------------
 
-    /// **Retired by D109; one release as an alias, then gone.** The constructors at `U.one U.one`,
+    /// **Retired; one release as an alias, then gone.** The constructors at `U.one U.one`,
     /// for data with no dimension, as 0.3 shipped them.
     ///
     /// It was the library's answer to plain numbers while every chart required a witness, and it
     /// gave a wrong answer to most of them: `U.one` claims the data is *dimensionless*, which
     /// revenue in dollars is not, and `Figure.unify` acts on the claim. The unit-optional
-    /// constructors take its place — `Chart.Line(xs, ys)` leaves both units unspecified (D127),
+    /// constructors take its place — `Chart.Line(xs, ys)` leaves both units unspecified,
     /// which claims nothing — and `U.one` remains a value to pass where the data really has no
     /// dimension, `Chart.Line(xs, ys, yUnit = U.one)`.
-    [<Obsolete("Chart.Plain is retired (D109). Use Chart.Line(xs, ys), which leaves the units unspecified, or pass U.one where the data is dimensionless.")>]
+    [<Obsolete("Chart.Plain is retired. Use Chart.Line(xs, ys), which leaves the units unspecified, or pass U.one where the data is dimensionless.")>]
     [<RequireQualifiedAccess>]
     module Plain =
 
@@ -701,7 +700,7 @@ module Chart =
         let addSegment (x0: float[]) (y0: float[]) (x1: float[]) (y1: float[]) (fig: Figure) : Figure =
             addSegment U.one U.one x0 y0 x1 y1 fig
 
-    /// §9 / D45 — **the categorical front door**: a chart whose x is a category rather than a
+    /// **The categorical front door**: a chart whose x is a category rather than a
     /// quantity.
     ///
     /// A sibling module rather than a `Chart.bars` beside `Chart.bar`, for two reasons. The
@@ -771,11 +770,11 @@ module Chart =
             let _, s = series "" uy keys values
             ofSeries GeomPoint s |> unlabelledX
 
-        /// §9 / D47 — **`count`**: one bar per level, as tall as the number of rows that carry
+        /// **`count`**: one bar per level, as tall as the number of rows that carry
         /// it.
         ///
         /// The categorical counterpart of `Chart.histogram`, and it has the same two measures:
-        /// no x measure at all, because a category has none (D45), and `float<1>` on y, because
+        /// no x measure at all, because a category has none, and `float<1>` on y, because
         /// a count is a number of rows.
         ///
         /// The level order is `Stat.count`'s, which is `Levels.ofSeq`'s, which is
@@ -840,7 +839,7 @@ module Chart =
 
             ofSeries (Geom.violin 0.8 s densities) s |> unlabelledX
 
-    /// D109 — the categorical front door in the unit-optional mode: `Chart.Category.Bar(keys,
+    /// The categorical front door in the unit-optional mode: `Chart.Category.Bar(keys,
     /// values, yUnit = U.metre)`. A type beside `module Category`, as `type Chart` stands beside
     /// `module Chart`, so `Chart.Category.count` still resolves to the module. The keys are data
     /// and have no unit; the values have the one stated, or none.
@@ -939,9 +938,9 @@ module Chart =
     let withMarker (s: MarkerShape) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withShape s l.Style }) fig
 
-    /// D69 — **give these rows nodes of their own**, by original row index.
+    /// **Give these rows nodes of their own**, by original row index.
     ///
-    /// §5.1 batches a scatter's marks into one `Markers` node, so mark 42 has nothing a
+    /// The IR batches a scatter's marks into one `Markers` node, so mark 42 has nothing a
     /// rewrite can address. Naming it here splits that batch three ways — before it, itself
     /// under `Keys.mark`, after it — and `Scene.mapKey (Keys.mark layer 42)` then reaches
     /// exactly one mark. Two extra nodes, not N.
@@ -954,7 +953,7 @@ module Chart =
     let addressMarks (rows: int[]) (fig: Figure) : Figure =
         mapLastLayer (fun l -> { l with Addressed = Array.distinct (Array.append l.Addressed rows) }) fig
 
-    /// **D104 — name the rows of the most recently added series**, one key per row. Its marks
+    /// **Name the rows of the most recently added series**, one key per row. Its marks
     /// are then keyed by these rather than by row: drop row 3 and every later mark keeps its
     /// name, and a storyboard's `morphTo` pairs each datum with the one of the same name. Keys
     /// must be unique; a duplicate is refused here, with the duplicated keys and their rows.
@@ -970,7 +969,7 @@ module Chart =
     let withOpacity (o: float) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withOpacity o l.Style }) fig
 
-    /// D163 — **let the most recently added layer move the axes.** A rule, a span or an
+    /// **Let the most recently added layer move the axes.** A rule, a span or an
     /// annotation marks a place on the domain the data chose and stays out of it; this puts it
     /// back in, for the figure that must show the rule ("the panel must reach y = 0"). A data
     /// layer is in already, so on one this changes nothing.
@@ -991,10 +990,10 @@ module Chart =
                 { l with InDomain = inDomain })
             fig
 
-    // ---- Annotations (D164, D165) ------------------------------------------------------------
+    // ---- Annotations ------------------------------------------------------------
 
     /// An annotation's layer: one point, the place it marks, out of the domain on both axes
-    /// (D163), so labelling a point never moves the axes. The theme's foreground, not a palette
+    ///, so labelling a point never moves the axes. The theme's foreground, not a palette
     /// colour. Text starts 6 px up and to the right of the point, so it does not cover the mark.
     let private annotationLayer (theme: Theme) (i: int) (text: string) (placement: TextPlacement<1>) (data: PackedSeries) : Layer =
         { layerOf "" theme i (GeomAnnotation(text, placement, ArrowNone)) data with
@@ -1019,29 +1018,29 @@ module Chart =
                 | _ -> l)
             fig
 
-    /// D164 — put the most recent annotation's text `dx`, `dy` px from its point, y up. A device
+    /// Put the most recent annotation's text `dx`, `dy` px from its point, y up. A device
     /// offset is the default kind, because it stays put under a zoom and a change of figure size.
     let withTextOffset (dx: float<px>) (dy: float<px>) (fig: Figure) : Figure =
         mapAnnotation (fun (text, _, arrow) -> text, TextOffset { X = dx; Y = dy }, arrow) fig
 
-    /// D164 — put the most recent annotation's text at a place in data space, in the axes' units.
+    /// Put the most recent annotation's text at a place in data space, in the axes' units.
     /// `Marey.UnitsOfMeasure` has the spelling that takes a witness per axis.
     let withTextAt (x: float) (y: float) (fig: Figure) : Figure =
         mapAnnotation (fun (text, _, arrow) -> text, TextAt(x, y), arrow) fig
 
-    /// D164 — an arrow from the most recent annotation's text to its point: `ArrowStraight`, or
+    /// An arrow from the most recent annotation's text to its point: `ArrowStraight`, or
     /// `ArrowArc bend` for a curve bent `bend` times its length to the left.
     let withArrow (arrow: ArrowStyle) (fig: Figure) : Figure =
         mapAnnotation (fun (text, placement, _) -> text, placement, arrow) fig
 
-    /// D165 — text in the last panel's plot area at (`x`, `y`), as fractions of its width and
+    /// Text in the last panel's plot area at (`x`, `y`), as fractions of its width and
     /// height from the bottom left: a note in a corner. It is anchored on the side it is near, so
     /// `(0.98, 0.98)` hangs from the top right corner. For panel letters, `withPanelLetters`.
     let addPanelText (x: float) (y: float) (text: string) (fig: Figure) : Figure =
         let data = Erase.packSeries (series "" U.unspecified U.unspecified [| nan |] [| nan |])
         fig |> addLayers (fun i -> [| annotationLayer fig.Theme i text (TextInPanel(x, y)) data |])
 
-    /// D165 — **letter the panels**, "(a)", "(b)", … in reading order (row, then column), at the
+    /// **Letter the panels**, "(a)", "(b)", … in reading order (row, then column), at the
     /// top left of each plot area in the panel-title face, bold. Assigned when the figure is
     /// drawn, so a panel added afterwards by `beside` or `above` is lettered too.
     let withPanelLetters (letter: LetterStyle) (fig: Figure) : Figure =
@@ -1084,7 +1083,7 @@ module Chart =
                                        Addressed = [||] } |] })
             fig
 
-    // ---- Non-positional channels (§9, D46, D49) -----------------------------------------------
+    // ---- Non-positional channels -----------------------------------------------
 
     /// Attach a channel to the most recently added layer.
     ///
@@ -1114,7 +1113,7 @@ module Chart =
 
     /// **Colour by a category.** One colour per level, one batch per level, one legend entry
     /// per level — and the levels come from the keys themselves, in first-appearance order,
-    /// exactly as `Chart.Category` derives them (D45).
+    /// exactly as `Chart.Category` derives them.
     ///
     /// ```fsharp
     /// Chart.scatter U.second U.metre ts xs
@@ -1122,7 +1121,7 @@ module Chart =
     /// |> Chart.shapeByKey species
     /// ```
     ///
-    /// Applying both to the same keys is §9's colour-blind-safe scatter, and it is still *one
+    /// Applying both to the same keys is the colour-blind-safe scatter, and it is still *one
     /// batch per level*: the two channels read the same level number, so the grouping does not
     /// take their product.
     let colorByKey (keys: 'k[]) (fig: Figure) : Figure =
@@ -1132,7 +1131,7 @@ module Chart =
 
     /// **Shape by a category** — the redundant encoding that keeps a scatter readable in
     /// greyscale and under colour-vision deficiency, which is why `MarkerShape` is on the
-    /// batched node at all (D5).
+    /// batched node at all.
     let shapeByKey (keys: 'k[]) (fig: Figure) : Figure =
         let levels = Levels.ofSeq keys
 
@@ -1174,7 +1173,7 @@ module Chart =
             scale.Accept
                 { new IScaleConsumer<PackedScale> with
                     member _.Apply<[<Measure>] 'c>(s: Scale<'c>) =
-                        // D127 — either side unstated: no claim to check and no conversion to
+                        // Either side unstated: no claim to check and no conversion to
                         // make, so the ends are taken as the numbers they are.
                         let both = s.Unit.Stated && u.Stated
 
@@ -1212,7 +1211,7 @@ module Chart =
         : Figure =
         tile ux uy (pitch x) (pitch y) x y |> colorBy uz z
 
-    /// D93 — **a hexbin**, drawn: one hexagon per occupied cell, coloured by its density along
+    /// **A hexbin**, drawn: one hexagon per occupied cell, coloured by its density along
     /// the theme's sequential ramp, with a colorbar in `1/('ux·'uy)`. Positions in metres give
     /// a bar in m⁻². The hexagons are polygons in data space, projected vertex by vertex, so they
     /// stay where their points are on a log axis.
@@ -1270,8 +1269,8 @@ module Chart =
 
     // ---- Axes ---------------------------------------------------------------------------------
 
-    /// An axis configuration named after the quantity. §9's `Chart.withXAxis (Axis.auto …)` in
-    /// spirit: the unit half of the title is never configured, only the quantity name.
+    /// An axis configuration named after the quantity: the unit half of the title is never
+    /// configured, only the quantity name.
     let axis (label: string) : AxisConfig = { Figure.axisConfig with Label = Some label }
 
     let withXAxis (cfg: AxisConfig) (fig: Figure) = mapLast (fun p -> { p with XAxis = cfg }) fig
@@ -1279,7 +1278,7 @@ module Chart =
 
     /// How much of the last panel's x axis is drawn: `AxisFull`, `AxisUntitled`, `AxisUnlabelled`,
     /// `AxisBare` or `AxisHidden`. Only what is drawn changes, so stated ticks, a prefix, a domain
-    /// or a reversal set before or after it stay. A shared axis (D176) still hides the inner
+    /// or a reversal set before or after it stay. A shared axis still hides the inner
     /// panels' numbers and title whatever their look.
     let withXLook (look: AxisLook) (fig: Figure) =
         mapLast (fun p -> { p with XAxis = Figure.withLook look p.XAxis }) fig
@@ -1324,7 +1323,7 @@ module Chart =
 
     /// The last panel's x domain, in raw numeric values of the axis's own unit. Raw because the
     /// measure has already been erased into the figure; use `Chart.ofSeries` with a hand-built
-    /// scale when you want the domain checked. On a shared x (D176) it is the group's: every
+    /// scale when you want the domain checked. On a shared x it is the group's: every
     /// panel the axis is shared with takes it.
     let withXDomain (lo: float) (hi: float) (fig: Figure) =
         if fig.Panels.Length = 0 then
@@ -1340,7 +1339,7 @@ module Chart =
             let last = fig.Panels.[lastPanel fig]
             Figure.withDomainsShared (fun p -> p.Row = last.Row && p.Col = last.Col) None (Some(lo, hi)) fig
 
-    // ---- Stated ticks, the prefix, reversal (D166, D169, D170) ------------------------------
+    // ---- Stated ticks, the prefix, reversal ------------------------------
 
     let internal withXTickSpec (ticks: TickSpec) (unit: U<1>) (fig: Figure) =
         mapLast (fun p -> { p with XAxis = { p.XAxis with Ticks = ticks; TickUnit = unit } }) fig
@@ -1348,7 +1347,7 @@ module Chart =
     let internal withYTickSpec (ticks: TickSpec) (unit: U<1>) (fig: Figure) =
         mapLast (fun p -> { p with YAxis = { p.YAxis with Ticks = ticks; TickUnit = unit } }) fig
 
-    /// D166 — a tick at every multiple of `step` on the x axis, in the axis's own numbers (the
+    /// A tick at every multiple of `step` on the x axis, in the axis's own numbers (the
     /// unit its data is in, not the prefix it is labelled in): `withXTicksEvery 50e-9` on a
     /// wavelength axis in metres gives 400, 450, … under `λ [nm]`. More than 50 ticks is refused.
     /// `Marey.UnitsOfMeasure` has the spelling that takes a witness and checks it.
@@ -1356,41 +1355,41 @@ module Chart =
 
     let withYTicksEvery (step: float) (fig: Figure) = withYTickSpec (TicksEvery step) U.unspecified fig
 
-    /// D166 — ticks at these values on the x axis, labelled as chosen ticks would be. Values
+    /// Ticks at these values on the x axis, labelled as chosen ticks would be. Values
     /// outside the domain are left out.
     let withXTicksAt (values: float[]) (fig: Figure) = withXTickSpec (TicksAt(Array.copy values)) U.unspecified fig
 
     let withYTicksAt (values: float[]) (fig: Figure) = withYTickSpec (TicksAt(Array.copy values)) U.unspecified fig
 
-    /// D166 — ticks at these values on the x axis, each with its own label: the high-symmetry
+    /// Ticks at these values on the x axis, each with its own label: the high-symmetry
     /// points of a band structure, `X`, `Γ`, `X`. The title keeps its unit, and a named tick is
     /// never dropped to make room (it may be tilted).
     let withXTicksNamed (ticks: (float * string)[]) (fig: Figure) = withXTickSpec (TicksNamed(Array.copy ticks)) U.unspecified fig
 
     let withYTicksNamed (ticks: (float * string)[]) (fig: Figure) = withYTickSpec (TicksNamed(Array.copy ticks)) U.unspecified fig
 
-    /// D169 — write the x axis in `prefix` rather than the one its domain selects (D19):
+    /// Write the x axis in `prefix` rather than the one its domain selects:
     /// `withXPrefix Prefix.none` for an axis in plain metres, `Prefix.milli` for millimetres
     /// whatever the data's range.
     let withXPrefix (prefix: Prefix) (fig: Figure) = mapLast (fun p -> { p with XAxis = { p.XAxis with Prefix = Some prefix } }) fig
 
     let withYPrefix (prefix: Prefix) (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Prefix = Some prefix } }) fig
 
-    /// D170 — run the x axis from its high end to its low end, over the domain it would have had.
+    /// Run the x axis from its high end to its low end, over the domain it would have had.
     /// `withXDomain hi lo` reverses an axis too, over numbers you state.
     let withXReversed (fig: Figure) = mapLast (fun p -> { p with XAxis = { p.XAxis with Reversed = true } }) fig
 
-    /// D170 — the y axis from its high end down: a depth below a surface, a magnitude.
+    /// The y axis from its high end down: a depth below a surface, a magnitude.
     let withYReversed (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Reversed = true } }) fig
 
-    /// D167 — the x axis's minor ticks: `MinorOff`, `MinorCount 5`, `MinorEvery step` in the axis's
+    /// The x axis's minor ticks: `MinorOff`, `MinorCount 5`, `MinorEvery step` in the axis's
     /// own numbers, or `MinorAuto` to follow the theme. A stated step or count draws them under
     /// any theme.
     let withXMinorTicks (minor: MinorSpec) (fig: Figure) = mapLast (fun p -> { p with XAxis = { p.XAxis with Minor = minor } }) fig
 
     let withYMinorTicks (minor: MinorSpec) (fig: Figure) = mapLast (fun p -> { p with YAxis = { p.YAxis with Minor = minor } }) fig
 
-    /// D169 — how the x axis's tick numbers are written: `FormatFixed 2`, `FormatPercent`,
+    /// How the x axis's tick numbers are written: `FormatFixed 2`, `FormatPercent`,
     /// `FormatScientific` (a power of ten in the title, `x [10⁻³ m]`), or `TickFormat.custom f` of
     /// the number the label would show. Named ticks keep their names.
     let withXTickFormat (format: TickFormat) (fig: Figure) = mapLast (fun p -> { p with XAxis = { p.XAxis with Format = format } }) fig
@@ -1407,18 +1406,19 @@ module Chart =
 
     let withLegend (placement: LegendPlacement) (fig: Figure) = mapLast (fun p -> { p with Legend = placement }) fig
 
-    /// D171 — lay the last panel's legend out in `columns` columns, filled down then across.
+    /// Lay the last panel's legend out in `columns` columns, filled down then across.
     let withLegendColumns (columns: int) (fig: Figure) = mapLast (fun p -> { p with LegendColumns = max 1 columns }) fig
 
-    /// D171 — draw the last panel's legend with or without its frame, whatever the theme says.
+    /// Draw the last panel's legend with or without its frame, whatever the theme says. Without
+    /// one it has no background either, so it does not mask the data under it.
     let withLegendFrame (framed: bool) (fig: Figure) = mapLast (fun p -> { p with LegendFrame = Some framed }) fig
 
-    /// D171 — **one legend for the whole figure**, beside or below its panels, gathering every
+    /// **One legend for the whole figure**, beside or below its panels, gathering every
     /// panel's entries once each, in place of the panels' own. Applied when the figure is drawn,
     /// so panels added afterwards are gathered too.
     let withFigureLegend (placement: FigureLegend) (fig: Figure) = { fig with Legend = Some placement }
 
-    /// §4 — swap the coordinate system. `Coord.polar` turns every geom on the panel polar and no
+    /// Swap the coordinate system. `Coord.polar` turns every geom on the panel polar and no
     /// geom finds out.
     let withCoord (c: Coord) (fig: Figure) = mapLast (fun p -> { p with Coord = c }) fig
 
@@ -1426,7 +1426,7 @@ module Chart =
 
     // ---- Multi-panel ---------------------------------------------------------------------------
 
-    /// D175 — two figures' weights along the axis they are joined on: each side's, or ones where
+    /// Two figures' weights along the axis they are joined on: each side's, or ones where
     /// it states none, so a stated pair keeps its proportion beside an unstated panel.
     let private joined (aCount: int) (a: float[]) (bCount: int) (b: float[]) =
         if a.Length = 0 && b.Length = 0 then
@@ -1435,7 +1435,7 @@ module Chart =
             let fill n (ws: float[]) = if ws.Length = 0 then Array.create n 1.0 else ws
             Array.append (fill aCount a) (fill bCount b)
 
-    /// D175 — the lines a side's rows end on, as fractions of the side: 0, its weights (ones where
+    /// The lines a side's rows end on, as fractions of the side: 0, its weights (ones where
     /// it states none) summed, 1.
     let private edgesOf (count: int) (weights: float[]) =
         let ws = Array.init count (fun i -> if i < weights.Length then weights.[i] else 1.0)
@@ -1445,7 +1445,7 @@ module Chart =
     /// Two lines closer than this are one line.
     let private sameEdge (a: float) (b: float) = abs (a - b) < 1e-9
 
-    /// D174, D175 — **two sides merged along the axis they stand side by side on.** Each side's
+    /// **Two sides merged along the axis they stand side by side on.** Each side's
     /// rows end at the fractions its weights put them at, and the merged grid has a line wherever
     /// either side has one, so a stated proportion is a proportion of the grid and no line of one
     /// side has to fall between two of the other's. A side that states no weights, beside one with
@@ -1496,9 +1496,9 @@ module Chart =
     /// Put `b`'s panels to the right of `a`'s. `b`'s figure-level title is dropped; use
     /// `withPanelTitle` for per-panel headings.
     ///
-    /// D174 — when the two have different numbers of rows, each side's panels span what their
+    /// When the two have different numbers of rows, each side's panels span what their
     /// share covers, so a single panel beside a stack of two runs the height of both, and no cell
-    /// is left empty. D175 — the rows are merged by where they end (`merge`), so a pair drawn
+    /// is left empty. The rows are merged by where they end (`merge`), so a pair drawn
     /// 3 : 1 beside a stack of three keeps its 3 : 1.
     let beside (b: Figure) (a: Figure) : Figure =
         let b = Figure.offsetShares a b
@@ -1515,7 +1515,7 @@ module Chart =
             ColWeights = joined (max 1 a.Cols) a.ColWeights (max 1 b.Cols) b.ColWeights
             Panels = Array.append (a.Panels |> Array.map (place la 0)) (b.Panels |> Array.map (place lb a.Cols)) }
 
-    /// Put `b`'s panels below `a`'s, their columns merged as `beside` merges rows (D174, D175).
+    /// Put `b`'s panels below `a`'s, their columns merged as `beside` merges rows.
     let above (b: Figure) (a: Figure) : Figure =
         let b = Figure.offsetShares a b
         let cols, weights, la, lb = merge (max 1 a.Cols) a.ColWeights (max 1 b.Cols) b.ColWeights
@@ -1531,7 +1531,7 @@ module Chart =
             RowWeights = joined (max 1 a.Rows) a.RowWeights (max 1 b.Rows) b.RowWeights
             Panels = Array.append (a.Panels |> Array.map (place la 0)) (b.Panels |> Array.map (place lb a.Rows)) }
 
-    /// D177 — **a second y axis, on the right**: `left |> Chart.withRightAxis right` draws
+    /// **A second y axis, on the right**: `left |> Chart.withRightAxis right` draws
     /// `right`'s layers on the last panel of `left`, against a y axis of their own on the right,
     /// titled from `right`'s y config. Each side is built as a figure of its own, in either mode.
     /// The two must agree on x, and each side's layers on their y; both are checked here, at the
@@ -1558,14 +1558,14 @@ module Chart =
         Figure.unify merged.Panels.[lastPanel merged] |> ignore
         merged
 
-    /// D177 — move the last layer to the last panel's right y axis, giving the panel one if it
+    /// Move the last layer to the last panel's right y axis, giving the panel one if it
     /// has none.
     let toRightAxis (fig: Figure) : Figure =
         fig
         |> mapLastLayer (fun l -> { l with SecondaryY = true })
         |> mapLast (fun p -> { p with Y2Axis = Some(defaultArg p.Y2Axis Figure.axisConfig) })
 
-    /// D177 — the last panel's right y domain, raw, in that axis's unit.
+    /// The last panel's right y domain, raw, in that axis's unit.
     let withRightYDomain (lo: float) (hi: float) (fig: Figure) : Figure =
         if fig.Panels.Length = 0 then
             fig
@@ -1573,7 +1573,7 @@ module Chart =
             let p = fig.Panels.[lastPanel fig]
             Figure.withPanelDomainY2 (p.Row, p.Col) (lo, hi) fig
 
-    /// D177 / D178 — the last panel's right y axis's name, in place of the one its unit suggests:
+    /// The last panel's right y axis's name, in place of the one its unit suggests:
     /// the secondary axis's when it has one, otherwise the second y axis's.
     let withRightYLabel (label: string) (fig: Figure) : Figure =
         mapLast
@@ -1583,9 +1583,9 @@ module Chart =
                 | None -> { p with Y2Axis = Some { (defaultArg p.Y2Axis Figure.axisConfig) with Label = Some label } })
             fig
 
-    // ---- D179: aspect ----------------------------------------------------------------------
+    // ---- Aspect ----------------------------------------------------------------------
 
-    /// D179 — **one unit as long on y as on x** on the last panel: the plot is shrunk to the
+    /// **One unit as long on y as on x** on the last panel: the plot is shrunk to the
     /// domain's shape and centred in its cell. A frame of an animation or a zoom whose domains have
     /// another shape is widened to the plot's, so the plot does not move. Both axes must be linear
     /// and of one dimension, compared in SI; checked here and again when the figure is drawn.
@@ -1606,16 +1606,16 @@ module Chart =
 
         shaped
 
-    /// D179 — the last panel's plot at this height over its width, whatever its domains.
+    /// The last panel's plot at this height over its width, whatever its domains.
     let withBoxAspect (heightOverWidth: float) (fig: Figure) : Figure =
         if not (heightOverWidth > 0.0) || System.Double.IsInfinity heightOverWidth then
             failwithf "Marey: a box aspect is a positive height over width; got %g." heightOverWidth
 
         mapLast (fun p -> { p with Aspect = Some(Aspect.Box heightOverWidth) }) fig
 
-    // ---- D180: insets ------------------------------------------------------------------------
+    // ---- Insets ------------------------------------------------------------------------
 
-    /// D180 — **a one-panel figure drawn over the last panel's plot**, its own plot at
+    /// **A one-panel figure drawn over the last panel's plot**, its own plot at
     /// `(x0, y0, x1, y1)` in fractions of the host's plot, y up (matplotlib's `inset_axes`). Its
     /// tick labels and titles stand round that rectangle, over the host. Its axes are its own, a
     /// zoom inside it zooms it, and its key is the host's with `inset-<i>` under it. It draws no
@@ -1651,7 +1651,7 @@ module Chart =
               Indicate = false }
         mapLast (fun p -> { p with Insets = Array.append p.Insets [| entry |] }) fig
 
-    /// D180 — draw the last inset's domain on its host as a rectangle, joined to the inset by two
+    /// Draw the last inset's domain on its host as a rectangle, joined to the inset by two
     /// lines (matplotlib's `indicate_inset_zoom`). The inset's axes must be in the host's
     /// dimensions; checked when the figure is drawn.
     let withInsetZoom (fig: Figure) : Figure =
@@ -1663,7 +1663,7 @@ module Chart =
                 { p with Insets = p.Insets |> Array.mapi (fun i ins -> if i = p.Insets.Length - 1 then { ins with Indicate = true } else ins) })
             fig
 
-    // ---- D178: secondary axes -------------------------------------------------------------
+    // ---- Secondary axes -------------------------------------------------------------
 
     let internal withSecondary (onX: bool) (u: U<1>) (map: SecondaryMap option) (fig: Figure) : Figure =
         let sa: SecondaryAxis = { Unit = u; Map = map; Label = None }
@@ -1676,16 +1676,16 @@ module Chart =
                     { p with YAxis = { p.YAxis with Secondary = Some sa } })
             fig
 
-    /// D178 — **the x axis again along the top, in another unit of its dimension**: inches over
+    /// **The x axis again along the top, in another unit of its dimension**: inches over
     /// millimetres, °C over kelvin. The conversion is the units' own, offset included, so nothing
     /// is trusted; another dimension is refused when the figure is drawn, naming both. The ticks
     /// are chosen in the new unit.
     let withTopAxisIn (u: U<'v>) (fig: Figure) : Figure = withSecondary true (U.erase u) None fig
 
-    /// D178 — the y axis again along the right, in another unit of its dimension.
+    /// The y axis again along the right, in another unit of its dimension.
     let withRightAxisIn (u: U<'v>) (fig: Figure) : Figure = withSecondary false (U.erase u) None fig
 
-    /// D178 — **the x axis read along the top through a map**: photon energy over wavelength,
+    /// **The x axis read along the top through a map**: photon energy over wavelength,
     /// period over frequency. `forward` takes the x axis's raw numbers to `u`'s and `inverse` takes
     /// them back. When the figure is drawn the pair is checked on 257 points of the domain —
     /// finite, strictly monotone, and `inverse (forward x)` back at `x` — and refused at the first
@@ -1694,11 +1694,11 @@ module Chart =
     let withTopAxisMapped (u: U<'v>) (forward: float -> float) (inverse: float -> float) (fig: Figure) : Figure =
         withSecondary true (U.erase u) (Some(SecondaryMap(forward, inverse))) fig
 
-    /// D178 — the y axis read along the right through a map. See `withTopAxisMapped`.
+    /// The y axis read along the right through a map. See `withTopAxisMapped`.
     let withRightAxisMapped (u: U<'v>) (forward: float -> float) (inverse: float -> float) (fig: Figure) : Figure =
         withSecondary false (U.erase u) (Some(SecondaryMap(forward, inverse))) fig
 
-    /// D178 — the secondary top axis's name, in place of the one its unit suggests.
+    /// The secondary top axis's name, in place of the one its unit suggests.
     let withTopAxisLabel (label: string) (fig: Figure) : Figure =
         mapLast
             (fun p ->
@@ -1707,19 +1707,19 @@ module Chart =
                 | None -> p)
             fig
 
-    /// D176 — **share the x axis of every panel the figure has now**, as a facet does: one
+    /// **Share the x axis of every panel the figure has now**, as a facet does: one
     /// domain, checked here for one dimension, and kept one afterwards. Only the outermost panel
     /// of each column writes its x tick labels and title. A panel composed in later is not part
     /// of the sharing; call `shareX` again to take it in.
     let shareX (fig: Figure) = Figure.shareRecorded ShareX fig
 
-    /// D176 — `shareX` for y: only the leftmost panel of each row is labelled.
+    /// `shareX` for y: only the leftmost panel of each row is labelled.
     let shareY (fig: Figure) = Figure.shareRecorded ShareY fig
 
-    /// D176 — `shareX` and `shareY` at once.
+    /// `shareX` and `shareY` at once.
     let shareAxes (fig: Figure) = Figure.shareRecorded ShareBoth fig
 
-    /// D175 — weights to the mean of 1, refused unless there is one per track and each is positive.
+    /// Weights to the mean of 1, refused unless there is one per track and each is positive.
     let private weights (what: string) (count: int) (ws: float[]) =
         if ws.Length <> count then
             failwithf "Marey: %d %s weights for a figure of %d %s. Give one per %s." ws.Length what count what (what.TrimEnd 's')
@@ -1730,17 +1730,17 @@ module Chart =
         let mean = Array.average ws
         ws |> Array.map (fun w -> w / mean)
 
-    /// D175 — **the rows' plot heights, relative**: `withRowHeights [| 3.0; 1.0 |]` draws the first
+    /// **The rows' plot heights, relative**: `withRowHeights [| 3.0; 1.0 |]` draws the first
     /// row's plots three times as tall as the second's, whatever their gutters (matplotlib's
     /// `height_ratios`). One weight per row of the figure as composed so far.
     let withRowHeights (heights: float[]) (fig: Figure) =
         { fig with RowWeights = weights "rows" (max 1 fig.Rows) heights }
 
-    /// D175 — the columns' plot widths, relative (matplotlib's `width_ratios`).
+    /// The columns' plot widths, relative (matplotlib's `width_ratios`).
     let withColWidths (widths: float[]) (fig: Figure) =
         { fig with ColWeights = weights "columns" (max 1 fig.Cols) widths }
 
-    /// D174 — **panels laid out by a picture of the grid.** Each character of `layout` is a cell,
+    /// **Panels laid out by a picture of the grid.** Each character of `layout` is a cell,
     /// rows separated by `;` or a newline, `.` an empty cell; every other character names a
     /// part, whose single panel covers the rectangle of cells that carry its character.
     /// `"AAB;DEB;DCC"` is a pinwheel of four panels around a fifth, a shape `beside` and `above`
@@ -1813,7 +1813,7 @@ module Chart =
             Cols = width
             Theme = parts.[labels.[0]].Theme }
 
-    // ---- Facets (§9, D48) ----------------------------------------------------------------------
+    // ---- Facets ----------------------------------------------------------------------
 
     /// The wrap width a facet takes when nobody states one: as square as the panel count allows,
     /// which is what keeps each panel's aspect ratio closest to the single-panel figure the
@@ -1822,7 +1822,7 @@ module Chart =
         if n <= 1 then 1 else int (ceil (sqrt (float n)))
 
     /// **The key is drawn once.** Every layer outside the first drawn panel leaves the legend and
-    /// the colorbar (D53, as D48 widens it).
+    /// the colorbar.
     ///
     /// A facet's channels are built over the whole block and then sliced, so every panel's key is
     /// the same key. Repeating it says nothing the first one did not, and a colorbar repeated
@@ -1844,7 +1844,7 @@ module Chart =
                             { p with
                                 Layers = p.Layers |> Array.map (fun l -> { l with ShowInLegend = false }) }) }
 
-    /// §9 / D48 — **lay independently built figures out as a facet**: a wrapped grid of panels
+    /// **Lay independently built figures out as a facet**: a wrapped grid of panels
     /// over shared axes.
     ///
     /// This is the *hand-composed* facet, and it is the only one whose panels can disagree
@@ -1902,7 +1902,7 @@ module Chart =
 
     let toSceneWith (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Node = Figure.toScene m extent fig
 
-    // ---- Output, for something that moves — D72 ---------------------------------------------
+    // ---- Output, for something that moves ---------------------------------------------------
 
     /// The layout this figure would be drawn in. One shot, one sample.
     ///
@@ -1912,9 +1912,9 @@ module Chart =
     let arrangeFor (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Shot =
         Figure.arrangeFor m extent fig
 
-    /// **D72 — lay out once for the whole shot, against the union of its sampled states.**
+    /// **Lay out once for the whole shot, against the union of its sampled states.**
     ///
-    /// The reason this exists rather than "just call `toScene` per frame": since D61 the plot
+    /// The reason this exists rather than "just call `toScene` per frame": the plot
     /// rectangle is what is left after the widest tick label has taken its room, so a domain
     /// crossing `9.5 → 10.5` gains a digit on every label at once and the panel *breathes* while
     /// the data is the thing supposed to be moving. Sizing against the union gives an arrangement
@@ -1926,16 +1926,16 @@ module Chart =
     /// ```
     ///
     /// `samples` is stated because the union is only as good as it: an animation with a spike
-    /// between two samples can still overflow. Thirty-two is D72's default and a good one.
+    /// between two samples can still overflow. Thirty-two is the usual default and a good one.
     let arrangeUnion (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (sample: float -> Figure) : Shot =
         Figure.arrangeUnion samples m extent sample
 
-    /// **D106 — one layout over states a caller lists**: `arrangeUnion` without the clock. A
+    /// **One layout over states a caller lists**: `arrangeUnion` without the clock. A
     /// widget passes the states its controls reach at their extremes.
     let arrangeOver (m: ITextMeasurer) (extent: Extent<px>) (states: Figure[]) : Shot =
         Figure.arrangeOver m extent states
 
-    /// **D106 — whether this figure's labels fit a layout already decided**, planned exactly as
+    /// **Whether this figure's labels fit a layout already decided**, planned exactly as
     /// `toSceneIn` would plan them. A state that does not fit is drawn in a new arrangement, and
     /// the widget counts it.
     let fitsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : bool = Figure.fitsIn m shot fig
@@ -1947,7 +1947,7 @@ module Chart =
     /// beside it could only ever disagree.
     let toSceneIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : Node = Figure.toSceneIn m shot fig
 
-    /// **D105 — where each panel's plot area is in a shot, with its coord and scales**, so a
+    /// **Where each panel's plot area is in a shot, with its coord and scales**, so a
     /// point on the surface can be read back as data (`PanelView.toData`) and a dragged
     /// rectangle as two domains (`PanelView.domainsOf`).
     let panelsIn (m: ITextMeasurer) (shot: Shot) (fig: Figure) : PanelView[] = Figure.panelsIn m shot fig
@@ -1964,10 +1964,10 @@ module Chart =
     /// Drive any backend.
     ///
     /// This is the path that honours the backend contract in full: layout measures against the
-    /// backend's **own** `ITextMeasurer` (§9's "measure–arrange pass against
-    /// `IBackend.MeasureText`"), and the scene is then run through `Degrade.forCaps` and
+    /// backend's **own** `ITextMeasurer` (the measure–arrange pass against
+    /// `IBackend.MeasureText`), and the scene is then run through `Degrade.forCaps` and
     /// `Degrade.splitBatches` so a backend that cannot do gradients, dashes, clipping or
-    /// unbounded batches gets a defensible approximation rather than wrong output (§5, D10).
+    /// unbounded batches gets a defensible approximation rather than wrong output.
     let renderTo (backend: IBackend) (extent: Extent<px>) (fig: Figure) : unit =
         let scene =
             Figure.toScene backend.Measurer extent fig
@@ -1980,12 +1980,12 @@ module Chart =
 
     /// Render with a plain scene renderer — `SvgBackend.render` has exactly this shape.
     ///
-    /// `Marey.Plot` takes no backend dependency, on purpose: §0's diagram has the DSLs above the
-    /// IR and the backends below it, and a grammar package that references a renderer inverts
+    /// `Marey.Plot` takes no backend dependency, on purpose: the DSLs sit above the IR and the
+    /// backends below it, and a grammar package that references a renderer inverts
     /// that. Passing the renderer in costs one identifier and keeps the layering honest.
     ///
-    /// **D60 — the return type is the renderer's, not `string`.** Every function-shaped entry
-    /// point named `string` until M2.5, which is a claim about the *artifact* smuggled into the
+    /// **The return type is the renderer's, not `string`.** Every function-shaped entry
+    /// point once named `string`, which is a claim about the *artifact* smuggled into the
     /// signature of a function that only forwards it. A PNG has no UTF-8 encoding and a PDF's is
     /// a lie, so a raster backend does not fit through a `string`-typed hole. One type parameter
     /// removes the claim without adding an entry point: `SvgBackend.render` still gives back a
@@ -1996,13 +1996,13 @@ module Chart =
     let render (renderer: Extent<px> -> Node -> 'a) (extent: Extent<px>) (fig: Figure) : 'a =
         renderer extent (toScene extent fig)
 
-    // D113 — file output is .NET's. A Fable build has no file system to write to, and these do not
+    // File output is .NET's. A Fable build has no file system to write to, and these do not
     // compile there.
 #if !FABLE_COMPILER
     /// One line to a file: `fig |> Chart.toFile SvgBackend.render "plot.svg" (Chart.size 800.0 500.0)`.
     ///
     /// UTF-8 without a byte-order mark, matching `SvgBackend.renderToFile`, because these files
-    /// are golden masters (§13) and a BOM appearing would read as a whole-file diff.
+    /// are golden masters and a BOM appearing would read as a whole-file diff.
     ///
     /// Backend-neutral by name as well as by shape: any `Extent<px> -> Node -> string` renderer
     /// fits, so this is equally the way to write a `.tex` file.
@@ -2012,7 +2012,7 @@ module Chart =
 
     /// `toFile` under its original name.
     ///
-    /// Kept because it appears in the README and in every M0-era example, and because renaming a
+    /// Kept because it appears in the README and in early examples, and because renaming a
     /// public entry point is not worth a breaking change. It was always renderer-shaped rather
     /// than SVG-specific — the name was the only thing that said otherwise.
     let toSvg (renderer: Extent<px> -> Node -> string) (path: string) (extent: Extent<px>) (fig: Figure) : unit =
@@ -2032,7 +2032,7 @@ module Chart =
         System.IO.File.WriteAllBytes(path, render renderer extent fig)
 #endif
 
-/// D109, D111 — **the unit-optional front door**: data as `float[]`, and a unit per axis that may
+/// **The unit-optional front door**: data as `float[]`, and a unit per axis that may
 /// be stated or left out.
 ///
 /// ```fsharp
@@ -2047,14 +2047,14 @@ module Chart =
 /// `String.Join` and `String.concat` do. A method because only a method can have optional
 /// parameters, and a parameter that may be omitted is the whole of this mode.
 ///
-/// An omitted unit is `U.unspecified` (D127): no bracket, no prefix, and no claim for the
+/// An omitted unit is `U.unspecified`: no bracket, no prefix, and no claim for the
 /// axis-sharing check to act on. A stated one gives the axis everything a witness gives it in
 /// `Marey.UnitsOfMeasure` — the bracketed label, the prefix, a derived unit for a stat, and the
 /// dimension check when two layers share an axis — except that the check runs when the figure is
 /// compiled rather than when the call is.
 ///
 /// Every member is one line over the curried, measure-generic implementation at measure 1
-/// (D128): there is one implementation of each chart, and this is a way of reaching it.
+///: there is one implementation of each chart, and this is a way of reaching it.
 ///
 /// The units are typed `IUnit` because an optional parameter cannot be measure-generic, and are
 /// declared with `Optional` and a `null` default rather than as F#'s `?xUnit`, because that is
@@ -2165,7 +2165,7 @@ type Chart =
         ) : Figure =
         Chart.text (U.erase xUnit) (U.erase yUnit) x y labels
 
-    /// D162 — a horizontal rule at `y`, across whatever panel it is `add`ed to, without moving
+    /// A horizontal rule at `y`, across whatever panel it is `add`ed to, without moving
     /// that panel's domain. `unit` is checked against the y axis when the figure is compiled.
     static member HLine(y: float, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
         Chart.hLine (U.erase unit) y
@@ -2193,7 +2193,7 @@ type Chart =
         ) : Figure =
         Chart.lineThrough (U.erase xUnit) (U.erase yUnit) x y slope
 
-    /// D164 — text marking the point (`x`, `y`), to `add` over a figure, without moving its
+    /// Text marking the point (`x`, `y`), to `add` over a figure, without moving its
     /// domain. Offset, arrow and placement are `Chart.withTextOffset`, `withArrow`, `withTextAt`.
     static member Annotation
         (
@@ -2279,7 +2279,7 @@ type Chart =
         ) : Series<1, 1> =
         Chart.series name (U.erase xUnit) (U.erase yUnit) x y
 
-    // ---- Channels that take data (D126) -------------------------------------------------------
+    // ---- Channels that take data -------------------------------------------------------
     //
     // A method that returns the combinator, so that it pipes as the curried form does:
     // `fig |> Chart.ColorBy(temps, unit = U.kelvin)`.

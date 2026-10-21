@@ -4,16 +4,15 @@ open System
 open System.Text
 
 // ======================================================================================
-// THE WIRE (D152–D155)
+// THE WIRE
 //
-// A scene as bytes, for a page that draws what a kernel compiled. Read §5's departure 1 first:
-// the IR has no closures so that it can be written down, and this is the file that writes it.
+// A scene as bytes, for a page that draws what a kernel compiled. The IR has no closures so that it
+// can be written down, and this is the file that writes it.
 //
 // **decode (encode n) = n**, field for field, for every scene. That is the property the format is
 // built around and the reason it is float64 throughout: rounding the goldens' coordinates through
-// float32 moves 11 of the 28 SVG baselines by a thousandth of a px (`wire-open-decisions.md`,
-// D153), and the moment a decoded scene is not the scene, every golden stops being a test of the
-// wire.
+// float32 moves 11 of the 28 SVG baselines by a thousandth of a px, and the moment a decoded scene
+// is not the scene, every golden stops being a test of the wire.
 //
 // The layout, little-endian throughout:
 //
@@ -22,14 +21,14 @@ open System.Text
 //   node     u8 tag (0–9, the `Node` cases in declaration order); with its top bit set, a block
 //            follows the tag: LEB128 length, bytes. Then the case's fields.
 //
-// **Blocks are the room the format leaves itself (D154).** A decoder skips a block whose id it does
+// **Blocks are the room the format leaves itself.** A decoder skips a block whose id it does
 // not know, so a later version can add a content hash per subtree or a table of text metrics
 // without a reader that predates it failing on the scene. A version it does not know it refuses
 // by name rather than misreads.
 //
 // **Float arrays are aligned to 8 bytes from the start of the buffer** (`MarkerBatch.Points`,
 // `Stroke.Dash`): a page can then read them through a `Float64Array` view, four times faster under
-// Fable than one `BitConverter` call a number (D153). Padding is zero bytes, and a decoder computes
+// Fable than one `BitConverter` call a number. Padding is zero bytes, and a decoder computes
 // it from the same absolute position the encoder did, so it never has to be written down.
 //
 // Everything else is a count (LEB128), a string (LEB128 byte count, UTF-8), a byte for a case or a
@@ -181,10 +180,10 @@ type internal WireReader(buffer: byte[]) =
 
     member this.AtEnd = pos = buffer.Length
 
-/// **D156 — the text metrics a scene's layout used**, carried with it.
+/// **The text metrics a scene's layout used**, carried with it.
 ///
 /// A canvas anchors every run with its measurer's advance, ascent and descent, and that measurer
-/// must be the one layout ran against (D62). Layout runs in the kernel; the page cannot run Skia.
+/// must be the one layout ran against. Layout runs in the kernel; the page cannot run Skia.
 /// So the scene carries, once per distinct font and string, what the kernel measured, and the page
 /// draws through this table. A run the table does not hold is measured by `TextMeasure.approx`.
 [<Sealed>]
@@ -216,6 +215,8 @@ type TextTable(entries: (FontSpec * string * TextMetrics)[]) =
             | true, m -> m
             | _ -> TextMeasure.approx.Measure font text
 
+/// A scene, or a patch between two scenes, as bytes and back, with the text metrics it was laid
+/// out with.
 [<RequireQualifiedAccess>]
 module Wire =
 
@@ -395,7 +396,7 @@ module Wire =
             w.Byte 3uy
             w.Count r.Image.Width
             w.Count r.Image.Height
-            // How the pixels are stored: 0, the RGBA bytes as they are. Phase 7 (D158) adds
+            // How the pixels are stored: 0, the RGBA bytes as they are. Phase 7 adds
             // a compressed form under another value, which a reader of version 1 refuses by name.
             w.Byte 0uy
             w.Count r.Image.Rgba.Length
@@ -535,7 +536,7 @@ module Wire =
     /// kernel's measurer. The format's goldens are these.
     let encode (n: Node) : byte[] = sceneBytes [||] n
 
-    /// **A scene as bytes, with the metrics `m` gives each of its text runs (D156)**: what a page
+    /// **A scene as bytes, with the metrics `m` gives each of its text runs**: what a page
     /// that draws the scene needs, because its text was anchored against `m`.
     let encodeWith (m: ITextMeasurer) (n: Node) : byte[] = sceneBytes (measure m [ n ]) n
 
@@ -661,7 +662,7 @@ module Wire =
         let at = r.Position
         let tag = r.Byte "a node"
 
-        // D154: a block after the tag, which this version reads past.
+        // A block after the tag, which this version reads past.
         if tag &&& 0x80uy <> 0uy then
             let n = r.Count "a node's block"
             r.Bytes n "a node's block" |> ignore
@@ -853,7 +854,7 @@ module Wire =
                 if r.Position <> start + n then
                     raise (WireError(sprintf "the text metrics block says %d bytes and holds %d" n (r.Position - start)))
             else
-                // D154: a header block this version does not know is read past.
+                // A header block this version does not know is read past.
                 r.Bytes n "a header block" |> ignore
 
         body, table

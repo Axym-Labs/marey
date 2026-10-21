@@ -190,7 +190,7 @@ module Fragments =
         Assert.Contains("&lt;sup&gt;", witness)
 
     // ----------------------------------------------------------------------------------
-    // D83 — the flipbook
+    // The flipbook
     // ----------------------------------------------------------------------------------
 
     /// **The gate the id prefix exists for, and it can fail.**
@@ -259,7 +259,7 @@ module Fragments =
 
         // One frame starts at each n-th of the cycle, in order and without repetition. Both
         // sides rounded to the six decimals the attribute carries: `1/6` is written `0.166667`,
-        // and comparing that against an unrounded `0.1666…` is a test of `Num.at`, not of the
+        // and comparing that against an unrounded `0.1666…` is a test of `Num.upTo`, not of the
         // tiling.
         let round6 (t: float) = System.Math.Round(t, 6)
 
@@ -377,7 +377,7 @@ module Fragments =
 
         Assert.Contains(Color.toHex Palette.vermillion, html)
         Assert.Contains("oklch(", html)
-        Assert.Contains(Num.at 3 lch.L, html)
+        Assert.Contains(Num.upTo 3 lch.L, html)
 
     /// `Color.toOklch` builds its hue with `atan2`, so blues arrive negative. Displaying a blue as
     /// `-115.95°` is correct and useless — nobody publishes hues that way, and the library's own
@@ -392,7 +392,7 @@ module Fragments =
         let html = Html.color Palette.blue
 
         Assert.DoesNotContain("-", html.Substring(html.IndexOf "oklch("))
-        Assert.Contains(Num.at 3 (raw + 360.0), html)
+        Assert.Contains(Num.upTo 3 (raw + 360.0), html)
 
     /// A swatch that renders a 35%-alpha colour as an opaque pastel is a swatch that lies. The
     /// eight-digit hex carries the alpha and the checker layer makes it visible.
@@ -441,7 +441,7 @@ module Fragments =
         Assert.Contains("protanopia", html)
         Assert.Contains("deuteranopia", html)
         Assert.Contains("tritanopia", html)
-        Assert.Contains(Num.at 3 Fixtures.report.WorstSeparation.Minimum, html)
+        Assert.Contains(Num.upTo 3 Fixtures.report.WorstSeparation.Minimum, html)
 
     /// `Dim.show` is Core's fallback and `UnitDisplay.renderSi` is what `Marey.Units` makes of
     /// the same value. Showing both is how a missing registry becomes visible instead of
@@ -457,7 +457,7 @@ module Fragments =
     let ``a unit witness shows its conversion to SI`` () =
         // The affine case is the one worth checking: a unit with an offset that displays only its
         // factor is telling half a truth, and °C against K is where that half-truth bites.
-        let celsius = Html.witness NonSi.degreeCelsius
+        let celsius = Html.witness U.degreeCelsius
 
         Assert.Contains("273.15", celsius)
         Assert.Contains("°C", celsius)
@@ -750,7 +750,7 @@ module LoadContexts =
         Assert.Equal(Html.witness U.kelvin, Html.renderForHost (800.0, 600.0, box U.kelvin))
 
 // ======================================================================================
-// M4.5 — A LIVE FIGURE THROUGH THE EXTENSION (D99, D100; gate 6)
+// A LIVE FIGURE THROUGH THE EXTENSION (D99, D100; gate 6)
 //
 // Driven against fakes of Verso's channel host and channel, because `Verso.Testing` 1.2 has no
 // channels and no cell id. The context below carries `CellId` as a property of its own type, which
@@ -845,7 +845,7 @@ module LiveFormatter =
 
     let private live () =
         interact {
-            let! f = Control.slider Derived.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
+            let! f = Control.slider U.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
             return Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
         }
 
@@ -894,7 +894,7 @@ module LiveFormatter =
         channel.Send("nonsense", "{")
         Assert.Equal(3, channel.Posted.Count)
 
-    /// D103 — a step that changes one layer of a large figure is posted as a patch: the fresh
+    /// A step that changes one layer of a large figure is posted as a patch: the fresh
     /// defs and the elements by id, and no whole figure. The view's hello, `size`, is answered
     /// with the whole figure even when nothing changed, because it is how a view that cannot
     /// apply a patch asks to start again.
@@ -919,7 +919,7 @@ module LiveFormatter =
             Assert.Equal(Html.widgetFigure l s1, hello.["svg"] :?> string)
             Assert.False(hello.ContainsKey "patch"))
 
-    /// Step F (D160) — a figure above the threshold is a page in a frame, with no channel, because a
+    /// Step F — a figure above the threshold is a page in a frame, with no channel, because a
     /// host inserts an `Html` output as markup and runs none of its scripts; one below it is markup.
     [<Fact>]
     let ``a large figure is formatted as a page, a small one as markup`` () =
@@ -936,7 +936,7 @@ module LiveFormatter =
             let output = format (box small) (LiveContext(host, Some cell))
             Assert.Equal("text/html", output.MimeType))
 
-    /// Step F (D159) — the same figure on a canvas page: a local change is posted as a patch's
+    /// Step F — the same figure on a canvas page: a local change is posted as a patch's
     /// bytes, and a hello as the whole scene with its size.
     [<Fact>]
     let ``on a canvas page, a change is posted as patch bytes and a hello as the scene`` () =
@@ -963,7 +963,7 @@ module LiveFormatter =
             let scene = Wire.decode (Convert.FromBase64String(hello.["scene"] :?> string))
             Assert.True((match scene with Ok n -> n = Live.scene l s1 | Error _ -> false)))
 
-    /// D105 — a hover is answered with the figure the view already has and what the pointer
+    /// A hover is answered with the figure the view already has and what the pointer
     /// reads; leaving is answered with an empty readout, which takes it down.
     [<Fact>]
     let ``a hover is answered with a readout and no figure`` () =
@@ -997,7 +997,7 @@ module LiveFormatter =
         Assert.Contains("value=\"3.7\"", doc)
         Assert.Contains("disabled=\"disabled\"", doc)
 
-    /// D102 — a `Recorder` goes through the extension as its `Live` does, and hands back
+    /// A `Recorder` goes through the extension as its `Live` does, and hands back
     /// exactly the messages the host stepped, at the view's times. After `stop` the widget still
     /// answers and nothing more is noted.
     [<Fact>]

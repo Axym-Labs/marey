@@ -4,11 +4,11 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D138 — FINITE DIFFERENCES ON A GRID: HEAT, WAVE, POISSON.
+// FINITE DIFFERENCES ON A GRID: HEAT, WAVE, POISSON.
 //
-// The solvers step M4's `ScalarGrid`, and their units come out of the types: `∂T/∂t = α ∇²T` with
-// `T` in kelvin and `α` in m²/s steps in kelvin, and the explicit limit `dt ≤ h² / (4α)` is an
-// expression in seconds.
+// The solvers step `Marey.Fields`' `ScalarGrid`, and their units come out of the types: `∂T/∂t = α
+// ∇²T` with `T` in kelvin and `α` in m²/s steps in kelvin, and the explicit limit `dt ≤ h² / (4α)`
+// is an expression in seconds.
 //
 // **Their own stencil.** `Field.laplacian` is `div (grad g)`, two central first differences: the
 // wide stencil `(f₍ᵢ₋₂₎ − 2fᵢ + f₍ᵢ₊₂₎) / 4h²`, exactly zero on a checkerboard. A heat solver
@@ -48,6 +48,7 @@ type Boundaries<[<Measure>] 'x, [<Measure>] 'v> =
       Bottom: Boundary<'x, 'v>
       Top: Boundary<'x, 'v> }
 
+/// Boundary conditions for the finite-difference solvers.
 [<RequireQualifiedAccess>]
 module Boundaries =
 
@@ -65,6 +66,8 @@ type PoissonSolution<[<Measure>] 'x, [<Measure>] 'u> =
       /// Whether the residual reached the tolerance before the sweeps ran out.
       Converged: bool }
 
+/// Finite-difference solvers on scalar grids: heat (explicit and implicit), wave and Poisson, with
+/// their stability limits.
 [<RequireQualifiedAccess>]
 module Fdm =
 
@@ -270,7 +273,7 @@ module Fdm =
     /// `∂v/∂t = α ∇²v` by forward Euler on the five-point stencil. A step past `explicitLimit` is
     /// refused with both numbers: forward Euler there is unstable, and the picture it makes is
     /// noise growing from the highest frequency.
-    let heat<[<Measure>] 'x, [<Measure>] 'v> (alpha: float<'x ^ 2 / s>) (boundaries: Boundaries<'x, 'v>) : Step<ScalarGrid<'x, 'x, 'v>, s> =
+    let heat<[<Measure>] 'x, [<Measure>] 'v> (alpha: float<'x ^ 2 / s>) (boundaries: Boundaries<'x, 'v>) : Stepper<ScalarGrid<'x, 'x, 'v>, s> =
         checkAlpha (float alpha)
 
         fun _ dt grid ->
@@ -381,7 +384,7 @@ module Fdm =
     /// along every row and then every column. Unconditionally stable and second order in time.
     /// It damps the highest frequencies weakly, so data with a jump rings for a while; a few
     /// steps of a smaller size first, or of `heat`, smooth that out.
-    let heatImplicit<[<Measure>] 'x, [<Measure>] 'v> (alpha: float<'x ^ 2 / s>) (boundaries: Boundaries<'x, 'v>) : Step<ScalarGrid<'x, 'x, 'v>, s> =
+    let heatImplicit<[<Measure>] 'x, [<Measure>] 'v> (alpha: float<'x ^ 2 / s>) (boundaries: Boundaries<'x, 'v>) : Stepper<ScalarGrid<'x, 'x, 'v>, s> =
         checkAlpha (float alpha)
 
         fun _ dt grid ->
@@ -457,7 +460,7 @@ module Fdm =
     let wave<[<Measure>] 'x, [<Measure>] 'v>
         (c: float<'x / s>)
         (boundaries: Boundaries<'x, 'v>)
-        : Step<struct (ScalarGrid<'x, 'x, 'v> * ScalarGrid<'x, 'x, 'v / s>), s> =
+        : Stepper<struct (ScalarGrid<'x, 'x, 'v> * ScalarGrid<'x, 'x, 'v / s>), s> =
         if not (float c > 0.0) || Double.IsInfinity(float c) then
             invalidArg "c" (sprintf "Marey: a wave speed must be positive and finite, not %g." (float c))
 

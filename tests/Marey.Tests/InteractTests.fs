@@ -1,6 +1,6 @@
 module Marey.Tests.InteractTests
 
-// M4.5 — `Marey.Interact`: typed controls, the applicative block, and the pure step (D100,
+// `Marey.Interact`: typed controls, the applicative block, and the pure step (D100,
 // D101). Gates 1, 2, 3 and 12 of `m4.5-plan.md` §4.
 
 open System
@@ -10,7 +10,7 @@ open Xunit
 open Marey
 open Marey.UnitsOfMeasure
 
-let private fieldUnit = U.div Derived.volt U.metre
+let private fieldUnit = U.div U.volt U.metre
 
 let private wave (f: float<1 / s>) (damped: bool) =
     let t = Array.init 50 (fun i -> float i * 0.02<s>)
@@ -20,7 +20,7 @@ let private wave (f: float<1 / s>) (damped: bool) =
 
 let private live () =
     interact {
-        let! f = Control.slider (U.recip U.second) "f" 0.5<1 / s> 5.0<1 / s> 1.0<1 / s>
+        let! f = Control.slider U.hertz "f" 0.5<1 / s> 5.0<1 / s> 1.0<1 / s>
         and! damped = Control.checkbox "damped" false
         return wave f damped
     }
@@ -320,7 +320,7 @@ module ``zoom and pan`` =
     let ``a drag zooms a phase space onto what it covered`` () =
         let flow: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s^2> * sin (float th) * 1.0<rad>)
         let grid = Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 41) (Grid.linear -9.0<rad / s> 9.0<rad / s> 31) flow
-        gate (still (Field.directions Derived.radian (U.div Derived.radian U.second) grid))
+        gate (still (Field.directions U.radian (U.div U.radian U.second) grid))
 
     /// A drag that starts outside every plot area, and a click, leave the state alone.
     [<Fact>]
@@ -458,7 +458,7 @@ module ``zoom and pan`` =
             List.iter2 (fun (a: LiveState, x: string) (b: LiveState, y: string) -> Assert.Equal<LiveState>(a, b); Assert.Equal(x, y)) runs.[0] other
 
 // ======================================================================================
-// Gate 14 — the readout reads what is under the pointer (D105)
+// Gate 14 — the readout reads what is under the pointer
 // ======================================================================================
 
 module ``the readout`` =
@@ -551,7 +551,7 @@ module ``the readout`` =
     let ``a pointer reads the datum under it in a phase space`` () =
         let flow: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s^2> * sin (float th) * 1.0<rad>)
         let grid = Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 41) (Grid.linear -9.0<rad / s> 9.0<rad / s> 31) flow
-        gate (still (Field.directions Derived.radian (U.div Derived.radian U.second) grid))
+        gate (still (Field.directions U.radian (U.div U.radian U.second) grid))
 
     /// The reading is in the unit the axis title names, prefix and all: a millimetre axis reads
     /// millimetres. Pinned as text, so the places are pinned too: 0.98 s over the plot's width is
@@ -601,7 +601,7 @@ module ``the readout`` =
     let ``a wide log axis reads in powers of ten, at its ends and between`` () =
         let t = Array.init 27 (fun i -> float i * 1.0<s>)
         let e = Array.init 27 (fun i -> 10.0 ** float (i - 18) * 1.0<J>)
-        let l = still (Chart.line U.second Derived.joule t e |> Chart.withYLog)
+        let l = still (Chart.line U.second U.joule t e |> Chart.withYLog)
         let s0 = Live.init l
         let v = first l s0
         Assert.Equal("J", v.YAxis.UnitText)
@@ -890,7 +890,7 @@ module ``a widget does not breathe`` =
             Assert.True(Chart.fitsIn TextMeasure.approx s.Shot (Live.view hump s), sprintf "u = %g fits the grown arrangement" v)
 
 // ======================================================================================
-// Gate 10 — live equals replayed (D102)
+// Gate 10 — live equals replayed
 // ======================================================================================
 
 module ``live equals replayed`` =
@@ -1104,7 +1104,7 @@ module ``a recorder`` =
         Assert.Equal<float[]>([| 3.0; 0.0 |], (first'' :?> RecorderState).State.Values)
         Assert.Equal<(float<s> * LiveMsg)[]>([| 0.0<s>, Set(0, 4.0) |], (Recorder.stop r).Events)
 
-/// M5.5 phase 7, gate 9 — a time control arranges once (D137). A live figure is laid out over
+/// M5.5 phase 7, gate 9 — a time control arranges once. A live figure is laid out over
 /// its controls' extremes; a time control's are samples along its range, so a view whose widest
 /// state lies *inside* the range is arranged for it before it is played, where the two ends alone
 /// would re-arrange mid-playback.

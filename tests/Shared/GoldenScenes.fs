@@ -1,5 +1,5 @@
 /// The definitions behind the 28 SVG golden baselines, shared by the .NET suite and the Fable
-/// project in `tests/Marey.Fable` (D130), so that "the same compiler under Node" is checked
+/// project in `tests/Marey.Fable`, so that "the same compiler under Node" is checked
 /// against the same scenes and figures rather than a copy of them.
 ///
 /// Nothing here asserts. `svg` is the table the Node job walks, and `GoldenTests` checks that it
@@ -77,7 +77,7 @@ let figure: Figure =
     |> Chart.withLegend LegendTopLeft
     |> Chart.withGrid true true
 
-/// D45 — the categorical figure, and the second thing in this file that a user actually
+/// The categorical figure, and the second thing in this file that a user actually
 /// produces.
 ///
 /// Four string levels, one bar each, through `Chart.Category.bar`. What the baseline records
@@ -95,7 +95,7 @@ let categoryFigure: Figure =
     |> Chart.withTitle "Yield by treatment"
     |> Chart.withGrid false true
 
-/// D46 / D49 — a categorical colour channel with shape as its redundant encoding.
+/// A categorical colour channel with shape as its redundant encoding.
 ///
 /// One series, three levels, and the baseline records what the counts cannot: that the legend
 /// enumerates the *levels* rather than the series, that each level's marks carry both its colour
@@ -112,7 +112,7 @@ let channelFigure: Figure =
     |> Chart.withTitle "Fall by treatment"
     |> Chart.withLegend LegendTopLeft
 
-/// D49 — **the colorbar, in both backends, and this is the baseline the decision asked for.**
+/// **the colorbar, in both backends, and this is the baseline the decision asked for.**
 ///
 /// The failure it exists to catch is one no assertion can see. A gradient-filled bar is valid in
 /// SVG and comes out of the TikZ backend as a single flat `#23908c` block, because
@@ -166,7 +166,7 @@ let boxplotFigure: Figure =
 /// A heatmap is the geom that is worthless without a colour channel, so this is also the second
 /// figure in the suite carrying a continuous ramp — and the one where the TikZ half matters for
 /// a reason `figure-colorbar` does not cover: the tiles themselves are one `Path` per quantised
-/// colour step (D46), so a batching regression shows up here as a file that is many times longer.
+/// colour step, so a batching regression shows up here as a file that is many times longer.
 let heatmapFigure: Figure =
     let xs = [| 0.0 .. 5.0 |]
     let ys = [| 0.0 .. 3.0 |]
@@ -183,7 +183,7 @@ let heatmapFigure: Figure =
     |> Chart.withColorLabel "T"
     |> Chart.withTitle "Temperature field"
 
-/// M2.5 phase 1 — **the image, and the sidecar it makes the TikZ backend write** (D64).
+/// M2.5 phase 1 — **the image, and the sidecar it makes the TikZ backend write**.
 ///
 /// The first figure in the suite that puts a `Raster` into a scene. Nothing above the IR
 /// produced one before `Chart.image`, which is why `renderWithAssets` had no customer and
@@ -215,25 +215,25 @@ let imageFigure: Figure =
 /// `Theme.tikz`, so the ticks reach TeX as `$10^{-8}$` rather than as superscript text.
 ///
 /// The values are products of exact constants, not `exp`: Node and .NET differ in the last bit of
-/// `exp` (D141), and this figure is also rendered under Node byte for byte.
+/// `exp`, and this figure is also rendered under Node byte for byte.
 let logFigure: Figure =
     let ts = Array.init 11 (fun i -> float i * 1.0<s>)
     let euler = Array.scan (fun e _ -> e * 10.0) 1e-14<J> [| 1..10 |]
     let leapfrog = ts |> Array.mapi (fun i _ -> if i % 2 = 0 then 2e-15<J> else 5e-15<J>)
 
-    Chart.line U.second Derived.joule ts euler
+    Chart.line U.second U.joule ts euler
     |> Chart.withName "Euler"
-    |> Chart.addLine U.second Derived.joule ts leapfrog
+    |> Chart.addLine U.second U.joule ts leapfrog
     |> Chart.withName "leapfrog"
     |> Chart.withYLog
     |> Chart.withYLabel "drift"
     |> Chart.withTitle "Energy drift"
     |> Chart.withLegend LegendTopLeft
 
-/// D162 — rules and spans, out of the domain (D163). A residual panel in millimetres with a rule
+/// Rules and spans, out of the domain. A residual panel in millimetres with a rule
 /// at zero, a named band, a slope rule and a vertical rule past the data that is counted and
 /// not drawn; and beside it a polar panel, where a horizontal rule is a circle and a vertical
-/// span a wedge. The residuals are exact decimals rather than `sin` (D141).
+/// span a wedge. The residuals are exact decimals rather than `sin`.
 let rulesFigure: Figure =
     let ts = Array.init 13 (fun i -> float i * 0.5<s>)
 
@@ -253,9 +253,9 @@ let rulesFigure: Figure =
         |> Chart.withPanelTitle "rules"
 
     let right =
-        Chart.line Derived.radian U.metre [| 0.0<rad>; 6.0<rad> |] [| 1.0<m>; 3.0<m> |]
+        Chart.line U.radian U.metre [| 0.0<rad>; 6.0<rad> |] [| 1.0<m>; 3.0<m> |]
         |> Chart.addHLine U.metre 2.0<m>
-        |> Chart.addVSpan Derived.radian 1.0<rad> 1.5<rad>
+        |> Chart.addVSpan U.radian 1.0<rad> 1.5<rad>
         |> Chart.withCoord Coord.polar
         |> Chart.withPanelTitle "polar"
 
@@ -264,10 +264,10 @@ let rulesFigure: Figure =
 /// Two panels side by side.
 let rulesSurface: Extent<px> = { Width = 760.0<px>; Height = 320.0<px> }
 
-/// D164 / D165 — annotations and panel letters. Four emission lines marked with straight arrows
+/// Annotations and panel letters. Four emission lines marked with straight arrows
 /// (one label above the plot area, unclipped), one with an arc to a place in data space, a note
 /// in a corner, and the two panels lettered "(a)", "(b)" in reading order. The lines are drawn
-/// as triangles over exact values, not Gaussians, so Node compiles the same scene (D141).
+/// as triangles over exact values, not Gaussians, so Node compiles the same scene.
 let annotateFigure: Figure =
     let nm = 1e-9<m>
     let lines = [| "Hδ", 410.0, 0.2; "Hγ", 434.0, 0.3; "Hβ", 486.0, 0.55; "Hα", 656.0, 1.0 |]
@@ -310,7 +310,7 @@ let annotateFigure: Figure =
 
 let annotateSurface: Extent<px> = { Width = 760.0<px>; Height = 320.0<px> }
 
-/// D166 / D169 / D170 — stated ticks. A wavelength axis ticked every 50 nm, stated in metres
+/// Stated ticks. A wavelength axis ticked every 50 nm, stated in metres
 /// and labelled in nanometres; a band, as a parabola over exact values, under the named ticks
 /// X, Γ, X; a depth profile on a reversed axis; and an axis pinned to plain metres.
 let ticksFigure: Figure =
@@ -328,7 +328,7 @@ let ticksFigure: Figure =
     let energy = k |> Array.map (fun k -> 2.0<eV> * (k / edge) * (k / edge) - 1.0<eV>)
 
     let band =
-        Chart.line (U.recip U.metre) NonSi.electronvolt k energy
+        Chart.line (U.recip U.metre) U.electronvolt k energy
         |> Chart.withXTicksNamed (U.recip U.metre) [| -edge, "X"; 0.0</m>, "Γ"; edge, "X" |]
         |> Chart.withXDomain (float -edge) (float edge)
         |> Chart.withXLabel "k"
@@ -349,10 +349,10 @@ let ticksFigure: Figure =
 
 let ticksSurface: Extent<px> = { Width = 760.0<px>; Height = 520.0<px> }
 
-/// D167 / D168 — P1 of the M8 port: a fit over measurements with a residual panel below it,
+/// P1 of the M8 port: a fit over measurements with a residual panel below it,
 /// under `Theme.publication` — framed, ticks inside on four sides, minor ticks — lettered, with a
 /// rule at zero and an axis stated every second. The model is a polynomial over exact values.
-/// P1's fit and its residuals, without `exp` (D141).
+/// P1's fit and its residuals, without `exp`.
 let private fitAndResiduals =
     let ts = Array.init 13 (fun i -> float i * 0.5<s>)
     let model (t: float<s>) = 1.0e-3<m> * (float t - 3.0) * (float t - 3.0) - 4.0e-3<m>
@@ -387,7 +387,7 @@ let publicationFigure: Figure =
 
 let publicationSurface: Extent<px> = { Width = 480.0<px>; Height = 420.0<px> }
 
-/// D171 — legends. Three warming curves (rational, not `exp`, D141) four ways: a legend in its own
+/// Legends. Three warming curves (rational, not `exp`, D141) four ways: a legend in its own
 /// column, one in its own row in three columns, the emptiest corner, and a corner without a frame.
 let private warming (title: string) =
     let ts = Array.init 31 (fun i -> float i * 20.0<s>)
@@ -410,13 +410,13 @@ let legendsFigure: Figure =
 
 let legendsSurface: Extent<px> = { Width = 760.0<px>; Height = 560.0<px> }
 
-/// D171 — one legend for three panels, beside them.
+/// One legend for three panels, beside them.
 let sharedLegendFigure: Figure =
     warming "one" |> Chart.beside (warming "two") |> Chart.beside (warming "three") |> Chart.withFigureLegend FigureLegendRight
 
 let sharedLegendSurface: Extent<px> = { Width = 760.0<px>; Height = 280.0<px> }
 
-/// D174 — a mosaic: one panel down the left, two stacked beside it whose y labels differ in
+/// A mosaic: one panel down the left, two stacked beside it whose y labels differ in
 /// width, lettered in reading order. The spanning panel's plot runs from the top of (b)'s to the
 /// bottom of (c)'s.
 let mosaicFigure: Figure =
@@ -433,7 +433,7 @@ let mosaicFigure: Figure =
 
 let mosaicSurface: Extent<px> = { Width = 760.0<px>; Height = 420.0<px> }
 
-/// D173, D175, D176 — P1 as matplotlib draws it: `subplots(2, 1, sharex=True,
+/// P1 as matplotlib draws it: `subplots(2, 1, sharex=True,
 /// height_ratios=[3, 1])`. One x, labelled under the residuals; the plots three to one and lined
 /// up; the fit's x ticks kept, inside, without their labels.
 let sharedFigure: Figure =
@@ -448,8 +448,8 @@ let sharedFigure: Figure =
 
 let sharedSurface: Extent<px> = { Width = 480.0<px>; Height = 420.0<px> }
 
-/// D177 — P3: a chamber's temperature on the left and its pressure on the right, against one
-/// time. Each axis in its series' colour; one legend. Rational, with a stated wobble (D141).
+/// P3: a chamber's temperature on the left and its pressure on the right, against one
+/// time. Each axis in its series' colour; one legend. Rational, with a stated wobble.
 let twinFigure: Figure =
     let ts = Array.init 41 (fun i -> float i * 15.0<s>)
     let wobble = [| 0.4; -0.7; 0.9; 0.1; -0.3; -0.8; 0.6; 0.2; -0.5; 0.7; -0.1; -0.9; 0.3 |]
@@ -458,14 +458,14 @@ let twinFigure: Figure =
 
     Chart.line U.second U.kelvin ts temperature
     |> Chart.withName "temperature"
-    |> Chart.withRightAxis (Chart.line U.second Derived.pascal ts pressure |> Chart.withName "pressure")
+    |> Chart.withRightAxis (Chart.line U.second U.pascal ts pressure |> Chart.withName "pressure")
     |> Chart.withLegend LegendBottomRight
     |> Chart.withTheme Theme.publication
 
 let twinSurface: Extent<px> = { Width = 480.0<px>; Height = 300.0<px> }
 
-/// D178 — P2's spectrum with photon energy along the top, through E = hc/λ, beside a temperature
-/// with °C along the right. Lorentzian lines, rational (D141).
+/// P2's spectrum with photon energy along the top, through E = hc/λ, beside a temperature
+/// with °C along the right. Lorentzian lines, rational.
 let secondaryFigure: Figure =
     let nm = 1e-9<m>
     let hc = 1.239841984e-6<eV * m>
@@ -474,21 +474,21 @@ let secondaryFigure: Figure =
 
     let spectrum =
         Chart.line U.metre U.one lam (lam |> Array.map (fun l -> 0.03 + line 486.1 0.55 l + line 656.3 1.0 l))
-        |> Chart.withTopAxisMapped NonSi.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
+        |> Chart.withTopAxisMapped U.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
 
     let ts = Array.init 21 (fun i -> float i * 30.0<s>)
 
     let warming =
         Chart.line U.second U.kelvin ts (ts |> Array.map (fun t -> 280.0<K> + 50.0<K> * (t / (t + 150.0<s>))))
-        |> Chart.withRightAxisIn NonSi.degreeCelsius
+        |> Chart.withRightAxisIn U.degreeCelsius
 
     spectrum |> Chart.beside warming |> Chart.withTheme Theme.publication
 
 let secondarySurface: Extent<px> = { Width = 760.0<px>; Height = 300.0<px> }
 
-/// D179 — a circle of 2 mm round an ellipse, drawn round because one millimetre is as long on y
+/// A circle of 2 mm round an ellipse, drawn round because one millimetre is as long on y
 /// as on x, beside a panel that keeps its rectangle. The rational parametrisation of the circle
-/// (D141).
+///.
 let aspectFigure: Figure =
     let ts = Array.init 41 (fun i -> -1.0 + 2.0 * float i / 40.0)
 
@@ -515,10 +515,10 @@ let aspectFigure: Figure =
 
 let aspectSurface: Extent<px> = { Width = 760.0<px>; Height = 300.0<px> }
 
-/// D180 — a resonance with its peak drawn again in an inset, the zoom marked on the host. A
-/// Lorentzian, rational (D141).
+/// A resonance with its peak drawn again in an inset, the zoom marked on the host. A
+/// Lorentzian, rational.
 let insetFigure: Figure =
-    let hz = U.div U.one U.second
+    let hz = U.hertz
     let fs = Array.init 401 (fun i -> float i * 0.05<s^-1>)
     // A product rather than `** 2.0`: `Math.Pow` is not correctly rounded on every platform, and
     // under Node two of the inset's points came out a bit apart from .NET's.
@@ -863,7 +863,7 @@ module Scenes =
                            Group [| unitSquare; Scene.polyline (Stroke.solid warm 1.0<px>) [| pt 0.0 0.0; pt 0.1 0.0 |] |]
                        ) |]
 
-    /// D13 — text rotation is a device-space typographic property.
+    /// Text rotation is a device-space typographic property.
     ///
     /// "Pushing the direction vector `(cos θ, sin θ)` through the CTM is geometrically faithful,
     /// but the nd→px map is anisotropic on any non-square surface: a requested 30° renders as
@@ -1259,7 +1259,7 @@ module Fields =
             let d2 = Vec2.norm { X = p.X + 0.6<m>; Y = p.Y - 0.1<m> }
             (log (float d2) - log (float d1)) * 1.0<V>)
 
-    let fieldUnit = U.div Derived.volt U.metre
+    let fieldUnit = U.div U.volt U.metre
 
     let chargePair =
         let xs = Grid.linear -1.8<m> 1.8<m> 10
@@ -1284,7 +1284,7 @@ module Fields =
         Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 53) (Grid.linear -9.0<rad / s> 9.0<rad / s> 37) flow
 
     let streamlinePortrait =
-        Field.streamlinesWith 18.0<px> Derived.radian (U.div Derived.radian U.second) streamlinePendulum
+        Field.streamlinesWith 18.0<px> U.radian (U.div U.radian U.second) streamlinePendulum
         |> Chart.withTitle "A pendulum's phase portrait"
 
     let portraitPendulum (n: int) =
@@ -1292,11 +1292,11 @@ module Fields =
         Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> n) (Grid.linear -9.0<rad / s> 9.0<rad / s> (n * 37 / 53)) flow
 
     let phasePortrait =
-        Phase.portraitWith 18.0<px> Derived.radian (U.div Derived.radian U.second) (portraitPendulum 53)
+        Phase.portraitWith 18.0<px> U.radian (U.div U.radian U.second) (portraitPendulum 53)
         |> Chart.withTitle "A pendulum's phase portrait"
 
     let heatmapFigure =
-        Field.heatmap U.metre U.metre Derived.volt potential
+        Field.heatmap U.metre U.metre U.volt potential
         |> Chart.overlay (Field.contours U.metre U.metre potential)
         |> Chart.withYLabel "y"
         |> Chart.withTitle "Two line charges"

@@ -3,19 +3,19 @@ namespace Marey
 open System
 
 // ======================================================================================
-// M5 — THE CANVAS2D BACKEND (D121, D122)
+// THE CANVAS2D BACKEND
 //
 // The whole pipeline in a browser: a Fable app builds a `Figure`, compiles it with the same
 // compiler the kernel runs, and this draws the `Node` on a canvas. Nothing above `Node` is
-// written again, which is §13's promise and what the goldens under Node (D130) already showed
+// written again, which is the promise and what the goldens under Node already showed
 // for SVG.
 //
 // **The traversal is the Skia painter's, transcribed.** The same rules, for the same reasons,
 // because the Skia raster is what a canvas figure will be compared with by eye: geometry is
 // pushed through the current transform here rather than handed to the canvas as a matrix, so a
 // stroke's width stays in px; a marker batch is one outline drawn at every point, each mark
-// filled then stroked (D132); a text run's anchor and baseline are resolved against the
-// measurer layout used (D62), and the canvas draws from the left at the alphabetic baseline; and
+// filled then stroked; a text run's anchor and baseline are resolved against the
+// measurer layout used, and the canvas draws from the left at the alphabetic baseline; and
 // an opacity group is drawn on a scratch surface and composited with `globalAlpha`, the canvas's
 // `SaveLayer`.
 //
@@ -29,21 +29,21 @@ open System
 
 /// A colour as the canvas takes it, quantised to bytes as the Skia backend does.
 [<RequireQualifiedAccess>]
-module CssColor =
+module internal CssColor =
 
     let private channel (v: float) = int (Num.roundEven (max 0.0 (min 1.0 v) * 255.0))
 
     let ofColor (c: Color) : string =
-        sprintf "rgba(%d,%d,%d,%s)" (channel c.R) (channel c.G) (channel c.B) (Num.at 4 (float (channel c.A) / 255.0))
+        sprintf "rgba(%d,%d,%d,%s)" (channel c.R) (channel c.G) (channel c.B) (Num.upTo 4 (float (channel c.A) / 255.0))
 
-/// D122 — the canvas painter: a `Node` drawn on a 2-D context under a transform from panel space
+/// The canvas painter: a `Node` drawn on a 2-D context under a transform from panel space
 /// to the surface's px.
 ///
 /// `layer` makes the scratch surfaces an opacity group and a raster are drawn on, in device
 /// pixels; `Canvas.scratch` is the browser's, and a test passes its own. `scale` is the device
 /// pixels per px the context's own transform was set to, which a scratch layer has to share.
 ///
-/// `markers`, where given, draws the marker batches it claims on WebGL2 (D122).
+/// `markers`, where given, draws the marker batches it claims on WebGL2.
 [<Sealed>]
 type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, scale: float, markers: WebGlMarkers option) =
 
@@ -216,8 +216,9 @@ type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, 
             if a >= 1.0 then
                 draw ctx ctm child
             elif a > 0.0 then
-                // D67, the canvas's `SaveLayer`: the group on a surface of its own, composited
-                // once at the group's alpha, so an overlap inside it does not read darker.
+                // Group opacity, the canvas's `SaveLayer`: the group on a surface of its own,
+                // composited once at the group's alpha, so an overlap inside it does not read
+                // darker.
                 let surface = ctx.canvas
                 let scratch = layer (int surface.width) (int surface.height)
                 scratch.setTransform (scale, 0.0, 0.0, scale, 0.0, 0.0)
@@ -274,7 +275,7 @@ type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, 
         if b.Points.Length > 0 then
             let shape = outline b.Shape (float b.Size)
 
-            // §5.1's batch: the paint state is set once, and only the outline is traced per mark.
+            // One batch: the paint state is set once, and only the outline is traced per mark.
             // A gradient fill is the exception, filled under the transform mark by mark.
             let solidFill =
                 match b.Fill with
@@ -301,7 +302,7 @@ type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, 
 
                     ctx.closePath ()
 
-                // D132: each mark composited on its own, filled and then stroked.
+                // Each mark composited on its own, filled and then stroked.
                 match b.Fill, solidFill with
                 | Some _, Some _ -> ctx.fill "nonzero"
                 | Some f, None -> fill ctx ctm f NonZero
@@ -349,7 +350,7 @@ type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, 
     /// Draw a node on a context under a transform from panel space to px.
     member _.Draw(ctx: CanvasContext, ctm: Affine<nd, px>, node: Node) = draw ctx ctm node
 
-/// **The Canvas2D backend (D122).** Draws a scene on a 2-D context the caller owns.
+/// **The Canvas2D backend.** Draws a scene on a 2-D context the caller owns.
 ///
 /// ```fsharp
 /// let ctx = Canvas.context (Canvas.byId "plot")
@@ -361,13 +362,13 @@ type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, 
 /// `Begin` sizes the canvas to the extent at the display's pixel density, sets the context's
 /// transform so that a px is a CSS pixel, and clears it to the background; `Draw` draws; `Finish`
 /// does nothing, because the canvas is the artifact. **The measurer must be the one layout ran
-/// against** (D62): text is anchored with its advances.
+/// against**: text is anchored with its advances.
 ///
 /// `Semantics` is false: a canvas has no element per shape to carry a label, so `Annotated` is
 /// stripped, and a page that wants one gives the canvas element a single `aria-label`.
 ///
 /// **Marker batches of `WebGlMarkers.MinimumBatch` marks or more are drawn by WebGL2** where the
-/// browser has it, composited in their place (D122); `webgl = false` leaves every batch to the
+/// browser has it, composited in their place; `webgl = false` leaves every batch to the
 /// canvas.
 [<Sealed>]
 type CanvasBackend(ctx: CanvasContext, ?measurer: ITextMeasurer, ?background: Color, ?pixelRatio: float, ?layer: int -> int -> CanvasContext, ?webgl: bool) =
@@ -388,7 +389,7 @@ type CanvasBackend(ctx: CanvasContext, ?measurer: ITextMeasurer, ?background: Co
 
     let mutable root = rootFor { Width = 1.0<px>; Height = 1.0<px> }
 
-    /// What a canvas draws: everything but semantics (D122).
+    /// What a canvas draws: everything but semantics.
     static member Capabilities: Capabilities =
         { Gradients = true
           RadialGradients = true
@@ -434,6 +435,7 @@ type CanvasBackend(ctx: CanvasContext, ?measurer: ITextMeasurer, ?background: Co
         member _.Draw(node: Node) = painter.Draw(ctx, root, node)
         member _.Finish() = ()
 
+/// Drawing a scene on a canvas in the browser.
 [<RequireQualifiedAccess>]
 module CanvasBackend =
 

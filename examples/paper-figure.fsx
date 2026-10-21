@@ -90,7 +90,7 @@ let spectrum =
     |> Chart.withXLabel "λ"
     |> Chart.withYLabel "intensity"
     // E = hc/λ, checked both ways by the compiler; its ticks fall where whole energies are.
-    |> Chart.withTopAxisMapped NonSi.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
+    |> Chart.withTopAxisMapped U.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
     |> Chart.withTopAxisLabel "E"
     |> Chart.withLegend LegendOutsideRight
     |> Chart.withLegendFrame false

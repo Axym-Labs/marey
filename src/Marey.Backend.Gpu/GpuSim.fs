@@ -4,22 +4,22 @@ open System
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 
 // ======================================================================================
-// D147 — GPU SOLVERS WITH THE CPU'S TYPES.
+// GPU SOLVERS WITH THE CPU'S TYPES.
 //
-// `GpuSim.stam` is `Stam.step` on a renderer's GPU: a `Step` over the same `Fluid`, so `Sim`,
+// `GpuSim.stam` is `Stam.step` on a renderer's GPU: a `Stepper` over the same `Fluid`, so `Sim`,
 // `trajectory`, films and the time control take it unchanged. Each call uploads the state, runs
-// the step as fragment passes (D139), and reads the state back. Nothing carries from one call to
+// the step as fragment passes, and reads the state back. Nothing carries from one call to
 // the next but compiled programs and allocated textures, so two seeks of one trajectory, queued on
 // the render thread one after the other, get what a straight run gets, bit for bit on one device.
 //
 // **The same arithmetic as the CPU.** Every pass computes the CPU step's expression for one node,
 // in the same order, in float32 rather than float64. Bilinear interpolation is written out with
 // texelFetch; red-black half-sweeps read only the old values, as the CPU's do; the multigrid has the
-// same levels, cycle and schedule. So the CPU step is the GPU step's oracle (D140): after 200
+// same levels, cycle and schedule. So the CPU step is the GPU step's oracle: after 200
 // steps the two agree to about 10⁻⁴ of the field's maximum on radeonsi and on llvmpipe, and the
 // two drivers do not agree with each other to the bit.
 //
-// **The transfer is the price** (D147 (a)): 0.25 ms of upload and read-back at 256². `stamWith k`
+// **The transfer is the price**: 0.25 ms of upload and read-back at 256². `stamWith k`
 // runs k steps of h/k a call, one transfer for k steps.
 // ======================================================================================
 
@@ -599,7 +599,7 @@ void main() {
 
         out
 
-/// D147 — GPU twins of `Marey.Sim`'s grid solvers, stepping the same states on a renderer's GPU.
+/// GPU twins of `Marey.Sim`'s grid solvers, stepping the same states on a renderer's GPU.
 ///
 /// ```fsharp
 /// use gpu = new GpuRenderer()
@@ -613,7 +613,7 @@ module GpuSim =
 
     /// `Stam.step` on the GPU, `substeps` steps of `h / substeps` for each call: one upload and one
     /// read-back however many steps run.
-    let stamWith<[<Measure>] 'x, [<Measure>] 'q> (substeps: int) (gpu: GpuRenderer) (options: StamOptions<'x, 'q>) : Step<Fluid<'x, 'q>, s> =
+    let stamWith<[<Measure>] 'x, [<Measure>] 'q> (substeps: int) (gpu: GpuRenderer) (options: StamOptions<'x, 'q>) : Stepper<Fluid<'x, 'q>, s> =
         // The CPU step's checks, so the two refuse the same options.
         Stam.step options |> ignore
 
@@ -679,12 +679,12 @@ module GpuSim =
                 Pressure = (if hs > 0.0 then tagged p else f.Pressure) }
 
     /// `Stam.step` on the GPU of a renderer: the same `Fluid`, the same options, one step a call.
-    let stam<[<Measure>] 'x, [<Measure>] 'q> (gpu: GpuRenderer) (options: StamOptions<'x, 'q>) : Step<Fluid<'x, 'q>, s> =
+    let stam<[<Measure>] 'x, [<Measure>] 'q> (gpu: GpuRenderer) (options: StamOptions<'x, 'q>) : Stepper<Fluid<'x, 'q>, s> =
         stamWith 1 gpu options
 
     /// `Lbm.step` on the GPU, `substeps` ticks for each call: a call steps `substeps` times the
     /// lattice's tick, with one upload and one read-back.
-    let lbmWith<[<Measure>] 'x> (substeps: int) (gpu: GpuRenderer) (options: LbmOptions<'x>) : Step<Lattice<'x>, s> =
+    let lbmWith<[<Measure>] 'x> (substeps: int) (gpu: GpuRenderer) (options: LbmOptions<'x>) : Stepper<Lattice<'x>, s> =
         if substeps < 1 then
             invalidArg "substeps" (sprintf "Marey: a GPU step runs at least one step a call; got %d." substeps)
 
@@ -710,4 +710,4 @@ module GpuSim =
             { l with Populations = f }
 
     /// `Lbm.step` on the GPU of a renderer: the same `Lattice`, the same options, one tick a call.
-    let lbm<[<Measure>] 'x> (gpu: GpuRenderer) (options: LbmOptions<'x>) : Step<Lattice<'x>, s> = lbmWith 1 gpu options
+    let lbm<[<Measure>] 'x> (gpu: GpuRenderer) (options: LbmOptions<'x>) : Stepper<Lattice<'x>, s> = lbmWith 1 gpu options

@@ -1,11 +1,11 @@
 namespace Marey
 
-/// §2.2 — one unit's preferred symbol, in every typography the library can emit.
+/// One unit's preferred symbol, in every typography the library can emit.
 ///
 /// **The design sketches the registry as `Dim -> string`. One string is not enough**, and the
 /// ohm proves it in four different ways: `Ω` (Unicode), `ohm` (ASCII), `\Omega` (LaTeX math),
 /// `\ohm` (siunitx macro). Storing one spelling and deriving the others means string surgery
-/// on symbols, which is precisely the composition §12.6 forbids. So the registry value is a
+/// on symbols, which is precisely the composition this library forbids. So the registry value is a
 /// record of the four spellings, chosen once, by whoever registered the unit.
 ///
 /// `LatexCore` is the content that goes *inside* `\mathrm{…}`, not the wrapped form, so a
@@ -22,6 +22,7 @@ type UnitSymbol =
       /// Bare siunitx macro: `\ohm`, `\joule`, `\kilogram`.
       Siunitx: string }
 
+/// A unit's four spellings, built.
 [<RequireQualifiedAccess>]
 module UnitSymbol =
 
@@ -39,16 +40,16 @@ module UnitSymbol =
           LatexCore = latexCore
           Siunitx = siunitx }
 
-/// §2.2 — canonical-symbol lookup, keyed on `Dim`.
+/// Canonical-symbol lookup, keyed on `Dim`.
 ///
-/// **Deliberate correction to the design.** §2.2 sketches
+/// **Not a global table.** The obvious design is
 ///
 /// ```fsharp
 /// val register : Dim -> symbol: string -> unit
 /// ```
 ///
-/// which is a process-global mutable table. That is the exact defect §1.1 indicts matplotlib
-/// for — "Global mutable state (`pyplot`)" — and it would poison this library specifically:
+/// which is a process-global mutable table. That is matplotlib's `pyplot` defect, global
+/// mutable state, and it would poison this library specifically:
 /// two figures in one notebook would fight over the registry, a golden-image test would depend
 /// on test ordering, and `Marey.Core`'s "immutable values with structural equality" story
 /// would have a hole in it at the exact point where axis labels are produced.
@@ -59,12 +60,12 @@ module UnitSymbol =
 ///
 /// ### On "longest-match-wins"
 ///
-/// §2.2 says the match should be "longest-match-wins". That phrase presupposes a *string* key,
+/// A symbol table would match "longest-match-wins". That phrase presupposes a *string* key,
 /// where `kg·m·s⁻²` could match a longer or shorter prefix of the symbol. Keyed on `Dim` there
 /// is no such ordering: a `Dim` is a 7-vector of exponents and the lookup is exact equality on
 /// all seven. There is nothing to be longest about, so the concept does not survive the move
 /// to a dimension key — and the dimension key is right, because it is the only thing that
-/// makes `mul force metre` come out as `J` (§12.6).
+/// makes `mul force metre` come out as `J`.
 ///
 /// What "longest match" *would* buy, and what is deliberately not implemented here, is
 /// **partial factorisation**: rendering entropy `kg·m²·s⁻²·K⁻¹` as `J·K⁻¹` by peeling off the
@@ -107,6 +108,7 @@ type UnitRegistry(entries: (Dim * UnitSymbol)[]) =
         | true, v -> Some v
         | _ -> None
 
+/// Unit registries: the SI default, additions and merges.
 [<RequireQualifiedAccess>]
 module UnitRegistry =
 
@@ -163,27 +165,27 @@ module UnitRegistry =
     /// `withPhotometry` puts `lm` and `lx` back for callers who know their axes are photometric.
     let si =
         ofList
-            [ Derived.becquerel.Dim, UnitSymbol.plain "Bq" "\\becquerel"
-              Derived.hertz.Dim, UnitSymbol.plain "Hz" "\\hertz"
-              Derived.newton.Dim, UnitSymbol.plain "N" "\\newton"
-              Derived.pascal.Dim, UnitSymbol.plain "Pa" "\\pascal"
-              Derived.joule.Dim, UnitSymbol.plain "J" "\\joule"
-              Derived.watt.Dim, UnitSymbol.plain "W" "\\watt"
-              Derived.coulomb.Dim, UnitSymbol.plain "C" "\\coulomb"
-              Derived.volt.Dim, UnitSymbol.plain "V" "\\volt"
-              Derived.farad.Dim, UnitSymbol.plain "F" "\\farad"
-              Derived.ohm.Dim, UnitSymbol.create "Ω" "ohm" "\\Omega" "\\ohm"
-              Derived.siemens.Dim, UnitSymbol.plain "S" "\\siemens"
-              Derived.weber.Dim, UnitSymbol.plain "Wb" "\\weber"
-              Derived.tesla.Dim, UnitSymbol.plain "T" "\\tesla"
-              Derived.henry.Dim, UnitSymbol.plain "H" "\\henry"
-              Derived.sievert.Dim, UnitSymbol.plain "Sv" "\\sievert"
-              Derived.gray.Dim, UnitSymbol.plain "Gy" "\\gray"
-              Derived.katal.Dim, UnitSymbol.plain "kat" "\\katal" ]
+            [ U.becquerel.Dim, UnitSymbol.plain "Bq" "\\becquerel"
+              U.hertz.Dim, UnitSymbol.plain "Hz" "\\hertz"
+              U.newton.Dim, UnitSymbol.plain "N" "\\newton"
+              U.pascal.Dim, UnitSymbol.plain "Pa" "\\pascal"
+              U.joule.Dim, UnitSymbol.plain "J" "\\joule"
+              U.watt.Dim, UnitSymbol.plain "W" "\\watt"
+              U.coulomb.Dim, UnitSymbol.plain "C" "\\coulomb"
+              U.volt.Dim, UnitSymbol.plain "V" "\\volt"
+              U.farad.Dim, UnitSymbol.plain "F" "\\farad"
+              U.ohm.Dim, UnitSymbol.create "Ω" "ohm" "\\Omega" "\\ohm"
+              U.siemens.Dim, UnitSymbol.plain "S" "\\siemens"
+              U.weber.Dim, UnitSymbol.plain "Wb" "\\weber"
+              U.tesla.Dim, UnitSymbol.plain "T" "\\tesla"
+              U.henry.Dim, UnitSymbol.plain "H" "\\henry"
+              U.sievert.Dim, UnitSymbol.plain "Sv" "\\sievert"
+              U.gray.Dim, UnitSymbol.plain "Gy" "\\gray"
+              U.katal.Dim, UnitSymbol.plain "kat" "\\katal" ]
 
     /// `si` plus lumen and lux. Opt-in, because it makes candela axes render as lumens and
     /// luminance axes render as lux — correct only if you already know the axis is photometric.
     let withPhotometry (registry: UnitRegistry) =
         registry
-        |> add Derived.lumen.Dim (UnitSymbol.plain "lm" "\\lumen")
-        |> add Derived.lux.Dim (UnitSymbol.plain "lx" "\\lux")
+        |> add U.lumen.Dim (UnitSymbol.plain "lm" "\\lumen")
+        |> add U.lux.Dim (UnitSymbol.plain "lx" "\\lux")
