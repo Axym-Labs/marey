@@ -3,13 +3,13 @@ namespace Marey
 // ======================================================================================
 // THE NAMES THE PRODUCER GIVES WHAT IT DRAWS
 //
-// `Keyed` is the IR's stable identity, and until M3 the whole library produced exactly one of
-// them: `Keyed(Key "figure", …)` at the root of every figure. So the diff §5.2 designed the IR
-// around — and that D1 rejected closures in order to protect — had a granularity of *one*. Any
-// change to any figure changed the one keyed subtree, and `Keyed` was decoration.
+// `Keyed` is the IR's stable identity. With only `Keyed(Key "figure", …)` at the root of every
+// figure, the diff the IR is designed around — and that keeping closures out of the IR protects
+// — would have a granularity of *one*: any change to any figure changes the one keyed subtree,
+// and `Keyed` is decoration.
 //
 // The identity was never missing. It was in the *other* node: `Annotated` already carries a
-// panel's `(row, col)` and a layer's name, because §5.3 needs to say what a shape means. The two
+// panel's `(row, col)` and a layer's name, because the semantics say what a shape means. The two
 // nodes answer different questions — "what is this" and "which one is this" — and the producer
 // was answering only the first. This module is the second answer, from the information the
 // producer already had in hand.
@@ -20,15 +20,15 @@ namespace Marey
 // `Panel.Layers` is both.
 //
 // **A mark's key is its original row.** `Figure.fs` hands `Geom.compileSubset` a channel batch's
-// `Indices`, because a batch is a *renumbered subset* of the layer's points — mark 3 of batch 2
-// is not row 3. Building a key from the position within the batch is D55's defect exactly, and
+// `Indices`, because a batch is a *renumbered subset* of the layer's points — mark 3 of batch 2 is
+// not row 3. Building a key from the position within the batch is exactly the defect to avoid, and
 // the array that avoids it is already threaded through the producer. `mark` therefore takes the
 // row, and the one caller that will construct it has `b.Indices.[j]` in scope.
 //
-// **What is not built here.** No node carries a `mark` key yet: a mark has no node of its own
-// until something addresses it, and splitting a `MarkerBatch` to give it one is D69's business
-// in the storyboard phase. The spelling is fixed now, and pinned by a test, so that phase does
-// not invent a second one — the cost of agreeing on a string early is a string.
+// **What is not built here.** A mark has no node of its own until something addresses it, and
+// splitting a `MarkerBatch` to give it one is the storyboard's business. The spelling is fixed
+// here, and pinned by a test, so the storyboard does not invent a second one — the cost of agreeing
+// on a string early is a string.
 // ======================================================================================
 
 /// The hierarchical names `Marey.Plot` gives the subtrees it produces.
@@ -54,7 +54,7 @@ module Keys =
     let private child (Key parent) (suffix: string) =
         Key(parent + string Separator + suffix)
 
-    /// The root of every figure. The one key that existed before D68.
+    /// The root of every figure.
     let figure = Key "figure"
 
     /// The legend a figure shares among its panels.
@@ -94,8 +94,8 @@ module Keys =
     /// `key-` rather than `mark-`, so the two spellings cannot meet inside one layer.
     let datum (layerKey: Key) (k: string) = child layerKey ("key-" + escape k)
 
-    /// **Keys for a layer's rows, checked.** One per row, and no two alike, because a
-    /// duplicate is D68's failure: one name for two marks, and `Scene.mapKey` touching both
+    /// **Keys for a layer's rows, checked.** One per row, and no two alike, because a duplicate is
+    /// the failure keys exist to prevent: one name for two marks, and `Scene.mapKey` touching both
     /// when asked for one. The duplicates are named, with their rows, up to five of them.
     let validate (rows: int) (keys: string[]) : unit =
         if isNull keys then
@@ -135,7 +135,7 @@ module Keys =
     /// A panel's secondary x axis, on its top.
     let axisX2 (panelKey: Key) = child panelKey "axis-x2"
 
-    /// A panel's second y axis, on its right, or D178's secondary y axis.
+    /// A panel's second y axis, on its right, or its secondary y axis.
     let axisY2 (panelKey: Key) = child panelKey "axis-y2"
 
     let grid (panelKey: Key) = child panelKey "grid"

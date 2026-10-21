@@ -13,10 +13,9 @@ open System.Runtime.InteropServices
 ///
 /// ### Why the witnesses are arguments and cannot be anything else
 ///
-/// §9 sketches `Chart.line (ts, positions) |> Chart.withXAxis (Axis.auto U.second)`, and the
-/// witness appears in that sketch too — because §1.3 leaves no alternative. `float(s)` **is**
-/// `float` at runtime; a `float(s)[]` carries no evidence that it is seconds. Something has to
-/// hand the library the runtime witness, exactly once, and `U.second` is that something.
+/// There is no alternative to passing them. `float(s)` **is** `float` at runtime; a `float(s)[]`
+/// carries no evidence that it is seconds. Something has to hand the library the runtime
+/// witness, exactly once, and `U.second` is that something.
 ///
 /// What is *not* configured is everything downstream of it: the scale, the domain, the prefix,
 /// the tick values, the tick labels and both axis titles. `Chart.line U.second U.metre ts xs`
@@ -26,8 +25,8 @@ open System.Runtime.InteropServices
 ///
 /// ### Nothing here mutates
 ///
-/// §1.1 indicts Plotly.NET for exactly one thing this module could get wrong: "styling functions
-/// *mutate* the chart (documented caveat)." Every `with*` and `add*` below returns a new
+/// Plotly.NET's documented caveat is exactly the one thing this module could get wrong: its
+/// styling functions *mutate* the chart. Every `with*` and `add*` below returns a new
 /// `Figure`; there is no `mutable` in this file and no member on any type in this package that
 /// changes one. `Chart.withTitle` on a figure you have already rendered gives you a second
 /// figure and leaves the first alone.
@@ -484,7 +483,7 @@ module Chart =
     /// The y domain of a quantity that cannot be negative and is read from zero: zero exactly,
     /// to the maximum plus breathing room *above only*.
     ///
-    /// D50 widens a bar's domain to reach zero; this is the same rule for a quantity that never
+    /// A bar's domain is widened to reach zero; this is the same rule for a quantity that never
     /// leaves the positive half-line, and it differs from `withZero (paddedOr …)` in the case
     /// that matters here. An empty histogram bin, or a density that reaches the axis, has the
     /// value zero — and padding below it draws a strip of negative count under the baseline,
@@ -545,7 +544,7 @@ module Chart =
     /// interpolated between observations asserts data between them that was not observed.
     ///
     /// **`GeomStep` exists now and this still does not use it**, which is worth stating because
-    /// the obvious reading of phase 6 is that it should. `GeomStep StepAfter` draws the riser
+    /// the obvious reading is that it should. `GeomStep StepAfter` draws the riser
     /// *between* two points, so it has no riser to draw at the first observation — and the jump
     /// from zero to `1/n` at the smallest datum is the one an ECDF is read for. The doubled
     /// array draws it. `Chart.step` is the geom's own front door for the data that has no such
@@ -630,7 +629,7 @@ module Chart =
 
     // ---- Dimensionless ------------------------------------------------------------------------
 
-    /// **Retired by D109; one release as an alias, then gone.** The constructors at `U.one U.one`,
+    /// **Retired; one release as an alias, then gone.** The constructors at `U.one U.one`,
     /// for data with no dimension, as 0.3 shipped them.
     ///
     /// It was the library's answer to plain numbers while every chart required a witness, and it
@@ -941,7 +940,7 @@ module Chart =
 
     /// **Give these rows nodes of their own**, by original row index.
     ///
-    /// §5.1 batches a scatter's marks into one `Markers` node, so mark 42 has nothing a
+    /// The IR batches a scatter's marks into one `Markers` node, so mark 42 has nothing a
     /// rewrite can address. Naming it here splits that batch three ways — before it, itself
     /// under `Keys.mark`, after it — and `Scene.mapKey (Keys.mark layer 42)` then reaches
     /// exactly one mark. Two extra nodes, not N.
@@ -1122,7 +1121,7 @@ module Chart =
     /// |> Chart.shapeByKey species
     /// ```
     ///
-    /// Applying both to the same keys is §9's colour-blind-safe scatter, and it is still *one
+    /// Applying both to the same keys is the colour-blind-safe scatter, and it is still *one
     /// batch per level*: the two channels read the same level number, so the grouping does not
     /// take their product.
     let colorByKey (keys: 'k[]) (fig: Figure) : Figure =
@@ -1270,8 +1269,8 @@ module Chart =
 
     // ---- Axes ---------------------------------------------------------------------------------
 
-    /// An axis configuration named after the quantity. §9's `Chart.withXAxis (Axis.auto …)` in
-    /// spirit: the unit half of the title is never configured, only the quantity name.
+    /// An axis configuration named after the quantity: the unit half of the title is never
+    /// configured, only the quantity name.
     let axis (label: string) : AxisConfig = { Figure.axisConfig with Label = Some label }
 
     let withXAxis (cfg: AxisConfig) (fig: Figure) = mapLast (fun p -> { p with XAxis = cfg }) fig
@@ -1498,7 +1497,7 @@ module Chart =
     ///
     /// When the two have different numbers of rows, each side's panels span what their
     /// share covers, so a single panel beside a stack of two runs the height of both, and no cell
-    /// is left empty. D175 — the rows are merged by where they end (`merge`), so a pair drawn
+    /// is left empty. The rows are merged by where they end (`merge`), so a pair drawn
     /// 3 : 1 beside a stack of three keeps its 3 : 1.
     let beside (b: Figure) (a: Figure) : Figure =
         let b = Figure.offsetShares a b
@@ -1822,7 +1821,7 @@ module Chart =
         if n <= 1 then 1 else int (ceil (sqrt (float n)))
 
     /// **The key is drawn once.** Every layer outside the first drawn panel leaves the legend and
-    /// the colorbar (D53, as D48 widens it).
+    /// the colorbar.
     ///
     /// A facet's channels are built over the whole block and then sliced, so every panel's key is
     /// the same key. Repeating it says nothing the first one did not, and a colorbar repeated
@@ -1902,7 +1901,7 @@ module Chart =
 
     let toSceneWith (m: ITextMeasurer) (extent: Extent<px>) (fig: Figure) : Node = Figure.toScene m extent fig
 
-    // ---- Output, for something that moves — D72 ---------------------------------------------
+    // ---- Output, for something that moves ---------------------------------------------------
 
     /// The layout this figure would be drawn in. One shot, one sample.
     ///
@@ -1914,7 +1913,7 @@ module Chart =
 
     /// **Lay out once for the whole shot, against the union of its sampled states.**
     ///
-    /// The reason this exists rather than "just call `toScene` per frame": since D61 the plot
+    /// The reason this exists rather than "just call `toScene` per frame": the plot
     /// rectangle is what is left after the widest tick label has taken its room, so a domain
     /// crossing `9.5 → 10.5` gains a digit on every label at once and the panel *breathes* while
     /// the data is the thing supposed to be moving. Sizing against the union gives an arrangement
@@ -1926,7 +1925,7 @@ module Chart =
     /// ```
     ///
     /// `samples` is stated because the union is only as good as it: an animation with a spike
-    /// between two samples can still overflow. Thirty-two is D72's default and a good one.
+    /// between two samples can still overflow. Thirty-two is the usual default and a good one.
     let arrangeUnion (samples: int) (m: ITextMeasurer) (extent: Extent<px>) (sample: float -> Figure) : Shot =
         Figure.arrangeUnion samples m extent sample
 
@@ -1964,8 +1963,8 @@ module Chart =
     /// Drive any backend.
     ///
     /// This is the path that honours the backend contract in full: layout measures against the
-    /// backend's **own** `ITextMeasurer` (§9's "measure–arrange pass against
-    /// `IBackend.MeasureText`"), and the scene is then run through `Degrade.forCaps` and
+    /// backend's **own** `ITextMeasurer` (the measure–arrange pass against
+    /// `IBackend.MeasureText`), and the scene is then run through `Degrade.forCaps` and
     /// `Degrade.splitBatches` so a backend that cannot do gradients, dashes, clipping or
     /// unbounded batches gets a defensible approximation rather than wrong output.
     let renderTo (backend: IBackend) (extent: Extent<px>) (fig: Figure) : unit =
@@ -1980,12 +1979,12 @@ module Chart =
 
     /// Render with a plain scene renderer — `SvgBackend.render` has exactly this shape.
     ///
-    /// `Marey.Plot` takes no backend dependency, on purpose: §0's diagram has the DSLs above the
-    /// IR and the backends below it, and a grammar package that references a renderer inverts
+    /// `Marey.Plot` takes no backend dependency, on purpose: the DSLs sit above the IR and the
+    /// backends below it, and a grammar package that references a renderer inverts
     /// that. Passing the renderer in costs one identifier and keeps the layering honest.
     ///
     /// **The return type is the renderer's, not `string`.** Every function-shaped entry
-    /// point named `string` until M2.5, which is a claim about the *artifact* smuggled into the
+    /// point once named `string`, which is a claim about the *artifact* smuggled into the
     /// signature of a function that only forwards it. A PNG has no UTF-8 encoding and a PDF's is
     /// a lie, so a raster backend does not fit through a `string`-typed hole. One type parameter
     /// removes the claim without adding an entry point: `SvgBackend.render` still gives back a
@@ -2012,7 +2011,7 @@ module Chart =
 
     /// `toFile` under its original name.
     ///
-    /// Kept because it appears in the README and in every M0-era example, and because renaming a
+    /// Kept because it appears in the README and in early examples, and because renaming a
     /// public entry point is not worth a breaking change. It was always renderer-shaped rather
     /// than SVG-specific — the name was the only thing that said otherwise.
     let toSvg (renderer: Extent<px> -> Node -> string) (path: string) (extent: Extent<px>) (fig: Figure) : unit =

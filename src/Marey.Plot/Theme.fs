@@ -7,7 +7,7 @@ namespace Marey
 /// from parent". Resolving a style is a field access, and a missing style is a compile error
 /// rather than a silent default three layers away.
 ///
-/// ### The unit convention, which is D12 and is load-bearing
+/// ### The unit convention, which is load-bearing
 ///
 /// * **Positions** are `nd` and live in the IR.
 /// * **Font sizes** are `pt`, because type is specified in points and a 10 pt label is 10 pt at
@@ -94,8 +94,8 @@ type Theme =
       ///
       /// A theme is the right home for this because it is a *presentation* choice, exactly like a
       /// font or a rule width: the same figure wants `m·s⁻²` on screen and
-      /// `\qty{}{\metre\per\second\squared}` in a LaTeX document, and nothing about the data or
-      /// the scale changes between them. It is what lets `Theme.tikz` deliver M1's headline with
+      /// `\qty{}{\metre\per\second\squared}` in a LaTeX document, and nothing about the data or the
+      /// scale changes between them. It is what lets `Theme.tikz` produce siunitx axis titles with
       /// no configuration beyond selecting the theme.
       ///
       /// `AxisConfig.Style` overrides it per axis when set.
@@ -113,7 +113,7 @@ type Theme =
       TickCount: int
       /// Marker shapes, cycled alongside `Categorical`. Shape is the redundant encoding channel
       /// that makes a scatter readable in greyscale and under CVD — which is the whole reason
-      /// D5 put a shape field on `MarkerBatch`.
+      /// `MarkerBatch` has a shape field.
       MarkerShapes: MarkerShape[]
 
       // ---- Ticks ---------------------------------------------------------
@@ -178,11 +178,11 @@ module Theme =
     /// No gridlines, hairline rules, and a palette that has been measured under three
     /// dichromacies. This is the theme a figure goes into a paper in.
     ///
-    /// **The box of a physics journal.** Since M8 it is framed, with ticks pointing into the
-    /// plot on all four sides and minor ticks between them — the convention of the journals it is
-    /// for, and pgfplots' own default, so a `Theme.tikz` figure matches the document around it.
-    /// Until 0.6 it was an open L with outward ticks; that figure is `Theme.publication` with
-    /// `PanelFrame = false`, `TickDirection = TickOut`, `MirrorTicks = false`, `MinorTicks = false`.
+    /// **The box of a physics journal.** It is framed, with ticks pointing into the plot on all
+    /// four sides and minor ticks between them — the convention of the journals it is for, and
+    /// pgfplots' own default, so a `Theme.tikz` figure matches the document around it. Until 0.6 it
+    /// was an open L with outward ticks; that figure is `Theme.publication` with `PanelFrame =
+    /// false`, `TickDirection = TickOut`, `MirrorTicks = false`, `MinorTicks = false`.
     let publication: Theme =
         { Name = "publication"
 
@@ -406,20 +406,19 @@ module Theme =
             Sequential = Palette.viridis
             Diverging = Palette.diverging }
 
-    /// §9's `tikz` theme — "inherits document fonts" — and the one that makes M1's headline a
+    /// The `tikz` theme — "inherits document fonts" — and the one that makes siunitx titles a
     /// single selection: `Chart.withTheme Theme.tikz` and the axis titles come out as siunitx
     /// macros with nothing else configured.
     ///
-    /// ### The two halves of D35, and why it is not simply "inherit everything"
+    /// ### The two halves, and why it is not simply "inherit everything"
     ///
     /// **The size is pinned; the family is inherited.** Taken literally, "inherit the document's
     /// fonts" means emit no font information at all, and then the figure is typeset in a face whose
     /// metrics have nothing to do with the `ApproxTextMeasurer` widths that the measure–arrange
-    /// pass and D23's collision ladder were computed against. Labels would collide in the PDF
-    /// while layout believed they fitted. So the TikZ backend emits `\fontsize{s}{1.2s}` — the size
-    /// layout assumed — and no family, letting the document supply that.
-    /// `TikzOptions.FontMode = InheritFont` opts out of even the size, and accepts the
-    /// consequence.
+    /// pass and the tick-label collision ladder were computed against. Labels would collide in the
+    /// PDF while layout believed they fitted. So the TikZ backend emits `\fontsize{s}{1.2s}` — the
+    /// size layout assumed — and no family, letting the document supply that. `TikzOptions.FontMode
+    /// = InheritFont` opts out of even the size, and accepts the consequence.
     ///
     /// **The family string here is therefore a *measurement* input, not an instruction.** The TikZ
     /// backend never emits a family, so `Serif` does not put Times in the document — it tells
@@ -448,8 +447,8 @@ module Theme =
         all
         |> Array.tryFind (fun t -> System.String.Equals(t.Name, name, System.StringComparison.OrdinalIgnoreCase))
 
-    // ---- Combinators. Every one returns a new value (§1.1: Plotly.NET's documented flaw is
-    // that its styling functions mutate). ------------------------------------------------
+    // ---- Combinators. Every one returns a new value (Plotly.NET's documented flaw is that its
+    // styling functions mutate). ------------------------------------------------
 
     let withPalette (cs: Color[]) (t: Theme) = { t with Categorical = cs }
 
@@ -509,7 +508,7 @@ module Theme =
 
     // ---- Validation ---------------------------------------------------------------------
 
-    /// Measure a theme's contrast. §9 asks for a validator; this is the half that runs on the
+    /// Measure a theme's contrast. This is the half of the validator that runs on the
     /// theme rather than on the palette, and it is what catches a dark theme that was built by
     /// inverting a light one and never looked at.
     let validate (t: Theme) : ThemeReport =
