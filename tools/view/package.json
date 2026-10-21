@@ -3,6 +3,6 @@
   "private": true,
   "description": "Pins the bundler for src/Marey.Html/view/marey-view.js (step F, D157). See build.sh.",
   "devDependencies": {
-    "esbuild": "0.24.0"
+    "esbuild": "0.28.2"
   }
 }

@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- The whole library in one reference: `#r "nuget: Marey"` in a notebook or script, or
+         `dotnet add package Marey`. It carries no code. Its dependencies are the packages a figure,
+         a field, a simulation, an animation and a live notebook figure need, and nothing that
+         brings a native library or an external tool: Skia (PNG and PDF), the GPU window, and the
+         TeX and video tools stay opt-in, so a user who never writes a PNG never downloads Skia's
+         natives. A Fable app that references it compiles the sources of the packages below that
+         carry them, and ignores the rest. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- No assembly, so no documentation file and no symbols to pack. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IncludeSymbols>false</IncludeSymbols>
+    <Description>Marey in one reference: units, the plotting grammar, fields, simulations, animation, live figures, and SVG, TikZ and HTML output. Add Marey.Backend.Skia for PNG and PDF, Marey.Backend.Gpu for a window, Marey.Tools.Tex and Marey.Tools.Video for typeset labels and video.</Description>
+    <PackageTags>fsharp plotting visualization units-of-measure physics scientific svg tikz notebook animation simulation</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- A package with dependencies and no assembly. The placeholder tells NuGet the package
+         supports netstandard2.1 with nothing to reference, rather than nothing at all. -->
+    <None Include="_._" Pack="true" PackagePath="lib/netstandard2.1/" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
+    <ProjectReference Include="..\Marey.Units\Marey.Units.fsproj" />
+    <ProjectReference Include="..\Marey.Anim\Marey.Anim.fsproj" />
+    <ProjectReference Include="..\Marey.Plot\Marey.Plot.fsproj" />
+    <ProjectReference Include="..\Marey.Fields\Marey.Fields.fsproj" />
+    <ProjectReference Include="..\Marey.Sim\Marey.Sim.fsproj" />
+    <ProjectReference Include="..\Marey.Interact\Marey.Interact.fsproj" />
+    <ProjectReference Include="..\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />
+    <ProjectReference Include="..\Marey.Backend.Tikz\Marey.Backend.Tikz.fsproj" />
+    <ProjectReference Include="..\Marey.Html\Marey.Html.fsproj" />
+  </ItemGroup>
+
+</Project>

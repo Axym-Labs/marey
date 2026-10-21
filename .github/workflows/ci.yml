@@ -201,7 +201,7 @@ jobs:
         run: |
           set -e
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 17 ] || { echo "::error::expected 17 packages, packed $count"; exit 1; }
+          [ "$count" -eq 18 ] || { echo "::error::expected 18 packages, packed $count"; exit 1; }
           fable=0
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
@@ -224,7 +224,7 @@ jobs:
             echo "  $(basename "$pkg"): $readme"
           done
           [ "$fable" -eq 9 ] || { echo "::error::expected 9 packages with Fable sources, found $fable"; exit 1; }
-          echo "17 packages, each with an MIT expression and the readme it declares; 9 with Fable sources"
+          echo "18 packages, each with an MIT expression and the readme it declares; 9 with Fable sources"
 
       # D146, gate 1: the FSharp.Core a consumer needs is the one src/Directory.Build.props states,
       # not the one this leg's SDK bundles. 0.5.0 shipped `>= 10.1.401` because it was the latter.
@@ -298,11 +298,16 @@ jobs:
       # M5 phase 2, gate 3: the same goldens built from the packages rather than the projects, so
       # Fable compiles the sources each package carries under fable/. A file the pack left out is
       # a compile error here, before anything is published.
-      - name: Pack the Fable projects
+      #
+      # 1.0, G15: and through the `Marey` metapackage, which the test project references in place
+      # of the packages themselves. So Fable follows a package with no code to the sources of what
+      # it gathers, and passes over Tikz and Html, which it gathers too and which have none.
+      - name: Pack the Fable projects and the metapackage
         run: |
-          for p in Core Units Anim Plot Fields Interact Backend.Svg Backend.Web Sim; do
+          for p in Core Units Anim Plot Fields Interact Backend.Svg Backend.Web Sim Backend.Tikz Html; do
             dotnet pack src/Marey.$p --configuration Release -o fable-packages -p:Version=0.0.0-fable
           done
+          dotnet pack src/Marey --configuration Release -o fable-packages -p:Version=0.0.0-fable
 
       - name: Compile with Fable from the packages
         env:

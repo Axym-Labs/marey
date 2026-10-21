@@ -22,7 +22,12 @@ let packages =
         let name = Path.GetFileName dir
         let proj = Path.Combine(dir, name + ".fsproj")
 
-        if File.Exists proj && not (File.ReadAllText(proj).Contains "<IsPackable>false</IsPackable>") then
+        let text = if File.Exists proj then File.ReadAllText proj else ""
+
+        // `Marey` packs no assembly, so there is nothing of it to document.
+        if File.Exists proj
+           && not (text.Contains "<IsPackable>false</IsPackable>")
+           && not (text.Contains "<IncludeBuildOutput>false</IncludeBuildOutput>") then
             let release = Path.Combine(dir, "bin", "Release")
 
             if Directory.Exists release then

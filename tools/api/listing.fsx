@@ -34,14 +34,19 @@ let run (file: string) (args: string list) =
     p.WaitForExit()
     p.ExitCode
 
-/// The packages: every project under `src/` that does not say `IsPackable=false`.
+/// The packages: every project under `src/` that does not say `IsPackable=false`, less the one
+/// that packs no assembly (`Marey`, which only gathers the others) and so has no API.
 let packages =
     Directory.GetDirectories(Path.Combine(root, "src"))
     |> Array.choose (fun dir ->
         let name = Path.GetFileName dir
         let proj = Path.Combine(dir, name + ".fsproj")
 
-        if File.Exists proj && not (File.ReadAllText(proj).Contains "<IsPackable>false</IsPackable>") then
+        let text = if File.Exists proj then File.ReadAllText proj else ""
+
+        if File.Exists proj
+           && not (text.Contains "<IsPackable>false</IsPackable>")
+           && not (text.Contains "<IncludeBuildOutput>false</IncludeBuildOutput>") then
             Some name
         else
             None)

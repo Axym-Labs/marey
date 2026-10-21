@@ -3,8 +3,7 @@
 A plotting library for F# where the compiler checks your units, and the axes label themselves.
 
 ```fsharp
-#r "nuget: Marey.Plot"
-#r "nuget: Marey.Backend.Svg"
+#r "nuget: Marey"
 
 open Marey
 open Marey.UnitsOfMeasure
@@ -49,6 +48,7 @@ Marey.CSharp`. A unit known only as text is read with `U.parse "V/m"`.
 
 | Package | |
 |---|---|
+| `Marey` | The packages below that need no native library or external tool, in one reference: Core, Units, Plot, Svg, Tikz, Anim, Fields, Sim, Interact and Html. Carries no code. |
 | `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the scene IR. Zero dependencies. |
 | `Marey.Units` | SI, derived and non-SI unit witnesses; canonicalisation, prefix selection, and four rendering styles. |
 | `Marey.Plot` | `Chart` and the `plot` encoding block, thirteen geoms, channels, statistics (loess and bootstrap intervals among them), facets, themes, colour-blind-safe palettes, layout, the `scene` storyboard block, and the parallel frame writer. No backend reference. |
