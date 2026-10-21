@@ -1426,34 +1426,6 @@ module Chart =
 
     // ---- Multi-panel ---------------------------------------------------------------------------
 
-    let rec private gcd (a: int) (b: int) = if b = 0 then a else gcd b (a % b)
-    let private lcm (a: int) (b: int) = a / gcd a b * b
-
-    /// D175 — a row's stated weight given to each of the `k` rows it becomes. Every row is split
-    /// alike, so every proportion holds and the mean stays 1.
-    let private split (k: int) (weights: float[]) =
-        weights |> Array.collect (fun w -> Array.create k w)
-
-    /// D174 — a figure's rows stretched by `k`: each panel starts `k` times lower and spans `k`
-    /// times as many rows.
-    let private stretchRows (k: int) (f: Figure) =
-        if k = 1 then
-            f
-        else
-            { f with
-                Rows = f.Rows * k
-                RowWeights = split k f.RowWeights
-                Panels = f.Panels |> Array.map (fun p -> { p with Row = p.Row * k; RowSpan = max 1 p.RowSpan * k }) }
-
-    let private stretchCols (k: int) (f: Figure) =
-        if k = 1 then
-            f
-        else
-            { f with
-                Cols = f.Cols * k
-                ColWeights = split k f.ColWeights
-                Panels = f.Panels |> Array.map (fun p -> { p with Col = p.Col * k; ColSpan = max 1 p.ColSpan * k }) }
-
     /// D175 — two figures' weights along the axis they are joined on: each side's, or ones where
     /// it states none, so a stated pair keeps its proportion beside an unstated panel.
     let private joined (aCount: int) (a: float[]) (bCount: int) (b: float[]) =
@@ -1463,42 +1435,101 @@ module Chart =
             let fill n (ws: float[]) = if ws.Length = 0 then Array.create n 1.0 else ws
             Array.append (fill aCount a) (fill bCount b)
 
-    /// D175 — the weights two figures share along the axis they stand side by side on: the
-    /// first's where it states them, otherwise the second's.
-    let private shared (a: float[]) (b: float[]) = if a.Length > 0 then a else b
+    /// D175 — the lines a side's rows end on, as fractions of the side: 0, its weights (ones where
+    /// it states none) summed, 1.
+    let private edgesOf (count: int) (weights: float[]) =
+        let ws = Array.init count (fun i -> if i < weights.Length then weights.[i] else 1.0)
+        let total = Array.sum ws
+        Array.scan (+) 0.0 ws |> Array.map (fun e -> e / total)
+
+    /// Two lines closer than this are one line.
+    let private sameEdge (a: float) (b: float) = abs (a - b) < 1e-9
+
+    /// D174, D175 — **two sides merged along the axis they stand side by side on.** Each side's
+    /// rows end at the fractions its weights put them at, and the merged grid has a line wherever
+    /// either side has one, so a stated proportion is a proportion of the grid and no line of one
+    /// side has to fall between two of the other's. A side that states no weights, beside one with
+    /// as many rows that does, takes the other's, and the two line up row by row.
+    ///
+    /// Returns the merged count, its weights (empty when every track is alike and neither side
+    /// stated any), and, per side, where each of its old lines went.
+    let private merge (aCount: int) (aWeights: float[]) (bCount: int) (bWeights: float[]) =
+        let aWeights, bWeights =
+            if aCount = bCount && aWeights.Length = 0 then bWeights, bWeights
+            elif aCount = bCount && bWeights.Length = 0 then aWeights, aWeights
+            else aWeights, bWeights
+
+        let ea = edgesOf aCount aWeights
+        let eb = edgesOf bCount bWeights
+
+        let edges =
+            Array.append ea eb
+            |> Array.sort
+            |> Array.fold
+                (fun (acc: float list) e ->
+                    match acc with
+                    | last :: _ when sameEdge last e -> acc
+                    | _ -> e :: acc)
+                []
+            |> List.rev
+            |> Array.ofList
+
+        let lineOf (e: float) = edges |> Array.findIndex (sameEdge e)
+        let count = edges.Length - 1
+        let sizes = Array.init count (fun i -> edges.[i + 1] - edges.[i])
+        let mean = Array.average sizes
+
+        let weights =
+            if aWeights.Length = 0 && bWeights.Length = 0 && sizes |> Array.forall (fun w -> sameEdge w mean) then
+                [||]
+            else
+                sizes |> Array.map (fun w -> w / mean)
+
+        count, weights, Array.map lineOf ea, Array.map lineOf eb
+
+    /// A panel moved onto the merged grid: it starts on the line its first row started on, and
+    /// spans to the line its last row ended on.
+    let private onLines (lines: int[]) (start: int) (span: int) =
+        let first = lines.[start]
+        first, lines.[start + max 1 span] - first
 
     /// Put `b`'s panels to the right of `a`'s. `b`'s figure-level title is dropped; use
     /// `withPanelTitle` for per-panel headings.
     ///
-    /// D174 — when the two have different numbers of rows, the grid takes the least common
-    /// multiple and each side's panels span what their share covers, so a single panel beside
-    /// a stack of two runs the height of both, and no cell is left empty.
+    /// D174 — when the two have different numbers of rows, each side's panels span what their
+    /// share covers, so a single panel beside a stack of two runs the height of both, and no cell
+    /// is left empty. D175 — the rows are merged by where they end (`merge`), so a pair drawn
+    /// 3 : 1 beside a stack of three keeps its 3 : 1.
     let beside (b: Figure) (a: Figure) : Figure =
         let b = Figure.offsetShares a b
-        let rows = lcm (max 1 a.Rows) (max 1 b.Rows)
-        let a = stretchRows (rows / max 1 a.Rows) a
-        let b = stretchRows (rows / max 1 b.Rows) b
+        let rows, weights, la, lb = merge (max 1 a.Rows) a.RowWeights (max 1 b.Rows) b.RowWeights
+
+        let place (lines: int[]) (dc: int) (p: Panel) =
+            let row, span = onLines lines (max 0 p.Row) p.RowSpan
+            { p with Row = row; RowSpan = span; Col = p.Col + dc }
 
         { a with
             Cols = a.Cols + b.Cols
             Rows = rows
-            RowWeights = shared a.RowWeights b.RowWeights
+            RowWeights = weights
             ColWeights = joined (max 1 a.Cols) a.ColWeights (max 1 b.Cols) b.ColWeights
-            Panels = Array.append a.Panels (b.Panels |> Array.map (fun p -> { p with Col = p.Col + a.Cols })) }
+            Panels = Array.append (a.Panels |> Array.map (place la 0)) (b.Panels |> Array.map (place lb a.Cols)) }
 
-    /// Put `b`'s panels below `a`'s, across the least common multiple of their columns (D174).
+    /// Put `b`'s panels below `a`'s, their columns merged as `beside` merges rows (D174, D175).
     let above (b: Figure) (a: Figure) : Figure =
         let b = Figure.offsetShares a b
-        let cols = lcm (max 1 a.Cols) (max 1 b.Cols)
-        let a = stretchCols (cols / max 1 a.Cols) a
-        let b = stretchCols (cols / max 1 b.Cols) b
+        let cols, weights, la, lb = merge (max 1 a.Cols) a.ColWeights (max 1 b.Cols) b.ColWeights
+
+        let place (lines: int[]) (dr: int) (p: Panel) =
+            let col, span = onLines lines (max 0 p.Col) p.ColSpan
+            { p with Col = col; ColSpan = span; Row = p.Row + dr }
 
         { a with
             Rows = a.Rows + b.Rows
             Cols = cols
-            ColWeights = shared a.ColWeights b.ColWeights
+            ColWeights = weights
             RowWeights = joined (max 1 a.Rows) a.RowWeights (max 1 b.Rows) b.RowWeights
-            Panels = Array.append a.Panels (b.Panels |> Array.map (fun p -> { p with Row = p.Row + a.Rows })) }
+            Panels = Array.append (a.Panels |> Array.map (place la 0)) (b.Panels |> Array.map (place lb a.Rows)) }
 
     /// D177 — **a second y axis, on the right**: `left |> Chart.withRightAxis right` draws
     /// `right`'s layers on the last panel of `left`, against a y axis of their own on the right,

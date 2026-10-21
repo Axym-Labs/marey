@@ -12,6 +12,18 @@ land in a minor release.
 
 ## [Unreleased]
 
+### Changed
+
+- **A stated proportion holds beside a side of another shape.** `withRowHeights [| 3.0; 1.0 |]`
+  beside a stack of three drew 1.70 : 1, and the stack uneven, because `beside` subdivided both
+  sides to the least common multiple of their rows and every line of one side then crossed the
+  other's panels with its gutters. The two sides' rows are now merged where they end, and the lines
+  are placed so that each side's plots keep their proportions (D175). `above` does the same for
+  columns. A figure composed from sides of different shapes has a different number of rows or
+  columns than before (three beside two has four rows, not six), so `withRowHeights` after such a
+  `beside` takes that many weights, and its plots move. Figures whose sides line up row for row
+  draw exactly as before.
+
 ## [0.7.0] — 2026-10-16
 
 **Paper figures.** What a figure for a paper adds last, and where its panels sit. Rules, spans and

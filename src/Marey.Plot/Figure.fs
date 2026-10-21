@@ -2641,6 +2641,181 @@ module Figure =
                        yield Scene.polyline stroke [| nd a; nd b |] |]
         )
 
+    /// Least squares by the normal equations, solved by elimination with partial pivoting. The
+    /// systems here are a few grid lines wide.
+    let private leastSquares (a: float[][]) (b: float[]) : float[] option =
+        let n = a.[0].Length
+
+        let m =
+            Array.init n (fun i ->
+                Array.init (n + 1) (fun j ->
+                    if j < n then
+                        a |> Array.sumBy (fun r -> r.[i] * r.[j])
+                    else
+                        Array.fold2 (fun t (r: float[]) bk -> t + r.[i] * bk) 0.0 a b))
+
+        let rec eliminate k =
+            if k = n then
+                true
+            else
+                let p = seq { k .. n - 1 } |> Seq.maxBy (fun i -> abs m.[i].[k])
+
+                if abs m.[p].[k] < 1e-12 then
+                    false
+                else
+                    let t = m.[k]
+                    m.[k] <- m.[p]
+                    m.[p] <- t
+
+                    for i in k + 1 .. n - 1 do
+                        let f = m.[i].[k] / m.[k].[k]
+
+                        for j in k .. n do
+                            m.[i].[j] <- m.[i].[j] - f * m.[k].[j]
+
+                    eliminate (k + 1)
+
+        if not (eliminate 0) then
+            None
+        else
+            let x = Array.zeroCreate n
+
+            for i in n - 1 .. -1 .. 0 do
+                let mutable t = m.[i].[n]
+
+                for j in i + 1 .. n - 1 do
+                    t <- t - m.[i].[j] * x.[j]
+
+                x.[i] <- t / m.[i].[i]
+
+            Some x
+
+    /// D175 — **where each grid line falls, so the plots keep their stated proportions.** In the
+    /// grid, a line that only one side of a `beside` has still takes its gutters and gap across the
+    /// whole figure, inside the other side's panel that spans it, and that panel's plot grows by
+    /// them: 3 : 1 beside a stack of three drew 1.70 : 1. Here the lines are placed directly
+    /// instead: each line `l` of `1 .. count - 1` is the edge where the regions ending on it end
+    /// (the regions starting on it begin a gap later), so the panels on one line still share it
+    /// and stay lined up (D173), while two lines of different sides are free to overlap. Solved
+    /// so that along every crossing line each panel's plot is its stated share times one length,
+    /// with a tiny pull towards where the grid put each line, which settles a line nothing
+    /// constrains.
+    ///
+    /// `spans` is each panel's (first row, rows, first column, columns) in the axis solved;
+    /// `before` and `after` the lined-up gutters per row. Returns the line positions with the two
+    /// outer ones, or `None` when nothing spans a line or the gutters leave a plot no room.
+    let private placeLines
+        (count: int)
+        (crossCount: int)
+        (weights: float[])
+        (gap: float)
+        (current: float[])
+        (before: float[])
+        (after: float[])
+        (spans: (int * int * int * int)[])
+        : float[] option =
+        if count < 2 || spans |> Array.forall (fun (_, len, _, _) -> len <= 1) then
+            None
+        else
+            let stated = Array.init count (weightOf weights)
+            let unknowns = count - 1 + crossCount
+            let line l = l - 1
+            let length c = count - 1 + c
+            let pull = 1e-4
+            let start = current.[0]
+            let finish = current.[count]
+
+            // A panel's plot as coefficients over the unknowns, and the constant beside them.
+            let plot (first: int) (len: int) =
+                let row = Array.zeroCreate unknowns
+                let last = first + len
+                let mutable constant = -after.[last - 1] - before.[first]
+
+                if last = count then constant <- constant + finish else row.[line last] <- 1.0
+
+                if first = 0 then
+                    constant <- constant - start
+                else
+                    row.[line first] <- row.[line first] - 1.0
+                    constant <- constant - gap
+
+                row, constant
+
+            let equations =
+                [| for first, len, cross, crossLen in spans do
+                       let share = Array.sum stated.[first .. first + len - 1]
+
+                       for c in cross .. min (crossCount - 1) (cross + crossLen - 1) do
+                           let row, constant = plot first len
+                           row.[length c] <- -share
+                           yield row, -constant
+
+                   for l in 1 .. count - 1 do
+                       yield Array.init unknowns (fun j -> if j = line l then pull else 0.0), pull * current.[l]
+
+                   for c in 0 .. crossCount - 1 do
+                       yield Array.init unknowns (fun j -> if j = length c then pull else 0.0), pull * (finish - start) / Array.sum stated |]
+
+            leastSquares (Array.map fst equations) (Array.map snd equations)
+            |> Option.bind (fun x ->
+                let lines = Array.init (count + 1) (fun l -> if l = 0 then start elif l = count then finish else x.[line l])
+
+                let fits =
+                    spans
+                    |> Array.forall (fun (first, len, _, _) ->
+                        let row, constant = plot first len
+                        Array.fold2 (fun t a v -> t + a * v) constant row x > 0.0)
+
+                let moved = Seq.exists (fun l -> abs (lines.[l] - current.[l]) > 1e-6) (seq { 1 .. count - 1 })
+                if fits && moved then Some lines else None)
+
+    /// D175 — the panels' regions moved onto the lines `placeLines` found, rows then columns. The
+    /// head and a shared legend keep the places the grid gave them.
+    let private placeProportionally (fig: Figure) (outer: Arrangement) (lefts: float<px>[], rights: float<px>[], tops: float<px>[], bottoms: float<px>[]) =
+        let rows = max 1 fig.Rows
+        let cols = max 1 fig.Cols
+        let gap = float fig.Theme.PanelGap
+        let floats (a: float<px>[]) = a |> Array.map float
+
+        // Where each line's regions end, read off the tracks: rows start after the head and its
+        // gap, and a lane is its gutter, its plot, its other gutter and a gap.
+        let ends (origin: float<px>) (sizes: float<px>[]) (lead: int) (count: int) =
+            let at = Array.scan (+) origin sizes |> floats
+            Array.init (count + 1) (fun l -> if l = 0 then at.[lead] else at.[lead + 4 * l - 1])
+
+        let spans = fig.Panels |> Array.map (fun p -> max 0 p.Row, max 1 p.RowSpan, max 0 p.Col, max 1 p.ColSpan)
+        let padded = fig.Theme.FigurePadding
+
+        let rowLines =
+            placeLines rows cols fig.RowWeights gap (ends (outer.Region.Y0 + padded) outer.RowSizes 2 rows) (floats tops) (floats bottoms) spans
+
+        let colLines =
+            placeLines cols rows fig.ColWeights gap (ends (outer.Region.X0 + padded) outer.ColSizes 0 cols) (floats lefts) (floats rights) (spans |> Array.map (fun (r, rs, c, cs) -> c, cs, r, rs))
+
+        match rowLines, colLines with
+        | None, None -> outer
+        | _ ->
+            let edge (lines: float[] option) (first: int) (len: int) (lo: float<px>) (hi: float<px>) =
+                match lines with
+                | Some l -> (if first = 0 then l.[0] else l.[first] + gap) * 1.0<px>, l.[first + len] * 1.0<px>
+                | None -> lo, hi
+
+            let byKey = fig.Panels |> Array.map (fun p -> sprintf "panel-%d-%d" p.Row p.Col, p)
+
+            let placements =
+                outer.Placements
+                |> Array.map (fun (key, r) ->
+                    match byKey |> Array.tryFind (fun (k, _) -> k = key) with
+                    | Some(_, p) ->
+                        let y0, y1 = edge rowLines (max 0 p.Row) (max 1 p.RowSpan) r.Y0 r.Y1
+                        let x0, x1 = edge colLines (max 0 p.Col) (max 1 p.ColSpan) r.X0 r.X1
+                        key, { X0 = x0; X1 = x1; Y0 = y0; Y1 = y1 }
+                    | None -> key, r)
+
+            { outer with
+                Placements = placements
+                Regions = placements |> Array.map (fun (k, r) -> k, Layout.ndRect outer.Extent r) }
+
     /// D173 — pass 2: the measured layouts lined up, the outer grid rebuilt around their gutters,
     /// and each panel's probe set to the plot it now has. A figure of one panel has nothing to
     /// line up with and keeps pass 1 exactly.
@@ -2662,7 +2837,7 @@ module Figure =
             outer, layouts
         else
             let gutters, slackened = align fig layouts
-            let outer2 = Layout.arrange m extent (alignedGrid head fig gutters)
+            let outer2 = Layout.arrange m extent (alignedGrid head fig gutters) |> fun o -> placeProportionally fig o gutters
 
             let probed =
                 slackened
