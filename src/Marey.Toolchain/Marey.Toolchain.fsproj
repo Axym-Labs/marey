@@ -4,11 +4,11 @@
     <!-- netstandard2.1 to match every other library here, though this one is *not*
          Fable-compatible and does not claim to be: a PATH walk and a `Process` have no browser
          meaning. That is precisely why it is a separate project rather than a file in
-         `Marey.Core`, whose §13 Fable promise is load-bearing and actively defended.
+         `Marey.Core`, whose Fable promise is load-bearing and actively defended.
 
          NOTHING may be added to <PackageReference> in this file. It takes no dependency so that
          nothing referencing it acquires a transitive one — the same rule Core follows, kept here
-         for a different reason: the packages that will consume this (D75's video tools, D79's TeX
+         for a different reason: the packages that consume this (the video tools, the TeX
          typesetting) already drag a toolchain each, and the probe that reports their absence must
          not be a third thing to install. -->
     <TargetFramework>netstandard2.1</TargetFramework>

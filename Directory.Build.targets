@@ -36,7 +36,7 @@
           Visible="false" />
   </ItemGroup>
 
-  <!-- M5 phase 2 — a package Fable can consume. Fable compiles a library from source, so a project
+  <!-- A package Fable can consume. Fable compiles a library from source, so a project
        that sets `MareyFable` packs its `.fsproj` and its `.fs` files under `fable/`, which is
        where Fable looks for them, and carries the tags Fable's package checks read. A .NET
        consumer sees two extra folders in the package and nothing else. `tests/Marey.Fable`
@@ -51,7 +51,7 @@
   </ItemGroup>
 
 
-  <!-- 1.0 (C3) — `-p:MareyApiSig=<dir>` writes each project's inferred signature to
+  <!-- `-p:MareyApiSig=<dir>` writes each project's inferred signature to
        `<dir>/<project>.<tfm>.fsi`, which `tools/api/listing.fsx` turns into the checked-in public
        API listing. Here rather than in the .props because `TargetFramework` of a single-target
        project is only set once the project file has been read. -->
@@ -60,7 +60,7 @@
   </PropertyGroup>
 
 
-  <!-- 1.0 review — Marey's packages share their internals with each other and with the two test
+  <!-- Marey's packages share their internals with each other and with the two test
        projects, so plumbing one package needs from another (an axis spec from an erased scale, a
        prefix for a symbol) is `internal` rather than public surface a user meets and 1.0 has to
        keep. The packages pin each other exactly (below), so a user cannot mix versions that

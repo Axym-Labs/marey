@@ -33,13 +33,13 @@
     <!-- The window shows a `Figure` or a live value and steps it with `Live.step`. -->
     <ProjectReference Include="..\Marey.Interact\Marey.Interact.fsproj" />
     <!-- The GPU solvers step `Marey.Sim`'s states, and share this package's context and
-         thread (D117), so they live here rather than in a package of their own. -->
+         its one renderer thread, so they live here rather than in a package of their own. -->
     <ProjectReference Include="..\Marey.Sim\Marey.Sim.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- GLFW only. `Silk.NET.Windowing` is a meta-package that brings SDL as well, a second
-         native windowing library this package would never load. Pinned for D33's reason: a
+         native windowing library this package would never load. Pinned for the rasteriser's reason: a
          windowing layer that moves under a pinned rasteriser is a bug report nobody can
          reproduce. -->
     <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.23.0" />

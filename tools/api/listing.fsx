@@ -1,4 +1,4 @@
-(*  The public API listing (1.0, C3): one file per package under `api/`, the compiler's own
+(*  The public API listing: one file per package under `api/`, the compiler's own
     signature of the package with everything a user cannot reach taken out.
 
         dotnet fsi tools/api/listing.fsx           rewrites api/*.fsi

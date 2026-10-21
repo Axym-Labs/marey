@@ -27,7 +27,7 @@
   <ItemGroup>
     <!-- Fable.Core alone: the attributes that say how a member is written in JavaScript. The
          canvas members are declared in `Canvas.fs` rather than taken from Fable.Browser.Dom,
-         whose bindings lack the font box and `document.fonts` D123 needs. Pinned to the version
+         whose bindings lack the font box and `document.fonts` the text measurer needs. Pinned to the version
          `tests/Marey.Fable` compiles with. -->
     <PackageReference Include="Fable.Core" Version="5.3.0" />
   </ItemGroup>

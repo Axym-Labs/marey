@@ -19,7 +19,7 @@ printfn "%s" note                                  // says what typeset, and wha
 let png = SkiaBackend.renderPng extent drawn       // Skia has never heard of TeX
 ```
 
-`TextRun.Tex` has carried TeX source since M1 and nothing could set it. This runs `latex` and
+`TextRun.Tex` carries TeX source, and nothing else in Marey sets it. This runs `latex` and
 `dvisvgm` over each such run and replaces it with the **filled outlines** TeX produced — so the
 SVG backend, the TikZ backend and the Skia backend all render `\frac{\partial \vec{E}}{\partial t}`
 with the code they already had, and no backend needs a typesetting story of its own.
@@ -67,8 +67,8 @@ a different design — and it is the same trade matplotlib's `usetex` makes.
 
 ## Why a subprocess, and why not MathJax
 
-§10 of the design document calls shelling out to TeX *"acceptable as a plugin, unacceptable as a
-dependency"*, and that is the whole design brief: this package exists so that nothing in
+Shelling out to TeX is *acceptable as a plugin, unacceptable as a dependency*, and that is the
+whole design brief: this package exists so that nothing in
 `Marey.Core`, `Marey.Plot` or any backend acquires a TeX installation as a requirement. It takes
 no third-party `PackageReference` of any kind.
 

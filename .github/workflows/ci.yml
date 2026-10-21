@@ -137,6 +137,12 @@ jobs:
       - name: Build
         run: dotnet build Marey.slnx --configuration Release --no-restore
 
+      # What ships names no internal decision: no decision number, design-document section,
+      # milestone, phase or gate in the sources, the project files, the package readmes or the
+      # XML documentation the build just wrote. The history is in the notes and the commits.
+      - name: No internal references in what ships
+        run: dotnet fsi tools/refs/check.fsx
+
       # MAREY_REQUIRE_TOOLCHAIN turns "the tool is not installed, so the gate did not run" from
       # a printed skip into a failure. Right here and wrong on a contributor's laptop: the steps
       # above install the toolchain on purpose, so a gate that skips on this runner means the

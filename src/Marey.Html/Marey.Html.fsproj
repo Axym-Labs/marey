@@ -20,8 +20,9 @@
          host is whatever the reader installed. netstandard2.1 loads on every runtime from .NET
          Core 3.0 forward, and matches the rest of the repo.
 
-         It sits at the top of the DAG and references Core, Units, Svg and Plot. That does not
-         violate D21, which constrains `Marey.Plot`, not a leaf integration package.
+         It sits at the top of the DAG and references Core, Units, Svg and Plot. That is
+         allowed: the rule that a grammar package references no backend constrains `Marey.Plot`,
+         not a leaf integration package.
 
          The *name* is now wrong — it names a retired Microsoft product — and is left alone
          deliberately, pending the naming pass that also has to settle the `Marey` package id

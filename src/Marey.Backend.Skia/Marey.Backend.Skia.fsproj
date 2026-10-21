@@ -34,8 +34,8 @@
 
   <ItemGroup>
     <!-- Pinned rather than floated. A rasteriser's output moves between versions for reasons
-         that have nothing to do with this library, and §5 of the M2.5 plan accepts that by
-         refusing to commit a PNG baseline — but a pinned version is still what makes a bug
+         that have nothing to do with this library, and the tests accept that by
+         committing no PNG baseline — but a pinned version is still what makes a bug
          report reproducible.
 
          SkiaSharp pulls the Win32 and macOS native assets in as its own dependencies; Linux is
