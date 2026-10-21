@@ -339,7 +339,7 @@ module Typeset =
     ///
     /// Public because it is pure, and because a caller debugging a rejected snippet wants the
     /// document TeX actually saw rather than a description of it.
-    let document (options: TexOptions) (source: string) : string =
+    let internal document (options: TexOptions) (source: string) : string =
         String.Concat
             [| "\\documentclass["
                options.ClassOptions
@@ -381,7 +381,7 @@ module Typeset =
     ///
     /// Public and pure for the reason the whole of `TexOutline.fs` is: this is where a factor of
     /// 1.00375 can hide, and a gate should be able to hand it a log line.
-    let parseBox (log: string) : Result<TexBox, string> =
+    let internal parseBox (log: string) : Result<TexBox, string> =
         let m = boxPattern.Match log
 
         if not m.Success then

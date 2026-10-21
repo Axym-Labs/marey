@@ -29,7 +29,7 @@ open System
 
 /// A colour as the canvas takes it, quantised to bytes as the Skia backend does.
 [<RequireQualifiedAccess>]
-module CssColor =
+module internal CssColor =
 
     let private channel (v: float) = int (Num.roundEven (max 0.0 (min 1.0 v) * 255.0))
 

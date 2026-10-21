@@ -43,7 +43,7 @@ open System.Text
 /// test suite needs to assert on the formatting rules directly, not only through rendered
 /// documents.
 [<RequireQualifiedAccess>]
-module Svg =
+module internal Svg =
 
     /// Decimal places for device-space coordinates. A thousandth of a pixel is far below what
     /// any renderer resolves, and it is coarse enough that a re-associated float multiply

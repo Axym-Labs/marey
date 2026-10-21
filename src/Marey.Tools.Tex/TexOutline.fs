@@ -123,7 +123,7 @@ type TexOutline =
 /// check every number, on a machine with no TeX and no dvisvgm — which is the only way the
 /// arithmetic in `S` and `T`, the reflected control points, ever gets checked at all.
 [<RequireQualifiedAccess>]
-module SvgPathData =
+module internal SvgPathData =
 
     /// A number, an optional comma or whitespace, or a command letter. SVG's grammar allows
     /// numbers to run together without a separator (`.5.5` is two numbers, and `1-2` is two),
@@ -549,7 +549,7 @@ module TexOutline =
     ///
     /// The origin is moved to the box's top-left corner on the way out, so a consumer never sees
     /// dvisvgm's `-72`.
-    let ofSvg (box: TexBox) (svg: string) : Result<TexOutline, string> =
+    let internal ofSvg (box: TexBox) (svg: string) : Result<TexOutline, string> =
         let doc =
             try
                 Ok(XDocument.Parse svg)

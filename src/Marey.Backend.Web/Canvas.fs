@@ -83,7 +83,7 @@ and [<AllowNullLiteral>] CanvasContext =
 
 /// Where a backend gets the scratch surfaces an opacity group and a raster are drawn on.
 [<RequireQualifiedAccess>]
-module Canvas =
+module internal Canvas =
 
     [<Emit("(typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas($0, $1) : Object.assign(document.createElement('canvas'), { width: $0, height: $1 }))")>]
     let private create (_width: int) (_height: int) : CanvasElement = jsNative

@@ -118,33 +118,7 @@ namespace Marey
 
         abstract strokeStyle: obj with get, set
 
-    [<RequireQualifiedAccess>]
-    module Canvas =
-
-        val scratch: width: int -> height: int -> CanvasContext
-
-        val context: canvas: CanvasElement -> CanvasContext
-
-        [<Fable.Core.Emit ("document.getElementById($0)")>]
-        val byId: _id: string -> CanvasElement
-
-        [<Fable.Core.Emit
-          ("if ($0.style) { $0.style.width = $1 + 'px'; $0.style.height = $2 + 'px'; }")>]
-        val setCssSize:
-          _canvas: CanvasElement -> _width: float -> _height: float -> unit
-
-        [<Fable.Core.Emit
-          ("(typeof window !== 'undefined' && window.devicePixelRatio) || 1")>]
-        val devicePixelRatio: unit -> float
-
 namespace Marey
-
-    [<RequireQualifiedAccess>]
-    module CssFont =
-
-        val family: families: string -> string
-
-        val ofSpec: font: FontSpec -> string
 
     [<RequireQualifiedAccess>]
     module WebFonts =
@@ -192,11 +166,6 @@ namespace Marey
         static member Shared: WebGlMarkers
 
 namespace Marey
-
-    [<RequireQualifiedAccess>]
-    module CssColor =
-
-        val ofColor: c: Color -> string
 
     [<Sealed>]
     type CanvasPainter =

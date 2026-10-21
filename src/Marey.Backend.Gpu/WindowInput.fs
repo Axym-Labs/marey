@@ -57,7 +57,7 @@ type WindowEvent =
     | Frame
 
 /// One control's row in the strip, in the window's px.
-type WindowControlRow =
+type internal WindowControlRow =
     { Index: int
       /// The whole row, the focus ring's box.
       Row: Rect<px>
@@ -70,7 +70,7 @@ type WindowControlRow =
 
 /// The control strip's layout: one row per control, above the figure.
 [<RequireQualifiedAccess>]
-module WindowStrip =
+module internal WindowStrip =
 
     /// A row's height.
     [<Literal>]
@@ -162,7 +162,7 @@ module WindowStrip =
         p.X >= r.X0 && p.X <= r.X1 && p.Y >= r.Y0 && p.Y <= r.Y1
 
 /// A drag on the figure, in the figure's px.
-type WindowDrag =
+type internal WindowDrag =
     { Start: Vec2<px>
       /// Where the last pan message left off.
       Last: Vec2<px>
@@ -174,7 +174,7 @@ type WindowDrag =
 /// The gesture in progress, which a `LiveState` does not hold because the notebook's page holds
 /// it instead: a drag, a slider held under the pointer, the focused control, the last press (for
 /// a double click) and whether the pointer is over the figure.
-type WindowGesture =
+type internal WindowGesture =
     { Drag: WindowDrag option
       Hold: int option
       Focus: int option
@@ -188,12 +188,12 @@ type WindowGesture =
 
 /// A window's whole state: the live figure's, and the gesture's.
 [<NoComparison>]
-type WindowSession =
+type internal WindowSession =
     { State: LiveState
       Gesture: WindowGesture }
 
 [<RequireQualifiedAccess>]
-module WindowSession =
+module internal WindowSession =
 
     /// Two presses this close in time and space are a double click: a browser's defaults.
     [<Literal>]

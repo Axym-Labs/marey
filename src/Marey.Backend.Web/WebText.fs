@@ -20,7 +20,7 @@ open Fable.Core
 
 /// A font as CSS writes it, from the IR's `FontSpec`.
 [<RequireQualifiedAccess>]
-module CssFont =
+module internal CssFont =
 
     let private generic =
         set [ "serif"; "sans-serif"; "monospace"; "cursive"; "fantasy"; "system-ui"; "ui-serif"; "ui-sans-serif"; "ui-monospace"; "math" ]

@@ -120,10 +120,10 @@ module Html =
     // the literal character (`—`, `·`, `×`, `°`, `Δ`), which is both valid XML and shorter.
 
     /// Escape a string for use as element content.
-    let text (s: string) : string = Svg.escapeText s
+    let internal text (s: string) : string = Svg.escapeText s
 
     /// Escape a string for use inside a double-quoted attribute value.
-    let attr (s: string) : string = Svg.escapeAttr s
+    let internal attr (s: string) : string = Svg.escapeAttr s
 
     // ---- Numbers and colours ---------------------------------------------------------
 

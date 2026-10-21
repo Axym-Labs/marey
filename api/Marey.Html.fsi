@@ -9,10 +9,6 @@ namespace Marey
     [<RequireQualifiedAccess>]
     module Html =
 
-        val text: s: string -> string
-
-        val attr: s: string -> string
-
         val defaultSize: Extent<px>
 
         val figureAt: extent: Extent<px> -> fig: Figure -> string

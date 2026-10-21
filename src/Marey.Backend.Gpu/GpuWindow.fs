@@ -485,7 +485,7 @@ type GpuWindow private (live: Live, recorder: Recorder option, title: string, si
     member _.Post(e: WindowEvent) : unit = post e
 
     /// The session as it stands, once every event posted before the call has been stepped.
-    member _.Session: WindowSession = invoke (fun () -> session)
+    member internal _.Session: WindowSession = invoke (fun () -> session)
 
     /// The live state as it stands, as `Session`.
     member this.State: LiveState = this.Session.State

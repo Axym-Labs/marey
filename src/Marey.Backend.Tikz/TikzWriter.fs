@@ -60,7 +60,7 @@ open System.Text
 /// Public because the golden suite asserts on the formatting and escaping rules directly, not
 /// only through rendered documents — the same reason `Svg` is public.
 [<RequireQualifiedAccess>]
-module Tikz =
+module internal Tikz =
 
     // ---- numbers ---------------------------------------------------------------------
 
