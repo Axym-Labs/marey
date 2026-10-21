@@ -1,4 +1,4 @@
-/// D79 — mathematical typesetting, and the two halves it splits into.
+/// Mathematical typesetting, and the two halves it splits into.
 ///
 /// **Most of this file needs no TeX installed**, and that is deliberate rather than convenient.
 /// Phase 6 recorded the lesson: D75 claimed its package was "testable only for exit status and
@@ -598,7 +598,7 @@ module ``the degrade`` =
                 )
             | outcome -> failwithf "the second call did not typeset: %A" outcome)
 
-    /// **D96 — a cache the caller holds does span calls.** The second call through it runs no
+    /// **A cache the caller holds does span calls.** The second call through it runs no
     /// engine, and its scene is the one an uncached call draws.
     [<Fact>]
     let ``a held cache spans calls, and draws what an uncached call draws`` () =

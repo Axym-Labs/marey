@@ -1,4 +1,4 @@
-/// D72 / D73 — **one arrangement for the whole shot**, and the two things it stops moving.
+/// **one arrangement for the whole shot**, and the two things it stops moving.
 ///
 /// The problem this file gates is not a bug in anything: it is what correct per-frame layout
 /// does when the frames are an animation. Since D61 the plot rectangle is what is *left* after

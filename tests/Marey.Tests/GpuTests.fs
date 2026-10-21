@@ -171,7 +171,7 @@ module ``one thread`` =
                 Assert.Equal<byte[]>(expected.[i].Rgba, image.Rgba))
 
 // ======================================================================================
-// Phase 5 — marker batches as instanced draws (D119), gates 7, 8 and 9
+// Phase 5 — marker batches as instanced draws, gates 7, 8 and 9
 // ======================================================================================
 
 /// A second renderer that sends every batch to Skia, so a claim can be seen to engage or not.
@@ -256,7 +256,7 @@ module ``instanced markers`` =
             Assert.Equal((255, 0, 0), rgb 50 60)
             Assert.Equal((255, 255, 255), rgb 150 60))
 
-    /// Gate 8 (D116). Data in seconds since 1970 never reaches the GPU: the panel transform is
+    /// Gate 8. Data in seconds since 1970 never reaches the GPU: the panel transform is
     /// applied in `float`, and the buffer holds device pixels.
     [<Fact>]
     let ``a time axis in seconds since 1970 draws as the CPU raster does`` () =

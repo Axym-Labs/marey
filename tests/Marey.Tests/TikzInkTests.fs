@@ -340,7 +340,7 @@ module ``a figure inks the parts it is made of`` =
     /// **Which way up the page is** — the one property no other gate in this project can reach.
     ///
     /// Cross-backend agreement states that a TikZ y equals the SVG y measured from the opposite
-    /// edge (D29), which is satisfied just as well by two backends that are *both* upside down.
+    /// edge, which is satisfied just as well by two backends that are *both* upside down.
     /// A raster is not: `x = ½gt²` increases, so on a correct page the curve leaves the panel's
     /// lower-left corner and never enters its upper-left one. Invert the flip and the two
     /// assertions below swap.
@@ -366,7 +366,7 @@ module ``a figure inks the parts it is made of`` =
 
             Assert.True(c < 0.40, sprintf "a figure covering %.3f%% of its page is a smear.\n\n%s" (100.0 * c) (describe g)))
 
-    /// D10 and D31: this backend advertises `Rasters = false`, so `Degrade` removes the node
+    /// This backend advertises `Rasters = false`, so `Degrade` removes the node
     /// before it reaches the emitter. The document must still compile, and — the part only a
     /// rasteriser can confirm — must be *blank*, rather than carrying a stray box or a literal
     /// `\pgfimage` that Poppler renders as an error glyph.
@@ -399,7 +399,7 @@ module ``toolchain report`` =
         Assert.True(true)
 
 // ======================================================================================
-// D49 — the colorbar, in ink
+// The colorbar, in ink
 // ======================================================================================
 
 /// **The gate the decision was written for.**

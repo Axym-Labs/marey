@@ -132,7 +132,7 @@ module PlotBoundary =
         Assert.Equal(render (Chart.line U.second U.metre times displacements), render viaChannels)
 
 // ======================================================================================
-// D46 — the quantiser: how many batches, in what order, and what happens to a NaN
+// The quantiser: how many batches, in what order, and what happens to a NaN
 // ======================================================================================
 
 /// The claims here are the ones D46 rests on, and every one of them is a *count* rather than a
@@ -256,7 +256,7 @@ module Quantisation =
         Assert.Equal(27, batches |> Array.sumBy (fun b -> b.Indices.Length))
 
     /// A level number outside the level set is the same case. It reaches here rather than
-    /// raising because `Levels.positions` is the door that raises (D45); this is the backstop
+    /// raising because `Levels.positions` is the door that raises; this is the backstop
     /// for a channel built by hand.
     [<Fact>]
     let ``a level number outside the level set is unmapped`` () =
@@ -310,7 +310,7 @@ module Quantisation =
         )
 
 // ======================================================================================
-// Phase 3 — the encoding block (§9, D43, D44)
+// Phase 3 — the encoding block
 // ======================================================================================
 
 /// The row type every block below encodes.

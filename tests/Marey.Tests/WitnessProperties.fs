@@ -1,4 +1,4 @@
-/// §2.1 / §12.1 — the witness algebra.
+/// The witness algebra.
 ///
 /// §12.1 is the finding that measure algebra in an *operator overload* silently over-constrains
 /// the second measure variable (FS0064), and that the fix is module-level functions with
@@ -18,7 +18,7 @@ open Marey
 open Marey.Tests.Generators
 
 /// Build a dimensionless-measure witness carrying an arbitrary `Dim`. The *measure* is erased
-/// at runtime anyway (§1.3), so this is the honest way to quantify over dimensions: the runtime
+/// at runtime anyway, so this is the honest way to quantify over dimensions: the runtime
 /// algebra sees exactly what it would see for any other measure.
 let private witness (d: Dim) (toSI: float) = U<1>("u", d, toSI)
 
@@ -56,7 +56,7 @@ module Algebra =
         && (U.mul (U.mul ua ub) uc).Dim = (U.mul ua (U.mul ub uc)).Dim
 
     /// The conversion factors multiply and divide alongside the dimensions. A witness whose
-    /// `Dim` is right and whose `ToSI` is wrong is the eV-labelled-as-J bug (D16) waiting to
+    /// `Dim` is right and whose `ToSI` is wrong is the eV-labelled-as-J bug waiting to
     /// happen, so it is worth its own law.
     [<Property>]
     let ``mul and div compose the SI factors`` (SmallDim a) (SmallDim b) (PositiveFloat ka) (PositiveFloat kb) =
@@ -162,7 +162,7 @@ module Conversion =
         let c = U.convert U.degreeFahrenheit U.degreeCelsius 98.6<degF>
         Assert.True(Approx.abs' 1e-9 (float c) 37.0)
 
-/// §12.1 — "verified generic across five distinct instantiations". These are bindings, not
+/// "verified generic across five distinct instantiations". These are bindings, not
 /// assertions: their *types* are the test. Making `U.mul` less generic breaks the build here.
 ///
 /// D20 makes the same trick load-bearing one level up — `U.newtonByComposition` is a
@@ -176,7 +176,7 @@ module TypeLevel =
     let private momentum: U<kg * m / s> = U.mul U.kilogram velocity
     let private energy: U<kg * m^2 / s^2> = U.mul force U.metre
 
-    /// D20: the derived measures are *abbreviations*, so the composed type unifies with the
+    /// The derived measures are *abbreviations*, so the composed type unifies with the
     /// named one. If someone makes `N` opaque, this line stops compiling.
     let private forceIsNewton: U<N> = force
 

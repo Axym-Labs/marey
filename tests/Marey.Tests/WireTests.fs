@@ -97,7 +97,7 @@ module ``identity`` =
         let run = Keyed(Key text, Scene.empty)
         Assert.True(ok (Wire.decode (Wire.encode run)) = run)
 
-    /// D153: a page reads a batch's points through a `Float64Array` view, which needs them at a
+    /// A page reads a batch's points through a `Float64Array` view, which needs them at a
     /// multiple of 8 from the start of the buffer, whatever precedes them.
     [<Fact>]
     let ``a batch's points start on a multiple of eight`` () =
@@ -182,7 +182,7 @@ module ``versions and blocks`` =
 
 
 // ======================================================================================
-// Gate 5: the text metrics travel with the scene (D156)
+// Gate 5: the text metrics travel with the scene
 // ======================================================================================
 
 /// A canvas that records what anchors text: the transform, the font and each `fillText`. Enough of
@@ -304,7 +304,7 @@ module ``text metrics`` =
         Assert.Equal(TextMeasure.approx.Measure font "d", merged.Measure font "d")
 
 // ======================================================================================
-// Phase 4: the page's script (D157)
+// Phase 4: the page's script
 // ======================================================================================
 
 module ``the page's script`` =
@@ -394,7 +394,7 @@ module ``the SVG path below the threshold`` =
     let ``two thousand points`` () = Golden.check "widget/cloud-2000.txt" (transcript (box (cloud ())))
 
 // ======================================================================================
-// Phase 5: the live widget on the canvas (D159, D161)
+// Phase 5: the live widget on the canvas
 // ======================================================================================
 
 [<Xunit.Collection(RenderModes.Collection)>]
@@ -491,7 +491,7 @@ module ``the live widget on the canvas`` =
             Assert.DoesNotContain("<canvas", Html.liveDocumentForHost (box l, box (Live.init l), true)))
 
 // ======================================================================================
-// Phase 6: static figures, snapshots and the poster (D160)
+// Phase 6: static figures, snapshots and the poster
 // ======================================================================================
 
 [<Xunit.Collection(RenderModes.Collection)>]

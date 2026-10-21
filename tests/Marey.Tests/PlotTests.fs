@@ -1,4 +1,4 @@
-/// §9 / §13 — `Marey.Plot`: themes, layout, the axis compiler, and the `Chart` front door.
+/// `Marey.Plot`: themes, layout, the axis compiler, and the `Chart` front door.
 ///
 /// §13 names five property suites. This file supplies the one that needed `Marey.Plot` to
 /// exist first:
@@ -17,7 +17,7 @@
 ///   the flaw it was written to avoid is worse than one that never mentioned it.
 ///
 /// What §13 still owes, and why it is not here: the `Anim` monoid laws need `Marey.Anim`
-/// (§14 puts it at M3), and the `Sim` invariant-drift checks need `Marey.Sim` (M5). Those are
+/// (§14 puts it at M3), and the `Sim` invariant-drift checks need `Marey.Sim`. Those are
 /// "not yet writable", not "not needed".
 module Marey.Tests.PlotTests
 
@@ -52,7 +52,7 @@ let private textNodes (node: Node) =
         []
 
 // ======================================================================================
-// §9 / §2.2 — the headline: axes label themselves from the witness
+// The headline: axes label themselves from the witness
 // ======================================================================================
 
 module SelfLabellingAxes =
@@ -77,7 +77,7 @@ module SelfLabellingAxes =
             Assert.Contains(sprintf ">%d<" i, svg)
 
     /// The kilogram is the one SI base unit that already carries a prefix, so a milligram
-    /// axis is the case a naive implementation gets wrong by a factor of 1000 (D19).
+    /// axis is the case a naive implementation gets wrong by a factor of 1000.
     [<Fact>]
     let ``a microgram-scale mass axis reads mg, never µkg`` () =
         let x = Array.init 5 (fun i -> float i * 1.0<s>)
@@ -92,7 +92,7 @@ module SelfLabellingAxes =
 // ======================================================================================
 
 /// `Chart.Plain` was `Chart` at `U.one U.one`; D109 retired it for the unit-optional
-/// constructors, which leave a unit out as `U.unspecified` (D127). The two witnesses differ in
+/// constructors, which leave a unit out as `U.unspecified`. The two witnesses differ in
 /// what they *claim* — `one` says dimensionless, and the axis-sharing check acts on it — and not
 /// in how a single layer is drawn, so that is pinned here, along with the honesty of a bare axis:
 /// a plain `x`, never `x [1]`, and never rescaled into a prefix.
@@ -139,7 +139,7 @@ module PlainNumbers =
             Assert.DoesNotContain("[p]", svg)
 
 // ======================================================================================
-// D45 — a categorical axis, and the check that keeps two of them apart
+// A categorical axis, and the check that keeps two of them apart
 // ======================================================================================
 
 module CategoricalAxes =
@@ -296,7 +296,7 @@ module SharedDomains =
         Assert.Equal((-2.0, 2.0), yDomain fig)
 
 // ======================================================================================
-// D163 — which layers join the domain
+// Which layers join the domain
 // ======================================================================================
 
 [<Properties(Arbitrary = [| typeof<Marey.Tests.Generators.MareyArbs> |], MaxTest = 300, Replay = Marey.Tests.Generators.Seed, QuietOnSuccess = true)>]
@@ -403,7 +403,7 @@ module DomainParticipation =
         Assert.True(hi < 4.0, sprintf "hi = %g" hi)
 
 // ======================================================================================
-// D162 — rules and spans
+// Rules and spans
 // ======================================================================================
 
 module Rules =
@@ -457,7 +457,7 @@ module Rules =
         Assert.Equal(1.1e-3, hi, 12)
         Assert.Contains(">x [mm]<", renderFig surface fig)
 
-        // Zero is inside the data, which a constant's point (D172) would also have kept. A rule
+        // Zero is inside the data, which a constant's point would also have kept. A rule
         // past the data is the case only D163 keeps out.
         let far = Chart.line U.second U.metre t small |> Chart.addHLine U.metre 5e-3<m>
         Assert.Equal((lo, hi), yDomain far)
@@ -567,7 +567,7 @@ module Rules =
         | [] -> failwith "no rule drawn"
 
 // ======================================================================================
-// D164 / D165 — annotations, panel text and panel letters
+// Annotations, panel text and panel letters
 // ======================================================================================
 
 module Annotations =
@@ -723,7 +723,7 @@ module Annotations =
         Assert.Equal<string list>([ "A" ], upper)
 
 // ======================================================================================
-// D166 / D169 / D170 — stated ticks, the prefix, reversal
+// Stated ticks, the prefix, reversal
 // ======================================================================================
 
 module StatedTicks =
@@ -806,14 +806,14 @@ module StatedTicks =
         Assert.Contains("stated in s", e.Message)
         Assert.Contains("axis is in m", e.Message)
 
-    /// D169 — a stated prefix wins over the one the domain selects.
+    /// A stated prefix wins over the one the domain selects.
     [<Fact>]
     let ``a stated prefix is the axis's`` () =
         let fig = Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 0.002<m> |]
         Assert.Equal("mm", (yAxis fig).UnitText)
         Assert.Equal("m", (yAxis (fig |> Chart.withYPrefix Prefix.none)).UnitText)
 
-    /// D170 — a reversed axis runs over the domain it would have had, backwards.
+    /// A reversed axis runs over the domain it would have had, backwards.
     [<Fact>]
     let ``a reversed axis keeps its derived domain`` () =
         let fig = Chart.line U.kelvin U.metre [| 290.0<K>; 276.0<K> |] [| 0.0<m>; 800.0<m> |]
@@ -832,7 +832,7 @@ module StatedTicks =
         Assert.Equal("x", (yAxis fall).Label)
 
 // ======================================================================================
-// D167 / D168 — minor ticks, tick direction, the publication box
+// Minor ticks, tick direction, the publication box
 // ======================================================================================
 
 module PublicationTicks =
@@ -851,7 +851,7 @@ module PublicationTicks =
     let private minorValues (spec: AxisSpec) (lo: float) (hi: float) =
         spec.Minor |> Array.map (fun p -> lo + float p * (hi - lo)) |> Array.map (fun v -> System.Math.Round(v, 9))
 
-    /// D167 — a step reading 1 or 5 is cut in five, one reading 2 in four.
+    /// A step reading 1 or 5 is cut in five, one reading 2 in four.
     [<Fact>]
     let ``minor ticks divide a major interval by its step`` () =
         let x1, _, _ = axes (line 0.0 4.0 |> Chart.withXTicksEvery U.second 1.0<s>)
@@ -886,7 +886,7 @@ module PublicationTicks =
         Assert.Equal(width outPlot + tick, width inPlot, 6)
         Assert.Equal(height outPlot + tick, height inPlot, 6)
 
-    /// D168 — the publication box: a frame, ticks on four sides, minor ticks. Counted in the
+    /// The publication box: a frame, ticks on four sides, minor ticks. Counted in the
     /// tick path of the bottom axis.
     [<Fact>]
     let ``publication draws mirrored and minor ticks, modern neither`` () =
@@ -927,7 +927,7 @@ module PublicationTicks =
         Assert.True((Theme.validate Theme.tikz).Ok)
 
 // ======================================================================================
-// D169 — tick label formats
+// Tick label formats
 // ======================================================================================
 
 [<Properties(Arbitrary = [| typeof<Marey.Tests.Generators.MareyArbs> |], MaxTest = 200, Replay = Marey.Tests.Generators.Seed, QuietOnSuccess = true)>]
@@ -1006,7 +1006,7 @@ module TickFormats =
         Assert.NotEqual(a, TickFormat.custom string)
 
 // ======================================================================================
-// D171 — legends
+// Legends
 // ======================================================================================
 
 module Legends =
@@ -1142,7 +1142,7 @@ module Legends =
         Assert.NotEqual<(float * float * float * float) list>(alone.[0], alone.[1])
 
 // ======================================================================================
-// D45 — the level set, and the categorical front door
+// The level set, and the categorical front door
 // ======================================================================================
 
 module LevelSets =
@@ -1284,7 +1284,7 @@ module CategoricalFrontDoor =
         Assert.NotEqual(xs.[0], xs.[1])
 
 // ======================================================================================
-// §13 — layout invariants
+// Layout invariants
 // ======================================================================================
 
 module LayoutInvariants =
@@ -1311,7 +1311,7 @@ module LayoutInvariants =
         |> Chart.withTitle "Free fall"
         |> Chart.withLegend LegendTopRight
 
-    /// §13: "labels inside bounds". Panel space is nominally [0,1]²; a small tolerance
+    /// "labels inside bounds". Panel space is nominally [0,1]²; a small tolerance
     /// allows for the axis gutter, where tick labels legitimately sit just outside the plot
     /// area but still inside the figure.
     [<Fact>]
@@ -1337,7 +1337,7 @@ module LayoutInvariants =
                         (strays |> List.truncate 3 |> List.map (fun t -> t.Text, float t.At.X, float t.At.Y))
                 )
 
-    /// §13: "no overlapping panels". Two panels stacked vertically must occupy disjoint
+    /// "no overlapping panels". Two panels stacked vertically must occupy disjoint
     /// regions — checked through the `Clip` nodes the compiler emits per panel, which are
     /// the authoritative statement of where a panel actually is.
     [<Fact>]
@@ -1416,7 +1416,7 @@ module LayoutInvariants =
         Scene.count (Chart.toScene extent (busyFigure ())) > 0
 
 // ======================================================================================
-// §5.1 — batching survives the whole compile pipeline
+// Batching survives the whole compile pipeline
 // ======================================================================================
 
 module Batching =
@@ -1446,7 +1446,7 @@ module Batching =
         Assert.True(Scene.primitiveCount scene >= n)
 
 // ======================================================================================
-// §1.1 — combinators are pure. The Plotly.NET flaw, by name.
+// Combinators are pure. The Plotly.NET flaw, by name.
 // ======================================================================================
 
 module Immutability =
@@ -1500,7 +1500,7 @@ module Determinism =
             System.Threading.Thread.CurrentThread.CurrentCulture <- previous
 
 // ======================================================================================
-// D60 — the output surface is the renderer's shape, not `string`
+// The output surface is the renderer's shape, not `string`
 //
 // Every function-shaped entry point named `string` in its signature until M2.5. That is a
 // claim about the *artifact* made by a function that only forwards it, and a raster backend
@@ -1588,7 +1588,7 @@ module ByteShapedOutput =
             if File.Exists path then File.Delete path
 
 // ======================================================================================
-// §9 — the colour system, which the design says is embarrassing to get wrong
+// The colour system, which the design says is embarrassing to get wrong
 // ======================================================================================
 
 module Palettes =
@@ -1853,7 +1853,7 @@ module Channels =
                 Palette.SeparationFloor
         )
 
-    /// D49 — the legend enumerates the *levels*, not the series. The series name is already on
+    /// The legend enumerates the *levels*, not the series. The series name is already on
     /// the panel; what the reader cannot otherwise recover is which colour is which level.
     [<Fact>]
     let ``a categorical channel puts one legend entry per level`` () =
@@ -1901,7 +1901,7 @@ module Channels =
 
         Assert.Equal(n, drawn)
 
-    // ---- D49: the colorbar -----------------------------------------------------------------
+    // ---- The colorbar -----------------------------------------------------------------
 
     let private colorbarFigure () =
         scatter () |> Chart.colorBy U.kelvin temperatures |> Chart.withColorLabel "T"
@@ -2038,7 +2038,7 @@ module Channels =
             Assert.True(steps < Channel.ColorSteps, sprintf "%d steps on a 200 px figure" steps)
             Assert.True(steps > 1)
 
-    // ---- D49: the size key ------------------------------------------------------------------
+    // ---- The size key ------------------------------------------------------------------
 
     /// A size channel is the one thing that *does* go in the legend, as `LegendSizedMarker`.
     /// Three entries, at the sizes the marks are drawn at, carrying the unit — because a legend
@@ -2131,7 +2131,7 @@ module Channels =
         Assert.Contains("30 points", ex.Message)
 
 // ======================================================================================
-// §5.2 / D68 — THE PRODUCER NAMES WHAT IT DREW
+// THE PRODUCER NAMES WHAT IT DREW
 //
 // Before this milestone `Marey.Plot` produced exactly one `Keyed` node — the root — so the diff
 // §5.2 designed the IR around had a granularity of one, and D1's rejection of closure-valued

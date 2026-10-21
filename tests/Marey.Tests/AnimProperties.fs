@@ -1,4 +1,4 @@
-/// §7 / D70 / D71 — the animation algebra, the two clocks, and the easing catalogue.
+/// The animation algebra, the two clocks, and the easing catalogue.
 ///
 /// **Gate 5** ("overshoot survives, per `Interp` instance") and **gate 6** ("the algebra's laws,
 /// by FsCheck: monoid, applicative, `stretch` composition, `At` total") both live here, because

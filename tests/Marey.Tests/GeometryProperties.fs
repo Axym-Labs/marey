@@ -1,4 +1,4 @@
-/// §3 / §9 / §13 — geometry and layout invariants.
+/// Geometry and layout invariants.
 ///
 /// §13 asks for "layout invariants (no overlapping panels, labels inside bounds)". The layout
 /// pass itself lives in `Marey.Plot`, which is not in scope for this file — but every invariant
@@ -282,7 +282,7 @@ module Vectors =
         Approx.scaled 1e-11 scale (float (Vec3.dot a c)) 0.0
         && Approx.scaled 1e-11 scale (float (Vec3.dot b c)) 0.0
 
-    /// D2 — measure-changing operations are module functions, never operators, because §12.1
+    /// Measure-changing operations are module functions, never operators, because §12.1
     /// proves an operator over-constrains. The payoff is that this line type-checks and its
     /// result really is `Vec2<m>`.
     [<Fact>]

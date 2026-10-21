@@ -1,4 +1,4 @@
-/// §12 — the verified findings, locked in.
+/// The verified findings, locked in.
 ///
 /// §12 opens with "Each cost real time to diagnose and each will cost you the same time if it
 /// isn't written down." Writing it down in prose is necessary but not sufficient: prose does not
@@ -8,7 +8,7 @@
 /// Several of them are **compile-time** assertions: a binding whose type annotation is the
 /// claim. Those are the strongest form available — the finding is re-checked on every build,
 /// not on every test run — and they are the same technique `U.newtonByComposition` uses
-/// inside the library itself (D20).
+/// inside the library itself.
 module Marey.Tests.RegressionTests
 
 open Xunit
@@ -16,7 +16,7 @@ open Marey
 open Marey.UnitsOfMeasure
 
 // ======================================================================================
-// §12.3 — `float<'u>` does not satisfy a `float` SRTP overload
+// `float<'u>` does not satisfy a `float` SRTP overload
 //
 //   "An `Interp` witness declared as `static member inline Interp (a: float, ...)` **rejects**
 //    `float<m>`. Measures are erased at *runtime*, but they are absolutely present during
@@ -68,7 +68,7 @@ module ``12_3 measured floats satisfy the Interp overload`` =
         Assert.Equal(5.0, float metres, 12)
 
 // ======================================================================================
-// §12.4 — `Lerp` collides with the BCL
+// `Lerp` collides with the BCL
 //
 //   "Candidates: - System.Double.Lerp(value1, value2, amount) : float
 //                - static member Lerpable.Lerp: a: float * b: float * t: float -> float
@@ -126,7 +126,7 @@ module ``12_4 the SRTP member is Interp, not Lerp`` =
         Assert.False(FSharpType.IsUnion typeof<Interpolate>)
 
 // ======================================================================================
-// §12.6 — Runtime symbol composition needs canonicalisation
+// Runtime symbol composition needs canonicalisation
 //
 //   "`mul force metre` produced the symbol `kg·m/s/s·m` for what is `J`. The `Dim` was correct
 //    (`L=2, M=1, T=-2`); only the string was wrong. Confirms §2.2: **never compose display
@@ -193,7 +193,7 @@ module ``12_6 composed symbols are junk while the Dim is right`` =
         Assert.Equal("kg.m.s^-2", UnitDisplay.renderExpanded Ascii force.Dim)
         Assert.Equal("\\qty{}{\\kilogram\\metre\\per\\second\\squared}", UnitDisplay.renderExpanded Siunitx force.Dim)
 
-    /// D18 — the ohm needs four spellings, and deriving three from one would be exactly the
+    /// The ohm needs four spellings, and deriving three from one would be exactly the
     /// string surgery §12.6 forbids.
     [<Fact>]
     let ``the ohm has four independent spellings`` () =
@@ -204,7 +204,7 @@ module ``12_6 composed symbols are junk while the Dim is right`` =
         Assert.Equal("\\qty{}{\\ohm}", UnitDisplay.renderSi Siunitx dim)
 
 // ======================================================================================
-// D17 — a `[<Measure>] type min` shadows `Operators.min`
+// A `[<Measure>] type min` shadows `Operators.min`
 //
 //   "The namespace is opened more recently than `FSharp.Core`, so in application position the
 //    *type* wins. The consequence is not local: **every file that opens `Marey` would lose the
@@ -280,12 +280,12 @@ module ``D17 Operators survive open Marey`` =
         Assert.Equal(9.0, U.toSI U.watt watts, 12)
 
 // ======================================================================================
-// §12.1 / D2 — measure algebra never moves into an operator overload
+// Measure algebra never moves into an operator overload
 // ======================================================================================
 
 module ``12_1 measure algebra stays in module functions`` =
 
-    /// D2 — operators on `Vec2`/`Vec3` are measure-*preserving* only. If someone adds the §3
+    /// Operators on `Vec2`/`Vec3` are measure-*preserving* only. If someone adds the §3
     /// sketch's `( * ) (k: float<'k>, v: Vec2<'u>) : Vec2<'k * 'u>`, FS0064 fires and
     /// `TreatWarningsAsErrors` turns it into a build failure. These bindings assert that the
     /// sanctioned spellings still work.
@@ -312,7 +312,7 @@ module ``12_1 measure algebra stays in module functions`` =
         Assert.Equal(1.0, float inNd.M11, 12)
 
 // ======================================================================================
-// §12.5 — existentials over measures work, with ceremony
+// Existentials over measures work, with ceremony
 // ======================================================================================
 
 module ``12_5 rank-2 recovery of two measures`` =
@@ -356,7 +356,7 @@ module ``12_5 rank-2 recovery of two measures`` =
             dims
         )
 
-    /// D4 — the series is struct-of-arrays, not an array of reference tuples. §1.3's
+    /// The series is struct-of-arrays, not an array of reference tuples. §1.3's
     /// "per-frame allocation of records will destroy a 60 fps loop" is the reason, and the shape
     /// of the type is the fix, so the shape is asserted.
     [<Fact>]
@@ -399,7 +399,7 @@ module ``D16 the erased witness carries ToSI and Axis ofErased honours it`` =
     /// `Axis.ofErasedWith` selected its prefix with `Prefix.selectFor scale.Dim` and rendered
     /// with `UnitDisplay.renderPrefixed`, neither of which consults `ToSI` or `OffsetSI`, the
     /// metadata D16 went to the trouble of preserving was available and unused — and a reloaded
-    /// electronvolt axis (§15) came out as `E [kJ]`, wrong by 10^19.
+    /// electronvolt axis came out as `E [kJ]`, wrong by 10^19.
     ///
     /// Both decisions now route through `Prefix.selectForErased` and
     /// `UnitDisplay.unitTextErased`, which are the same functions the measured path uses, so the
@@ -449,7 +449,7 @@ module ``D16 the erased witness carries ToSI and Axis ofErased honours it`` =
         Assert.Equal(measured, reloaded)
 
 // ======================================================================================
-// D32 — TeX markup travels in its own field, never in the plain one
+// TeX markup travels in its own field, never in the plain one
 //
 // `AxisSpec.Title` is always displayable text and `AxisSpec.TitleTex` carries the markup, so an
 // SVG renderer never draws a literal backslash and a TeX backend never has to guess whether a
@@ -659,7 +659,7 @@ module ``Tex escaping of non-ASCII characters`` =
         Tex.isLiteralSafe s = (Tex.escape s = (if isNull s then "" else s))
 
 // ======================================================================================
-// D38 — the three characters TeX accepts and then typesets as something else
+// The three characters TeX accepts and then typesets as something else
 //
 // Found by rendering the golden `text.tex` and *looking* at it, which is the only way it could
 // have been found. `<`, `>` and `|` are legal in TeX text mode and raise no error, warning or
@@ -700,7 +700,7 @@ module ``D38 characters that compile but mis-typeset`` =
 // without compiling them would be asserting a guess.
 
 // ======================================================================================
-// D32 — pruning must not delete a run that only a typesetting backend can draw
+// Pruning must not delete a run that only a typesetting backend can draw
 // ======================================================================================
 
 module ``D32 pruning respects the TeX form`` =
@@ -736,7 +736,7 @@ module ``D32 pruning respects the TeX form`` =
         Assert.Equal(n, Scene.prune n)
 
 // ---------------------------------------------------------------------------------------------
-// D41 — a caller-supplied factorisation is displayed, and §12.6 stays fixed.
+// A caller-supplied factorisation is displayed, and §12.6 stays fixed.
 // ---------------------------------------------------------------------------------------------
 
 /// D41 gave `U<'u>` a `Factors` list and taught `UnitDisplay` to render from it when the registry
@@ -822,7 +822,7 @@ module ``D41 a supplied factorisation is displayed`` =
 
     [<Fact>]
     let ``the erased path agrees with the measured one`` () =
-        // §15: a reloaded figure has only `IScaleErased`. If `Factors` did not cross that
+        // A reloaded figure has only `IScaleErased`. If `Factors` did not cross that
         // boundary, a saved field axis would relabel itself `kg·m·s⁻³·A⁻¹` on load.
         let s = Scale.linear voltPerMetre (0.0<_>, 1.0<_>)
         let erased = Erase.scale s
@@ -843,7 +843,7 @@ module ``D41 a supplied factorisation is displayed`` =
         )
 
 // ======================================================================================
-// D98 — an angle survives the erasure that `Dim` cannot see it through
+// An angle survives the erasure that `Dim` cannot see it through
 // ======================================================================================
 
 /// Angle is dimensionless in SI, so `rad/s` and `Hz` share the dimension s⁻¹. Until D98 the
@@ -864,7 +864,7 @@ module ``D98 an angle is not a frequency`` =
         Assert.Equal("Hz", text (U.recip U.second))
         Assert.Equal("rad", text U.radian)
 
-    /// The erased path reads the same factors, so a reloaded figure labels itself the same (§15).
+    /// The erased path reads the same factors, so a reloaded figure labels itself the same.
     [<Fact>]
     let ``the erased witness renders the angle too`` () =
         let erased = Erase.scale (Scale.linear radPerSecond (0.0<rad / s>, 1.0<rad / s>))

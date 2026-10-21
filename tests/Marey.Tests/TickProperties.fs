@@ -136,7 +136,7 @@ module Injectivity =
     let private distinct (xs: string[]) =
         xs.Length = (Array.distinct xs).Length
 
-    /// §4 — "tick label rendering is injective (no two visible ticks get the same label)", at the
+    /// "tick label rendering is injective (no two visible ticks get the same label)", at the
     /// Core level, through the one sanctioned erasure.
     ///
     /// The generated domains keep the tick step above 1e-15, which is where `Ticks.format`'s
@@ -183,7 +183,7 @@ module Injectivity =
             distinct (ticks |> Array.map (fun t -> t.Label))
             && distinct (ticks |> Array.choose (fun t -> t.LabelTex)))
 
-    /// The same with the prefix decided elsewhere (D73), where a narrow axis can be left far
+    /// The same with the prefix decided elsewhere, where a narrow axis can be left far
     /// from 1: an animation's union domain can pin megajoules onto a frame over nanojoules.
     [<Property>]
     let ``log axis tick labels are distinct under any pinned prefix`` (AnyLogDomain(lo, hi)) (TickTarget n) =
@@ -194,13 +194,13 @@ module Injectivity =
                   yield (Axis.ofPackedPinnedWith pin Unicode UnitRegistry.si n "x" packed).Ticks ]
         |> List.forall (fun ticks -> distinct (ticks |> Array.map (fun t -> t.Label)))
 
-    /// The same through the erasure, which is all a reloaded figure has (§15).
+    /// The same through the erasure, which is all a reloaded figure has.
     [<Property>]
     let ``Erase.scale log tick labels are distinct for any positive domain`` (AnyLogDomain(lo, hi)) (TickTarget n) =
         let s = Scale.log10 U.one (lo, hi)
         distinct ((Erase.scale s).Ticks n |> Array.map (fun t -> t.Label))
 
-    /// D19 — "an `m²` axis over 0…5e-18 renders six ticks that *all* read `0.000000000000000`",
+    /// "an `m²` axis over 0…5e-18 renders six ticks that *all* read `0.000000000000000`",
     /// which is why selection rescales even when a prefix cannot be glued on. The fix is
     /// verified here from the outside: the axis reads `am`, and the labels are 0 through 5.
     [<Fact>]
@@ -285,7 +285,7 @@ module LogLabels =
         Assert.Contains("2x10^-3", labels ascii)
 
     /// A narrow axis no prefix can bring near 1 is written in powers too: a dimensionless one
-    /// keeps its numbers (D19), and `0.000001` is the label this avoids.
+    /// keeps its numbers, and `0.000001` is the label this avoids.
     [<Fact>]
     let ``a narrow dimensionless log axis far from 1 is written in powers of ten`` () =
         let ax = Axis.auto Unicode "p" (Scale.log10 U.one (1e-6, 1e-4))
@@ -302,7 +302,7 @@ module LogLabels =
         Assert.Equal("kJ", (Axis.auto Unicode "E" (energy 1.0 1e3)).UnitText)
         Assert.Equal("J", (Axis.auto Unicode "E" (energy 1.0 1001.0)).UnitText)
 
-    /// D73 — an animation's pinned prefix comes from the union of its frames' domains, and a wide
+    /// An animation's pinned prefix comes from the union of its frames' domains, and a wide
     /// union pins none.
     [<Fact>]
     let ``a wide log union pins no prefix`` () =

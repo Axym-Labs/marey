@@ -1,4 +1,4 @@
-/// D77 — **frames, and the contract that makes rendering them in parallel honest.**
+/// **frames, and the contract that makes rendering them in parallel honest.**
 ///
 /// §7's headline is structural: an animation is a pure function of time, so frames come out in
 /// any order and `Array.Parallel.map` is the whole renderer. Three things have to be true for

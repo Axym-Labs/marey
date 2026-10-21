@@ -1,4 +1,4 @@
-/// Gate 13 — the Canvas2D backend draws the IR (D122). Every golden scene is drawn on a context
+/// Gate 13 — the Canvas2D backend draws the IR. Every golden scene is drawn on a context
 /// that records each call and each property it is given, one line apiece, and the log is compared
 /// with `tests/Marey.Fable/canvas/<name>.canvas.txt`. A node case the backend dropped, or a capability it
 /// stopped honouring, changes the log of every scene that has one.

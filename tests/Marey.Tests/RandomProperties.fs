@@ -1,4 +1,4 @@
-/// D95 — the library's one generator, and gate 12 of `m4-plan.md`.
+/// The library's one generator, and gate 12 of `m4-plan.md`.
 ///
 /// The reference vector is the point of the file. SplitMix64's outputs for seed 0 are published
 /// alongside Vigna's reference implementation, and they are restated here as literals rather than

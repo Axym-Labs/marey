@@ -1,4 +1,4 @@
-/// D130 — the 28 SVG goldens under Node; M5's gates 13 and 14, the canvas backend's call logs
+/// The 28 SVG goldens under Node; M5's gates 13 and 14, the canvas backend's call logs
 /// and the fonts, which need Node for the same reason; M5.5's gate 10, the simulations; and step
 /// F's gates 1–3, the wire format's goldens decoded, re-encoded and drawn (`WireGate`).
 ///

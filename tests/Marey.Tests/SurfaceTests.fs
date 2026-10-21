@@ -1,4 +1,4 @@
-/// M4.6 — *Surface*: units opt-in (D109), and the witness a caller did not state (D127).
+/// *Surface*: units opt-in, and the witness a caller did not state.
 ///
 /// `U.unspecified` is what an axis carries when nobody said what its numbers are. It is not
 /// `U.one`: `one` claims the quantity has no dimension, which the axis-sharing check acts on, and
@@ -47,7 +47,7 @@ module TheWitness =
         Assert.False((U.scaled "k" 1000.0 U.unspecified).Stated)
         Assert.True((U.div U.metre U.second).Stated)
 
-    /// D128 — the relabel. Measures are erased, so a stated witness comes back as itself, and
+    /// The relabel. Measures are erased, so a stated witness comes back as itself, and
     /// `null`, the omitted optional parameter, is the one place `unspecified` is decided.
     [<Fact>]
     let ``erase returns the witness it was given, and null is unspecified`` () =
@@ -224,7 +224,7 @@ module OneImplementation =
             (optional () |> Marey.Chart.SizeByWith(2.0<px>, 9.0<px>, raw err, unit = U.metre))
             (curried () |> Chart.sizeByWith 2.0<px> 9.0<px> U.metre err)
 
-    /// D125 — `add` is `addLine` and its siblings, for every constructor: the next palette slot
+    /// `add` is `addLine` and its siblings, for every constructor: the next palette slot
     /// of the figure being added to.
     [<Fact>]
     let ``add is the add family`` () =
@@ -381,7 +381,7 @@ module Coverage =
         m.GetParameters() |> Array.exists (fun p -> p.ParameterType = typeof<U<1>>)
 
     /// Curried, and no member: the add family is `Chart.add` over a constructor in the
-    /// unit-optional mode (D125).
+    /// unit-optional mode.
     let private curriedOnly =
         set [ "addLine"; "addScatter"; "addArea"; "addErrorbar"; "addStep"; "addRibbon"; "addSegment"; "addFit"; "addLoess"; "addLoessWith"
               "addHLine"; "addVLine"; "addHSpan"; "addVSpan"; "addLineThrough"
@@ -389,7 +389,7 @@ module Coverage =
               "annotate"; "withTextAt"
               // Axis modifiers: Marey.Chart's take the axis's own numbers, these a witness to check them by.
               "withXTicksEvery"; "withYTicksEvery"; "withXTicksAt"; "withYTicksAt"; "withXTicksNamed"; "withYTicksNamed"
-              // D178: Marey.Chart's take the map in raw numbers, these typed in both directions.
+              // Marey.Chart's take the map in raw numbers, these typed in both directions.
               "withTopAxisMapped"; "withRightAxisMapped" ]
 
     let private pairs: (Type * Type) list =
@@ -634,7 +634,7 @@ module TheBlock =
             Assert.Contains("error FS0001", output)
             Assert.Contains("'s' does not match the unit of measure 'm'", output)
 
-/// Gate 8, its first half (D124): **no two Marey assemblies export one type name.** C# resolves a
+/// Gate 8, its first half: **no two Marey assemblies export one type name.** C# resolves a
 /// type by its full CLR name and refuses one that two referenced assemblies both define (CS0433),
 /// so a duplicate is a type no C# caller can name — and, for `Marey.U` until M4.6, every witness.
 /// F# merges modules of one name across assemblies and never notices, which is why it went
@@ -685,7 +685,7 @@ module OneNamePerType =
         Assert.True(clash.IsEmpty, sprintf "ambiguous under both usings: %s" (String.concat ", " clash))
 
 
-/// Gate 9 — a parsed unit is a composed one (D110).
+/// Gate 9 — a parsed unit is a composed one.
 module Parsing =
 
     let private svgOf (u: IUnit) =
@@ -764,7 +764,7 @@ module Parsing =
         refused "" "empty"
         Assert.Throws<System.FormatException>(fun () -> U.parse "furlong" |> ignore) |> ignore
 
-    /// The checked assertion, not a cast: the dimension decides, and the angle (D98) with it.
+    /// The checked assertion, not a cast: the dimension decides, and the angle with it.
     [<Fact>]
     let ``tryAs asserts a measure back, checked`` () =
         match U.tryAs U.metre (U.parse "km") with

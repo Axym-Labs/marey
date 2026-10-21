@@ -190,7 +190,7 @@ module Fragments =
         Assert.Contains("&lt;sup&gt;", witness)
 
     // ----------------------------------------------------------------------------------
-    // D83 — the flipbook
+    // The flipbook
     // ----------------------------------------------------------------------------------
 
     /// **The gate the id prefix exists for, and it can fail.**
@@ -750,7 +750,7 @@ module LoadContexts =
         Assert.Equal(Html.witness U.kelvin, Html.renderForHost (800.0, 600.0, box U.kelvin))
 
 // ======================================================================================
-// M4.5 — A LIVE FIGURE THROUGH THE EXTENSION (D99, D100; gate 6)
+// A LIVE FIGURE THROUGH THE EXTENSION (D99, D100; gate 6)
 //
 // Driven against fakes of Verso's channel host and channel, because `Verso.Testing` 1.2 has no
 // channels and no cell id. The context below carries `CellId` as a property of its own type, which
@@ -894,7 +894,7 @@ module LiveFormatter =
         channel.Send("nonsense", "{")
         Assert.Equal(3, channel.Posted.Count)
 
-    /// D103 — a step that changes one layer of a large figure is posted as a patch: the fresh
+    /// A step that changes one layer of a large figure is posted as a patch: the fresh
     /// defs and the elements by id, and no whole figure. The view's hello, `size`, is answered
     /// with the whole figure even when nothing changed, because it is how a view that cannot
     /// apply a patch asks to start again.
@@ -919,7 +919,7 @@ module LiveFormatter =
             Assert.Equal(Html.widgetFigure l s1, hello.["svg"] :?> string)
             Assert.False(hello.ContainsKey "patch"))
 
-    /// Step F (D160) — a figure above the threshold is a page in a frame, with no channel, because a
+    /// Step F — a figure above the threshold is a page in a frame, with no channel, because a
     /// host inserts an `Html` output as markup and runs none of its scripts; one below it is markup.
     [<Fact>]
     let ``a large figure is formatted as a page, a small one as markup`` () =
@@ -936,7 +936,7 @@ module LiveFormatter =
             let output = format (box small) (LiveContext(host, Some cell))
             Assert.Equal("text/html", output.MimeType))
 
-    /// Step F (D159) — the same figure on a canvas page: a local change is posted as a patch's
+    /// Step F — the same figure on a canvas page: a local change is posted as a patch's
     /// bytes, and a hello as the whole scene with its size.
     [<Fact>]
     let ``on a canvas page, a change is posted as patch bytes and a hello as the scene`` () =
@@ -963,7 +963,7 @@ module LiveFormatter =
             let scene = Wire.decode (Convert.FromBase64String(hello.["scene"] :?> string))
             Assert.True((match scene with Ok n -> n = Live.scene l s1 | Error _ -> false)))
 
-    /// D105 — a hover is answered with the figure the view already has and what the pointer
+    /// A hover is answered with the figure the view already has and what the pointer
     /// reads; leaving is answered with an empty readout, which takes it down.
     [<Fact>]
     let ``a hover is answered with a readout and no figure`` () =
@@ -997,7 +997,7 @@ module LiveFormatter =
         Assert.Contains("value=\"3.7\"", doc)
         Assert.Contains("disabled=\"disabled\"", doc)
 
-    /// D102 — a `Recorder` goes through the extension as its `Live` does, and hands back
+    /// A `Recorder` goes through the extension as its `Live` does, and hands back
     /// exactly the messages the host stepped, at the view's times. After `stop` the widget still
     /// answers and nothing more is noted.
     [<Fact>]

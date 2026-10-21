@@ -1,4 +1,4 @@
-/// §7.1 / §13 — "`Interp` endpoint laws".
+/// "`Interp` endpoint laws".
 ///
 /// The endpoint laws are `interp a b 0 = a` and `interp a b 1 = b`, plus the containment law
 /// that an interpolated value never leaves the interval it was interpolated across. They are
@@ -189,7 +189,7 @@ module AffineTweening =
         let t = toAffine m
         close 1e-8 (AffineInterp.recompose (AffineInterp.decompose t)) t
 
-    /// §7.1 — "decompose to translate/rotate/scale/skew and interpolate the components, never
+    /// "decompose to translate/rotate/scale/skew and interpolate the components, never
     /// the matrix entries", because componentwise interpolation between a 0° and a 180° rotation
     /// passes through the zero matrix. The endpoint law is what makes the decomposed tween safe
     /// to use as a drop-in.
@@ -223,7 +223,7 @@ module AffineTweening =
         let angle = atan2 (float mid.M21) (float mid.M11) * 180.0 / System.Math.PI
         Assert.Equal(0.0, angle, 9)
 
-/// **D74 — `Affine` is the seventh overload of the witness, and the only one that is not
+/// **`Affine` is the seventh overload of the witness, and the only one that is not
 /// componentwise.**
 ///
 /// Two things are under test here and they are separable. The first is that the overload
@@ -260,7 +260,7 @@ module AffineWitness =
     let ``the witness is the decomposed tween`` (InvertibleMat a) (InvertibleMat b) (UnitT t) =
         Interp.between (toAffine a) (toAffine b) t = AffineInterp.lerp t (toAffine a) (toAffine b)
 
-    /// §12.2: the constraint is restated at every wrapper level, so a new overload either
+    /// The constraint is restated at every wrapper level, so a new overload either
     /// reaches all of them or none of them. `Interp.stops` is the deepest — it calls `interp`
     /// from inside a `let inline` that is itself constrained — and it is the one that would fail
     /// if a restatement had been skipped.

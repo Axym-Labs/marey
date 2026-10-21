@@ -1,4 +1,4 @@
-/// The TikZ writer primitives (D28, D32, D34).
+/// The TikZ writer primitives.
 ///
 /// Two things are being defended here. The first is the same determinism contract the SVG writer
 /// has, because the TikZ backend is a golden-tested text emitter on identical terms. The second
@@ -13,7 +13,7 @@ open Marey
 open Marey.Tests.Generators
 
 // ======================================================================================
-// D28 — `bp`, never `pt`
+// `bp`, never `pt`
 // ======================================================================================
 
 module ``D28 lengths are emitted in big points`` =
@@ -73,7 +73,7 @@ module ``D28 lengths are emitted in big points`` =
             Assert.Equal(v, float round, 9)
 
 // ======================================================================================
-// D34 — determinism. TeX raises the stakes: a bad number is a hard error, not a wrong pixel.
+// Determinism. TeX raises the stakes: a bad number is a hard error, not a wrong pixel.
 // ======================================================================================
 
 module ``D34 number emission is deterministic`` =
@@ -111,7 +111,7 @@ module ``D34 number emission is deterministic`` =
         Assert.Equal("0bp", Tikz.dim -infinity)
 
 // ======================================================================================
-// D32 — escaping literal text, and passing TeX source through untouched
+// Escaping literal text, and passing TeX source through untouched
 // ======================================================================================
 
 module ``D32 text escaping`` =
@@ -353,7 +353,7 @@ module ``escaped text compiles`` =
             System.Console.WriteLine("SKIPPED: " + TexToolchain.report ())
 
     /// The dimension emitter, exercised as actual TikZ coordinates. `bp` has to be a unit the
-    /// engine accepts everywhere a length is wanted (D28).
+    /// engine accepts everywhere a length is wanted.
     [<Fact>]
     let ``the engine accepts emitted bp dimensions as coordinates and widths`` () =
         let fragment =

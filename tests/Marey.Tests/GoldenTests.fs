@@ -1,4 +1,4 @@
-/// §13 — the golden-image suite.
+/// The golden-image suite.
 ///
 /// Every scene below is chosen to make one part of the SVG backend's behaviour visible in a
 /// text diff. Between them they cover all ten `Node` cases, all seven `MarkerShape`s, both
@@ -97,25 +97,25 @@ module Figures =
     let ``a complete figure`` () =
         check "figure.svg" (Chart.render SvgBackend.render figureSurface figure)
 
-    /// D45 — the categorical axis, as a picture. The claim under review in the diff is that the
+    /// The categorical axis, as a picture. The claim under review in the diff is that the
     /// bands are evenly spaced and the bars sit one band wide inside them.
     [<Fact>]
     let ``a categorical figure`` () =
         check "figure-category.svg" (Chart.render SvgBackend.render figureSurface categoryFigure)
 
-    /// D46 — a categorical colour channel. Three levels, three batches, and a legend that
+    /// A categorical colour channel. Three levels, three batches, and a legend that
     /// enumerates the levels rather than the series.
     [<Fact>]
     let ``a channelled figure`` () =
         check "figure-channels.svg" (Chart.render SvgBackend.render figureSurface channelFigure)
 
-    /// D49 — the colorbar. Its pair in `TikzGoldenTests` is the one that matters: a bar that
+    /// The colorbar. Its pair in `TikzGoldenTests` is the one that matters: a bar that
     /// degraded to a single flat block would still produce a clean diff *here*.
     [<Fact>]
     let ``a figure with a colorbar`` () =
         check "figure-colorbar.svg" (Chart.render SvgBackend.render figureSurface colorbarFigure)
 
-    /// D55 — the box plot as a whole figure: a categorical axis, a summary geom and an outlier.
+    /// The box plot as a whole figure: a categorical axis, a summary geom and an outlier.
     [<Fact>]
     let ``a box plot figure`` () =
         check "figure-boxplot.svg" (Chart.render SvgBackend.render figureSurface boxplotFigure)
@@ -125,7 +125,7 @@ module Figures =
     let ``a heatmap figure`` () =
         check "figure-heatmap.svg" (Chart.render SvgBackend.render figureSurface heatmapFigure)
 
-    /// M2.5, D64 — the first figure in the suite with a `Raster` in it.
+    /// The first figure in the suite with a `Raster` in it.
     ///
     /// SVG inlines the pixels as a `data:` URI, so this baseline is self-contained and there is
     /// no sidecar on this path — deliberately, and stated in `RenderedDocument`: a single file
@@ -271,9 +271,9 @@ module Contract =
 
         Assert.True(caps.Gradients && caps.RadialGradients && caps.Clipping && caps.Dashes && caps.Rasters)
         Assert.True(caps.RotatedText && caps.Semantics)
-        // §10 — shaping is delegated to whatever opens the file, and the flag says so honestly.
+        // Shaping is delegated to whatever opens the file, and the flag says so honestly.
         Assert.False(caps.TextShaping)
-        // §5.1 — "a text file has no hardware limit, and one batch stays one batch".
+        // "a text file has no hardware limit, and one batch stays one batch".
         Assert.True(caps.MaxBatch.IsNone)
 
     [<Fact>]
@@ -302,7 +302,7 @@ module Contract =
         let backend = SvgBackend()
         Assert.Throws<System.InvalidOperationException>(fun () -> backend.Result |> ignore) |> ignore
 
-    /// D15 — geometry is pre-transformed and no `transform` attribute is emitted for it. The two
+    /// Geometry is pre-transformed and no `transform` attribute is emitted for it. The two
     /// exceptions are text rotation and `gradientTransform`, so a document with neither must
     /// contain no `transform` at all.
     [<Fact>]

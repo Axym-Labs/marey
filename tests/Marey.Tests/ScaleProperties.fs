@@ -1,4 +1,4 @@
-/// §4 — the scale laws, verbatim from the design:
+/// The scale laws, verbatim from the design:
 ///
 /// > * `∀ x ∈ domain. inverse (forward x) ≈ x` and `∀ t ∈ [0,1]. forward (inverse t) ≈ t`
 /// > * `forward` is monotone
@@ -82,7 +82,7 @@ module RoundTrip =
 [<Properties(Arbitrary = [| typeof<MareyArbs> |], MaxTest = 500, Replay = Seed, QuietOnSuccess = true)>]
 module Monotonicity =
 
-    /// §4 — "`forward` is monotone". Non-strictly: two distinct data values may land on the same
+    /// "`forward` is monotone". Non-strictly: two distinct data values may land on the same
     /// panel position once the projection has been rounded, and refusing that would be a test of
     /// float spacing rather than of the scale.
     ///
@@ -106,7 +106,7 @@ module Monotonicity =
 [<Properties(Arbitrary = [| typeof<MareyArbs> |], MaxTest = 400, Replay = Seed, QuietOnSuccess = true)>]
 module Combinators =
 
-    /// D6 — the `ScaleKind` tag exists so a scale can be rebuilt. `withDomain` is *the* zoom/pan
+    /// The `ScaleKind` tag exists so a scale can be rebuilt. `withDomain` is *the* zoom/pan
     /// primitive, so "same kind, same unit, new domain" is the property that makes zooming a
     /// pure value change rather than a rebuild of the figure.
     [<Property>]
@@ -138,7 +138,7 @@ module Combinators =
         && ScaleSpec.samples 9 spec
            |> Array.forall (fun x -> Approx.abs' Tol.panel (float (r.Forward x)) (1.0 - fwd s x))
 
-    /// D9 — "`Scale.Forward` does not clamp ... out-of-domain points project outside `[0,1]` and
+    /// "`Scale.Forward` does not clamp ... out-of-domain points project outside `[0,1]` and
     /// are removed by the panel's `Clip` node". The consequence is load-bearing: it is why a
     /// backend that cannot clip still gets correct output for the common case.
     ///
@@ -228,7 +228,7 @@ module Combinators =
 [<Properties(Arbitrary = [| typeof<MareyArbs> |], MaxTest = 300, Replay = Seed, QuietOnSuccess = true)>]
 module Erasure =
 
-    /// §2.3 — "erase *once*, at the point where a series becomes a scale ... there is exactly
+    /// "erase *once*, at the point where a series becomes a scale ... there is exactly
     /// one implementation". So the erased view must be the same function as the measured one,
     /// not a re-derivation that can drift.
     [<Property>]
@@ -247,9 +247,9 @@ module Erasure =
             |> Array.forall (fun x -> float (e.Project x) = fwd s x))
         && e.Invert(t * 1.0<nd>) = inv s t
 
-    /// D16 — the erased witness carries the *whole* thing, because an electronvolt axis and a
+    /// The erased witness carries the *whole* thing, because an electronvolt axis and a
     /// joule axis have identical `Dim` and differ by 10^19. Without `ToSI` the information is
-    /// destroyed at save time (§15), not merely hidden.
+    /// destroyed at save time, not merely hidden.
     [<Fact>]
     let ``the erased witness distinguishes electronvolts from joules`` () =
         let ev = Erase.scale (Scale.linear U.electronvolt (1.0<eV>, 1000.0<eV>))
@@ -263,7 +263,7 @@ module Erasure =
         Assert.Equal(c.Dim, k.Dim)
         Assert.NotEqual(c.OffsetSI, k.OffsetSI)
 
-/// D45 — the categorical scale.
+/// The categorical scale.
 ///
 /// `ScaleKind.Ordinal` is the sixth kind and the only one whose ticks are named rather than
 /// numbered. The claims here are what the decision rests on: that a category reaches the scale
@@ -306,7 +306,7 @@ module Ordinal =
         ticks.Length = levels.Length
         && Array.forall2 (fun (t: TickLabel) name -> t.Label = name) ticks levels
 
-    /// §15 — a reloaded figure has only `IScaleErased`. The level names are in `Kind`, so they
+    /// A reloaded figure has only `IScaleErased`. The level names are in `Kind`, so they
     /// cross the boundary with everything else and no second erased interface is needed.
     [<Fact>]
     let ``the level names survive erasure`` () =

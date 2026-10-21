@@ -151,7 +151,7 @@ module Regression =
         Assert.Equal(2, f.Dropped)
         close 1e-9 3.5 (float f.Slope)
 
-    /// Both ways of having no line at all. Raising is the decision (D47): the alternative is a
+    /// Both ways of having no line at all. Raising is the decision: the alternative is a
     /// NaN slope that renders as an empty layer with no explanation.
     [<Fact>]
     let ``a fit with fewer than two finite pairs raises`` () =
@@ -286,7 +286,7 @@ module Binning =
 
 module Counting =
 
-    /// First-appearance order, which is `Levels.ofSeq`'s (D45). The two have to agree or a
+    /// First-appearance order, which is `Levels.ofSeq`'s. The two have to agree or a
     /// counted axis and a plotted one put the same category in different bands.
     [<Fact>]
     let ``count is in first-appearance order and agrees with Levels`` () =
@@ -443,7 +443,7 @@ module Charts =
         match fig.Panels.[0].Layers.[0].Geom with
         | GeomBar(baseline, width) ->
             Assert.Equal(1.0, width)
-            // The data value zero (D97): where it lands on the panel is `Geom.project`'s business,
+            // The data value zero: where it lands on the panel is `Geom.project`'s business,
             // against whatever domain the panel ends up with.
             Assert.Equal(0.0, baseline)
         | g -> failwithf "expected bars, got %A" g
@@ -728,7 +728,7 @@ module Block =
         Assert.Equal(a, b)
 
 // ======================================================================================
-// M4 phase 8 — hexbin (D93)
+// M4 phase 8 — hexbin
 // ======================================================================================
 
 module ``hexbin`` =

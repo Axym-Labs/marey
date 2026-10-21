@@ -14,7 +14,7 @@
 ///
 /// The third thing in this file is a regression, and it is the reason the phase touched
 /// `compileWith`'s signature. A geom carrying a per-point array of its own indexes it *by row*,
-/// while a channel batch (D46) hands the compiler a renumbered subset of the rows — so before
+/// while a channel batch hands the compiler a renumbered subset of the rows — so before
 /// this phase, the second colour batch of an error bar read the first batch's spans. Every bar
 /// was still drawn and the figure still looked reasonable, which is why it needed a test rather
 /// than a reading.
@@ -609,7 +609,7 @@ module ``violin`` =
         Assert.Equal(centre - List.min vs, List.max vs - centre, 9)
 
 // ======================================================================================
-// M2.5 / D64 — THE IMAGE
+// THE IMAGE
 //
 // The only geom in the library that does not bottom out in `Path`, `Markers` or `Text`, and the
 // only producer of a `Raster` node anywhere above the IR. Until it existed, `renderWithAssets`
@@ -712,7 +712,7 @@ module ``image`` =
 // ======================================================================================
 // THE ROW-INDEXING GATE
 //
-// A geom carrying a per-point array indexes it by *row*; a channel batch (D46) hands the
+// A geom carrying a per-point array indexes it by *row*; a channel batch hands the
 // compiler a renumbered subset of the rows. The bug this catches draws every mark, in the right
 // place, attached to the wrong datum.
 // ======================================================================================
@@ -934,7 +934,7 @@ module ``the Chart constructors`` =
 
         // A pitch of 1, so the tiles reach half a cell past 0 and past 3.
         Assert.Equal((-0.5, 3.5), sx.Domain)
-        // And the third quantity became a colour channel with its own witness (D49).
+        // And the third quantity became a colour channel with its own witness.
         Assert.Equal(1, fig.Panels.[0].Layers.[0].Channels.Length)
 
     [<Fact>]
@@ -1045,7 +1045,7 @@ module ``the categorical distributions`` =
         Assert.Equal(Some "", (Chart.Category.violin U.metre keys values).Panels.[0].XAxis.Label)
 
 // ======================================================================================
-// D56 — the block's own filled geoms
+// The block's own filled geoms
 // ======================================================================================
 
 module ``area and bars from a block`` =
@@ -1124,7 +1124,7 @@ module ``area and bars from a block`` =
         Assert.Equal(GeomStep StepAfter, fig.Panels.[0].Layers.[0].Geom)
 
     /// Every layer of a block is one series, so a filled one takes the block's base style rather
-    /// than advancing the palette (D54).
+    /// than advancing the palette.
     [<Fact>]
     let ``a filled layer shares the block's one style`` () =
         let fig =
@@ -1141,7 +1141,7 @@ module ``area and bars from a block`` =
         Assert.Equal(0.5, layers.[0].Style.Opacity, 12)
 
 // ======================================================================================
-// D97 — a geom draws where its data is, whatever the panel's domain became after it was built
+// A geom draws where its data is, whatever the panel's domain became after it was built
 // ======================================================================================
 
 /// **Gate 1 of `m4-plan.md`.** Ten of the fifteen geom cases carry arrays of their own — the span
@@ -1175,7 +1175,7 @@ module ``a geom draws where its data is`` =
           "image", (fun s -> Geom.image s pixel 4.2<m> 4.2<m> 5.8<m> 5.8<m> false)
           "area", Geom.area
           "bar", Geom.bar 0.5
-          // D86 — a field carries its own grid rather than the series' points, and its node
+          // A field carries its own grid rather than the series' points, and its node
           // coordinates are arrays of exactly the kind D97 is about.
           "field contours",
           (fun _ ->

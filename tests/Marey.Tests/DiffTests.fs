@@ -1,6 +1,6 @@
 module Marey.Tests.DiffTests
 
-// M4.5 phase 5 — the differ (D103). `Scene.diff` on the IR, `SvgBackend.renderPatch` on the
+// M4.5 phase 5 — the differ. `Scene.diff` on the IR, `SvgBackend.renderPatch` on the
 // document, and the reply a live figure sends. Gates 8 and 9 of `m4.5-plan.md` §4.
 
 open System

@@ -52,7 +52,7 @@ module Snapshots =
     [<Fact>]
     let ``a batched scatter`` () = tikz "markers-batch"
 
-    /// D31 and D10: this backend cannot do gradients, so what lands in the baseline is the
+    /// This backend cannot do gradients, so what lands in the baseline is the
     /// degraded form — and the diff is where a reviewer sees which colour was chosen.
     [<Fact>]
     let ``gradients degraded to solids`` () = tikz "gradients"
@@ -63,7 +63,7 @@ module Snapshots =
     [<Fact>]
     let ``clipping`` () = tikz "clipping"
 
-    /// §5.3's structure has no `aria-label` to land in, so it survives as `%` comments (D31).
+    /// §5.3's structure has no `aria-label` to land in, so it survives as `%` comments.
     [<Fact>]
     let ``keyed and annotated`` () = tikz "keyed-annotated"
 
@@ -85,7 +85,7 @@ module Snapshots =
     /// Both doors out of the backend, on one scene, so neither claim can drift into a comment
     /// that is no longer true. This test read
     /// `the raster skip comment is unreachable through render and reachable through Draw` until
-    /// M2.5 — the second half inverted, and the first half is why the baseline above is
+    /// The second half inverted, and the first half is why the baseline above is
     /// byte-identical across the change.
     [<Fact>]
     let ``a raster is absent through render and present through renderWithAssets`` () =
@@ -103,7 +103,7 @@ module Snapshots =
             Assert.Contains("\\includegraphics[width=", rendered.Document)
             Assert.Contains(asset.Name, rendered.Document)
 
-        // Deterministic in name *and* order (D64): the names are positions in traversal order,
+        // Deterministic in name *and* order: the names are positions in traversal order,
         // so a reordering would be visible here rather than in a golden diff months later.
         Assert.Equal<string[]>([| "marey-raster-0.png"; "marey-raster-1.png" |], rendered.Assets |> Array.map (fun a -> a.Name))
 
@@ -195,7 +195,7 @@ module Figures =
 
         Assert.True(colors.Count > 100, sprintf "only %d distinct colours in the document" colors.Count)
 
-    /// D55 — the box plot through the other backend. The outlier is a `\marey@mark` and the
+    /// The box plot through the other backend. The outlier is a `\marey@mark` and the
     /// whiskers are a stroked path, so the pair also records that a summary geom degrades to
     /// nothing on a backend with no gradients and no rasters: there is nothing in it to degrade.
     [<Fact>]
@@ -203,7 +203,7 @@ module Figures =
         check "figure-boxplot.tex" (Chart.render TikzBackend.render figureSurface boxplotFigure)
 
     /// The heatmap through the other backend, and the one place a tile's batching is visible as
-    /// file length: one path per quantised colour step (D46), not one per cell.
+    /// file length: one path per quantised colour step, not one per cell.
     [<Fact>]
     let ``a heatmap figure`` () =
         check "figure-heatmap.tex" (Chart.render TikzBackend.render figureSurface heatmapFigure)
@@ -305,59 +305,59 @@ module Figures =
     let ``a wide log axis under Theme tikz`` () =
         check "figure-log-siunitx.tex" (logFigure |> Chart.withTheme Theme.tikz |> Chart.render TikzBackend.render figureSurface)
 
-    /// D162 — rules, spans and a polar circle in TeX: dashed strokes, a filled band at a tenth,
+    /// Rules, spans and a polar circle in TeX: dashed strokes, a filled band at a tenth,
     /// and the sampled arc.
     [<Fact>]
     let ``rules and spans`` () =
         check "figure-rules.tex" (Chart.render TikzBackend.render rulesSurface rulesFigure)
 
-    /// D164 / D165 — arrows straight and arced, text past the plot area, and panel letters.
+    /// Arrows straight and arced, text past the plot area, and panel letters.
     [<Fact>]
     let ``annotations and panel letters`` () =
         check "figure-annotate.tex" (Chart.render TikzBackend.render annotateSurface annotateFigure)
 
-    /// D166 / D169 / D170 — a stated step, named ticks, a reversed axis and a pinned prefix.
+    /// A stated step, named ticks, a reversed axis and a pinned prefix.
     [<Fact>]
     let ``stated ticks`` () =
         check "figure-ticks.tex" (Chart.render TikzBackend.render ticksSurface ticksFigure)
 
-    /// D167 / D168 — the publication box: frame, inward and mirrored ticks, minor ticks.
+    /// The publication box: frame, inward and mirrored ticks, minor ticks.
     [<Fact>]
     let ``the publication theme`` () =
         check "figure-publication.tex" (Chart.render TikzBackend.render publicationSurface publicationFigure)
 
-    /// D171 — legends outside, in columns, in the emptiest corner, and shared by a figure.
+    /// Legends outside, in columns, in the emptiest corner, and shared by a figure.
     [<Fact>]
     let ``legends`` () =
         check "figure-legends.tex" (Chart.render TikzBackend.render legendsSurface legendsFigure)
         check "figure-legend-shared.tex" (Chart.render TikzBackend.render sharedLegendSurface sharedLegendFigure)
 
-    /// D174 — a panel spanning two rows of a mosaic.
+    /// A panel spanning two rows of a mosaic.
     [<Fact>]
     let ``a mosaic`` () =
         check "figure-mosaic.tex" (Chart.render TikzBackend.render mosaicSurface mosaicFigure)
 
-    /// D173, D175, D176 — P1 with one x, three to one.
+    /// P1 with one x, three to one.
     [<Fact>]
     let ``a shared axis over ratios`` () =
         check "figure-shared.tex" (Chart.render TikzBackend.render sharedSurface sharedFigure)
 
-    /// D177 — two y axes, each in its series' colour.
+    /// Two y axes, each in its series' colour.
     [<Fact>]
     let ``a twin y`` () =
         check "figure-twin.tex" (Chart.render TikzBackend.render twinSurface twinFigure)
 
-    /// D178 — secondary axes, through a map and through a unit.
+    /// Secondary axes, through a map and through a unit.
     [<Fact>]
     let ``secondary axes`` () =
         check "figure-secondary.tex" (Chart.render TikzBackend.render secondarySurface secondaryFigure)
 
-    /// D179 — equal aspect beside a panel that keeps its rectangle.
+    /// Equal aspect beside a panel that keeps its rectangle.
     [<Fact>]
     let ``equal aspect`` () =
         check "figure-aspect.tex" (Chart.render TikzBackend.render aspectSurface aspectFigure)
 
-    /// D180 — an inset and its zoom.
+    /// An inset and its zoom.
     [<Fact>]
     let ``an inset`` () =
         check "figure-inset.tex" (Chart.render TikzBackend.render insetSurface insetFigure)

@@ -1,4 +1,4 @@
-/// Gate 14 — no layout against a fallback face (D123). Node has no `document`, so the gate puts
+/// Gate 14 — no layout against a fallback face. Node has no `document`, so the gate puts
 /// one in place: a `document.fonts` that is still loading, then one that has finished, and an
 /// `OffscreenCanvas` whose `measureText` answers in a face of its own. Before the fonts arrive the
 /// canvas measurer refuses and `WebText.measurerNow` hands back `ApproxTextMeasurer`, saying so;

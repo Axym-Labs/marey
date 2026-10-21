@@ -1,7 +1,7 @@
 /// M5.5 phase 11, gate 10 — simulations the .NET suite and Node both run, printed to twelve
 /// decimals and compared with one file, `golden/sim-runs.txt`.
 ///
-/// **No chaotic system, and nothing adaptive with a transcendental in its force** (D141): Node's
+/// **No chaotic system, and nothing adaptive with a transcendental in its force**: Node's
 /// `sin` and `exp` differ from .NET's in the last bit for a few percent of arguments, a chaotic
 /// system turns that into a different trajectory, and an adaptive controller into a different
 /// step sequence. What is here keeps an ulp an ulp, so twelve decimals agree, and a platform call
@@ -76,7 +76,7 @@ let private grids () =
     [ line "heat" [ float hot.Values.[0]; float hot.Values.[205]; float hot.Values.[419] ]
       line "poisson" [ float poisson.Iterations; float poisson.Solution.Values.[144] ] ]
 
-/// M5.6: Stam in a closed box and on a torus, and lattice Boltzmann past an obstacle, from
+/// Stam in a closed box and on a torus, and lattice Boltzmann past an obstacle, from
 /// polynomial starts. The steps are arithmetic but for the multigrid's coarsest factor,
 /// `cos (π/m)`, which reaches a printed digit through a factor that only speeds convergence.
 let private fluids () =

@@ -1,4 +1,4 @@
-/// The TikZ backend traversal (D29, D30, D31, D33).
+/// The TikZ backend traversal.
 ///
 /// The suite is organised around the four places this backend deliberately differs from the SVG
 /// one, because those are where a bug would hide: the missing y flip, the pre-transformed
@@ -107,7 +107,7 @@ module ``picture structure`` =
         Assert.Contains("\\end{tikzpicture}", out)
 
 // ======================================================================================
-// D29 / D30 — the transform, and the cross-backend statement of it
+// The transform, and the cross-backend statement of it
 // ======================================================================================
 
 module ``D29 there is no y flip`` =
@@ -205,7 +205,7 @@ module ``cross-backend agreement`` =
             Assert.Contains(Svg.num svgX + " " + Svg.num svgY, SvgBackend.render surface scene)
 
     /// The rotation formulas are genuinely different — the SVG backend negates a run's own angle
-    /// under a mirrored CTM (D13), this one does not, because its determinant is positive. Both
+    /// under a mirrored CTM, this one does not, because its determinant is positive. Both
     /// must put the glyphs at the same angle on the page, which for a y-down target means the
     /// opposite sign.
     [<Fact>]
@@ -216,7 +216,7 @@ module ``cross-backend agreement`` =
         Assert.Contains("rotate(-30", SvgBackend.render surface scene)
 
 // ======================================================================================
-// D31 — capabilities, and Degrade's first real customer
+// Capabilities, and Degrade's first real customer
 // ======================================================================================
 
 module ``D31 capabilities are honest`` =
@@ -244,7 +244,7 @@ module ``D31 capabilities are honest`` =
         Assert.False caps.GroupOpacity
         Assert.True caps.MaxBatch.IsNone
 
-    /// D67 — **the only `GroupOpacity = false` in the project**, and the reason the flag is a
+    /// **the only `GroupOpacity = false` in the project**, and the reason the flag is a
     /// capability rather than a constant.
     ///
     /// The obvious implementation is `\begin{scope}[opacity=0.5]`, and it is wrong twice. pgf
@@ -375,7 +375,7 @@ module ``D31 capabilities are honest`` =
         Assert.Equal<byte[]>([| 0x89uy; 0x50uy; 0x4Euy; 0x47uy |], asset.Bytes.[0..3])
 
 // ======================================================================================
-// D33 — batched markers
+// Batched markers
 // ======================================================================================
 
 module ``D33 marker batching`` =
@@ -745,7 +745,7 @@ module ``determinism`` =
         Assert.Throws<System.InvalidOperationException>(fun () -> sink.Draw Scene.empty) |> ignore
 
 // ======================================================================================
-// D35 — Theme.tikz, and the headline in one selection
+// Theme.tikz, and the headline in one selection
 //
 // §14 announces M1 on "unit-safe plots that drop into a LaTeX document". The measure of whether
 // that landed is how much a user has to configure, and the answer has to be "the theme".
@@ -833,7 +833,7 @@ module ``D35 Theme tikz`` =
         Assert.True(Theme.tryByName "tikz" |> Option.isSome)
         Assert.Equal("tikz", Theme.tikz.Name)
 
-    /// D26: a theme is a record of resolved values with no function fields, so an identically
+    /// A theme is a record of resolved values with no function fields, so an identically
     /// constructed one compares equal. Adding a field must not break that.
     [<Fact>]
     let ``the theme is still a comparable value`` () =

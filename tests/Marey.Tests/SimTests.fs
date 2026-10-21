@@ -770,7 +770,7 @@ module ``Dormand–Prince`` =
             Assert.True(sameFlow (traj.At t) (straight 0.01<s> (Ode.dopri5 1e-3<m> 1e-3<m/s> 1e-3 Driven.flow) start t), sprintf "differs at %g" (float t))
 
 // ======================================================================================
-// Phase 5 — invariants and drift (D136)
+// Phase 5 — invariants and drift
 // ======================================================================================
 
 module ``invariants and drift`` =
@@ -871,7 +871,7 @@ module ``invariants and drift`` =
         Assert.False(s.Invariants.Head.Unit.Stated)
 
 // ======================================================================================
-// Phase 6 — events (D144): gate 7's bouncing ball, and gate 4 with events
+// Phase 6 — events: gate 7's bouncing ball, and gate 4 with events
 // ======================================================================================
 
 /// A ball over a floor at `y = 0`. `Resting` is the modelling decision D144 leaves to the user: at
@@ -1237,7 +1237,7 @@ module ``hard discs`` =
         Assert.Throws<ArgumentException>(fun () -> Collide.create [| 1.0<m> |] [| 1.0 |] 1.2 Box.Open |> ignore) |> ignore
 
 // ======================================================================================
-// Phase 8 — Poincaré sections (D142): gate 8
+// Phase 8 — Poincaré sections: gate 8
 // ======================================================================================
 
 module ``Poincaré sections`` =
@@ -1358,7 +1358,7 @@ module ``Poincaré sections`` =
         Assert.Equal(1, (Poincare.stroboscopic 5.0<s> traj).Length)
 
 // ======================================================================================
-// Phase 9 — unsteady fields, pathlines, particles (D142, D145): gate 11
+// Phase 9 — unsteady fields, pathlines, particles: gate 11
 // ======================================================================================
 
 module ``pathlines and particles`` =
@@ -1497,7 +1497,7 @@ module ``pathlines and particles`` =
         Assert.Throws<ArgumentException>(fun () -> Unsteady.ofSnapshots [| 1.0<s>; 0.0<s> |] [| grid 0.0<s>; grid 1.0<s> |] |> ignore) |> ignore
 
 // ======================================================================================
-// Phase 10 — grid solvers (D138): gates 12 and 13
+// Phase 10 — grid solvers: gates 12 and 13
 // ======================================================================================
 
 module ``grid solvers`` =

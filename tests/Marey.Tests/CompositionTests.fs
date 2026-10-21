@@ -1,4 +1,4 @@
-/// M9 — **composition**: where panels sit, how big their plots are, and which axes they share.
+/// **composition**: where panels sit, how big their plots are, and which axes they share.
 ///
 /// Every gate here reads the plot rectangles back through `Chart.panelsIn`, which takes them from
 /// the same inner grid the drawing pass uses, so a rectangle that is right here is right in every
@@ -182,7 +182,7 @@ module ``D174 spans`` =
 
     [<Fact>]
     let ``three beside two takes a line wherever either has one`` () =
-        // D175: lines at a third and two thirds, and at a half, so four rows of 2 : 1 : 1 : 2.
+        // Lines at a third and two thirds, and at a half, so four rows of 2 : 1 : 1 : 2.
         let three = fit |> Chart.above fit |> Chart.above fit
         let two = fit |> Chart.above fit
         let fig = three |> Chart.beside two

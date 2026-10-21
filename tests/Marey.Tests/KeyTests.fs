@@ -1,4 +1,4 @@
-/// D104 — **keys the data supplies**, and the morph that pairs by them. Gate 11 of
+/// **keys the data supplies**, and the morph that pairs by them. Gate 11 of
 /// `m4.5-plan.md` §4: a figure rebuilt with a row removed keeps every surviving datum's key, a
 /// duplicate key is refused by name, and a `/` in the data cannot forge a path.
 ///

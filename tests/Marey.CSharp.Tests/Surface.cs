@@ -77,7 +77,7 @@ public class Surface
         Assert.Equal(2, facet.Panels.Length);
     }
 
-    /// D162 — rules and spans from C#: built as figures and added, checked against the axis.
+    /// Rules and spans from C#: built as figures and added, checked against the axis.
     [Fact]
     public void RulesAndSpans()
     {
@@ -96,7 +96,7 @@ public class Surface
         Assert.ThrowsAny<Exception>(() => Svg(Chart.Line(X, Y, yUnit: Units.Metre).Add(Chart.HLine(1.0, Units.Second))));
     }
 
-    /// D164 / D165 — annotations, panel text and letters from C#.
+    /// Annotations, panel text and letters from C#.
     [Fact]
     public void AnnotationsAndLetters()
     {
@@ -117,7 +117,7 @@ public class Surface
         Assert.Contains("(b)", svg);
     }
 
-    /// D166 / D169 / D170 — stated ticks, a prefix and reversal from C#.
+    /// Stated ticks, a prefix and reversal from C#.
     [Fact]
     public void StatedTicks()
     {
@@ -135,7 +135,7 @@ public class Surface
         Assert.ThrowsAny<Exception>(() => Svg(fig.WithXTicksEvery(1.0, Units.Second)));
     }
 
-    /// D167 / D168 — minor ticks and the tick conventions of a theme, from C#.
+    /// Minor ticks and the tick conventions of a theme, from C#.
     [Fact]
     public void MinorTicksAndTickDirection()
     {
@@ -149,7 +149,7 @@ public class Surface
         Assert.Contains("[m]", Svg(Chart.Line(X, Y, yUnit: Units.Metre).WithTheme(ThemeModule.publication)));
     }
 
-    /// D169 — tick formats from C#, a custom one from a lambda.
+    /// Tick formats from C#, a custom one from a lambda.
     [Fact]
     public void TickFormats()
     {
@@ -162,7 +162,7 @@ public class Surface
         Assert.Contains("&lt;", svg);
     }
 
-    /// D171 — legends outside, in columns, without a frame, and shared by a figure, from C#.
+    /// Legends outside, in columns, without a frame, and shared by a figure, from C#.
     [Fact]
     public void Legends()
     {

@@ -1,4 +1,4 @@
-/// D129 — numbers rounded and formatted by Marey's arithmetic rather than the platform's, and
+/// Numbers rounded and formatted by Marey's arithmetic rather than the platform's, and
 /// gate 2 of `m5-plan.md` on the .NET side.
 ///
 /// Each function replaced a platform call whose output every golden depends on, so each is

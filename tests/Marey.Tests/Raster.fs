@@ -216,7 +216,7 @@ let coverageIn (r: Region) (g: Gray) : float =
 
 let coverage (g: Gray) : float = coverageIn whole g
 
-/// The mean grey level of a region, 0 black to 255 white (D64).
+/// The mean grey level of a region, 0 black to 255 white.
 ///
 /// `coverageIn` answers "is there ink"; this answers "how dark", which is the question
 /// **orientation** needs. A flipped image has ink in exactly the same box and the same amount
@@ -289,7 +289,7 @@ let rasterise (dpi: float) (pdf: string) : Result<Gray, string> =
 let rec ofDocument (name: string) (document: string) : TexToolchain.PdfResult<Gray> =
     ofRendered name { Document = document; Assets = [||] }
 
-/// `ofDocument` for a picture that refers to sidecar files (D64).
+/// `ofDocument` for a picture that refers to sidecar files.
 ///
 /// The assets are written beside the `.tex` before the engine runs, so a `\includegraphics`
 /// pointing at a file nobody wrote fails here as a TeX error rather than as a blank region

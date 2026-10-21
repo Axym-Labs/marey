@@ -1,6 +1,6 @@
 module Marey.Tests.InteractTests
 
-// M4.5 — `Marey.Interact`: typed controls, the applicative block, and the pure step (D100,
+// `Marey.Interact`: typed controls, the applicative block, and the pure step (D100,
 // D101). Gates 1, 2, 3 and 12 of `m4.5-plan.md` §4.
 
 open System
@@ -458,7 +458,7 @@ module ``zoom and pan`` =
             List.iter2 (fun (a: LiveState, x: string) (b: LiveState, y: string) -> Assert.Equal<LiveState>(a, b); Assert.Equal(x, y)) runs.[0] other
 
 // ======================================================================================
-// Gate 14 — the readout reads what is under the pointer (D105)
+// Gate 14 — the readout reads what is under the pointer
 // ======================================================================================
 
 module ``the readout`` =
@@ -890,7 +890,7 @@ module ``a widget does not breathe`` =
             Assert.True(Chart.fitsIn TextMeasure.approx s.Shot (Live.view hump s), sprintf "u = %g fits the grown arrangement" v)
 
 // ======================================================================================
-// Gate 10 — live equals replayed (D102)
+// Gate 10 — live equals replayed
 // ======================================================================================
 
 module ``live equals replayed`` =
@@ -1104,7 +1104,7 @@ module ``a recorder`` =
         Assert.Equal<float[]>([| 3.0; 0.0 |], (first'' :?> RecorderState).State.Values)
         Assert.Equal<(float<s> * LiveMsg)[]>([| 0.0<s>, Set(0, 4.0) |], (Recorder.stop r).Events)
 
-/// M5.5 phase 7, gate 9 — a time control arranges once (D137). A live figure is laid out over
+/// M5.5 phase 7, gate 9 — a time control arranges once. A live figure is laid out over
 /// its controls' extremes; a time control's are samples along its range, so a view whose widest
 /// state lies *inside* the range is arranged for it before it is played, where the two ends alone
 /// would re-arrange mid-playback.

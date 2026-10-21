@@ -15,7 +15,7 @@
 /// precisely so that comparison is available *before* shaping is allowed to move anything —
 /// when the panel rectangle moves in phase 3, it will be a result rather than a regression.
 ///
-/// ### When the native assets are absent (D66)
+/// ### When the native assets are absent
 ///
 /// These tests live in `Marey.Tests` rather than in a project of their own, because a second
 /// test project is a second place for a gate to rot — and the precedent for "the real
@@ -293,7 +293,7 @@ module ``the traversal agrees with the reference backend`` =
     /// The root transform, which is where a y flip would go wrong, stated exactly.
     ///
     /// Skia's device space is y-down like SVG's, so this backend's root is the **same matrix**
-    /// as the SVG backend's — unlike TikZ's, which does not flip because TeX is y-up (D29). A
+    /// as the SVG backend's — unlike TikZ's, which does not flip because TeX is y-up. A
     /// test that only checked "the two backends agree" would be satisfied by both being flipped
     /// wrongly, so the absolute claim is made here as well.
     [<Fact>]
@@ -672,7 +672,7 @@ module ``the native asset gate`` =
 // ======================================================================================
 // GATE 6 — the zero-dependency rule
 //
-// §13: "Marey.Core having zero dependencies is non-negotiable: it is what lets the same IR run
+// "Marey.Core having zero dependencies is non-negotiable: it is what lets the same IR run
 // in a notebook, in a browser via Fable, and in an AOT-compiled native binary."
 //
 // This is the gate most likely to fail by accident, from a test project's reference leaking
@@ -705,7 +705,7 @@ module ``the zero-dependency rule`` =
     [<InlineData "Marey.Backend.Svg">]
     [<InlineData "Marey.Backend.Tikz">]
     // Not a vector backend, but it makes the same zero-dependency claim in its .fsproj and the
-    // packages that will consume it (D75, D79) each drag a toolchain already.
+    // packages that will consume it each drag a toolchain already.
     [<InlineData "Marey.Toolchain">]
     // Nor is this one, and its claim is stronger still: `Marey.Anim` references `Marey.Core`
     // and nothing else, which is what keeps a scrubbable timeline compilable under Fable.
@@ -1286,7 +1286,7 @@ module ``text shaping`` =
             Assert.True(backend.Result.Length > 0))
 
 // ======================================================================================
-// D62 — THE FONT IS RESOLVED AND REPORTED, OR STATED AND OBEYED
+// THE FONT IS RESOLVED AND REPORTED, OR STATED AND OBEYED
 // ======================================================================================
 
 module ``the resolved face`` =
@@ -1410,7 +1410,7 @@ module ``the resolved face`` =
             Assert.Equal<byte[]>(once (), once ()))
 
 // ======================================================================================
-// D67 — GROUP OPACITY IS COMPOSITING, NOT AN ALPHA ON EACH SHAPE
+// GROUP OPACITY IS COMPOSITING, NOT AN ALPHA ON EACH SHAPE
 //
 // This backend advertises `GroupOpacity = true`, and the claim behind that flag is not "the
 // group comes out fainter". It is that the subtree is composited *first* and the result faded,
@@ -1498,7 +1498,7 @@ module ``group opacity composites`` =
             ))
 
 // ======================================================================================
-// D78 — FONT FALLBACK: THE SEGMENTATION, AND THE REPORT THAT MAKES IT HONEST
+// FONT FALLBACK: THE SEGMENTATION, AND THE REPORT THAT MAKES IT HONEST
 //
 // M2.5 left one sentence open and `m2.5-plan.md` §5 named it M3's: `SKShaper` shapes against a
 // single typeface, so a codepoint that face lacks measures as the missing-glyph box — 9.0 px at
@@ -1976,7 +1976,7 @@ module ``the painter`` =
         Assert.Equal<int list>([ 0; 1; 0 ], List.ofSeq depths)
 
 // ======================================================================================
-// D132 — each mark is composited on its own
+// Each mark is composited on its own
 // ======================================================================================
 
 module ``each mark composites on its own`` =

@@ -1,4 +1,4 @@
-/// M5 phase 6 — the window (D118), gate 12: a scripted sequence of window events gives the
+/// M5 phase 6 — the window, gate 12: a scripted sequence of window events gives the
 /// `LiveState` and the `Recording` the equivalent messages give through `Live.step`.
 ///
 /// The translation is pure (`WindowSession`) and is checked without a display. The host is then
@@ -269,7 +269,7 @@ module ``the host`` =
 
             Assert.True((differing = 0), sprintf "%d channels of the figure differ from the renderer's" differing))
 
-    /// D137 — a hidden window plays a time control on its own loop: Tab and space, and the value
+    /// A hidden window plays a time control on its own loop: Tab and space, and the value
     /// moves on by the window's clock without another event, then holds once paused.
     [<Fact>]
     let ``a hidden window plays a time control on its frame loop`` () =
@@ -316,7 +316,7 @@ module ``the host`` =
 
         Assert.All(entries, (fun e -> Assert.NotNull e))
 
-/// M5.5 phase 7, gate 15 — the window plays a time control (D137): play, pause and scrub send the
+/// M5.5 phase 7, gate 15 — the window plays a time control: play, pause and scrub send the
 /// `Set`s the page would, stamped by the window's clock, and reach `Live.step`'s state.
 module ``gate 15`` =
 

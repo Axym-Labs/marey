@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- §13: "Marey.Tests — FsCheck laws + golden SVG snapshots."
+    <!-- "Marey.Tests — FsCheck laws + golden SVG snapshots."
 
          net10.0 rather than netstandard2.1: this is an executable test host, not a shipped
          library. The projects under test target netstandard2.1 and are referenced from here,
@@ -97,7 +97,7 @@
     <ProjectReference Include="..\..\src\Marey.Fields\Marey.Fields.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Sim\Marey.Sim.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Interact\Marey.Interact.fsproj" />
-    <!-- D66 — the Skia tests live here rather than in a `Marey.Tests.Skia` of their own.
+    <!-- The Skia tests live here rather than in a `Marey.Tests.Skia` of their own.
          A second test project is a second place for a gate to rot, and the precedent for
          "the real enforcement is in CI, and a missing toolchain skips loudly" is already
          set twice over by `TexToolchain.fs` and `Raster.fs`. This reference is also the

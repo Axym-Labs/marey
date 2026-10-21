@@ -1,4 +1,4 @@
-/// §7.1 / D74 — **path morphing**, and the three policies that stop it being an `Interp`
+/// **path morphing**, and the three policies that stop it being an `Interp`
 /// instance.
 ///
 /// The laws split into two kinds and it is worth saying which is which before reading them.

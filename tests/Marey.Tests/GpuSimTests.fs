@@ -1,4 +1,4 @@
-/// M5.6 phases 3 and 4 — the GPU solvers against their CPU twins (D140). Gates 6, 7 and 8 of
+/// M5.6 phases 3 and 4 — the GPU solvers against their CPU twins. Gates 6, 7 and 8 of
 /// `m5.6-plan.md`.
 ///
 /// **A GPU result is never a golden.** Two drivers disagree in the last bits (fused multiply-adds),
@@ -168,7 +168,7 @@ module ``LBM on the GPU is LBM on the CPU`` =
 // Gate 9 — GPU LIC (phase 5)
 // ======================================================================================
 
-/// The per-pixel LIC the shader computes, on the CPU in float64: the oracle (D140), and an
+/// The per-pixel LIC the shader computes, on the CPU in float64: the oracle, and an
 /// `ILicConvolver` like the GPU's, so `FieldMarks` runs it through the same stretch and colour.
 type private PerPixelLic() =
     interface ITextMeasurer with

@@ -9,7 +9,7 @@
 ///
 /// **Gate 2 compares one scene, not two.** The plan had Fable encode the scene it compiles itself
 /// and match .NET's bytes. Six goldens cannot: their geometry goes through `sin` and `cos`, which
-/// differ between Node and .NET in the last bit (D141), so the two runtimes compile two scenes
+/// differ between Node and .NET in the last bit, so the two runtimes compile two scenes
 /// that agree to the three decimals every golden prints and not to the bit. The kernel compiles,
 /// and the page decodes and never recomputes, so that is not the wire's concern. Those six are
 /// named below, so a sixth fails here rather than passing quietly.
@@ -20,7 +20,7 @@ open Marey
 open Marey.Tests
 
 /// A fresh `Uint8Array` over the file, at offset 0 of its own buffer. Node hands small files out
-/// of a shared pool at an arbitrary offset, and a decoder is entitled to an aligned buffer (D153).
+/// of a shared pool at an arbitrary offset, and a decoder is entitled to an aligned buffer.
 [<Import("readFileSync", "node:fs")>]
 let private readBuffer (_path: string) : obj = jsNative
 
@@ -42,7 +42,7 @@ let private firstDifference (a: byte[]) (b: byte[]) =
     sprintf "first difference at byte %d of %d (Fable wrote %d)\n      .NET  %s\n      Fable %s" i a.Length b.Length (window a) (window b)
 
 /// The goldens whose scene Node compiles differently in the last bit of a coordinate, from
-/// `sin` and `cos` (D141): the star and the arc in `paths` and `clipping`, the fields sampled
+/// `sin` and `cos`: the star and the arc in `paths` and `clipping`, the fields sampled
 /// from trigonometric functions, and the circle and the wedge `figure-rules` lays across a polar
 /// panel.
 let private platformTrig =
