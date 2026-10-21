@@ -346,7 +346,7 @@ module ``the SVG path below the threshold`` =
 
     let private slider () =
         interact {
-            let! f = Control.slider Derived.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
+            let! f = Control.slider U.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
             return Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
         }
 
@@ -363,7 +363,7 @@ module ``the SVG path below the threshold`` =
             let rng = Random(7)
             let x = Array.init 2000 (fun _ -> rng.NextDouble() * 1.0<m>)
             let y = Array.init 2000 (fun _ -> (rng.NextDouble() - 0.5) * k * 1.0<V>)
-            return Chart.scatter U.metre Derived.volt x y
+            return Chart.scatter U.metre U.volt x y
         }
 
     let private transcript (value: obj) =
@@ -464,7 +464,7 @@ module ``the live widget on the canvas`` =
                     let! n = Control.slider U.one "n" 100.0 8000.0 100.0
                     let rng = Random(3)
                     let k = int n
-                    return Chart.scatter U.metre Derived.volt (Array.init k (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init k (fun _ -> rng.NextDouble() * 1.0<V>))
+                    return Chart.scatter U.metre U.volt (Array.init k (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init k (fun _ -> rng.NextDouble() * 1.0<V>))
                 }
 
             let s0 = Live.init grows
@@ -478,7 +478,7 @@ module ``the live widget on the canvas`` =
     let ``the mode overrides the count`` () =
         let small () =
             interact {
-                let! f = Control.slider Derived.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
+                let! f = Control.slider U.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
                 return Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
             }
 
@@ -499,7 +499,7 @@ module ``static figures and the poster`` =
 
     let private cloud (n: int) =
         let rng = Random(11)
-        Chart.scatter U.metre Derived.volt (Array.init n (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init n (fun _ -> rng.NextDouble() * 1.0<V>))
+        Chart.scatter U.metre U.volt (Array.init n (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init n (fun _ -> rng.NextDouble() * 1.0<V>))
         |> Chart.withTitle "A cloud"
         |> Chart.withXLabel "x"
 

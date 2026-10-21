@@ -33,7 +33,7 @@ open System
 // ======================================================================================
 
 /// One step of an integrator: from the state at time `t`, the state at `t + h`.
-type Step<'s, [<Measure>] 't> = float<'t> -> float<'t> -> 's -> 's
+type Stepper<'s, [<Measure>] 't> = float<'t> -> float<'t> -> 's -> 's
 
 /// A 2-D first-order system with time: at `(t, x, y)`, the rates `dx/dt` and `dy/dt`. M4's
 /// `Flow` with a clock, for a driven pendulum or an unsteady field. `Ode.ofFlow` lifts a `Flow`
@@ -163,7 +163,7 @@ module ErrorNorm =
 
             if q0.Length = 0 then 0.0 else sqrt (sum / float (2 * q0.Length))
 
-/// §8.3's integrators. Each returns a `Step`, so `Sim.ofStep h (Ode.rk4 f) s0` is a whole
+/// §8.3's integrators. Each returns a `Stepper`, so `Sim.ofStep h (Ode.rk4 f) s0` is a whole
 /// simulation, and a step is usable on its own: `step t h s`.
 [<RequireQualifiedAccess>]
 module Ode =
@@ -176,11 +176,11 @@ module Ode =
 
     /// Forward Euler, first order: `s + h·f(t, s)`. A teaching foil: it gains energy on every
     /// oscillator, which is what the drift figure shows.
-    let eulerWith<'s, 'ds, [<Measure>] 't> (tangent: Tangent<'s, 'ds, 't>) (f: float<'t> -> 's -> 'ds) : Step<'s, 't> =
+    let eulerWith<'s, 'ds, [<Measure>] 't> (tangent: Tangent<'s, 'ds, 't>) (f: float<'t> -> 's -> 'ds) : Stepper<'s, 't> =
         fun t h s -> tangent.Axpy h (f t s) s
 
     /// The classical fourth-order Runge–Kutta step.
-    let rk4With<'s, 'ds, [<Measure>] 't> (tangent: Tangent<'s, 'ds, 't>) (f: float<'t> -> 's -> 'ds) : Step<'s, 't> =
+    let rk4With<'s, 'ds, [<Measure>] 't> (tangent: Tangent<'s, 'ds, 't>) (f: float<'t> -> 's -> 'ds) : Stepper<'s, 't> =
         fun t h s ->
             let half = 0.5 * h
             let k1 = f t s
@@ -196,13 +196,13 @@ module Ode =
     // the tangent's, term for term, so the two agree bit for bit, and a test holds them to it.
 
     /// Forward Euler over a 2-D flow. `eulerWith Tangent.flow2`, bit for bit.
-    let euler<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (f: Flow2T<'x, 'y, 't>) : Step<struct (float<'x> * float<'y>), 't> =
+    let euler<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (f: Flow2T<'x, 'y, 't>) : Stepper<struct (float<'x> * float<'y>), 't> =
         fun t h (struct (x, y)) ->
             let struct (dx, dy) = f t x y
             struct (x + h * dx, y + h * dy)
 
     /// RK4 over a 2-D flow, allocating nothing. `rk4With Tangent.flow2`, bit for bit.
-    let rk4<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (f: Flow2T<'x, 'y, 't>) : Step<struct (float<'x> * float<'y>), 't> =
+    let rk4<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (f: Flow2T<'x, 'y, 't>) : Stepper<struct (float<'x> * float<'y>), 't> =
         fun t h (struct (x, y)) ->
             let half = 0.5 * h
             let struct (k1x, k1y) = f t x y
@@ -224,7 +224,7 @@ module Ode =
     /// last one.
     let verlet<[<Measure>] 'q, [<Measure>] 't>
         (a: float<'t> -> float<'q>[] -> float<'q / 't ^ 2>[])
-        : Step<struct (float<'q>[] * float<'q / 't>[]), 't> =
+        : Stepper<struct (float<'q>[] * float<'q / 't>[]), 't> =
         fun t h (struct (q, v)) ->
             let n = q.Length
             let half = 0.5 * h
@@ -249,7 +249,7 @@ module Ode =
     /// order and symplectic like `verlet`, with one evaluation of `a` a step.
     let leapfrog<[<Measure>] 'q, [<Measure>] 't>
         (a: float<'t> -> float<'q>[] -> float<'q / 't ^ 2>[])
-        : Step<struct (float<'q>[] * float<'q / 't>[]), 't> =
+        : Stepper<struct (float<'q>[] * float<'q / 't>[]), 't> =
         fun t h (struct (q, v)) ->
             let n = q.Length
             let half = 0.5 * h
@@ -280,7 +280,7 @@ module Ode =
     /// with its own state.
     let verletInPlace<[<Measure>] 'q, [<Measure>] 't>
         (kick: float<'t> -> float<'q>[] -> float<'t> -> float<'q / 't>[] -> unit)
-        : Step<struct (float<'q>[] * float<'q / 't>[]), 't> =
+        : Stepper<struct (float<'q>[] * float<'q / 't>[]), 't> =
         fun t h (struct (q, v)) ->
             let half = 0.5 * h
             kick t q half v

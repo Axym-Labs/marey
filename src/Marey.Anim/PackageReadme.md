@@ -20,7 +20,7 @@ mutable scene graph cannot offer, and what a scrubbable timeline needs.
 
 ## What is in it
 
-- **The algebra.** `pure'`, `map`, `map2`, `andThen`, `stretch`, `ease` and `tween`, built over
+- **The algebra.** `constant`, `map`, `map2`, `andThen`, `stretch`, `ease` and `tween`, built over
   `ofSeconds` and `ofFraction` — with the associativity, identity and composition laws
   property-tested rather than asserted in a comment.
 - **A seek that is total.** `Anim.at` clamps its argument to `[0, duration]`, so a shorter

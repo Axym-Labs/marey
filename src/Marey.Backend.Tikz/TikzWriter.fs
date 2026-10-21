@@ -14,7 +14,7 @@ open System.Text
 //
 //   * **No scientific notation, ever.** SVG merely fails to parse `1e-05` in path data. TeX
 //     cannot read it as a dimension *at all*: `\path (1e-05bp, 0bp)` is a hard error, not a
-//     wrong coordinate. `Num.at` cannot emit an exponent by construction.
+//     wrong coordinate. `Num.upTo` cannot emit an exponent by construction.
 //   * **Invariant culture.** A German locale writes `0,5`, and `(0,5bp, 0bp)` is a TikZ
 //     coordinate with three components. Also a hard error.
 //
@@ -81,9 +81,9 @@ module internal Tikz =
     [<Literal>]
     let ColorDecimals = 6
 
-    let num (v: float) : string = Num.at CoordDecimals v
+    let num (v: float) : string = Num.upTo CoordDecimals v
 
-    let ratio (v: float) : string = Num.at RatioDecimals v
+    let ratio (v: float) : string = Num.upTo RatioDecimals v
 
     /// The largest magnitude, in `bp`, that may be written as a TeX dimension.
     ///
@@ -117,7 +117,7 @@ module internal Tikz =
     /// faithful document but no document at all. Geometrically correct clipping belongs to the
     /// compiler layer, not to a number formatter.
     ///
-    /// Non-finite values are tested for **before** clamping, and go to `Num.at`'s zero rather than
+    /// Non-finite values are tested for **before** clamping, and go to `Num.upTo`'s zero rather than
     /// to the boundary. `infinity > MaxDim` is true, so clamping first would send an infinity to
     /// `16000bp` while the SVG backend writes `0` for it — and the two backends agreeing on
     /// degenerate input is what lets a cross-backend test compare their coordinates at all.
@@ -187,11 +187,11 @@ module internal Tikz =
             else v
 
         String.Concat
-            [| Num.at ColorDecimals (clamp c.R)
+            [| Num.upTo ColorDecimals (clamp c.R)
                ","
-               Num.at ColorDecimals (clamp c.G)
+               Num.upTo ColorDecimals (clamp c.G)
                ","
-               Num.at ColorDecimals (clamp c.B) |]
+               Num.upTo ColorDecimals (clamp c.B) |]
 
     /// A `\definecolor` line. Alpha is not part of it — TikZ carries opacity as a separate
     /// `opacity`/`fill opacity`/`draw opacity` key, exactly as SVG carries `fill-opacity`.

@@ -45,7 +45,7 @@ module internal CssFont =
             "%s%d %spx %s"
             (if font.Italic then "italic " else "")
             font.Weight
-            (Num.at 3 px)
+            (Num.upTo 3 px)
             (family font.Family)
 
 /// Whether the document's web fonts have arrived.

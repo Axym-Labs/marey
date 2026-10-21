@@ -283,7 +283,7 @@ module Collide =
         | _ -> struct (infinity, -1)
 
     /// A step of `h`: free flight, with every contact inside it resolved in time order.
-    let step<[<Measure>] 'q> (col: Collider<'q>) : Step<Discs<'q>, s> =
+    let step<[<Measure>] 'q> (col: Collider<'q>) : Stepper<Discs<'q>, s> =
         let e = col.Restitution
         let m = col.Masses
 

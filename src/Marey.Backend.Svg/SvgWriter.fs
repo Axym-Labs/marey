@@ -64,10 +64,10 @@ module internal Svg =
     /// a singular transform must not be able to write "NaN" into a document that then fails
     /// to parse.
     ///
-    /// A forwarder onto `Num.at` since the TikZ backend needed the same rules (F2's
+    /// A forwarder onto `Num.upTo` since the TikZ backend needed the same rules (F2's
     /// promote-on-second-consumer rule). Kept as a member of this module because the golden
     /// suite asserts on the SVG spelling directly.
-    let numAt (decimals: int) (v: float) : string = Num.at decimals v
+    let numAt (decimals: int) (v: float) : string = Num.upTo decimals v
 
     /// Format a device-space coordinate.
     let num (v: float) : string = numAt CoordDecimals v

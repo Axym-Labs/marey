@@ -163,27 +163,27 @@ module UnitRegistry =
     /// `withPhotometry` puts `lm` and `lx` back for callers who know their axes are photometric.
     let si =
         ofList
-            [ Derived.becquerel.Dim, UnitSymbol.plain "Bq" "\\becquerel"
-              Derived.hertz.Dim, UnitSymbol.plain "Hz" "\\hertz"
-              Derived.newton.Dim, UnitSymbol.plain "N" "\\newton"
-              Derived.pascal.Dim, UnitSymbol.plain "Pa" "\\pascal"
-              Derived.joule.Dim, UnitSymbol.plain "J" "\\joule"
-              Derived.watt.Dim, UnitSymbol.plain "W" "\\watt"
-              Derived.coulomb.Dim, UnitSymbol.plain "C" "\\coulomb"
-              Derived.volt.Dim, UnitSymbol.plain "V" "\\volt"
-              Derived.farad.Dim, UnitSymbol.plain "F" "\\farad"
-              Derived.ohm.Dim, UnitSymbol.create "Ω" "ohm" "\\Omega" "\\ohm"
-              Derived.siemens.Dim, UnitSymbol.plain "S" "\\siemens"
-              Derived.weber.Dim, UnitSymbol.plain "Wb" "\\weber"
-              Derived.tesla.Dim, UnitSymbol.plain "T" "\\tesla"
-              Derived.henry.Dim, UnitSymbol.plain "H" "\\henry"
-              Derived.sievert.Dim, UnitSymbol.plain "Sv" "\\sievert"
-              Derived.gray.Dim, UnitSymbol.plain "Gy" "\\gray"
-              Derived.katal.Dim, UnitSymbol.plain "kat" "\\katal" ]
+            [ U.becquerel.Dim, UnitSymbol.plain "Bq" "\\becquerel"
+              U.hertz.Dim, UnitSymbol.plain "Hz" "\\hertz"
+              U.newton.Dim, UnitSymbol.plain "N" "\\newton"
+              U.pascal.Dim, UnitSymbol.plain "Pa" "\\pascal"
+              U.joule.Dim, UnitSymbol.plain "J" "\\joule"
+              U.watt.Dim, UnitSymbol.plain "W" "\\watt"
+              U.coulomb.Dim, UnitSymbol.plain "C" "\\coulomb"
+              U.volt.Dim, UnitSymbol.plain "V" "\\volt"
+              U.farad.Dim, UnitSymbol.plain "F" "\\farad"
+              U.ohm.Dim, UnitSymbol.create "Ω" "ohm" "\\Omega" "\\ohm"
+              U.siemens.Dim, UnitSymbol.plain "S" "\\siemens"
+              U.weber.Dim, UnitSymbol.plain "Wb" "\\weber"
+              U.tesla.Dim, UnitSymbol.plain "T" "\\tesla"
+              U.henry.Dim, UnitSymbol.plain "H" "\\henry"
+              U.sievert.Dim, UnitSymbol.plain "Sv" "\\sievert"
+              U.gray.Dim, UnitSymbol.plain "Gy" "\\gray"
+              U.katal.Dim, UnitSymbol.plain "kat" "\\katal" ]
 
     /// `si` plus lumen and lux. Opt-in, because it makes candela axes render as lumens and
     /// luminance axes render as lux — correct only if you already know the axis is photometric.
     let withPhotometry (registry: UnitRegistry) =
         registry
-        |> add Derived.lumen.Dim (UnitSymbol.plain "lm" "\\lumen")
-        |> add Derived.lux.Dim (UnitSymbol.plain "lx" "\\lux")
+        |> add U.lumen.Dim (UnitSymbol.plain "lm" "\\lumen")
+        |> add U.lux.Dim (UnitSymbol.plain "lx" "\\lux")

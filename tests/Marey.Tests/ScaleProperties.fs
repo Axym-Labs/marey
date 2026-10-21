@@ -252,13 +252,13 @@ module Erasure =
     /// destroyed at save time (§15), not merely hidden.
     [<Fact>]
     let ``the erased witness distinguishes electronvolts from joules`` () =
-        let ev = Erase.scale (Scale.linear NonSi.electronvolt (1.0<eV>, 1000.0<eV>))
-        let j = Erase.scale (Scale.linear Derived.joule (1.0<J>, 1000.0<J>))
+        let ev = Erase.scale (Scale.linear U.electronvolt (1.0<eV>, 1000.0<eV>))
+        let j = Erase.scale (Scale.linear U.joule (1.0<J>, 1000.0<J>))
 
         Assert.Equal(ev.Dim, j.Dim)
         Assert.NotEqual(ev.ToSI, j.ToSI)
 
-        let c = Erase.scale (Scale.linear NonSi.degreeCelsius (0.0<degC>, 100.0<degC>))
+        let c = Erase.scale (Scale.linear U.degreeCelsius (0.0<degC>, 100.0<degC>))
         let k = Erase.scale (Scale.linear U.kelvin (273.0<K>, 373.0<K>))
         Assert.Equal(c.Dim, k.Dim)
         Assert.NotEqual(c.OffsetSI, k.OffsetSI)

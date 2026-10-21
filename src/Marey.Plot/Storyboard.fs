@@ -210,7 +210,7 @@ module Storyboard =
     // ---- The monad -------------------------------------------------------------------------
 
     let private ret (v: 'a) : Story<'a> =
-        Story(fun _ -> v, Anim.pure' identity)
+        Story(fun _ -> v, Anim.constant identity)
 
     /// Sequential composition, and the whole of why the accumulator is a *function* of the
     /// stage: `act2` is reached having already been composed with where `act1` left the stage.
@@ -276,7 +276,7 @@ module Storyboard =
         Story(fun s0 ->
             let acts = branches |> List.map (fun b -> snd (unwrap b s0))
 
-            (), acts |> List.fold (fun acc a -> Anim.map2 (fun f g -> f >> g) acc a) (Anim.pure' identity))
+            (), acts |> List.fold (fun acc a -> Anim.map2 (fun f g -> f >> g) acc a) (Anim.constant identity))
 
     // ---- Reading the stage -----------------------------------------------------------------
 

@@ -30,7 +30,7 @@ per farad, which is volts, so a `float<V>` is what comes out and nothing else wo
 
 #!fsharp
 
-let lineCharge = U.div Derived.coulomb U.metre
+let lineCharge = U.div U.coulomb U.metre
 let epsilon0 = 8.8541878128e-12<F/m>
 
 let xs = Grid.linear -1.8<m> 1.8<m> 90
@@ -56,13 +56,13 @@ let draw (lambda: float<C/m>) (half: float<m>) (mark: Mark) =
     // The colour scale is stated, on every mark. A live figure holds one colour scale across all
     // its states, so a stronger charge reads as a stronger potential; left to the data, that
     // scale would be set by the few grid nodes that land next to a charge.
-    let stated = Chart.withColorDomain Derived.volt -100.0<V> 100.0<V>
-    let heat = Field.heatmap U.metre U.metre Derived.volt phi |> stated
+    let stated = Chart.withColorDomain U.volt -100.0<V> 100.0<V>
+    let heat = Field.heatmap U.metre U.metre U.volt phi |> stated
     let levels = [| -60.0<V>; -30.0<V>; -10.0<V>; 0.0<V>; 10.0<V>; 30.0<V>; 60.0<V> |]
 
     match mark with
     | Heat -> heat |> Chart.overlay (Field.contoursAt levels U.metre U.metre phi)
-    | Bands -> Field.bands U.metre U.metre Derived.volt phi |> stated
+    | Bands -> Field.bands U.metre U.metre U.volt phi |> stated
     | FieldLines -> heat |> Chart.overlay (Field.streamlines U.metre U.metre field)
     |> Chart.withXLabel "x"
     |> Chart.withYLabel "y"

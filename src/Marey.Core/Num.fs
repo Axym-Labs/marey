@@ -140,7 +140,7 @@ module Num =
     /// three million doubles, halves included. Past 10¹⁵ the integer is no longer exact in a
     /// double, so the value itself is written exactly at `d` places (`fixedPoint`) rather than to
     /// the fifteen significant digits the custom format used. No coordinate is that large.
-    let at (decimals: int) (v: float) : string =
+    let upTo (decimals: int) (v: float) : string =
         if Double.IsNaN v || Double.IsInfinity v then
             "0"
         else

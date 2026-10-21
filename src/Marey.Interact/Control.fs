@@ -119,7 +119,7 @@ module Control =
         let decimals = decimalsFor (step' / Prefix.factor prefix)
 
         let show (v: float) =
-            UnitDisplay.quantityIn Unicode UnitRegistry.si prefix (Num.at decimals) u (LanguagePrimitives.FloatWithMeasure v)
+            UnitDisplay.quantityIn Unicode UnitRegistry.si prefix (Num.upTo decimals) u (LanguagePrimitives.FloatWithMeasure v)
 
         { Specs =
             [| { Label = label
@@ -166,7 +166,7 @@ module Control =
         let decimals = decimalsFor ((hi' - lo') / 1000.0 / Prefix.factor prefix)
 
         let show (v: float) =
-            UnitDisplay.quantityIn Unicode UnitRegistry.si prefix (Num.at decimals) u (LanguagePrimitives.FloatWithMeasure v)
+            UnitDisplay.quantityIn Unicode UnitRegistry.si prefix (Num.upTo decimals) u (LanguagePrimitives.FloatWithMeasure v)
 
         { Specs =
             [| { Label = label

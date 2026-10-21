@@ -647,7 +647,7 @@ module Stat =
             failwithf
                 "Marey: a least-squares fit needs x to vary, and every one of these %d values is %s %s. The slope of a vertical line is not a number."
                 n
-                (Num.at 6 mx)
+                (Num.upTo 6 mx)
                 (if String.IsNullOrEmpty ux.Symbol then "(dimensionless)" else "[" + ux.Symbol + "]")
 
         let slope = sxy / sxx

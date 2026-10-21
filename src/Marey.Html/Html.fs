@@ -64,9 +64,9 @@ open System.Text
 //   value the user has already successfully constructed. So every entry point that can compile a
 //   figure is wrapped, and the exception is rendered *as the output*. See `guarded`.
 //
-// **4. Every number goes through `Num.at`.**
+// **4. Every number goes through `Num.upTo`.**
 //   Same rule as both backends, same reason: a German locale writes `0,5`, and `0,5` is not a
-//   length CSS can parse. `Num.at` is invariant and never emits an exponent.
+//   length CSS can parse. `Num.upTo` is invariant and never emits an exponent.
 //
 // One more thing this file deliberately does not do: rewrite the SVG it embeds. It would be easy
 // to strip the `width`/`height` attributes and let the `viewBox` scale the figure to the cell,
@@ -127,7 +127,7 @@ module Html =
 
     // ---- Numbers and colours ---------------------------------------------------------
 
-    let private num (v: float) = Num.at 3 v
+    let private num (v: float) = Num.upTo 3 v
 
     /// `StringBuilder.Append(int)` formats through the *ambient* culture, which supplies the
     /// negative sign and the group separator. Neither differs for the small non-negative counts
@@ -364,8 +364,8 @@ module Html =
                 // `keyTimes` for discrete need not end at 1; the last value is held to the end
                 // of the cycle, which is why the first and last frames take two stops and every
                 // frame between them takes three.
-                let t0 = Num.at 6 (float i / float n)
-                let t1 = Num.at 6 (float (i + 1) / float n)
+                let t0 = Num.upTo 6 (float i / float n)
+                let t1 = Num.upTo 6 (float (i + 1) / float n)
 
                 let values, keyTimes =
                     if i = 0 then "1;0", "0;" + t1
@@ -378,7 +378,7 @@ module Html =
                     .Append("\" keyTimes=\"")
                     .Append(keyTimes)
                     .Append("\" calcMode=\"discrete\" dur=\"")
-                    .Append(Num.at 3 duration)
+                    .Append(Num.upTo 3 duration)
                     .Append("s\" repeatCount=\"indefinite\"/>")
                     .Append(svg)
                     .Append("</g>\n")
@@ -717,7 +717,7 @@ module Html =
     // ======================================================================================
 
     /// A number for an attribute a browser parses rather than a person reads: round-trip
-    /// exact, invariant. A slider over nanometres has a step of 1E-10, which `Num.at` would round
+    /// exact, invariant. A slider over nanometres has a step of 1E-10, which `Num.upTo` would round
     /// to zero, and an HTML number may carry an exponent.
     let private exact (v: float) = v.ToString("R", System.Globalization.CultureInfo.InvariantCulture)
 

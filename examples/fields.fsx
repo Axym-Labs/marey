@@ -34,7 +34,7 @@ let e =
     { g with U = Array.map (~-) g.U; W = Array.map (~-) g.W }
 
 let divergence: ScalarGrid<m, m, V/m^2> = Field.div e
-let fieldUnit = U.div Derived.volt U.metre
+let fieldUnit = U.div U.volt U.metre
 let size = Chart.size 640.0 420.0
 
 let write (file: string) (fig: Figure) =
@@ -47,8 +47,8 @@ let write (file: string) (fig: Figure) =
 // than taken from the data: near each charge the potential diverges, and the grid nodes closest
 // to them would otherwise stretch the scale until everything else is the ramp's middle.
 let potentialSvg =
-    Field.heatmapWith Theme.initial.Diverging true U.metre U.metre Derived.volt phi
-    |> Chart.withColorDomain Derived.volt -2.0<V> 2.0<V>
+    Field.heatmapWith Theme.initial.Diverging true U.metre U.metre U.volt phi
+    |> Chart.withColorDomain U.volt -2.0<V> 2.0<V>
     |> Chart.withColorLabel "φ"
     |> Chart.overlay (Field.contoursAt [| -1.5<V> .. 0.5<V> .. 1.5<V> |] U.metre U.metre phi)
     |> Chart.withYLabel "y"
@@ -60,8 +60,8 @@ let potentialSvg =
 // left empty.
 let bandLevels = Array.concat [ [| -20.0<V> |]; [| -2.0<V> .. 0.5<V> .. 2.0<V> |]; [| 20.0<V> |] ]
 
-Field.bandsWith Theme.initial.Diverging bandLevels U.metre U.metre Derived.volt phi
-|> Chart.withColorDomain Derived.volt -2.0<V> 2.0<V>
+Field.bandsWith Theme.initial.Diverging bandLevels U.metre U.metre U.volt phi
+|> Chart.withColorDomain U.volt -2.0<V> 2.0<V>
 |> Chart.withColorLabel "φ"
 |> Chart.overlay (Field.streamlinesWith 18.0<px> U.metre U.metre e)
 |> Chart.withYLabel "y"

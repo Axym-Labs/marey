@@ -34,7 +34,7 @@ module internal CssColor =
     let private channel (v: float) = int (Num.roundEven (max 0.0 (min 1.0 v) * 255.0))
 
     let ofColor (c: Color) : string =
-        sprintf "rgba(%d,%d,%d,%s)" (channel c.R) (channel c.G) (channel c.B) (Num.at 4 (float (channel c.A) / 255.0))
+        sprintf "rgba(%d,%d,%d,%s)" (channel c.R) (channel c.G) (channel c.B) (Num.upTo 4 (float (channel c.A) / 255.0))
 
 /// D122 — the canvas painter: a `Node` drawn on a 2-D context under a transform from panel space
 /// to the surface's px.

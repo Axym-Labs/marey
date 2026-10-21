@@ -14,6 +14,21 @@ land in a minor release.
 
 ### Changed
 
+- **Every unit witness is in `U`.** `U.joule`, `U.tesla`, `U.electronvolt`, `U.hour`,
+  `U.degreeCelsius` and the rest, where they were `Derived.…` and `NonSi.…`; the two modules are
+  gone. C#'s `Units.*` is unchanged. `Derived.newtonByComposition` and its four siblings are no
+  longer public: compose the unit, `U.mul U.kilogram U.metrePerSecondSquared`.
+- **Renamed:** `Num.at` is `Num.upTo` (up to that many decimals, trailing zeros dropped);
+  `Anim.pure'` is `Anim.constant`; `Anim<'a>.AtSeconds` is `AtUnclamped`, which says how it differs
+  from `At`; `Marey.Sim`'s `Step<'s,'t>` is `Stepper<'s,'t>`, so it no longer shares a name with the
+  storyboard's `Step`. The auto-opened `interp` and `interpWith` are gone: `Interp.between` and
+  `Interp.betweenWith`.
+- **A smaller public surface.** What turns a figure into a scene is internal: the layout, axis,
+  legend, colorbar, field-mark and channel modules, the geom compilers, the arranging functions
+  `Chart.*` already exposes, the tick generator, the SVG and TikZ writers' helpers, the GPU window's
+  control strip and input session, and the TeX pipeline's parsers. `PlotSpec`, `Handle`,
+  `PanelLayout`, `LiveZoom`, `Story` and `Step` keep their names with their fields hidden. Marey's
+  packages now depend on each other by exact version, since they share internals.
 - **A stated proportion holds beside a side of another shape.** `withRowHeights [| 3.0; 1.0 |]`
   beside a stack of three drew 1.70 : 1, and the stack uneven, because `beside` subdivided both
   sides to the least common multiple of their rows and every line of one side then crossed the

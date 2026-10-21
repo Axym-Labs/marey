@@ -265,7 +265,7 @@ let rasterise (dpi: float) (pdf: string) : Result<Gray, string> =
         let arguments =
             String.Concat
                 [| "-gray -singlefile -r "
-                   Num.at 4 dpi
+                   Num.upTo 4 dpi
                    " \""
                    pdf
                    "\" \""

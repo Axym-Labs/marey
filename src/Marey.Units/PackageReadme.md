@@ -26,7 +26,7 @@ printfn "%s" (UnitDisplay.unitText Siunitx UnitRegistry.si Prefix.none composed)
 - **Prefix selection.** A domain spanning 1e-9 to 5e-9 metres yields an axis labelled `nm` with
   ticks `1, 2, 3, 4, 5`. The kilogram is handled correctly — a prefix of 10⁻⁶ on `float<kg>`
   prints `mg`, against the gram, not `µkg`.
-- **Composed units still name themselves.** `U.div Derived.volt U.metre` has no SI name and its
+- **Composed units still name themselves.** `U.div U.volt U.metre` has no SI name and its
   dimension spells out as `kg·m·s⁻³·A⁻¹`. It renders `V·m⁻¹`, and `MV·m⁻¹` when prefixed, because
   the witness records the factorisation it was built from. Nothing is guessed: a bare dimension is
   never factorised, since the same vector is both `J/K` and `N·m/K`.

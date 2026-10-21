@@ -117,60 +117,53 @@ namespace Marey
     [<Measure>]
     type kat = mol/s
 
-    [<RequireQualifiedAccess>]
-    module Derived =
+    [<AutoOpen>]
+    module DerivedWitnesses =
 
-        val hertz: U<Hz>
+        [<RequireQualifiedAccess>]
+        module U =
 
-        val newton: U<N>
+            val hertz: U<Hz>
 
-        val pascal: U<Pa>
+            val newton: U<N>
 
-        val joule: U<J>
+            val pascal: U<Pa>
 
-        val watt: U<W>
+            val joule: U<J>
 
-        val coulomb: U<C>
+            val watt: U<W>
 
-        val volt: U<V>
+            val coulomb: U<C>
 
-        val farad: U<F>
+            val volt: U<V>
 
-        val ohm: U<ohm>
+            val farad: U<F>
 
-        val siemens: U<S>
+            val ohm: U<ohm>
 
-        val weber: U<Wb>
+            val siemens: U<S>
 
-        val tesla: U<T>
+            val weber: U<Wb>
 
-        val henry: U<H>
+            val tesla: U<T>
 
-        val lumen: U<lm>
+            val henry: U<H>
 
-        val lux: U<lx>
+            val lumen: U<lm>
 
-        val becquerel: U<Bq>
+            val lux: U<lx>
 
-        val gray: U<Gy>
+            val becquerel: U<Bq>
 
-        val sievert: U<Sv>
+            val gray: U<Gy>
 
-        val katal: U<kat>
+            val sievert: U<Sv>
 
-        val radian: U<rad>
+            val katal: U<kat>
 
-        val steradian: U<sr>
+            val radian: U<rad>
 
-        val newtonByComposition: U<N>
-
-        val jouleByComposition: U<J>
-
-        val wattByComposition: U<W>
-
-        val hertzByComposition: U<Hz>
-
-        val lumenByComposition: U<lm>
+            val steradian: U<sr>
 
 namespace Marey
 
@@ -228,44 +221,47 @@ namespace Marey
     [<Measure>]
     type cal
 
-    [<RequireQualifiedAccess>]
-    module NonSi =
+    [<AutoOpen>]
+    module NonSiWitnesses =
 
-        val electronvolt: U<eV>
+        [<RequireQualifiedAccess>]
+        module U =
 
-        val calorie: U<cal>
+            val electronvolt: U<eV>
 
-        val angstrom: U<angstrom>
+            val calorie: U<cal>
 
-        val astronomicalUnit: U<au>
+            val angstrom: U<angstrom>
 
-        val lightYear: U<ly>
+            val astronomicalUnit: U<au>
 
-        val parsec: U<pc>
+            val lightYear: U<ly>
 
-        val barn: U<barn>
+            val parsec: U<pc>
 
-        val litre: U<L>
+            val barn: U<barn>
 
-        val bar: U<bar>
+            val litre: U<L>
 
-        val atmosphere: U<atm>
+            val bar: U<bar>
 
-        val minute: U<minute>
+            val atmosphere: U<atm>
 
-        val hour: U<h>
+            val minute: U<minute>
 
-        val day: U<d>
+            val hour: U<h>
 
-        val year: U<yr>
+            val day: U<d>
 
-        val dalton: U<Da>
+            val year: U<yr>
 
-        val gauss: U<Gs>
+            val dalton: U<Da>
 
-        val degreeCelsius: U<degC>
+            val gauss: U<Gs>
 
-        val degreeFahrenheit: U<degF>
+            val degreeCelsius: U<degC>
+
+            val degreeFahrenheit: U<degF>
 
 namespace Marey
 
@@ -623,13 +619,9 @@ namespace Marey.CSharp
 
         static member Hertz: Marey.U<Marey.Hz>
 
-        static member HertzByComposition: Marey.U<Marey.Hz>
-
         static member Hour: Marey.U<Marey.h>
 
         static member Joule: Marey.U<Marey.J>
-
-        static member JouleByComposition: Marey.U<Marey.J>
 
         static member Katal: Marey.U<Marey.kat>
 
@@ -645,8 +637,6 @@ namespace Marey.CSharp
 
         static member Lumen: Marey.U<Marey.lm>
 
-        static member LumenByComposition: Marey.U<Marey.lm>
-
         static member Lux: Marey.U<Marey.lx>
 
         static member Metre: Marey.U<Marey.m>
@@ -660,8 +650,6 @@ namespace Marey.CSharp
         static member Mole: Marey.U<Marey.mol>
 
         static member Newton: Marey.U<Marey.N>
-
-        static member NewtonByComposition: Marey.U<Marey.N>
 
         static member Ohm: Marey.U<Marey.ohm>
 
@@ -692,8 +680,6 @@ namespace Marey.CSharp
         static member Volt: Marey.U<Marey.V>
 
         static member Watt: Marey.U<Marey.W>
-
-        static member WattByComposition: Marey.U<Marey.W>
 
         static member Weber: Marey.U<Marey.Wb>
 

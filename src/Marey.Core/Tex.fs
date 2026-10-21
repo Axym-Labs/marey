@@ -182,9 +182,9 @@ module Tex =
         | '°' -> Some "\\textdegree{}" // ° DEGREE SIGN
         | '\u00B5' // MICRO SIGN — what Prefix.micro uses
         | '\u03BC' -> Some "\\textmu{}" // GREEK SMALL LETTER MU
-        | '\u03A9' // GREEK CAPITAL LETTER OMEGA — what Derived.ohm uses
+        | '\u03A9' // GREEK CAPITAL LETTER OMEGA — what U.ohm uses
         | '\u2126' -> Some "\\textohm{}" // OHM SIGN
-        | '\u00C5' // LATIN CAPITAL LETTER A WITH RING ABOVE — what NonSi.angstrom uses
+        | '\u00C5' // LATIN CAPITAL LETTER A WITH RING ABOVE — what U.angstrom uses
         | '\u212B' -> Some "\\AA{}" // ANGSTROM SIGN
         | '−' -> Some "\\ensuremath{-}" // − MINUS SIGN, not a hyphen
         | '×' -> Some "\\ensuremath{\\times}"

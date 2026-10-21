@@ -21,7 +21,7 @@ open System
 /// - **A prefix** on a unit that takes one, longest first: `"kPa"`, `"µs"` or `"us"`, `"dam"`.
 ///   A symbol that is a unit is read as that unit before it is read as a prefix and a unit, so
 ///   `"cd"` is the candela, `"min"` the minute and `"Pa"` the pascal.
-/// - **The symbols** every witness in `U`, `Derived` and `NonSi` is declared with, and the ASCII
+/// - **The symbols** every witness in `U` is declared with, and the ASCII
 ///   spellings UDUNITS-2 uses for the ones that are not ASCII: `degC`, `degF`, `ohm`, `Angstrom`.
 ///
 /// ### What it refuses, by name
@@ -47,15 +47,15 @@ module UnitParsing =
 
         [ of' U.metre; of' U.kilogram; of' U.second; of' U.ampere; of' U.kelvin; of' U.mole
           of' U.candela; of' U.gram
-          of' Derived.hertz; of' Derived.newton; of' Derived.pascal; of' Derived.joule; of' Derived.watt
-          of' Derived.coulomb; of' Derived.volt; of' Derived.farad; of' Derived.ohm; of' Derived.siemens
-          of' Derived.weber; of' Derived.tesla; of' Derived.henry; of' Derived.lumen; of' Derived.lux
-          of' Derived.becquerel; of' Derived.gray; of' Derived.sievert; of' Derived.katal
-          of' Derived.radian; of' Derived.steradian
-          of' NonSi.electronvolt; of' NonSi.calorie; of' NonSi.angstrom; of' NonSi.astronomicalUnit
-          of' NonSi.lightYear; of' NonSi.parsec; of' NonSi.barn; of' NonSi.litre; of' NonSi.bar
-          of' NonSi.atmosphere; of' NonSi.minute; of' NonSi.hour; of' NonSi.day; of' NonSi.year
-          of' NonSi.dalton; of' NonSi.gauss; of' NonSi.degreeCelsius; of' NonSi.degreeFahrenheit ]
+          of' U.hertz; of' U.newton; of' U.pascal; of' U.joule; of' U.watt
+          of' U.coulomb; of' U.volt; of' U.farad; of' U.ohm; of' U.siemens
+          of' U.weber; of' U.tesla; of' U.henry; of' U.lumen; of' U.lux
+          of' U.becquerel; of' U.gray; of' U.sievert; of' U.katal
+          of' U.radian; of' U.steradian
+          of' U.electronvolt; of' U.calorie; of' U.angstrom; of' U.astronomicalUnit
+          of' U.lightYear; of' U.parsec; of' U.barn; of' U.litre; of' U.bar
+          of' U.atmosphere; of' U.minute; of' U.hour; of' U.day; of' U.year
+          of' U.dalton; of' U.gauss; of' U.degreeCelsius; of' U.degreeFahrenheit ]
 
     let private aliases =
         [ "degC", "°C"; "deg_C", "°C"; "celsius", "°C"; "degF", "°F"; "deg_F", "°F"

@@ -45,7 +45,7 @@ without a notebook host installed.
 | `SceneProperties.fs` | **D1** structural equality, `count`/`primitiveCount`, `prune`, and the ten-case guard. |
 | `AnimProperties.fs` | The animation algebra: `andThen` associativity and its two identities, `map2` as an applicative, `stretch` composition, a total seek, and the overshoot gate — per `Interp` instance, including the colour case where the answer is different. |
 | `RandomProperties.fs` | D95 — `Rng`, SplitMix64 pinned against its published outputs for seed 0, and the ranges of `unit` and `below`. |
-| `NumProperties.fs` | D129 — `Num.roundAway`, `Num.at` and `Num.fixedPoint` against the .NET calls they replace, on exact halves and on random doubles. |
+| `NumProperties.fs` | D129 — `Num.roundAway`, `Num.upTo` and `Num.fixedPoint` against the .NET calls they replace, on exact halves and on random doubles. |
 | `MorphProperties.fs` | Path morphing: the endpoint law stated against `Morph.prepare`, arc-length sampling against vertex-index sampling, subpath pairing and padding, closure policy, overshoot, and totality over deliberately malformed paths. |
 | `RegressionTests.fs` | The regression pins: §12's six type-system findings, and D16, D17, D32, D38 and D41, locked in. |
 | `Tools.fs` | The registry of the three external programs the suite drives, resolved through `Marey.Toolchain`. |

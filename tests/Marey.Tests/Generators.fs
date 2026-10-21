@@ -230,7 +230,7 @@ type SceneTree = SceneTree of Node
 /// and the laws in `AnimProperties` compare `(d1 + d2) + d3` against `d1 + (d2 + d3)`, which is
 /// not an identity over the doubles. Restricting the generator to binary fractions takes
 /// IEEE754's non-associativity out of a law that is about the algebra — the same move every
-/// other generator in this file makes for its own domain. Zero is included, and often: `pure'`
+/// other generator in this file makes for its own domain. Zero is included, and often: `constant`
 /// has duration zero and it is the whole identity case.
 type AnimSeconds = AnimSeconds of float
 

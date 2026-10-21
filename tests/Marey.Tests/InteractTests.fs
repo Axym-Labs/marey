@@ -10,7 +10,7 @@ open Xunit
 open Marey
 open Marey.UnitsOfMeasure
 
-let private fieldUnit = U.div Derived.volt U.metre
+let private fieldUnit = U.div U.volt U.metre
 
 let private wave (f: float<1 / s>) (damped: bool) =
     let t = Array.init 50 (fun i -> float i * 0.02<s>)
@@ -320,7 +320,7 @@ module ``zoom and pan`` =
     let ``a drag zooms a phase space onto what it covered`` () =
         let flow: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s^2> * sin (float th) * 1.0<rad>)
         let grid = Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 41) (Grid.linear -9.0<rad / s> 9.0<rad / s> 31) flow
-        gate (still (Field.directions Derived.radian (U.div Derived.radian U.second) grid))
+        gate (still (Field.directions U.radian (U.div U.radian U.second) grid))
 
     /// A drag that starts outside every plot area, and a click, leave the state alone.
     [<Fact>]
@@ -551,7 +551,7 @@ module ``the readout`` =
     let ``a pointer reads the datum under it in a phase space`` () =
         let flow: Flow<rad, rad / s, s> = fun th om -> struct (om, -9.81<1 / s^2> * sin (float th) * 1.0<rad>)
         let grid = Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 41) (Grid.linear -9.0<rad / s> 9.0<rad / s> 31) flow
-        gate (still (Field.directions Derived.radian (U.div Derived.radian U.second) grid))
+        gate (still (Field.directions U.radian (U.div U.radian U.second) grid))
 
     /// The reading is in the unit the axis title names, prefix and all: a millimetre axis reads
     /// millimetres. Pinned as text, so the places are pinned too: 0.98 s over the plot's width is
@@ -601,7 +601,7 @@ module ``the readout`` =
     let ``a wide log axis reads in powers of ten, at its ends and between`` () =
         let t = Array.init 27 (fun i -> float i * 1.0<s>)
         let e = Array.init 27 (fun i -> 10.0 ** float (i - 18) * 1.0<J>)
-        let l = still (Chart.line U.second Derived.joule t e |> Chart.withYLog)
+        let l = still (Chart.line U.second U.joule t e |> Chart.withYLog)
         let s0 = Live.init l
         let v = first l s0
         Assert.Equal("J", v.YAxis.UnitText)

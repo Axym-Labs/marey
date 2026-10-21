@@ -223,14 +223,14 @@ module Prefix =
     /// `Mpc`, `mG` and `mL` all come out right while `kmin` and `kau` never appear.
     let internal nonMetric =
         set
-            [ NonSi.minute.Symbol
-              NonSi.hour.Symbol
-              NonSi.day.Symbol
-              NonSi.astronomicalUnit.Symbol
-              NonSi.angstrom.Symbol
-              NonSi.atmosphere.Symbol
-              NonSi.degreeCelsius.Symbol
-              NonSi.degreeFahrenheit.Symbol ]
+            [ U.minute.Symbol
+              U.hour.Symbol
+              U.day.Symbol
+              U.astronomicalUnit.Symbol
+              U.angstrom.Symbol
+              U.atmosphere.Symbol
+              U.degreeCelsius.Symbol
+              U.degreeFahrenheit.Symbol ]
 
     /// Whether this *witness* may be prefixed. The witness knows two things the `Dim` does not,
     /// and both of them are disqualifying:
@@ -238,7 +238,7 @@ module Prefix =
     /// * **Affine.** `OffsetSI <> 0`. A milli-degree-Celsius would have to rescale 273.15 as
     ///   well as the mantissa; the prefix does not distribute over an affine map. Refused
     ///   outright, which is the machine-checked half of the "must not be composed" warning on
-    ///   `NonSi.degreeCelsius`.
+    ///   `U.degreeCelsius`.
     /// * **Not SI-coherent.** `ToSI <> 1`. `float<eV>` has the dimension of joules, so the
     ///   `Dim` path would happily produce `kJ` for data that is in `keV` — off by 10¹⁹. Such a
     ///   unit is prefixed against its own *declared* symbol instead (see

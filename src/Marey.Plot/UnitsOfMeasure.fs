@@ -407,7 +407,7 @@ module Chart =
 
     /// A tick at every multiple of `step` on the x axis. The step is checked against the axis's
     /// unit when the figure is compiled, and converted when it is another unit of the same
-    /// dimension: `withXTicksEvery Derived.kilometre 0.5<km>` on a metre axis ticks every 500 m.
+    /// dimension: `withXTicksEvery U.kilometre 0.5<km>` on a metre axis ticks every 500 m.
     let withXTicksEvery (u: U<'u>) (step: float<'u>) (fig: Figure) : Figure =
         Marey.Chart.withXTickSpec (TicksEvery(float step)) (erased u) fig
 

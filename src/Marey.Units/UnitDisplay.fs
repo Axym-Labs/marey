@@ -342,7 +342,7 @@ module UnitDisplay =
     /// an unlabelled angle axis is a regression from a labelled one. Same policy-table pattern
     /// as `Prefix.nonMetric`, and same justification: this is a fact about units, not a display
     /// string being assembled.
-    let private angleSymbols = set [ Derived.radian.Symbol; Derived.steradian.Symbol ]
+    let private angleSymbols = set [ U.radian.Symbol; U.steradian.Symbol ]
 
     /// The unit text for an *axis*, from a witness plus a chosen prefix. This is the function
     /// that decides between the two rendering paths, and it decides on witness metadata alone:

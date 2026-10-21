@@ -10,7 +10,7 @@ open Microsoft.FSharp.Reflection
 [<RequireQualifiedAccess>]
 type Stepping<'s> =
     /// Steps of `h`, the `k`-th at time `k · h`.
-    | Fixed of h: float<s> * step: Step<'s, s>
+    | Fixed of h: float<s> * step: Stepper<'s, s>
     /// Accepted steps of an adaptive integrator, its controller started at `h0`.
     | Adaptive of h0: float<s> * step: AdaptiveStep<'s, s>
 
@@ -64,7 +64,7 @@ module Sim =
 
     /// A simulation from a step size, a step and a start. The state is taken to be immutable;
     /// `withCheckpoint` says otherwise.
-    let ofStep (h: float<s>) (step: Step<'s, s>) (initial: 's) : Sim<'s> =
+    let ofStep (h: float<s>) (step: Stepper<'s, s>) (initial: 's) : Sim<'s> =
         positive "h" h
 
         { Initial = initial
@@ -431,7 +431,7 @@ module Sim =
         elif t > horizon then horizon
         else t
 
-    let private fixedTrajectory maxBytes (every: float<s>) (horizon: float<s>) (sim: Sim<'s>) (h: float<s>) (step: Step<'s, s>) =
+    let private fixedTrajectory maxBytes (every: float<s>) (horizon: float<s>) (sim: Sim<'s>) (h: float<s>) (step: Stepper<'s, s>) =
         if horizon / h >= 2.0e9 then
             invalidArg "horizon" (sprintf "Marey: %g s at steps of %g s is more steps than a trajectory counts." (float horizon) (float h))
 
@@ -550,7 +550,7 @@ module Sim =
     /// bit, whatever was seeked before and on whichever thread: the table is immutable once built
     /// and each seek owns its copy.
     ///
-    /// Time is clamped to `[0, horizon]` at every door, `AtSeconds` included: past its horizon a
+    /// Time is clamped to `[0, horizon]` at every door, `AtUnclamped` included: past its horizon a
     /// trajectory has no state. `every` is the memory dial: a seek costs the steps in one `every`,
     /// and the table holds `horizon / every` states. A table estimated over 512 MiB is refused,
     /// naming the `every` that would fit (`trajectoryWithin` sets another cap).

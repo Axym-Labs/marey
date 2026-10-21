@@ -140,40 +140,29 @@ type Interpolate private () =
     static member inline Interp(a: Affine<'a, 'b>, b: Affine<'a, 'b>, t: float) : Affine<'a, 'b> =
         AffineInterp.lerp t a b
 
-/// The SRTP call sites. `interpWith` names the witness explicitly; `interp` fixes it to the
+/// The SRTP call sites. `betweenWith` names the witness explicitly; `between` fixes it to the
 /// built-in `Interpolate` and is what everything else in the library calls.
-[<AutoOpen>]
-module InterpolateOperators =
+[<RequireQualifiedAccess>]
+module Interp =
 
     /// Generic over the witness type, so a downstream package can supply its own overloads
     /// for its own types without reopening `Interpolate`.
-    let inline interpWith< ^W, ^T when (^W or ^T): (static member Interp: ^T * ^T * float -> ^T)>
+    let inline betweenWith< ^W, ^T when (^W or ^T): (static member Interp: ^T * ^T * float -> ^T)>
         (a: ^T)
         (b: ^T)
         (t: float)
         : ^T =
         ((^W or ^T): (static member Interp: ^T * ^T * float -> ^T) (a, b, t))
 
-    /// §12.2 in one line: the constraint below is *not* redundant with the one on
-    /// `interpWith`. Deleting it compiles, and then breaks the second call site in the
-    /// program with a type error naming the first call site's type.
-    let inline interp< ^T when (Interpolate or ^T): (static member Interp: ^T * ^T * float -> ^T)>
-        (a: ^T)
-        (b: ^T)
-        (t: float)
-        : ^T =
-        interpWith<Interpolate, ^T> a b t
-
-[<RequireQualifiedAccess>]
-module Interp =
-
-    /// Restated constraint again — see above. Every public wrapper pays this tax.
+    /// The constraint below is *not* redundant with the one on `betweenWith`. Deleting it
+    /// compiles, and then breaks the second call site in the program with a type error naming
+    /// the first call site's type. Every public wrapper restates it.
     let inline between< ^T when (Interpolate or ^T): (static member Interp: ^T * ^T * float -> ^T)>
         (a: ^T)
         (b: ^T)
         (t: float)
         : ^T =
-        interp< ^T> a b t
+        betweenWith<Interpolate, ^T> a b t
 
     /// Interpolate along a sequence of stops given as `(position, value)` in ascending
     /// position order. Colour ramps, multi-stop gradients and keyframed properties are all
@@ -200,4 +189,4 @@ module Interp =
             let x1, v1 = xs.[i + 1]
             let span = x1 - x0
             let local = if span = 0.0 then 0.0 else (t - x0) / span
-            interp< ^T> v0 v1 local
+            between< ^T> v0 v1 local

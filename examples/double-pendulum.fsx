@@ -89,7 +89,7 @@ let start = { T1 = 2.0<rad>; T2 = 2.5<rad>; W1 = 0.0<rad/s>; W2 = 0.0<rad/s> }
 
 let sim =
     Sim.ofStep 1e-3<s> (Ode.rk4With tangent motion) start
-    |> Sim.withInvariant "energy" (U.div Derived.joule U.kilogram) energy
+    |> Sim.withInvariant "energy" (U.div U.joule U.kilogram) energy
 
 let out (file: string) = IO.Path.Combine(IO.Directory.GetCurrentDirectory(), file)
 
@@ -104,8 +104,8 @@ let trajectory = Sim.trajectory 1.0<s> 600.0<s> sim
 let path = Array.init 2001 (fun i -> trajectory.At(float i * 0.01<s>))
 
 let portrait =
-    Phase.portrait Derived.radian (U.div Derived.radian U.second) grid
-    |> Chart.addLine Derived.radian (U.div Derived.radian U.second) (path |> Array.map (fun a -> a.T1)) (path |> Array.map (fun a -> a.W1))
+    Phase.portrait U.radian (U.div U.radian U.second) grid
+    |> Chart.addLine U.radian (U.div U.radian U.second) (path |> Array.map (fun a -> a.T1)) (path |> Array.map (fun a -> a.W1))
     |> Chart.withName "the first arm, 20 s"
     |> Chart.withTitle "The first arm against a single pendulum's flow"
 
@@ -124,7 +124,7 @@ let section =
 let wrap (a: float<rad>) = (float a - 2.0 * Math.PI * Math.Round(float a / (2.0 * Math.PI))) * 1.0<rad>
 
 let sectionFigure =
-    Chart.scatter Derived.radian (U.div Derived.radian U.second) (section |> Array.map (fun p -> wrap p.State.T2)) (section |> Array.map (fun p -> p.State.W2))
+    Chart.scatter U.radian (U.div U.radian U.second) (section |> Array.map (fun p -> wrap p.State.T2)) (section |> Array.map (fun p -> p.State.W2))
     |> Chart.withTitle "Poincaré section"
     |> Chart.withSubtitle "the second arm, each time the first swings through the vertical"
 

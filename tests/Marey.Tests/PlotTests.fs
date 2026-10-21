@@ -758,7 +758,7 @@ module StatedTicks =
         // Every half minute on a seconds axis.
         let fig =
             Chart.line U.second U.metre [| 0.0<s>; 120.0<s> |] [| 0.0<m>; 1.0<m> |]
-            |> Chart.withXTicksEvery NonSi.minute 0.5<minute>
+            |> Chart.withXTicksEvery U.minute 0.5<minute>
             |> Chart.withXDomain 0.0 120.0
 
         Assert.Equal<float[]>([| 0.0; 30.0; 60.0; 90.0; 120.0 |], (xAxis fig).Ticks |> Array.map (fun t -> t.Value))
@@ -766,7 +766,7 @@ module StatedTicks =
         // And an affine one: 0 °C and 10 °C on a kelvin axis.
         let warm =
             Chart.line U.second U.kelvin [| 0.0<s>; 1.0<s> |] [| 270.0<K>; 290.0<K> |]
-            |> Chart.withYTicksAt NonSi.degreeCelsius [| 0.0<degC>; 10.0<degC> |]
+            |> Chart.withYTicksAt U.degreeCelsius [| 0.0<degC>; 10.0<degC> |]
 
         let values = (yAxis warm).Ticks |> Array.map (fun t -> t.Value)
         Assert.Equal(273.15, values.[0], 9)

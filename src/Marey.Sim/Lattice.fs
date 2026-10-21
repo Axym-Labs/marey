@@ -291,7 +291,7 @@ module Lbm =
 
     /// The step: every fluid cell gathers its populations, bounces back those whose source is
     /// solid, takes an edge's populations by its rule, and relaxes towards the equilibrium.
-    let step<[<Measure>] 'x> (options: LbmOptions<'x>) : Step<Lattice<'x>, s> =
+    let step<[<Measure>] 'x> (options: LbmOptions<'x>) : Stepper<Lattice<'x>, s> =
         fun _ h l ->
             let t = validate options l h
             let nx, ny = l.Nx, l.Ny

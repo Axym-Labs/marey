@@ -211,7 +211,7 @@ module ``gate 12`` =
     let ``the window reads a wide log axis in powers of ten`` () =
         let t = Array.init 27 (fun i -> float i * 1.0<s>)
         let e = Array.init 27 (fun i -> 10.0 ** float (i - 18) * 1.0<J>)
-        let l = interact { return Chart.line U.second Derived.joule t e |> Chart.withYLog }
+        let l = interact { return Chart.line U.second U.joule t e |> Chart.withYLog }
         let strip = WindowStrip.height l.Controls
         let size: Extent<px> = { Width = 800.0<px>; Height = 500.0<px> + strip }
         let sized, _ = WindowSession.feed l (WindowSession.start l) (0.0<s>, WindowEvent.Resized size)

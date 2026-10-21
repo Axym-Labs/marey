@@ -254,10 +254,10 @@ module Morph =
         let acc = ResizeArray<PathSeg>()
 
         for pa, pb, closed in aligned do
-            acc.Add(MoveTo(interp pa.[0] pb.[0] t))
+            acc.Add(MoveTo(Interp.between pa.[0] pb.[0] t))
 
             for i in 1 .. pa.Length - 1 do
-                acc.Add(LineTo(interp pa.[i] pb.[i] t))
+                acc.Add(LineTo(Interp.between pa.[i] pb.[i] t))
 
             if closed then
                 acc.Add ClosePath

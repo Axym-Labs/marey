@@ -157,7 +157,7 @@ module Particles =
     /// every particle's second, so a field built per stage time (`Unsteady.ofFunction`) is built
     /// three times a step whatever the count, rather than three times a particle. A particle the
     /// field has no velocity for becomes NaN and stays so.
-    let step<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (field: Unsteady<'x, 'y, 't>) : Step<Particles<'x, 'y>, 't> =
+    let step<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> (field: Unsteady<'x, 'y, 't>) : Stepper<Particles<'x, 'y>, 't> =
         fun t h (struct (x, y)) ->
             let n = x.Length
 
@@ -193,7 +193,7 @@ module Particles =
         (seedsX: float<'x>[])
         (seedsY: float<'y>[])
         (field: Unsteady<'x, 'y, 't>)
-        : Step<Particles<'x, 'y>, 't> =
+        : Stepper<Particles<'x, 'y>, 't> =
         if seedsX.Length <> seedsY.Length then
             invalidArg "seedsY" "Marey: one y for every seed's x."
 

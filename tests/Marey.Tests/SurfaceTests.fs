@@ -33,7 +33,7 @@ module TheWitness =
     let ``every declared witness is stated, and only unspecified is not`` () =
         Assert.True(U.metre.Stated)
         Assert.True(U.one.Stated)
-        Assert.True(Derived.volt.Stated)
+        Assert.True(U.volt.Stated)
         Assert.False(U.unspecified.Stated)
 
     /// What is composed from an unstated unit is unstated: a density over numbers nobody named is
@@ -114,7 +114,7 @@ module UnspecifiedMakesNoClaim =
         let fig =
             plain [| 0.0; 1.0; 2.0 |]
             |> Chart.colorBy U.unspecified [| 3.0; 4.0; 5.0 |]
-            |> Chart.withColorDomain NonSi.degreeCelsius 0.0<degC> 10.0<degC>
+            |> Chart.withColorDomain U.degreeCelsius 0.0<degC> 10.0<degC>
 
         Chart.toScene extent fig |> ignore
 
@@ -201,22 +201,22 @@ module OneImplementation =
     /// would land 273.15 away.
     [<Fact>]
     let ``an affine unit, a heatmap, and the channels that take data`` () =
-        same (Marey.Chart.Line(t', raw temps, xUnit = U.second, yUnit = NonSi.degreeCelsius)) (Chart.line U.second NonSi.degreeCelsius t temps)
+        same (Marey.Chart.Line(t', raw temps, xUnit = U.second, yUnit = U.degreeCelsius)) (Chart.line U.second U.degreeCelsius t temps)
 
         same
-            (Marey.Chart.Heatmap(t', x', raw temps, xUnit = U.second, yUnit = U.metre, valueUnit = NonSi.degreeCelsius))
-            (Chart.heatmap U.second U.metre NonSi.degreeCelsius t x temps)
+            (Marey.Chart.Heatmap(t', x', raw temps, xUnit = U.second, yUnit = U.metre, valueUnit = U.degreeCelsius))
+            (Chart.heatmap U.second U.metre U.degreeCelsius t x temps)
 
         let optional () = Marey.Chart.Scatter(t', x', xUnit = U.second, yUnit = U.metre)
         let curried () = Chart.scatter U.second U.metre t x
 
         same
-            (optional () |> Marey.Chart.ColorBy(raw temps, unit = NonSi.degreeCelsius) |> Marey.Chart.WithColorDomain(280.0, 300.0, unit = U.kelvin))
-            (curried () |> Chart.colorBy NonSi.degreeCelsius temps |> Chart.withColorDomain U.kelvin 280.0<K> 300.0<K>)
+            (optional () |> Marey.Chart.ColorBy(raw temps, unit = U.degreeCelsius) |> Marey.Chart.WithColorDomain(280.0, 300.0, unit = U.kelvin))
+            (curried () |> Chart.colorBy U.degreeCelsius temps |> Chart.withColorDomain U.kelvin 280.0<K> 300.0<K>)
 
         same
-            (optional () |> Marey.Chart.ColorByWith(Palette.viridis, raw temps, unit = NonSi.degreeCelsius))
-            (curried () |> Chart.colorByWith Palette.viridis NonSi.degreeCelsius temps)
+            (optional () |> Marey.Chart.ColorByWith(Palette.viridis, raw temps, unit = U.degreeCelsius))
+            (curried () |> Chart.colorByWith Palette.viridis U.degreeCelsius temps)
 
         same (optional () |> Marey.Chart.SizeBy(raw err, unit = U.metre)) (curried () |> Chart.sizeBy U.metre err)
 
@@ -701,18 +701,18 @@ module Parsing =
 
     [<Fact>]
     let ``a quotient is the composition, factors and label included`` () =
-        same (U.div Derived.volt U.metre) (U.parse "V/m")
+        same (U.div U.volt U.metre) (U.parse "V/m")
         same (U.mul (U.mul U.kilogram U.metre) (U.recip (U.square U.second))) (U.parse "kg m s-2")
         same (U.recip U.second) (U.parse "1/s")
 
     [<Fact>]
     let ``a declared symbol is the declared witness`` () =
         Assert.Same(U.metre :> obj, U.parse "m" :> obj)
-        Assert.Same(NonSi.degreeCelsius :> obj, U.parse "°C" :> obj)
-        Assert.Same(NonSi.degreeCelsius :> obj, U.parse "degC" :> obj)
-        Assert.Same(Derived.ohm :> obj, U.parse "ohm" :> obj)
+        Assert.Same(U.degreeCelsius :> obj, U.parse "°C" :> obj)
+        Assert.Same(U.degreeCelsius :> obj, U.parse "degC" :> obj)
+        Assert.Same(U.ohm :> obj, U.parse "ohm" :> obj)
         Assert.Same(U.candela :> obj, U.parse "cd" :> obj)
-        Assert.Same(NonSi.minute :> obj, U.parse "min" :> obj)
+        Assert.Same(U.minute :> obj, U.parse "min" :> obj)
         Assert.Equal(273.15, (U.parse "degC").OffsetSI)
 
     [<Fact>]
@@ -774,6 +774,6 @@ module Parsing =
         | None -> failwith "km is a length"
 
         Assert.True((U.tryAs U.metre (U.parse "s")).IsNone)
-        Assert.True((U.tryAs Derived.hertz (U.parse "rad/s")).IsNone)
+        Assert.True((U.tryAs U.hertz (U.parse "rad/s")).IsNone)
         Assert.True((U.tryAs U.metre U.unspecified).IsNone)
-        Assert.True((U.tryAs NonSi.degreeCelsius (U.parse "K")).IsSome)
+        Assert.True((U.tryAs U.degreeCelsius (U.parse "K")).IsSome)

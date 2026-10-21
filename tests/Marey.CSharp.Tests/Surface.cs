@@ -191,8 +191,8 @@ public class Surface
     public void TheFacadeIsTheWitness()
     {
         Assert.Same(SiWitnesses.U.metre, Units.Metre);
-        Assert.Same(Derived.volt, Units.Volt);
-        Assert.Same(NonSi.degreeCelsius, Units.DegreeCelsius);
+        Assert.Same(DerivedWitnesses.U.volt, Units.Volt);
+        Assert.Same(NonSiWitnesses.U.degreeCelsius, Units.DegreeCelsius);
         Assert.False(Units.Unspecified.Stated);
         Assert.True(Units.One.Stated);
 

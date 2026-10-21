@@ -120,10 +120,10 @@ module Algebra =
     /// The two affine units the library actually ships, at values a reader would recognise.
     [<Fact>]
     let ``the real affine units round-trip exactly`` () =
-        Assert.Equal(37.0, float (U.ofSI NonSi.degreeCelsius (U.toSI NonSi.degreeCelsius 37.0<degC>)), 12)
-        Assert.Equal(-40.0, float (U.ofSI NonSi.degreeCelsius (U.toSI NonSi.degreeCelsius -40.0<degC>)), 12)
-        Assert.Equal(98.6, float (U.ofSI NonSi.degreeFahrenheit (U.toSI NonSi.degreeFahrenheit 98.6<degF>)), 12)
-        Assert.Equal(-459.67, float (U.ofSI NonSi.degreeFahrenheit (U.toSI NonSi.degreeFahrenheit -459.67<degF>)), 9)
+        Assert.Equal(37.0, float (U.ofSI U.degreeCelsius (U.toSI U.degreeCelsius 37.0<degC>)), 12)
+        Assert.Equal(-40.0, float (U.ofSI U.degreeCelsius (U.toSI U.degreeCelsius -40.0<degC>)), 12)
+        Assert.Equal(98.6, float (U.ofSI U.degreeFahrenheit (U.toSI U.degreeFahrenheit 98.6<degF>)), 12)
+        Assert.Equal(-459.67, float (U.ofSI U.degreeFahrenheit (U.toSI U.degreeFahrenheit -459.67<degF>)), 9)
 
 [<Properties(Arbitrary = [| typeof<MareyArbs> |], MaxTest = 300, Replay = Seed, QuietOnSuccess = true)>]
 module Conversion =
@@ -146,26 +146,26 @@ module Conversion =
 
     [<Fact>]
     let ``electronvolts convert to joules`` () =
-        let j = U.convert NonSi.electronvolt Derived.joule 1.0<eV>
+        let j = U.convert U.electronvolt U.joule 1.0<eV>
         Assert.True(Approx.rel 1e-12 (float j) 1.602176634e-19)
 
     /// The affine units are the ones a `ToSI`-only witness would get wrong, which is why
     /// NonSi.fs calls Fahrenheit "the better regression test of the two".
     [<Fact>]
     let ``celsius and fahrenheit convert through kelvin`` () =
-        let k = U.convert NonSi.degreeCelsius U.kelvin 0.0<degC>
+        let k = U.convert U.degreeCelsius U.kelvin 0.0<degC>
         Assert.True(Approx.rel 1e-12 (float k) 273.15)
 
-        let f = U.convert NonSi.degreeFahrenheit U.kelvin 212.0<degF>
+        let f = U.convert U.degreeFahrenheit U.kelvin 212.0<degF>
         Assert.True(Approx.abs' 1e-9 (float f) 373.15)
 
-        let c = U.convert NonSi.degreeFahrenheit NonSi.degreeCelsius 98.6<degF>
+        let c = U.convert U.degreeFahrenheit U.degreeCelsius 98.6<degF>
         Assert.True(Approx.abs' 1e-9 (float c) 37.0)
 
 /// §12.1 — "verified generic across five distinct instantiations". These are bindings, not
 /// assertions: their *types* are the test. Making `U.mul` less generic breaks the build here.
 ///
-/// D20 makes the same trick load-bearing one level up — `Derived.newtonByComposition` is a
+/// D20 makes the same trick load-bearing one level up — `U.newtonByComposition` is a
 /// permanent compile-time assertion inside the library itself — so this module extends the idea
 /// rather than duplicating it.
 module TypeLevel =
@@ -206,9 +206,9 @@ module TypeLevel =
 
     [<Fact>]
     let ``composed witnesses agree with the declared derived witnesses`` () =
-        Assert.Equal(Derived.newton.Dim, forceIsNewton.Dim)
-        Assert.Equal(Derived.joule.Dim, energyIsJoule.Dim)
-        Assert.Equal(Derived.hertz.Dim, frequencyIsHertz.Dim)
+        Assert.Equal(U.newton.Dim, forceIsNewton.Dim)
+        Assert.Equal(U.joule.Dim, energyIsJoule.Dim)
+        Assert.Equal(U.hertz.Dim, frequencyIsHertz.Dim)
         Assert.Equal(U.squareMetre.Dim, areaIsSquareMetre.Dim)
         Assert.Equal(U.cubicMetre.Dim, volumeIsCubicMetre.Dim)
 
@@ -216,9 +216,9 @@ module TypeLevel =
     /// `Sv`. Recorded as a test so the collision is a known cost rather than a surprise.
     [<Fact>]
     let ``hertz and becquerel share a dimension, as do gray and sievert`` () =
-        Assert.Equal(Derived.hertz.Dim, Derived.becquerel.Dim)
-        Assert.Equal(Derived.gray.Dim, Derived.sievert.Dim)
-        Assert.Equal(Derived.lumen.Dim, U.candela.Dim)
+        Assert.Equal(U.hertz.Dim, U.becquerel.Dim)
+        Assert.Equal(U.gray.Dim, U.sievert.Dim)
+        Assert.Equal(U.lumen.Dim, U.candela.Dim)
 
     /// §8.1's claim: "the gradient of a potential is a force, with the unit inferred rather than
     /// annotated". The annotation on the left is the assertion; nothing on the right says `N`.

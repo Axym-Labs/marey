@@ -52,7 +52,7 @@ let gpu =
 
 // Twenty ticks a step of the simulation: one transfer each on the GPU.
 let ticks = 20
-let cpuStep: Step<Lattice<m>, s> = fun t _ l -> Seq.fold (fun l k -> Lbm.step options (t + float k * dt) dt l) l [ 0 .. ticks - 1 ]
+let cpuStep: Stepper<Lattice<m>, s> = fun t _ l -> Seq.fold (fun l k -> Lbm.step options (t + float k * dt) dt l) l [ 0 .. ticks - 1 ]
 let step = match gpu with Some g -> GpuSim.lbmWith ticks g options | None -> cpuStep
 gpu |> Option.iter (fun g -> printfn "stepping on %s" g.Description)
 
@@ -70,7 +70,7 @@ let at (t: float<s>) = trajectory.At(float (int (round (t / stepLength))) * step
 // reach 40 rad/s and the vortices in the wake about 10, so the colours span ±10 rad/s and the
 // wall saturates rather than leaving the wake in the ramp's pale middle. `Lattice.vorticity` is
 // in s⁻¹, which a colorbar reads as a frequency, in Hz; stating the radian makes it a rotation.
-let radPerSecond = U.div Derived.radian U.second
+let radPerSecond = U.div U.radian U.second
 let vorticity l = Lattice.vorticity l |> ScalarGrid.map (fun w -> w * 1.0<rad>)
 
 let view (t: float<s>) =

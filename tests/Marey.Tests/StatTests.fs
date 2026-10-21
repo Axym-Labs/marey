@@ -183,7 +183,7 @@ module Regression =
             (Stat.slopeQuantity f)
                 .Accept
                 { new IQuantityConsumer<string * Dim> with
-                    member _.Apply<[<Measure>] 'u>(u: U<'u>, x: float<'u>) = Num.at 3 (float x), u.Dim }
+                    member _.Apply<[<Measure>] 'u>(u: U<'u>, x: float<'u>) = Num.upTo 3 (float x), u.Dim }
 
         Assert.Equal(("3.5", Dim.sub Dim.length Dim.time), shown)
 

@@ -221,9 +221,9 @@ let logFigure: Figure =
     let euler = Array.scan (fun e _ -> e * 10.0) 1e-14<J> [| 1..10 |]
     let leapfrog = ts |> Array.mapi (fun i _ -> if i % 2 = 0 then 2e-15<J> else 5e-15<J>)
 
-    Chart.line U.second Derived.joule ts euler
+    Chart.line U.second U.joule ts euler
     |> Chart.withName "Euler"
-    |> Chart.addLine U.second Derived.joule ts leapfrog
+    |> Chart.addLine U.second U.joule ts leapfrog
     |> Chart.withName "leapfrog"
     |> Chart.withYLog
     |> Chart.withYLabel "drift"
@@ -253,9 +253,9 @@ let rulesFigure: Figure =
         |> Chart.withPanelTitle "rules"
 
     let right =
-        Chart.line Derived.radian U.metre [| 0.0<rad>; 6.0<rad> |] [| 1.0<m>; 3.0<m> |]
+        Chart.line U.radian U.metre [| 0.0<rad>; 6.0<rad> |] [| 1.0<m>; 3.0<m> |]
         |> Chart.addHLine U.metre 2.0<m>
-        |> Chart.addVSpan Derived.radian 1.0<rad> 1.5<rad>
+        |> Chart.addVSpan U.radian 1.0<rad> 1.5<rad>
         |> Chart.withCoord Coord.polar
         |> Chart.withPanelTitle "polar"
 
@@ -328,7 +328,7 @@ let ticksFigure: Figure =
     let energy = k |> Array.map (fun k -> 2.0<eV> * (k / edge) * (k / edge) - 1.0<eV>)
 
     let band =
-        Chart.line (U.recip U.metre) NonSi.electronvolt k energy
+        Chart.line (U.recip U.metre) U.electronvolt k energy
         |> Chart.withXTicksNamed (U.recip U.metre) [| -edge, "X"; 0.0</m>, "Γ"; edge, "X" |]
         |> Chart.withXDomain (float -edge) (float edge)
         |> Chart.withXLabel "k"
@@ -458,7 +458,7 @@ let twinFigure: Figure =
 
     Chart.line U.second U.kelvin ts temperature
     |> Chart.withName "temperature"
-    |> Chart.withRightAxis (Chart.line U.second Derived.pascal ts pressure |> Chart.withName "pressure")
+    |> Chart.withRightAxis (Chart.line U.second U.pascal ts pressure |> Chart.withName "pressure")
     |> Chart.withLegend LegendBottomRight
     |> Chart.withTheme Theme.publication
 
@@ -474,13 +474,13 @@ let secondaryFigure: Figure =
 
     let spectrum =
         Chart.line U.metre U.one lam (lam |> Array.map (fun l -> 0.03 + line 486.1 0.55 l + line 656.3 1.0 l))
-        |> Chart.withTopAxisMapped NonSi.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
+        |> Chart.withTopAxisMapped U.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
 
     let ts = Array.init 21 (fun i -> float i * 30.0<s>)
 
     let warming =
         Chart.line U.second U.kelvin ts (ts |> Array.map (fun t -> 280.0<K> + 50.0<K> * (t / (t + 150.0<s>))))
-        |> Chart.withRightAxisIn NonSi.degreeCelsius
+        |> Chart.withRightAxisIn U.degreeCelsius
 
     spectrum |> Chart.beside warming |> Chart.withTheme Theme.publication
 
@@ -1259,7 +1259,7 @@ module Fields =
             let d2 = Vec2.norm { X = p.X + 0.6<m>; Y = p.Y - 0.1<m> }
             (log (float d2) - log (float d1)) * 1.0<V>)
 
-    let fieldUnit = U.div Derived.volt U.metre
+    let fieldUnit = U.div U.volt U.metre
 
     let chargePair =
         let xs = Grid.linear -1.8<m> 1.8<m> 10
@@ -1284,7 +1284,7 @@ module Fields =
         Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> 53) (Grid.linear -9.0<rad / s> 9.0<rad / s> 37) flow
 
     let streamlinePortrait =
-        Field.streamlinesWith 18.0<px> Derived.radian (U.div Derived.radian U.second) streamlinePendulum
+        Field.streamlinesWith 18.0<px> U.radian (U.div U.radian U.second) streamlinePendulum
         |> Chart.withTitle "A pendulum's phase portrait"
 
     let portraitPendulum (n: int) =
@@ -1292,11 +1292,11 @@ module Fields =
         Field.sampleFlow (Grid.linear -6.5<rad> 6.5<rad> n) (Grid.linear -9.0<rad / s> 9.0<rad / s> (n * 37 / 53)) flow
 
     let phasePortrait =
-        Phase.portraitWith 18.0<px> Derived.radian (U.div Derived.radian U.second) (portraitPendulum 53)
+        Phase.portraitWith 18.0<px> U.radian (U.div U.radian U.second) (portraitPendulum 53)
         |> Chart.withTitle "A pendulum's phase portrait"
 
     let heatmapFigure =
-        Field.heatmap U.metre U.metre Derived.volt potential
+        Field.heatmap U.metre U.metre U.volt potential
         |> Chart.overlay (Field.contours U.metre U.metre potential)
         |> Chart.withYLabel "y"
         |> Chart.withTitle "Two line charges"

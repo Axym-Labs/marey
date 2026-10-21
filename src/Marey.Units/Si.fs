@@ -18,7 +18,7 @@ namespace Marey
 /// FSharp.Core's SI, and every value arriving from a library that speaks it — FSharp.Data's CSV
 /// type provider reads units straight out of column headers — would have to cross the boundary
 /// through `LanguagePrimitives.FloatWithMeasure`, an unchecked assertion that relabels metres as
-/// seconds as happily as anything else. Aliasing removes the cast. The algebra in `Derived` is
+/// seconds as happily as anything else. Aliasing removes the cast. The derived units' algebra is
 /// unaffected, and so are Core's graphics tags: FSharp.Core declares no prefixed and no non-SI
 /// units, so the `mm` hazard above is untouched. Binary-breaking, and taken at rc1. See D42.
 [<Measure>]
@@ -40,7 +40,7 @@ type s = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.second
 type A = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.ampere
 
 /// Kelvin. The *absolute* temperature measure. °C and °F are separate, affine measures in
-/// `NonSi`, and deliberately do not unify with this one.
+/// `NonSi.fs`, and deliberately do not unify with this one.
 [<Measure>]
 type K = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.kelvin
 
@@ -57,7 +57,9 @@ type cd = Microsoft.FSharp.Data.UnitSystems.SI.UnitNames.candela
 /// The module `U` below merges with the algebra module `U` in Marey.Core: F# name resolution
 /// keeps modules in a multi-map, so `U.mul` (Core) and `U.metre` (here) are both reachable
 /// through the single path `U`, exactly as §2.1 writes them. Two modules of one name inside one
-/// assembly is FS0037, which is why `Derived` and `NonSi` get their own names.
+/// assembly is FS0037, which is why the derived and the non-SI witnesses are each a `U` inside a
+/// module of their own (`DerivedWitnesses`, `NonSiWitnesses`), opened with the namespace like
+/// this one.
 ///
 /// **Why it is nested (D124).** At namespace level this module compiled to a public type
 /// `Marey.U`, and so does the witness class in Marey.Core: C# saw two `Marey.U` and refused

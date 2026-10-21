@@ -282,7 +282,7 @@ module Figures =
         let ts = Array.init 24 (fun i -> float i * 0.4<s>)
         let es = ts |> Array.map (fun t -> 1.5e-3<J / s^2> * t * t)
 
-        Chart.line U.second Derived.joule ts es
+        Chart.line U.second U.joule ts es
         |> Chart.withXLabel "ωt − φ₀ at 20 °C, µ·τ² ≤ ∂θ"
         |> Chart.withYLabel "|ΔE| × 10³"
         |> Chart.withLegend LegendNone
@@ -566,8 +566,8 @@ module ``the two backends agree on the page`` =
             let expected =
                 sprintf
                     "\\useasboundingbox (0bp,0bp) rectangle (%sbp,%sbp);"
-                    (Num.at 3 (float extent.Width * 0.75))
-                    (Num.at 3 (float extent.Height * 0.75))
+                    (Num.upTo 3 (float extent.Width * 0.75))
+                    (Num.upTo 3 (float extent.Height * 0.75))
 
             Assert.True(tex.Contains expected, sprintf "%s: expected %s" name expected)
 
@@ -575,6 +575,6 @@ module ``the two backends agree on the page`` =
             let svg = SvgBackend.render extent scene
 
             Assert.Contains(
-                sprintf "viewBox=\"0 0 %s %s\"" (Num.at 3 (float extent.Width)) (Num.at 3 (float extent.Height)),
+                sprintf "viewBox=\"0 0 %s %s\"" (Num.upTo 3 (float extent.Width)) (Num.upTo 3 (float extent.Height)),
                 svg
             )

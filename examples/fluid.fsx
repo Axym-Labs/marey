@@ -49,7 +49,7 @@ let gpu =
 
 let dt = 0.02<s>
 
-let timed (name: string) (step: Step<Fluid<m, K>, s>) (h: float<s>) (count: int) =
+let timed (name: string) (step: Stepper<Fluid<m, K>, s>) (h: float<s>) (count: int) =
     step 0.0<s> h room |> ignore
     let sw = Diagnostics.Stopwatch.StartNew()
     let mutable f = room

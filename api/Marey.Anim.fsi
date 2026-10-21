@@ -72,7 +72,7 @@ namespace Marey
 
         member AtFraction: u: float -> 'a
 
-        member AtSeconds: t: float<Data.UnitSystems.SI.UnitSymbols.s> -> 'a
+        member AtUnclamped: t: float<Data.UnitSystems.SI.UnitSymbols.s> -> 'a
 
         member Duration: float<Data.UnitSystems.SI.UnitSymbols.s>
 
@@ -93,7 +93,7 @@ namespace Marey
 
         val atFraction: u: float -> a: Anim<'a> -> 'a
 
-        val pure': v: 'a -> Anim<'a>
+        val constant: v: 'a -> Anim<'a>
 
         val map: f: ('a -> 'b) -> a: Anim<'a> -> Anim<'b>
 

@@ -11,7 +11,7 @@
 
     An anomaly is a temperature *difference*, and a difference is not a temperature. Degrees
     Celsius is an affine unit: converting it to SI needs an offset of 273.15 as well as a factor,
-    which is exactly what `NonSi.degreeCelsius.IsAffine` reports. That offset is meaningful for a
+    which is exactly what `U.degreeCelsius.IsAffine` reports. That offset is meaningful for a
     reading and meaningless for an interval — a rise of 1.2 °C is a rise of 1.2 K, not of 274.35.
     So an anomaly is kelvin, and Marey's affine witness would be the wrong tool by 273.15.
 
@@ -76,9 +76,9 @@ let svg = figure |> Chart.render SvgBackend.render (Chart.size 820.0 480.0)
 printfn "y axis reads kelvin:      %b" (svg.Contains "[K]")
 
 // The distinction the example is about, stated as code rather than as a comment.
-printfn "celsius is affine:        %b" (NonSi.degreeCelsius.IsAffine)
+printfn "celsius is affine:        %b" (U.degreeCelsius.IsAffine)
 printfn "kelvin is not:            %b" (not U.kelvin.IsAffine)
-printfn "same dimension, though:   %b" (U.dim NonSi.degreeCelsius = U.dim U.kelvin)
+printfn "same dimension, though:   %b" (U.dim U.degreeCelsius = U.dim U.kelvin)
 
 // And the LaTeX route, since this is a figure that belongs in a document.
 let tex = System.IO.File.ReadAllText texPath

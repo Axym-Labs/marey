@@ -138,7 +138,7 @@ module U =
     /// downstream re-sorts.
     /// D98 — how many powers of angle a witness carries: a radian counts once, a steradian twice
     /// (solid angle is angle squared). Read from the factorisation, or from the declared symbol
-    /// when the witness was declared rather than built — `Derived.radian` is `rad` with no
+    /// when the witness was declared rather than built — `U.radian` is `rad` with no
     /// factors.
     ///
     /// **Angle is dimensionless in SI, so `Dim` cannot see it**, and this is the only place it
@@ -147,7 +147,7 @@ module U =
     ///
     /// A witness declared by hand with a compound symbol — `U<rad/s>("rad/s", …)` — has no
     /// factors and a symbol that is not `rad`, so it reads as carrying no angle. Build angular
-    /// units by composition, `U.div Derived.radian U.second`, and the angle is seen.
+    /// units by composition, `U.div U.radian U.second`, and the angle is seen.
     let angleExponentOf (symbol: string) (factors: (string * int) list) : int =
         let parts =
             if not (List.isEmpty factors) then factors

@@ -16,7 +16,7 @@ open Marey.Tests
 /// order they are made, and write to the same log under their number.
 type private Recorder(log: ResizeArray<string>, name: string, width: float, height: float, layers: int ref) =
 
-    let n (x: float) = Num.at 3 x
+    let n (x: float) = Num.upTo 3 x
     let line (s: string) = log.Add(name + s)
 
     let mutable fillStyle: obj = null
@@ -93,7 +93,7 @@ and private GradientRecord(geometry: string) =
     member _.Describe() = geometry + " [" + String.concat ", " stops + "]"
 
     interface CanvasGradient with
-        member _.addColorStop(offset, color) = stops.Add(Num.at 3 offset + " " + color)
+        member _.addColorStop(offset, color) = stops.Add(Num.upTo 3 offset + " " + color)
 
 /// Image data whose pixels are summarised by a checksum, so a log is not a hex dump.
 and private ImageRecord(w: int, h: int) =

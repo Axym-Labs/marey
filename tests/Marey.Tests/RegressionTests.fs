@@ -7,7 +7,7 @@
 ///
 /// Several of them are **compile-time** assertions: a binding whose type annotation is the
 /// claim. Those are the strongest form available — the finding is re-checked on every build,
-/// not on every test run — and they are the same technique `Derived.newtonByComposition` uses
+/// not on every test run — and they are the same technique `U.newtonByComposition` uses
 /// inside the library itself (D20).
 module Marey.Tests.RegressionTests
 
@@ -30,16 +30,16 @@ open Marey.UnitsOfMeasure
 
 module ``12_3 measured floats satisfy the Interp overload`` =
 
-    let private metres: float<m> = interp 0.0<m> 10.0<m> 0.5
-    let private seconds: float<s> = interp 2.0<s> 4.0<s> 0.25
-    let private energy: float<J> = interp 0.0<J> 8.0<J> 0.75
+    let private metres: float<m> = Interp.between 0.0<m> 10.0<m> 0.5
+    let private seconds: float<s> = Interp.between 2.0<s> 4.0<s> 0.25
+    let private energy: float<J> = Interp.between 0.0<J> 8.0<J> 0.75
 
     /// The unitless case still works, because `float = float<1>` — the half of §12.3 that makes
     /// the measure-generic overload a strict improvement rather than a trade.
-    let private plain: float = interp 0.0 1.0 0.5
+    let private plain: float = Interp.between 0.0 1.0 0.5
 
     let private velocity: Vec2<m / s> =
-        interp { X = 0.0<m / s>; Y = 0.0<m / s> } { X = 4.0<m / s>; Y = 8.0<m / s> } 0.5
+        Interp.between { X = 0.0<m / s>; Y = 0.0<m / s> } { X = 4.0<m / s>; Y = 8.0<m / s> } 0.5
 
     [<Fact>]
     let ``interp accepts float<m> and returns the right value`` () =
@@ -82,7 +82,7 @@ module ``12_4 the SRTP member is Interp, not Lerp`` =
 
     /// The generic call resolves. Under the old name this line was an ambiguous-overload error
     /// against `System.Double.Lerp`, and it reported at the *call site*, not the declaration.
-    let private resolved: float = interp 1.0 3.0 0.5
+    let private resolved: float = Interp.between 1.0 3.0 0.5
 
     [<Fact>]
     let ``the generic call resolves against the witness`` () = Assert.Equal(2.0, resolved, 12)
@@ -162,7 +162,7 @@ module ``12_6 composed symbols are junk while the Dim is right`` =
             energy.Dim
         )
 
-        Assert.Equal(Derived.joule.Dim, energy.Dim)
+        Assert.Equal(U.joule.Dim, energy.Dim)
 
     /// The rule §2.2 and §12.6 exist to enforce, exercised through the renderer that enforces it.
     [<Fact>]
@@ -197,7 +197,7 @@ module ``12_6 composed symbols are junk while the Dim is right`` =
     /// string surgery §12.6 forbids.
     [<Fact>]
     let ``the ohm has four independent spellings`` () =
-        let dim = Derived.ohm.Dim
+        let dim = U.ohm.Dim
         Assert.Equal("Ω", UnitDisplay.renderSi Unicode dim)
         Assert.Equal("ohm", UnitDisplay.renderSi Ascii dim)
         Assert.Equal("\\mathrm{\\Omega}", UnitDisplay.renderSi Latex dim)
@@ -253,10 +253,10 @@ module ``D17 Operators survive open Marey`` =
     /// not be.
     [<Fact>]
     let ``the minute measure is named minute and its symbol is min`` () =
-        Assert.Equal("min", NonSi.minute.Symbol)
-        Assert.Equal(60.0, NonSi.minute.ToSI, 12)
+        Assert.Equal("min", U.minute.Symbol)
+        Assert.Equal(60.0, U.minute.ToSI, 12)
         let t: float<minute> = 90.0<minute>
-        Assert.Equal(5400.0, U.toSI NonSi.minute t, 9)
+        Assert.Equal(5400.0, U.toSI U.minute t, 9)
 
     /// D17 also notes the names that are fine, so the rule is not read as "avoid short names".
     [<Fact>]
@@ -270,14 +270,14 @@ module ``D17 Operators survive open Marey`` =
         let joules: float<J> = 7.0<J>
         let watts: float<W> = 9.0<W>
 
-        Assert.Equal(7200.0, U.toSI NonSi.hour hours, 9)
-        Assert.Equal(86400.0, U.toSI NonSi.day days, 9)
-        Assert.Equal(3e-3, U.toSI NonSi.litre litres, 12)
-        Assert.Equal(1.0, U.toSI Derived.tesla teslas, 12)
+        Assert.Equal(7200.0, U.toSI U.hour hours, 9)
+        Assert.Equal(86400.0, U.toSI U.day days, 9)
+        Assert.Equal(3e-3, U.toSI U.litre litres, 12)
+        Assert.Equal(1.0, U.toSI U.tesla teslas, 12)
         Assert.Equal(300.0, U.toSI U.kelvin kelvins, 12)
-        Assert.Equal(5.0, U.toSI Derived.newton newtons, 12)
-        Assert.Equal(7.0, U.toSI Derived.joule joules, 12)
-        Assert.Equal(9.0, U.toSI Derived.watt watts, 12)
+        Assert.Equal(5.0, U.toSI U.newton newtons, 12)
+        Assert.Equal(7.0, U.toSI U.joule joules, 12)
+        Assert.Equal(9.0, U.toSI U.watt watts, 12)
 
 // ======================================================================================
 // §12.1 / D2 — measure algebra never moves into an operator overload
@@ -334,7 +334,7 @@ module ``12_5 rank-2 recovery of two measures`` =
             Erase.series
                 "energy"
                 (Scale.linear U.second (0.0<s>, 2.0<s>))
-                (Scale.linear Derived.joule (0.0<J>, 8.0<J>))
+                (Scale.linear U.joule (0.0<J>, 8.0<J>))
                 [| 0.0<s>; 2.0<s> |]
                 [| 0.0<J>; 8.0<J> |]
 
@@ -352,7 +352,7 @@ module ``12_5 rank-2 recovery of two measures`` =
 
         Assert.Equal<(Dim * Dim) list>(
             [ Dim.length, U.metrePerSecond.Dim
-              Dim.time, Derived.joule.Dim ],
+              Dim.time, U.joule.Dim ],
             dims
         )
 
@@ -391,7 +391,7 @@ module ``D16 the erased witness carries ToSI and Axis ofErased honours it`` =
     /// have **identical `Dim`**, and differ by 10^19".
     [<Fact>]
     let ``IScaleErased exposes ToSI and OffsetSI`` () =
-        let e = Erase.scale (Scale.linear NonSi.electronvolt (1.0<eV>, 5000.0<eV>))
+        let e = Erase.scale (Scale.linear U.electronvolt (1.0<eV>, 5000.0<eV>))
         Assert.True(abs (e.ToSI - 1.602176634e-19) < 1e-32)
         Assert.Equal(0.0, e.OffsetSI, 12)
 
@@ -409,7 +409,7 @@ module ``D16 the erased witness carries ToSI and Axis ofErased honours it`` =
     /// "reloading gives you `IScaleErased`, not `Scale<'u>`" a survivable statement about units.
     [<Fact>]
     let ``a reloaded electronvolt axis is still labelled in electronvolts`` () =
-        let s = Scale.linear NonSi.electronvolt (1.0<eV>, 5000.0<eV>)
+        let s = Scale.linear U.electronvolt (1.0<eV>, 5000.0<eV>)
         let measured = (Axis.auto Unicode "E" s).Title
         let reloaded = (Axis.ofErased Unicode "E" (Erase.scale s)).Title
 
@@ -419,7 +419,7 @@ module ``D16 the erased witness carries ToSI and Axis ofErased honours it`` =
 
     [<Fact>]
     let ``a reloaded Celsius axis is still labelled in degrees Celsius`` () =
-        let s = Scale.linear NonSi.degreeCelsius (0.0<degC>, 100.0<degC>)
+        let s = Scale.linear U.degreeCelsius (0.0<degC>, 100.0<degC>)
         let measured = (Axis.auto Unicode "T" s).Title
         let reloaded = (Axis.ofErased Unicode "T" (Erase.scale s)).Title
 
@@ -432,7 +432,7 @@ module ``D16 the erased witness carries ToSI and Axis ofErased honours it`` =
     /// have to rescale 273.15 as well as the mantissa).
     [<Fact>]
     let ``an erased affine axis refuses a prefix`` () =
-        let s = Scale.linear NonSi.degreeCelsius (0.0<degC>, 100.0<degC>)
+        let s = Scale.linear U.degreeCelsius (0.0<degC>, 100.0<degC>)
         let spec = Axis.ofErased Unicode "T" (Erase.scale s)
 
         Assert.Equal(0, spec.Prefix.Exponent)
@@ -757,7 +757,7 @@ module ``D41 a supplied factorisation is displayed`` =
 
     let private mega = Prefix.ofExponent 6 |> Option.get
 
-    let private voltPerMetre = U.div Derived.volt U.metre
+    let private voltPerMetre = U.div U.volt U.metre
 
     [<Fact>]
     let ``a composed unit renders from its factors, not from base units`` () =
@@ -787,7 +787,7 @@ module ``D41 a supplied factorisation is displayed`` =
     [<Fact>]
     let ``a registered name still beats the factorisation`` () =
         // D18's rule, and the reason the registry is consulted first: `N·m` is a joule.
-        Assert.Equal("J", text Unicode Prefix.none (U.mul Derived.newton U.metre))
+        Assert.Equal("J", text Unicode Prefix.none (U.mul U.newton U.metre))
 
     [<Fact>]
     let ``the 12.6 composition still canonicalises`` () =
@@ -853,16 +853,16 @@ module ``D41 a supplied factorisation is displayed`` =
 /// carried the angle in its factors; nothing read them.
 module ``D98 an angle is not a frequency`` =
 
-    let private radPerSecond = U.div Derived.radian U.second
+    let private radPerSecond = U.div U.radian U.second
     let private text (u: U<'u>) = UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none u
 
     [<Fact>]
     let ``rad/s renders as rad/s, and a hertz is still a hertz`` () =
         Assert.Equal("rad·s⁻¹", text radPerSecond)
         Assert.Equal("rad·s⁻²", text (U.div radPerSecond U.second))
-        Assert.Equal("Hz", text Derived.hertz)
+        Assert.Equal("Hz", text U.hertz)
         Assert.Equal("Hz", text (U.recip U.second))
-        Assert.Equal("rad", text Derived.radian)
+        Assert.Equal("rad", text U.radian)
 
     /// The erased path reads the same factors, so a reloaded figure labels itself the same (§15).
     [<Fact>]
@@ -878,14 +878,14 @@ module ``D98 an angle is not a frequency`` =
     let ``an angle, an angular velocity and an angular acceleration have their own names`` () =
         let named (u: U<'u>) = Axes.defaultLabelFor AxisLeft (U.angleExponentOf u.Symbol u.Factors) u.Dim
 
-        Assert.Equal("θ", named Derived.radian)
+        Assert.Equal("θ", named U.radian)
         Assert.Equal("ω", named radPerSecond)
         Assert.Equal("α", named (U.div radPerSecond U.second))
-        Assert.Equal("f", named Derived.hertz)
+        Assert.Equal("f", named U.hertz)
 
     [<Fact>]
     let ``a phase-space axis is titled ω [rad·s⁻¹]`` () =
-        let fig = Chart.line Derived.radian radPerSecond [| 0.0<rad>; 1.0<rad> |] [| 0.0<rad / s>; 2.0<rad / s> |]
+        let fig = Chart.line U.radian radPerSecond [| 0.0<rad>; 1.0<rad> |] [| 0.0<rad / s>; 2.0<rad / s> |]
         let scene = Chart.toScene (Chart.size 400.0 300.0) fig
 
         let titles =
@@ -906,7 +906,7 @@ module ``D98 an angle is not a frequency`` =
 
         let fig =
             Chart.line U.second radPerSecond ts [| 0.0<rad / s>; 6.28<rad / s> |]
-            |> Chart.addLine U.second Derived.hertz ts [| 0.0<Hz>; 1.0<Hz> |]
+            |> Chart.addLine U.second U.hertz ts [| 0.0<Hz>; 1.0<Hz> |]
 
         let ex = Assert.ThrowsAny<exn>(fun () -> Figure.unify fig.Panels.[0] |> ignore)
         Assert.Contains("2π", ex.Message)

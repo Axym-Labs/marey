@@ -12,7 +12,7 @@ namespace Marey
 
         val fixedPoint: decimals: int -> x: float -> string
 
-        val at: decimals: int -> v: float -> string
+        val upTo: decimals: int -> v: float -> string
 
         val shortest: x: float -> string
 
@@ -528,20 +528,12 @@ namespace Marey
         static member
           inline Interp: a: float<'u> * b: float<'u> * t: float -> float<'u>
 
-    [<AutoOpen>]
-    module InterpolateOperators =
-
-        val inline interpWith:
-          a: ^T -> b: ^T -> t: float -> ^T
-            when (^W or ^T) : (static member Interp: ^T * ^T * float -> ^T)
-
-        val inline interp:
-          a: ^T -> b: ^T -> t: float -> ^T
-            when (Interpolate or ^T) :
-                   (static member Interp: ^T * ^T * float -> ^T)
-
     [<RequireQualifiedAccess>]
     module Interp =
+
+        val inline betweenWith:
+          a: ^T -> b: ^T -> t: float -> ^T
+            when (^W or ^T) : (static member Interp: ^T * ^T * float -> ^T)
 
         val inline between:
           a: ^T -> b: ^T -> t: float -> ^T

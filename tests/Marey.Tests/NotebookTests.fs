@@ -259,7 +259,7 @@ module Fragments =
 
         // One frame starts at each n-th of the cycle, in order and without repetition. Both
         // sides rounded to the six decimals the attribute carries: `1/6` is written `0.166667`,
-        // and comparing that against an unrounded `0.1666…` is a test of `Num.at`, not of the
+        // and comparing that against an unrounded `0.1666…` is a test of `Num.upTo`, not of the
         // tiling.
         let round6 (t: float) = System.Math.Round(t, 6)
 
@@ -377,7 +377,7 @@ module Fragments =
 
         Assert.Contains(Color.toHex Palette.vermillion, html)
         Assert.Contains("oklch(", html)
-        Assert.Contains(Num.at 3 lch.L, html)
+        Assert.Contains(Num.upTo 3 lch.L, html)
 
     /// `Color.toOklch` builds its hue with `atan2`, so blues arrive negative. Displaying a blue as
     /// `-115.95°` is correct and useless — nobody publishes hues that way, and the library's own
@@ -392,7 +392,7 @@ module Fragments =
         let html = Html.color Palette.blue
 
         Assert.DoesNotContain("-", html.Substring(html.IndexOf "oklch("))
-        Assert.Contains(Num.at 3 (raw + 360.0), html)
+        Assert.Contains(Num.upTo 3 (raw + 360.0), html)
 
     /// A swatch that renders a 35%-alpha colour as an opaque pastel is a swatch that lies. The
     /// eight-digit hex carries the alpha and the checker layer makes it visible.
@@ -441,7 +441,7 @@ module Fragments =
         Assert.Contains("protanopia", html)
         Assert.Contains("deuteranopia", html)
         Assert.Contains("tritanopia", html)
-        Assert.Contains(Num.at 3 Fixtures.report.WorstSeparation.Minimum, html)
+        Assert.Contains(Num.upTo 3 Fixtures.report.WorstSeparation.Minimum, html)
 
     /// `Dim.show` is Core's fallback and `UnitDisplay.renderSi` is what `Marey.Units` makes of
     /// the same value. Showing both is how a missing registry becomes visible instead of
@@ -457,7 +457,7 @@ module Fragments =
     let ``a unit witness shows its conversion to SI`` () =
         // The affine case is the one worth checking: a unit with an offset that displays only its
         // factor is telling half a truth, and °C against K is where that half-truth bites.
-        let celsius = Html.witness NonSi.degreeCelsius
+        let celsius = Html.witness U.degreeCelsius
 
         Assert.Contains("273.15", celsius)
         Assert.Contains("°C", celsius)
@@ -845,7 +845,7 @@ module LiveFormatter =
 
     let private live () =
         interact {
-            let! f = Control.slider Derived.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
+            let! f = Control.slider U.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
             return Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
         }
 

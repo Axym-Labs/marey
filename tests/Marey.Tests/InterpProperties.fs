@@ -36,7 +36,7 @@ module Endpoints =
     let ``float endpoints`` (FiniteFloat a) (FiniteFloat b) =
         let x = a * 1.0<m>
         let y = b * 1.0<m>
-        interp x y 0.0 = x && recovers Tol.arith a b (float (interp x y 1.0))
+        Interp.between x y 0.0 = x && recovers Tol.arith a b (float (Interp.between x y 1.0))
 
     /// float32 has an eps of 1.19e-7, so the same law needs a tolerance three orders coarser.
     [<Property>]
@@ -44,31 +44,31 @@ module Endpoints =
         let x = float32 a
         let y = float32 b
 
-        interp x y 0.0 = x
-        && recovers 1e-6 (float x) (float y) (float (interp x y 1.0))
+        Interp.between x y 0.0 = x
+        && recovers 1e-6 (float x) (float y) (float (Interp.between x y 1.0))
 
     [<Property>]
     let ``Vec2 endpoints`` (Vec2Nd a) (Vec2Nd b) =
-        let r = interp a b 1.0
+        let r = Interp.between a b 1.0
 
-        interp a b 0.0 = a
+        Interp.between a b 0.0 = a
         && recovers Tol.arith (float a.X) (float b.X) (float r.X)
         && recovers Tol.arith (float a.Y) (float b.Y) (float r.Y)
 
     [<Property>]
     let ``Vec3 endpoints`` (Vec3Nd a) (Vec3Nd b) =
-        let r = interp a b 1.0
+        let r = Interp.between a b 1.0
 
-        interp a b 0.0 = a
+        Interp.between a b 0.0 = a
         && recovers Tol.arith (float a.X) (float b.X) (float r.X)
         && recovers Tol.arith (float a.Y) (float b.Y) (float r.Y)
         && recovers Tol.arith (float a.Z) (float b.Z) (float r.Z)
 
     [<Property>]
     let ``Rect endpoints`` (RectNd a) (RectNd b) =
-        let r = interp a b 1.0
+        let r = Interp.between a b 1.0
 
-        interp a b 0.0 = a
+        Interp.between a b 0.0 = a
         && recovers Tol.arith (float a.X0) (float b.X0) (float r.X0)
         && recovers Tol.arith (float a.Y0) (float b.Y0) (float r.Y0)
         && recovers Tol.arith (float a.X1) (float b.X1) (float r.X1)
@@ -78,17 +78,17 @@ module Endpoints =
     /// endpoint deviation over 100 000 random colour pairs: 1.66e-6.
     [<Property>]
     let ``Color endpoints, within the Oklab round-trip floor`` (Colour a) (Colour b) =
-        Approx.colour (interp a b 0.0) a && Approx.colour (interp a b 1.0) b
+        Approx.colour (Interp.between a b 0.0) a && Approx.colour (Interp.between a b 1.0) b
 
     /// The witness is reachable through all three published spellings, and they agree. §12.2 is
     /// the reason there are three: every wrapper level has to restate the constraint, and a
     /// wrapper that forgot would monomorphise the chain at its first call site.
     [<Property>]
-    let ``interp, interpWith and Interp.between agree`` (FiniteFloat a) (FiniteFloat b) (UnitT t) =
+    let ``Interp.between and Interp.betweenWith agree`` (FiniteFloat a) (FiniteFloat b) (UnitT t) =
         let x = a * 1.0<s>
         let y = b * 1.0<s>
-        let r = interp x y t
-        r = interpWith<Interpolate, float<s>> x y t && r = Interp.between x y t
+        let r = Interp.between x y t
+        r = Interp.betweenWith<Interpolate, float<s>> x y t
 
 [<Properties(Arbitrary = [| typeof<MareyArbs> |], MaxTest = 500, Replay = Seed, QuietOnSuccess = true)>]
 module Bounds =
@@ -103,18 +103,18 @@ module Bounds =
 
     [<Property>]
     let ``float interpolation stays inside the interval`` (FiniteFloat a) (FiniteFloat b) (UnitT t) =
-        within (min a b) (max a b) (interp a b t)
+        within (min a b) (max a b) (Interp.between a b t)
 
     [<Property>]
     let ``Vec2 interpolation stays inside the bounding box`` (Vec2Nd a) (Vec2Nd b) (UnitT t) =
-        let v = interp a b t
+        let v = Interp.between a b t
 
         within (min (float a.X) (float b.X)) (max (float a.X) (float b.X)) (float v.X)
         && within (min (float a.Y) (float b.Y)) (max (float a.Y) (float b.Y)) (float v.Y)
 
     [<Property>]
     let ``Rect interpolation stays inside the componentwise interval`` (RectNd a) (RectNd b) (UnitT t) =
-        let r = interp a b t
+        let r = Interp.between a b t
 
         let ok (x: float<nd>) (y: float<nd>) (v: float<nd>) =
             within (min (float x) (float y)) (max (float x) (float y)) (float v)
@@ -126,7 +126,7 @@ module Bounds =
     /// the result is a valid colour: `Color.ofOklab` clamps to gamut.
     [<Property>]
     let ``Color interpolation always lands in gamut`` (Colour a) (Colour b) (UnitT t) =
-        let c = interp a b t
+        let c = Interp.between a b t
         let ok (x: float) = x >= 0.0 && x <= 1.0
         ok c.R && ok c.G && ok c.B && ok c.A
 
@@ -135,7 +135,7 @@ module Bounds =
     /// discrepancy.
     [<Property>]
     let ``interpolation is symmetric about the midpoint`` (FiniteFloat a) (FiniteFloat b) (UnitT t) =
-        Approx.scaled 1e-12 (max (abs a) (abs b)) (interp a b t) (interp b a (1.0 - t))
+        Approx.scaled 1e-12 (max (abs a) (abs b)) (Interp.between a b t) (Interp.between b a (1.0 - t))
 
 [<Properties(Arbitrary = [| typeof<MareyArbs> |], MaxTest = 300, Replay = Seed, QuietOnSuccess = true)>]
 module Stops =
@@ -258,7 +258,7 @@ module AffineWitness =
     /// arithmetic between the two — the witness is one call.
     [<Property>]
     let ``the witness is the decomposed tween`` (InvertibleMat a) (InvertibleMat b) (UnitT t) =
-        interp (toAffine a) (toAffine b) t = AffineInterp.lerp t (toAffine a) (toAffine b)
+        Interp.between (toAffine a) (toAffine b) t = AffineInterp.lerp t (toAffine a) (toAffine b)
 
     /// §12.2: the constraint is restated at every wrapper level, so a new overload either
     /// reaches all of them or none of them. `Interp.stops` is the deepest — it calls `interp`
@@ -269,7 +269,7 @@ module AffineWitness =
         let a = Affine.identity<nd>
         let b = Affine.translate { X = 4.0<nd>; Y = 0.0<nd> }
 
-        Assert.Equal(2.0, float (interp a b 0.5).Dx, 12)
+        Assert.Equal(2.0, float (Interp.between a b 0.5).Dx, 12)
         Assert.Equal(2.0, float (Interp.between a b 0.5).Dx, 12)
         Assert.Equal(2.0, float (Interp.stops [| 0.0, a; 1.0, b |] 0.5).Dx, 12)
 
@@ -318,7 +318,7 @@ module AffineWitness =
               Dx = 1.0<nd>
               Dy = 1.0<nd> }
 
-        finite (interp a b t)
+        finite (Interp.between a b t)
 
     /// **A reflection cannot be rotated into an identity.** `SO(2)` is connected and the
     /// orientation-reversing component is not attached to it, so any continuous tween between
@@ -330,14 +330,14 @@ module AffineWitness =
         let a = Affine.identity<nd>
         let b = Affine.scale 1.0 -1.0
 
-        Assert.Equal(0.0, float (Affine.determinant (interp a b 0.5)), 12)
+        Assert.Equal(0.0, float (Affine.determinant (Interp.between a b 0.5)), 12)
 
         for i in 0..20 do
-            let got = interp a b (float i / 20.0)
+            let got = Interp.between a b (float i / 20.0)
             Assert.True(finite got, sprintf "not finite at t = %g" (float i / 20.0))
 
-        Assert.Equal(1.0, float (Affine.determinant (interp a b 0.0)), 12)
-        Assert.Equal(-1.0, float (Affine.determinant (interp a b 1.0)), 12)
+        Assert.Equal(1.0, float (Affine.determinant (Interp.between a b 0.0)), 12)
+        Assert.Equal(-1.0, float (Affine.determinant (Interp.between a b 1.0)), 12)
 
     /// Just short of a half-turn on either side. The componentwise tween's failure mode is
     /// worst here and the decomposed one is unremarkable: the midpoint is a rotation of half the
@@ -354,7 +354,7 @@ module AffineWitness =
     [<InlineData(-179.0, -89.5)>]
     [<InlineData(-181.0, 89.5)>]
     let ``near a half-turn the midpoint is the shortest-arc rotation`` (deg: float, expected: float) =
-        let mid = interp (rot 0.0) (rot deg) 0.5
+        let mid = Interp.between (rot 0.0) (rot deg) 0.5
 
         Assert.Equal(1.0, float (Affine.determinant mid), 9)
 
@@ -371,8 +371,8 @@ module AffineWitness =
     /// bug. Any tie-break here would be equally arbitrary and would need the same note.
     [<Fact>]
     let ``a half-turn breaks its tie on the sign of sin pi`` () =
-        let forwards = interp (rot 0.0) (rot 180.0) 0.5
-        let backwards = interp (rot 0.0) (rot -180.0) 0.5
+        let forwards = Interp.between (rot 0.0) (rot 180.0) 0.5
+        let backwards = Interp.between (rot 0.0) (rot -180.0) 0.5
 
         Assert.Equal(1.0, float forwards.M21, 9)
         Assert.Equal(-1.0, float backwards.M21, 9)

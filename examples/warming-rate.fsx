@@ -68,10 +68,10 @@ printfn "%d annual anomalies, %g to %g" readings.Length readings.[0].Year (Array
 
 // Three channels and a stat. `color` takes no unit witness because a category has no dimension;
 // `x` and `y` take theirs, and the accessor is checked against the witness beside it — naming
-// `r.Anomaly` under `NonSi.year` would not compile.
+// `r.Anomaly` under `U.year` would not compile.
 let figure =
     plot readings {
-        x NonSi.year (fun r -> r.Elapsed)
+        x U.year (fun r -> r.Elapsed)
         y U.kelvin (fun r -> r.Anomaly)
         color (fun r -> r.Era)
         layer GeomPoint
@@ -89,7 +89,7 @@ let figure =
 // same scale and the panels can be read against each other.
 let byEra =
     plot readings {
-        x NonSi.year (fun r -> r.Elapsed)
+        x U.year (fun r -> r.Elapsed)
         y U.kelvin (fun r -> r.Anomaly)
         facetWrap (fun r -> r.Era)
         layer GeomLine
@@ -105,7 +105,7 @@ let byEra =
 // The block draws the trend and does not hand back its slope. Asking for the number is a
 // separate call over the same two arrays, and it comes back typed.
 let trend =
-    Stat.regression NonSi.year U.kelvin (readings |> Array.map (fun r -> r.Elapsed)) (readings |> Array.map (fun r -> r.Anomaly))
+    Stat.regression U.year U.kelvin (readings |> Array.map (fun r -> r.Elapsed)) (readings |> Array.map (fun r -> r.Anomaly))
 
 // The annotation is the claim: a fit of kelvin against years has a slope in kelvin per year, and
 // this line does not compile if that ever stops being true.

@@ -164,10 +164,10 @@ module Injectivity =
     /// dimension that takes its prefix as a power of ten (`m²`), and a unit that takes none (`h`).
     let private logAxes (lo: float, hi: float) : PackedScale list =
         [ Erase.packScale (Scale.log10 U.metre (lo * 1.0<m>, hi * 1.0<m>))
-          Erase.packScale (Scale.log10 Derived.joule (lo * 1.0<J>, hi * 1.0<J>))
+          Erase.packScale (Scale.log10 U.joule (lo * 1.0<J>, hi * 1.0<J>))
           Erase.packScale (Scale.log10 U.one (lo, hi))
           Erase.packScale (Scale.log10 U.squareMetre (lo * 1.0<m^2>, hi * 1.0<m^2>))
-          Erase.packScale (Scale.log2 NonSi.hour (lo * 1.0<h>, hi * 1.0<h>)) ]
+          Erase.packScale (Scale.log2 U.hour (lo * 1.0<h>, hi * 1.0<h>)) ]
 
     let private styles = [ Unicode; Ascii; Latex; Siunitx ]
 
@@ -231,7 +231,7 @@ module LogLabels =
     let private labels (ax: AxisSpec) = ax.Ticks |> Array.map (fun t -> t.Label)
 
     let private energy (lo: float) (hi: float) =
-        Scale.log10 Derived.joule (lo * 1.0<J>, hi * 1.0<J>)
+        Scale.log10 U.joule (lo * 1.0<J>, hi * 1.0<J>)
 
     /// Three decades, no prefix: each tick takes the decimals it needs, not the finest tick's.
     [<Fact>]

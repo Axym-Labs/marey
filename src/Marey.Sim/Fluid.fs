@@ -521,7 +521,7 @@ module Stam =
     /// source; viscosity and diffusion, implicit; and the projection. The forcing is sampled once
     /// for each geometry the step meets and kept, as one immutable value replaced whole, so two
     /// threads stepping at once can only sample it twice.
-    let step<[<Measure>] 'x, [<Measure>] 'q> (options: StamOptions<'x, 'q>) : Step<Fluid<'x, 'q>, s> =
+    let step<[<Measure>] 'x, [<Measure>] 'q> (options: StamOptions<'x, 'q>) : Stepper<Fluid<'x, 'q>, s> =
         if options.Sweeps < 1 || options.Cycles < 1 then
             invalidArg "options" (sprintf "Marey: a fluid's solves need at least one sweep and one cycle; got %d and %d." options.Sweeps options.Cycles)
 

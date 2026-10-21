@@ -270,7 +270,7 @@ module Fdm =
     /// `∂v/∂t = α ∇²v` by forward Euler on the five-point stencil. A step past `explicitLimit` is
     /// refused with both numbers: forward Euler there is unstable, and the picture it makes is
     /// noise growing from the highest frequency.
-    let heat<[<Measure>] 'x, [<Measure>] 'v> (alpha: float<'x ^ 2 / s>) (boundaries: Boundaries<'x, 'v>) : Step<ScalarGrid<'x, 'x, 'v>, s> =
+    let heat<[<Measure>] 'x, [<Measure>] 'v> (alpha: float<'x ^ 2 / s>) (boundaries: Boundaries<'x, 'v>) : Stepper<ScalarGrid<'x, 'x, 'v>, s> =
         checkAlpha (float alpha)
 
         fun _ dt grid ->
@@ -381,7 +381,7 @@ module Fdm =
     /// along every row and then every column. Unconditionally stable and second order in time.
     /// It damps the highest frequencies weakly, so data with a jump rings for a while; a few
     /// steps of a smaller size first, or of `heat`, smooth that out.
-    let heatImplicit<[<Measure>] 'x, [<Measure>] 'v> (alpha: float<'x ^ 2 / s>) (boundaries: Boundaries<'x, 'v>) : Step<ScalarGrid<'x, 'x, 'v>, s> =
+    let heatImplicit<[<Measure>] 'x, [<Measure>] 'v> (alpha: float<'x ^ 2 / s>) (boundaries: Boundaries<'x, 'v>) : Stepper<ScalarGrid<'x, 'x, 'v>, s> =
         checkAlpha (float alpha)
 
         fun _ dt grid ->
@@ -457,7 +457,7 @@ module Fdm =
     let wave<[<Measure>] 'x, [<Measure>] 'v>
         (c: float<'x / s>)
         (boundaries: Boundaries<'x, 'v>)
-        : Step<struct (ScalarGrid<'x, 'x, 'v> * ScalarGrid<'x, 'x, 'v / s>), s> =
+        : Stepper<struct (ScalarGrid<'x, 'x, 'v> * ScalarGrid<'x, 'x, 'v / s>), s> =
         if not (float c > 0.0) || Double.IsInfinity(float c) then
             invalidArg "c" (sprintf "Marey: a wave speed must be positive and finite, not %g." (float c))
 

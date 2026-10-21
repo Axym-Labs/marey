@@ -32,23 +32,23 @@ namespace Marey
           substeps: int ->
             gpu: GpuRenderer ->
             options: StamOptions<'x,'q> ->
-            Step<Fluid<'x,'q>,Data.UnitSystems.SI.UnitSymbols.s>
+            Stepper<Fluid<'x,'q>,Data.UnitSystems.SI.UnitSymbols.s>
 
         val stam:
           gpu: GpuRenderer ->
             options: StamOptions<'x,'q> ->
-            Step<Fluid<'x,'q>,Data.UnitSystems.SI.UnitSymbols.s>
+            Stepper<Fluid<'x,'q>,Data.UnitSystems.SI.UnitSymbols.s>
 
         val lbmWith:
           substeps: int ->
             gpu: GpuRenderer ->
             options: LbmOptions<'x> ->
-            Step<Lattice<'x>,Data.UnitSystems.SI.UnitSymbols.s>
+            Stepper<Lattice<'x>,Data.UnitSystems.SI.UnitSymbols.s>
 
         val lbm:
           gpu: GpuRenderer ->
             options: LbmOptions<'x> ->
-            Step<Lattice<'x>,Data.UnitSystems.SI.UnitSymbols.s>
+            Stepper<Lattice<'x>,Data.UnitSystems.SI.UnitSymbols.s>
 
 namespace Marey
 
