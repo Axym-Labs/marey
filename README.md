@@ -1,281 +1,129 @@
 # Marey
 
 [![CI](https://github.com/Axym-Labs/marey/actions/workflows/ci.yml/badge.svg)](https://github.com/Axym-Labs/marey/actions/workflows/ci.yml)
-[![NuGet](https://img.shields.io/nuget/v/Marey.Plot.svg)](https://www.nuget.org/packages/Marey.Plot)
+[![NuGet](https://img.shields.io/nuget/v/Marey.svg)](https://www.nuget.org/packages/Marey)
 
-A plotting library for F# where the compiler checks your units, and the axes label themselves.
+Figures, fields, simulations and animations for F#, where the compiler checks the units and the
+axes label themselves.
 
 > Named for **Étienne-Jules Marey** (1830–1904), who invented the graphical method in experimental
 > science: record a physical quantity as a curve against time, and read the physics off the curve.
 
-```fsharp
-#r "nuget: Marey.Plot"
-#r "nuget: Marey.Backend.Svg"
+<p align="center">
+  <a href="docs/guide/06-paper.md"><img src="docs/figures/paper-figure.svg" alt="A four-panel figure for a paper: a resonance with its residuals and an inset on the peak, and the oscillator's gain and phase" width="100%"></a>
+</p>
+<p align="center">
+  <a href="docs/guide/07-fields.md"><img src="docs/figures/dipole.svg" alt="The potential of two line charges with equipotentials and field lines" width="49%"></a>
+  <a href="docs/guide/12-interaction.md"><img src="docs/figures/driven-pendulum-session.svg" alt="A live figure's recorded session: a driven pendulum's Poincaré section as the drive rises into chaos" width="49%"></a>
+</p>
+<p align="center">
+  <a href="docs/guide/08-simulation.md"><img src="docs/figures/double-pendulum.svg" alt="A double pendulum: the second bob's path, the energy's drift and a Poincaré section" width="100%"></a>
+</p>
+<p align="center">
+  <a href="docs/guide/10-storyboard.md"><img src="docs/figures/resonance-story.svg" alt="A storyboard: measurements appear, morph onto the model while the axis zooms, and the peak is ringed" width="49%"></a>
+  <a href="docs/guide/08-simulation.md"><img src="docs/figures/cylinder-wake.svg" alt="Vortices shed behind a cylinder at a Reynolds number of 100" width="49%"></a>
+</p>
 
-open Marey
-open Marey.UnitsOfMeasure
+Each picture is drawn by the code in [the guide](docs/guide/README.md) above it, and the test
+suite redraws them all and fails when one no longer matches.
 
-let t = Array.init 24 (fun i -> float i * 0.4<s>)
-let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
+## The idea
 
-Chart.line U.second U.metre t x
-|> Chart.withTitle "Free fall"
-|> Chart.toSvg SvgBackend.render "fall.svg" (Chart.size 800.0 500.0)
-```
-
-<img src="docs/images/free-fall.svg" alt="Free fall: displacement against elapsed time" width="640">
-
-Nothing above configures an axis. The scale, the domain, the SI prefix, the tick values, the tick
-labels and both axis titles are derived from the two unit witnesses. `x` is never annotated as a
-length — `0.5 * 9.81<m/s^2> * t * t` has type `float<m>`, which the compiler derives — and plotting
-seconds against seconds on these axes is a compile error.
+A chart takes a *unit witness* for each axis, `U.second`, `U.metre`, and the compiler checks it
+against the data's units of measure. From the witness and the numbers the figure takes everything
+else: the axis titles, the SI prefix, the ticks, the unit a statistic comes out in, and the check
+that two series on one axis agree. Plotting seconds against a metres axis does not compile. The
+same idea runs through the rest: a field's gradient is in the units the types work out, a slider
+over kelvin hands the view a temperature, and an integrator checks that an acceleration is one.
 
 ## Install
 
 ```
-dotnet add package Marey.Plot
-dotnet add package Marey.Backend.Svg
+dotnet add package Marey
 ```
 
-`Marey.Html` sits at the top of the graph, so referencing it alone brings the rest. For PNG and
-PDF, add `Marey.Backend.Skia`, which depends on SkiaSharp and is a separate package for that
-reason. `Marey.Backend.Gpu` draws the same on an OpenGL context, offscreen or in a window:
-`Chart.show fig`. `Marey.Backend.Web` draws on a canvas in a browser, where a Fable app compiles
-the figure with the same code.
+or `#r "nuget: Marey"` in a script. `Marey` brings units, figures, fields, simulations, animation,
+live figures, and SVG, TikZ and HTML output. PNG and PDF are `Marey.Backend.Skia`; a window and the
+GPU are `Marey.Backend.Gpu`; typeset text and video are `Marey.Tools.Tex` and `Marey.Tools.Video`.
+In a [Verso](https://github.com/DataficationSDK/Verso) notebook, a first cell of
+`#!extension Marey.Verso` makes a figure display as a figure and a figure with controls live.
 
-## Units, end to end
+## A damped spring
 
-Data spanning 1e-9 to 5e-9 metres produces an axis reading `nm` with ticks `1, 2, 3, 4, 5`.
-Kilopascals are labelled as kilopascals:
+```fsharp output=readme-spring size=720x480
+#r "nuget: Marey"
 
-<img src="docs/images/wave-packet.svg" alt="A Gaussian wave packet in millimetres and kilopascals" width="640">
-
-The unit registry is keyed on the seven-element SI dimension vector rather than on strings, so
-anything that composes to a newton prints `N`. Units with no SI name are covered as long as the
-composition is stated: `U.div U.volt U.metre` renders `V·m⁻¹`, and `MV·m⁻¹` when prefixed.
-Nothing is inferred — a bare dimension is never factorised, because the same vector is both `J/K`
-and `N·m/K`.
-
-Affine units carry their offset: degrees Celsius converts by shift as well as factor, an
-electronvolt axis reads `keV` rather than `kJ`, and a mass rescaled by 10⁻⁶ prints `mg` against the
-gram rather than `µkg`.
-
-## Figures that belong in a LaTeX document
-
-Swapping the theme turns the same figure into `tikzpicture` source. It is typeset by the same
-engine as the rest of the document, so **the figure inherits the document's fonts**, and the axis
-titles are set by `siunitx` from the unit witnesses:
-
-```fsharp
-figure
-|> Chart.withTheme Theme.tikz
-|> Chart.toFile TikzBackend.render "fall.tex" (Chart.size 320.0 200.0)
-```
-
-```tex
-\node[anchor=north,font=\fontsize{9}{10.8}\selectfont] at (133.59bp,15.825bp) {t [\qty{}{\second}]};
-\node[anchor=base,rotate=90,font=\fontsize{9}{10.8}\selectfont] at (15.825bp,69.075bp) {x [\qty{}{\metre}]};
-```
-
-## The usual scientific figure
-
-A model curve, measured points, error bars, and a legend naming only the layers that were named:
-
-<img src="docs/images/oscillator.svg" alt="A damped oscillator: model against measurement with error bars" width="640">
-
-## When the data is a table
-
-Two arrays and a chart call is the right shape for two arrays. When the data is a table and the
-figure has more than two things in it, `plot` says what each column means in one place:
-
-```fsharp
-plot trials {
-    x U.second (fun r -> r.Time)
-    y U.metre  (fun r -> r.Displacement)
-    color      (fun r -> r.Sample)
-    layer GeomPoint
-    fit
-}
-```
-
-<img src="docs/images/warming-rate.svg" alt="Global temperature anomaly by era, with a least-squares trend" width="640">
-
-Each dimensioned channel takes its witness beside the accessor, and the accessor is checked against
-it — naming `r.Displacement` under `U.second` does not compile. Categorical channels take no
-witness, because a category carries no dimension: `color` gives one colour per level and a legend
-that names them, while `colorBy U.kelvin` gives a colorbar labelled from the witness.
-
-`fit` is one of the statistics, and its slope is a typed number as well as a line on the page. A
-fit of metres against seconds has a slope of type `float<m/s>`:
-
-```fsharp
-let fitted = Stat.regression U.second U.metre t x
-let speed: float<m/s> = fitted.Slope
-```
-
-`facetWrap` draws one panel per level of a key over shared axes, so a difference between panels is
-a difference in the data.
-
-## Real data, and where the units story stops
-
-Units are transformative for physical measurements and irrelevant for a mole fraction in ppm or a
-column of revenue. They are opt-in: `open Marey.UnitsOfMeasure` is what makes every chart take a
-witness, and without it a chart takes plain arrays with a unit per axis that may be stated or left
-out.
-
-```fsharp
 open Marey
+open Marey.UnitsOfMeasure
 
-Chart.Errorbar(years, mean, uncertainty)                 // no unit stated, no bracket, no prefix
-Chart.Line(ts, xs, xUnit = U.second, yUnit = U.metre)    // stated: labelled, prefixed, checked
+let t = Array.init 400 (fun i -> float i * 0.01<s>)
+let x = t |> Array.map (fun t -> 0.012<m> * exp (-t / 1.5<s>) * cos (2.0 * System.Math.PI * 1.2<Hz> * t))
+let stiffness = 40.0<N/m>
+
+let spring =
+    Chart.line U.second U.metre t x
+    |> Chart.above (Chart.line U.second U.joule t (x |> Array.map (fun x -> 0.5 * stiffness * x * x)))
+    |> Chart.shareX
+    |> Chart.withTitle "A damped spring"
+
+spring
 ```
 
-A stated unit still labels, prefixes and checks, at run time rather than at compile time; a unit
-left out claims nothing, and the label is left to the caller. A unit known only as text is read in
-UDUNITS-2's syntax, `U.parse "V/m"`:
+<img src="docs/figures/readme-spring.svg" alt="A damped spring: displacement in millimetres and potential energy in millijoules against time, sharing the time axis" width="720">
 
-<img src="docs/images/co2-record.svg" alt="Atmospheric CO2 at Mauna Loa, annual means with uncertainties" width="640">
-
-The [`examples/`](examples/) directory has nineteen worked scripts, three of them on real committed
-datasets.
-
-## A figure that moves
-
-An animation is a **pure function of time**, so seeking is evaluation: `anim.At 2.7<s>` is a
-direct call, frames come out in any order, and a render is `Array.Parallel.map` with no scheduler.
-The storyboard block writes the sequence:
+Nothing set an axis. The displacement was computed in metres and reads `x [mm]`; the energy,
+`½ k x²` with `k` in N/m, is a `float<J>` because the compiler worked it out, and reads in mJ. The
+time axis is written once, under the lower panel. The same value is a `tikzpicture` for a LaTeX
+document, typeset in the document's font with `siunitx` units:
 
 ```fsharp
-open Marey.Storyboard
-
-let intro =
-    scene {
-        let! curve = draw measured |> over 1.2<s>
-        do! wait 0.5<s>
-        do! parallel' [ curve |> morphTo fitted   |> over 2.0<s> |> ease Ease.cubicInOut
-                        curve |> zoomToY (0.0, 0.045) |> over 2.0<s> |> ease Ease.cubicInOut ]
-        do! highlight curve.[peak]
-    }
-
-let anim = animate 32 (Chart.size 320.0 220.0) intro
+spring |> Chart.toSvg SvgBackend.render "spring.svg" (Chart.size 720.0 480.0)
+spring |> Chart.withTheme Theme.tikz |> Chart.toFile TikzBackend.render "spring.tex" (Chart.size 720.0 480.0)
 ```
 
-<img src="docs/images/storyboard-filmstrip.svg" alt="Six frames of one storyboard: a ringdown drawn, morphed onto its envelope, zoomed, and one mark picked out" width="720">
+## What it does
 
-`let!` binds a **name** for something on stage, not the animation — which is what lets `curve` be
-referred to three more times. The whole shot is laid out **once**, against the union of every
-state sampled, so the panel holds still while the data moves rather than crawling sideways as the
-tick labels gain a digit. And `curve.[peak]` splits that scatter's single batched `Markers` node
-three ways, so one mark has something to highlight — two extra nodes rather than one per point,
-and only when something is named.
+- **Figures**: thirteen kinds of mark, rules, spans and annotations; log, symlog, power and
+  reciprocal scales; stated and named ticks; a second y axis and secondary axes through a map
+  (§§[1](docs/guide/01-start.md)–[4](docs/guide/04-axes.md)).
+- **Tables and statistics**: the `plot` block, colour, shape and size channels, loess, bootstrap
+  intervals in the statistic's unit, facets ([§5](docs/guide/05-tables.md)).
+- **Papers**: panels on one grid, spans, mosaics, stated proportions, shared axes, insets, panel
+  letters, a journal's framed box, TikZ with `siunitx`, vector PDF ([§6](docs/guide/06-paper.md)).
+- **Fields**: derivatives in their units, heatmaps, contours, quivers, streamlines,
+  line-integral convolution, phase portraits with fixed points classified ([§7](docs/guide/07-fields.md)).
+- **Simulation**: integrators typed by the shape of the state, invariants, events, Poincaré
+  sections, grid solvers and fluids, on the CPU or the GPU ([§8](docs/guide/08-simulation.md)).
+- **Motion**: animation as a function of time, the `scene` storyboard, films that hold their
+  layout still, video, typeset formulas (§§[9](docs/guide/09-animation.md)–[10](docs/guide/10-storyboard.md)).
+- **Live**: figures in Verso notebooks, controls in units, zoom, pan and a readout, recordings
+  that replay as films, a window, and the browser through Fable (§§[11](docs/guide/11-notebooks.md)–[13](docs/guide/13-gpu-window-browser.md)).
+- **C#**: the same figures without units of measure, with units stated as arguments
+  ([§14](docs/guide/14-csharp.md)).
 
-Rendering it is a `map` over the frame times, on as many threads as there are:
-
-```fsharp
-let film = Film.ofStory 32 (Chart.size 320.0 220.0) intro
-
-film
-|> Frames.write FramePass.Concurrent SkiaBackend.renderPng (FrameTarget.into "out" ".png") 30.0
-```
-
-The two passes produce the same bytes in the same order, and a gate says so frame for frame on
-both backends. That holds because the contract is written down rather than assumed: an `IBackend`
-is single-threaded and what crosses threads is a renderer *function*, while an `ITextMeasurer`
-must be thread-safe and exactly one of them serves a whole film — not for speed, but because font
-resolution walks a family stack against whatever is installed, and a measurer per thread is a
-chance for one frame of a video to be set in a different typeface from the frame before it.
-
-## A simulation, as an animation
-
-A simulation is a start and a step, and its trajectory is an `Anim`: it seeks, it films, and a
-seek to any time is exactly the state a straight run reaches.
-
-```fsharp
-#r "nuget: Marey.Sim"
-
-let rate = 4.0 * System.Math.PI * System.Math.PI * 1.0</s^2>
-
-// Velocity Verlet: the acceleration is checked to be in m/s².
-let spring = Sim.ofStep 1e-3<s> (Ode.verlet (fun _ q -> q |> Array.map (fun x -> -rate * x))) (struct ([| 0.1<m> |], [| 0.0<m/s> |]))
-let orbit = Sim.trajectory 0.5<s> 100.0<s> spring
-
-let film = Film.ofFigures 32 (Chart.size 480.0 300.0) (orbit |> Anim.map (fun (struct (q, v)) -> Chart.scatter U.metre (U.div U.metre U.second) q v))
-```
-
-The integrators are typed by the shape of the state: Verlet and leapfrog over positions and
-velocities in one unit, Euler, RK4 and Dormand–Prince over a plane flow with time, and the same
-over any record given the two operations that advance it. Around them: events located in time
-(a ball bounces, and comes to rest rather than bouncing forever), hard-disc collisions, Poincaré
-sections, pathlines and particles in a field that changes, and heat, wave and Poisson solvers on
-a grid with typed boundaries. A time control plays a trajectory in a notebook or a window.
-
-## From C#
-
-C# has the unit-optional mode, with every witness under one name and the combinators as extension
-methods, in the `Marey.CSharp` namespace of the same packages:
-
-```csharp
-using Marey;
-using Marey.CSharp;
-
-Chart.Line(ts, xs, xUnit: Units.Second, yUnit: Units.Metre)
-    .WithTitle("Free fall")
-    .Save(SvgRenderer.Render, "fall.svg", 800, 500);
-```
-
-## What is in the box
+## The packages
 
 | Package | |
 |---|---|
-| `Marey.Core` | Dimension vectors, unit witnesses, unit-indexed geometry, scales, and the ten-case scene IR. Zero dependencies. |
-| `Marey.Units` | SI, 22 derived and 18 non-SI unit witnesses; canonicalisation, prefix selection, and Unicode/ASCII/LaTeX/siunitx rendering. |
-| `Marey.Plot` | `Chart` and the `plot` encoding block, thirteen geoms (hexbin the newest), colour/shape/size channels, statistics (loess and seeded bootstrap intervals among them), facets, rules, annotations, panel letters and stated ticks, aligned composition with spans, shared axes, twin and secondary axes, equal aspect and insets, six themes, colour-blind-safe palettes with a validator, constraint layout, the axis and legend compilers, the `scene` storyboard block, and the parallel frame writer. No backend reference. |
-| `Marey.Backend.Svg` | SVG. Pure F#, zero dependencies, byte-identical across renders. |
-| `Marey.Backend.Tikz` | `tikzpicture` source for LaTeX, with `siunitx` units and inherited fonts. |
-| `Marey.Backend.Skia` | PNG and vector PDF, and real text shaping through HarfBuzz. Depends on SkiaSharp. |
-| `Marey.Backend.Gpu` | The Skia backend's drawing on an OpenGL 3.3 context, with marker batches as instanced draws: offscreen, callable from any thread, or in a window (`Chart.show`, `Live.show`) that steps a live figure as a notebook does; `Marey.Sim`'s fluid solvers and LIC on the GPU, held to the CPU's results. Depends on Silk.NET's GLFW and OpenGL bindings. |
-| `Marey.Backend.Web` | A canvas in a browser: a Fable app compiles the figure in the page and this draws it, marker batches on WebGL2. Waits for the page's fonts before measuring. Depends on `Fable.Core`. |
-| `Marey.Anim` | Animation as a pure function of time: a seekable, composable `Anim<'a>`, twenty-eight easings, and arc-length path morphing. Depends on `Marey.Core` alone. |
-| `Marey.Fields` | Scalar and vector fields on dimensioned planes, phase spaces included: grids, gradient, divergence, curl and the Jacobian in the units the types work out; heatmaps, contours, filled bands, quivers with a key, evenly spaced streamlines and line-integral convolution; phase portraits with fixed points classified and eigenvalues in `1/'t`. |
-| `Marey.Sim` | Simulation: ODE integrators typed by the shape of the state (Euler, RK4, Dormand–Prince with dense output, velocity Verlet, leapfrog), trajectories that seek as animations, invariants and their drift, events, hard-disc collisions, Poincaré sections, pathlines and particles in unsteady fields, finite-difference heat, wave and Poisson solvers with typed boundaries, and fluids by Stam's stable fluids and lattice Boltzmann. Compiles under Fable. |
-| `Marey.Tools.Video` | Encoding a rendered frame sequence to video by shelling out to `ffmpeg`, degrading to the numbered frames when it is absent. |
-| `Marey.Tools.Tex` | Mathematical typesetting: TeX source on a scene's text runs becomes vector outlines, through `latex` and `dvisvgm`, so every backend draws it. Degrades to plain text when TeX is absent. |
-| `Marey.Toolchain` | Resolution and invocation of the external programs Marey drives but does not ship. Zero dependencies. |
-| `Marey.Interact` | Typed controls on a figure, composed by the `interact` block and stepped by a pure function a notebook drives: zoom and pan by dragging, a readout in the axes' own units, and recordings that replay as films. |
-| `Marey.Html` | HTML renderings of twelve Marey types for a notebook cell, including a film as a playing flipbook and a live figure's page. Host-neutral. |
-| `Marey.Verso` | The [Verso](https://github.com/DataficationSDK/Verso) notebook extension, so a bare `Figure` displays as a figure and a figure with controls is live. |
+| `Marey` | The packages below that need no native library or external program, in one reference. |
+| `Marey.Core`, `Marey.Units` | Dimensions, unit witnesses, scales, colour, and the scene every backend draws. |
+| `Marey.Plot` | `Chart`, the `plot` block, layout, themes, the storyboard. |
+| `Marey.Anim`, `Marey.Fields`, `Marey.Sim` | Animation, fields, simulation. |
+| `Marey.Interact`, `Marey.Html` | Live figures, and HTML for a notebook cell. |
+| `Marey.Backend.Svg`, `Marey.Backend.Tikz` | SVG, and `tikzpicture` source for LaTeX. |
+| `Marey.Backend.Skia` | PNG and vector PDF with text shaped by HarfBuzz. Brings SkiaSharp. |
+| `Marey.Backend.Gpu` | The GPU, offscreen or in a window. Brings Silk.NET. |
+| `Marey.Backend.Web` | A canvas in a browser, for a Fable app. |
+| `Marey.Tools.Tex`, `Marey.Tools.Video` | Typeset text through `latex` and `dvisvgm`, video through `ffmpeg`. |
+| `Marey.Verso` | The Verso notebook extension, loaded by `#!extension Marey.Verso`. |
 
-## Notebooks
+## Documentation
 
-In [Verso](https://github.com/DataficationSDK/Verso) with the `Marey.Verso` extension installed, a
-cell whose value is a `Figure` shows the figure — no `.Show()`, no save-then-open, no display call.
-Without the extension, render to SVG and the built-in formatter draws it, with nothing installed.
-
-**A `Film` plays.** An animation built with the `scene { … }` block displays as a looping flipbook
-in the cell — its frames stacked in one SVG and cycled with SMIL — so seeing what you just
-animated needs no encoder, no video file and no round trip through the filesystem.
-
-**A figure with controls is live.** A slider's unit is part of its type, so a slider over coulombs
-per metre hands the view a `float<C/m>` and labels itself `2 nC·m⁻¹`:
-
-```fsharp
-interact {
-    let! lambda = Control.slider lineCharge "λ" 0.5e-9<C/m> 5.0e-9<C/m> 2.0e-9<C/m>
-    and! half = Control.slider U.metre "d/2" 0.2<m> 1.0<m> 0.6<m>
-    return potentialMap lambda half
-}
-```
-
-The reader moves a slider and the kernel draws the figure again, sending only what changed when
-that is smaller. Dragging zooms, double-clicking resets, and the pointer reads the data under it
-in the axes' own units. The figure is laid out once over the states the controls can reach, so the
-plot area holds still while the numbers move. This needs Verso 1.2.3 or newer; anywhere else
-the same cell shows the figure with its controls disabled.
-
-**A large figure is drawn on a canvas.** From 5000 drawn elements on, the kernel sends the scene as
-bytes, a quarter of its SVG, and the page draws it with the same code a browser app uses: a
-10⁵-point live figure steps in tens of milliseconds rather than a second. `Html.renderMode`
-chooses SVG or canvas for every figure instead.
+- **[The guide](docs/guide/README.md)**, a tour of everything in fifteen sections, every block of it run by the test suite.
+- **[Examples](examples/)**, standalone scripts and a notebook, also run by the test suite.
+- **[Why Marey is like this](docs/why.md)**: the case for a unit witness over a string label, what the other decisions cost, and when not to use the library.
+- **[Compatibility](docs/compatibility.md)** and **[Not in 1.0](docs/not-in-1.0.md)**.
+- **[Changelog](CHANGELOG.md)** and **[Contributing](CONTRIBUTING.md)**.
 
 ## Building
 
@@ -284,36 +132,13 @@ dotnet build
 dotnet test
 ```
 
-The suite is FsCheck property suites for the dimension group laws, all seven scale kinds, ticks,
-interpolation, colour and the scene IR; golden baselines in SVG *and* `tikzpicture` source; a real
-`pdflatex` compile gate; rasterised ink gates over the compiled TeX, the rendered PNG and the
-rendered PDF, checking the picture is not blank and is the right way up; an assertion over the
-built assembly graph that no vector package can see SkiaSharp; and executable
-checks over every example in [the guide](docs/guide.md) and in [`examples/`](examples/).
-
-Several of those gates shell out, and every one of them **passes when the program it needs is
-absent** — right on a laptop without a TeX installation, and worthless as evidence. So each run
-prints a census of all nine external dependencies and what became of them, and
-`MAREY_REQUIRE_TOOLCHAIN=1` turns an absent one into a failure. CI sets it.
-
-## Documentation
-
-- **[The guide](docs/guide.md)** — everything the library does today, with a runnable example for
-  each part. Every example in it is extracted and executed by the test suite.
-- **[Examples](examples/)** — nineteen standalone scripts and a notebook, also executed by the
-  test suite.
-  [`reel.fsx`](examples/reel.fsx) is the demo reel: the whole library in one shot, ending in an
-  `.mp4`.
-- **[Why Marey is like this](docs/why.md)** — the case for a unit witness over a string label,
-  what the other design decisions buy, what they cost, and when not to use the library.
-- **[Changelog](CHANGELOG.md)** — what changed in each release, and what is still known to be
-  wrong.
-- **[Contributing](CONTRIBUTING.md)** — building, the golden baselines, and the four layering
-  rules a change has to keep.
+The suite holds property tests for the dimension algebra, the scales, ticks, interpolation, colour
+and the scene; golden baselines in SVG and `tikzpicture` source; a `pdflatex` compile; ink checks
+over the compiled TeX, the PNG and the PDF; the guide, the README and the examples run; and the
+same baselines drawn under Fable and Node. Gates that need an external program report it absent
+rather than fail, and `MAREY_REQUIRE_TOOLCHAIN=1`, which CI sets, makes an absent one a failure.
 
 ## Status
 
-Pre-1.0, and versioned accordingly. The API is still free to move; breaking changes are listed in
-the [changelog](CHANGELOG.md) with the reason and the replacement.
-
-MIT licensed.
+Pre-1.0. The next release is 1.0.0, and [Compatibility](docs/compatibility.md) says what it will
+promise. MIT licensed.

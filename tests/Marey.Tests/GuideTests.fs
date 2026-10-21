@@ -120,8 +120,9 @@ let ``the guide has examples, and they are the ones being checked`` () =
     Assert.Contains("fsharp-error", markdown)
 
 /// Run one session under `dotnet fsi`: the assemblies, a prelude, then the blocks in order. `source`
-/// names the session in the failure message and the script's file name.
-let private runBlocks (source: string) (name: string) (prelude: string) (workDir: string) (blocks: string[]) =
+/// names the session in the failure message and the script's file name. A session `expectsOutput`
+/// when its blocks print, so an empty run means it compiled to nothing.
+let private runBlocksWith (expectsOutput: bool) (source: string) (name: string) (prelude: string) (workDir: string) (blocks: string[]) =
     let tool = dotnetTool.Force()
 
     match tool.Path with
@@ -172,7 +173,10 @@ let private runBlocks (source: string) (name: string) (prelude: string) (workDir
         )
 
         // The examples print; an empty run would mean the script compiled to nothing useful.
-        Assert.False(String.IsNullOrWhiteSpace stdout, "the guide ran but produced no output")
+        if expectsOutput then
+            Assert.False(String.IsNullOrWhiteSpace stdout, "the guide ran but produced no output")
+
+let private runBlocks = runBlocksWith true
 
 /// Run one session of `docs/guide.md`.
 let private runSession (name: string) (pick: string -> string[]) =
@@ -351,14 +355,14 @@ module GuideOutput =
 
         dir
 
-    [<Fact>]
-    let ``every example in the tour runs, and draws the figures it shows`` () =
-        let work = workDir "tour"
+    /// Run `blocks` as one session and compare each figure it draws with `docs/figures/`.
+    let private runAndCompare (expectsOutput: bool) (source: string) (name: string) (blocks: Block list) =
+        let work = workDir name
         let dir = Path.Combine(work, "figures")
         Directory.CreateDirectory dir |> ignore
 
         try
-            runBlocks "docs/guide" "-tour" prelude work (session false dir)
+            runBlocksWith expectsOutput source ("-" + name) prelude work (blocks |> List.mapi (fun i b -> captured dir i b) |> Array.ofList)
 
             let drawn = Directory.GetFiles(dir, "*.svg") |> Array.sort
             let committed = figuresDir.Force()
@@ -379,13 +383,31 @@ module GuideOutput =
             Assert.True(
                 List.isEmpty stale,
                 sprintf
-                    "docs/figures/ does not show what the guide draws: %s. Each new drawing is beside it as \
+                    "docs/figures/ does not show what %s draws: %s. Each new drawing is beside it as \
                      .actual.svg; re-run with %s=1 to accept them."
+                    source
                     (String.concat ", " stale)
                     Golden.UpdateVariable
             )
         finally
             try Directory.Delete(work, true) with _ -> ()
+
+    [<Fact>]
+    let ``every example in the tour runs, and draws the figures it shows`` () =
+        pages () |> Array.toList |> List.collect (fun (_, md) -> blocksOf md |> List.filter (fun b -> not b.Optional)) |> runAndCompare true "docs/guide" "tour"
+
+    /// The README's example is a session of its own, so it reads from its first line.
+    [<Fact>]
+    let ``the README's example runs, and draws the figure it shows`` () =
+        let readme = File.ReadAllText(Path.Combine(Golden.repoRoot.Force(), "README.md"), Encoding.UTF8).Replace("\r\n", "\n")
+        let blocks = blocksOf readme
+
+        Assert.True(blocks |> List.exists (fun b -> b.Output.IsSome), "README.md shows no figure drawn by its example")
+
+        for b in blocks do
+            b.Output |> Option.iter (fun n -> Assert.True(readme.Contains(sprintf "docs/figures/%s.svg" n), sprintf "README.md draws %s.svg and does not show it" n))
+
+        runAndCompare false "README.md" "readme" blocks
 
     [<Fact>]
     let ``every unit-optional example in the tour runs`` () =
