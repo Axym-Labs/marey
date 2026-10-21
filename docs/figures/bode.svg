@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="720" height="450" viewBox="0 0 720 450">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M61.669 398.567L655.787 398.567L655.787 72.583L61.669 72.583Z"/></clipPath>
+  </defs>
+  <g id="figure">
+    <path d="M0 450L720 450L720 0L0 0Z" fill="#ffffff"/>
+    <g role="note" data-marey-role="annotation" aria-label="A second-order low-pass filter, ζ = 0.15">
+      <text x="360" y="14" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="17.333" font-weight="600" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">A second-order low-pass filter, ζ = 0.15</text>
+    </g>
+    <g id="figure_panel-0-0">
+      <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="3" data-x-tick-rule="all" data-y-tick-rule="all">
+        <g id="figure_panel-0-0_grid">
+          <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="4">
+            <path d="M61.669 326.541L655.787 326.541M61.669 254.512L655.787 254.512M61.669 182.483L655.787 182.483M61.669 110.454L655.787 110.454" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+          </g>
+        </g>
+        <g clip-path="url(#qc)">
+          <g id="figure_panel-0-0_layer-0">
+            <g role="graphics-object" data-marey-role="series" aria-label="gain" data-series="gain" data-points="241">
+              <path d="M61.669 110.451L64.145 110.451L66.62 110.451L69.096 110.45L71.571 110.45L74.047 110.45L76.522 110.449L78.998 110.449L81.473 110.449L83.949 110.448L86.424 110.448L88.9 110.447L91.375 110.447L93.851 110.446L96.326 110.445L98.802 110.445L101.277 110.444L103.753 110.443L106.228 110.442L108.704 110.441L111.179 110.44L113.655 110.439L116.13 110.438L118.606 110.437L121.081 110.435L123.557 110.434L126.032 110.432L128.508 110.43L130.983 110.428L133.459 110.426L135.934 110.424L138.409 110.422L140.885 110.419L143.36 110.416L145.836 110.413L148.311 110.41L150.787 110.407L153.262 110.403L155.738 110.399L158.213 110.394L160.689 110.39L163.164 110.384L165.64 110.379L168.115 110.373L170.591 110.366L173.066 110.359L175.542 110.352L178.017 110.344L180.493 110.335L182.968 110.325L185.444 110.315L187.919 110.304L190.395 110.292L192.87 110.279L195.346 110.265L197.821 110.25L200.297 110.234L202.772 110.216L205.248 110.197L207.723 110.176L210.199 110.154L212.674 110.13L215.15 110.104L217.625 110.076L220.101 110.046L222.576 110.013L225.052 109.977L227.527 109.939L230.003 109.898L232.478 109.853L234.954 109.804L237.429 109.752L239.905 109.695L242.38 109.634L244.856 109.568L247.331 109.496L249.806 109.419L252.282 109.335L254.757 109.244L257.233 109.146L259.708 109.039L262.184 108.924L264.659 108.799L267.135 108.663L269.61 108.516L272.086 108.357L274.561 108.184L277.037 107.996L279.512 107.793L281.988 107.571L284.463 107.331L286.939 107.07L289.414 106.785L291.89 106.475L294.365 106.138L296.841 105.77L299.316 105.368L301.792 104.929L304.267 104.45L306.743 103.925L309.218 103.349L311.694 102.718L314.169 102.023L316.645 101.26L319.12 100.417L321.596 99.487L324.071 98.458L326.547 97.316L329.022 96.048L331.498 94.636L333.973 93.061L336.449 91.303L338.924 89.338L341.4 87.148L343.875 84.722L346.351 82.071L348.826 79.26L351.302 76.46L353.777 74.034L356.253 72.583L358.728 72.792L361.203 74.984L363.679 78.836L366.154 83.663L368.63 88.863L371.105 94.076L373.581 99.128L376.056 103.955L378.532 108.546L381.007 112.911L383.483 117.071L385.958 121.047L388.434 124.86L390.909 128.529L393.385 132.071L395.86 135.502L398.336 138.833L400.811 142.076L403.287 145.241L405.762 148.336L408.238 151.368L410.713 154.345L413.189 157.271L415.664 160.152L418.14 162.991L420.615 165.794L423.091 168.563L425.566 171.301L428.042 174.012L430.517 176.697L432.993 179.36L435.468 182.001L437.944 184.624L440.419 187.228L442.895 189.817L445.37 192.391L447.846 194.951L450.321 197.499L452.797 200.035L455.272 202.561L457.748 205.078L460.223 207.585L462.699 210.084L465.174 212.576L467.65 215.061L470.125 217.54L472.6 220.012L475.076 222.479L477.551 224.942L480.027 227.399L482.502 229.853L484.978 232.302L487.453 234.748L489.929 237.19L492.404 239.629L494.88 242.066L497.355 244.5L499.831 246.931L502.306 249.36L504.782 251.787L507.257 254.212L509.733 256.635L512.208 259.057L514.684 261.477L517.159 263.895L519.635 266.313L522.11 268.729L524.586 271.144L527.061 273.558L529.537 275.97L532.012 278.383L534.488 280.794L536.963 283.204L539.439 285.614L541.914 288.023L544.39 290.432L546.865 292.84L549.341 295.247L551.816 297.654L554.292 300.061L556.767 302.467L559.243 304.872L561.718 307.278L564.194 309.683L566.669 312.088L569.145 314.492L571.62 316.896L574.096 319.3L576.571 321.704L579.047 324.108L581.522 326.511L583.997 328.914L586.473 331.317L588.948 333.72L591.424 336.123L593.899 338.525L596.375 340.928L598.85 343.33L601.326 345.732L603.801 348.134L606.277 350.537L608.752 352.939L611.228 355.34L613.703 357.742L616.179 360.144L618.654 362.546L621.13 364.947L623.605 367.349L626.081 369.751L628.556 372.152L631.032 374.554L633.507 376.955L635.983 379.356L638.458 381.758L640.934 384.159L643.409 386.56L645.885 388.962L648.36 391.363L650.836 393.764L653.311 396.165L655.787 398.567" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="figure_panel-0-0_layer-1">
+            <g role="note" data-marey-role="annotation" aria-label="series" data-series="" data-points="1">
+              <path d="M358.728 398.567L358.728 72.583" fill="none" stroke="#39414d" stroke-width="0.9" stroke-dasharray="4 3" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="figure_panel-0-0_layer-2">
+            <g role="graphics-object" data-marey-role="series" aria-label="phase" data-series="phase" data-points="241">
+              <path d="M61.669 87.401L64.145 87.412L66.62 87.423L69.096 87.435L71.571 87.448L74.047 87.461L76.522 87.474L78.998 87.488L81.473 87.503L83.949 87.518L86.424 87.533L88.9 87.55L91.375 87.567L93.851 87.584L96.326 87.603L98.802 87.622L101.277 87.641L103.753 87.662L106.228 87.683L108.704 87.705L111.179 87.728L113.655 87.752L116.13 87.777L118.606 87.803L121.081 87.83L123.557 87.858L126.032 87.887L128.508 87.917L130.983 87.948L133.459 87.981L135.934 88.015L138.409 88.05L140.885 88.086L143.36 88.124L145.836 88.164L148.311 88.205L150.787 88.248L153.262 88.292L155.738 88.338L158.213 88.386L160.689 88.436L163.164 88.488L165.64 88.542L168.115 88.598L170.591 88.656L173.066 88.717L175.542 88.78L178.017 88.845L180.493 88.913L182.968 88.984L185.444 89.058L187.919 89.134L190.395 89.214L192.87 89.297L195.346 89.383L197.821 89.473L200.297 89.567L202.772 89.664L205.248 89.765L207.723 89.871L210.199 89.98L212.674 90.095L215.15 90.214L217.625 90.338L220.101 90.467L222.576 90.602L225.052 90.742L227.527 90.889L230.003 91.042L232.478 91.201L234.954 91.368L237.429 91.541L239.905 91.723L242.38 91.913L244.856 92.111L247.331 92.319L249.806 92.536L252.282 92.763L254.757 93.001L257.233 93.251L259.708 93.513L262.184 93.789L264.659 94.078L267.135 94.382L269.61 94.703L272.086 95.04L274.561 95.397L277.037 95.773L279.512 96.172L281.988 96.595L284.463 97.043L286.939 97.52L289.414 98.028L291.89 98.57L294.365 99.15L296.841 99.772L299.316 100.442L301.792 101.164L304.267 101.945L306.743 102.794L309.218 103.719L311.694 104.731L314.169 105.845L316.645 107.077L319.12 108.446L321.596 109.979L324.071 111.706L326.547 113.667L329.022 115.914L331.498 118.515L333.973 121.557L336.449 125.161L338.924 129.489L341.4 134.766L343.875 141.306L346.351 149.545L348.826 160.069L351.302 173.605L353.777 190.838L356.253 211.897L358.728 235.575L361.203 259.253L363.679 280.312L366.154 297.545L368.63 311.081L371.105 321.605L373.581 329.844L376.056 336.384L378.532 341.661L381.007 345.989L383.483 349.593L385.958 352.635L388.434 355.236L390.909 357.483L393.385 359.444L395.86 361.171L398.336 362.704L400.811 364.073L403.287 365.305L405.762 366.419L408.238 367.431L410.713 368.356L413.189 369.205L415.664 369.986L418.14 370.708L420.615 371.378L423.091 372L425.566 372.58L428.042 373.122L430.517 373.63L432.993 374.107L435.468 374.555L437.944 374.978L440.419 375.377L442.895 375.753L445.37 376.11L447.846 376.447L450.321 376.768L452.797 377.072L455.272 377.361L457.748 377.637L460.223 377.899L462.699 378.149L465.174 378.387L467.65 378.614L470.125 378.831L472.6 379.039L475.076 379.237L477.551 379.427L480.027 379.609L482.502 379.782L484.978 379.949L487.453 380.108L489.929 380.261L492.404 380.408L494.88 380.548L497.355 380.683L499.831 380.812L502.306 380.936L504.782 381.055L507.257 381.17L509.733 381.279L512.208 381.385L514.684 381.486L517.159 381.583L519.635 381.677L522.11 381.767L524.586 381.853L527.061 381.936L529.537 382.016L532.012 382.092L534.488 382.166L536.963 382.237L539.439 382.305L541.914 382.37L544.39 382.433L546.865 382.494L549.341 382.552L551.816 382.608L554.292 382.662L556.767 382.714L559.243 382.764L561.718 382.812L564.194 382.858L566.669 382.902L569.145 382.945L571.62 382.986L574.096 383.026L576.571 383.064L579.047 383.1L581.522 383.135L583.997 383.169L586.473 383.202L588.948 383.233L591.424 383.263L593.899 383.292L596.375 383.32L598.85 383.347L601.326 383.373L603.801 383.398L606.277 383.422L608.752 383.445L611.228 383.467L613.703 383.488L616.179 383.509L618.654 383.528L621.13 383.547L623.605 383.566L626.081 383.583L628.556 383.6L631.032 383.617L633.507 383.632L635.983 383.647L638.458 383.662L640.934 383.676L643.409 383.689L645.885 383.702L648.36 383.715L650.836 383.727L653.311 383.738L655.787 383.749" fill="none" stroke="#009e73" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="f [Hz]" data-side="bottom" data-unit="Hz" data-prefix="" data-ticks="5" data-tick-rule="all">
+            <path d="M61.669 398.567L655.787 398.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M61.669 398.567L61.669 401.567M210.199 398.567L210.199 401.567M358.728 398.567L358.728 401.567M507.257 398.567L507.257 401.567M655.787 398.567L655.787 401.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="61.669" y="405.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">10¹</text>
+            <text x="210.199" y="405.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">10²</text>
+            <text x="358.728" y="405.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">10³</text>
+            <text x="507.257" y="405.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">10⁴</text>
+            <text x="655.787" y="405.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">10⁵</text>
+            <text x="358.728" y="423.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">f [Hz]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="|H|" data-side="left" data-unit="" data-prefix="" data-ticks="4" data-tick-rule="all">
+            <path d="M61.669 398.567L61.669 72.583" fill="none" stroke="#0072b2" stroke-width="0.9"/>
+            <path d="M61.669 326.541L58.669 326.541M61.669 254.512L58.669 254.512M61.669 182.483L58.669 182.483M61.669 110.454L58.669 110.454" fill="none" stroke="#0072b2" stroke-width="0.9"/>
+            <text x="54.669" y="326.541" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#0072b2">10⁻³</text>
+            <text x="54.669" y="254.512" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#0072b2">10⁻²</text>
+            <text x="54.669" y="182.483" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#0072b2">10⁻¹</text>
+            <text x="54.669" y="110.454" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#0072b2">10⁰</text>
+            <text x="26.333" y="235.575" transform="rotate(-90 26.333 235.575)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#0072b2">|H|</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-y2">
+          <g role="graphics-object" data-marey-role="axis" aria-label="φ [rad]" data-side="right" data-unit="rad" data-prefix="" data-ticks="3" data-tick-rule="all">
+            <path d="M655.787 398.567L655.787 72.583" fill="none" stroke="#009e73" stroke-width="0.9"/>
+            <path d="M655.787 384.033L658.787 384.033M655.787 235.575L658.787 235.575M655.787 87.117L658.787 87.117" fill="none" stroke="#009e73" stroke-width="0.9"/>
+            <text x="662.787" y="384.033" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#009e73">−π</text>
+            <text x="662.787" y="235.575" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#009e73">−π/2</text>
+            <text x="662.787" y="87.117" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central" fill="#009e73">0</text>
+            <text x="693.667" y="235.575" transform="rotate(90 693.667 235.575)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#009e73">φ [rad]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_legend">
+          <g role="group" data-marey-role="legend" aria-label="legend" data-entries="2">
+            <path d="M68.669 391.567L143.173 391.567L143.173 348.133L68.669 348.133Z" fill="#ffffff" fill-opacity="0.9"/>
+            <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="gain" data-series="gain" data-color="#0072b2">
+              <path d="M75.669 360.992L93.669 360.992" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round"/>
+              <text x="101.669" y="360.992" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">gain</text>
+            </g>
+            <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="phase" data-series="phase" data-color="#009e73">
+              <path d="M75.669 378.708L93.669 378.708" fill="none" stroke="#009e73" stroke-width="2" stroke-linecap="round"/>
+              <text x="101.669" y="378.708" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">phase</text>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

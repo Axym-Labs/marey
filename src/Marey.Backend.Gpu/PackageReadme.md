@@ -10,11 +10,17 @@ visualization system for F#. Skia draws on an OpenGL 3.3 core context, offscreen
 
 open Marey
 
-use gpu = new GpuRenderer()
-let extent = Chart.size 800.0 500.0
+let numbers, _ = Rng.units 200_000 (Rng.seeded 1UL)
+let xs, ys = numbers.[.. 99_999], numbers.[100_000 ..]
 
-// Lay out with the renderer's own measurer, so labels sit where their gutters expect them.
-let png = Chart.Scatter(xs, ys) |> Chart.toSceneWith gpu.Measurer extent |> gpu.RenderPng extent
+match GpuBackend.probe () with
+| Ok driver ->
+    use gpu = new GpuRenderer()
+    let extent = Chart.size 800.0 500.0
+    // Lay out with the renderer's own measurer, so labels sit where their gutters expect them.
+    let png = Chart.Scatter(xs, ys) |> Chart.toSceneWith gpu.Measurer extent |> gpu.RenderPng extent
+    printfn "%d bytes of PNG from %s" png.Length driver
+| Error why -> printfn "no OpenGL 3.3 context: %s" why
 ```
 
 ## One context, any thread
@@ -43,7 +49,7 @@ is left to Skia.
 
 ## Simulation and LIC on the GPU
 
-```fsharp
+```fsharp norun
 let step = GpuSim.stam gpu options   // the same Fluid as Stam.step, on this GPU
 let lattice = GpuSim.lbm gpu water   // the same Lattice as Lbm.step
 ```
@@ -60,7 +66,7 @@ CPU's, the pixels are not.
 
 ## In a window
 
-```fsharp
+```fsharp norun
 Chart.show figure          // returns when the window is closed
 Live.show (interact { … }) // a live figure, its controls in a strip above it
 ```

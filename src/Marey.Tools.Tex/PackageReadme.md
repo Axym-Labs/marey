@@ -5,9 +5,16 @@ dimensionally-typed visualization system for F#. **TeX sets the formula; the res
 so every backend draws it.**
 
 ```fsharp
+#r "nuget: Marey"
+#r "nuget: Marey.Backend.Skia"
 #r "nuget: Marey.Tools.Tex"
 
 open Marey
+open Marey.UnitsOfMeasure
+
+let extent = Chart.size 640.0 400.0
+let t = Array.init 24 (fun i -> float i * 0.025<s>)
+let figure = Chart.line U.second U.metre t (t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)) |> Chart.withTheme Theme.tikz
 
 // A scene whose runs carry TeX — which the axis compiler already fills for you when the
 // unit style is `Siunitx`.

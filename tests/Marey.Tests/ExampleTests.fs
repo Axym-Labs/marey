@@ -1,7 +1,7 @@
 /// `examples/` is executable, and this is what executes it.
 ///
 /// Each `.fsx` under `examples/` is run **on its own** under `dotnet fsi`, and so is each `.dib`
-/// notebook, as its F# cells in order. Unlike `docs/guide.md`,
+/// notebook, as its F# cells in order. Unlike the guide's pages in `docs/guide/`,
 /// whose blocks are concatenated into one continuous session by `GuideTests`. That difference is
 /// the point: a guide example is a fragment of a narrative and may lean on a binding from six
 /// sections earlier, while an example is something a reader downloads and runs. It has to stand

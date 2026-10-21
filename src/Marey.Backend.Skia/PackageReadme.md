@@ -10,6 +10,9 @@ dimensionally-typed visualization system for F#. `netstandard2.1`.
 open Marey
 open Marey.UnitsOfMeasure
 
+let t = Array.init 24 (fun i -> float i * 0.025<s>)
+let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
+
 let figure = Chart.line U.second U.metre t x
 
 // Bytes, or straight to a file. `toFileBytes` rather than `toFile`: writing text has an
@@ -76,5 +79,5 @@ library is missing, the entry points raise a message naming the package to add r
 dependency on this package or on SkiaSharp, and a test asserts it against the built assembly
 graph.
 
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide/01-start.md)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

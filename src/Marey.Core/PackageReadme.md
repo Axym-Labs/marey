@@ -44,5 +44,5 @@ a dependency.
 [`Marey.Plot`](https://www.nuget.org/packages/Marey.Plot) and a backend, or
 [`Marey.Html`](https://www.nuget.org/packages/Marey.Html), which pulls in everything.
 
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [The guide on the scene](https://github.com/Axym-Labs/marey/blob/main/docs/guide/15-underneath.md)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

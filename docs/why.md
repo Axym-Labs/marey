@@ -216,9 +216,10 @@ rendering is a function passed in at render time. That is why the same figure be
 `tikzpicture` source by swapping a theme, and why the SVG is byte-identical across renders — output
 that diffs cleanly is output that can be reviewed.
 
-**The documentation executes.** Every `fsharp` block in [the guide](guide.md) is extracted,
-concatenated and run under `dotnet fsi` by the test suite, and every script in
-[`examples/`](../examples/) is run on its own, so neither can drift from the library.
+**The documentation executes.** Every `fsharp` block in [the guide](guide/README.md) is extracted,
+concatenated and run under `dotnet fsi` by the test suite, each figure it shows is redrawn and
+compared, and every script in [`examples/`](../examples/) is run on its own, so neither can drift
+from the library.
 
 *(The blocks on this page are the exception. They are illustrative, and mirror code that is tested
 in the guide, the README and the examples.)*
@@ -233,12 +234,10 @@ in the guide, the README and the examples.)*
 - **The units are known only at runtime, and the compile-time check is the point.** `U.parse`
   reads UDUNITS-2's syntax and `U.tryAs` asserts a measure back, checked; but a unit first seen at
   run time is checked at run time, and no parser can move that check to the compiler.
-- **Interactivity outside a notebook, or 3D, is needed.** Thirteen geoms and three backends. A
-  figure can be animated, rendered frame by frame and encoded to video, and in a Verso notebook it
-  can carry controls, zoom and a readout. But there is no interactive canvas outside a notebook, no
-  datum can be picked, and nothing is projected. The
-  [guide's closing section](guide.md#what-is-not-here-yet) is the current list of what does not
-  exist.
+- **3D is needed.** Nothing is projected. A figure can be animated, rendered frame by frame and
+  encoded to video, and in a notebook, a window or a browser page it can carry controls, zoom and
+  a readout, but no datum can be picked yet. [Not in 1.0](not-in-1.0.md) is the current list of
+  what does not exist.
 - **The host is not .NET.** The argument above rests on F# units of measure, and there is no version
   of this library for a language without them.
 

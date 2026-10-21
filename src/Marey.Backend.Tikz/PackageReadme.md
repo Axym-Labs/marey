@@ -11,6 +11,9 @@ visualization system for F#. Emits `tikzpicture` source for pasting into a LaTeX
 open Marey
 open Marey.UnitsOfMeasure
 
+let t = Array.init 24 (fun i -> float i * 0.025<s>)
+let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
+
 Chart.line U.second U.metre t x
 |> Chart.withTheme Theme.tikz
 |> Chart.toFile TikzBackend.render "fall.tex" (Chart.size 320.0 200.0)
@@ -42,5 +45,5 @@ measured against the theme's font metrics while TeX sets the text in the documen
 
 Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else.
 
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide.md)
+- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide/06-paper.md)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

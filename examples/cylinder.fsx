@@ -11,7 +11,7 @@
     put τ at or below ½, is refused with the numbers.
 
     With a GPU the lattice is stepped there, twenty ticks a call, and the figure's LIC is convolved
-    there too, because the figure is compiled with the GPU renderer's measurer (D150). Without one
+    there too, because the figure is compiled with the GPU renderer's measurer. Without one
     the same code runs on the CPU, and says so. The two agree to a few parts in a million, checked
     below when there is a GPU to check.
 

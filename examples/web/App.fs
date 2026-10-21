@@ -13,6 +13,9 @@ open Marey.UnitsOfMeasure
 [<Emit("document.getElementById($0)")>]
 let private element (_id: string) : obj = jsNative
 
+[<Emit("document.getElementById($0)")>]
+let private canvasById (_id: string) : CanvasElement = jsNative
+
 [<Emit("Number($0.value)")>]
 let private valueOf (_input: obj) : float = jsNative
 
@@ -37,7 +40,7 @@ let figure (f: float<1 / s>) (gamma: float<1 / s>) : Figure =
     |> Chart.overlay (Chart.scatter U.second U.metre ts xs)
     |> Chart.withTitle "A damped oscillator, compiled in the browser"
 
-/// A cloud of `n` points: the batch WebGL2 draws (D122). Seeded, so a count always draws the same
+/// A cloud of `n` points: the batch WebGL2 draws. Seeded, so a count always draws the same
 /// cloud.
 let cloud (n: int) : Figure =
     let rng = Rng.seeded 7UL
@@ -49,8 +52,8 @@ let cloud (n: int) : Figure =
     Chart.scatter U.metre U.volt x y
     |> Chart.withTitle (sprintf "%s points" (n.ToString "N0"))
 
-let private canvas = Canvas.byId "plot"
-let private ctx = Canvas.context canvas
+let private canvas = canvasById "plot"
+let private ctx = canvas.getContext "2d"
 let private status = element "status"
 let private frequency = element "f"
 let private damping = element "gamma"
@@ -70,7 +73,7 @@ let private draw (m: WebMeasurer) =
          | None -> sprintf "Compiled and drawn in %s ms." took
          | Some why -> sprintf "Compiled and drawn in %s ms, approximated: %s." took why)
 
-let private cloudCtx = Canvas.context (Canvas.byId "cloud")
+let private cloudCtx = (canvasById "cloud").getContext "2d"
 let private cloudStatus = element "cloud-status"
 let private count = element "n"
 let private webgl = element "webgl"
@@ -98,12 +101,13 @@ let private drawCloud (m: WebMeasurer) =
             (Num.upTo 1 (drawn - compiled))
             (if isChecked webgl then "on" else "off"))
 
-// ---- A simulation in the page (M5.5) ---------------------------------------------------------
+// ---- A simulation in the page --------------------------------------------------------------------
 //
-// The oscillator gate 10 runs under Node and the .NET suite runs too: a mass on a spring of period
-// 1 s, stepped by velocity Verlet at 1 ms. Its state at 10 s is printed to twelve decimals, which
-// `tests/Marey.Tests/golden/sim-runs.txt` holds as `verlet 10`. A chaotic system would not agree
-// (D141); this one does, digit for digit.
+// The oscillator the test suite runs under Node and under .NET: a mass on a spring of period 1 s,
+// stepped by velocity Verlet at 1 ms. Its state at 10 s is printed to twelve decimals, which
+// `tests/Marey.Tests/golden/sim-runs.txt` holds as `verlet 10`. A chaotic system would not agree,
+// since JavaScript's `sin` and `exp` differ from .NET's in the last bit; this one does, digit for
+// digit.
 
 let private omega2 = 4.0 * Math.PI * Math.PI * 1.0</s^2>
 
@@ -128,7 +132,7 @@ let springFigure (t: float<s>) : Figure =
 [<Emit("requestAnimationFrame($0)")>]
 let private nextFrame (_f: float -> unit) : unit = jsNative
 
-let private springCtx = Canvas.context (Canvas.byId "spring")
+let private springCtx = (canvasById "spring").getContext "2d"
 let private springStatus = element "spring-status"
 
 let private playSpring (m: WebMeasurer) =

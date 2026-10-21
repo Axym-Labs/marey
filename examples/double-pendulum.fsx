@@ -6,7 +6,7 @@
 
     Two equal pendulums, the second hung from the first, released from rest at θ₁ = 2 rad and
     θ₂ = 2.5 rad. The state has four numbers, two angles and two angular velocities, so the motion
-    is not a flow on a plane, and M4's phase portrait of a single pendulum shows what it would do
+    is not a flow on a plane, and the phase portrait of a single pendulum shows what it would do
     if the second bob were not there: drawn under the first bob's actual path, the path cuts
     across the single pendulum's orbits. A Poincaré section cuts the four dimensions down to two:
     every time the first arm swings through the vertical going forward, the second arm's angle and
@@ -29,8 +29,8 @@ open Marey.UnitsOfMeasure
 let g = 9.81<m/s^2>
 let length = 1.0<m>
 
-/// The two angles and their rates. A record with four quantities of two units is the case D134's
-/// third tier is for: a `Tangent` says how to advance it.
+/// The two angles and their rates. A record with four quantities of two units is a state no
+/// built-in integrator knows the shape of, so a `Tangent` says how to advance it.
 type Arms =
     { T1: float<rad>
       T2: float<rad>
