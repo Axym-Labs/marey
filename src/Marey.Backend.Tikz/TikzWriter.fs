@@ -76,7 +76,7 @@ module internal Tikz =
 
     /// Decimal places for colour components. sRGB at 8 bits has a quantum of 1/255 = 3.9e-3, so
     /// six places is four orders of magnitude finer than anything a display can show — but it is
-    /// cheap, and F1 measures the Oklab round-trip floor at 9.4e-7, which would be visible in a
+    /// cheap, and the Oklab round-trip floor measures 9.4e-7, which would be visible in a
     /// diff at three places and invisible at six.
     [<Literal>]
     let ColorDecimals = 6
@@ -93,7 +93,7 @@ module internal Tikz =
     /// and past about 2^31 the number scanner raises `Number too big` before even converting.
     /// Both are hard errors: the document does not compile.
     ///
-    /// **This is not a hypothetical, and D9 is why.** `Scale.Forward` deliberately does not
+    /// **This is not a hypothetical.** `Scale.Forward` deliberately does not
     /// clamp — "clamping would pile out-of-range data onto the panel edge, which is a lie about
     /// the data" — so out-of-domain points legitimately project far outside [0,1] and are removed
     /// by the panel's `Clip` node. SVG writes those coordinates without complaint and the clip
@@ -144,9 +144,9 @@ module internal Tikz =
     /// What to typeset for a text run: its TeX source if it has any, otherwise its escaped plain
     /// text.
     ///
-    /// D32's whole point, in one function. An empty `Tex` is treated as absent rather than as an
-    /// instruction to typeset nothing, which matches `Scene.prune`'s rule that a run is empty
-    /// only when *both* forms are.
+    /// The point of a run's `Tex` field, in one function. An empty `Tex` is treated as absent
+    /// rather than as an instruction to typeset nothing, which matches `Scene.prune`'s rule that a
+    /// run is empty only when *both* forms are.
     let runContent (tex: string option) (text: string) : string =
         match tex with
         | Some t when not (String.IsNullOrEmpty t) -> t

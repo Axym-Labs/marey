@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- `Marey.Plot`, because `FrameSequence` is what this encodes and phase 5 put it there.
+    <!-- `Marey.Plot`, because `FrameSequence` is what this encodes and it lives there.
          That drags the whole plotting stack, and it costs nothing: a `FrameSequence` cannot
          exist without having been produced by `Frames.write`, so every possible consumer of
          this package already has the reference. Taking the sequence's *fields* instead — a
