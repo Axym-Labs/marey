@@ -123,15 +123,7 @@ namespace Marey
         | Y2
 
     type LiveZoom =
-        {
-          Row: int
-          Col: int
-
-          Inset: int option
-          Axis: ZoomAxis
-          Lo: float
-          Hi: float
-        }
+        internal
 
     [<NoComparison>]
     type LiveState =

@@ -40,13 +40,14 @@ type ZoomAxis =
 /// D105 — one axis the reader has zoomed or panned: the panel it was done on, which axis, and the
 /// domain, raw, in that axis's own unit.
 type LiveZoom =
-    { Row: int
-      Col: int
-      /// D180 — the inset of that panel the zoom was made in, or `None` for the panel.
-      Inset: int option
-      Axis: ZoomAxis
-      Lo: float
-      Hi: float }
+    internal
+        { Row: int
+          Col: int
+          /// D180 — the inset of that panel the zoom was made in, or `None` for the panel.
+          Inset: int option
+          Axis: ZoomAxis
+          Lo: float
+          Hi: float }
 
 /// Where a live figure is.
 ///
