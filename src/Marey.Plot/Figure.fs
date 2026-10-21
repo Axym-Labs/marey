@@ -301,11 +301,14 @@ type PanelLayout =
       /// panel with one y axis.
       Y2TicksW: float<px>
       Y2TitleW: float<px>
-      /// D177 — the prefix the second y axis is pinned to, as `YPrefix` is for the first.
+      /// D177 — the prefix the axis on the right is pinned to, as `YPrefix` is for the first: a
+      /// second y axis's, or a secondary y axis's (D178). A panel has one right side.
       Y2Prefix: Prefix option
       /// D178 — a secondary x axis's tick labels and title, above the plot.
       X2TicksH: float<px>
-      X2TitleH: float<px> }
+      X2TitleH: float<px>
+      /// D178 — the prefix a secondary x axis is pinned to.
+      X2Prefix: Prefix option }
 
 [<RequireQualifiedAccess>]
 module PanelLayout =
@@ -335,7 +338,8 @@ module PanelLayout =
           Y2TitleW = 0.0<px>
           Y2Prefix = None
           X2TicksH = 0.0<px>
-          X2TitleH = 0.0<px> }
+          X2TitleH = 0.0<px>
+          X2Prefix = None }
 
     /// D72's union, and the whole rule is one sentence: **every size is the largest any sampled
     /// frame needed.**
@@ -380,7 +384,8 @@ module PanelLayout =
           Y2TitleW = max a.Y2TitleW b.Y2TitleW
           Y2Prefix = a.Y2Prefix
           X2TicksH = max a.X2TicksH b.X2TicksH
-          X2TitleH = max a.X2TitleH b.X2TitleH }
+          X2TitleH = max a.X2TitleH b.X2TitleH
+          X2Prefix = a.X2Prefix }
 
     /// D173 — the room a panel's gutters take on each side of its plot, slack included: what the
     /// outer grid's gutter tracks are sized from.
@@ -1563,6 +1568,40 @@ module Figure =
         | None -> 0.0<px>
         | Some letters -> Rect.height (textBox m (letterFont fig.Theme letters) "(a)")
 
+    /// D178 — a secondary axis's map from the primary axis's numbers to its own, and back: the one
+    /// stated, or else the conversion between the two units, refused when their dimensions differ.
+    let private secondaryMap (axis: string) (sa: SecondaryAxis) (primary: IScaleErased) =
+        let u = sa.Unit
+
+        let unitText (dim: Dim) symbol factors toSI offset =
+            UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none symbol factors dim toSI offset
+
+        match primary.Kind with
+        | ScaleKind.Ordinal _ -> failwithf "Marey: a categorical %s axis has no numbers for a secondary axis to read." axis
+        | _ -> ()
+
+        match sa.Map with
+        | Some map -> map.Forward, map.Inverse
+        | None ->
+            if primary.Stated && u.Dim <> primary.Dim then
+                failwithf
+                    "Marey: the secondary %s axis is in %s but the %s axis is in %s. Two dimensions need a map between them (`withTopAxisMapped`, `withRightAxisMapped`)."
+                    axis
+                    (unitText u.Dim u.Symbol u.Factors u.ToSI u.OffsetSI)
+                    axis
+                    (unitText primary.Dim primary.Symbol primary.Factors primary.ToSI primary.OffsetSI)
+
+            (fun v -> (v * primary.ToSI + primary.OffsetSI - u.OffsetSI) / u.ToSI),
+            (fun w -> (w * u.ToSI + u.OffsetSI - primary.OffsetSI) / primary.ToSI)
+
+    /// D178 — the prefix a secondary axis takes over the primary's numbers `lo` to `hi`: the one
+    /// its own numbers there would choose, which is what a shot pins it to.
+    let private secondaryPrefix (axis: string) (sa: SecondaryAxis) (primary: IScaleErased) (lo: float, hi: float) =
+        let forward, _ = secondaryMap axis sa primary
+        let a, b = forward lo, forward hi
+        let lo2, hi2 = min a b, max a b
+        Axis.prefixForPacked (lo2, hi2) (Erase.packScale (Scale.linear sa.Unit (LanguagePrimitives.FloatWithMeasure lo2, LanguagePrimitives.FloatWithMeasure hi2)))
+
     /// Compile one panel into a device-space region.
     /// D72 — one function, two answers: the panel's frozen inner grid, and a thunk that draws
     /// the panel inside it.
@@ -1586,7 +1625,7 @@ module Figure =
         (extent: Extent<px>)
         (region: Rect<px>)
         (frozen: PanelLayout option)
-        (pins: Prefix option * Prefix option * Prefix option)
+        (pins: Prefix option * Prefix option * Prefix option * Prefix option)
         (letterH: float<px>)
         (p: Panel)
         : PanelLayout * (unit -> PanelLayout) * (unit -> Node) =
@@ -1606,10 +1645,11 @@ module Figure =
             // `pins` is the same choice for a panel being *measured* rather than drawn: the union
             // measures every state under the prefix it will be drawn in, or a state whose own
             // prefix differs is measured with labels it never shows (D108).
-            let pinsX, pinsY, pinsY2 = pins
+            let pinsX, pinsY, pinsY2, pinsX2 = pins
             let pinX = match frozen with Some f -> f.XPrefix | None -> pinsX
             let pinY = match frozen with Some f -> f.YPrefix | None -> pinsY
             let pinY2 = match frozen with Some f -> f.Y2Prefix | None -> pinsY2
+            let pinX2 = match frozen with Some f -> f.X2Prefix | None -> pinsX2
 
             let xSpec, ySpec = axisSpecs theme (pinX, pinY) p
 
@@ -1625,33 +1665,15 @@ module Figure =
             // own numbers over the image of the primary's domain, then placed through the inverse
             // and the primary's scale, so a reciprocal map puts evenly spaced energies unevenly
             // along a wavelength. The map is checked on the domain before anything is drawn.
-            let secondaryOn (axis: string) (cfg: AxisConfig) (side: AxisSide) (primary: IScaleErased) : AxisSpec option =
+            //
+            // D178 — in a shot its prefix is pinned too, as D73 pins the primary's, so a zoom that
+            // crosses a decade does not step its title.
+            let secondaryOn (axis: string) (cfg: AxisConfig) (side: AxisSide) (pin: Prefix option) (primary: IScaleErased) : AxisSpec option =
                 match cfg.Secondary with
                 | None -> None
                 | Some sa ->
                     let u = sa.Unit
-
-                    let unitText (dim: Dim) symbol factors toSI offset =
-                        UnitDisplay.unitTextErasedWith Unicode UnitRegistry.si Prefix.none symbol factors dim toSI offset
-
-                    match primary.Kind with
-                    | ScaleKind.Ordinal _ -> failwithf "Marey: a categorical %s axis has no numbers for a secondary axis to read." axis
-                    | _ -> ()
-
-                    let forward, inverse =
-                        match sa.Map with
-                        | Some map -> map.Forward, map.Inverse
-                        | None ->
-                            if primary.Stated && u.Dim <> primary.Dim then
-                                failwithf
-                                    "Marey: the secondary %s axis is in %s but the %s axis is in %s. Two dimensions need a map between them (`withTopAxisMapped`, `withRightAxisMapped`)."
-                                    axis
-                                    (unitText u.Dim u.Symbol u.Factors u.ToSI u.OffsetSI)
-                                    axis
-                                    (unitText primary.Dim primary.Symbol primary.Factors primary.ToSI primary.OffsetSI)
-
-                            (fun v -> (v * primary.ToSI + primary.OffsetSI - u.OffsetSI) / u.ToSI),
-                            (fun w -> (w * u.ToSI + u.OffsetSI - primary.OffsetSI) / primary.ToSI)
+                    let forward, inverse = secondaryMap axis sa primary
 
                     let finite (v: float) = not (System.Double.IsNaN v || System.Double.IsInfinity v)
                     let lo, hi = primary.Domain
@@ -1676,7 +1698,7 @@ module Figure =
 
                     let lo2, hi2 = min ws.[0] ws.[n], max ws.[0] ws.[n]
                     let packed = Erase.packScale (Scale.linear u (LanguagePrimitives.FloatWithMeasure lo2, LanguagePrimitives.FloatWithMeasure hi2))
-                    let spec = Axes.specTicked TicksAuto cfg.Minor FormatAuto None (defaultArg cfg.Style theme.UnitStyle) cfg.TickCount sa.Label side packed
+                    let spec = Axes.specTicked TicksAuto cfg.Minor FormatAuto pin (defaultArg cfg.Style theme.UnitStyle) cfg.TickCount sa.Label side packed
                     let factor = Prefix.factor spec.Prefix
                     let at (w: float) = primary.Project(inverse w)
 
@@ -1690,9 +1712,9 @@ module Figure =
             let primaryX, primaryY = axisScalesErased p
 
             let x2 =
-                secondaryOn "x" p.XAxis AxisTop primaryX |> Option.map (fun spec -> shown p.XAxis, spec)
+                secondaryOn "x" p.XAxis AxisTop pinX2 primaryX |> Option.map (fun spec -> shown p.XAxis, spec)
 
-            let ySecondary = secondaryOn "y" p.YAxis AxisRight primaryY
+            let ySecondary = secondaryOn "y" p.YAxis AxisRight pinY2 primaryY
 
             if ySecondary.IsSome && y2.IsSome then
                 failwith "Marey: a panel has one right side, and this one has both a second y axis and a secondary one."
@@ -1915,6 +1937,7 @@ module Figure =
                   Y2TicksW = y2Ticks
                   Y2TitleW = y2Title
                   Y2Prefix = pinY2
+                  X2Prefix = pinX2
 
                   Probe = probe
                   XPrefix = pinX
@@ -2549,9 +2572,9 @@ module Figure =
 
     /// An inset's gutters, measured at the plot it will have.
     let private measureInset (m: ITextMeasurer) (theme: Theme) (extent: Extent<px>) (key: Key) (rect: Rect<px>) (ip: Panel) : PanelLayout =
-        let first, _, _ = compilePanelKeyed key m theme extent rect None (None, None, None) 0.0<px> ip
+        let first, _, _ = compilePanelKeyed key m theme extent rect None (None, None, None, None) 0.0<px> ip
         let probe: Extent<px> = { Width = Rect.width rect; Height = Rect.height rect }
-        let _, needed, _ = compilePanelKeyed key m theme extent (insetRegion rect first) (Some { first with Probe = probe }) (None, None, None) 0.0<px> ip
+        let _, needed, _ = compilePanelKeyed key m theme extent (insetRegion rect first) (Some { first with Probe = probe }) (None, None, None, None) 0.0<px> ip
         let l = needed ()
 
         if l.BarW > 0.0<px> || l.LegendW > 0.0<px> || l.LegendH > 0.0<px> then
@@ -2960,14 +2983,14 @@ module Figure =
                 match Layout.tryFindPx key outer with
                 | None -> None
                 | Some region ->
-                    let layout, _, _ = compilePanel m fig.Theme extent region None (None, None, None) (letterHeight m fig) (unify (ownLegend fig p))
+                    let layout, _, _ = compilePanel m fig.Theme extent region None (None, None, None, None) (letterHeight m fig) (unify (ownLegend fig p))
                     Some(key, layout))
 
         let rescore (key: string) (region: Rect<px>) (l: PanelLayout) =
             fig.Panels
             |> Array.filter (fun p -> sprintf "panel-%d-%d" p.Row p.Col = key)
             |> Array.map (fun p ->
-                let _, needed, _ = compilePanel m fig.Theme extent region (Some l) (None, None, None) (letterHeight m fig) (unify (ownLegend fig p))
+                let _, needed, _ = compilePanel m fig.Theme extent region (Some l) (None, None, None, None) (letterHeight m fig) (unify (ownLegend fig p))
                 (needed ()).LegendScores)
             |> Array.filter (fun s -> s.Length = 4)
             |> Array.fold (fun acc s -> if acc = [||] then s else Array.map2 max acc s) [||]
@@ -3085,24 +3108,39 @@ module Figure =
                 // A state whose panel is one constant contributes the constant and not its
                 // padding, by the rule `agreeOn` uses across layers: a wave that starts flat at
                 // zero is padded to ±1 m in its first frame, and that is not a number of the shot.
-                let pinOver (panels: Panel[]) (packedOf: Panel -> PackedScale) (pointOf: Panel -> float option) =
+                let unionOver (panels: Panel[]) (packedOf: Panel -> PackedScale) (pointOf: Panel -> float option) =
                     if panels.Length = 0 then
                         None
                     else
-                        let lo, hi =
-                            panels
-                            |> Array.map (fun p -> Axis.domainOfPacked (packedOf p), pointOf p)
-                            |> Scale.shareDomain autoPadding
+                        panels
+                        |> Array.map (fun p -> Axis.domainOfPacked (packedOf p), pointOf p)
+                        |> Scale.shareDomain autoPadding
+                        |> Some
 
-                        Some(Axis.prefixForPacked (lo, hi) (packedOf panels.[0]))
+                let pinOver (panels: Panel[]) (packedOf: Panel -> PackedScale) (pointOf: Panel -> float option) =
+                    unionOver panels packedOf pointOf |> Option.map (fun d -> Axis.prefixForPacked d (packedOf panels.[0]))
 
-                let pinFor = pinOver drawn
+                // D178 — a secondary axis pinned over the image of the primary's union, which is
+                // the union of its images, since its map is monotone.
+                let secondaryPin (axis: string) (cfgOf: Panel -> AxisConfig) (packedOf: Panel -> PackedScale) (erasedOf: Panel -> IScaleErased) (pointOf: Panel -> float option) =
+                    match drawn |> Array.tryHead |> Option.bind (fun p -> (cfgOf p).Secondary) with
+                    | Some sa -> unionOver drawn packedOf pointOf |> Option.map (secondaryPrefix axis sa (erasedOf drawn.[0]))
+                    | None -> None
+
+                let xPacked (p: Panel) = fst (axisScales p)
+                let yPacked (p: Panel) = snd (axisScales p)
+
+                let rightPin =
+                    // D177 — the second y axis pinned the same way, over its own layers.
+                    match pinOver (drawn |> Array.choose secondaryOf) yPacked (panelPoints >> snd) with
+                    | Some pin -> Some pin
+                    | None -> secondaryPin "y" (fun p -> p.YAxis) yPacked (axisScalesErased >> snd) (panelPoints >> snd)
 
                 key,
-                (pinFor (fun p -> fst (axisScales p)) (panelPoints >> fst),
-                 pinFor (fun p -> snd (axisScales p)) (panelPoints >> snd),
-                 // D177 — the second y axis pinned the same way, over its own layers.
-                 pinOver (drawn |> Array.choose secondaryOf) (fun p -> snd (axisScales p)) (panelPoints >> snd)))
+                (pinOver drawn xPacked (panelPoints >> fst),
+                 pinOver drawn yPacked (panelPoints >> snd),
+                 rightPin,
+                 secondaryPin "x" (fun p -> p.XAxis) xPacked (axisScalesErased >> fst) (panelPoints >> fst)))
             |> dict
 
         let panels =
@@ -3113,15 +3151,15 @@ module Figure =
             |> Array.groupBy fst
             |> Array.map (fun (key, measured) ->
                 let merged = measured |> Array.map snd |> Array.reduce PanelLayout.union
-                let pinX, pinY, pinY2 = pins.[key]
-                key, { merged with XPrefix = pinX; YPrefix = pinY; Y2Prefix = pinY2 })
+                let pinX, pinY, pinY2, pinX2 = pins.[key]
+                key, { merged with XPrefix = pinX; YPrefix = pinY; Y2Prefix = pinY2; X2Prefix = pinX2 })
 
         // Every state's scores over the new plot, and the largest each corner had, as `union` does.
         let rescore (key: string) (region: Rect<px>) (l: PanelLayout) =
             entries
             |> Array.filter (fun (k, _) -> k = key)
             |> Array.map (fun (_, (fig, _, unified)) ->
-                let _, needed, _ = compilePanel m fig.Theme extent region (Some l) (None, None, None) (letterHeight m fig) unified
+                let _, needed, _ = compilePanel m fig.Theme extent region (Some l) (None, None, None, None) (letterHeight m fig) unified
                 (needed ()).LegendScores)
             |> Array.filter (fun s -> s.Length = 4)
             |> Array.fold (fun acc s -> if acc = [||] then s else Array.map2 max acc s) [||]
@@ -3219,7 +3257,7 @@ module Figure =
                 match Layout.tryFindPx key shot.Outer, frozen with
                 | Some region, Some f ->
                     let _, needed, _ =
-                        compilePanel m fig.Theme extent region (Some f) (None, None, None) (letterHeight m fig) (fitAspect f (unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p))))
+                        compilePanel m fig.Theme extent region (Some f) (None, None, None, None) (letterHeight m fig) (fitAspect f (unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p))))
 
                     let n = needed ()
 
@@ -3410,7 +3448,7 @@ module Figure =
                     let frozen = shot.Panels |> Array.tryPick (fun (k, l) -> if k = key then Some l else None)
                     let unified = unify (pinned shot.ColourDomains shot.QuiverKeys (ownLegend fig p))
                     let unified = match frozen with Some f -> fitAspect f unified | None -> unified
-                    let _, _, draw = compilePanel m theme extent region frozen (None, None, None) (letterHeight m fig) unified
+                    let _, _, draw = compilePanel m theme extent region frozen (None, None, None, None) (letterHeight m fig) unified
 
                     // D180 — the insets over the host's plot, each with its zoom drawn first.
                     let insets =
@@ -3424,7 +3462,7 @@ module Figure =
                                 | Some l ->
                                     let rect = insetRect hostPlot inset.At
                                     let ip = fitAspect l (unify inset.Panel)
-                                    let _, _, drawInset = compilePanelKeyed (Keys.inset (Keys.panel p.Row p.Col) i) m theme extent (insetRegion rect l) (Some l) (None, None, None) 0.0<px> ip
+                                    let _, _, drawInset = compilePanelKeyed (Keys.inset (Keys.panel p.Row p.Col) i) m theme extent (insetRegion rect l) (Some l) (None, None, None, None) 0.0<px> ip
 
                                     Group
                                         [| (if inset.Indicate then indicator theme extent unified hostPlot ip rect else Scene.empty)

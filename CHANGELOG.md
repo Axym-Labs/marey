@@ -23,6 +23,11 @@ land in a minor release.
   columns than before (three beside two has four rows, not six), so `withRowHeights` after such a
   `beside` takes that many weights, and its plots move. Figures whose sides line up row for row
   draw exactly as before.
+- **A secondary axis keeps one prefix through an animation.** Its prefix was chosen per frame from
+  its own numbers, so a zoom across a decade stepped its title (`x [mm]` to `x [µm]`) beside a
+  primary title that held still. A shot now pins it over the image of the primary's union, as D73
+  pins the primary (D178). `PanelLayout` gains `X2Prefix`; `Y2Prefix` now pins whichever axis is on
+  the right.
 
 ## [0.7.0] — 2026-10-16
 

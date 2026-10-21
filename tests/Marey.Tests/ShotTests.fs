@@ -234,6 +234,29 @@ module PrefixDoesNotStep =
         for u in frames do
             Assert.Contains("x [mm]", titles (Chart.toSceneIn measurer shot (wave u)))
 
+    /// G9 (1.0, D178) — a secondary axis is pinned as the primary is. Before, its prefix was
+    /// chosen per frame from its own numbers, so the right axis's title stepped from `mm` to `µm`
+    /// under a title that held still on the left.
+    [<Fact>]
+    let ``a secondary axis's title is identical across every frame of the shot`` () =
+        let right (u: float) = decades u |> Chart.withRightAxisIn U.metre
+
+        let top (u: float) =
+            let ys = Array.init 24 (fun i -> float i / 23.0 * 10.0<s>)
+            let span = 2.0e-3 * (0.001 ** u)
+            let xs = ys |> Array.map (fun t -> t / 10.0<s> * span * 1.0<m>)
+            Chart.line U.metre U.second xs ys |> Chart.withTopAxisIn U.metre
+
+        let frames16 = Array.init 16 (fun i -> float i / 15.0)
+
+        for side, fig in [ "right", right; "top", top ] do
+            let perFrame = frames16 |> Array.map (fun u -> titles (Chart.toScene surface (fig u))) |> Array.distinct
+            Assert.True(perFrame.Length > 1, sprintf "the %s fixture must cross a decade, or the gate is vacuous" side)
+
+            let shot = Chart.arrangeUnion 32 measurer surface fig
+            let inShot = frames16 |> Array.map (fun u -> titles (Chart.toSceneIn measurer shot (fig u))) |> Array.distinct
+            Assert.True(inShot.Length = 1, sprintf "%s: %A" side inShot)
+
     /// A still figure pins nothing, which is what keeps every existing baseline byte-identical.
     [<Fact>]
     let ``a still figure chooses its prefix per figure, as it always has`` () =
