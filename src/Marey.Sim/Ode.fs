@@ -5,15 +5,15 @@ open System
 // ======================================================================================
 // THE SHAPE OF A STATE, AND THE INTEGRATOR'S TYPE.
 //
-// §8.3 asks for integrators "unit-generic over state", and F# cannot write `'s / s` for a record
+// Integrators should be unit-generic over state, and F# cannot write `'s / s` for a record
 // `'s`. Three tiers cover every state without an erased one:
 //
 //   * **Second order, one unit for the coordinates.** `q̈ = a(t, q)`, with `q: float<'q>[]`,
 //     `v: float<'q/'t>[]` and `a: float<'q/'t²>[]`. Every mechanical system is this shape — its
-//     positions share a unit, or its angles do — so velocity Verlet, the default §8.3 asks for,
+//     positions share a unit, or its angles do — so velocity Verlet, the default,
 //     is typed by measures alone. An acceleration in `m/s` is a compile error.
-//   * **First order in two dimensions, with time.** `Flow2T`, M4's `Flow` with a clock. Typed by
-//     measures alone and allocation-free: the state is a struct pair.
+// * **First order in two dimensions, with time.** `Flow2T`, `Marey.Fields`' `Flow` with a clock.
+//     Typed by measures alone and allocation-free: the state is a struct pair.
 //   * **Anything else, given a `Tangent`.** A mixed first-order state (a reactor's kelvin and
 //     mol/m³) is a record, and the integrator reaches it through two functions: advance a state
 //     along a derivative, and combine two derivatives. A `Tangent` whose advance forgets `h` is
@@ -35,9 +35,9 @@ open System
 /// One step of an integrator: from the state at time `t`, the state at `t + h`.
 type Stepper<'s, [<Measure>] 't> = float<'t> -> float<'t> -> 's -> 's
 
-/// A 2-D first-order system with time: at `(t, x, y)`, the rates `dx/dt` and `dy/dt`. M4's
-/// `Flow` with a clock, for a driven pendulum or an unsteady field. `Ode.ofFlow` lifts a `Flow`
-/// that does not depend on time.
+/// A 2-D first-order system with time: at `(t, x, y)`, the rates `dx/dt` and `dy/dt`.
+/// `Marey.Fields`' `Flow` with a clock, for a driven pendulum or an unsteady field. `Ode.ofFlow`
+/// lifts a `Flow` that does not depend on time.
 type Flow2T<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> =
     float<'t> -> float<'x> -> float<'y> -> struct (float<'x / 't> * float<'y / 't>)
 
@@ -163,7 +163,7 @@ module ErrorNorm =
 
             if q0.Length = 0 then 0.0 else sqrt (sum / float (2 * q0.Length))
 
-/// §8.3's integrators. Each returns a `Stepper`, so `Sim.ofStep h (Ode.rk4 f) s0` is a whole
+/// The integrators. Each returns a `Stepper`, so `Sim.ofStep h (Ode.rk4 f) s0` is a whole
 /// simulation, and a step is usable on its own: `step t h s`.
 [<RequireQualifiedAccess>]
 module Ode =

@@ -4,17 +4,17 @@ open System
 open System.Runtime.InteropServices
 
 // ======================================================================================
-// §8.1'S FIELDS, AND THE ONE §8.1 COULD NOT TYPE.
+// FIELDS, AND THE ONE A VECTOR FIELD CANNOT TYPE.
 //
-// §8.1 declares `Field2<'x,'v> = Vec2<'x> -> Vec2<'v>` and then lists phase portraits among the
-// things to draw with it. A phase space has a different unit on each axis — a pendulum lives in
-// (θ: rad, ω: rad/s) — and `Vec2<'x>` has one measure for both components, so §8.1's type cannot
+// A vector field is `Field2<'x,'v> = Vec2<'x> -> Vec2<'v>`, and phase portraits are among the
+// things to draw with one. A phase space has a different unit on each axis — a pendulum lives in
+// (θ: rad, ω: rad/s) — and `Vec2<'x>` has one measure for both components, so that type cannot
 // hold one. `Flow` can: its axes are independent, and its components are the time derivatives of
 // its coordinates.
 //
 // As built, the function types are only the *inputs*. A field is used as a grid, and one
 // `VectorGrid<'x,'y,'u,'w>` holds both a spatial field (`'x = 'y`, `'u = 'w`) and a flow (`'u =
-// 'x/'t`, `'w = 'y/'t`), so D84's `asFlow` conversion turned out to have nothing to convert
+// 'x/'t`, `'w = 'y/'t`), so an `asFlow` conversion would have nothing to convert
 // between. The distinction moved to where it matters — the derivatives' signatures:
 //
 //   * `div` asks that ∂u/∂x and ∂w/∂y share a unit, which a spatial field and a flow both
@@ -26,19 +26,19 @@ open System.Runtime.InteropServices
 //
 // **Every public function here declares its measure parameters.** Written with inferred ones, a
 // mixed-axis curl narrowed itself silently to `'x = 'y` and compiled — only its caller saw an
-// error. Declared, the narrowing is FS0064, which the build treats as an error. §12.1's lesson,
-// as a rule for the whole package.
+// error. Declared, the narrowing is FS0064, which the build treats as an error. That is the rule
+// for the whole package.
 // ======================================================================================
 
 /// A flow on a plane whose axes may differ in unit: at `(x, y)`, the rates `dx/dt` and `dy/dt`.
 /// A pendulum is a `Flow<rad, rad/s, s>`.
 type Flow<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't> = float<'x> -> float<'y> -> struct (float<'x / 't> * float<'y / 't>)
 
-/// §8.1's vector field: one unit on both axes, one on both components. An electric field is a
+/// A vector field: one unit on both axes, one on both components. An electric field is a
 /// `Field2<m, V/m>`.
 type Field2<[<Measure>] 'x, [<Measure>] 'v> = Vec2<'x> -> Vec2<'v>
 
-/// §8.1's scalar field. A potential is a `Scalar2<m, V>`.
+/// A scalar field. A potential is a `Scalar2<m, V>`.
 type Scalar2<[<Measure>] 'x, [<Measure>] 'v> = Vec2<'x> -> float<'v>
 
 /// The four partial derivatives of a vector grid, each in its own unit.

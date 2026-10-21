@@ -51,7 +51,8 @@ type Event<'s> =
       Of: 's -> float
       Direction: Direction
       Response: Response<'s>
-      /// What a crossing too soon after the previous one does instead (D144's Zeno guard).
+      /// What a crossing too soon after the previous one does instead: the guard against Zeno
+      /// behaviour.
       Rest: ('s -> 's) option
       /// The least time between two firings before the guard takes over.
       MinSeparation: float<s> option

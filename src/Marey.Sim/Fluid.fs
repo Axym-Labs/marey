@@ -10,11 +10,11 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // a pressure projection, each unconditionally stable, so a step is as long as the picture wants.
 //
 // **The grid is staggered (MAC).** The x velocity lives on the cells' vertical faces and the y
-// velocity on their horizontal ones; the dye and the pressure potential at the centres. Then the divergence of a
-// pressure gradient is exactly the five-point Laplacian, and a projection leaves only its
-// solver's residual. The collocated grid of GPU Gems takes the divergence over two cells and the
-// Laplacian over one, and its projection stops at 8.8% of the divergence however long the solver
-// runs (measured in the M5.6 inventory).
+// velocity on their horizontal ones; the dye and the pressure potential at the centres. Then the
+// divergence of a pressure gradient is exactly the five-point Laplacian, and a projection leaves
+// only its solver's residual. The collocated grid of GPU Gems takes the divergence over two cells
+// and the Laplacian over one, and its projection stops at 8.8% of the divergence however long the
+// solver runs (measured).
 //
 // **The pressure by multigrid, a fixed number of V-cycles**, warm-started from the last step's
 // pressure, which is why it is part of the state; viscosity and diffusion by red-black

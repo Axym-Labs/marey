@@ -6,9 +6,9 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // ======================================================================================
 // FINITE DIFFERENCES ON A GRID: HEAT, WAVE, POISSON.
 //
-// The solvers step M4's `ScalarGrid`, and their units come out of the types: `∂T/∂t = α ∇²T` with
-// `T` in kelvin and `α` in m²/s steps in kelvin, and the explicit limit `dt ≤ h² / (4α)` is an
-// expression in seconds.
+// The solvers step `Marey.Fields`' `ScalarGrid`, and their units come out of the types: `∂T/∂t = α
+// ∇²T` with `T` in kelvin and `α` in m²/s steps in kelvin, and the explicit limit `dt ≤ h² / (4α)`
+// is an expression in seconds.
 //
 // **Their own stencil.** `Field.laplacian` is `div (grad g)`, two central first differences: the
 // wide stencil `(f₍ᵢ₋₂₎ − 2fᵢ + f₍ᵢ₊₂₎) / 4h²`, exactly zero on a checkerboard. A heat solver

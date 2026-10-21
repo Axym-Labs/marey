@@ -539,7 +539,7 @@ module Sim =
         | Stepping.Fixed(h, step), [] -> fixedTrajectory maxBytes every horizon sim h step
         | _ -> unitTrajectory maxBytes every horizon sim
 
-    /// §8.2's bridge: the simulation as an `Anim` over `[0, horizon]`, seekable at any time.
+    /// The bridge: the simulation as an `Anim` over `[0, horizon]`, seekable at any time.
     ///
     /// One straight run fills a table with a checkpoint every `every`, and a seek to `t` copies the
     /// checkpoint at or before it and steps from there. A fixed step rounds `every` to a whole

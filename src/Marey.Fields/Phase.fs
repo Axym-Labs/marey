@@ -6,8 +6,8 @@ open System.Runtime.InteropServices
 // ======================================================================================
 // PHASE PORTRAITS: NULLCLINES, FIXED POINTS, AND WHAT KIND EACH ONE IS.
 //
-// **Nullclines** are where one component of the flow vanishes: the zero contours of `u` and of
-// `w`, which D88's marching squares already draws. Where they cross, both vanish, and that is a
+// **Nullclines** are where one component of the flow vanishes: the zero contours of `u` and of `w`,
+// which the contour's marching squares already draws. Where they cross, both vanish, and that is a
 // fixed point.
 //
 // **Fixed points are found on the interpolant.** A cell whose four `u` corners do not all share

@@ -19,7 +19,7 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // **Deviation form.** A population is stored and computed as fᵢ − wᵢ, its departure from rest,
 // and the density as 1 + Σ(fᵢ − wᵢ). Every sum is then over small numbers. In float32 (the GPU)
 // the raw form drifts mass by 6 × 10⁻⁴ over 50 000 steps, systematically, and this form holds it
-// at a rounding walk below 1.4 × 10⁻⁷ (measured in the M5.6 inventory). The CPU computes the same
+// at a rounding walk below 1.4 × 10⁻⁷ (measured). The CPU computes the same
 // expressions in float64, so it is the GPU's oracle.
 //
 // **Pull streaming, fused.** A cell gathers each population from the neighbour it comes from,

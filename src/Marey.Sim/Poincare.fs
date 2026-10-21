@@ -6,13 +6,13 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // ======================================================================================
 // POINCARÉ SECTIONS.
 //
-// Deferred from M4 to "§8.2's `Sim`", and both kinds are a few lines over what exists.
+// Both kinds are a few lines over what `Sim` already has.
 //
 // A *stroboscopic* section is the state at every multiple of a period, which a trajectory gives
 // exactly, because a seek to `k · T` is the state the straight run reaches there.
 //
 // A *spatial* section is the state wherever a surface `σ(s) = 0` is crossed in a stated direction.
-// D142 named Hénon's step for it: integrate one step with `σ` as the independent variable, so the
+// Hénon's step does it: integrate one step with `σ` as the independent variable, so the
 // point lies on the surface to the integrator's order. That needs `dσ/dt` along the flow, which a
 // surface given as a function of the state does not provide. The event engine gets the same
 // thing another way: it locates the crossing in time by re-stepping with the integrator itself, so

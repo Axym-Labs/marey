@@ -6,9 +6,9 @@ open System
 // UNSTEADY FIELDS, PATHLINES, PARTICLES.
 //
 // A pathline is an ODE trajectory through a velocity field that depends on time, so its input is
-// D134's tier-2 function itself: `t -> x -> y -> (dx/dt, dy/dt)`. An analytic field (the double
-// gyre, a rotating flow) is one already, exactly and without allocation. A gridded field reaches
-// it through one of two adapters, and both ship:
+// the integrators' second-tier function itself: `t -> x -> y -> (dx/dt, dy/dt)`. An analytic field
+// (the double gyre, a rotating flow) is one already, exactly and without allocation. A gridded
+// field reaches it through one of two adapters, and both ship:
 //
 //   * `ofSnapshots`: grids at stated times, bilinear in space and linear in time. Data arrives in
 //     this form, and a stage costs two bilinear reads. Linear in time is second order in the
@@ -19,7 +19,7 @@ open System
 //     stage, so a step builds one grid per stage time for all of them, never one per particle.
 //
 // Outside its grid, or outside its snapshots' times, a field has no velocity: NaN, which a
-// particle then carries and a scatter does not draw (D52: what is not there is not invented).
+// particle then carries and a scatter does not draw: what is not there is not invented.
 //
 // Streamlines integrate in pixels on the unit direction and stay as they are: a streamline is
 // a picture of a field, a pathline is a trajectory in the field's own units.

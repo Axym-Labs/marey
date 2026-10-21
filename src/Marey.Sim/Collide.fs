@@ -18,8 +18,8 @@ open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 // margin was computed from; a pair the grid cannot see could not have touched.
 //
 // A step resolves at most a stated number of contacts. Past that the discs fly on without
-// colliding for the rest of the step, and the step is counted as capped (D52: what is not done is
-// counted). Hard discs only: no friction, no rotation, no soft contact. Two dimensions, as
+// colliding for the rest of the step, and the step is counted as capped: what is not done is
+// counted. Hard discs only: no friction, no rotation, no soft contact. Two dimensions, as
 // everything else here.
 // ======================================================================================
 
@@ -232,7 +232,7 @@ module Collide =
             let w = float w
             let hgt = float hgt
             // `floor (x + 0.5)` rather than `Math.Round`, which Fable rounds differently near a
-            // half (`upstream-fable.md` §2), and ties to even on .NET.
+            // half, and ties to even on .NET.
             dx <- dx - w * floor (dx / w + 0.5)
             dy <- dy - hgt * floor (dy / hgt + 0.5)
         | _ -> ()

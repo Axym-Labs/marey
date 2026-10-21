@@ -308,8 +308,7 @@ module FixedPoint =
     ///     centre (linear) at (0 rad, 0 rad·s⁻¹), λ = ±3.116i s⁻¹
     ///
     /// The eigenvalues are converted to SI and written in base units, never through the registry,
-    /// because the registry names s⁻¹ hertz and an eigenvalue is a rate, not a frequency (D98's
-    /// error in a different place).
+    /// because the registry names s⁻¹ hertz and an eigenvalue is a rate, not a frequency.
     let describe<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
         (ux: U<'x>)
         (uy: U<'y>)

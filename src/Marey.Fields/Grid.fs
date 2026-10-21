@@ -8,7 +8,7 @@ open System
 // Every field algorithm in this package reads values at points it chooses: marching squares at
 // grid nodes, RK4 at stage points, a line-integral convolution along every pixel's streamline. A
 // field can arrive as a function, which is exact anywhere and of unknown cost, or as a grid,
-// which is how real data arrives — a simulation's output, a file, every solver M5 will ship. One
+// which is how real data arrives — a simulation's output, a file, every solver in `Marey.Sim`. One
 // input type for every geom means the grid: a function is sampled into one, once, at a stated
 // resolution, and a grid from data is used as it is.
 //
