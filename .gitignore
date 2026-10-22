@@ -75,3 +75,6 @@ tools/view/out/
 /site/
 /site.scenes/
 /.fsdocs/
+
+# Verso's CLI and the extension it loads, for tests/Verso run by hand.
+/.verso/

@@ -1,0 +1,55 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"fsharp","items":[{"aliases":[],"languageName":"fsharp","name":"fsharp"}]}}
+
+#!markdown
+
+# `Marey` alone
+
+A notebook whose only reference is `Marey`. Verso restores the ten packages it gathers, the next
+cell uses each of them once, so a package missing from the set does not compile, and the last cell
+is a figure, which the `Marey.Verso` extension draws.
+
+CI runs it from this folder over the packages it has just packed (see `nuget.config`);
+`tests/Marey.Tests/README.md` says how to run it by hand.
+
+#!fsharp
+
+#r "nuget: Marey, 0.0.0-ci"
+
+open Marey
+open Marey.UnitsOfMeasure
+
+#!fsharp
+
+// Core: values that carry their unit. Sim: a spring stepped by Verlet. Plot: its chart.
+let t = Q.init U.second 41 (fun i -> float i * 0.05<s>)
+let springRate = 4.0 * System.Math.PI * System.Math.PI * 1.0</s^2>
+let springAccel (_: float<s>) (q: float<m>[]) = q |> Array.map (fun x -> -springRate * x)
+let spring = Sim.ofStep 1e-3<s> (Ode.verlet springAccel) (struct ([| 0.1<m> |], [| 0.0<m/s> |]))
+let orbit = Sim.trajectory 0.05<s> 2.0<s> spring
+let x = t |> Seq.map (fun ti -> let struct (q, _) = orbit.At ti in q.[0])
+let springFigure = Chart.lineIn U.second U.metre t x |> Chart.withTitle "A spring"
+
+// Units, Anim, Fields, the SVG and TikZ backends, Html and Interact, once each.
+let newton = UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none (U.mul U.kilogram U.metrePerSecondSquared)
+let halfway = Anim.tween 2.0<s> 0.0<m> 100.0<m> |> Anim.at 1.0<s>
+let grid = Grid.linear -1.0<m> 1.0<m> 5
+let svg = springFigure |> Chart.render SvgBackend.render (Chart.size 320.0 200.0)
+let tikz = springFigure |> Chart.render TikzBackend.render (Chart.size 320.0 200.0)
+let html = Html.figure springFigure
+
+let live =
+    interact {
+        let! k = Control.slider U.metre "amplitude" 0.05<m> 0.2<m> 0.1<m>
+        return Chart.lineIn U.second U.metre t (x |> Seq.map (fun xi -> xi * k / 0.1<m>))
+    }
+
+let liveFigure = Live.view live (Live.init live)
+
+printfn "%s; %g m at 1 s; %d grid points; SVG, TikZ and HTML of %d, %d and %d characters"
+    newton (float halfway) (Seq.length grid) svg.Length tikz.Length html.Length
+
+#!fsharp
+
+springFigure
