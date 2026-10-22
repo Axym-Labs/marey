@@ -40,10 +40,14 @@ open SkiaSharp.HarfBuzz
 //     behind every run in the scene — and a caller who needs reproducibility states a file and
 //     gets it.
 //
-// The third, with the second available as `SkiaOptions.FontFile`. The test suite states a file
-// (`tests/Marey.Tests/fonts/LiberationSans-Regular.ttf`) precisely so these numbers are
-// reproducible even though a user's figure is not — an accepted imprecision,
-// written down rather than discovered.
+// The third, with the second available as `SkiaOptions.FontFile` — and the first for the themes'
+// own stacks. The package carries Inter, the first name in `Theme.Sans`, and Liberation Serif,
+// the metric twin of Times New Roman in `Theme.Serif` (both SIL OFL 1.1, `fonts/` in the
+// package), and a stack that names a carried family resolves to it before anything installed.
+// So a figure in a built-in theme is the same PNG on every machine; a stack that names no carried
+// family still resolves against the machine and is reported. The test suite states a file
+// (`tests/Marey.Tests/fonts/LiberationSans-Regular.ttf`) so its numbers do not move with the
+// carried faces.
 //
 // ---------------------------------------------------------------------------------------
 // OWNERSHIP
@@ -207,6 +211,8 @@ type ResolvedFace =
       /// The file it came from, when the caller stated one rather than letting the stack
       /// resolve. `Some` means this render is reproducible on another machine.
       File: string option
+      /// The face is one this package carries, so the render is the same on every machine.
+      Bundled: bool
       /// The faces that covered codepoints this one lacks, in first-seen order. Empty
       /// when this face drew every run it was asked for, which is the ordinary case.
       Fallbacks: FallbackFace[]
@@ -228,6 +234,8 @@ type internal FaceHandle =
       Shaper: SKShaper
       /// The file it was opened from, when the caller stated one.
       File: string option
+      /// Opened from a face this package carries.
+      Bundled: bool
       /// Sized fonts, keyed by the exact bits of the size, because two sizes differing in the
       /// last place are two different `SKFont`s to Skia.
       Fonts: Dictionary<int, SKFont> }
@@ -275,6 +283,68 @@ type internal ShapedRun =
       Ascent: float32
       Descent: float32 }
 
+/// **The faces this package carries**: Inter at the four weights the themes use, and Liberation
+/// Serif upright, italic and bold. A stack that names one of these families resolves to it before
+/// the machine is asked, wherever the name stands in the stack, which is what makes a built-in
+/// theme the same PNG on every machine. Inter is subset to Latin, Greek, punctuation, super- and
+/// subscripts, letterlike symbols, arrows and the mathematical operators; a codepoint outside that
+/// falls back to the machine as any other does. Liberation Serif is carried whole, as its licence
+/// asks of a face that keeps its name.
+module internal BundledFaces =
+
+    type Face =
+        { Family: string
+          Weight: int
+          Italic: bool
+          Resource: string }
+
+    let private face family weight italic file =
+        { Family = family
+          Weight = weight
+          Italic = italic
+          Resource = "Marey.Fonts." + file }
+
+    let faces =
+        [| face "Inter" 400 false "Inter-Regular.ttf"
+           face "Inter" 500 false "Inter-Medium.ttf"
+           face "Inter" 600 false "Inter-SemiBold.ttf"
+           face "Inter" 700 false "Inter-Bold.ttf"
+           face "Liberation Serif" 400 false "LiberationSerif-Regular.ttf"
+           face "Liberation Serif" 400 true "LiberationSerif-Italic.ttf"
+           face "Liberation Serif" 700 false "LiberationSerif-Bold.ttf" |]
+
+    let private bytes = System.Collections.Concurrent.ConcurrentDictionary<string, byte[]>()
+
+    let private read (resource: string) =
+        use stream = typeof<Face>.Assembly.GetManifestResourceStream resource
+
+        if isNull stream then
+            invalidOp (sprintf "Marey.Backend.Skia: the carried face '%s' is missing from the assembly." resource)
+
+        use copy = new IO.MemoryStream()
+        stream.CopyTo copy
+        copy.ToArray()
+
+    /// The carried face of this family nearest the weight, of this slant; `None` when the family is
+    /// not carried or has no face of the slant.
+    let tryFind (family: string) (weight: int) (italic: bool) : Face option =
+        let candidates =
+            faces |> Array.filter (fun f -> String.Equals(f.Family, family, StringComparison.OrdinalIgnoreCase) && f.Italic = italic)
+
+        if candidates.Length = 0 then
+            None
+        else
+            // Nearer first; between two equally near, the heavier for a bold request and the
+            // lighter otherwise, as CSS matches a weight.
+            candidates
+            |> Array.minBy (fun f -> abs (f.Weight - weight), (if weight > 500 then -f.Weight else f.Weight))
+            |> Some
+
+    /// A new typeface over the face's bytes, which are read from the assembly once.
+    let typeface (f: Face) : SKTypeface =
+        use data = SKData.CreateCopy(bytes.GetOrAdd(f.Resource, read))
+        SKTypeface.FromData data
+
 /// A real text measurer: HarfBuzz shaping through `SKShaper`, against a resolved face.
 ///
 /// This is the first `ITextMeasurer` other than the approximation, and it is the reason
@@ -316,15 +386,18 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
     let mutable disposed = false
 
     /// Register a typeface: one shaper, one font cache, one entry in the disposal list.
-    let handleOf (tf: SKTypeface) (file: string option) =
+    let handleWith (bundled: bool) (tf: SKTypeface) (file: string option) =
         let h =
             { Typeface = tf
               Shaper = new SKShaper(tf)
               File = file
+              Bundled = bundled
               Fonts = Dictionary<int, SKFont>() }
 
         handles.Add h
         h
+
+    let handleOf (tf: SKTypeface) (file: string option) = handleWith false tf file
 
     /// Open a stated file, eagerly: a bad path should fail at construction with a message
     /// naming the path, not on the first tick label with a null dereference.
@@ -381,6 +454,9 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
         let skSlant = if italic then SKFontStyleSlant.Italic else SKFontStyleSlant.Upright
         let names = stackOf family
 
+        let carried =
+            names |> Array.tryPick (fun n -> BundledFaces.tryFind n weight italic |> Option.map (fun f -> n, f))
+
         let rec pick i =
             if i >= names.Length then
                 // Falling through the whole stack lands on Skia's default, which is a real face
@@ -400,7 +476,11 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
                     tf.Dispose()
                     pick (i + 1)
 
-        pick 0
+        match carried with
+        | Some(name, face) -> BundledFaces.typeface face, Some name, true
+        | None ->
+            let tf, matched = pick 0
+            tf, matched, false
 
     let slotOf (spec: FontSpec) =
         let key = struct (spec.Family, spec.Weight, spec.Italic)
@@ -413,8 +493,8 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
                     statedChain.[0], None
                 else
                     SkiaNative.guard (fun () ->
-                        let tf, matched = resolveStack spec.Family spec.Weight spec.Italic
-                        handleOf tf None, matched)
+                        let tf, matched, bundled = resolveStack spec.Family spec.Weight spec.Italic
+                        handleWith bundled tf None, matched)
 
             let slot =
                 { Primary = primary
@@ -597,6 +677,7 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
           Matched = slot.Matched
           Family = (if isNull slot.Primary.Typeface then "" else slot.Primary.Typeface.FamilyName)
           File = slot.Primary.File
+          Bundled = slot.Primary.Bundled
           Fallbacks =
             slot.Fallbacks.ToArray()
             |> Array.map (fun (h, covered) ->
@@ -638,6 +719,18 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
     member _.Face(spec: FontSpec) : ResolvedFace =
         check ()
         lock gate (fun () -> slotOf spec |> snapshot)
+
+    /// The advance of `text` in the primary face `spec` resolves to, in px, summed glyph by glyph
+    /// without shaping and without hinting: what kerning and ligatures are measured against,
+    /// `Measure`'s advance less this one.
+    member _.MeasureUnshaped(spec: FontSpec, text: string) : float =
+        check ()
+
+        lock gate (fun () ->
+            let slot = slotOf spec
+            use font = new SKFont(slot.Primary.Typeface, float32 (float (Space.pxOfPt dpi spec.Size)))
+            font.LinearMetrics <- true
+            float (font.MeasureText text))
 
     /// The run split by coverage, with the fonts and shapers to draw each piece with, and the
     /// vertical band `Measure` reported for the whole of it. **Owned by this measurer** — the

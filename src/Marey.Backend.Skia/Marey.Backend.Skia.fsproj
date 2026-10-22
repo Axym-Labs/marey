@@ -33,6 +33,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The carried faces (`BundledFaces` in SkiaText.fs), embedded so that no path has to be
+         found at run time, and their licences beside them in the package. Inter is subset;
+         Liberation Serif is whole, because its licence reserves its name for unmodified files. -->
+    <EmbeddedResource Include="fonts/*.ttf" LogicalName="Marey.Fonts.%(Filename)%(Extension)" />
+    <None Include="fonts/OFL-*.txt" Pack="true" PackagePath="fonts/" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Pinned rather than floated. A rasteriser's output moves between versions for reasons
          that have nothing to do with this library, and the tests accept that by
          committing no PNG baseline — but a pinned version is still what makes a bug

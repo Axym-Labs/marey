@@ -51,6 +51,14 @@ and reported when missing; Marey does not require a version of them.
 
 ### Added
 
+- **One PNG on every machine.** `Marey.Backend.Skia` carries Inter (weights 400 to 700, subset to
+  Latin, Greek and the symbols units use) and Liberation Serif (upright, italic and bold), both SIL
+  OFL 1.1 with their licences in the package's `fonts/`, and a stack that names one of them
+  resolves to it before anything installed. The built-in themes' PNGs and PDFs no longer depend on
+  the machine's fonts; CI compares one script's PNGs from Linux and Windows pixel for pixel.
+  `ResolvedFace.Bundled` says when a carried face was used, and
+  `SkiaTextMeasurer.MeasureUnshaped` gives a run's advance without shaping. The package grows by
+  about 1 MB.
 - **Values that carry their unit.** `U.second.Of ts` is a `Q<s>`, the values and their witness,
   and `U.metrePerSecondSquared.Of 9.81<m/s^2>` a `Quantity`, one value with it. Under
   `open Marey.UnitsOfMeasure` a chart over `Q`s takes no witness: `Chart.line t x`. Arithmetic

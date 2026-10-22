@@ -30,6 +30,8 @@ namespace Marey
 
           File: string option
 
+          Bundled: bool
+
           Fallbacks: FallbackFace array
 
           Missing: int array
@@ -44,6 +46,8 @@ namespace Marey
                SkiaTextMeasurer
 
         member Face: spec: FontSpec -> ResolvedFace
+
+        member MeasureUnshaped: spec: FontSpec * text: string -> float
 
         member Dpi: float<px/mm>
 
