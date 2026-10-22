@@ -176,6 +176,10 @@ jobs:
           # appearing on nuget.org because somebody added an .fsproj.
           count=$(ls artifacts/*.nupkg | wc -l)
           [ "$count" -eq 18 ] || { echo "::error::expected 18 packages, packed $count"; exit 1; }
+          # A symbol package beside each but `Marey`, which carries no code; `nuget push` sends each
+          # with its package.
+          symbols=$(ls artifacts/*.snupkg | wc -l)
+          [ "$symbols" -eq 17 ] || { echo "::error::expected 17 symbol packages, packed $symbols"; exit 1; }
           fable=0
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml

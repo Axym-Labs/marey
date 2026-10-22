@@ -51,6 +51,8 @@ and reported when missing; Marey does not require a version of them.
 
 ### Added
 
+- **Symbol packages with SourceLink.** Each package with code ships a `.snupkg` whose PDBs map
+  its sources to the commit on GitHub, so a debugger steps into Marey's source.
 - **One PNG on every machine.** `Marey.Backend.Skia` carries Inter (weights 400 to 700, subset to
   Latin, Greek and the symbols units use) and Liberation Serif (upright, italic and bold), both SIL
   OFL 1.1 with their licences in the package's `fonts/`, and a stack that names one of them

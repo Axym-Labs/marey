@@ -38,6 +38,16 @@
          `PackageLicenseFile`, because it needs no file packed into every one of the
          packages and NuGet renders it as a link to the canonical text. -->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+    <!-- Symbols beside each package, and SourceLink in them, which the SDK supplies for a GitHub
+         repository: a debugger steps into Marey's source at the commit the package was built
+         from. `EmbedUntrackedSources` carries the files the build generates; a CI build maps the
+         runner's paths away so the packages do not depend on where they were built. -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <!-- A pack with `NoBuild` packs what was built, so it must not build project
