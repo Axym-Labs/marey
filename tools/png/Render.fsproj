@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- One script's PNGs, for comparing across machines: `dotnet run` on this project in
+       Release, with OUT after the separator. A project rather than a script because the native
+       Skia library has to be the one its package carries: `dotnet fsi` on a Windows runner
+       loaded an older libSkiaSharp from the machine's PATH. Not packed, not in the solution. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Render.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Marey.Plot\Marey.Plot.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Backend.Skia\Marey.Backend.Skia.fsproj" />
+  </ItemGroup>
+
+</Project>

@@ -356,13 +356,8 @@ jobs:
           printf '{ "sdk": { "version": "%s", "rollForward": "disable" } }\n' '${{ steps.dotnet.outputs.dotnet-version }}' > global.json
           echo "SDK $(dotnet --version)"
 
-      - name: Build
-        run: |
-          dotnet build src/Marey.Plot -c Release
-          dotnet build src/Marey.Backend.Skia -c Release
-
       - name: Render
-        run: dotnet fsi tools/png/render.fsx png-${{ matrix.os }}
+        run: dotnet run --project tools/png -c Release -- png-${{ matrix.os }}
 
       - uses: actions/upload-artifact@v4
         with:

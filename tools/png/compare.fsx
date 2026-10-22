@@ -1,4 +1,4 @@
-// Compare two directories of PNGs pixel for pixel: `dotnet fsi tools/png/compare.fsx A B`.
+// Compare two directories of PNGs pixel for pixel, the ones tools/png renders: `dotnet fsi tools/png/compare.fsx A B`.
 // Exits 1 when a file is missing or any pixel differs, naming how many and by how much.
 
 #r "nuget: SkiaSharp, 4.151.1"
