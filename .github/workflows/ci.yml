@@ -429,3 +429,42 @@ jobs:
 
       - name: Linux and Windows, pixel for pixel
         run: dotnet fsi tools/png/compare.fsx png-ubuntu-latest png-windows-latest
+
+  # A notebook whose only reference is `Marey`, run headless by Verso's released CLI over the
+  # packages the build job packed: Verso restores the set the metapackage gathers, one cell uses
+  # each of its packages, and the last cell's figure is drawn by `Marey.Verso`, loaded from its
+  # package as an extension. A package missing from the set fails the cell that uses it; an
+  # extension that no longer draws a figure leaves the last cell without one.
+  verso:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.1xx'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: artifacts
+
+      - name: Verso's CLI
+        run: dotnet tool install Verso.Cli --version 1.2.3 --tool-path "$RUNNER_TEMP/verso"
+
+      # The CLI targets net8.0, so the extension's net8.0 build is the one it loads.
+      - name: The extension, from its package
+        run: unzip -j artifacts/Marey.Verso.0.0.0-ci.nupkg 'lib/net8.0/Marey.Verso.dll' -d "$RUNNER_TEMP/extensions"
+
+      - name: Run the notebook
+        working-directory: tests/Verso
+        run: |
+          "$RUNNER_TEMP/verso/verso" run metapackage.dib --extensions "$RUNNER_TEMP/extensions" \
+            --output json --output-file "$RUNNER_TEMP/verso.json" || echo "::error::verso run exited with $?"
+          jq -e '(.cells | all(.status == "Success"))
+                 and (.cells[-1].outputs | any(.mimeType == "text/html" and (.content | contains("<g id=\"figure\""))))' \
+            "$RUNNER_TEMP/verso.json" >/dev/null \
+            || { jq '.cells[] | {index, status, outputs: [.outputs[] | {mimeType, content: .content[:400]}]}' "$RUNNER_TEMP/verso.json"; exit 1; }
+          echo "Marey restored the set in Verso, and Marey.Verso drew the figure"
