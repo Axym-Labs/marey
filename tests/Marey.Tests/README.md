@@ -158,6 +158,24 @@ The same project builds against the packed packages instead of the projects when
 `.nupkg`s. Fable then compiles the sources each package carries under `fable/`, which is what a
 Fable app referencing Marey from NuGet gets. The `fable` job runs both.
 
+### In Verso
+
+`tests/Verso/metapackage.dib` is a notebook whose only reference is `Marey`, at the version CI
+packs (`0.0.0-ci`). Verso's CLI runs it headless from that folder, whose `nuget.config` points at
+`artifacts/`, with `Marey.Verso` loaded from its package as an extension. One cell uses each
+package the metapackage gathers, so a package missing from the set does not compile, and the last
+cell's figure must come back drawn. CI runs it as the `verso` job. Locally:
+
+```
+dotnet pack Marey.slnx -c Release -o artifacts -p:Version=0.0.0-ci
+dotnet tool install Verso.Cli --version 1.2.3 --tool-path .verso
+unzip -j artifacts/Marey.Verso.0.0.0-ci.nupkg 'lib/net8.0/Marey.Verso.dll' -d .verso/extensions
+cd tests/Verso && ../../.verso/verso run metapackage.dib --extensions ../../.verso/extensions
+```
+
+Verso restores into its own cache under the temporary directory, not `NUGET_PACKAGES`; after a
+repack at the same version, give the run a fresh `TMPDIR` or it draws from the last one.
+
 ## Determinism
 
 Three hard rules, all enforced by tests rather than by convention:
