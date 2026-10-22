@@ -83,6 +83,7 @@ module UnitDisplay =
               "g", gram
               "rad", UnitSymbol.plain "rad" "\\radian"
               "sr", UnitSymbol.plain "sr" "\\steradian"
+              "°", UnitSymbol.create "°" "deg" "^\\circ" "\\degree"
               "°C", UnitSymbol.create "°C" "degC" "^\\circ C" "\\degreeCelsius"
               "°F", UnitSymbol.create "°F" "degF" "^\\circ F" "\\text{\\degree F}" ]
 

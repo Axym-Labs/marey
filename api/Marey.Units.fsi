@@ -259,6 +259,8 @@ namespace Marey
 
             val gauss: U<Gs>
 
+            val degree: U<deg>
+
             val degreeCelsius: U<degC>
 
             val degreeFahrenheit: U<degF>
@@ -600,6 +602,8 @@ namespace Marey.CSharp
         static member Dalton: Marey.U<Marey.Da>
 
         static member Day: Marey.U<Marey.d>
+
+        static member Degree: Marey.U<Marey.deg>
 
         static member DegreeCelsius: Marey.U<Marey.degC>
 

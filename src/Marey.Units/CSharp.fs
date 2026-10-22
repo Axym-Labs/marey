@@ -77,6 +77,7 @@ type Units =
     static member Katal = U.katal
     static member Radian = U.radian
     static member Steradian = U.steradian
+    static member Degree = U.degree
 
     // ---- units outside SI (`NonSi.fs`) -------------------------------------------------
 

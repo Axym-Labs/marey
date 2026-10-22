@@ -150,6 +150,13 @@ module NonSiWitnesses =
 
         let gauss: U<Gs> = U<Gs>("G", magneticFluxDensity, 1e-4)
 
+        // ---- Angle -----------------------------------------------------------------------
+
+        /// Degree, π/180 rad: a phase, an angle of incidence, a latitude. An angle as the radian
+        /// is, so a degree axis shares with a radian one (converted) and `°/s` does not share
+        /// with `Hz`.
+        let degree: U<deg> = U<deg>("°", Dim.zero, System.Math.PI / 180.0)
+
         // ---- Affine units ----------------------------------------------------------------
         //
         // Everything below this line has a non-zero `OffsetSI`, and everything below this line

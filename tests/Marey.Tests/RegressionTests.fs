@@ -944,6 +944,30 @@ module ``D98 an angle is not a frequency`` =
 
         Assert.Equal(2, (Figure.unify fig.Panels.[0]).Layers.Length)
 
+    /// A degree is an angle as a radian is: titled θ [°], never prefixed, converted to radians by
+    /// its factor, and kept apart from a frequency.
+    [<Fact>]
+    let ``a degree is an angle`` () =
+        let degPerSecond = U.div U.degree U.second
+        Assert.Equal("°", text U.degree)
+        Assert.Equal(1, U.angleExponentOf U.degree.Symbol U.degree.Factors)
+        Assert.Equal(1, U.angleExponentOf degPerSecond.Symbol degPerSecond.Factors)
+        Assert.Equal(Prefix.none, Prefix.selectForErased U.degree.Symbol U.degree.Dim U.degree.ToSI U.degree.OffsetSI (0.0, 3e5))
+        Assert.Equal(System.Math.PI, float (U.convert U.degree U.radian 180.0<deg>), 12)
+        Assert.Equal("°", (U.parse "deg").Symbol)
+        Assert.Equal(1, (U.parse "°/s") |> fun u -> U.angleExponentOf u.Symbol u.Factors)
+
+        let ts = [| 0.0<s>; 1.0<s> |]
+        let phase = Chart.line U.second U.degree ts [| 0.0<deg>; 180.0<deg> |]
+        let svg = phase |> Chart.render SvgBackend.render (Chart.size 400.0 300.0)
+        Assert.Contains("θ [°]", svg)
+
+        let rates =
+            Chart.line U.second degPerSecond ts [| 0.0<deg / s>; 1.0<deg / s> |]
+            |> Chart.addLine U.second U.hertz ts [| 0.0<Hz>; 1.0<Hz> |]
+
+        Assert.Contains("2π", (Assert.ThrowsAny<exn>(fun () -> Figure.unify rates.Panels.[0] |> ignore)).Message)
+
     /// The documented gap: a witness declared by hand with a compound symbol carries no factors,
     /// and its symbol is not `rad`, so the angle is not seen. Pinned so the gap is a decision
     /// rather than a surprise; compose angular units instead.
