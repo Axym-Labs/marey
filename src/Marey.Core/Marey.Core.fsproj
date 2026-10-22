@@ -25,6 +25,7 @@
     <Compile Include="Space.fs" />
     <Compile Include="Dim.fs" />
     <Compile Include="Witness.fs" />
+    <Compile Include="Quantity.fs" />
     <Compile Include="Color.fs" />
     <Compile Include="Vec.fs" />
     <Compile Include="Affine.fs" />

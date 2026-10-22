@@ -18,7 +18,7 @@ title says what they count. §1's drop read `t [ms]`. The same call on a nanomet
 
 ```fsharp
 let creep = tModel |> Array.map (fun t -> 4.0e-9<m/s> * t)
-let creepSvg = Chart.line U.second U.metre tModel creep |> Chart.render SvgBackend.render size
+let creepSvg = Chart.lineIn U.second U.metre tModel creep |> Chart.render SvgBackend.render size
 
 printfn "the creep's axis reads nanometres: %b" (creepSvg.Contains "[nm]")
 ```
@@ -51,6 +51,33 @@ let angularVelocity = U.div U.radian U.second
 printfn "rad / s reads %s, a hertz reads %s" (unitText angularVelocity) (unitText U.hertz)
 ```
 
+## Values that carry their unit
+
+The witness can travel with the values instead of being handed to every chart. `U.second.Of ts`
+is a `Q<s>`, the values and their witness, and a chart over `Q`s takes none. Arithmetic computes
+the witness of what it makes, so a quantity derived from others names no unit of its own:
+
+```fsharp
+let gCarried = U.metrePerSecondSquared.Of 9.81<m/s^2>
+let time = U.second.Of tModel
+let drop = 0.5 * gCarried * time * time
+let speed = gCarried * time
+
+let carriedSvg =
+    Chart.line time drop
+    |> Chart.above (Chart.line time speed)
+    |> Chart.render SvgBackend.render size
+
+printfn "the drop reads metres, the speed metres per second: %b" (carriedSvg.Contains "[m]" && carriedSvg.Contains "m·s⁻¹")
+```
+
+`*` and `/` compose witnesses as the units above do. `+` and `-` take a series in another unit
+of the same dimension and read it in the left one's. `Of` on one value makes a `Quantity`, a
+constant in that arithmetic, as `gCarried` is. What arithmetic does not reach goes through
+`Q.map`, which names the unit of its result: `time |> Q.map U.metre (fun t -> …)`. A `Q` is a
+sequence of its values, so it goes wherever one does. Each chart's form with witnesses, for
+values that carry none, has the same name with `In`: `Chart.lineIn U.second U.metre ts xs`.
+
 ## Units read from text
 
 A unit known only at run time, from a file's header or a netCDF attribute, is read in the syntax
@@ -71,7 +98,7 @@ Seconds on a metres axis is a type error:
 
 ```fsharp-error
 // error FS0001: Type mismatch. Expecting a 'float<m> []' but given a 'float<s> []'
-Chart.line U.second U.metre tModel tModel
+Chart.lineIn U.second U.metre tModel tModel
 ```
 
 Two series that are each correct, but of different dimensions on one axis, are not, and the
@@ -79,8 +106,8 @@ compiler cannot see them meet. The figure refuses them when it is drawn, naming 
 
 ```fsharp
 let displacementAndTemperature =
-    Chart.line U.second U.metre tModel xModel
-    |> Chart.addLine U.second U.kelvin tModel (tModel |> Array.map (fun t -> 293.0<K> + 2.0<K/s> * t))
+    Chart.lineIn U.second U.metre tModel xModel
+    |> Chart.addLineIn U.second U.kelvin tModel (tModel |> Array.map (fun t -> 293.0<K> + 2.0<K/s> * t))
 
 let refused =
     try
@@ -135,7 +162,7 @@ let spectralRadiance = U.div U.watt (U.mul U.steradian (U.mul U.metre (U.mul U.m
 let wavelengths = Array.init 291 (fun i -> (250.0 + 5.0 * float i) * 1e-9<m>)
 
 let curve (temperature: float<K>) =
-    Chart.line U.metre spectralRadiance wavelengths (wavelengths |> Array.map (radiance temperature))
+    Chart.lineIn U.metre spectralRadiance wavelengths (wavelengths |> Array.map (radiance temperature))
     |> Chart.withName (sprintf "%g K" (float temperature))
 
 let toEnergy (l: float<m>) = planckH * lightSpeed / l / joulesPerEv

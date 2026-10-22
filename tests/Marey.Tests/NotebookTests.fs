@@ -38,9 +38,9 @@ module private Fixtures =
         let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
         let temps = ts |> Array.map (fun t -> 293.0<K> + 0.5<K / s> * t)
 
-        Chart.line U.second U.metre ts xs
+        Chart.lineIn U.second U.metre ts xs
         |> Chart.withName "displacement"
-        |> Chart.addLine U.second U.kelvin ts temps
+        |> Chart.addLineIn U.second U.kelvin ts temps
         |> Chart.withName "temperature"
 
     /// A title that is markup if anybody forgets to escape it.
@@ -65,7 +65,7 @@ module private Fixtures =
         let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
 
         let fig =
-            Chart.line U.second U.metre ts xs |> Chart.withTitle "free fall"
+            Chart.lineIn U.second U.metre ts xs |> Chart.withTitle "free fall"
 
         let story =
             Storyboard.scene {
@@ -846,7 +846,7 @@ module LiveFormatter =
     let private live () =
         interact {
             let! f = Control.slider U.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
-            return Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
+            return Chart.lineIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
         }
 
     let private format (value: obj) (context: IFormatterContext) =
@@ -926,13 +926,13 @@ module LiveFormatter =
         RenderModes.withRenderMode RenderMode.Auto (fun () ->
             let host = FakeHost()
             let rng = Random(5)
-            let big = Chart.scatter U.metre U.metre (Array.init 8000 (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init 8000 (fun _ -> rng.NextDouble() * 1.0<m>))
+            let big = Chart.scatterIn U.metre U.metre (Array.init 8000 (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init 8000 (fun _ -> rng.NextDouble() * 1.0<m>))
             let output = format (box big) (LiveContext(host, Some cell))
             Assert.Equal(CellOutput.WidgetMimeType, output.MimeType)
             Assert.Contains("<canvas id=\"cv\"", output.Content)
             Assert.Empty(host.Opened)
 
-            let small = Chart.scatter U.metre U.metre [| 0.0<m>; 1.0<m> |] [| 0.0<m>; 1.0<m> |]
+            let small = Chart.scatterIn U.metre U.metre [| 0.0<m>; 1.0<m> |] [| 0.0<m>; 1.0<m> |]
             let output = format (box small) (LiveContext(host, Some cell))
             Assert.Equal("text/html", output.MimeType))
 

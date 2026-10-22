@@ -121,7 +121,7 @@ module PlotBoundary =
     /// strongest available statement of that, and it is what `Erase.channelSeries` sharing
     /// `Chart.series`'s 5% padded linear scales buys.
     [<Fact>]
-    let ``the channel path and Chart.line agree byte for byte`` () =
+    let ``the channel path and Chart.lineIn agree byte for byte`` () =
         let extent = Chart.size 800.0 500.0
         let render fig = SvgBackend.render extent (Chart.toScene extent fig)
 
@@ -129,7 +129,7 @@ module PlotBoundary =
             Erase.channelSeries "" (timeChannel ()) (displacementChannel ())
             |> Chart.ofPacked GeomLine
 
-        Assert.Equal(render (Chart.line U.second U.metre times displacements), render viaChannels)
+        Assert.Equal(render (Chart.lineIn U.second U.metre times displacements), render viaChannels)
 
 // ======================================================================================
 // The quantiser: how many batches, in what order, and what happens to a NaN
@@ -408,7 +408,7 @@ module EncodingBlock =
         let ts = fallRows |> List.map (fun r -> r.Elapsed) |> Array.ofList
         let xs = fallRows |> List.map (fun r -> r.Drop) |> Array.ofList
 
-        Assert.Equal(render (Chart.line U.second U.metre ts xs), render viaBlock)
+        Assert.Equal(render (Chart.lineIn U.second U.metre ts xs), render viaBlock)
 
     /// A block with no `layer` is a scatter — two positional channels and nothing else say where
     /// the points are, and points are how that is drawn. Pinned against `Chart.scatter` so the
@@ -424,7 +424,7 @@ module EncodingBlock =
         let ts = fallRows |> List.map (fun r -> r.Elapsed) |> Array.ofList
         let xs = fallRows |> List.map (fun r -> r.Drop) |> Array.ofList
 
-        Assert.Equal(render (Chart.scatter U.second U.metre ts xs), render viaBlock)
+        Assert.Equal(render (Chart.scatterIn U.second U.metre ts xs), render viaBlock)
 
     // ---- Gate 2, restated through the block --------------------------------------------------
 
@@ -532,7 +532,7 @@ module EncodingBlock =
         let keys = fallRows |> List.map (fun r -> r.Sample) |> Array.ofList
 
         let svg =
-            SvgBackend.render extent (Chart.toScene extent (Chart.scatter U.second U.metre ts xs |> Chart.colorByKey keys))
+            SvgBackend.render extent (Chart.toScene extent (Chart.scatterIn U.second U.metre ts xs |> Chart.colorByKey keys))
 
         Assert.Equal(1, occurrences ">control<" svg)
 

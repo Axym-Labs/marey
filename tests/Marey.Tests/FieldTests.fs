@@ -422,7 +422,7 @@ module ``a field on a figure`` =
 
         let fig =
             Field.heatmap U.metre U.metre U.kelvin g
-            |> Chart.addScatter U.metre U.metre [| 0.0<m>; 5.0<m> |] [| 0.0<m>; 1.0<m> |]
+            |> Chart.addScatterIn U.metre U.metre [| 0.0<m>; 5.0<m> |] [| 0.0<m>; 1.0<m> |]
 
         let box =
             find (function Raster r -> Some r.Bounds | _ -> None) (Chart.toScene extent fig) |> List.exactlyOne

@@ -13,7 +13,7 @@ open Marey.UnitsOfMeasure
 let t = Array.init 24 (fun i -> float i * 0.4<s>)
 let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
 
-Chart.line U.second U.metre t x
+Chart.lineIn U.second U.metre t x
 |> Chart.withTitle "Free fall"
 |> Chart.toSvg SvgBackend.render "fall.svg" (Chart.size 800.0 500.0)
 ```

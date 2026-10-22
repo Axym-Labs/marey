@@ -282,7 +282,7 @@ module Figures =
         let ts = Array.init 24 (fun i -> float i * 0.4<s>)
         let es = ts |> Array.map (fun t -> 1.5e-3<J / s^2> * t * t)
 
-        Chart.line U.second U.joule ts es
+        Chart.lineIn U.second U.joule ts es
         |> Chart.withXLabel "ωt − φ₀ at 20 °C, µ·τ² ≤ ∂θ"
         |> Chart.withYLabel "|ΔE| × 10³"
         |> Chart.withLegend LegendNone

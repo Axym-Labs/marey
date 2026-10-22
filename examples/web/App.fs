@@ -33,8 +33,8 @@ let figure (f: float<1 / s>) (gamma: float<1 / s>) : Figure =
     let ts = Array.init 25 (fun i -> float i * 0.08<s>)
     let xs = ts |> Array.map (fun t -> 0.012<m> * exp (-gamma * t) * cos (2.0 * Math.PI * f * t))
 
-    Chart.line U.second U.metre t x
-    |> Chart.overlay (Chart.scatter U.second U.metre ts xs)
+    Chart.lineIn U.second U.metre t x
+    |> Chart.overlay (Chart.scatterIn U.second U.metre ts xs)
     |> Chart.withTitle "A damped oscillator, compiled in the browser"
 
 /// A cloud of `n` points: the batch WebGL2 draws. Seeded, so a count always draws the same
@@ -46,7 +46,7 @@ let cloud (n: int) : Figure =
     let x = Array.init n (fun i -> sqrt (-2.0 * log (1.0 - u.[2 * i])) * cos (2.0 * Math.PI * u.[2 * i + 1]) * 1.0<m>)
     let y = Array.init n (fun i -> (sqrt (-2.0 * log (1.0 - u.[2 * i])) * sin (2.0 * Math.PI * u.[2 * i + 1]) + 0.3 * float x.[i]) * 1.0<V>)
 
-    Chart.scatter U.metre U.volt x y
+    Chart.scatterIn U.metre U.volt x y
     |> Chart.withTitle (sprintf "%s points" (n.ToString "N0"))
 
 let private canvas = WebCanvas.byId "plot"
@@ -120,8 +120,8 @@ let springFigure (t: float<s>) : Figure =
     let vs = path |> Array.map (fun (struct (_, v)) -> v.[0])
     let struct (q, v) = orbit.At t
 
-    Chart.line U.metre (U.div U.metre U.second) qs vs
-    |> Chart.addScatter U.metre (U.div U.metre U.second) [| q.[0] |] [| v.[0] |]
+    Chart.lineIn U.metre (U.div U.metre U.second) qs vs
+    |> Chart.addScatterIn U.metre (U.div U.metre U.second) [| q.[0] |] [| v.[0] |]
     |> Chart.withXDomain -1.2 1.2
     |> Chart.withYDomain -7.5 7.5
     |> Chart.withTitle (sprintf "A mass on a spring, t = %s s" (Num.fixedPoint 2 (float t)))

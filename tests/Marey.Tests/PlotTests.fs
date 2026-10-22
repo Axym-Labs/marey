@@ -36,7 +36,7 @@ let private fallX = fallT |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
 
 let private surface = Chart.size 800.0 500.0
 
-let private baseFigure () = Chart.line U.second U.metre fallT fallX
+let private baseFigure () = Chart.lineIn U.second U.metre fallT fallX
 
 let private renderFig (extent: Extent<px>) (fig: Figure) =
     SvgBackend.render extent (Chart.toScene extent fig)
@@ -64,9 +64,9 @@ module AnySequence =
 
     [<Fact>]
     let ``a list, a ResizeArray and a lazy sequence draw what an array draws`` () =
-        let fromArrays = svg (Chart.line U.second U.metre ts xs)
-        Assert.Equal(fromArrays, svg (Chart.line U.second U.metre (List.ofArray ts) (List.ofArray xs)))
-        Assert.Equal(fromArrays, svg (Chart.line U.second U.metre (ResizeArray ts) (xs |> Seq.map id)))
+        let fromArrays = svg (Chart.lineIn U.second U.metre ts xs)
+        Assert.Equal(fromArrays, svg (Chart.lineIn U.second U.metre (List.ofArray ts) (List.ofArray xs)))
+        Assert.Equal(fromArrays, svg (Chart.lineIn U.second U.metre (ResizeArray ts) (xs |> Seq.map id)))
         Assert.Equal((Stat.summary U.metre xs).Median, (Stat.summary U.metre (List.ofArray xs)).Median)
 
     [<Fact>]
@@ -79,7 +79,7 @@ module AnySequence =
                 yield! xs
             }
 
-        Chart.line U.second U.metre ts lazyXs |> svg |> ignore
+        Chart.lineIn U.second U.metre ts lazyXs |> svg |> ignore
         Assert.Equal(1, reads)
 
     /// The figure holds its own copy: an array changed after the chart was built leaves the
@@ -87,10 +87,75 @@ module AnySequence =
     [<Fact>]
     let ``changing the caller's array afterwards leaves the figure alone`` () =
         let mine = Array.copy xs
-        let fig = Chart.line U.second U.metre ts mine
+        let fig = Chart.lineIn U.second U.metre ts mine
         let before = svg fig
         mine.[2] <- 40.0<m>
         Assert.Equal(before, svg fig)
+
+// ======================================================================================
+// Values that carry their unit
+// ======================================================================================
+
+/// A `Q` carries its witness, so a chart takes none, and arithmetic computes the witness of
+/// what it makes.
+module CarriedUnits =
+
+    let private svg (fig: Figure) = renderFig surface fig
+    let private ts = Array.init 7 (fun i -> float i * 0.1<s>)
+
+    [<Fact>]
+    let ``a chart over two Qs draws what the witness form draws`` () =
+        let xs = ts |> Array.map (fun t -> 4.9<m/s^2> * t * t)
+        Assert.Equal(svg (Chart.lineIn U.second U.metre ts xs), svg (Chart.line (U.second.Of ts) (U.metre.Of xs)))
+
+    [<Fact>]
+    let ``arithmetic computes the witness, and the axis is titled from it`` () =
+        let g = U.metrePerSecondSquared.Of 9.81<m/s^2>
+        let t = U.second.Of ts
+        let x = 0.5 * g * t * t
+        Assert.Equal(0.5 * 9.81 * 0.36, float x.[6], 12)
+        let shown = svg (Chart.line t x)
+        Assert.Contains("x [m]", shown)
+        Assert.Contains("v [m·s⁻¹]", svg (Chart.line t (x / t)))
+        Assert.Contains("[s⁻¹]", svg (Chart.line t (1.0 / t)))
+
+    [<Fact>]
+    let ``a sum is in the left operand's unit, the right read in it`` () =
+        let a = U.second.Of [| 30.0<s> |]
+        let b = U.minute.Of [| 1.0<minute> |] |> Q.convert U.second
+        Assert.Equal(90.0, float (a + b).[0], 12)
+        let km = U.scaled "km" 1e3 U.metre
+        let d = (U.metre.Of [| 500.0<m> |]) + (km.Of [| 2.0<m> |])
+        Assert.Equal(2500.0, float d.[0], 9)
+        Assert.Equal("m", d.Unit.Symbol)
+
+    [<Fact>]
+    let ``error bars in another unit of the dimension are read in the values' unit`` () =
+        let km = U.scaled "km" 1e3 U.metre
+        let x = U.second.Of [| 1.0<s>; 2.0<s> |]
+        let y = U.metre.Of [| 100.0<m>; 200.0<m> |]
+        let inMetres = svg (Chart.errorbar x y (U.metre.Of [| 10.0<m>; 10.0<m> |]))
+        Assert.Equal(inMetres, svg (Chart.errorbar x y (km.Of [| 0.01<m>; 0.01<m> |])))
+
+    [<Fact>]
+    let ``map names the unit arithmetic does not reach, and lengths must agree`` () =
+        let t = U.second.Of ts
+        let x = t |> Q.map U.metre (fun t -> 0.012<m> * exp (-t / 1.5<s>))
+        Assert.Equal(ts.Length, x.Length)
+        Assert.Contains("x [mm]", svg (Chart.scatter t x))
+        let short = U.second.Of [| 1.0<s> |]
+        Assert.ThrowsAny<exn>(fun () -> t * short |> ignore) |> ignore
+
+    [<Fact>]
+    let ``a Q is a sequence, and its values are its own`` () =
+        let raw = Array.copy ts
+        let t = U.second.Of raw
+        raw.[1] <- 99.0<s>
+        Assert.Equal(0.1<s>, t.[1])
+        Assert.Equal(Stat.quantile 0.5 ts, Stat.quantile 0.5 t)
+        let vs = t.Values
+        vs.[0] <- 5.0<s>
+        Assert.Equal(0.0<s>, t.[0])
 
 // ======================================================================================
 // The headline: axes label themselves from the witness
@@ -110,7 +175,7 @@ module SelfLabellingAxes =
     let ``§2.2 nanometre data produces 'x [nm]' with a 1..5 tick ladder`` () =
         let x = Array.init 5 (fun i -> float i / 4.0 * 1.0<s>)
         let y = Array.init 5 (fun i -> (1.0 + float i) * 1e-9<m>)
-        let svg = renderFig surface (Chart.line U.second U.metre x y)
+        let svg = renderFig surface (Chart.lineIn U.second U.metre x y)
 
         Assert.Contains(">x [nm]<", svg)
 
@@ -123,7 +188,7 @@ module SelfLabellingAxes =
     let ``a microgram-scale mass axis reads mg, never µkg`` () =
         let x = Array.init 5 (fun i -> float i * 1.0<s>)
         let y = Array.init 5 (fun i -> (1.0 + float i) * 1e-6<kg>)
-        let svg = renderFig surface (Chart.line U.second U.kilogram x y)
+        let svg = renderFig surface (Chart.lineIn U.second U.kilogram x y)
 
         Assert.Contains("[mg]", svg)
         Assert.DoesNotContain("µkg", svg)
@@ -146,21 +211,21 @@ module PlainNumbers =
     [<Fact>]
     let ``a single layer draws the same whether its units are unspecified or dimensionless`` () =
         let cases =
-            [ "line", Marey.Chart.Line(xs, ys), Chart.line U.one U.one xs ys
-              "scatter", Marey.Chart.Scatter(xs, ys), Chart.scatter U.one U.one xs ys
-              "area", Marey.Chart.Area(xs, ys), Chart.area U.one U.one xs ys
-              "bar", Marey.Chart.Bar(xs, ys), Chart.bar U.one U.one xs ys
-              "errorbar", Marey.Chart.Errorbar(xs, ys, errs), Chart.errorbar U.one U.one xs ys errs
+            [ "line", Marey.Chart.Line(xs, ys), Chart.lineIn U.one U.one xs ys
+              "scatter", Marey.Chart.Scatter(xs, ys), Chart.scatterIn U.one U.one xs ys
+              "area", Marey.Chart.Area(xs, ys), Chart.areaIn U.one U.one xs ys
+              "bar", Marey.Chart.Bar(xs, ys), Chart.barIn U.one U.one xs ys
+              "errorbar", Marey.Chart.Errorbar(xs, ys, errs), Chart.errorbarIn U.one U.one xs ys errs
               "add",
               (Marey.Chart.Line(xs, ys) |> Chart.add (Marey.Chart.Scatter(xs, Array.rev ys))),
-              (Chart.line U.one U.one xs ys |> Chart.addScatter U.one U.one xs (Array.rev ys)) ]
+              (Chart.lineIn U.one U.one xs ys |> Chart.addScatterIn U.one U.one xs (Array.rev ys)) ]
 
         for name, unspecified, dimensionless in cases do
             Assert.True(renderFig surface unspecified = renderFig surface dimensionless, name)
 
     [<Fact>]
     let ``a plain axis reads a bare x and y, never '[1]'`` () =
-        for fig in [ Marey.Chart.Line(xs, ys); Chart.line U.one U.one xs ys ] do
+        for fig in [ Marey.Chart.Line(xs, ys); Chart.lineIn U.one U.one xs ys ] do
             let svg = renderFig surface fig
             Assert.Contains(">x<", svg)
             Assert.Contains(">y<", svg)
@@ -173,7 +238,7 @@ module PlainNumbers =
     let ``tiny plain data is never given an SI prefix`` () =
         let tiny = ys |> Array.map (fun y -> y * 1e-9)
 
-        for fig in [ Marey.Chart.Line(xs, tiny); Chart.line U.one U.one xs tiny ] do
+        for fig in [ Marey.Chart.Line(xs, tiny); Chart.lineIn U.one U.one xs tiny ] do
             let svg = renderFig surface fig
             Assert.Contains(">y<", svg)
             Assert.DoesNotContain("[n]", svg)
@@ -285,8 +350,8 @@ module SharedDomains =
     [<Fact>]
     let ``a flat line at zero does not widen a millimetre axis`` () =
         let fig =
-            Chart.line U.second U.metre t small
-            |> Chart.addLine U.second U.metre t (flat 0.0<m>)
+            Chart.lineIn U.second U.metre t small
+            |> Chart.addLineIn U.second U.metre t (flat 0.0<m>)
 
         let lo, hi = yDomain fig
         Assert.Equal(-1.1e-3, lo, 12)
@@ -301,8 +366,8 @@ module SharedDomains =
     [<Fact>]
     let ``a flat line outside the span is on the axis, inside the panel`` () =
         let fig =
-            Chart.line U.second U.metre t small
-            |> Chart.addLine U.second U.metre t (flat 5e-3<m>)
+            Chart.lineIn U.second U.metre t small
+            |> Chart.addLineIn U.second U.metre t (flat 5e-3<m>)
 
         let lo, hi = yDomain fig
         Assert.Equal(-1.1e-3, lo, 12)
@@ -313,14 +378,14 @@ module SharedDomains =
     [<Fact>]
     let ``a panel of flat lines alone keeps its padded axis`` () =
         let zeros =
-            Chart.line U.second U.metre t (flat 0.0<m>)
-            |> Chart.addLine U.second U.metre t (flat 0.0<m>)
+            Chart.lineIn U.second U.metre t (flat 0.0<m>)
+            |> Chart.addLineIn U.second U.metre t (flat 0.0<m>)
 
         Assert.Equal((-1.0, 1.0), yDomain zeros)
 
         let fives =
-            Chart.line U.second U.metre t (flat 5.0<m>)
-            |> Chart.addLine U.second U.metre t (flat 5.0<m>)
+            Chart.lineIn U.second U.metre t (flat 5.0<m>)
+            |> Chart.addLineIn U.second U.metre t (flat 5.0<m>)
 
         let lo, hi = yDomain fives
         Assert.Equal(4.75, lo, 12)
@@ -330,8 +395,8 @@ module SharedDomains =
     [<Fact>]
     let ``a stated domain is kept`` () =
         let fig =
-            Chart.line U.second U.metre t small
-            |> Chart.addLine U.second U.metre t (flat 0.0<m>)
+            Chart.lineIn U.second U.metre t small
+            |> Chart.addLineIn U.second U.metre t (flat 0.0<m>)
             |> Chart.withYDomain -2.0 2.0
 
         Assert.Equal((-2.0, 2.0), yDomain fig)
@@ -373,11 +438,11 @@ module DomainParticipation =
     /// domain, wherever its own values lie.
     [<Property>]
     let ``a layer out of the domain does not change it`` (d: LinearDomain) (FiniteFloat a) (FiniteFloat b) (FiniteFloat c) =
-        let alone = Chart.line U.second U.metre t (data d)
+        let alone = Chart.lineIn U.second U.metre t (data d)
 
         let withOut =
             alone
-            |> Chart.addLine U.second U.metre [| 5.0<s>; -9.0<s>; 0.5<s> |] [| a * 1.0<m>; b * 1.0<m>; c * 1.0<m> |]
+            |> Chart.addLineIn U.second U.metre [| 5.0<s>; -9.0<s>; 0.5<s> |] [| a * 1.0<m>; b * 1.0<m>; c * 1.0<m> |]
             |> out
 
         domains withOut = domains alone
@@ -385,8 +450,8 @@ module DomainParticipation =
     /// And one that is in can only widen it.
     [<Property>]
     let ``a layer in the domain never shrinks it`` (d: LinearDomain) (FiniteFloat a) (FiniteFloat b) =
-        let alone = Chart.line U.second U.metre t (data d)
-        let both = alone |> Chart.addLine U.second U.metre t [| a * 1.0<m>; b * 1.0<m>; a * 1.0<m> |]
+        let alone = Chart.lineIn U.second U.metre t (data d)
+        let both = alone |> Chart.addLineIn U.second U.metre t [| a * 1.0<m>; b * 1.0<m>; a * 1.0<m> |]
         let (_, (lo0, hi0)), (_, (lo1, hi1)) = domains alone, domains both
         lo1 <= lo0 && hi1 >= hi0
 
@@ -395,8 +460,8 @@ module DomainParticipation =
     [<Fact>]
     let ``a layer out of the domain still has its unit checked`` () =
         let fig =
-            Chart.line U.second U.metre t [| 1.0<m>; 2.0<m>; 3.0<m> |]
-            |> Chart.addLine U.second U.kelvin t [| 1.0<K>; 1.0<K>; 1.0<K> |]
+            Chart.lineIn U.second U.metre t [| 1.0<m>; 2.0<m>; 3.0<m> |]
+            |> Chart.addLineIn U.second U.kelvin t [| 1.0<K>; 1.0<K>; 1.0<K> |]
             |> out
 
         let e = Assert.ThrowsAny<exn>(fun () -> Figure.unify fig.Panels.[0] |> ignore)
@@ -406,9 +471,9 @@ module DomainParticipation =
     [<Fact>]
     let ``a panel whose every layer is out takes their extent`` () =
         let fig =
-            Chart.line U.second U.metre t [| 1.0<m>; 2.0<m>; 3.0<m> |]
+            Chart.lineIn U.second U.metre t [| 1.0<m>; 2.0<m>; 3.0<m> |]
             |> out
-            |> Chart.addLine U.second U.metre t [| 7.0<m>; 8.0<m>; 9.0<m> |]
+            |> Chart.addLineIn U.second U.metre t [| 7.0<m>; 8.0<m>; 9.0<m> |]
             |> out
 
         let _, (lo, hi) = domains fig
@@ -418,8 +483,8 @@ module DomainParticipation =
     [<Fact>]
     let ``withDomainIncluded lets a layer move the axes again`` () =
         let fig =
-            Chart.line U.second U.metre t [| 1.0<m>; 2.0<m>; 3.0<m> |]
-            |> Chart.addLine U.second U.metre t [| 9.0<m>; 9.0<m>; 9.0<m> |]
+            Chart.lineIn U.second U.metre t [| 1.0<m>; 2.0<m>; 3.0<m> |]
+            |> Chart.addLineIn U.second U.metre t [| 9.0<m>; 9.0<m>; 9.0<m> |]
             |> out
 
         let _, (_, hiOut) = domains fig
@@ -431,11 +496,11 @@ module DomainParticipation =
     /// others.
     [<Fact>]
     let ``a facet shares only the layers that are in`` () =
-        let a = Chart.line U.second U.metre t [| 1.0<m>; 2.0<m>; 3.0<m> |]
+        let a = Chart.lineIn U.second U.metre t [| 1.0<m>; 2.0<m>; 3.0<m> |]
 
         let b =
-            Chart.line U.second U.metre t [| 1.5<m>; 2.0<m>; 2.5<m> |]
-            |> Chart.addLine U.second U.metre t [| 50.0<m>; 50.0<m>; 50.0<m> |]
+            Chart.lineIn U.second U.metre t [| 1.5<m>; 2.0<m>; 2.5<m> |]
+            |> Chart.addLineIn U.second U.metre t [| 50.0<m>; 50.0<m>; 50.0<m> |]
             |> out
 
         let fig = Chart.facet [| "a", a; "b", b |]
@@ -492,7 +557,7 @@ module Rules =
     /// G1 — the case D163 exists for: `axhline(0)` on residuals in millimetres.
     [<Fact>]
     let ``a rule at zero leaves a millimetre axis alone`` () =
-        let fig = Chart.line U.second U.metre t small |> Chart.addHLine U.metre 0.0<m>
+        let fig = Chart.lineIn U.second U.metre t small |> Chart.addHLine U.metre 0.0<m>
         let lo, hi = yDomain fig
         Assert.Equal(-1.1e-3, lo, 12)
         Assert.Equal(1.1e-3, hi, 12)
@@ -500,14 +565,14 @@ module Rules =
 
         // Zero is inside the data, which a constant's point would also have kept. A rule
         // past the data is the case only D163 keeps out.
-        let far = Chart.line U.second U.metre t small |> Chart.addHLine U.metre 5e-3<m>
+        let far = Chart.lineIn U.second U.metre t small |> Chart.addHLine U.metre 5e-3<m>
         Assert.Equal((lo, hi), yDomain far)
 
     /// G1 — and one asked in reaches the axis on its own axis only.
     [<Fact>]
     let ``withDomainIncluded brings a rule's value into its axis and no other`` () =
         let fig =
-            Chart.line U.second U.metre t small
+            Chart.lineIn U.second U.metre t small
             |> Chart.addHLine U.metre 5e-3<m>
             |> Chart.withDomainIncluded
 
@@ -519,7 +584,7 @@ module Rules =
     /// G2 — a rule past the panel is not drawn, and the layer says so.
     [<Fact>]
     let ``a rule outside the domain is counted, not drawn`` () =
-        let fig = Chart.line U.second U.metre t small |> Chart.addVLine U.second 9.0<s>
+        let fig = Chart.lineIn U.second U.metre t small |> Chart.addVLine U.second 9.0<s>
         Assert.Empty(rules fig)
 
         let panel =
@@ -531,7 +596,7 @@ module Rules =
         Assert.Contains(("dropped-marks", "1"), panel.Data)
 
         // And a figure that drops nothing says nothing.
-        let quiet = Chart.line U.second U.metre t small |> Chart.addVLine U.second 1.0<s>
+        let quiet = Chart.lineIn U.second U.metre t small |> Chart.addVLine U.second 1.0<s>
 
         Chart.toScene surface quiet
         |> annotated
@@ -541,13 +606,13 @@ module Rules =
     /// domains, a facet's sharing, and the domain a zoom gives a panel.
     [<Fact>]
     let ``a rule follows the panel's final domain`` () =
-        let ruled = Chart.line U.second U.metre t small |> Chart.addHLine U.metre 0.5e-3<m>
+        let ruled = Chart.lineIn U.second U.metre t small |> Chart.addHLine U.metre 0.5e-3<m>
 
         // The rule's height on the panel, against the y domain that panel ends up with.
         let figures =
             [ ruled |> Chart.withXDomain 0.0 2.0, (-1.1e-3, 1.1e-3)
               ruled |> Chart.withXDomain -50.0 3.0, (-1.1e-3, 1.1e-3)
-              Chart.facet [| "a", ruled; "b", Chart.line U.second U.metre [| 5.0<s>; 8.0<s> |] [| -3e-3<m>; 0.0<m> |] |],
+              Chart.facet [| "a", ruled; "b", Chart.lineIn U.second U.metre [| 5.0<s>; 8.0<s> |] [| -3e-3<m>; 0.0<m> |] |],
               (-3.15e-3, 1.1e-3)
               ruled |> Chart.withPanelDomains (0, 0) (Some(0.5, 1.0)) (Some(-2e-4, 6e-4)), (-2e-4, 6e-4) ]
 
@@ -573,7 +638,7 @@ module Rules =
     /// was coloured by hand.
     [<Fact>]
     let ``a rule takes the theme's axis colour and follows a retheme`` () =
-        let ruled = Chart.line U.second U.metre t small |> Chart.addHLine U.metre 0.0<m>
+        let ruled = Chart.lineIn U.second U.metre t small |> Chart.addHLine U.metre 0.0<m>
         let dark = ruled |> Chart.withTheme Theme.dark
         Assert.Equal(Theme.dark.AxisColor, dark.Panels.[0].Layers.[1].Style.Color)
 
@@ -584,7 +649,7 @@ module Rules =
     [<Fact>]
     let ``a rule under a polar coord is sampled`` () =
         let fig =
-            Chart.line U.second U.metre t small
+            Chart.lineIn U.second U.metre t small
             |> Chart.addHLine U.metre 0.0<m>
             |> Chart.withCoord Coord.polar
 
@@ -596,7 +661,7 @@ module Rules =
     [<Fact>]
     let ``a slope rule is clipped to the panel's edges`` () =
         let fig =
-            Chart.line U.second U.metre t small
+            Chart.lineIn U.second U.metre t small
             |> Chart.addLineThrough U.second U.metre 1.0<s> 0.0<m> 1e-3<m / s>
 
         match rules fig with
@@ -648,13 +713,13 @@ module Annotations =
         notes fig |> List.collect (snd >> texts) |> List.find (fun r -> r.Text = label)
 
     let private peak () =
-        Chart.line U.second U.metre t x |> Chart.annotate U.second U.metre 1.0<s> 2.0<m> "peak"
+        Chart.lineIn U.second U.metre t x |> Chart.annotate U.second U.metre 1.0<s> 2.0<m> "peak"
 
     /// Labelling a point never moves the axes, and labelling one off the panel draws nothing and
     /// counts it.
     [<Fact>]
     let ``an annotation stays out of the domain, and one off the panel is counted`` () =
-        let alone = Figure.unify (Chart.line U.second U.metre t x).Panels.[0]
+        let alone = Figure.unify (Chart.lineIn U.second U.metre t x).Panels.[0]
         let marked = Figure.unify (peak () |> Chart.annotate U.second U.metre 9.0<s> 9.0<m> "far").Panels.[0]
         let domains (p: Panel) =
             let sx, sy = Erase.seriesScales p.Layers.[0].Data
@@ -682,7 +747,7 @@ module Annotations =
         let label = sprintf "a long label to the %s" side
 
         let fig =
-            Chart.line U.second U.metre t x
+            Chart.lineIn U.second U.metre t x
             |> Chart.annotate U.second U.metre (at * 1.0<s>) (value * 1.0<m>) label
             |> Chart.withTextOffset (dx * 1.0<px>) (dy * 1.0<px>)
 
@@ -746,7 +811,7 @@ module Annotations =
     /// the call is lettered too.
     [<Fact>]
     let ``panel letters go in reading order and reach panels added later`` () =
-        let one = Chart.line U.second U.metre t x
+        let one = Chart.lineIn U.second U.metre t x
         let fig = (one |> Chart.withPanelLetters LetterParen |> Chart.beside one) |> Chart.above (one |> Chart.beside one)
 
         let letters =
@@ -773,7 +838,7 @@ module StatedTicks =
     let private surface = Chart.size 480.0 300.0
 
     let private spectrum () =
-        Chart.line U.metre U.one [| 400.0 * nm; 700.0 * nm |] [| 0.1; 0.9 |] |> Chart.withXDomain 400e-9 700e-9
+        Chart.lineIn U.metre U.one [| 400.0 * nm; 700.0 * nm |] [| 0.1; 0.9 |] |> Chart.withXDomain 400e-9 700e-9
 
     /// The x axis as it is drawn: its spec, through the same path as the renderer.
     let private xAxis (fig: Figure) =
@@ -798,7 +863,7 @@ module StatedTicks =
     let ``ticks in another unit of the dimension are converted`` () =
         // Every half minute on a seconds axis.
         let fig =
-            Chart.line U.second U.metre [| 0.0<s>; 120.0<s> |] [| 0.0<m>; 1.0<m> |]
+            Chart.lineIn U.second U.metre [| 0.0<s>; 120.0<s> |] [| 0.0<m>; 1.0<m> |]
             |> Chart.withXTicksEvery U.minute 0.5<minute>
             |> Chart.withXDomain 0.0 120.0
 
@@ -806,7 +871,7 @@ module StatedTicks =
 
         // And an affine one: 0 °C and 10 °C on a kelvin axis.
         let warm =
-            Chart.line U.second U.kelvin [| 0.0<s>; 1.0<s> |] [| 270.0<K>; 290.0<K> |]
+            Chart.lineIn U.second U.kelvin [| 0.0<s>; 1.0<s> |] [| 270.0<K>; 290.0<K> |]
             |> Chart.withYTicksAt U.degreeCelsius [| 0.0<degC>; 10.0<degC> |]
 
         let values = (yAxis warm).Ticks |> Array.map (fun t -> t.Value)
@@ -819,7 +884,7 @@ module StatedTicks =
         let edge = 8.0e9</m>
 
         let fig =
-            Chart.line (U.recip U.metre) U.one [| -edge; edge |] [| 0.0; 1.0 |]
+            Chart.lineIn (U.recip U.metre) U.one [| -edge; edge |] [| 0.0; 1.0 |]
             |> Chart.withXTicksNamed (U.recip U.metre) [| -edge, "X"; 0.0</m>, "Γ"; edge, "X" |]
             |> Chart.withXDomain (float -edge) (float edge)
 
@@ -850,14 +915,14 @@ module StatedTicks =
     /// A stated prefix wins over the one the domain selects.
     [<Fact>]
     let ``a stated prefix is the axis's`` () =
-        let fig = Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 0.002<m> |]
+        let fig = Chart.lineIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 0.002<m> |]
         Assert.Equal("mm", (yAxis fig).UnitText)
         Assert.Equal("m", (yAxis (fig |> Chart.withYPrefix Prefix.none)).UnitText)
 
     /// A reversed axis runs over the domain it would have had, backwards.
     [<Fact>]
     let ``a reversed axis keeps its derived domain`` () =
-        let fig = Chart.line U.kelvin U.metre [| 290.0<K>; 276.0<K> |] [| 0.0<m>; 800.0<m> |]
+        let fig = Chart.lineIn U.kelvin U.metre [| 290.0<K>; 276.0<K> |] [| 0.0<m>; 800.0<m> |]
         let forward = (Figure.unify fig.Panels.[0]).Layers.[0].Data |> Erase.seriesScales |> snd
         let reversed = (Figure.unify (fig |> Chart.withYReversed).Panels.[0]).Layers.[0].Data |> Erase.seriesScales |> snd
         let lo, hi = forward.Domain
@@ -866,10 +931,10 @@ module StatedTicks =
     /// A map's two lengths are named by side; a length against time stays `x`.
     [<Fact>]
     let ``two lengths are named by their sides`` () =
-        let map = Chart.line U.metre U.metre [| 0.0<m>; 1.0<m> |] [| 0.0<m>; 1.0<m> |]
+        let map = Chart.lineIn U.metre U.metre [| 0.0<m>; 1.0<m> |] [| 0.0<m>; 1.0<m> |]
         Assert.Equal("x", (xAxis map).Label)
         Assert.Equal("y", (yAxis map).Label)
-        let fall = Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 1.0<m> |]
+        let fall = Chart.lineIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 1.0<m> |]
         Assert.Equal("x", (yAxis fall).Label)
 
 // ======================================================================================
@@ -887,7 +952,7 @@ module PublicationTicks =
         v.XAxis, v.YAxis, v.Plot
 
     let private line (lo: float) (hi: float) =
-        Chart.line U.second U.metre [| lo * 1.0<s>; hi * 1.0<s> |] [| 0.0<m>; 1.0<m> |] |> Chart.withXDomain lo hi
+        Chart.lineIn U.second U.metre [| lo * 1.0<s>; hi * 1.0<s> |] [| 0.0<m>; 1.0<m> |] |> Chart.withXDomain lo hi
 
     let private minorValues (spec: AxisSpec) (lo: float) (hi: float) =
         spec.Minor |> Array.map (fun p -> lo + float p * (hi - lo)) |> Array.map (fun v -> System.Math.Round(v, 9))
@@ -907,7 +972,7 @@ module PublicationTicks =
         Assert.DoesNotContain(1.0, minorValues x 0.0 4.0)
 
         let log =
-            Chart.line U.second U.metre [| 1.0<s>; 100.0<s> |] [| 0.0<m>; 1.0<m> |] |> Chart.withXLog |> Chart.withXDomain 1.0 100.0
+            Chart.lineIn U.second U.metre [| 1.0<s>; 100.0<s> |] [| 0.0<m>; 1.0<m> |] |> Chart.withXLog |> Chart.withXDomain 1.0 100.0
 
         let lx, _, _ = axes log
         Assert.Equal(16, lx.Minor.Length)
@@ -984,7 +1049,7 @@ module TickFormats =
         (Chart.panelsIn m shot fig).[0].YAxis
 
     let private over (lo: float) (hi: float) =
-        Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| lo * 1.0<m>; hi * 1.0<m> |] |> Chart.withYDomain lo hi
+        Chart.lineIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| lo * 1.0<m>; hi * 1.0<m> |] |> Chart.withYDomain lo hi
 
     let private number (label: string) =
         System.Double.Parse(label.Replace("−", "-").TrimEnd('%'), System.Globalization.CultureInfo.InvariantCulture)
@@ -1087,11 +1152,11 @@ module Legends =
         let ts = Array.init 31 (fun i -> float i * 20.0<s>)
         let curve (offset: float<K>) = ts |> Array.map (fun t -> 300.0<K> - offset + 60.0<K> * (t / (t + 150.0<s>)))
 
-        Chart.line U.second U.kelvin ts (curve 0.0<K>)
+        Chart.lineIn U.second U.kelvin ts (curve 0.0<K>)
         |> Chart.withName "a"
-        |> Chart.addLine U.second U.kelvin ts (curve 4.0<K>)
+        |> Chart.addLineIn U.second U.kelvin ts (curve 4.0<K>)
         |> Chart.withName "b"
-        |> Chart.addLine U.second U.kelvin ts (curve 10.0<K>)
+        |> Chart.addLineIn U.second U.kelvin ts (curve 10.0<K>)
         |> Chart.withName "c"
 
     let private plot (fig: Figure) =
@@ -1117,7 +1182,7 @@ module Legends =
     let ``LegendBest goes outside when every corner is covered`` () =
         let xs = Array.init 400 (fun i -> float (i % 20) * 1.0<s>)
         let ys = Array.init 400 (fun i -> float (i / 20) * 1.0<m>)
-        let cloud = Chart.scatter U.second U.metre xs ys |> Chart.withName "everywhere"
+        let cloud = Chart.scatterIn U.second U.metre xs ys |> Chart.withName "everywhere"
         let best = cloud |> Chart.withLegend LegendBest
         let inside = plot (cloud |> Chart.withLegend LegendTopRight)
         let p = plot best
@@ -1166,9 +1231,9 @@ module Legends =
             // The curves swing from rising to falling across the shot, which moves the empty corner.
             let curve (offset: float<K>) = ts |> Array.map (fun t -> 300.0<K> - offset + k * 60.0<K> * (t / (t + 150.0<s>)))
 
-            Chart.line U.second U.kelvin ts (curve 0.0<K>)
+            Chart.lineIn U.second U.kelvin ts (curve 0.0<K>)
             |> Chart.withName "a"
-            |> Chart.addLine U.second U.kelvin ts (curve 4.0<K>)
+            |> Chart.addLineIn U.second U.kelvin ts (curve 4.0<K>)
             |> Chart.withName "b"
             |> Chart.withYDomain 230.0 370.0
             |> Chart.withLegend LegendBest
@@ -1247,8 +1312,8 @@ module CategoricalFrontDoor =
     /// Phase 1's exit criterion through the API a user actually has: one named band per level,
     /// with nothing configured but the witness on y.
     [<Fact>]
-    let ``Chart.Category.bar labels one band per level`` () =
-        let svg = renderFig surface (Chart.Category.bar U.metre keys yields)
+    let ``Chart.Category.barIn labels one band per level`` () =
+        let svg = renderFig surface (Chart.Category.barIn U.metre keys yields)
 
         for name in keys do
             Assert.Contains(">" + name + "<", svg)
@@ -1257,7 +1322,7 @@ module CategoricalFrontDoor =
     /// the units story on the other axis.
     [<Fact>]
     let ``the y axis still labels itself from the witness`` () =
-        let svg = renderFig surface (Chart.Category.bar U.metre keys yields)
+        let svg = renderFig surface (Chart.Category.barIn U.metre keys yields)
         Assert.Contains(">x [m]<", svg)
 
     /// `Axes.defaultLabel` would print a bare `x` under bands already named `control`,
@@ -1265,11 +1330,11 @@ module CategoricalFrontDoor =
     /// goes back.
     [<Fact>]
     let ``a categorical axis is titled by its bands, not by a conventional symbol`` () =
-        let plain = renderFig surface (Chart.Category.bar U.metre keys yields)
+        let plain = renderFig surface (Chart.Category.barIn U.metre keys yields)
         Assert.DoesNotContain(">x<", plain)
 
         let named =
-            renderFig surface (Chart.Category.bar U.metre keys yields |> Chart.withXLabel "treatment")
+            renderFig surface (Chart.Category.barIn U.metre keys yields |> Chart.withXLabel "treatment")
 
         Assert.Contains(">treatment<", named)
 
@@ -1279,13 +1344,13 @@ module CategoricalFrontDoor =
     [<Fact>]
     let ``a bar chart's y domain reaches zero`` () =
         let categorical =
-            Chart.Category.bar U.metre keys yields |> fun f -> f.Panels.[0].Layers.[0].Data
+            Chart.Category.barIn U.metre keys yields |> fun f -> f.Panels.[0].Layers.[0].Data
 
         let _, y = Erase.seriesScales categorical
         Assert.Equal(0.0, fst y.Domain, 12)
 
         let continuous =
-            Chart.bar U.second U.metre [| 1.0<s>; 2.0<s>; 3.0<s> |] [| 12.4<m>; 19.1<m>; 7.8<m> |]
+            Chart.barIn U.second U.metre [| 1.0<s>; 2.0<s>; 3.0<s> |] [| 12.4<m>; 19.1<m>; 7.8<m> |]
 
         let _, cy = Erase.seriesScales continuous.Panels.[0].Layers.[0].Data
         Assert.Equal(0.0, fst cy.Domain, 12)
@@ -1296,14 +1361,14 @@ module CategoricalFrontDoor =
     [<Fact>]
     let ``zero enters only on the side it is missing from`` () =
         let negative =
-            Chart.Category.bar U.metre [| "a"; "b" |] [| -4.0<m>; -9.0<m> |]
+            Chart.Category.barIn U.metre [| "a"; "b" |] [| -4.0<m>; -9.0<m> |]
 
         let _, y = Erase.seriesScales negative.Panels.[0].Layers.[0].Data
         Assert.Equal(0.0, snd y.Domain, 12)
         Assert.True(fst y.Domain < -9.0, sprintf "lower end %f should still be padded" (fst y.Domain))
 
         let straddling =
-            Chart.Category.bar U.metre [| "a"; "b" |] [| -4.0<m>; 9.0<m> |]
+            Chart.Category.barIn U.metre [| "a"; "b" |] [| -4.0<m>; 9.0<m> |]
 
         let _, sy = Erase.seriesScales straddling.Panels.[0].Layers.[0].Data
         Assert.True(fst sy.Domain < -4.0 && snd sy.Domain > 9.0)
@@ -1312,7 +1377,7 @@ module CategoricalFrontDoor =
     /// doing it here silently would be the library deciding what the data means.
     [<Fact>]
     let ``a repeated key is two marks in one band, not an aggregate`` () =
-        let fig = Chart.Category.bar U.metre [| "a"; "b"; "a" |] [| 1.0<m>; 2.0<m>; 3.0<m> |]
+        let fig = Chart.Category.barIn U.metre [| "a"; "b"; "a" |] [| 1.0<m>; 2.0<m>; 3.0<m> |]
         let x, _ = Erase.seriesScales (fig.Panels.[0].Layers.[0].Data)
 
         Assert.Equal(ScaleKind.Ordinal [| "a"; "b" |], x.Kind)
@@ -1347,7 +1412,7 @@ module LayoutInvariants =
     let private busyFigure () =
         baseFigure ()
         |> Chart.withName "model"
-        |> Chart.addScatter U.second U.metre fallT fallX
+        |> Chart.addScatterIn U.second U.metre fallT fallX
         |> Chart.withName "measured"
         |> Chart.withTitle "Free fall"
         |> Chart.withLegend LegendTopRight
@@ -1386,7 +1451,7 @@ module LayoutInvariants =
         let twoPanel =
             baseFigure ()
             |> Chart.withPanelTitle "left"
-            |> Chart.beside (Chart.line U.second U.metre fallT (Array.rev fallX) |> Chart.withPanelTitle "right")
+            |> Chart.beside (Chart.lineIn U.second U.metre fallT (Array.rev fallX) |> Chart.withPanelTitle "right")
 
         let scene = Chart.toScene surface twoPanel
 
@@ -1468,7 +1533,7 @@ module Batching =
         let x = Array.init n (fun i -> float i / float n * 10.0<s>)
         let y = x |> Array.map (fun t -> sin (float t) * 1.0<m>)
 
-        let scene = Chart.toScene surface (Chart.scatter U.second U.metre x y)
+        let scene = Chart.toScene surface (Chart.scatterIn U.second U.metre x y)
 
         let markerNodes =
             scene
@@ -1753,7 +1818,7 @@ module Themes =
     /// working, silently, leaving every figure in the default palette.
     [<Fact>]
     let ``a fresh figure's layer styles match its own theme, so withTheme can recolour it`` () =
-        let fig = Chart.line U.second U.metre fallT fallX
+        let fig = Chart.lineIn U.second U.metre fallT fallX
         Assert.Equal(Theme.initial.Name, fig.Theme.Name)
 
         let layer = fig.Panels.[0].Layers.[0]
@@ -1786,7 +1851,7 @@ module Channels =
 
     let private temperatures = Array.init 30 (fun i -> (280.0 + float i) * 1.0<K>)
 
-    let private scatter () = Chart.scatter U.second U.metre xs ys
+    let private scatter () = Chart.scatterIn U.second U.metre xs ys
 
     /// The `Markers` nodes belonging to the *data*, which is not every `Markers` node in the
     /// scene: a legend swatch is one too, and counting those would make a three-level scatter
@@ -1925,7 +1990,7 @@ module Channels =
         let t = Array.init n (fun i -> (280.0 + 25.0 * float i / float n) * 1.0<K>)
 
         let scene =
-            Chart.toScene surface (Chart.scatter U.second U.metre bx by |> Chart.colorBy U.kelvin t)
+            Chart.toScene surface (Chart.scatterIn U.second U.metre bx by |> Chart.colorByIn U.kelvin t)
 
         let markers = allMarkers scene
         Assert.True(markers <= 257, sprintf "%d Markers nodes" markers)
@@ -1945,7 +2010,7 @@ module Channels =
     // ---- The colorbar -----------------------------------------------------------------
 
     let private colorbarFigure () =
-        scatter () |> Chart.colorBy U.kelvin temperatures |> Chart.withColorLabel "T"
+        scatter () |> Chart.colorByIn U.kelvin temperatures |> Chart.withColorLabel "T"
 
     /// The whole thesis in a third place, after the axis and the legend: the bar is titled from
     /// the witness, and nothing was configured but the quantity's name.
@@ -1970,7 +2035,7 @@ module Channels =
     [<Fact>]
     let ``an unnamed colour channel takes its name from the dimension, not from an axis`` () =
         let named =
-            Chart.toScene surface (scatter () |> Chart.colorBy U.kelvin temperatures)
+            Chart.toScene surface (scatter () |> Chart.colorByIn U.kelvin temperatures)
 
         match annotationOf (RoleOther "colorbar") named with
         | None -> failwith "no colorbar was compiled"
@@ -1978,7 +2043,7 @@ module Channels =
 
         // A dimensionless channel has no conventional symbol, and prints none.
         let plain =
-            Chart.toScene surface (scatter () |> Chart.colorBy U.one (Array.init 30 float))
+            Chart.toScene surface (scatter () |> Chart.colorByIn U.one (Array.init 30 float))
 
         match annotationOf (RoleOther "colorbar") plain with
         | None -> failwith "no colorbar was compiled"
@@ -2089,7 +2154,7 @@ module Channels =
         let masses = Array.init 30 (fun i -> (1.0 + float i * 0.1) * 1.0<kg>)
 
         let names =
-            Chart.toScene surface (scatter () |> Chart.sizeBy U.kilogram masses)
+            Chart.toScene surface (scatter () |> Chart.sizeByIn U.kilogram masses)
             |> Scene.fold
                 (fun acc n ->
                     match n with
@@ -2105,7 +2170,7 @@ module Channels =
 
         // The swatches really are different sizes: a size key drawn at one size is not a key.
         let sizes =
-            Chart.toScene surface (scatter () |> Chart.sizeBy U.kilogram masses)
+            Chart.toScene surface (scatter () |> Chart.sizeByIn U.kilogram masses)
             |> Scene.fold
                 (fun acc n ->
                     match n with
@@ -2209,9 +2274,9 @@ module Keying =
     [<Fact>]
     let ``a figure carries a key for its root, each panel and each layer`` () =
         let fig =
-            Chart.line U.second U.metre fallT fallX
-            |> Chart.addScatter U.second U.metre fallT (Array.rev fallX)
-            |> Chart.beside (Chart.line U.second U.metre fallT fallX)
+            Chart.lineIn U.second U.metre fallT fallX
+            |> Chart.addScatterIn U.second U.metre fallT (Array.rev fallX)
+            |> Chart.beside (Chart.lineIn U.second U.metre fallT fallX)
 
         Assert.Equal<string list>(
             [ "figure"
@@ -2236,9 +2301,9 @@ module Keying =
     [<Fact>]
     let ``two layers with the same name still get different keys`` () =
         let fig =
-            Chart.line U.second U.metre fallT fallX
+            Chart.lineIn U.second U.metre fallT fallX
             |> Chart.withName "measured"
-            |> Chart.addLine U.second U.metre fallT (Array.rev fallX)
+            |> Chart.addLineIn U.second U.metre fallT (Array.rev fallX)
 
         let scene = Chart.toScene surface (fig |> Chart.withName "measured")
 
@@ -2267,10 +2332,10 @@ module Keying =
     let ``keys survive a restyle, a rename and a change of values`` () =
         // Named in both, so both have a legend: naming a layer for the first time adds one,
         // and a legend appearing is a change of structure rather than of identity.
-        let before = Chart.toScene surface (Chart.line U.second U.metre fallT fallX |> Chart.withName "original")
+        let before = Chart.toScene surface (Chart.lineIn U.second U.metre fallT fallX |> Chart.withName "original")
 
         let after =
-            Chart.line U.second U.metre fallT (fallX |> Array.map (fun x -> x * 0.5))
+            Chart.lineIn U.second U.metre fallT (fallX |> Array.map (fun x -> x * 0.5))
             |> Chart.withName "renamed"
             |> Chart.withTheme Theme.dark
             |> Chart.toScene surface
@@ -2289,8 +2354,8 @@ module Keying =
     [<Fact>]
     let ``one layer of one panel can be faded through its key`` () =
         let fig =
-            Chart.line U.second U.metre fallT fallX
-            |> Chart.addScatter U.second U.metre fallT (Array.rev fallX)
+            Chart.lineIn U.second U.metre fallT fallX
+            |> Chart.addScatterIn U.second U.metre fallT (Array.rev fallX)
 
         let scene = Chart.toScene surface fig
         let target = Keys.layer (Keys.panel 0 0) 1

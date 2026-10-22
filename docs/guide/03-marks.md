@@ -10,18 +10,18 @@ let heights = [| 3.0<m>; 7.0<m>; 4.0<m>; 9.0<m> |]
 let spread = [| 0.4<m>; 0.6<m>; 0.3<m>; 0.8<m> |]
 
 let marks =
-    [ Chart.line U.second U.metre levels heights
-      Chart.scatter U.second U.metre levels heights
-      Chart.area U.second U.metre levels heights
-      Chart.bar U.second U.metre levels heights
-      Chart.step U.second U.metre levels heights
-      Chart.errorbar U.second U.metre levels heights spread
-      Chart.ribbon U.second U.metre levels (Array.map2 (-) heights spread) (Array.map2 (+) heights spread)
-      Chart.segment U.second U.metre levels heights (levels |> Array.map ((+) 0.5<s>)) heights
-      Chart.text U.second U.metre levels heights [| "a"; "b"; "c"; "d" |]
-      Chart.histogram U.metre heights
-      Chart.density U.metre heights
-      Chart.Category.boxplot U.metre [| "a"; "b"; "a"; "b" |] heights ]
+    [ Chart.lineIn U.second U.metre levels heights
+      Chart.scatterIn U.second U.metre levels heights
+      Chart.areaIn U.second U.metre levels heights
+      Chart.barIn U.second U.metre levels heights
+      Chart.stepIn U.second U.metre levels heights
+      Chart.errorbarIn U.second U.metre levels heights spread
+      Chart.ribbonIn U.second U.metre levels (Array.map2 (-) heights spread) (Array.map2 (+) heights spread)
+      Chart.segmentIn U.second U.metre levels heights (levels |> Array.map ((+) 0.5<s>)) heights
+      Chart.textIn U.second U.metre levels heights [| "a"; "b"; "c"; "d" |]
+      Chart.histogramIn U.metre heights
+      Chart.densityIn U.metre heights
+      Chart.Category.boxplotIn U.metre [| "a"; "b"; "a"; "b" |] heights ]
 
 printfn "%d kinds of mark, each a figure" marks.Length
 ```
@@ -68,14 +68,14 @@ let halfWidth = f0 / 25.0 / 2.0
 let resonance =
     Chart.vSpan U.hertz (f0 - halfWidth) (f0 + halfWidth)
     |> Chart.withName "half-power width"
-    |> Chart.addRibbon U.hertz U.metre sweep (sweep |> Array.map (response 22.0)) (sweep |> Array.map (response 28.0))
+    |> Chart.addRibbonIn U.hertz U.metre sweep (sweep |> Array.map (response 22.0)) (sweep |> Array.map (response 28.0))
     |> Chart.withName "Q = 22 … 28"
     |> Chart.withColor Palette.blue
     |> Chart.withOpacity 0.25
-    |> Chart.addLine U.hertz U.metre sweep (sweep |> Array.map (response 25.0))
+    |> Chart.addLineIn U.hertz U.metre sweep (sweep |> Array.map (response 25.0))
     |> Chart.withName "Q = 25"
     |> Chart.withColor Palette.blue
-    |> Chart.addErrorbar U.hertz U.metre drive amplitude amplitudeErr
+    |> Chart.addErrorbarIn U.hertz U.metre drive amplitude amplitudeErr
     |> Chart.withName "measured"
     |> Chart.withColor Palette.vermillion
     |> Chart.addHLine U.metre (peak / sqrt 2.0)

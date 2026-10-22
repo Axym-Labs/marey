@@ -39,7 +39,7 @@ follows from that and from nothing else.
 let t = Array.init 24 (fun i -> float i * 0.4<s>)
 let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
 
-Chart.line U.second U.metre t x
+Chart.lineIn U.second U.metre t x
 |> Chart.withName "model"
 |> Chart.withTitle "Free fall"
 |> Chart.withSubtitle "displacement against elapsed time"
@@ -58,9 +58,9 @@ follow:
 
 let measured = t.[..5] |> Array.map (fun t -> 0.5 * 9.6<m/s^2> * t * t)
 
-Chart.line U.second U.metre t x
+Chart.lineIn U.second U.metre t x
 |> Chart.withName "model"
-|> Chart.addScatter U.second U.metre t.[..5] measured
+|> Chart.addScatterIn U.second U.metre t.[..5] measured
 |> Chart.withName "measured"
 |> Chart.withTitle "Free fall"
 |> Chart.withLegend LegendTopLeft
@@ -78,9 +78,9 @@ been:
 
 let temperature = t |> Array.map (fun t -> 293.0<K> + 0.5<K/s> * t)
 
-Chart.line U.second U.metre t x
+Chart.lineIn U.second U.metre t x
 |> Chart.withName "displacement"
-|> Chart.addLine U.second U.kelvin t temperature
+|> Chart.addLineIn U.second U.kelvin t temperature
 |> Chart.withName "temperature"
 
 #!markdown
@@ -100,7 +100,7 @@ paper, in the document's own fonts.
 #r "nuget: Marey.Backend.Tikz"
 
 let figure =
-    Chart.line U.second U.metre t x
+    Chart.lineIn U.second U.metre t x
     |> Chart.withName "model"
     |> Chart.withTitle "Free fall"
     |> Chart.withTheme Theme.tikz
@@ -227,7 +227,7 @@ open Marey.Storyboard
 let ringdown =
     let t = Array.init 60 (fun i -> float i * 0.1<s>)
     let x = t |> Array.map (fun v -> 30.0e-3 * exp (-float v / 2.0) * cos (4.0 * float v) * 1.0<m>)
-    Chart.scatter U.second U.metre t x |> Chart.withTitle "A ringdown"
+    Chart.scatterIn U.second U.metre t x |> Chart.withTitle "A ringdown"
 
 let story =
     scene {

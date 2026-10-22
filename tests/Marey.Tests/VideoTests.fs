@@ -634,7 +634,7 @@ module TheWholeThing =
                         let ts = Array.init 8 (fun i -> float i * 1.0<s>)
 
                         let points =
-                            Chart.scatter U.second U.metre ts (ts |> Array.map (fun t -> float t * 2.0<m>))
+                            Chart.scatterIn U.second U.metre ts (ts |> Array.map (fun t -> float t * 2.0<m>))
 
                         let story =
                             scene {

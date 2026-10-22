@@ -30,7 +30,7 @@ let settling =
     t |> Array.map (fun v -> 42.0e-3 * (1.0 - exp (-float v / 2.5)) * 1.0<m>)
 
 let rise =
-    Chart.scatter U.second U.metre t settling
+    Chart.scatterIn U.second U.metre t settling
     |> Chart.withTitle "A first-order rise"
     |> Chart.withYLabel "x"
 

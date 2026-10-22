@@ -42,7 +42,7 @@ let strobe (amplitude: float<rad/s^2>) =
 let sectionAt (amplitude: float<rad/s^2>) =
     let points = strobe amplitude
 
-    Chart.scatter U.radian angularVelocity
+    Chart.scatterIn U.radian angularVelocity
         (points |> Array.map (fun p -> let struct (th, _) = p.State in wrapAngle th))
         (points |> Array.map (fun p -> let struct (_, om) = p.State in om))
     |> Chart.withXDomain (-System.Math.PI) System.Math.PI

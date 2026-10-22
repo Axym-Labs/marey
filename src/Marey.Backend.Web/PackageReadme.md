@@ -21,7 +21,7 @@ let extent = Chart.size 720.0 450.0
 WebText.measurer ()
 |> fun ready ->
     ready.``then`` (fun measurer ->
-        let scene = Chart.line U.second U.metre t x |> Chart.toSceneWith measurer extent
+        let scene = Chart.lineIn U.second U.metre t x |> Chart.toSceneWith measurer extent
         CanvasBackend.draw measurer ctx extent scene)
 ```
 

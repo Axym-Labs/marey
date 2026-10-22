@@ -61,12 +61,12 @@ let frameAt (t: float<s>) =
         Field.streamlines U.metre U.metre (fieldAt t)
         |> Chart.withColor Color.black
         |> Chart.withOpacity 0.3
-        |> Chart.addScatter U.metre U.metre sx sy
+        |> Chart.addScatterIn U.metre U.metre sx sy
         |> Chart.withName "streak"
 
     Particles.pathlines samples carriedAt
     |> Array.mapi (fun i line -> i, line)
-    |> Array.fold (fun fig (i, struct (px, py)) -> fig |> Chart.addLine U.metre U.metre px py |> Chart.withName (sprintf "pathline %d" (i + 1))) fig
+    |> Array.fold (fun fig (i, struct (px, py)) -> fig |> Chart.addLineIn U.metre U.metre px py |> Chart.withName (sprintf "pathline %d" (i + 1))) fig
     |> Chart.withXDomain 0.0 2.0
     |> Chart.withYDomain 0.0 1.0
     |> Chart.withXLabel "x"

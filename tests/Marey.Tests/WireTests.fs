@@ -62,7 +62,7 @@ module ``identity`` =
         let m = TextMeasure.approx
         let t = Array.init 40 (fun i -> float i * 0.05<s>)
         let x (k: float) = t |> Array.map (fun t -> k * float t * float t * 1.0<m>)
-        let fig k = Chart.line U.second U.metre t (x 1.0) |> Chart.addScatter U.second U.metre t (x k)
+        let fig k = Chart.lineIn U.second U.metre t (x 1.0) |> Chart.addScatterIn U.second U.metre t (x k)
         let shot = Chart.arrangeOver m surface [| fig 1.0; fig 0.9 |]
         let a, b = Chart.toSceneIn m shot (fig 1.0), Chart.toSceneIn m shot (fig 0.9)
         let p = Scene.diff a b
@@ -347,14 +347,14 @@ module ``the SVG path below the threshold`` =
     let private slider () =
         interact {
             let! f = Control.slider U.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
-            return Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
+            return Chart.lineIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
         }
 
     let private time () =
         interact {
             let! t = Control.time "t" 0.0<s> 10.0<s>
             let ts = Array.init 50 (fun i -> float i * 0.2<s>)
-            return Chart.line U.second U.metre ts (ts |> Array.map (fun s -> sin (float (s - t)) * 1.0<m>))
+            return Chart.lineIn U.second U.metre ts (ts |> Array.map (fun s -> sin (float (s - t)) * 1.0<m>))
         }
 
     let private cloud () =
@@ -363,7 +363,7 @@ module ``the SVG path below the threshold`` =
             let rng = Random(7)
             let x = Array.init 2000 (fun _ -> rng.NextDouble() * 1.0<m>)
             let y = Array.init 2000 (fun _ -> (rng.NextDouble() - 0.5) * k * 1.0<V>)
-            return Chart.scatter U.metre U.volt x y
+            return Chart.scatterIn U.metre U.volt x y
         }
 
     let private transcript (value: obj) =
@@ -464,7 +464,7 @@ module ``the live widget on the canvas`` =
                     let! n = Control.slider U.one "n" 100.0 8000.0 100.0
                     let rng = Random(3)
                     let k = int n
-                    return Chart.scatter U.metre U.volt (Array.init k (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init k (fun _ -> rng.NextDouble() * 1.0<V>))
+                    return Chart.scatterIn U.metre U.volt (Array.init k (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init k (fun _ -> rng.NextDouble() * 1.0<V>))
                 }
 
             let s0 = Live.init grows
@@ -479,7 +479,7 @@ module ``the live widget on the canvas`` =
         let small () =
             interact {
                 let! f = Control.slider U.hertz "f" 0.5<Hz> 5.0<Hz> 1.0<Hz>
-                return Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
+                return Chart.lineIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; float f * 1.0<m> |]
             }
 
         RenderModes.withRenderMode RenderMode.Canvas (fun () ->
@@ -499,7 +499,7 @@ module ``static figures and the poster`` =
 
     let private cloud (n: int) =
         let rng = Random(11)
-        Chart.scatter U.metre U.volt (Array.init n (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init n (fun _ -> rng.NextDouble() * 1.0<V>))
+        Chart.scatterIn U.metre U.volt (Array.init n (fun _ -> rng.NextDouble() * 1.0<m>)) (Array.init n (fun _ -> rng.NextDouble() * 1.0<V>))
         |> Chart.withTitle "A cloud"
         |> Chart.withXLabel "x"
 

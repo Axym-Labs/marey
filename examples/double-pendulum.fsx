@@ -105,7 +105,7 @@ let path = Array.init 2001 (fun i -> trajectory.At(float i * 0.01<s>))
 
 let portrait =
     Phase.portrait U.radian (U.div U.radian U.second) grid
-    |> Chart.addLine U.radian (U.div U.radian U.second) (path |> Array.map (fun a -> a.T1)) (path |> Array.map (fun a -> a.W1))
+    |> Chart.addLineIn U.radian (U.div U.radian U.second) (path |> Array.map (fun a -> a.T1)) (path |> Array.map (fun a -> a.W1))
     |> Chart.withName "the first arm, 20 s"
     |> Chart.withTitle "The first arm against a single pendulum's flow"
 
@@ -124,7 +124,7 @@ let section =
 let wrap (a: float<rad>) = (float a - 2.0 * Math.PI * Math.Round(float a / (2.0 * Math.PI))) * 1.0<rad>
 
 let sectionFigure =
-    Chart.scatter U.radian (U.div U.radian U.second) (section |> Array.map (fun p -> wrap p.State.T2)) (section |> Array.map (fun p -> p.State.W2))
+    Chart.scatterIn U.radian (U.div U.radian U.second) (section |> Array.map (fun p -> wrap p.State.T2)) (section |> Array.map (fun p -> p.State.W2))
     |> Chart.withTitle "Poincaré section"
     |> Chart.withSubtitle "the second arm, each time the first swings through the vertical"
 
@@ -142,8 +142,8 @@ let draw (a: Arms) =
     let x2 = x1 + length * sin (float a.T2)
     let y2 = y1 - length * cos (float a.T2)
 
-    Chart.line U.metre U.metre [| 0.0<m>; x1; x2 |] [| 0.0<m>; y1; y2 |]
-    |> Chart.addScatter U.metre U.metre [| x1; x2 |] [| y1; y2 |]
+    Chart.lineIn U.metre U.metre [| 0.0<m>; x1; x2 |] [| 0.0<m>; y1; y2 |]
+    |> Chart.addScatterIn U.metre U.metre [| x1; x2 |] [| y1; y2 |]
     |> Chart.withXDomain -2.2 2.2
     |> Chart.withYDomain -2.2 2.2
     |> Chart.withXLabel "x"

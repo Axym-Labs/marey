@@ -6,7 +6,7 @@ open System.Runtime.InteropServices
 /// **The quick, matplotlib-shaped front door.**
 ///
 /// ```fsharp
-/// Chart.line U.second U.metre ts positions
+/// Chart.lineIn U.second U.metre ts positions
 /// |> Chart.withTitle "Free fall"
 /// |> Chart.toSvg SvgBackend.render "fall.svg" (Chart.size 800.0 500.0)
 /// ```
@@ -18,7 +18,7 @@ open System.Runtime.InteropServices
 /// witness, exactly once, and `U.second` is that something.
 ///
 /// What is *not* configured is everything downstream of it: the scale, the domain, the prefix,
-/// the tick values, the tick labels and both axis titles. `Chart.line U.second U.metre ts xs`
+/// the tick values, the tick labels and both axis titles. `Chart.lineIn U.second U.metre ts xs`
 /// prints `t [s]` and `x [m]`, and the same call on data spanning 1e-9…5e-9 m prints `x [nm]`
 /// with ticks reading 1, 2, 3, 4, 5. That is the payoff, and it survives being handed the
 /// witness because the witness is the *only* thing supplied.
@@ -637,7 +637,7 @@ module Chart =
     ///
     /// The category is *stated as data*, exactly as a unit witness is: `keys` is one value per
     /// row, and the level set is derived from it in first-appearance order (`Levels.ofSeq`). The
-    /// y axis is dimensioned as everywhere else, so `Chart.Category.bar U.metre keys yields`
+    /// y axis is dimensioned as everywhere else, so `Chart.Category.barIn U.metre keys yields`
     /// prints named bands under `x [m]` with nothing configured.
     ///
     /// Repeated keys are **not** aggregated: two rows with the same key are two bars in one
@@ -1045,7 +1045,7 @@ module Chart =
     /// exactly as `Chart.Category` derives them.
     ///
     /// ```fsharp
-    /// Chart.scatter U.second U.metre ts xs
+    /// Chart.scatterIn U.second U.metre ts xs
     /// |> Chart.colorByKey species
     /// |> Chart.shapeByKey species
     /// ```

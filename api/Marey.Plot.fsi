@@ -1867,61 +1867,91 @@ namespace Marey.UnitsOfMeasure
     [<RequireQualifiedAccess>]
     module Chart =
 
-        val series:
+        val seriesIn:
           name: string ->
             ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Series<'ux,'uy>
 
-        val line:
+        val series:
+          name: string ->
+            x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Series<'ux,'uy>
+
+        val lineIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
-        val scatter:
+        val line: x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Figure
+
+        val scatterIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
-        val area:
+        val scatter: x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Figure
+
+        val areaIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
-        val bar:
+        val area: x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Figure
+
+        val barIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
-        val errorbar:
+        val bar: x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Figure
+
+        val errorbarIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq ->
             y: float<'uy> seq -> err: float<'uy> seq -> Marey.Figure
 
-        val step:
+        val errorbar:
+          x: Marey.Q<'ux> ->
+            y: Marey.Q<'uy> -> err: Marey.Q<'uy> -> Marey.Figure
+
+        val stepIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
-        val stepWith:
+        val step: x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Figure
+
+        val stepWithIn:
           align: Marey.StepAlign ->
             ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
-        val ribbon:
+        val stepWith:
+          align: Marey.StepAlign ->
+            x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Figure
+
+        val ribbonIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq ->
             low: float<'uy> seq -> high: float<'uy> seq -> Marey.Figure
 
-        val tile:
+        val ribbon:
+          x: Marey.Q<'ux> ->
+            low: Marey.Q<'uy> -> high: Marey.Q<'uy> -> Marey.Figure
+
+        val tileIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             w: float<'ux> ->
             h: float<'uy> ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
+
+        val tile:
+          w: float<'ux> ->
+            h: float<'uy> -> x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Figure
 
         val image:
           ux: Marey.U<'ux> ->
@@ -1931,58 +1961,93 @@ namespace Marey.UnitsOfMeasure
             y0: float<'uy> ->
             x1: float<'ux> -> y1: float<'uy> -> smooth: bool -> Marey.Figure
 
-        val segment:
+        val segmentIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x0: float<'ux> seq ->
             y0: float<'uy> seq ->
             x1: float<'ux> seq -> y1: float<'uy> seq -> Marey.Figure
 
-        val text:
+        val segment:
+          x0: Marey.Q<'ux> ->
+            y0: Marey.Q<'uy> ->
+            x1: Marey.Q<'ux> -> y1: Marey.Q<'uy> -> Marey.Figure
+
+        val textIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq ->
             y: float<'uy> seq -> labels: string seq -> Marey.Figure
 
+        val text:
+          x: Marey.Q<'ux> ->
+            y: Marey.Q<'uy> -> labels: string seq -> Marey.Figure
+
+        val addLineIn:
+          ux: Marey.U<'ux> ->
+            uy: Marey.U<'uy> ->
+            x: float<'ux> seq ->
+            y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
+
         val addLine:
+          x: Marey.Q<'ux> ->
+            y: Marey.Q<'uy> -> fig: Marey.Figure -> Marey.Figure
+
+        val addScatterIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq ->
             y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addScatter:
+          x: Marey.Q<'ux> ->
+            y: Marey.Q<'uy> -> fig: Marey.Figure -> Marey.Figure
+
+        val addAreaIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq ->
             y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addArea:
-          ux: Marey.U<'ux> ->
-            uy: Marey.U<'uy> ->
-            x: float<'ux> seq ->
-            y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
+          x: Marey.Q<'ux> ->
+            y: Marey.Q<'uy> -> fig: Marey.Figure -> Marey.Figure
 
-        val addErrorbar:
+        val addErrorbarIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq ->
             y: float<'uy> seq ->
             err: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
-        val addStep:
+        val addErrorbar:
+          x: Marey.Q<'ux> ->
+            y: Marey.Q<'uy> ->
+            err: Marey.Q<'uy> -> fig: Marey.Figure -> Marey.Figure
+
+        val addStepIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq ->
             y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
-        val addRibbon:
+        val addStep:
+          x: Marey.Q<'ux> ->
+            y: Marey.Q<'uy> -> fig: Marey.Figure -> Marey.Figure
+
+        val addRibbonIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq ->
             low: float<'uy> seq ->
             high: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
-        val addSegment:
+        val addRibbon:
+          x: Marey.Q<'ux> ->
+            low: Marey.Q<'uy> ->
+            high: Marey.Q<'uy> -> fig: Marey.Figure -> Marey.Figure
+
+        val addSegmentIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x0: float<'ux> seq ->
@@ -1990,90 +2055,145 @@ namespace Marey.UnitsOfMeasure
             x1: float<'ux> seq ->
             y1: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
-        val histogram: u: Marey.U<'u> -> xs: float<'u> seq -> Marey.Figure
+        val addSegment:
+          x0: Marey.Q<'ux> ->
+            y0: Marey.Q<'uy> ->
+            x1: Marey.Q<'ux> ->
+            y1: Marey.Q<'uy> -> fig: Marey.Figure -> Marey.Figure
 
-        val histogramWith:
+        val histogramIn: u: Marey.U<'u> -> xs: float<'u> seq -> Marey.Figure
+
+        val histogram: xs: Marey.Q<'u> -> Marey.Figure
+
+        val histogramWithIn:
           u: Marey.U<'u> -> bins: int -> xs: float<'u> seq -> Marey.Figure
 
-        val density: u: Marey.U<'u> -> xs: float<'u> seq -> Marey.Figure
+        val histogramWith: bins: int -> xs: Marey.Q<'u> -> Marey.Figure
 
-        val ecdf: u: Marey.U<'u> -> xs: float<'u> seq -> Marey.Figure
+        val densityIn: u: Marey.U<'u> -> xs: float<'u> seq -> Marey.Figure
+
+        val density: xs: Marey.Q<'u> -> Marey.Figure
+
+        val ecdfIn: u: Marey.U<'u> -> xs: float<'u> seq -> Marey.Figure
+
+        val ecdf: xs: Marey.Q<'u> -> Marey.Figure
+
+        val addFitIn:
+          ux: Marey.U<'ux> ->
+            uy: Marey.U<'uy> ->
+            x: float<'ux> seq ->
+            y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addFit:
+          x: Marey.Q<'ux> ->
+            y: Marey.Q<'uy> -> fig: Marey.Figure -> Marey.Figure
+
+        val addLoessIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq ->
             y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addLoess:
-          ux: Marey.U<'ux> ->
+          x: Marey.Q<'ux> ->
+            y: Marey.Q<'uy> -> fig: Marey.Figure -> Marey.Figure
+
+        val addLoessWithIn:
+          span: float ->
+            ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq ->
             y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addLoessWith:
           span: float ->
-            ux: Marey.U<'ux> ->
-            uy: Marey.U<'uy> ->
-            x: float<'ux> seq ->
-            y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
+            x: Marey.Q<'ux> ->
+            y: Marey.Q<'uy> -> fig: Marey.Figure -> Marey.Figure
 
-        val fit:
+        val fitIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
-        val loess:
+        val fit: x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Figure
+
+        val loessIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
-        val loessWith:
+        val loess: x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Figure
+
+        val loessWithIn:
           span: float ->
             ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
-        val colorByWith:
+        val loessWith:
+          span: float -> x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Figure
+
+        val colorByWithIn:
           ramp: Marey.Ramp ->
             u: Marey.U<'u> ->
             values: float<'u> seq -> fig: Marey.Figure -> Marey.Figure
 
-        val colorBy:
+        val colorByWith:
+          ramp: Marey.Ramp ->
+            values: Marey.Q<'u> -> fig: Marey.Figure -> Marey.Figure
+
+        val colorByIn:
           u: Marey.U<'u> ->
             values: float<'u> seq -> fig: Marey.Figure -> Marey.Figure
+
+        val colorBy: values: Marey.Q<'u> -> fig: Marey.Figure -> Marey.Figure
 
         val withColorDomain:
           u: Marey.U<'u> ->
             lo: float<'u> -> hi: float<'u> -> fig: Marey.Figure -> Marey.Figure
 
-        val heatmap:
+        val heatmapIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             uz: Marey.U<'uz> ->
             x: float<'ux> seq ->
             y: float<'uy> seq -> z: float<'uz> seq -> Marey.Figure
 
-        val hexbinWith:
+        val heatmap:
+          x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> z: Marey.Q<'uz> -> Marey.Figure
+
+        val hexbinWithIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             across: int ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
-        val hexbin:
+        val hexbinWith:
+          across: int -> x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Figure
+
+        val hexbinIn:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
-        val sizeByWith:
+        val hexbin: x: Marey.Q<'ux> -> y: Marey.Q<'uy> -> Marey.Figure
+
+        val sizeByWithIn:
           smallest: float<Marey.px> ->
             largest: float<Marey.px> ->
             u: Marey.U<'u> ->
             values: float<'u> seq -> fig: Marey.Figure -> Marey.Figure
 
-        val sizeBy:
+        val sizeByWith:
+          smallest: float<Marey.px> ->
+            largest: float<Marey.px> ->
+            values: Marey.Q<'u> -> fig: Marey.Figure -> Marey.Figure
+
+        val sizeByIn:
           u: Marey.U<'u> ->
             values: float<'u> seq -> fig: Marey.Figure -> Marey.Figure
+
+        val sizeBy: values: Marey.Q<'u> -> fig: Marey.Figure -> Marey.Figure
 
         val withTopAxisMapped:
           u: Marey.U<'v> ->
@@ -2337,31 +2457,53 @@ namespace Marey.UnitsOfMeasure
         [<RequireQualifiedAccess>]
         module Category =
 
-            val series:
+            val seriesIn:
               name: string ->
                 uy: Marey.U<'uy> ->
                 keys: 'k seq ->
                 values: float<'uy> seq -> Marey.Levels<'k> * Marey.Series<1,'uy>
                 when 'k: equality
 
+            val series:
+              name: string ->
+                keys: 'k seq ->
+                values: Marey.Q<'uy> -> Marey.Levels<'k> * Marey.Series<1,'uy>
+                when 'k: equality
+
+            val barIn:
+              uy: Marey.U<'uy> ->
+                keys: 'k seq -> values: float<'uy> seq -> Marey.Figure
+                when 'k: equality
+
             val bar:
+              keys: 'k seq -> values: Marey.Q<'uy> -> Marey.Figure
+                when 'k: equality
+
+            val scatterIn:
               uy: Marey.U<'uy> ->
                 keys: 'k seq -> values: float<'uy> seq -> Marey.Figure
                 when 'k: equality
 
             val scatter:
+              keys: 'k seq -> values: Marey.Q<'uy> -> Marey.Figure
+                when 'k: equality
+
+            val boxplotIn:
               uy: Marey.U<'uy> ->
                 keys: 'k seq -> values: float<'uy> seq -> Marey.Figure
                 when 'k: equality
 
             val boxplot:
+              keys: 'k seq -> values: Marey.Q<'uy> -> Marey.Figure
+                when 'k: equality
+
+            val violinIn:
               uy: Marey.U<'uy> ->
                 keys: 'k seq -> values: float<'uy> seq -> Marey.Figure
                 when 'k: equality
 
             val violin:
-              uy: Marey.U<'uy> ->
-                keys: 'k seq -> values: float<'uy> seq -> Marey.Figure
+              keys: 'k seq -> values: Marey.Q<'uy> -> Marey.Figure
                 when 'k: equality
 
             [<System.Obsolete

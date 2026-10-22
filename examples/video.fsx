@@ -42,7 +42,7 @@ let ring =
     |> Array.map (fun v -> 30.0e-3 * exp (-float v / 3.0) * cos (6.0 * float v) * 1.0<m>)
 
 let trace =
-    Chart.scatter U.second U.metre t ring
+    Chart.scatterIn U.second U.metre t ring
     |> Chart.withTitle "A damped oscillation"
     |> Chart.withYLabel "x"
 

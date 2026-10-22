@@ -13,7 +13,7 @@ open Marey.UnitsOfMeasure
 let t = Array.init 24 (fun i -> float i * 0.025<s>)
 let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
 
-let figure = Chart.line U.second U.metre t x
+let figure = Chart.lineIn U.second U.metre t x
 
 // Bytes, or straight to a file. `toFileBytes` rather than `toFile`: writing text has an
 // encoding and writing bytes does not, and a PNG that picked up a byte-order mark on the way

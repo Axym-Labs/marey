@@ -8,12 +8,12 @@ open Marey.Storyboard
 
 let resonanceStory =
     scene {
-        let! points = draw (Chart.scatter U.hertz U.metre drive amplitude) |> over 1.0<s>
+        let! points = draw (Chart.scatterIn U.hertz U.metre drive amplitude) |> over 1.0<s>
         do! wait 0.4<s>
 
         do!
             parallel'
-                [ points |> morphTo (Chart.scatter U.hertz U.metre drive (drive |> Array.map (response 25.0))) |> over 1.2<s>
+                [ points |> morphTo (Chart.scatterIn U.hertz U.metre drive (drive |> Array.map (response 25.0))) |> over 1.2<s>
                   points |> zoomToX (960.0, 1040.0) |> over 1.2<s> ]
 
         do! highlight points.[10] |> over 0.6<s>
@@ -61,8 +61,8 @@ let drawArms (a: Arms) =
     let x1, y1 = armLength * sin (float a.T1), -armLength * cos (float a.T1)
     let x2, y2 = x1 + armLength * sin (float a.T2), y1 - armLength * cos (float a.T2)
 
-    Chart.line U.metre U.metre [| 0.0<m>; x1; x2 |] [| 0.0<m>; y1; y2 |]
-    |> Chart.addScatter U.metre U.metre [| x1; x2 |] [| y1; y2 |]
+    Chart.lineIn U.metre U.metre [| 0.0<m>; x1; x2 |] [| 0.0<m>; y1; y2 |]
+    |> Chart.addScatterIn U.metre U.metre [| x1; x2 |] [| y1; y2 |]
     |> Chart.withStyle (Geom.withMarkerSize 12.0<px>)
     |> Chart.withXDomain -2.2 2.2
     |> Chart.withYDomain -2.2 2.2

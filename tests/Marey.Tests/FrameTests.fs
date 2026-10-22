@@ -45,7 +45,7 @@ let private surface = Chart.size 640.0 400.0
 let private times = Array.init 10 (fun i -> float i * 1.0<s>)
 
 let private points (f: float -> float) : Figure =
-    Chart.scatter U.second U.metre times (times |> Array.map (fun v -> f (float v) * 1.0<m>))
+    Chart.scatterIn U.second U.metre times (times |> Array.map (fun v -> f (float v) * 1.0<m>))
 
 let private ramp = points id
 let private steep = points (fun v -> v * v * 7.3)

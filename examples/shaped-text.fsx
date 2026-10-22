@@ -23,7 +23,7 @@ let t = Array.init 40 (fun i -> float i * 0.25<s>)
 let x = t |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
 
 let figure =
-    Chart.line U.second U.metre t x
+    Chart.lineIn U.second U.metre t x
     |> Chart.withTitle "AVATAR: Wave To Yank"
     |> Chart.withSubtitle "the same figure, arranged by two measurers"
 

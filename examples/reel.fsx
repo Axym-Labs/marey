@@ -82,7 +82,7 @@ let model = drive |> Array.map response
 // The two figures the reel morphs between. Same geom and same length, because a morph pairs marks
 // by row — a scatter of 90 points becoming a curve of 90 points, not a scatter becoming a line.
 let figureOf (title: string) (ys: float<m>[]) =
-    Chart.scatter U.hertz U.metre drive ys
+    Chart.scatterIn U.hertz U.metre drive ys
     |> Chart.withTitle title
     |> Chart.withYLabel "amplitude"
 

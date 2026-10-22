@@ -28,7 +28,7 @@ let private surface = Chart.size 640.0 400.0
 /// Ten seconds against ten metres, as a scatter — the geom whose marks are a batch.
 let private points (f: float -> float) : Figure =
     let t = Array.init 10 (fun i -> float i * 1.0<s>)
-    Chart.scatter U.second U.metre t (t |> Array.map (fun v -> f (float v) * 1.0<m>))
+    Chart.scatterIn U.second U.metre t (t |> Array.map (fun v -> f (float v) * 1.0<m>))
 
 let private ramp = points id
 let private squared = points (fun v -> v * v * 0.1)
@@ -37,7 +37,7 @@ let private squared = points (fun v -> v * v * 0.1)
 /// splitting a polyline in three changes the joins between the pieces rather than naming one.
 let private lineRamp: Figure =
     let t = Array.init 10 (fun i -> float i * 1.0<s>)
-    Chart.line U.second U.metre t (t |> Array.map (fun v -> float v * 1.0<m>))
+    Chart.lineIn U.second U.metre t (t |> Array.map (fun v -> float v * 1.0<m>))
 
 /// Every `MarkerBatch` in a scene, in draw order.
 let private batches (n: Node) : MarkerBatch list =
@@ -274,7 +274,7 @@ module TheBatchSplit =
         let ys =
             t |> Array.mapi (fun i v -> if i = 2 then nan * 1.0<m> else float v * 1.0<m>)
 
-        let gappy = Chart.scatter U.second U.metre t ys
+        let gappy = Chart.scatterIn U.second U.metre t ys
         let plain = marks (Chart.toScene surface gappy)
         let scene = Chart.toScene surface (Chart.addressMarks [| 5 |] gappy)
 
@@ -426,7 +426,7 @@ module TheVerbs =
     [<Fact>]
     let ``a figure with two scatters has two mark 4s, and refuses to guess`` () =
         let t = Array.init 10 (fun i -> float i * 1.0<s>)
-        let two = ramp |> Chart.addScatter U.second U.metre t (t |> Array.map (fun v -> float v * 2.0<m>))
+        let two = ramp |> Chart.addScatterIn U.second U.metre t (t |> Array.map (fun v -> float v * 2.0<m>))
 
         let story =
             scene {
@@ -467,7 +467,7 @@ module TheVerbs =
     let ``morphTo converts the target into the unit on stage`` () =
         let km = U.scaled "km" 1000.0 U.metre
         let t = Array.init 10 (fun i -> float i * 1.0<s>)
-        let inKm = Chart.scatter U.second km t (t |> Array.map (fun v -> float v * 1.0<m>))
+        let inKm = Chart.scatterIn U.second km t (t |> Array.map (fun v -> float v * 1.0<m>))
 
         let story =
             scene {
@@ -482,7 +482,7 @@ module TheVerbs =
     [<Fact>]
     let ``morphTo resamples to the longer side`` () =
         let t = Array.init 25 (fun i -> float i * 0.4<s>)
-        let long = Chart.scatter U.second U.metre t (t |> Array.map (fun v -> float v * 1.0<m>))
+        let long = Chart.scatterIn U.second U.metre t (t |> Array.map (fun v -> float v * 1.0<m>))
 
         let story =
             scene {
@@ -496,7 +496,7 @@ module TheVerbs =
     [<Fact>]
     let ``morphTo across dimensions is refused`` () =
         let t = Array.init 10 (fun i -> float i * 1.0<s>)
-        let seconds = Chart.scatter U.second U.second t t
+        let seconds = Chart.scatterIn U.second U.second t t
 
         let story =
             scene {

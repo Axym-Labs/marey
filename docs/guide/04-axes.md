@@ -19,7 +19,7 @@ or `MinorEvery step`, and on a log axis the automatic minor ticks fill each deca
 
 ```fsharp
 let spectrumAxis =
-    Chart.line U.metre U.one [| 400e-9<m>; 700e-9<m> |] [| 0.2; 0.8 |]
+    Chart.lineIn U.metre U.one [| 400e-9<m>; 700e-9<m> |] [| 0.2; 0.8 |]
     |> Chart.withXDomain 400e-9 700e-9
     |> Chart.withXTicksEvery U.metre 50e-9<m>
     |> Chart.withXMinorTicks (MinorEvery 10e-9)
@@ -63,13 +63,13 @@ let phase (f: float<Hz>) =
 let halfTurn = System.Math.PI * 1.0<rad>
 
 let phaseSide =
-    Chart.line U.hertz U.radian bodeFrequencies (bodeFrequencies |> Array.map phase)
+    Chart.lineIn U.hertz U.radian bodeFrequencies (bodeFrequencies |> Array.map phase)
     |> Chart.withName "phase"
     |> Chart.withXLog
     |> Chart.withYTicksNamed U.radian [| 0.0<rad>, "0"; -halfTurn / 2.0, "−π/2"; -halfTurn, "−π" |]
 
 let bode =
-    Chart.line U.hertz U.one bodeFrequencies (bodeFrequencies |> Array.map gain)
+    Chart.lineIn U.hertz U.one bodeFrequencies (bodeFrequencies |> Array.map gain)
     |> Chart.withName "gain"
     |> Chart.addVLine U.hertz cutoff
     |> Chart.withXLog

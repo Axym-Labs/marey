@@ -118,7 +118,7 @@ let section =
     |> Array.filter (fun p -> cos (float p.State.T1) > 0.0)
 
 let pathPanel =
-    Chart.line U.metre U.metre (bobPath |> Array.map fst) (bobPath |> Array.map snd)
+    Chart.lineIn U.metre U.metre (bobPath |> Array.map fst) (bobPath |> Array.map snd)
     |> Chart.withOpacity 0.7
     |> Chart.withXLabel "x"
     |> Chart.withYLabel "y"
@@ -126,7 +126,7 @@ let pathPanel =
     |> Chart.withPanelTitle "the second bob, 20 s"
 
 let sectionPanel =
-    Chart.scatter U.radian angularVelocity (section |> Array.map (fun p -> wrapAngle p.State.T2)) (section |> Array.map (fun p -> p.State.W2))
+    Chart.scatterIn U.radian angularVelocity (section |> Array.map (fun p -> wrapAngle p.State.T2)) (section |> Array.map (fun p -> p.State.W2))
     |> Chart.withPanelTitle "Poincaré section"
 
 let doublePendulumFigure =

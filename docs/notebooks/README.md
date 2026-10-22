@@ -17,7 +17,7 @@ with `<svg`. The SVG backend produces exactly that, so this renders in a stock V
 open Marey
 open Marey.UnitsOfMeasure
 
-Chart.line U.second U.metre t x
+Chart.lineIn U.second U.metre t x
 |> Chart.withTitle "Free fall"
 |> Chart.render SvgBackend.render (Chart.size 720.0 450.0)
 ```
@@ -25,7 +25,7 @@ Chart.line U.second U.metre t x
 **With the `Marey.Verso` extension**, the value itself displays — no pipe, no size, no ceremony:
 
 ```fsharp
-Chart.line U.second U.metre t x
+Chart.lineIn U.second U.metre t x
 |> Chart.withTitle "Free fall"
 ```
 

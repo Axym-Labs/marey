@@ -234,7 +234,7 @@ module Sharing =
 module TheCheck =
 
     let private line (uy: U<'u>) (a: float<'u>) (b: float<'u>) =
-        Chart.line U.second uy [| 0.0<s>; 1.0<s> |] [| a; b |]
+        Chart.lineIn U.second uy [| 0.0<s>; 1.0<s> |] [| a; b |]
 
     /// The gate's second half, and it has to be asked on the hand-composed path — see the note
     /// at the top of this file. The message names the panels, because "panel 1" and "layer 1" are
@@ -274,8 +274,8 @@ module TheCheck =
     /// two different level sets draws the right marks against the wrong labels.
     [<Fact>]
     let ``two categories over different levels cannot share an axis across panels`` () =
-        let a = Chart.Category.bar U.metre [| "ctrl"; "treated" |] [| 1.0<m>; 2.0<m> |]
-        let b = Chart.Category.bar U.metre [| "warm"; "cold" |] [| 1.0<m>; 2.0<m> |]
+        let a = Chart.Category.barIn U.metre [| "ctrl"; "treated" |] [| 1.0<m>; 2.0<m> |]
+        let b = Chart.Category.barIn U.metre [| "warm"; "cold" |] [| 1.0<m>; 2.0<m> |]
 
         let ex =
             Assert.Throws<System.Exception>(fun () -> Chart.facet [| "one", a; "two", b |] |> ignore)
@@ -284,8 +284,8 @@ module TheCheck =
 
     [<Fact>]
     let ``the same levels share an axis across panels`` () =
-        let a = Chart.Category.bar U.metre [| "ctrl"; "treated" |] [| 1.0<m>; 2.0<m> |]
-        let b = Chart.Category.bar U.metre [| "ctrl"; "treated" |] [| 4.0<m>; 3.0<m> |]
+        let a = Chart.Category.barIn U.metre [| "ctrl"; "treated" |] [| 1.0<m>; 2.0<m> |]
+        let b = Chart.Category.barIn U.metre [| "ctrl"; "treated" |] [| 4.0<m>; 3.0<m> |]
 
         let fig = Chart.facet [| "one", a; "two", b |]
 
@@ -553,7 +553,7 @@ module Refusals =
     /// the caller's panels somewhere they did not ask for, and silently.
     [<Fact>]
     let ``a facet cell holds one panel`` () =
-        let one = Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 1.0<m> |]
+        let one = Chart.lineIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 1.0<m> |]
         let two = Chart.beside one one
 
         let ex =
