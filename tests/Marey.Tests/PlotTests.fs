@@ -132,8 +132,8 @@ module SelfLabellingAxes =
 // Plain numbers: unspecified, and dimensionless
 // ======================================================================================
 
-/// `Chart.Plain` was `Chart` at `U.one U.one`; D109 retired it for the unit-optional
-/// constructors, which leave a unit out as `U.unspecified`. The two witnesses differ in
+/// The unit-optional constructors leave a unit out as `U.unspecified`, where `U.one` states that
+/// the data is dimensionless. The two witnesses differ in
 /// what they *claim* — `one` says dimensionless, and the axis-sharing check acts on it — and not
 /// in how a single layer is drawn, so that is pinned here, along with the honesty of a bare axis:
 /// a plain `x`, never `x [1]`, and never rescaled into a prefix.
