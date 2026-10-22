@@ -1,7 +1,7 @@
 # Marey.Verso
 
 The [Verso](https://github.com/DataficationSDK/Verso) notebook extension for
-[Marey](https://github.com/Axym-Labs/marey): with it, a cell whose value is a figure displays the
+[Marey](https://axym-labs.github.io/marey/): with it, a cell whose value is a figure displays the
 figure, a film plays, and a figure with controls is live.
 
 ## Setting up a notebook
@@ -55,5 +55,5 @@ different assembly load contexts, so the extension reaches Marey by reflection, 
 Without the extension, a figure rendered to an SVG string still displays, through Verso's SVG
 formatter, with nothing installed.
 
-- [The guide on notebooks](https://github.com/Axym-Labs/marey/blob/main/docs/guide/11-notebooks.md) and [on interaction](https://github.com/Axym-Labs/marey/blob/main/docs/guide/12-interaction.md)
+- [The guide on notebooks](https://axym-labs.github.io/marey/guide/11-notebooks.html) and [on interaction](https://axym-labs.github.io/marey/guide/12-interaction.html)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

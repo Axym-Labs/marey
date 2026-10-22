@@ -1,6 +1,6 @@
 # Marey.Html
 
-HTML renderings of [Marey](https://github.com/Axym-Labs/marey) values, for a notebook
+HTML renderings of [Marey](https://axym-labs.github.io/marey/) values, for a notebook
 cell. Host-neutral, **zero dependencies**, `netstandard2.1`.
 
 [`Marey`](https://www.nuget.org/packages/Marey) brings it with the rest of the library, and
@@ -65,5 +65,5 @@ nothing installed:
 figure |> Chart.render SvgBackend.render (Chart.size 720.0 450.0)
 ```
 
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide/11-notebooks.md)
+- [The guide](https://axym-labs.github.io/marey/guide/11-notebooks.html)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

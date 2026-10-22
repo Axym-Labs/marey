@@ -1,6 +1,6 @@
 # Marey.Core
 
-The types under [Marey](https://github.com/Axym-Labs/marey): dimensions, unit witnesses, values
+The types under [Marey](https://axym-labs.github.io/marey/): dimensions, unit witnesses, values
 that carry their unit, unit-indexed geometry, scales, typed statistics, and the scene every backend
 draws. No dependencies, `netstandard2.1`, and it compiles under Fable.
 
@@ -41,5 +41,5 @@ Most projects reference [`Marey`](https://www.nuget.org/packages/Marey), which b
 plotting grammar, units table and outputs. On its own this package has no units table (that is
 [`Marey.Units`](https://www.nuget.org/packages/Marey.Units)), no charts and no renderer.
 
-- [The guide on the scene](https://github.com/Axym-Labs/marey/blob/main/docs/guide/15-underneath.md)
+- [The guide on the scene](https://axym-labs.github.io/marey/guide/15-underneath.html)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

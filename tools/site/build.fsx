@@ -4,9 +4,9 @@
 // guide, and the pages beside it. A figure the guide's session drew is shown by its SVG, and drawn
 // over it by `Marey.Backend.Web` from the scene the session wrote to SCENES (`MAREY_SITE_SCENES`,
 // see tests/Marey.Tests/GuideTests.fs); a live figure gets its control, over the states the session
-// sampled. A link to another page is a link into the site, and a link to any other file in the
-// repository is a link to it on GitHub. The API reference is fsdocs', built beside this into
-// OUT/reference by tools/site/build.sh.
+// sampled. A link to another page, or to the published site, is a link into the site, and a link
+// to any other file in the repository is a link to it on GitHub. The API reference is fsdocs',
+// built beside this into OUT/reference by tools/site/build.sh.
 
 #r "nuget: Markdig, 0.40.0"
 
@@ -20,6 +20,8 @@ let root = Path.GetFullPath(Path.Combine(__SOURCE_DIRECTORY__, "..", ".."))
 let scenes = Path.GetFullPath fsi.CommandLineArgs.[1]
 let out = Path.GetFullPath fsi.CommandLineArgs.[2]
 let repoUrl = "https://github.com/Axym-Labs/marey"
+/// Where the site is published, which the readmes link to.
+let siteUrl = "https://axym-labs.github.io/marey/"
 
 let read (path: string) = File.ReadAllText(path, Encoding.UTF8).Replace("\r\n", "\n")
 let write (path: string) (text: string) =
@@ -68,22 +70,30 @@ let pageOfSource = pages |> Array.map (fun p -> p.Source, p) |> dict
 
 // ---- Links and figures ----------------------------------------------------------------
 
+/// A link's path and its fragment, `#` included.
+let splitFragment (href: string) =
+    match href.IndexOf '#' with
+    | -1 -> href, ""
+    | i -> href.Substring(0, i), href.Substring i
+
 /// A link in `source`'s Markdown, as the page at `target` should have it.
 let link (source: string) (target: string) (href: string) =
-    if href.StartsWith "#" || Regex.IsMatch(href, "^[a-z]+:") then
+    let fromDir = Path.GetDirectoryName(Path.Combine(out, target))
+
+    if href.StartsWith siteUrl then
+        let path, fragment = splitFragment (href.Substring siteUrl.Length)
+        let path = if path = "" || path.EndsWith "/" then path + "index.html" else path
+        rel fromDir (Path.Combine(out, path)) + fragment
+    elif href.StartsWith "#" || Regex.IsMatch(href, "^[a-z]+:") then
         href
     else
-        let path, fragment =
-            match href.IndexOf '#' with
-            | -1 -> href, ""
-            | i -> href.Substring(0, i), href.Substring i
-
+        let path, fragment = splitFragment href
         let resolved = Path.GetFullPath(Path.Combine(root, Path.GetDirectoryName source, Uri.UnescapeDataString path))
         let inRepo = rel root resolved
 
         match pageOfSource.TryGetValue inRepo with
-        | true, p -> rel (Path.GetDirectoryName(Path.Combine(out, target))) (Path.Combine(out, p.Target)) + fragment
-        | _ when inRepo.StartsWith "docs/figures/" -> rel (Path.GetDirectoryName(Path.Combine(out, target))) (Path.Combine(out, "figures", Path.GetFileName inRepo))
+        | true, p -> rel fromDir (Path.Combine(out, p.Target)) + fragment
+        | _ when inRepo.StartsWith "docs/figures/" -> rel fromDir (Path.Combine(out, "figures", Path.GetFileName inRepo))
         | _ ->
             let kind = if Directory.Exists resolved then "tree" else "blob"
             sprintf "%s/%s/main/%s%s" repoUrl kind (inRepo.TrimEnd('/')) fragment

@@ -1,6 +1,6 @@
 # Marey.Anim
 
-Animation for [Marey](https://github.com/Axym-Labs/marey). **An animation is a pure function of
+Animation for [Marey](https://axym-labs.github.io/marey/). **An animation is a pure function of
 time, not a mutation.**
 
 ```fsharp
@@ -70,5 +70,5 @@ mid-shot.
 Depends only on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core), and is
 Fable-compatible.
 
-- [The guide on animation](https://github.com/Axym-Labs/marey/blob/main/docs/guide/09-animation.md)
+- [The guide on animation](https://axym-labs.github.io/marey/guide/09-animation.html)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

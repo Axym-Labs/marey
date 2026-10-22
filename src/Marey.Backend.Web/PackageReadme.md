@@ -1,6 +1,6 @@
 # Marey.Backend.Web
 
-The browser backend for [Marey](https://github.com/Axym-Labs/marey). A [Fable](https://fable.io) app
+The browser backend for [Marey](https://axym-labs.github.io/marey/). A [Fable](https://fable.io) app
 builds a figure, lays it out with the same compiler a notebook kernel runs, and draws it on a
 canvas. Consumed from source by Fable; `Fable.Core` is its one dependency.
 

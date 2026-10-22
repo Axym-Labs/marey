@@ -1,6 +1,6 @@
 # Marey.Sim
 
-Simulation for [Marey](https://github.com/Axym-Labs/marey). **A simulation is a start and a step,
+Simulation for [Marey](https://axym-labs.github.io/marey/). **A simulation is a start and a step,
 and its trajectory is an animation**: it seeks, it films, and a seek to any time is exactly the
 state a straight run reaches.
 
@@ -50,6 +50,6 @@ Compiles under Fable. A chaotic system run in a browser and the same one under .
 trajectories after tens of seconds, because JavaScript's `sin` and `exp` differ in the last bit;
 both are correct to the integrator's order.
 
-- [The guide on simulation](https://github.com/Axym-Labs/marey/blob/main/docs/guide/08-simulation.md)
+- [The guide on simulation](https://axym-labs.github.io/marey/guide/08-simulation.html)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples): `integrators.fsx`,
   `double-pendulum.fsx`, `double-gyre.fsx`, `heat.fsx`, `fluid.fsx`, `cylinder.fsx`

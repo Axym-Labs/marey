@@ -18,7 +18,7 @@
     <Product>Marey</Product>
     <RepositoryUrl>https://github.com/Axym-Labs/marey</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://github.com/Axym-Labs/marey</PackageProjectUrl>
+    <PackageProjectUrl>https://axym-labs.github.io/marey/</PackageProjectUrl>
 
     <!-- The gallery page for a package with no readme is a blank slab with a dependency list,
          which is most of what a first-time visitor ever sees. `NUGET.md` rather than the root

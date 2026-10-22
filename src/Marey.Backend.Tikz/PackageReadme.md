@@ -1,6 +1,6 @@
 # Marey.Backend.Tikz
 
-The TikZ backend for [Marey](https://github.com/Axym-Labs/marey). Emits `tikzpicture` source for
+The TikZ backend for [Marey](https://axym-labs.github.io/marey/). Emits `tikzpicture` source for
 pasting into a LaTeX document. Pure F#, **zero dependencies**, `netstandard2.1`.
 
 ```fsharp
@@ -44,5 +44,5 @@ measured against the theme's font metrics while TeX sets the text in the documen
 
 Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else.
 
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide/06-paper.md)
+- [The guide](https://axym-labs.github.io/marey/guide/06-paper.html)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

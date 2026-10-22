@@ -1,6 +1,6 @@
 # Marey.Toolchain
 
-External-program resolution and invocation for [Marey](https://github.com/Axym-Labs/marey). **A tool
+External-program resolution and invocation for [Marey](https://axym-labs.github.io/marey/). **A tool
 is resolved and *reported*, or it is absent and the absence names what to install.**
 
 ```fsharp

@@ -1,6 +1,6 @@
 # Marey.Units
 
-The units table of [Marey](https://github.com/Axym-Labs/marey), and how a unit is written. The
+The units table of [Marey](https://axym-labs.github.io/marey/), and how a unit is written. The
 seven SI base units, the named derived units and the non-SI units physics writes in, each a witness
 with its symbol, dimension, factor to SI and, for an affine unit, its offset.
 
@@ -37,5 +37,5 @@ printfn "%s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none (U.parse 
 
 Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else.
 
-- [The guide on units](https://github.com/Axym-Labs/marey/blob/main/docs/guide/02-units.md)
+- [The guide on units](https://axym-labs.github.io/marey/guide/02-units.html)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

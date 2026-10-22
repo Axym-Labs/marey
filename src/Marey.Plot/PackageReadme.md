@@ -1,6 +1,6 @@
 # Marey.Plot
 
-The plotting grammar of [Marey](https://github.com/Axym-Labs/marey): figures whose axes take their
+The plotting grammar of [Marey](https://axym-labs.github.io/marey/): figures whose axes take their
 titles, ticks and prefixes from the units of the data. Most projects reference
 [`Marey`](https://www.nuget.org/packages/Marey), which brings this package with the rest of the
 library; this one alone is the charts, without fields, simulations or live figures.
@@ -82,5 +82,5 @@ Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core),
 [`Marey.Units`](https://www.nuget.org/packages/Marey.Units) and
 [`Marey.Anim`](https://www.nuget.org/packages/Marey.Anim).
 
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide/README.md)
+- [The guide](https://axym-labs.github.io/marey/guide/)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

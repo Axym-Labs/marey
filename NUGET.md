@@ -52,7 +52,9 @@ others are separate references.
 Pre-1.0: the next release is 1.0.0, and the compatibility page says what it will promise. MIT
 licensed.
 
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide/README.md)
+- [The guide](https://axym-labs.github.io/marey/guide/)
+- [Gallery](https://axym-labs.github.io/marey/gallery.html)
+- [API reference](https://axym-labs.github.io/marey/reference/reference/index.html)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)
-- [Compatibility](https://github.com/Axym-Labs/marey/blob/main/docs/compatibility.md)
+- [Compatibility](https://axym-labs.github.io/marey/compatibility.html)
 - [Repository](https://github.com/Axym-Labs/marey)

@@ -1,6 +1,6 @@
 # Marey.Fields
 
-Fields for [Marey](https://github.com/Axym-Labs/marey). **The gradient of a potential in volts over
+Fields for [Marey](https://axym-labs.github.io/marey/). **The gradient of a potential in volts over
 metres is a field in V/m, and the type says so.**
 
 ```fsharp
@@ -83,4 +83,4 @@ because ∂ω̇/∂θ and ∂θ̇/∂ω are in different units and their differe
 ## Links
 
 - [The repository](https://github.com/Axym-Labs/marey)
-- [The guide on fields](https://github.com/Axym-Labs/marey/blob/main/docs/guide/07-fields.md)
+- [The guide on fields](https://axym-labs.github.io/marey/guide/07-fields.html)
