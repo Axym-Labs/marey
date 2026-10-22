@@ -280,16 +280,29 @@ module ``the host`` =
                     }
 
             use w = GpuWindow.Open(l, visible = false)
+
+            // The session once `ok` holds, or as it stands after 5 s: a loaded runner ticks the
+            // loop late, so the test waits on the window rather than on a fixed sleep.
+            let until (ok: WindowSession -> bool) =
+                let sw = Diagnostics.Stopwatch.StartNew()
+                let mutable s = w.Session
+
+                while not (ok s) && sw.Elapsed < TimeSpan.FromSeconds 5.0 do
+                    Threading.Thread.Sleep 10
+                    s <- w.Session
+
+                s
+
             w.Post(WindowEvent.Key(WindowKey.Tab, false))
             w.Post(WindowEvent.Key(WindowKey.Space, false))
-            Threading.Thread.Sleep 400
-            let playing = w.Session
+            let playing = until (fun s -> s.State.Values.[0] > 0.1)
             Assert.True(playing.Gesture.Playing.IsSome, "the window is not playing")
-            Assert.True(playing.State.Values.[0] > 0.1, sprintf "after 0.4 s of play the time is %g s" playing.State.Values.[0])
+            Assert.True(playing.State.Values.[0] > 0.1, sprintf "after 5 s of play the time is %g s" playing.State.Values.[0])
             w.Post(WindowEvent.Key(WindowKey.Space, false))
-            let paused = w.State.Values.[0]
+            let paused = until (fun s -> s.Gesture.Playing.IsNone)
+            Assert.True(paused.Gesture.Playing.IsNone, "the window still plays after a second space")
             Threading.Thread.Sleep 200
-            Assert.Equal(paused, w.State.Values.[0]))
+            Assert.Equal(paused.State.Values.[0], w.State.Values.[0]))
 
     /// Closing returns from `Wait`, and a closed window refuses to be asked anything.
     [<Fact>]
