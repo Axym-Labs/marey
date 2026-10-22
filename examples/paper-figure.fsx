@@ -38,16 +38,16 @@ let measured = ts |> Array.mapi (fun i t -> model t + sigma.[i] * wobble i)
 let fine = Array.init 400 (fun i -> float i * 6.0<s> / 399.0)
 
 let fit =
-    Chart.errorbar U.second U.metre ts measured sigma
+    Chart.errorbarIn U.second U.metre ts measured sigma
     |> Chart.withName "measured"
-    |> Chart.addLine U.second U.metre fine (fine |> Array.map model)
+    |> Chart.addLineIn U.second U.metre fine (fine |> Array.map model)
     |> Chart.withName "model"
     |> Chart.withXTicksEvery U.second 1.0<s>
     |> Chart.withXDomain 0.0 6.0
     |> Chart.withLegendFrame false
 
 let residuals =
-    Chart.errorbar U.second U.metre ts (Array.map2 (fun x t -> x - model t) measured ts) sigma
+    Chart.errorbarIn U.second U.metre ts (Array.map2 (fun x t -> x - model t) measured ts) sigma
     // The rule at zero stays out of the domain, so the residuals keep their own millimetres.
     |> Chart.addHLine U.metre 0.0<m>
     |> Chart.withXTicksEvery U.second 1.0<s>
@@ -69,7 +69,7 @@ let intensity =
 
 let spectrum =
     let mutable fig =
-        Chart.line U.metre U.one wavelengths intensity
+        Chart.lineIn U.metre U.one wavelengths intensity
         |> Chart.withName "observed"
         |> Chart.addVSpan U.metre (480.0 * nm) (500.0 * nm)
         |> Chart.withName "filter passband"

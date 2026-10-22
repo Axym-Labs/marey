@@ -138,7 +138,7 @@ let private ts = Array.init 40 (fun i -> float i * 0.25<s>)
 let private xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
 
 let private figure () =
-    Chart.line U.second U.metre ts xs
+    Chart.lineIn U.second U.metre ts xs
     |> Chart.withTitle "free fall"
 
 /// Whether the native library loaded.

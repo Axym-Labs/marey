@@ -191,7 +191,7 @@ type Step<'a> =
 ///
 /// let intro =
 ///     scene {
-///         let! curve = draw (Chart.scatter U.second U.metre t y) |> over 1.2<s>
+///         let! curve = draw (Chart.scatterIn U.second U.metre t y) |> over 1.2<s>
 ///         do! wait 0.5<s>
 ///         do! parallel' [ curve |> morphTo grown |> over 2.0<s>
 ///                         curve |> zoomToX (0.0, 5.0) |> over 2.0<s> ]

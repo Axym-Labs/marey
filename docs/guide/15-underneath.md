@@ -33,7 +33,7 @@ group's shapes overlap.
 
 ```fsharp
 let statedScale = Scale.log10 U.metre (1.0<m>, 1000.0<m>)
-let ownSeries = Chart.series "measured" U.second U.metre tModel xModel
+let ownSeries = Chart.seriesIn "measured" U.second U.metre tModel xModel
 let ownFigure = Chart.ofSeries GeomLine ownSeries
 
 printfn "an erased scale carries %s" (Dim.show (Erase.scale statedScale).Dim)

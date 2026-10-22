@@ -61,8 +61,8 @@ let x = t |> Array.map (fun t -> 0.012<m> * exp (-t / 1.5<s>) * cos (2.0 * Syste
 let stiffness = 40.0<N/m>
 
 let spring =
-    Chart.line U.second U.metre t x
-    |> Chart.above (Chart.line U.second U.joule t (x |> Array.map (fun x -> 0.5 * stiffness * x * x)))
+    Chart.lineIn U.second U.metre t x
+    |> Chart.above (Chart.lineIn U.second U.joule t (x |> Array.map (fun x -> 0.5 * stiffness * x * x)))
     |> Chart.shareX
     |> Chart.withTitle "A damped spring"
 

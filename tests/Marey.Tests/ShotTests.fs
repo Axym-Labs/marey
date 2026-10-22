@@ -30,7 +30,7 @@ let private measurer = TextMeasure.approx
 let private ramp (top: float) : Figure =
     let xs = Array.init 24 (fun i -> float i / 23.0 * 10.0<s>)
     let ys = xs |> Array.map (fun t -> t / 10.0<s> * top * 1.0<m>)
-    Chart.line U.second U.metre xs ys
+    Chart.lineIn U.second U.metre xs ys
 
 /// The digit-gaining zoom: `0 … 9` at `u = 0`, `0 … 110` at `u = 1`. Two characters of tick
 /// label, which is several pixels of y gutter.
@@ -42,7 +42,7 @@ let private decades (u: float) : Figure =
     let xs = Array.init 24 (fun i -> float i / 23.0 * 10.0<s>)
     let top = 2.0e-3 * (0.001 ** u)
     let ys = xs |> Array.map (fun t -> t / 10.0<s> * top * 1.0<m>)
-    Chart.line U.second U.metre xs ys
+    Chart.lineIn U.second U.metre xs ys
 
 let private frames = [| 0.0; 0.2; 0.4; 0.6; 0.8; 1.0 |]
 
@@ -225,7 +225,7 @@ module PrefixDoesNotStep =
     let ``a flat frame at zero does not pin the prefix of a millimetre wave`` () =
         let wave (u: float) =
             let xs = Array.init 24 (fun i -> float i / 23.0 * 10.0<s>)
-            Chart.line U.second U.metre xs (xs |> Array.map (fun t -> u * 1e-3<m> * sin (float t)))
+            Chart.lineIn U.second U.metre xs (xs |> Array.map (fun t -> u * 1e-3<m> * sin (float t)))
 
         Assert.Contains("x [m]", titles (Chart.toScene surface (wave 0.0)))
 
@@ -245,7 +245,7 @@ module PrefixDoesNotStep =
             let ys = Array.init 24 (fun i -> float i / 23.0 * 10.0<s>)
             let span = 2.0e-3 * (0.001 ** u)
             let xs = ys |> Array.map (fun t -> t / 10.0<s> * span * 1.0<m>)
-            Chart.line U.metre U.second xs ys |> Chart.withTopAxisIn U.metre
+            Chart.lineIn U.metre U.second xs ys |> Chart.withTopAxisIn U.metre
 
         let frames16 = Array.init 16 (fun i -> float i / 15.0)
 

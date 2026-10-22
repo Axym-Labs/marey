@@ -51,6 +51,12 @@ and reported when missing; Marey does not require a version of them.
 
 ### Added
 
+- **Values that carry their unit.** `U.second.Of ts` is a `Q<s>`, the values and their witness,
+  and `U.metrePerSecondSquared.Of 9.81<m/s^2>` a `Quantity`, one value with it. Under
+  `open Marey.UnitsOfMeasure` a chart over `Q`s takes no witness: `Chart.line t x`. Arithmetic
+  computes the witness of its result (`0.5 * g * t * t` is a `Q<m>` titled `[m]`), `+` and `-`
+  read the right operand in the left one's unit, and `Q.map` names the unit arithmetic does not
+  reach. A `Q` is a `seq<float<'u>>`, so it passes wherever data is taken.
 - **`Marey`, the library in one reference.** `#r "nuget: Marey"` or `dotnet add package Marey`
   brings units, the plotting grammar, fields, simulations, animation, live figures, and SVG, TikZ
   and HTML output: Core, Units, Plot, Anim, Fields, Sim, Interact, Backend.Svg, Backend.Tikz and
@@ -67,6 +73,13 @@ and reported when missing; Marey does not require a version of them.
 
 ### Changed
 
+- **A series constructor's witness form is named with `In`**: `Chart.lineIn U.second U.metre ts
+  xs`, `Chart.addErrorbarIn`, `Chart.histogramIn`, `Chart.Category.barIn` and the rest, since
+  `Chart.line t x` is now the form over values that carry their unit. Functions that take one
+  value (rules, annotations, ticks, a colour domain) keep their names and witnesses.
+- **`U.squareMetre`, `U.cubicMetre`, `U.metrePerSecond`, `U.metrePerSecondSquared` and
+  `U.kilogramPerCubicMetre` carry their factors**, as the units `U.mul` and `U.div` compose do, so
+  a product with one cancels: `m/s²` times `s²` reads `m`. They draw as before.
 - **Data is taken as any sequence.** Every chart constructor, `Stat` function, grid, field
   sampler, colour and size channel, set of keys, labels or ticks, facet and palette takes a
   `seq<_>` where it took an array, so an F# list, a `ResizeArray` or a C# `List<double>` is passed

@@ -14,7 +14,7 @@ open Marey.UnitsOfMeasure
 
 let extent = Chart.size 640.0 400.0
 let t = Array.init 24 (fun i -> float i * 0.025<s>)
-let figure = Chart.line U.second U.metre t (t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)) |> Chart.withTheme Theme.tikz
+let figure = Chart.lineIn U.second U.metre t (t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)) |> Chart.withTheme Theme.tikz
 
 // A scene whose runs carry TeX — which the axis compiler already fills for you when the
 // unit style is `Siunitx`.

@@ -18,7 +18,7 @@ let private x (k: float) = t |> Array.map (fun t -> k * float t * float t * 1.0<
 
 /// A line and a scatter over the same times: two layers, one panel, one arrangement.
 let private twoLayers (k: float) =
-    Chart.line U.second U.metre t (x 1.0) |> Chart.addScatter U.second U.metre t (x k)
+    Chart.lineIn U.second U.metre t (x 1.0) |> Chart.addScatterIn U.second U.metre t (x k)
 
 /// The same two layers drawn in one arrangement, so a change to one cannot move the other.
 let private scenes (a: Figure) (b: Figure) =
@@ -132,7 +132,7 @@ module ``a patch is the new scene`` =
     /// fresh `<defs>` is what brings it.
     [<Fact>]
     let ``a patch that adds a marker carries its definition`` () =
-        let lines = Chart.line U.second U.metre t (x 1.0) |> Chart.addLine U.second U.metre t (x 0.9)
+        let lines = Chart.lineIn U.second U.metre t (x 1.0) |> Chart.addLineIn U.second U.metre t (x 0.9)
         let a, b = scenes lines (twoLayers 0.9)
         let before = SvgBackend.render surface a
         let p = gate a b
@@ -145,10 +145,10 @@ module ``a patch is the new scene`` =
     [<Fact>]
     let ``a def renumbered under an unchanged layer sends the whole document`` () =
         let two (size: float<px>) =
-            Chart.scatter U.second U.metre t (x 1.0)
+            Chart.scatterIn U.second U.metre t (x 1.0)
             |> Chart.withStyle (Geom.withMarkerSize size)
             |> Chart.withMarker MarkCircle
-            |> Chart.addScatter U.second U.metre t (x 0.9)
+            |> Chart.addScatterIn U.second U.metre t (x 0.9)
             |> Chart.withStyle (Geom.withMarkerSize 5.0<px>)
             |> Chart.withMarker MarkCircle
 
@@ -177,8 +177,8 @@ module ``diffing is measured`` =
         interact {
             let! at = Control.slider U.second "t" 1.0<s> 9.0<s> 5.0<s>
             return
-                Chart.scatter U.second U.metre xs ys
-                |> Chart.addScatter U.second U.metre [| at |] [| sin (float at) * 1.0<m> |]
+                Chart.scatterIn U.second U.metre xs ys
+                |> Chart.addScatterIn U.second U.metre [| at |] [| sin (float at) * 1.0<m> |]
                 |> Chart.withStyle (Geom.withMarkerSize 10.0<px>)
         }
 

@@ -29,7 +29,7 @@ And in Marey:
 let t = Array.init 24 (fun i -> float i * 0.4<s>)
 let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
 
-Chart.line U.second U.metre t x
+Chart.lineIn U.second U.metre t x
 ```
 
 The two figures look the same. They are not the same object.
@@ -50,7 +50,7 @@ drift apart silently, because they were never attached.
 
 ```fsharp
 // error FS0001: Type mismatch. Expecting a 'float<m> []' but given a 'float<s> []'
-Chart.line U.second U.metre t t
+Chart.lineIn U.second U.metre t t
 ```
 
 That is a build failure, before anything is drawn. Note what is *not* annotated in the working
@@ -206,7 +206,7 @@ axis and makes no dimensional claim at all, so nothing is checked against it.
 **Units are opt-in, and the check is not.** `open Marey` takes plain arrays and a unit per axis
 that may be stated, `Chart.Line(ts, xs, yUnit = U.metre)`, and checks a stated unit when two
 layers share an axis. `open Marey.UnitsOfMeasure` takes a witness per axis and checks it at
-compile time, `Chart.line U.second U.metre ts xs`. One implementation serves both: the
+compile time, `Chart.lineIn U.second U.metre ts xs`. One implementation serves both: the
 unit-optional call reaches the measure-generic one at measure 1, carrying the unit at run time,
 so a density over a stated metre still reads `m⁻¹`. Under the second `open` the first spelling is
 a compile error, so a call cannot fall back to an axis with no unit by accident.

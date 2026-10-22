@@ -68,9 +68,9 @@ let figure: Figure =
     let ts = Array.init 24 (fun i -> float i * 0.4<s>)
     let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
 
-    Chart.line U.second U.metre ts xs
+    Chart.lineIn U.second U.metre ts xs
     |> Chart.withName "model"
-    |> Chart.addScatter U.second U.metre ts.[..5] (ts.[..5] |> Array.map (fun t -> 0.5 * 9.6<m / s^2> * t * t))
+    |> Chart.addScatterIn U.second U.metre ts.[..5] (ts.[..5] |> Array.map (fun t -> 0.5 * 9.6<m / s^2> * t * t))
     |> Chart.withName "measured"
     |> Chart.withTitle "Free fall"
     |> Chart.withSubtitle "displacement against elapsed time"
@@ -86,7 +86,7 @@ let figure: Figure =
 /// no conventional symbol while the y axis still carries its unit. A shift in any of those is a
 /// diff in two files.
 let categoryFigure: Figure =
-    Chart.Category.bar
+    Chart.Category.barIn
         U.metre
         [| "control"; "treated"; "placebo"; "washout" |]
         [| 12.4<m>; 19.1<m>; 7.8<m>; 15.0<m> |]
@@ -106,7 +106,7 @@ let channelFigure: Figure =
     let ts = Array.init 24 (fun i -> float i * 0.4<s>)
     let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
 
-    Chart.scatter U.second U.metre ts xs
+    Chart.scatterIn U.second U.metre ts xs
     |> Chart.colorByKey keys
     |> Chart.shapeByKey keys
     |> Chart.withTitle "Fall by treatment"
@@ -127,8 +127,8 @@ let colorbarFigure: Figure =
     let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
     let temps = ts |> Array.map (fun t -> (280.0 + 2.5 * float t) * 1.0<K>)
 
-    Chart.scatter U.second U.metre ts xs
-    |> Chart.colorBy U.kelvin temps
+    Chart.scatterIn U.second U.metre ts xs
+    |> Chart.colorByIn U.kelvin temps
     |> Chart.withColorLabel "T"
     |> Chart.withTitle "Fall by temperature"
 
@@ -156,7 +156,7 @@ let boxplotFigure: Figure =
     let values =
         Array.concat [ control; treated; washout ] |> Array.map (fun v -> v * 1.0<m>)
 
-    Chart.Category.boxplot U.metre keys values
+    Chart.Category.boxplotIn U.metre keys values
     |> Chart.withYLabel "yield"
     |> Chart.withTitle "Yield by treatment"
     |> Chart.withGrid false true
@@ -179,7 +179,7 @@ let heatmapFigure: Figure =
     let temps =
         grid |> Array.map (fun (gx, gy) -> (280.0 + 4.0 * gx + 7.0 * gy) * 1.0<K>)
 
-    Chart.heatmap U.second U.metre U.kelvin (grid |> Array.map (fst >> (*) 1.0<s>)) (grid |> Array.map (snd >> (*) 1.0<m>)) temps
+    Chart.heatmapIn U.second U.metre U.kelvin (grid |> Array.map (fst >> (*) 1.0<s>)) (grid |> Array.map (snd >> (*) 1.0<m>)) temps
     |> Chart.withColorLabel "T"
     |> Chart.withTitle "Temperature field"
 
@@ -221,9 +221,9 @@ let logFigure: Figure =
     let euler = Array.scan (fun e _ -> e * 10.0) 1e-14<J> [| 1..10 |]
     let leapfrog = ts |> Array.mapi (fun i _ -> if i % 2 = 0 then 2e-15<J> else 5e-15<J>)
 
-    Chart.line U.second U.joule ts euler
+    Chart.lineIn U.second U.joule ts euler
     |> Chart.withName "Euler"
-    |> Chart.addLine U.second U.joule ts leapfrog
+    |> Chart.addLineIn U.second U.joule ts leapfrog
     |> Chart.withName "leapfrog"
     |> Chart.withYLog
     |> Chart.withYLabel "drift"
@@ -242,7 +242,7 @@ let rulesFigure: Figure =
         |> Array.map (fun v -> v * 1e-3<m>)
 
     let left =
-        Chart.scatter U.second U.metre ts residuals
+        Chart.scatterIn U.second U.metre ts residuals
         |> Chart.withName "residual"
         |> Chart.addHSpan U.metre -0.5e-3<m> 0.5e-3<m>
         |> Chart.withName "±0.5 mm"
@@ -253,7 +253,7 @@ let rulesFigure: Figure =
         |> Chart.withPanelTitle "rules"
 
     let right =
-        Chart.line U.radian U.metre [| 0.0<rad>; 6.0<rad> |] [| 1.0<m>; 3.0<m> |]
+        Chart.lineIn U.radian U.metre [| 0.0<rad>; 6.0<rad> |] [| 1.0<m>; 3.0<m> |]
         |> Chart.addHLine U.metre 2.0<m>
         |> Chart.addVSpan U.radian 1.0<rad> 1.5<rad>
         |> Chart.withCoord Coord.polar
@@ -282,7 +282,7 @@ let annotateFigure: Figure =
         |> Array.unzip
 
     let mutable spectrum =
-        Chart.line U.metre U.one (lam |> Array.map (fun l -> l * nm)) intensity
+        Chart.lineIn U.metre U.one (lam |> Array.map (fun l -> l * nm)) intensity
         |> Chart.withName "observed"
         |> Chart.withLegend LegendTopLeft
 
@@ -301,7 +301,7 @@ let annotateFigure: Figure =
         |> Chart.addPanelText 0.98 0.5 "T = 10⁴ K"
 
     let decay =
-        Chart.scatter U.second U.metre [| 0.0<s>; 1.0<s>; 2.0<s>; 3.0<s> |] [| 4.0<m>; 2.0<m>; 1.0<m>; 0.5<m> |]
+        Chart.scatterIn U.second U.metre [| 0.0<s>; 1.0<s>; 2.0<s>; 3.0<s> |] [| 4.0<m>; 2.0<m>; 1.0<m>; 0.5<m> |]
         |> Chart.annotate U.second U.metre 2.0<s> 1.0<m> "half-life"
         |> Chart.withTextOffset 12.0<px> 12.0<px>
         |> Chart.withArrow ArrowStraight
@@ -317,7 +317,7 @@ let ticksFigure: Figure =
     let nm = 1e-9<m>
 
     let spectrum =
-        Chart.line U.metre U.one [| 400.0 * nm; 550.0 * nm; 700.0 * nm |] [| 0.1; 0.7; 0.4 |]
+        Chart.lineIn U.metre U.one [| 400.0 * nm; 550.0 * nm; 700.0 * nm |] [| 0.1; 0.7; 0.4 |]
         |> Chart.withXTicksEvery U.metre (50.0 * nm)
         |> Chart.withXDomain 400e-9 700e-9
         |> Chart.withXLabel "λ"
@@ -328,20 +328,20 @@ let ticksFigure: Figure =
     let energy = k |> Array.map (fun k -> 2.0<eV> * (k / edge) * (k / edge) - 1.0<eV>)
 
     let band =
-        Chart.line (U.recip U.metre) U.electronvolt k energy
+        Chart.lineIn (U.recip U.metre) U.electronvolt k energy
         |> Chart.withXTicksNamed (U.recip U.metre) [| -edge, "X"; 0.0</m>, "Γ"; edge, "X" |]
         |> Chart.withXDomain (float -edge) (float edge)
         |> Chart.withXLabel "k"
         |> Chart.withPanelTitle "named"
 
     let depth =
-        Chart.line U.kelvin U.metre [| 290.0<K>; 284.0<K>; 277.0<K>; 276.0<K> |] [| 0.0<m>; 100.0<m>; 400.0<m>; 800.0<m> |]
+        Chart.lineIn U.kelvin U.metre [| 290.0<K>; 284.0<K>; 277.0<K>; 276.0<K> |] [| 0.0<m>; 100.0<m>; 400.0<m>; 800.0<m> |]
         |> Chart.withYReversed
         |> Chart.withYLabel "depth"
         |> Chart.withPanelTitle "reversed"
 
     let pinned =
-        Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 0.002<m> |]
+        Chart.lineIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 0.002<m> |]
         |> Chart.withYPrefix Prefix.none
         |> Chart.withPanelTitle "plain metres"
 
@@ -362,15 +362,15 @@ let private fitAndResiduals =
     let fine = Array.init 61 (fun i -> float i * 0.1<s>)
 
     let fit =
-        Chart.errorbar U.second U.metre ts measured sigma
+        Chart.errorbarIn U.second U.metre ts measured sigma
         |> Chart.withName "measured"
-        |> Chart.addLine U.second U.metre fine (fine |> Array.map model)
+        |> Chart.addLineIn U.second U.metre fine (fine |> Array.map model)
         |> Chart.withName "model"
         |> Chart.withXTicksEvery U.second 1.0<s>
         |> Chart.withLegend LegendBottomRight
 
     let residual =
-        Chart.errorbar U.second U.metre ts (Array.map2 (-) measured (ts |> Array.map model)) sigma
+        Chart.errorbarIn U.second U.metre ts (Array.map2 (-) measured (ts |> Array.map model)) sigma
         |> Chart.addHLine U.metre 0.0<m>
         |> Chart.withXTicksEvery U.second 1.0<s>
         |> Chart.withYLabel "residual"
@@ -393,11 +393,11 @@ let private warming (title: string) =
     let ts = Array.init 31 (fun i -> float i * 20.0<s>)
     let curve (offset: float<K>) = ts |> Array.map (fun t -> 300.0<K> - offset + 60.0<K> * (t / (t + 150.0<s>)))
 
-    Chart.line U.second U.kelvin ts (curve 0.0<K>)
+    Chart.lineIn U.second U.kelvin ts (curve 0.0<K>)
     |> Chart.withName "chamber"
-    |> Chart.addLine U.second U.kelvin ts (curve 4.0<K>)
+    |> Chart.addLineIn U.second U.kelvin ts (curve 4.0<K>)
     |> Chart.withName "probe"
-    |> Chart.addLine U.second U.kelvin ts (curve 10.0<K>)
+    |> Chart.addLineIn U.second U.kelvin ts (curve 10.0<K>)
     |> Chart.withName "wall"
     |> Chart.withPanelTitle title
 
@@ -426,8 +426,8 @@ let mosaicFigure: Figure =
     Chart.mosaic
         "AB;AC"
         [ 'A', warming "a panel over two rows"
-          'B', Chart.line U.second U.metre ts (rise 1.0)
-          'C', Chart.line U.second U.metre ts (rise 100.0) |> Chart.withYLabel "deflection" ]
+          'B', Chart.lineIn U.second U.metre ts (rise 1.0)
+          'C', Chart.lineIn U.second U.metre ts (rise 100.0) |> Chart.withYLabel "deflection" ]
     |> Chart.withPanelLetters LetterParen
     |> Chart.withTheme Theme.publication
 
@@ -456,9 +456,9 @@ let twinFigure: Figure =
     let temperature = ts |> Array.map (fun t -> 300.0<K> + 60.0<K> * (t / (t + 150.0<s>)))
     let pressure = temperature |> Array.mapi (fun i tk -> (101.3 * float tk / 300.0 + 0.4 * wobble.[i % wobble.Length]) * 1e3<Pa>)
 
-    Chart.line U.second U.kelvin ts temperature
+    Chart.lineIn U.second U.kelvin ts temperature
     |> Chart.withName "temperature"
-    |> Chart.withRightAxis (Chart.line U.second U.pascal ts pressure |> Chart.withName "pressure")
+    |> Chart.withRightAxis (Chart.lineIn U.second U.pascal ts pressure |> Chart.withName "pressure")
     |> Chart.withLegend LegendBottomRight
     |> Chart.withTheme Theme.publication
 
@@ -473,13 +473,13 @@ let secondaryFigure: Figure =
     let line (centre: float) (height: float) (l: float<m>) = height / (1.0 + ((float (l / nm) - centre) / 1.5) ** 2.0)
 
     let spectrum =
-        Chart.line U.metre U.one lam (lam |> Array.map (fun l -> 0.03 + line 486.1 0.55 l + line 656.3 1.0 l))
+        Chart.lineIn U.metre U.one lam (lam |> Array.map (fun l -> 0.03 + line 486.1 0.55 l + line 656.3 1.0 l))
         |> Chart.withTopAxisMapped U.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)
 
     let ts = Array.init 21 (fun i -> float i * 30.0<s>)
 
     let warming =
-        Chart.line U.second U.kelvin ts (ts |> Array.map (fun t -> 280.0<K> + 50.0<K> * (t / (t + 150.0<s>))))
+        Chart.lineIn U.second U.kelvin ts (ts |> Array.map (fun t -> 280.0<K> + 50.0<K> * (t / (t + 150.0<s>))))
         |> Chart.withRightAxisIn U.degreeCelsius
 
     spectrum |> Chart.beside warming |> Chart.withTheme Theme.publication
@@ -502,15 +502,15 @@ let aspectFigure: Figure =
     let e = circle 1.5e-3<m> 0.6e-3<m>
 
     let orbit =
-        Chart.line U.metre U.metre (Array.map fst c) (Array.map snd c)
+        Chart.lineIn U.metre U.metre (Array.map fst c) (Array.map snd c)
         |> Chart.withName "circle"
-        |> Chart.addLine U.metre U.metre (Array.map fst e) (Array.map snd e)
+        |> Chart.addLineIn U.metre U.metre (Array.map fst e) (Array.map snd e)
         |> Chart.withName "ellipse"
         |> Chart.withLegend LegendOutsideRight
         |> Chart.withEqualAspect
 
     let ts2 = Array.init 21 (fun i -> float i * 30.0<s>)
-    let warming = Chart.line U.second U.kelvin ts2 (ts2 |> Array.map (fun t -> 280.0<K> + 50.0<K> * (t / (t + 150.0<s>))))
+    let warming = Chart.lineIn U.second U.kelvin ts2 (ts2 |> Array.map (fun t -> 280.0<K> + 50.0<K> * (t / (t + 150.0<s>))))
     orbit |> Chart.beside warming |> Chart.withTheme Theme.publication
 
 let aspectSurface: Extent<px> = { Width = 760.0<px>; Height = 300.0<px> }
@@ -528,12 +528,12 @@ let insetFigure: Figure =
 
     let peak = fs |> Array.filter (fun f -> f >= 9.0<s^-1> && f <= 11.0<s^-1>)
 
-    Chart.line hz U.metre fs (fs |> Array.map resonance)
+    Chart.lineIn hz U.metre fs (fs |> Array.map resonance)
     |> Chart.withYLabel "amplitude"
     // The inset's axes are the host's quantities, so its titles would only repeat them.
     |> Chart.withInset
         (0.58, 0.45, 0.96, 0.95)
-        (Chart.line hz U.metre peak (peak |> Array.map resonance)
+        (Chart.lineIn hz U.metre peak (peak |> Array.map resonance)
          |> Chart.withAxesLook AxisUntitled)
     |> Chart.withInsetZoom
     |> Chart.withTheme Theme.publication

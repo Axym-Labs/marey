@@ -756,7 +756,7 @@ module ``D35 Theme tikz`` =
     let private ts = Array.init 12 (fun i -> float i * 0.5<s>)
     let private xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
 
-    let private plain = Chart.line U.second U.metre ts xs
+    let private plain = Chart.lineIn U.second U.metre ts xs
 
     /// **The headline.** No `withUnitStyle`, no axis configuration: selecting the theme is enough
     /// to get siunitx unit macros, derived from the two unit witnesses.
@@ -893,9 +893,9 @@ module ``figures compile`` =
         let ts = Array.init 40 (fun i -> float i * 0.25<s>)
         let xs = ts |> Array.map (fun t -> 0.5 * 9.81<m / s^2> * t * t)
 
-        Chart.line U.second U.metre ts xs
+        Chart.lineIn U.second U.metre ts xs
         |> Chart.withName "model"
-        |> Chart.addScatter U.second U.metre ts.[..8] xs.[..8]
+        |> Chart.addScatterIn U.second U.metre ts.[..8] xs.[..8]
         |> Chart.withName "measured"
         |> Chart.withTitle "Free fall"
         |> Chart.withLegend LegendTopLeft
@@ -975,7 +975,7 @@ module ``figures compile`` =
         let xs = ts |> Array.map (fun t -> float t * 1.0<m>)
 
         let fig =
-            Chart.line U.second U.metre ts xs
+            Chart.lineIn U.second U.metre ts xs
             // A domain far narrower than the data, so most points project outside [0,1] by a
             // large factor.
             |> Chart.withXDomain 0.0 0.001

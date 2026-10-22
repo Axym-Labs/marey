@@ -907,7 +907,7 @@ module ``the Chart constructors`` =
 
     [<Fact>]
     let ``a band's domain covers both bounds`` () =
-        let fig = Chart.ribbon U.second U.metre [| 0.0<s>; 1.0<s> |] [| 1.0<m>; 2.0<m> |] [| 8.0<m>; 9.0<m> |]
+        let fig = Chart.ribbonIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| 1.0<m>; 2.0<m> |] [| 8.0<m>; 9.0<m> |]
         let lo, hi = domainOfY fig
 
         Assert.True(lo <= 1.0, sprintf "the lower bound is outside the domain: %f" lo)
@@ -917,7 +917,7 @@ module ``the Chart constructors`` =
     /// margin past the last tile draws part of that region as if no cell covered it.
     [<Fact>]
     let ``a tiled figure's domain is the tiles' own edges, unpadded`` () =
-        let fig = Chart.tile U.one U.one 2.0 1.0 [| 0.0; 2.0; 4.0 |] [| 0.0; 1.0; 2.0 |]
+        let fig = Chart.tileIn U.one U.one 2.0 1.0 [| 0.0; 2.0; 4.0 |] [| 0.0; 1.0; 2.0 |]
         let x, y = Erase.seriesScales fig.Panels.[0].Layers.[0].Data
 
         Assert.Equal((-1.0, 5.0), x.Domain)
@@ -929,7 +929,7 @@ module ``the Chart constructors`` =
     let ``a heatmap sizes its cells from the grid's own pitch`` () =
         let x = [| 0.0; 1.0; 3.0 |]
         let y = [| 0.0; 1.0; 2.0 |]
-        let fig = Chart.heatmap U.one U.one U.kelvin x y [| 300.0<K>; 310.0<K>; 320.0<K> |]
+        let fig = Chart.heatmapIn U.one U.one U.kelvin x y [| 300.0<K>; 310.0<K>; 320.0<K> |]
         let sx, _ = Erase.seriesScales fig.Panels.[0].Layers.[0].Data
 
         // A pitch of 1, so the tiles reach half a cell past 0 and past 3.
@@ -939,7 +939,7 @@ module ``the Chart constructors`` =
 
     [<Fact>]
     let ``a segment figure holds both ends inside the domain`` () =
-        let fig = Chart.segment U.one U.one [| 0.0; 1.0 |] [| 0.0; 1.0 |] [| 5.0; 6.0 |] [| 9.0; 2.0 |]
+        let fig = Chart.segmentIn U.one U.one [| 0.0; 1.0 |] [| 0.0; 1.0 |] [| 5.0; 6.0 |] [| 9.0; 2.0 |]
         let x, y = Erase.seriesScales fig.Panels.[0].Layers.[0].Data
 
         Assert.True(fst x.Domain <= 0.0 && snd x.Domain >= 6.0)
@@ -950,7 +950,7 @@ module ``the Chart constructors`` =
     [<Fact>]
     let ``addLabels reuses the labelled series and stays out of the legend`` () =
         let fig =
-            Chart.scatter U.one U.one [| 0.0; 1.0; 2.0 |] [| 1.0; 4.0; 9.0 |]
+            Chart.scatterIn U.one U.one [| 0.0; 1.0; 2.0 |] [| 1.0; 4.0; 9.0 |]
             |> Chart.withName "measured"
             |> Chart.addLabels [| "a"; "b"; "c" |]
 
@@ -967,15 +967,15 @@ module ``the Chart constructors`` =
     [<Fact>]
     let ``addLabels refuses a mismatched count`` () =
         Assert.Throws<System.ArgumentException>(fun () ->
-            Chart.scatter U.one U.one [| 0.0; 1.0 |] [| 1.0; 2.0 |]
+            Chart.scatterIn U.one U.one [| 0.0; 1.0 |] [| 1.0; 2.0 |]
             |> Chart.addLabels [| "only one" |]
             |> ignore)
         |> ignore
 
     [<Fact>]
     let ``a step figure is a staircase`` () =
-        Assert.Equal(GeomStep StepAfter, geomOf (Chart.step U.one U.one [| 0.0; 1.0 |] [| 1.0; 2.0 |]))
-        Assert.Equal(GeomStep StepBefore, geomOf (Chart.stepWith StepBefore U.one U.one [| 0.0; 1.0 |] [| 1.0; 2.0 |]))
+        Assert.Equal(GeomStep StepAfter, geomOf (Chart.stepIn U.one U.one [| 0.0; 1.0 |] [| 1.0; 2.0 |]))
+        Assert.Equal(GeomStep StepBefore, geomOf (Chart.stepWithIn StepBefore U.one U.one [| 0.0; 1.0 |] [| 1.0; 2.0 |]))
 
 module ``the categorical distributions`` =
 
@@ -987,7 +987,7 @@ module ``the categorical distributions`` =
 
     [<Fact>]
     let ``a box plot has one box per level, in first-appearance order`` () =
-        let fig = Chart.Category.boxplot U.metre keys values
+        let fig = Chart.Category.boxplotIn U.metre keys values
         let layer = fig.Panels.[0].Layers.[0]
 
         match layer.Geom with
@@ -1010,7 +1010,7 @@ module ``the categorical distributions`` =
         let withOutlier = Array.append values [| 400.0<m> |]
         let withKey = Array.append keys [| "control" |]
 
-        let fig = Chart.Category.boxplot U.metre withKey withOutlier
+        let fig = Chart.Category.boxplotIn U.metre withKey withOutlier
         let _, y = Erase.seriesScales fig.Panels.[0].Layers.[0].Data
 
         Assert.True(snd y.Domain >= 400.0, sprintf "the outlier is outside the domain: %f" (snd y.Domain))
@@ -1022,7 +1022,7 @@ module ``the categorical distributions`` =
         let sparse = Array.append keys [| "single" |]
         let sparseValues = Array.append values [| 12.0<m> |]
 
-        let fig = Chart.Category.violin U.metre sparse sparseValues
+        let fig = Chart.Category.violinIn U.metre sparse sparseValues
 
         match fig.Panels.[0].Layers.[0].Geom with
         | GeomViolin(profiles, _) ->
@@ -1034,15 +1034,15 @@ module ``the categorical distributions`` =
     [<Fact>]
     let ``a violin of a sample with no spread says so`` () =
         Assert.Throws<System.ArgumentException>(fun () ->
-            Chart.Category.violin U.metre [| "a"; "b" |] [| 3.0<m>; 3.0<m> |] |> ignore)
+            Chart.Category.violinIn U.metre [| "a"; "b" |] [| 3.0<m>; 3.0<m> |] |> ignore)
         |> ignore
 
     /// The x axis is titled by its bands, so the conventional symbol stays suppressed — the same
     /// rule `Chart.Category.bar` plays by, and easy to lose when a new constructor is added.
     [<Fact>]
     let ``a categorical distribution suppresses the x symbol`` () =
-        Assert.Equal(Some "", (Chart.Category.boxplot U.metre keys values).Panels.[0].XAxis.Label)
-        Assert.Equal(Some "", (Chart.Category.violin U.metre keys values).Panels.[0].XAxis.Label)
+        Assert.Equal(Some "", (Chart.Category.boxplotIn U.metre keys values).Panels.[0].XAxis.Label)
+        Assert.Equal(Some "", (Chart.Category.violinIn U.metre keys values).Panels.[0].XAxis.Label)
 
 // ======================================================================================
 // The block's own filled geoms
@@ -1202,7 +1202,7 @@ module ``a geom draws where its data is`` =
         // Both domains reach below zero, so an area's and a bar's baseline — clamped to the panel
         // edge while zero was outside the domain they were built against — has somewhere to move
         // to. Without that, those two cases pass whether or not the baseline follows.
-        [ "a wider second layer", Chart.addScatter U.metre U.metre [| -2.0<m>; 10.0<m> |] [| -2.0<m>; 10.0<m> |]
+        [ "a wider second layer", Chart.addScatterIn U.metre U.metre [| -2.0<m>; 10.0<m> |] [| -2.0<m>; 10.0<m> |]
           "a stated domain", Chart.withXDomain -1.0 9.0 >> Chart.withYDomain -1.0 9.0
           "a log axis", Chart.withXLog >> Chart.withYLog ]
 
@@ -1220,7 +1220,7 @@ module ``a geom draws where its data is`` =
         let mk = geoms |> List.find (fun (n, _) -> n = geom) |> snd
         let op = operations |> List.find (fun (n, _) -> n = operation) |> snd
 
-        let s = Chart.series "" U.metre U.metre x y
+        let s = Chart.seriesIn "" U.metre U.metre x y
         let actual = Chart.ofSeries (mk s) s |> op
 
         // The scales the geom's layer ends up drawn against, read off the figure the way the

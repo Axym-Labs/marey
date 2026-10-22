@@ -59,14 +59,14 @@ let bodeFor (damping: float) =
         let r = f / cutoff
         -(atan2 (2.0 * damping * r) (1.0 - r * r)) * 1.0<rad>
 
-    Chart.line U.hertz U.one bodeFrequencies (bodeFrequencies |> Array.map gainAt)
+    Chart.lineIn U.hertz U.one bodeFrequencies (bodeFrequencies |> Array.map gainAt)
     |> Chart.withName "gain"
     |> Chart.addVLine U.hertz cutoff
     |> Chart.withXLog
     |> Chart.withYLog
     |> Chart.withYDomain 1e-4 20.0
     |> Chart.withRightAxis (
-        Chart.line U.hertz U.radian bodeFrequencies (bodeFrequencies |> Array.map phaseAt)
+        Chart.lineIn U.hertz U.radian bodeFrequencies (bodeFrequencies |> Array.map phaseAt)
         |> Chart.withName "phase"
         |> Chart.withXLog
         |> Chart.withYTicksNamed U.radian [| 0.0<rad>, "0"; -halfTurn / 2.0, "−π/2"; -halfTurn, "−π" |]

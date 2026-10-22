@@ -25,10 +25,10 @@ let private sigma = Array.create t.Length 0.6e-3<m>
 let private x = t |> Array.mapi (fun i ti -> model ti + sigma.[i] * wobble i)
 
 /// P1's pair: the fit's y labels are `10` wide, the residuals' `−0.5`, so their y gutters differ.
-let private fit = Chart.errorbar U.second U.metre t x sigma |> Chart.withName "measured"
+let private fit = Chart.errorbarIn U.second U.metre t x sigma |> Chart.withName "measured"
 
 let private residuals (scale: float) =
-    Chart.errorbar U.second U.metre t (Array.map2 (fun xi ti -> scale * (xi - model ti)) x t) sigma
+    Chart.errorbarIn U.second U.metre t (Array.map2 (fun xi ti -> scale * (xi - model ti)) x t) sigma
     |> Chart.addHLine U.metre 0.0<m>
     |> Chart.withYLabel "residual"
 
@@ -85,15 +85,15 @@ module ``D173 panels line up`` =
 
     [<Fact>]
     let ``a row where one panel has a title lines up its plots (gate 1, C4)`` () =
-        let titled = Chart.line U.second U.metre t x |> Chart.withPanelTitle "a titled panel"
+        let titled = Chart.lineIn U.second U.metre t x |> Chart.withPanelTitle "a titled panel"
         let views = fit |> Chart.beside titled |> viewsOf (Chart.size 700.0 300.0)
         assertAligned views
 
     [<Fact>]
     let ``a two-by-two grid with a colorbar and an outside legend lines up its plots (gate 1)`` () =
         let barred =
-            Chart.scatter U.second U.metre t x
-            |> Chart.colorBy U.metre x
+            Chart.scatterIn U.second U.metre t x
+            |> Chart.colorByIn U.metre x
 
         let legended = fit |> Chart.withLegend LegendOutsideRight
         let fig = (barred |> Chart.beside fit) |> Chart.above (fit |> Chart.beside legended)
@@ -145,7 +145,7 @@ module ``D173 panels line up`` =
 
 module ``D174 spans`` =
 
-    let private single = Chart.scatter U.metre U.metre x (Array.map2 (fun xi ti -> xi - model ti) x t)
+    let private single = Chart.scatterIn U.metre U.metre x (Array.map2 (fun xi ti -> xi - model ti) x t)
     let private extent = Chart.size 700.0 420.0
 
     let private find (fig: Figure) (row, col) =
@@ -335,7 +335,7 @@ module ``D176 sharing`` =
 
     let private heat =
         let ts = Array.init 21 (fun i -> float i * 10.0<s>)
-        Chart.line U.second U.kelvin ts (ts |> Array.map (fun t -> 300.0<K> + t * 0.1<K/s>))
+        Chart.lineIn U.second U.kelvin ts (ts |> Array.map (fun t -> 300.0<K> + t * 0.1<K/s>))
 
     [<Fact>]
     let ``a shared x is labelled once, under the lowest panel (gate 4)`` () =
@@ -409,8 +409,8 @@ module ``D177 a twin y`` =
     let private ts = Array.init 61 (fun i -> float i * 10.0<s>)
     let private temperature = ts |> Array.map (fun t -> 300.0<K> + 60.0<K> * (t / (t + 150.0<s>)))
     let private pressure = temperature |> Array.mapi (fun i tk -> (101.3 * float tk / 300.0 + 0.4 * wobble i) * 1e3<Pa>)
-    let private left = Chart.line U.second U.kelvin ts temperature |> Chart.withName "temperature"
-    let private right = Chart.line U.second U.pascal ts pressure |> Chart.withName "pressure"
+    let private left = Chart.lineIn U.second U.kelvin ts temperature |> Chart.withName "temperature"
+    let private right = Chart.lineIn U.second U.pascal ts pressure |> Chart.withName "pressure"
     let private twin = left |> Chart.withRightAxis right
     let private extent = Chart.size 500.0 300.0
 
@@ -462,7 +462,7 @@ module ``D177 a twin y`` =
 
     [<Fact>]
     let ``a pressure added to the kelvin side is refused, naming both units (gate 5)`` () =
-        let fig = twin |> Chart.addLine U.second U.pascal ts pressure
+        let fig = twin |> Chart.addLineIn U.second U.pascal ts pressure
         let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
         Assert.Contains("y axis in K", e.Message)
         Assert.Contains("kg·m^-1·s^-2", e.Message)
@@ -478,7 +478,7 @@ module ``D177 a twin y`` =
 
     [<Fact>]
     let ``two sides that disagree on x are refused at the call`` () =
-        let metres = Chart.line U.metre U.pascal (ts |> Array.map (fun t -> float t * 1.0<m>)) pressure
+        let metres = Chart.lineIn U.metre U.pascal (ts |> Array.map (fun t -> float t * 1.0<m>)) pressure
         let e = Assert.ThrowsAny<exn>(fun () -> left |> Chart.withRightAxis metres |> ignore)
         Assert.Contains("x axis", e.Message)
 
@@ -512,7 +512,7 @@ module ``D177 a twin y`` =
 
     [<Fact>]
     let ``a facet sharing y leaves each panel's second axis its own`` () =
-        let other = left |> Chart.withRightAxis (Chart.line U.second U.metre ts (ts |> Array.map (fun t -> float t * 1e-3<m>)))
+        let other = left |> Chart.withRightAxis (Chart.lineIn U.second U.metre ts (ts |> Array.map (fun t -> float t * 1e-3<m>)))
         let fig = Chart.facetWith ShareY 2 [| "a", twin; "b", other |]
         let views = viewsOf (Chart.size 800.0 300.0) fig
         Assert.Equal(2, views.Length)
@@ -522,7 +522,7 @@ module ``D177 a twin y`` =
     /// over a temperature cannot share its axis, and once moved it draws against one of its own.
     [<Fact>]
     let ``toRightAxis moves the last layer onto a right axis of its own`` () =
-        let added = left |> Chart.addLine U.second U.pascal ts pressure
+        let added = left |> Chart.addLineIn U.second U.pascal ts pressure
         Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent added |> ignore) |> ignore
 
         let moved = added |> Chart.toRightAxis
@@ -537,7 +537,7 @@ module ``D178 secondary axes`` =
     let private nm = 1e-9<m>
     let private hc = 1.239841984e-6<eV * m>
     let private lam = Array.init 301 (fun i -> (400.0 + float i) * nm)
-    let private spectrum = Chart.line U.metre U.one lam (lam |> Array.map (fun l -> 1.0 / (1.0 + ((float (l / nm) - 656.3) / 2.0) ** 2.0)))
+    let private spectrum = Chart.lineIn U.metre U.one lam (lam |> Array.map (fun l -> 1.0 / (1.0 + ((float (l / nm) - 656.3) / 2.0) ** 2.0)))
     let private extent = Chart.size 600.0 320.0
 
     let rec private textsWithAt (n: Node) : (string * Vec2<nd>) list =
@@ -584,7 +584,7 @@ module ``D178 secondary axes`` =
     [<Fact>]
     let ``a right axis in °C reads 30 at 303.15 K (gate 6)`` () =
         let fig =
-            Chart.line U.second U.kelvin [| 0.0<s>; 10.0<s> |] [| 280.0<K>; 330.0<K> |]
+            Chart.lineIn U.second U.kelvin [| 0.0<s>; 10.0<s> |] [| 280.0<K>; 330.0<K> |]
             |> Chart.withRightAxisIn U.degreeCelsius
 
         let v = (viewsOf extent fig).[0]
@@ -595,7 +595,7 @@ module ``D178 secondary axes`` =
     [<Fact>]
     let ``a map that turns back is refused at the first point it does (gate 6)`` () =
         let xs = Array.init 21 (fun i -> float i / 10.0 - 1.0)
-        let fig = Chart.line U.one U.one xs xs |> Chart.withTopAxisMapped U.one (fun x -> x * x) sqrt
+        let fig = Chart.lineIn U.one U.one xs xs |> Chart.withTopAxisMapped U.one (fun x -> x * x) sqrt
         let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
         Assert.Contains("secondary x axis's map", e.Message)
 
@@ -607,7 +607,7 @@ module ``D178 secondary axes`` =
 
     [<Fact>]
     let ``another dimension without a map is refused, naming both`` () =
-        let fig = Chart.line U.second U.kelvin [| 0.0<s>; 10.0<s> |] [| 280.0<K>; 330.0<K> |] |> Chart.withRightAxisIn U.metre
+        let fig = Chart.lineIn U.second U.kelvin [| 0.0<s>; 10.0<s> |] [| 280.0<K>; 330.0<K> |] |> Chart.withRightAxisIn U.metre
         let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
         Assert.Contains("secondary y axis is in m", e.Message)
         Assert.Contains("y axis is in K", e.Message)
@@ -616,8 +616,8 @@ module ``D178 secondary axes`` =
     let ``a twin and a secondary axis on one side are refused`` () =
         let ts = [| 0.0<s>; 10.0<s> |]
         let fig =
-            Chart.line U.second U.kelvin ts [| 280.0<K>; 330.0<K> |]
-            |> Chart.withRightAxis (Chart.line U.second U.metre ts [| 1.0<m>; 2.0<m> |])
+            Chart.lineIn U.second U.kelvin ts [| 280.0<K>; 330.0<K> |]
+            |> Chart.withRightAxis (Chart.lineIn U.second U.metre ts [| 1.0<m>; 2.0<m> |])
             |> Chart.withRightAxisIn U.degreeCelsius
         let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent fig |> ignore)
         Assert.Contains("one right side", e.Message)
@@ -627,7 +627,7 @@ module ``D179 aspect`` =
     let private square (half: float<m>) (halfY: float<m>) =
         let xs = Array.init 41 (fun i -> -half + 2.0 * half * float i / 40.0)
         let ys = Array.init 41 (fun i -> -halfY + 2.0 * halfY * float i / 40.0)
-        Chart.scatter U.metre U.metre xs ys
+        Chart.scatterIn U.metre U.metre xs ys
 
     let private pxPerMetre (v: PanelView) =
         let (x0, x1), (y0, y1) = v.X.Domain, v.Y.Domain
@@ -656,7 +656,7 @@ module ``D179 aspect`` =
     let ``ångström against metres are one dimension, compared in SI`` () =
         let xs = Array.init 11 (fun i -> float i * 1e-9<m>)
         let ys = Array.init 11 (fun i -> float (i * i) * 0.5<angstrom>)
-        let fig = Chart.scatter U.metre U.angstrom xs ys |> Chart.withEqualAspect
+        let fig = Chart.scatterIn U.metre U.angstrom xs ys |> Chart.withEqualAspect
         let v = (viewsOf (Chart.size 500.0 400.0) fig).[0]
         let w, h = float (v.Plot.X1 - v.Plot.X0), float (v.Plot.Y1 - v.Plot.Y0)
         let (x0, x1), (y0, y1) = v.X.Domain, v.Y.Domain
@@ -714,9 +714,9 @@ module ``D180 insets`` =
 
     let private fs = Array.init 401 (fun i -> float i * 0.05<s^-1>)
     let private resonance (f: float<s^-1>) = 1e-3<m> / (1.0 + ((f - 10.0<s^-1>) / 0.3<s^-1>) ** 2.0)
-    let private host = Chart.line (U.div U.one U.second) U.metre fs (fs |> Array.map resonance)
+    let private host = Chart.lineIn (U.div U.one U.second) U.metre fs (fs |> Array.map resonance)
     let private peak = fs |> Array.filter (fun f -> f >= 9.0<s^-1> && f <= 11.0<s^-1>)
-    let private zoom = Chart.line (U.div U.one U.second) U.metre peak (peak |> Array.map resonance)
+    let private zoom = Chart.lineIn (U.div U.one U.second) U.metre peak (peak |> Array.map resonance)
     let private fig = host |> Chart.withInset (0.6, 0.55, 0.95, 0.95) zoom |> Chart.withInsetZoom
     let private extent = Chart.size 600.0 400.0
 
@@ -786,7 +786,7 @@ module ``D180 insets`` =
 
     [<Fact>]
     let ``an inset in another dimension cannot show its zoom`` () =
-        let other = Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 1e-3<m> |]
+        let other = Chart.lineIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 1e-3<m> |]
         let bad = host |> Chart.withInset (0.6, 0.55, 0.95, 0.95) other |> Chart.withInsetZoom
         let e = Assert.ThrowsAny<exn>(fun () -> Chart.toSceneWith measurer extent bad |> ignore)
         Assert.Contains("host's dimensions", e.Message)
@@ -806,7 +806,7 @@ module ``D180 insets`` =
 module ``Axis looks`` =
 
     let private extent = Chart.size 480.0 320.0
-    let private plain = Chart.line U.second U.metre t x
+    let private plain = Chart.lineIn U.second U.metre t x
 
     let rec private keyed (k: Key) (n: Node) : Node option =
         match n with
@@ -881,8 +881,8 @@ module ``Axis looks`` =
 module ``a scale kind is the panel's`` =
 
     let private fs = Array.init 41 (fun i -> 10.0 ** (1.0 + float i / 10.0) * 1.0<Hz>)
-    let private gain = Chart.line U.hertz U.one fs (fs |> Array.map (fun f -> 1.0 / (1.0 + float f / 1e3)))
-    let private phase = Chart.line U.hertz U.radian fs (fs |> Array.map (fun f -> -(atan (float f / 1e3)) * 1.0<rad>))
+    let private gain = Chart.lineIn U.hertz U.one fs (fs |> Array.map (fun f -> 1.0 / (1.0 + float f / 1e3)))
+    let private phase = Chart.lineIn U.hertz U.radian fs (fs |> Array.map (fun f -> -(atan (float f / 1e3)) * 1.0<rad>))
 
     let private kinds (fig: Figure) =
         (Figure.unify fig.Panels.[0]).Layers |> Array.map (fun l -> Erase.seriesScales l.Data |> fun (x, y) -> x.Kind, y.Kind)
@@ -933,8 +933,8 @@ module ``two units of one dimension share an axis`` =
     [<Fact>]
     let ``four minutes on a seconds axis reach 240 s`` () =
         let fig =
-            Chart.line U.metre U.second ts [| 0.0<s>; 60.0<s> |]
-            |> Chart.addLine U.metre U.minute ts [| 0.0<minute>; 4.0<minute> |]
+            Chart.lineIn U.metre U.second ts [| 0.0<s>; 60.0<s> |]
+            |> Chart.addLineIn U.metre U.minute ts [| 0.0<minute>; 4.0<minute> |]
 
         let d = domains fig.Panels.[0]
         let _, (lo0, hi0) = d.[0]
@@ -946,8 +946,8 @@ module ``two units of one dimension share an axis`` =
     [<Fact>]
     let ``a radian layer on a degree axis is drawn in degrees`` () =
         let fig =
-            Chart.line U.metre U.degree ts [| 0.0<deg>; 180.0<deg> |]
-            |> Chart.addLine U.metre U.radian ts [| 0.0<rad>; 4.0<rad> |]
+            Chart.lineIn U.metre U.degree ts [| 0.0<deg>; 180.0<deg> |]
+            |> Chart.addLineIn U.metre U.radian ts [| 0.0<rad>; 4.0<rad> |]
 
         let d = domains fig.Panels.[0]
         let _, (_, hi0) = d.[0]
@@ -958,8 +958,8 @@ module ``two units of one dimension share an axis`` =
     [<Fact>]
     let ``a stated domain is in the axis's unit`` () =
         let fig =
-            Chart.line U.metre U.second ts [| 0.0<s>; 60.0<s> |]
-            |> Chart.addLine U.metre U.minute ts [| 0.0<minute>; 4.0<minute> |]
+            Chart.lineIn U.metre U.second ts [| 0.0<s>; 60.0<s> |]
+            |> Chart.addLineIn U.metre U.minute ts [| 0.0<minute>; 4.0<minute> |]
             |> Chart.withYDomain 0.0 600.0
 
         let d = domains fig.Panels.[0]
@@ -969,8 +969,8 @@ module ``two units of one dimension share an axis`` =
     [<Fact>]
     let ``kelvin and degrees Celsius share an axis through the offset`` () =
         let fig =
-            Chart.line U.metre U.kelvin ts [| 273.15<K>; 373.15<K> |]
-            |> Chart.addLine U.metre U.degreeCelsius ts [| 0.0<degC>; 50.0<degC> |]
+            Chart.lineIn U.metre U.kelvin ts [| 273.15<K>; 373.15<K> |]
+            |> Chart.addLineIn U.metre U.degreeCelsius ts [| 0.0<degC>; 50.0<degC> |]
 
         let d = domains fig.Panels.[0]
         let _, (lo0, hi0) = d.[0]
@@ -981,8 +981,8 @@ module ``two units of one dimension share an axis`` =
     [<Fact>]
     let ``two panels sharing x in kilometres and metres agree on the place`` () =
         let km = U.scaled "km" 1e3 U.metre
-        let a = Chart.line km U.second [| 0.0<m>; 2.0<m> |] [| 0.0<s>; 1.0<s> |]
-        let b = Chart.line U.metre U.second [| 0.0<m>; 500.0<m> |] [| 0.0<s>; 1.0<s> |]
+        let a = Chart.lineIn km U.second [| 0.0<m>; 2.0<m> |] [| 0.0<s>; 1.0<s> |]
+        let b = Chart.lineIn U.metre U.second [| 0.0<m>; 500.0<m> |] [| 0.0<s>; 1.0<s> |]
         let fig = a |> Chart.above b |> Chart.shareX
         let x (p: Panel) = fst (domains p).[0]
         let lo0, hi0 = x fig.Panels.[0]

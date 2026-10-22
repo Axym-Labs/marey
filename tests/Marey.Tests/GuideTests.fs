@@ -277,7 +277,7 @@ module GuideOutput =
         Assert.True(main.Length >= 40, sprintf "expected the guide to hold at least 40 fsharp blocks, found %d" main.Length)
         Assert.True(optional.Length >= 1, "expected at least one `fsharp optional` block")
         Assert.True(Regex.Matches(all, "^```fsharp-error", RegexOptions.Multiline).Count >= 3, "expected the guide's `fsharp-error` blocks")
-        Assert.DoesNotContain("Chart.line U.second U.metre tModel tModel", code)
+        Assert.DoesNotContain("Chart.lineIn U.second U.metre tModel tModel", code)
         Assert.DoesNotContain("Live.show explorer", code)
 
     [<Fact>]

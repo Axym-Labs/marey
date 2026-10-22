@@ -41,9 +41,9 @@ let sampleX = sampleT |> Array.map (fun t -> model t + noise () * 1.1e-3<m>)
 let sigma = sampleT |> Array.map (fun _ -> 0.6e-3<m>)
 
 let figure =
-    Chart.line U.second U.metre ts xs
+    Chart.lineIn U.second U.metre ts xs
     |> Chart.withName "model"
-    |> Chart.addErrorbar U.second U.metre sampleT sampleX sigma
+    |> Chart.addErrorbarIn U.second U.metre sampleT sampleX sigma
     |> Chart.withName "measured"
     |> Chart.withLegend LegendTopRight
     |> Chart.withGrid true true

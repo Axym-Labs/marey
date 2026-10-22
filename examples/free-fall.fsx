@@ -21,7 +21,7 @@ let t = Array.init 24 (fun i -> float i * 0.4<s>)
 let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
 
 let figure =
-    Chart.line U.second U.metre t x
+    Chart.lineIn U.second U.metre t x
     |> Chart.withTitle "Free fall"
     |> Chart.withSubtitle "displacement against elapsed time"
 

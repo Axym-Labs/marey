@@ -20,7 +20,7 @@ let cloudCount = 1_000_000
 let cloudNumbers, _ = Rng.units (2 * cloudCount) (Rng.seeded 11UL)
 let cloudX = Array.init cloudCount (fun i -> cloudNumbers.[2 * i] * 1.0<s>)
 let cloudY = Array.init cloudCount (fun i -> (cloudNumbers.[2 * i + 1] - 0.5) * 1.0<m>)
-let cloud = Chart.scatter U.second U.metre cloudX cloudY
+let cloud = Chart.scatterIn U.second U.metre cloudX cloudY
 
 match GpuBackend.probe () with
 | Ok driver ->

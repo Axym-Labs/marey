@@ -53,22 +53,22 @@ right, the transfer function: gain over phase, on a log frequency axis.
 
 ```fsharp output=paper-figure size=980x520
 let residualsFigure =
-    Chart.errorbar U.hertz U.metre drive (Array.map2 (fun a f -> a - response 25.0 f) amplitude drive) amplitudeErr
+    Chart.errorbarIn U.hertz U.metre drive (Array.map2 (fun a f -> a - response 25.0 f) amplitude drive) amplitudeErr
     |> Chart.addHLine U.metre 0.0<m>
     |> Chart.withXLabel "f"
     |> Chart.withYLabel "residual"
 
 let peakInset =
-    Chart.errorbar U.hertz U.metre drive amplitude amplitudeErr
-    |> Chart.addLine U.hertz U.metre sweep (sweep |> Array.map (response 25.0))
+    Chart.errorbarIn U.hertz U.metre drive amplitude amplitudeErr
+    |> Chart.addLineIn U.hertz U.metre sweep (sweep |> Array.map (response 25.0))
     |> Chart.withXDomain 985.0 1015.0
     |> Chart.withYDomain 40e-6 54e-6
     |> Chart.withAxesLook AxisUntitled
 
 let measurement =
-    Chart.errorbar U.hertz U.metre drive amplitude amplitudeErr
+    Chart.errorbarIn U.hertz U.metre drive amplitude amplitudeErr
     |> Chart.withName "measured"
-    |> Chart.addLine U.hertz U.metre sweep (sweep |> Array.map (response 25.0))
+    |> Chart.addLineIn U.hertz U.metre sweep (sweep |> Array.map (response 25.0))
     |> Chart.withName "Q = 25"
     |> Chart.withYLabel "A"
     |> Chart.withLegend LegendTopLeft
@@ -86,12 +86,12 @@ let transferPhase (f: float<Hz>) =
     -(atan2 (r / 25.0) (1.0 - r * r)) * 1.0<rad>
 
 let transfer =
-    Chart.line U.hertz U.one transferFrequencies (transferFrequencies |> Array.map transferGain)
+    Chart.lineIn U.hertz U.one transferFrequencies (transferFrequencies |> Array.map transferGain)
     |> Chart.withXLog
     |> Chart.withYLog
     |> Chart.withYLabel "|H|"
     |> Chart.above (
-        Chart.line U.hertz U.radian transferFrequencies (transferFrequencies |> Array.map transferPhase)
+        Chart.lineIn U.hertz U.radian transferFrequencies (transferFrequencies |> Array.map transferPhase)
         |> Chart.withXLog
         |> Chart.withYTicksNamed U.radian [| 0.0<rad>, "0"; -halfTurn / 2.0, "−π/2"; -halfTurn, "−π" |]
         |> Chart.withXLabel "f"

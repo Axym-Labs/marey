@@ -305,7 +305,7 @@ module Field =
         (uv: U<'v>)
         (g: ScalarGrid<'x, 'y, 'v>)
         : Figure =
-        layerOf ux uy (FieldHeatmap smooth) g |> Marey.UnitsOfMeasure.Chart.colorByWith ramp uv g.Values
+        layerOf ux uy (FieldHeatmap smooth) g |> Marey.UnitsOfMeasure.Chart.colorByWithIn ramp uv g.Values
 
     let internal heatmap<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ux: U<'x>)
@@ -342,7 +342,7 @@ module Field =
         : Figure =
         layerOf ux uy (FieldBands(raw levels)) g
         |> Chart.withStyle (fun st -> { st with FillOpacity = 1.0 })
-        |> Marey.UnitsOfMeasure.Chart.colorByWith ramp uv g.Values
+        |> Marey.UnitsOfMeasure.Chart.colorByWithIn ramp uv g.Values
 
     let internal bands<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ux: U<'x>)
@@ -407,7 +407,7 @@ module Field =
         (uv: U<'v>)
         (g: VectorGrid<'x, 'y, 'v, 'v>)
         : Figure =
-        quiver ux uy uv g |> Marey.UnitsOfMeasure.Chart.colorBy uv (VectorGrid.magnitude g).Values
+        quiver ux uy uv g |> Marey.UnitsOfMeasure.Chart.colorByIn uv (VectorGrid.magnitude g).Values
 
     let internal directions<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
         (ux: U<'x>)
@@ -465,7 +465,7 @@ module Field =
         let magnitude = VectorGrid.magnitude g
 
         arrowLayerOf ux uy (FieldStreamlines(DefaultSeparation * 1.0<px>)) magnitude g
-        |> Marey.UnitsOfMeasure.Chart.colorBy uv magnitude.Values
+        |> Marey.UnitsOfMeasure.Chart.colorByIn uv magnitude.Values
 
     // ---- Line-integral convolution ------------------------------------------------------
 
@@ -516,7 +516,7 @@ module Field =
         (g: VectorGrid<'x, 'y, 'v, 'v>)
         : Figure =
         let magnitude = VectorGrid.magnitude g
-        licLayerOf options ux uy magnitude g |> Marey.UnitsOfMeasure.Chart.colorBy uv magnitude.Values
+        licLayerOf options ux uy magnitude g |> Marey.UnitsOfMeasure.Chart.colorByIn uv magnitude.Values
 
     let internal licBy<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ux: U<'x>)

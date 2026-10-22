@@ -49,9 +49,9 @@ let tModel = Array.init 61 (fun i -> float i * 0.01<s>)
 let xModel = tModel |> Array.map (fun t -> 0.5 * g * t * t)
 
 let fall =
-    Chart.line U.second U.metre tModel xModel
+    Chart.lineIn U.second U.metre tModel xModel
     |> Chart.withName "½ g t²"
-    |> Chart.addErrorbar U.second U.metre tGate xGate xErr
+    |> Chart.addErrorbarIn U.second U.metre tGate xGate xErr
     |> Chart.withName "light gate"
     |> Chart.withTitle "A dropped ball"
     |> Chart.withLegend LegendBest

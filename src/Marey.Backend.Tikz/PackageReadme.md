@@ -14,7 +14,7 @@ open Marey.UnitsOfMeasure
 let t = Array.init 24 (fun i -> float i * 0.025<s>)
 let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
 
-Chart.line U.second U.metre t x
+Chart.lineIn U.second U.metre t x
 |> Chart.withTheme Theme.tikz
 |> Chart.toFile TikzBackend.render "fall.tex" (Chart.size 320.0 200.0)
 ```

@@ -456,7 +456,7 @@ module Charts =
     /// axis exactly — not zero minus five percent, which would draw a strip of negative count.
     [<Fact>]
     let ``a histogram's count axis starts at exactly zero and carries no unit`` () =
-        let fig = Chart.histogram U.metre heights
+        let fig = Chart.histogramIn U.metre heights
         let ys = yScaleOf fig
 
         Assert.Equal(0.0, fst ys.Domain)
@@ -467,7 +467,7 @@ module Charts =
     /// reciprocal x units, and it labels itself off a witness nobody wrote down.
     [<Fact>]
     let ``a density figure's y axis is in reciprocal x units`` () =
-        let fig = Chart.density U.metre heights
+        let fig = Chart.densityIn U.metre heights
         let ys = yScaleOf fig
 
         Assert.Equal(Dim.neg Dim.length, ys.Dim)
@@ -479,8 +479,8 @@ module Charts =
     [<Fact>]
     let ``a density layer cannot share a panel with the sample it summarises`` () =
         let fig =
-            Chart.density U.metre heights
-            |> Chart.addScatter U.metre U.metre heights heights
+            Chart.densityIn U.metre heights
+            |> Chart.addScatterIn U.metre U.metre heights heights
 
         let e =
             Assert.Throws<System.Exception>(fun () ->
@@ -491,7 +491,7 @@ module Charts =
     /// An ECDF's range is known before the data is.
     [<Fact>]
     let ``an ecdf figure's y axis is exactly zero to one`` () =
-        let fig = Chart.ecdf U.metre heights
+        let fig = Chart.ecdfIn U.metre heights
         let ys = yScaleOf fig
 
         Assert.Equal((0.0, 1.0), ys.Domain)
@@ -518,10 +518,10 @@ module Charts =
         )
 
     [<Fact>]
-    let ``Chart.addFit adds one line layer over the range of the data`` () =
+    let ``Chart.addFitIn adds one line layer over the range of the data`` () =
         let fig =
-            Chart.scatter U.second U.metre times positions
-            |> Chart.addFit U.second U.metre times positions
+            Chart.scatterIn U.second U.metre times positions
+            |> Chart.addFitIn U.second U.metre times positions
 
         Assert.Equal(2, fig.Panels.[0].Layers.Length)
         Assert.Equal(GeomLine, fig.Panels.[0].Layers.[1].Geom)
@@ -894,7 +894,7 @@ module ``loess`` =
     [<Fact>]
     let ``addLoess draws the curve as a second layer`` () =
         let ys = xs |> Array.map (fun t -> sin (float t / 5.0) * 1.0<m>)
-        let fig = Chart.scatter U.second U.metre xs ys |> Chart.addLoess U.second U.metre xs ys
+        let fig = Chart.scatterIn U.second U.metre xs ys |> Chart.addLoessIn U.second U.metre xs ys
         Assert.Equal(2, fig.Panels.[0].Layers.Length)
         Assert.Equal(Stat.DefaultLoessPoints, Erase.seriesLength fig.Panels.[0].Layers.[1].Data)
 

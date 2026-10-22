@@ -14,7 +14,7 @@ let ringdown (f: float<Hz>) (damped: bool) =
     let t = Array.init 200 (fun i -> float i * 0.01<s>)
     let decay = if damped then 1.5<1/s> else 0.0<1/s>
     let y = t |> Array.map (fun t -> exp (-decay * t) * sin (2.0 * System.Math.PI * f * t) * 1.0<m>)
-    Chart.line U.second U.metre t y
+    Chart.lineIn U.second U.metre t y
 
 let live =
     interact {

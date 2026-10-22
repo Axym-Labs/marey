@@ -55,7 +55,7 @@ let private probeTheme =
 /// figure that no longer matched the claim being made about it. Each fixture here contains exactly
 /// what its test talks about; the legend gets its own test, where it is the subject.
 let private freeFall =
-    Chart.line U.second U.metre ts xs
+    Chart.lineIn U.second U.metre ts xs
     |> Chart.withName "model"
     |> Chart.withTheme probeTheme
     |> Chart.withLegend LegendNone
@@ -64,7 +64,7 @@ let private freeFall =
 /// its markers** — no series line, no grid — which makes it the sharpest available probe for the
 /// D33 paint bug.
 let private points =
-    Chart.scatter U.second U.metre ts.[..8] xs.[..8]
+    Chart.scatterIn U.second U.metre ts.[..8] xs.[..8]
     |> Chart.withName "measured"
     |> Chart.withTheme probeTheme
     |> Chart.withLegend LegendNone
@@ -327,7 +327,7 @@ module ``a figure inks the parts it is made of`` =
     let ``a legend inks the corner it is placed in`` () =
         let withLegend =
             freeFall
-            |> Chart.addScatter U.second U.metre ts.[..8] xs.[..8]
+            |> Chart.addScatterIn U.second U.metre ts.[..8] xs.[..8]
             |> Chart.withName "measured"
 
         withRasters2
@@ -422,14 +422,14 @@ module ColorbarInk =
         times |> Array.map (fun t -> (280.0 + 2.5 * float t) * 1.0<K>)
 
     let private withBar =
-        Chart.scatter U.second U.metre times falls
-        |> Chart.colorBy U.kelvin temperatures
+        Chart.scatterIn U.second U.metre times falls
+        |> Chart.colorByIn U.kelvin temperatures
         |> Chart.withColorLabel "T"
         |> Chart.withTheme Theme.tikz
         |> Chart.withLegend LegendNone
 
     let private withoutBar =
-        Chart.scatter U.second U.metre times falls
+        Chart.scatterIn U.second U.metre times falls
         |> Chart.withTheme Theme.tikz
         |> Chart.withLegend LegendNone
 

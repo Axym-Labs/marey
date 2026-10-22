@@ -29,12 +29,12 @@ let displacement =
 let envelopeOf = t |> Array.map (fun v -> 40.0e-3 * exp (-0.25 * float v) * 1.0<m>)
 
 let measured =
-    Chart.scatter U.second U.metre t displacement
+    Chart.scatterIn U.second U.metre t displacement
     |> Chart.withTitle "A ringdown, settling"
     |> Chart.withYLabel "x"
 
 let envelope =
-    Chart.scatter U.second U.metre t envelopeOf
+    Chart.scatterIn U.second U.metre t envelopeOf
     |> Chart.withTitle "A ringdown, settling"
     |> Chart.withYLabel "x"
 

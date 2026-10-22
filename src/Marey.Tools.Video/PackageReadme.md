@@ -13,7 +13,7 @@ open Marey
 open Marey.UnitsOfMeasure
 
 let film =
-    Anim.ofSeconds 1.0<s> (fun t -> Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; t * 1.0<m/s> + 0.1<m> |])
+    Anim.ofSeconds 1.0<s> (fun t -> Chart.lineIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; t * 1.0<m/s> + 0.1<m> |])
     |> Film.ofFigures 24 (Chart.size 320.0 200.0)
 
 let sequence =

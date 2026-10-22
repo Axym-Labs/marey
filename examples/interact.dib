@@ -133,8 +133,8 @@ let crowd =
     interact {
         let! at = Control.slider U.second "t" 1.0<s> 9.0<s> 5.0<s>
         return
-            Chart.scatter U.second U.metre crowdTimes crowdValues
-            |> Chart.addScatter U.second U.metre [| at |] [| sin (float at) * 1.0<m> |]
+            Chart.scatterIn U.second U.metre crowdTimes crowdValues
+            |> Chart.addScatterIn U.second U.metre [| at |] [| sin (float at) * 1.0<m> |]
             |> Chart.withStyle (Geom.withMarkerSize 10.0<px>)
     }
 

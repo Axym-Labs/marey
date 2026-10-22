@@ -236,6 +236,112 @@ namespace Marey
 
 namespace Marey
 
+    [<Sealed>]
+    type Quantity<[<Measure>] 'u> =
+
+        new: value: float<'u> * unit: U<'u> -> Quantity<'u>
+
+        static member ( * ) : k: float * a: Quantity<'u> -> Quantity<'u>
+
+        static member ( * ) : a: Quantity<'u> * k: float -> Quantity<'u>
+
+        static member
+          ( * ) : a: Quantity<'u> * b: Quantity<'v> -> Quantity<'u 'v>
+
+        static member (+) : a: Quantity<'u> * b: Quantity<'u> -> Quantity<'u>
+
+        static member (-) : a: Quantity<'u> * b: Quantity<'u> -> Quantity<'u>
+
+        static member (/) : k: float * a: Quantity<'u> -> Quantity</'u>
+
+        static member (/) : a: Quantity<'u> * k: float -> Quantity<'u>
+
+        static member (/) : a: Quantity<'u> * b: Quantity<'v> -> Quantity<'u/'v>
+
+        static member (~-) : a: Quantity<'u> -> Quantity<'u>
+
+        override ToString: unit -> string
+
+        member Unit: U<'u>
+
+        member Value: float<'u>
+
+    [<Sealed>]
+    type Q<[<Measure>] 'u> =
+        interface System.Collections.IEnumerable
+        interface System.Collections.Generic.IEnumerable<float<'u>>
+
+        static member ( * ) : k: float * a: Q<'u> -> Q<'u>
+
+        static member ( * ) : a: Q<'u> * k: float -> Q<'u>
+
+        static member ( * ) : a: Quantity<'v> * b: Q<'u> -> Q<'u 'v>
+
+        static member ( * ) : a: Q<'u> * b: Quantity<'v> -> Q<'u 'v>
+
+        static member ( * ) : a: Q<'u> * b: Q<'v> -> Q<'u 'v>
+
+        static member (+) : a: Q<'u> * b: Quantity<'u> -> Q<'u>
+
+        static member (+) : a: Q<'u> * b: Q<'u> -> Q<'u>
+
+        static member (-) : a: Q<'u> * b: Quantity<'u> -> Q<'u>
+
+        static member (-) : a: Q<'u> * b: Q<'u> -> Q<'u>
+
+        static member (/) : k: float * a: Q<'u> -> Q</'u>
+
+        static member (/) : a: Q<'u> * k: float -> Q<'u>
+
+        static member (/) : a: Quantity<'v> * b: Q<'u> -> Q<'v/'u>
+
+        static member (/) : a: Q<'u> * b: Quantity<'v> -> Q<'u/'v>
+
+        static member (/) : a: Q<'u> * b: Q<'v> -> Q<'u/'v>
+
+        static member (~-) : a: Q<'u> -> Q<'u>
+
+        member Item: i: int -> float<'u>
+
+        override ToString: unit -> string
+
+        member Length: int
+
+        member Unit: U<'u>
+
+        member Values: float<'u> array
+
+    [<RequireQualifiedAccess>]
+    module Q =
+
+        val ofSeq: u: U<'u> -> values: float<'u> seq -> Q<'u>
+
+        val init: u: U<'u> -> n: int -> f: (int -> float<'u>) -> Q<'u>
+
+        val map: u: U<'v> -> f: (float<'u> -> float<'v>) -> q: Q<'u> -> Q<'v>
+
+        val map2:
+          u: U<'w> ->
+            f: (float<'u> -> float<'v> -> float<'w>) ->
+            a: Q<'u> -> b: Q<'v> -> Q<'w>
+
+        val values: q: Q<'u> -> float<'u> array
+
+        val unit: q: Q<'u> -> U<'u>
+
+        val convert: into: U<'v> -> q: Q<'u> -> Q<'v>
+
+    [<AutoOpen>]
+    module QuantityExtensions =
+        type U<[<Measure>] 'u> with
+
+            member Of: values: float<'u> seq -> Q<'u>
+        type U<[<Measure>] 'u> with
+
+            member Of: value: float<'u> -> Quantity<'u>
+
+namespace Marey
+
     [<Struct>]
     type Color =
         {

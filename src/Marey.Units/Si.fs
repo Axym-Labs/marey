@@ -100,15 +100,15 @@ module SiWitnesses =
 
         // ---- Coherent combinations that come up constantly --------------------------------
         //
-        // Each of these is exactly what `U.mul`/`U.div` would produce, and the `Symbol` is
-        // deliberately the same naive composition those functions build. It is a debugging aid
-        // and nothing else: display goes through `Dim`.
+        // Each of these is exactly what `U.mul`/`U.div` would produce, factors included, so a
+        // product with one cancels as a composed unit does: `m/s²` times `s²` reads `m`. The
+        // `Symbol` is the naive composition those functions build, a debugging aid and nothing else.
 
-        let squareMetre: U<m^2> = U<m^2>("m²", dimOf 2 0 0 0 0 0 0, 1.0)
-        let cubicMetre: U<m^3> = U<m^3>("m³", dimOf 3 0 0 0 0 0 0, 1.0)
-        let metrePerSecond: U<m / s> = U<m / s>("m/s", dimOf 1 0 -1 0 0 0 0, 1.0)
-        let metrePerSecondSquared: U<m / s^2> = U<m / s^2>("m/s²", dimOf 1 0 -2 0 0 0 0, 1.0)
-        let kilogramPerCubicMetre: U<kg / m^3> = U<kg / m^3>("kg/m³", dimOf -3 1 0 0 0 0 0, 1.0)
+        let squareMetre: U<m^2> = U<m^2>("m²", dimOf 2 0 0 0 0 0 0, 1.0, 0.0, [ ("m", 2) ])
+        let cubicMetre: U<m^3> = U<m^3>("m³", dimOf 3 0 0 0 0 0 0, 1.0, 0.0, [ ("m", 3) ])
+        let metrePerSecond: U<m / s> = U<m / s>("m/s", dimOf 1 0 -1 0 0 0 0, 1.0, 0.0, [ ("m", 1); ("s", -1) ])
+        let metrePerSecondSquared: U<m / s^2> = U<m / s^2>("m/s²", dimOf 1 0 -2 0 0 0 0, 1.0, 0.0, [ ("m", 1); ("s", -2) ])
+        let kilogramPerCubicMetre: U<kg / m^3> = U<kg / m^3>("kg/m³", dimOf -3 1 0 0 0 0 0, 1.0, 0.0, [ ("kg", 1); ("m", -3) ])
         let perSecond: U<1 / s> = U<1 / s>("1/s", dimOf 0 0 -1 0 0 0 0, 1.0, 0.0, [ ("s", -1) ])
 
         /// The gram, as a *scaled* kilogram. Note the measure is still `kg`: grams and kilograms

@@ -49,7 +49,7 @@ printfn "%d annual anomalies, %g to %g" rows.Length (Array.head years) (Array.la
 // temperature difference in kelvin. `U.one` is the dimensionless witness, and it is what lets a
 // unitless axis sit beside a unitful one in the same call.
 let figure =
-    Chart.line U.one U.kelvin years anomaly
+    Chart.lineIn U.one U.kelvin years anomaly
     |> Chart.withName "GISTEMP L-OTI"
     |> Chart.withXLabel "year"
     |> Chart.withLegend LegendTopLeft

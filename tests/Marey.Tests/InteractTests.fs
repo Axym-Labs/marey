@@ -16,7 +16,7 @@ let private wave (f: float<1 / s>) (damped: bool) =
     let t = Array.init 50 (fun i -> float i * 0.02<s>)
     let decay = if damped then 1.0<1 / s> else 0.0<1 / s>
     let y = t |> Array.map (fun t -> exp (-decay * t) * sin (2.0 * Math.PI * f * t) * 1.0<m>)
-    Chart.line U.second U.metre t y
+    Chart.lineIn U.second U.metre t y
 
 let private live () =
     interact {
@@ -86,7 +86,7 @@ module ``a control is typed`` =
             | ToolRan run -> Some(run.ExitCode, path, run.Out + "\n" + run.Error)
 
     let private view =
-        "let view (t: float<K>) (on: bool) = Chart.line U.kelvin U.metre [| t |] [| (if on then 1.0<m> else 0.0<m>) |]"
+        "let view (t: float<K>) (on: bool) = Chart.lineIn U.kelvin U.metre [| t |] [| (if on then 1.0<m> else 0.0<m>) |]"
 
     /// The positive control. Without it a bad `#r` would make both negatives green.
     [<Fact>]
@@ -114,7 +114,7 @@ module ``a control is typed`` =
         let body =
             String.concat
                 "\n"
-                [ "let view (t: float<s>) = Chart.line U.second U.metre [| t |] [| 1.0<m> |]"
+                [ "let view (t: float<s>) = Chart.lineIn U.second U.metre [| t |] [| 1.0<m> |]"
                   "let live ="
                   "    interact {"
                   "        let! t = Control.slider U.kelvin \"T\" 200.0<K> 400.0<K> 300.0<K>"
@@ -312,7 +312,7 @@ module ``zoom and pan`` =
     let ``a drag zooms a log axis onto what it covered`` () =
         let t = Array.init 60 (fun i -> 10.0 ** (float i / 15.0 - 3.0) * 1.0<s>)
         let x = t |> Array.map (fun t -> sqrt (float t) * 1.0<m>)
-        let l = still (Chart.line U.second U.metre t x |> Chart.withXLog)
+        let l = still (Chart.lineIn U.second U.metre t x |> Chart.withXLog)
         Assert.Equal(ScaleKind.Log 10.0, (first l (Live.init l)).X.Kind)
         gate l
 
@@ -364,7 +364,7 @@ module ``zoom and pan`` =
     [<Fact>]
     let ``a zoom that fits still takes its own prefix`` () =
         let t = Array.init 20 (fun i -> float i * 0.05<s>)
-        let l = still (Chart.line U.second U.metre t (t |> Array.map (fun t -> t * 2000.0<m/s>)))
+        let l = still (Chart.lineIn U.second U.metre t (t |> Array.map (fun t -> t * 2000.0<m/s>)))
         let s0 = Live.init l
         Assert.Contains("[km]", Html.widgetFigure l s0)
         let v0 = first l s0
@@ -378,7 +378,7 @@ module ``zoom and pan`` =
     [<Fact>]
     let ``a pan slides a log axis by a factor, and back`` () =
         let t = Array.init 60 (fun i -> 10.0 ** (float i / 15.0 - 3.0) * 1.0<s>)
-        let l = still (Chart.line U.second U.metre t (t |> Array.map (fun t -> float t * 1.0<m>)) |> Chart.withXLog)
+        let l = still (Chart.lineIn U.second U.metre t (t |> Array.map (fun t -> float t * 1.0<m>)) |> Chart.withXLog)
         let s0 = Live.init l
         let v0 = first l s0
         let c = { X = (v0.Plot.X0 + v0.Plot.X1) / 2.0; Y = (v0.Plot.Y0 + v0.Plot.Y1) / 2.0 }
@@ -418,7 +418,7 @@ module ``zoom and pan`` =
     let ``panels that agree on an axis zoom together`` () =
         let longer =
             let t = Array.init 50 (fun i -> float i * 0.04<s>)
-            Chart.line U.second U.metre t (t |> Array.map (fun t -> float t * 1.0<m>))
+            Chart.lineIn U.second U.metre t (t |> Array.map (fun t -> float t * 1.0<m>))
 
         let fig = wave 1.0<1 / s> false |> Chart.beside (wave 2.0<1 / s> false) |> Chart.beside longer
         let l = still fig
@@ -545,7 +545,7 @@ module ``the readout`` =
     let ``a pointer reads the datum under it on a log axis`` () =
         let t = Array.init 60 (fun i -> 10.0 ** (float i / 15.0 - 3.0) * 1.0<s>)
         let x = t |> Array.map (fun t -> sqrt (float t) * 1.0<m>)
-        gate (still (Chart.line U.second U.metre t x |> Chart.withXLog))
+        gate (still (Chart.lineIn U.second U.metre t x |> Chart.withXLog))
 
     [<Fact>]
     let ``a pointer reads the datum under it in a phase space`` () =
@@ -559,7 +559,7 @@ module ``the readout`` =
     [<Fact>]
     let ``a reading is written as the axis is`` () =
         let t = Array.init 50 (fun i -> float i * 0.02<s>)
-        let l = still (Chart.line U.second U.metre t (t |> Array.map (fun t -> t * 0.005<m / s>)))
+        let l = still (Chart.lineIn U.second U.metre t (t |> Array.map (fun t -> t * 0.005<m / s>)))
         let s0 = Live.init l
         let v = first l s0
         Assert.Equal("mm", v.YAxis.UnitText)
@@ -579,7 +579,7 @@ module ``the readout`` =
             | i -> number.Length - i - 1
 
         let t = Array.init 60 (fun i -> 10.0 ** (float i / 20.0 - 1.5) * 1.0<s>)
-        let l = still (Chart.line U.second U.metre t (t |> Array.map (fun t -> float t * 1.0<m>)) |> Chart.withXLog)
+        let l = still (Chart.lineIn U.second U.metre t (t |> Array.map (fun t -> float t * 1.0<m>)) |> Chart.withXLog)
         let s0 = Live.init l
         let v = first l s0
         Assert.False(Ticks.isWideLog v.X.Domain)
@@ -587,7 +587,7 @@ module ``the readout`` =
         Assert.True(places (at 0.05) > places (at 0.95), sprintf "%s against %s" (at 0.05) (at 0.95))
 
         let n = Array.init 20 (fun i -> float i * 1.0<s>)
-        let counts = still (Chart.line U.second U.one n (n |> Array.map (fun t -> float t * 400000.0)))
+        let counts = still (Chart.lineIn U.second U.one n (n |> Array.map (fun t -> float t * 400000.0)))
         let sc = Live.init counts
         let vc = first counts sc
         let y = (linesAt counts sc (pxOf vc (10.0, 4123456.0))).[1]
@@ -601,7 +601,7 @@ module ``the readout`` =
     let ``a wide log axis reads in powers of ten, at its ends and between`` () =
         let t = Array.init 27 (fun i -> float i * 1.0<s>)
         let e = Array.init 27 (fun i -> 10.0 ** float (i - 18) * 1.0<J>)
-        let l = still (Chart.line U.second U.joule t e |> Chart.withYLog)
+        let l = still (Chart.lineIn U.second U.joule t e |> Chart.withYLog)
         let s0 = Live.init l
         let v = first l s0
         Assert.Equal("J", v.YAxis.UnitText)
@@ -619,7 +619,7 @@ module ``the readout`` =
     [<Fact>]
     let ``a categorical axis reads its level`` () =
         let keys = [| "control"; "treated"; "placebo"; "washout" |]
-        let l = still (Chart.Category.bar U.metre keys [| 12.4<m>; 19.1<m>; 7.8<m>; 15.0<m> |])
+        let l = still (Chart.Category.barIn U.metre keys [| 12.4<m>; 19.1<m>; 7.8<m>; 15.0<m> |])
         let s0 = Live.init l
         let v = first l s0
         let lines = linesAt l s0 (pxOf v (2.1, 5.0))
@@ -666,7 +666,7 @@ module ``the readout`` =
     [<Fact>]
     let ``the readout keeps clear of a best legend that went top left`` () =
         let t = Array.init 40 (fun i -> float i * 0.1<s>)
-        let rising = Chart.line U.second U.metre t (t |> Array.map (fun t -> t * 1.0<m / s>)) |> Chart.withName "rising"
+        let rising = Chart.lineIn U.second U.metre t (t |> Array.map (fun t -> t * 1.0<m / s>)) |> Chart.withName "rising"
         let l = still (rising |> Chart.withLegend LegendBest)
         let s0 = Live.init l
         let layout = s0.Shot.Panels |> Array.find (fun (k, _) -> k = "panel-0-0") |> snd
@@ -682,7 +682,7 @@ module ``the readout`` =
         let l =
             interact {
                 let! k = Control.slider U.one "k" 1.0 10.0 1.0
-                return Chart.line U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; k * 1.0<m> |]
+                return Chart.lineIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; k * 1.0<m> |]
             }
 
         let s0 = Live.init l
@@ -831,7 +831,7 @@ module ``a widget does not breathe`` =
     /// A line whose peak gains a digit across the slider (`ShotTests`' fixture, as a control).
     let private ramp (top: float) =
         let xs = Array.init 24 (fun i -> float i / 23.0 * 10.0<s>)
-        Chart.line U.second U.metre xs (xs |> Array.map (fun t -> t / 10.0<s> * top * 1.0<m>))
+        Chart.lineIn U.second U.metre xs (xs |> Array.map (fun t -> t / 10.0<s> * top * 1.0<m>))
 
     let private digits =
         interact {
@@ -1118,7 +1118,7 @@ module ``a time control arranges once`` =
     /// A dimensionless pulse from 1 to 1000 and back: its widest tick labels are at `t = 5 s`,
     /// which neither end sees, and a dimensionless axis takes no prefix to absorb them.
     let private pulse (t: float<s>) =
-        Chart.bar U.one U.one [| 0.0 |] [| 1.0 + 999.0 * sin (Math.PI * t / 10.0<s>) |]
+        Chart.barIn U.one U.one [| 0.0 |] [| 1.0 + 999.0 * sin (Math.PI * t / 10.0<s>) |]
 
     let private play (l: Live) (frames: int) =
         [ 1..frames ] |> List.fold (fun st k -> Live.step l st (Set(0, 10.0 * float k / float frames))) (Live.init l)
@@ -1156,7 +1156,7 @@ module ``a time control arranges once`` =
     let ``a coordinate through zero on automatic axes still grows; stated axes do not`` () =
         let bob (stated: bool) (t: float<s>) =
             let a = 2.0 * Math.PI * t / 3.0<s>
-            let fig = Chart.scatter U.metre U.metre [| cos a * 1.0<m> |] [| sin a * 1.0<m> |]
+            let fig = Chart.scatterIn U.metre U.metre [| cos a * 1.0<m> |] [| sin a * 1.0<m> |]
             if stated then fig |> Chart.withXDomain -1.2 1.2 |> Chart.withYDomain -1.2 1.2 else fig
 
         let live stated = interact {

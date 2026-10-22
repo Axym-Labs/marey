@@ -55,7 +55,7 @@ open Marey.UnitsOfMeasure
 let rising =
     Anim.ofSeconds 2.0<s> (fun t ->
         let ts = [| 0.0<s>; t + 1.0<s> |]
-        Chart.line U.second U.metre ts (ts |> Array.map (fun t -> 50.0<m/s> * t)))
+        Chart.lineIn U.second U.metre ts (ts |> Array.map (fun t -> 50.0<m/s> * t)))
 
 let film = Film.ofFigures 32 (Chart.size 640.0 400.0) rising
 printfn "a %.0f s film, laid out once" (float film.Duration)
