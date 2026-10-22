@@ -45,6 +45,15 @@ for path in Directory.GetFiles(a, "*.png") |> Array.sort do
             if differing > 0 then
                 let x0, y0, x1, y1 = box
                 printfn "  within x %d..%d, y %d..%d" x0 x1 y0 y1
+
+            // A few are worth reading one by one: where, and what each side drew there.
+            if differing > 0 && differing <= 64 then
+                for row in 0 .. x.Height - 1 do
+                    for col in 0 .. x.Width - 1 do
+                        let p, q = x.GetPixel(col, row), y.GetPixel(col, row)
+
+                        if p <> q then
+                            printfn "  (%d, %d): %A against %A" col row p q
             if differing > 0 then failed <- true
 
 exit (if failed then 1 else 0)
