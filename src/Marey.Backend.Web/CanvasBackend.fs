@@ -353,7 +353,7 @@ type CanvasPainter(measurer: ITextMeasurer, layer: int -> int -> CanvasContext, 
 /// **The Canvas2D backend.** Draws a scene on a 2-D context the caller owns.
 ///
 /// ```fsharp
-/// let ctx = Canvas.context (Canvas.byId "plot")
+/// let ctx = WebCanvas.context (WebCanvas.byId "plot")
 /// let m = WebText.measurerNow ()
 /// let scene = Chart.toSceneWith m.Measurer extent figure
 /// CanvasBackend.draw m.Measurer ctx extent scene

@@ -118,6 +118,14 @@ namespace Marey
 
         abstract strokeStyle: obj with get, set
 
+    [<RequireQualifiedAccess>]
+    module WebCanvas =
+
+        [<Fable.Core.Emit ("document.getElementById($0)")>]
+        val byId: _id: string -> CanvasElement
+
+        val context: canvas: CanvasElement -> CanvasContext
+
 namespace Marey
 
     [<RequireQualifiedAccess>]

@@ -58,10 +58,7 @@ references `Marey` and `Marey.Backend.Web` from NuGet, builds a figure with the 
 and draws it on a canvas:
 
 ```fsharp norun
-[<Emit("document.getElementById($0)")>]
-let canvasById (_id: string) : CanvasElement = jsNative
-
-let ctx = (canvasById "plot").getContext "2d"
+let ctx = WebCanvas.context (WebCanvas.byId "plot")
 let measured = WebText.measurerNow ()
 let scene = Chart.toSceneWith measured.Measurer extent figure
 CanvasBackend.draw measured.Measurer ctx extent scene

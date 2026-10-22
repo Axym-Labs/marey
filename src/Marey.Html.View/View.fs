@@ -19,7 +19,7 @@ type private Shown =
 let mutable private shown: Shown option = None
 
 let private redraw (s: Shown) =
-    CanvasBackend.Draw(Canvas.context s.Canvas, s.Extent, s.Scene, measurer = s.Metrics, webgl = true)
+    CanvasBackend.Draw(WebCanvas.context s.Canvas, s.Extent, s.Scene, measurer = s.Metrics, webgl = true)
 
 /// **Show a scene** on `canvas` at `width` × `height` px: its bytes from `Wire.encodeWith`, as
 /// base64. `""` when it is drawn, and otherwise what is wrong with the bytes.

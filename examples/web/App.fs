@@ -13,9 +13,6 @@ open Marey.UnitsOfMeasure
 [<Emit("document.getElementById($0)")>]
 let private element (_id: string) : obj = jsNative
 
-[<Emit("document.getElementById($0)")>]
-let private canvasById (_id: string) : CanvasElement = jsNative
-
 [<Emit("Number($0.value)")>]
 let private valueOf (_input: obj) : float = jsNative
 
@@ -52,8 +49,8 @@ let cloud (n: int) : Figure =
     Chart.scatter U.metre U.volt x y
     |> Chart.withTitle (sprintf "%s points" (n.ToString "N0"))
 
-let private canvas = canvasById "plot"
-let private ctx = canvas.getContext "2d"
+let private canvas = WebCanvas.byId "plot"
+let private ctx = WebCanvas.context canvas
 let private status = element "status"
 let private frequency = element "f"
 let private damping = element "gamma"
@@ -73,7 +70,7 @@ let private draw (m: WebMeasurer) =
          | None -> sprintf "Compiled and drawn in %s ms." took
          | Some why -> sprintf "Compiled and drawn in %s ms, approximated: %s." took why)
 
-let private cloudCtx = (canvasById "cloud").getContext "2d"
+let private cloudCtx = WebCanvas.context (WebCanvas.byId "cloud")
 let private cloudStatus = element "cloud-status"
 let private count = element "n"
 let private webgl = element "webgl"
@@ -132,7 +129,7 @@ let springFigure (t: float<s>) : Figure =
 [<Emit("requestAnimationFrame($0)")>]
 let private nextFrame (_f: float -> unit) : unit = jsNative
 
-let private springCtx = (canvasById "spring").getContext "2d"
+let private springCtx = WebCanvas.context (WebCanvas.byId "spring")
 let private springStatus = element "spring-status"
 
 let private playSpring (m: WebMeasurer) =

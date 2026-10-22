@@ -58,6 +58,9 @@ and reported when missing; Marey does not require a version of them.
   reference: `Marey.Backend.Skia` for PNG and PDF, `Marey.Backend.Gpu` for a window,
   `Marey.Tools.Tex` and `Marey.Tools.Video`. A Fable app can reference it too, and compiles the
   packages in it that carry their sources. Eighteen packages.
+- **`WebCanvas.byId` and `WebCanvas.context`** in `Marey.Backend.Web`: the page's canvas element
+  by id, and its 2-D context, which `CanvasBackend.draw` takes. A Fable app no longer declares an
+  `Emit` for `getElementById`.
 - **`U.degree`**, π/180 rad, for a phase, an angle of incidence or a latitude in degrees (C#
   `Units.Degree`; `U.parse "deg"` or `"°"`). It is an angle as the radian is: an axis in it
   reads `θ [°]` and takes no prefix, and `°/s` does not share an axis with `Hz`.
