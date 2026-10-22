@@ -19,11 +19,11 @@ type Grids =
     static member Log(lo: float, hi: float, count: int) : float[] = Grid.log lo hi count
 
     /// A scalar field sampled at every node: `f(x, y)`.
-    static member Scalar(xs: float[], ys: float[], f: Func<float, float, float>) : ScalarGrid<1, 1, 1> =
+    static member Scalar(xs: seq<float>, ys: seq<float>, f: Func<float, float, float>) : ScalarGrid<1, 1, 1> =
         ScalarGrid.sample xs ys (fun x y -> f.Invoke(x, y))
 
     /// A vector field sampled at every node: `f(x, y)` is the pair `(u, w)`.
-    static member Vector(xs: float[], ys: float[], f: Func<float, float, struct (float * float)>) : VectorGrid<1, 1, 1, 1> =
+    static member Vector(xs: seq<float>, ys: seq<float>, f: Func<float, float, struct (float * float)>) : VectorGrid<1, 1, 1, 1> =
         VectorGrid.sample xs ys (fun x y -> f.Invoke(x, y))
 
     static member Gradient(g: ScalarGrid<1, 1, 1>) : VectorGrid<1, 1, 1, 1> = Field.grad g

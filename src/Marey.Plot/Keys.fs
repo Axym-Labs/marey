@@ -97,7 +97,8 @@ module Keys =
     /// **Keys for a layer's rows, checked.** One per row, and no two alike, because a duplicate is
     /// the failure keys exist to prevent: one name for two marks, and `Scene.mapKey` touching both
     /// when asked for one. The duplicates are named, with their rows, up to five of them.
-    let validate (rows: int) (keys: string[]) : unit =
+    let validate (rows: int) (keys: seq<string>) : unit =
+        let keys = Array.ofSeq keys
         if isNull keys then
             invalidArg "keys" "Marey: keys cannot be null."
 

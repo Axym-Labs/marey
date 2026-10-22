@@ -67,16 +67,20 @@ type Collider<[<Measure>] 'q> =
 module Discs =
 
     /// Discs at rest positions and velocities, with no history.
-    let create<[<Measure>] 'q> (x: float<'q>[]) (y: float<'q>[]) (vx: float<'q / s>[]) (vy: float<'q / s>[]) : Discs<'q> =
+    let create<[<Measure>] 'q> (x: seq<float<'q>>) (y: seq<float<'q>>) (vx: seq<float<'q / s>>) (vy: seq<float<'q / s>>) : Discs<'q> =
+        let x = Array.ofSeq x
+        let y = Array.ofSeq y
+        let vx = Array.ofSeq vx
+        let vy = Array.ofSeq vy
         let n = x.Length
 
         if y.Length <> n || vx.Length <> n || vy.Length <> n then
             invalidArg "x" "Marey: positions and velocities must have one entry per disc."
 
-        { X = Array.copy x
-          Y = Array.copy y
-          VX = Array.copy vx
-          VY = Array.copy vy
+        { X = x
+          Y = y
+          VX = vx
+          VY = vy
           Collisions = 0L
           WallHits = 0L
           Capped = 0L }
@@ -115,7 +119,9 @@ module Collide =
 
     /// Discs of the given radii and masses colliding with restitution `e` in `box`, with a cap of
     /// 10 000 contacts a step and a grid above 256 discs.
-    let create<[<Measure>] 'q> (radii: float<'q>[]) (masses: float[]) (e: float) (box: Box<'q>) : Collider<'q> =
+    let create<[<Measure>] 'q> (radii: seq<float<'q>>) (masses: seq<float>) (e: float) (box: Box<'q>) : Collider<'q> =
+        let radii = Array.ofSeq radii
+        let masses = Array.ofSeq masses
         if radii.Length <> masses.Length then
             invalidArg "masses" "Marey: one mass per disc."
 

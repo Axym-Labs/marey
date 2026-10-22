@@ -76,12 +76,12 @@ module Levels =
     /// the quiet alternatives put a mark somewhere it does not belong — off the panel at level
     /// `-1`, or on top of an unrelated band — and a level set that does not cover its own data
     /// is a caller error worth hearing about at the point it happens.
-    let positions (ls: Levels<'k>) (keys: 'k[]) : float[] =
+    let positions (ls: Levels<'k>) (keys: seq<'k>) : float[] =
         let index = System.Collections.Generic.Dictionary<'k, int>(HashIdentity.Structural)
 
         ls.Values |> Array.iteri (fun i v -> index.[v] <- i)
 
-        keys
+        Array.ofSeq keys
         |> Array.map (fun k ->
             match index.TryGetValue k with
             | true, i -> float i

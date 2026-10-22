@@ -33,7 +33,8 @@ module Recording =
     /// first is zero. A time that is not finite, or that runs backwards, is read as the time
     /// before it: **the order is the truth**, because it is the order the values were reached
     /// in, and a clock is only how far apart they were.
-    let ofEvents (events: (float<s> * 'a)[]) : Recording<'a> =
+    let ofEvents (events: seq<float<s> * 'a>) : Recording<'a> =
+        let events = Array.ofSeq events
         let start =
             events
             |> Array.tryPick (fun (t, _) -> if finite t then Some t else None)

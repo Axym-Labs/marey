@@ -32,12 +32,12 @@ module Field =
 
     /// Contour lines at stated levels, in the theme's foreground colour.
     let contoursAt<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
-        (levels: float<'v>[])
+        (levels: seq<float<'v>>)
         (ux: U<'x>)
         (uy: U<'y>)
         (g: ScalarGrid<'x, 'y, 'v>)
         : Figure =
-        Marey.Field.contoursAt levels ux uy g
+        Marey.Field.contoursAt (Array.ofSeq levels) ux uy g
 
     /// Contour lines at the nice numbers the field's own range would be ticked at — about eight
     /// of them. A field in volts gets equipotentials at round numbers of volts.
@@ -51,13 +51,13 @@ module Field =
     /// Filled bands between stated levels, coloured along `ramp` with a colorbar in `'v`.
     let bandsWith<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
         (ramp: Ramp)
-        (levels: float<'v>[])
+        (levels: seq<float<'v>>)
         (ux: U<'x>)
         (uy: U<'y>)
         (uv: U<'v>)
         (g: ScalarGrid<'x, 'y, 'v>)
         : Figure =
-        Marey.Field.bandsWith ramp levels ux uy uv g
+        Marey.Field.bandsWith ramp (Array.ofSeq levels) ux uy uv g
 
     /// Filled bands at nice levels widened to cover the field's whole range, along the theme's
     /// sequential ramp.
@@ -260,9 +260,9 @@ module Phase =
     let marks<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
         (ux: U<'x>)
         (uy: U<'y>)
-        (points: FixedPoint<'x, 'y, 't>[])
+        (points: seq<FixedPoint<'x, 'y, 't>>)
         : Figure option =
-        Marey.Phase.marks ux uy points
+        Marey.Phase.marks ux uy (Array.ofSeq points)
 
     /// A phase portrait: streamlines `separation` apart on the page, the nullclines over them,
     /// and the fixed points over both, named by kind in the legend. The legend sits in a corner of

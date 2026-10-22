@@ -10,7 +10,7 @@ open Marey
 /// open Marey
 /// open Marey.UnitsOfMeasure
 ///
-/// Chart.line U.second U.metre ts xs     // float<s>[] against float<m>[]
+/// Chart.line U.second U.metre ts xs     // float<s> values against float<m> values
 /// |> Chart.withTitle "Free fall"
 /// ```
 ///
@@ -37,24 +37,24 @@ module Chart =
 
     /// A typed series over linear scales with 5% breathing room. The last point at which the
     /// measures are alive on this path.
-    let series (name: string) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Series<'ux, 'uy> =
-        Marey.Chart.series name ux uy x y
+    let series (name: string) (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) : Series<'ux, 'uy> =
+        Marey.Chart.series name ux uy (Array.ofSeq x) (Array.ofSeq y)
 
-    let line (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
-        Marey.Chart.line ux uy x y
+    let line (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) : Figure =
+        Marey.Chart.line ux uy (Array.ofSeq x) (Array.ofSeq y)
 
     /// Scatter. **One `Markers` node for the whole series**, however many points — batching,
     /// the single biggest performance decision in the IR. Verifiable with `Scene.count`.
-    let scatter (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
-        Marey.Chart.scatter ux uy x y
+    let scatter (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) : Figure =
+        Marey.Chart.scatter ux uy (Array.ofSeq x) (Array.ofSeq y)
 
-    let area (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
-        Marey.Chart.area ux uy x y
+    let area (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) : Figure =
+        Marey.Chart.area ux uy (Array.ofSeq x) (Array.ofSeq y)
 
     /// Bars from zero — see `withZero`. The y domain is the data's, widened to reach the
     /// baseline the marks are measured from.
-    let bar (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
-        Marey.Chart.bar ux uy x y
+    let bar (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) : Figure =
+        Marey.Chart.bar ux uy (Array.ofSeq x) (Array.ofSeq y)
 
     /// Error bars with symmetric uncertainties.
     ///
@@ -62,8 +62,8 @@ module Chart =
     /// not compile, which is the whole thesis applied to the one place experimental data most
     /// often gets it wrong. The y domain is taken over `y ± err`, so the caps are inside the
     /// panel rather than clipped by it.
-    let errorbar (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (err: float<'uy>[]) : Figure =
-        Marey.Chart.errorbar ux uy x y err
+    let errorbar (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) (err: seq<float<'uy>>) : Figure =
+        Marey.Chart.errorbar ux uy (Array.ofSeq x) (Array.ofSeq y) (Array.ofSeq err)
 
     /// A staircase: the same points as `line`, with the claim that nothing happened between
     /// them.
@@ -71,11 +71,11 @@ module Chart =
     /// The default is `StepAfter` — the value holds from each sample until the next — which is
     /// what a sampled-and-held signal, a counter and a piecewise-constant control input all do.
     /// `stepWith` states the other two.
-    let step (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
-        Marey.Chart.step ux uy x y
+    let step (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) : Figure =
+        Marey.Chart.step ux uy (Array.ofSeq x) (Array.ofSeq y)
 
-    let stepWith (align: StepAlign) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
-        Marey.Chart.stepWith align ux uy x y
+    let stepWith (align: StepAlign) (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) : Figure =
+        Marey.Chart.stepWith align ux uy (Array.ofSeq x) (Array.ofSeq y)
 
     /// A filled band between two y series — a confidence interval, an envelope, a min/max
     /// spread.
@@ -83,8 +83,8 @@ module Chart =
     /// The band and nothing else. `Chart.line … |> Chart.addRibbon …` is the fit-with-interval
     /// figure, and the order matters: the band is added second and drawn over the line, so it
     /// wants the theme's fill opacity, which it has.
-    let ribbon (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (low: float<'uy>[]) (high: float<'uy>[]) : Figure =
-        Marey.Chart.ribbon ux uy x low high
+    let ribbon (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (low: seq<float<'uy>>) (high: seq<float<'uy>>) : Figure =
+        Marey.Chart.ribbon ux uy (Array.ofSeq x) (Array.ofSeq low) (Array.ofSeq high)
 
     /// Tiles of a stated size, centred on the given points — the heatmap geom.
     ///
@@ -97,10 +97,10 @@ module Chart =
         (uy: U<'uy>)
         (w: float<'ux>)
         (h: float<'uy>)
-        (x: float<'ux>[])
-        (y: float<'uy>[])
+        (x: seq<float<'ux>>)
+        (y: seq<float<'uy>>)
         : Figure =
-        Marey.Chart.tile ux uy w h x y
+        Marey.Chart.tile ux uy w h (Array.ofSeq x) (Array.ofSeq y)
 
     /// An RGBA image placed in data space — a micrograph under its scale bar, a map under a
     /// track, a reference plate beside a measurement.
@@ -142,20 +142,20 @@ module Chart =
     let segment
         (ux: U<'ux>)
         (uy: U<'uy>)
-        (x0: float<'ux>[])
-        (y0: float<'uy>[])
-        (x1: float<'ux>[])
-        (y1: float<'uy>[])
+        (x0: seq<float<'ux>>)
+        (y0: seq<float<'uy>>)
+        (x1: seq<float<'ux>>)
+        (y1: seq<float<'uy>>)
         : Figure =
-        Marey.Chart.segment ux uy x0 y0 x1 y1
+        Marey.Chart.segment ux uy (Array.ofSeq x0) (Array.ofSeq y0) (Array.ofSeq x1) (Array.ofSeq y1)
 
     /// Labels at stated positions — an annotated point, a named landmark, a value printed on
     /// its own mark.
     ///
     /// `Chart.addLabels` is the form that labels a series already on the figure, and is what
     /// most callers want; this one is for text that is the whole layer.
-    let text (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (labels: string[]) : Figure =
-        Marey.Chart.text ux uy x y labels
+    let text (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) (labels: seq<string>) : Figure =
+        Marey.Chart.text ux uy (Array.ofSeq x) (Array.ofSeq y) (Array.ofSeq labels)
 
     /// Add a second (third, …) series to the last panel.
     ///
@@ -164,20 +164,20 @@ module Chart =
     /// *same physical dimension* as the existing ones and raises if not — the one runtime
     /// dimensional check in the library, and it is runtime only because the two series have
     /// already crossed the rank-2 existential and F# can no longer compare their measures.
-    let addLine (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
-        Marey.Chart.addLine ux uy x y fig
+    let addLine (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) (fig: Figure) : Figure =
+        Marey.Chart.addLine ux uy (Array.ofSeq x) (Array.ofSeq y) fig
 
-    let addScatter (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
-        Marey.Chart.addScatter ux uy x y fig
+    let addScatter (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) (fig: Figure) : Figure =
+        Marey.Chart.addScatter ux uy (Array.ofSeq x) (Array.ofSeq y) fig
 
-    let addArea (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
-        Marey.Chart.addArea ux uy x y fig
+    let addArea (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) (fig: Figure) : Figure =
+        Marey.Chart.addArea ux uy (Array.ofSeq x) (Array.ofSeq y) fig
 
-    let addErrorbar (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (err: float<'uy>[]) (fig: Figure) : Figure =
-        Marey.Chart.addErrorbar ux uy x y err fig
+    let addErrorbar (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) (err: seq<float<'uy>>) (fig: Figure) : Figure =
+        Marey.Chart.addErrorbar ux uy (Array.ofSeq x) (Array.ofSeq y) (Array.ofSeq err) fig
 
-    let addStep (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
-        Marey.Chart.addStep ux uy x y fig
+    let addStep (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) (fig: Figure) : Figure =
+        Marey.Chart.addStep ux uy (Array.ofSeq x) (Array.ofSeq y) fig
 
     /// Add a band between two y series to the last panel — the interval around a fit that was
     /// already drawn.
@@ -189,35 +189,35 @@ module Chart =
     let addRibbon
         (ux: U<'ux>)
         (uy: U<'uy>)
-        (x: float<'ux>[])
-        (low: float<'uy>[])
-        (high: float<'uy>[])
+        (x: seq<float<'ux>>)
+        (low: seq<float<'uy>>)
+        (high: seq<float<'uy>>)
         (fig: Figure)
         : Figure =
-        Marey.Chart.addRibbon ux uy x low high fig
+        Marey.Chart.addRibbon ux uy (Array.ofSeq x) (Array.ofSeq low) (Array.ofSeq high) fig
 
     let addSegment
         (ux: U<'ux>)
         (uy: U<'uy>)
-        (x0: float<'ux>[])
-        (y0: float<'uy>[])
-        (x1: float<'ux>[])
-        (y1: float<'uy>[])
+        (x0: seq<float<'ux>>)
+        (y0: seq<float<'uy>>)
+        (x1: seq<float<'ux>>)
+        (y1: seq<float<'uy>>)
         (fig: Figure)
         : Figure =
-        Marey.Chart.addSegment ux uy x0 y0 x1 y1 fig
+        Marey.Chart.addSegment ux uy (Array.ofSeq x0) (Array.ofSeq y0) (Array.ofSeq x1) (Array.ofSeq y1) fig
 
     /// A histogram of a sample, binned by Freedman–Diaconis.
-    let histogram (u: U<'u>) (xs: float<'u>[]) : Figure = Marey.Chart.histogram u xs
+    let histogram (u: U<'u>) (xs: seq<float<'u>>) : Figure = Marey.Chart.histogram u (Array.ofSeq xs)
 
     /// A histogram of a sample with a stated bin count.
-    let histogramWith (u: U<'u>) (bins: int) (xs: float<'u>[]) : Figure = Marey.Chart.histogramWith u bins xs
+    let histogramWith (u: U<'u>) (bins: int) (xs: seq<float<'u>>) : Figure = Marey.Chart.histogramWith u bins (Array.ofSeq xs)
 
     /// A Gaussian kernel density estimate of a sample, at Silverman's bandwidth.
-    let density (u: U<'u>) (xs: float<'u>[]) : Figure = Marey.Chart.density u xs
+    let density (u: U<'u>) (xs: seq<float<'u>>) : Figure = Marey.Chart.density u (Array.ofSeq xs)
 
     /// The empirical CDF of a sample, drawn as the step function it is.
-    let ecdf (u: U<'u>) (xs: float<'u>[]) : Figure = Marey.Chart.ecdf u xs
+    let ecdf (u: U<'u>) (xs: seq<float<'u>>) : Figure = Marey.Chart.ecdf u (Array.ofSeq xs)
 
     /// Add a least-squares fit of y against x to the last panel, as a two-point line over the
     /// range of the data.
@@ -233,29 +233,29 @@ module Chart =
     /// let v: float<m/s> = fit.Slope
     /// Chart.scatter U.second U.metre ts xs |> Chart.addFit U.second U.metre ts xs
     /// ```
-    let addFit (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
-        Marey.Chart.addFit ux uy x y fig
+    let addFit (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) (fig: Figure) : Figure =
+        Marey.Chart.addFit ux uy (Array.ofSeq x) (Array.ofSeq y) fig
 
     /// Add a loess smooth of y against x to the last panel: R's defaults, span 0.75 and a local
     /// quadratic, at 80 points over the data's range. `Stat.loess` returns the curve itself.
-    let addLoess (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
-        Marey.Chart.addLoess ux uy x y fig
+    let addLoess (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) (fig: Figure) : Figure =
+        Marey.Chart.addLoess ux uy (Array.ofSeq x) (Array.ofSeq y) fig
 
     /// `addLoess` with a stated span: the fraction of the points each local fit uses.
-    let addLoessWith (span: float) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (fig: Figure) : Figure =
-        Marey.Chart.addLoessWith span ux uy x y fig
+    let addLoessWith (span: float) (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) (fig: Figure) : Figure =
+        Marey.Chart.addLoessWith span ux uy (Array.ofSeq x) (Array.ofSeq y) fig
 
     /// The least-squares line through `(x, y)`, on its own: what `addFit` draws, as a figure that
     /// `add` can put over the data.
-    let fit (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
-        Marey.Chart.fit ux uy x y
+    let fit (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) : Figure =
+        Marey.Chart.fit ux uy (Array.ofSeq x) (Array.ofSeq y)
 
     /// The loess smooth of `(x, y)`, on its own — see `fit`.
-    let loess (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
-        Marey.Chart.loess ux uy x y
+    let loess (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) : Figure =
+        Marey.Chart.loess ux uy (Array.ofSeq x) (Array.ofSeq y)
 
-    let loessWith (span: float) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
-        Marey.Chart.loessWith span ux uy x y
+    let loessWith (span: float) (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) : Figure =
+        Marey.Chart.loessWith span ux uy (Array.ofSeq x) (Array.ofSeq y)
 
     /// **Colour by a quantity**, over a named ramp.
     ///
@@ -267,13 +267,13 @@ module Chart =
     /// The domain is the data's own range, **unpadded**: an axis pads so that the extreme
     /// points are not on the frame, and a colour ramp has no frame to sit on — padding it would
     /// simply throw away both ends of the ramp.
-    let colorByWith (ramp: Ramp) (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
-        Marey.Chart.colorByWith ramp u values fig
+    let colorByWith (ramp: Ramp) (u: U<'u>) (values: seq<float<'u>>) (fig: Figure) : Figure =
+        Marey.Chart.colorByWith ramp u (Array.ofSeq values) fig
 
     /// `colorByWith` over the theme's sequential ramp — viridis-family, perceptually ordered
     /// and lightness-monotone, so it survives greyscale printing.
-    let colorBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
-        Marey.Chart.colorBy u values fig
+    let colorBy (u: U<'u>) (values: seq<float<'u>>) (fig: Figure) : Figure =
+        Marey.Chart.colorBy u (Array.ofSeq values) fig
 
     /// **State a continuous colour channel's domain** rather than taking its values' range: the
     /// most recent layer's colour scale runs from `lo` to `hi`, in `u`, and a value beyond either
@@ -308,27 +308,27 @@ module Chart =
         (ux: U<'ux>)
         (uy: U<'uy>)
         (uz: U<'uz>)
-        (x: float<'ux>[])
-        (y: float<'uy>[])
-        (z: float<'uz>[])
+        (x: seq<float<'ux>>)
+        (y: seq<float<'uy>>)
+        (z: seq<float<'uz>>)
         : Figure =
-        Marey.Chart.heatmap ux uy uz x y z
+        Marey.Chart.heatmap ux uy uz (Array.ofSeq x) (Array.ofSeq y) (Array.ofSeq z)
 
     /// `ofHexbin` over `Stat.hexbinWith across`.
-    let hexbinWith (ux: U<'ux>) (uy: U<'uy>) (across: int) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
-        Marey.Chart.hexbinWith ux uy across x y
+    let hexbinWith (ux: U<'ux>) (uy: U<'uy>) (across: int) (x: seq<float<'ux>>) (y: seq<float<'uy>>) : Figure =
+        Marey.Chart.hexbinWith ux uy across (Array.ofSeq x) (Array.ofSeq y)
 
     /// `ofHexbin` over `Stat.hexbin`: 24 hexagons across.
-    let hexbin (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
-        Marey.Chart.hexbin ux uy x y
+    let hexbin (ux: U<'ux>) (uy: U<'uy>) (x: seq<float<'ux>>) (y: seq<float<'uy>>) : Figure =
+        Marey.Chart.hexbin ux uy (Array.ofSeq x) (Array.ofSeq y)
 
-    let sizeByWith (smallest: float<px>) (largest: float<px>) (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
-        Marey.Chart.sizeByWith smallest largest u values fig
+    let sizeByWith (smallest: float<px>) (largest: float<px>) (u: U<'u>) (values: seq<float<'u>>) (fig: Figure) : Figure =
+        Marey.Chart.sizeByWith smallest largest u (Array.ofSeq values) fig
 
     /// `sizeByWith` over a range centred on the theme's marker size: half of it to three times
     /// it, which is a visible span without producing marks that swallow their neighbours.
-    let sizeBy (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
-        Marey.Chart.sizeBy u values fig
+    let sizeBy (u: U<'u>) (values: seq<float<'u>>) (fig: Figure) : Figure =
+        Marey.Chart.sizeBy u (Array.ofSeq values) fig
 
     // ---- Secondary axes ----------------------------------------------------------------
 
@@ -415,18 +415,18 @@ module Chart =
         Marey.Chart.withYTickSpec (TicksEvery(float step)) (erased u) fig
 
     /// Ticks at these values on the x axis, labelled as chosen ticks would be.
-    let withXTicksAt (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
-        Marey.Chart.withXTickSpec (TicksAt(values |> Array.map float)) (erased u) fig
+    let withXTicksAt (u: U<'u>) (values: seq<float<'u>>) (fig: Figure) : Figure =
+        Marey.Chart.withXTickSpec (TicksAt(Array.ofSeq values |> Array.map float)) (erased u) fig
 
-    let withYTicksAt (u: U<'u>) (values: float<'u>[]) (fig: Figure) : Figure =
-        Marey.Chart.withYTickSpec (TicksAt(values |> Array.map float)) (erased u) fig
+    let withYTicksAt (u: U<'u>) (values: seq<float<'u>>) (fig: Figure) : Figure =
+        Marey.Chart.withYTickSpec (TicksAt(Array.ofSeq values |> Array.map float)) (erased u) fig
 
     /// Ticks at these values on the x axis, each with its own label — `X`, `Γ`, `X`.
-    let withXTicksNamed (u: U<'u>) (ticks: (float<'u> * string)[]) (fig: Figure) : Figure =
-        Marey.Chart.withXTickSpec (TicksNamed(ticks |> Array.map (fun (v, n) -> float v, n))) (erased u) fig
+    let withXTicksNamed (u: U<'u>) (ticks: seq<float<'u> * string>) (fig: Figure) : Figure =
+        Marey.Chart.withXTickSpec (TicksNamed(Array.ofSeq ticks |> Array.map (fun (v, n) -> float v, n))) (erased u) fig
 
-    let withYTicksNamed (u: U<'u>) (ticks: (float<'u> * string)[]) (fig: Figure) : Figure =
-        Marey.Chart.withYTickSpec (TicksNamed(ticks |> Array.map (fun (v, n) -> float v, n))) (erased u) fig
+    let withYTicksNamed (u: U<'u>) (ticks: seq<float<'u> * string>) (fig: Figure) : Figure =
+        Marey.Chart.withYTickSpec (TicksNamed(Array.ofSeq ticks |> Array.map (fun (v, n) -> float v, n))) (erased u) fig
 
     // ---- The shadows -------------------------------------------------------------------------
 
@@ -538,17 +538,17 @@ module Chart =
     module Category =
 
         /// The typed categorical series, over the levels the keys themselves define.
-        let series (name: string) (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Levels<'k> * Series<1, 'uy> =
-            Marey.Chart.Category.series name uy keys values
+        let series (name: string) (uy: U<'uy>) (keys: seq<'k>) (values: seq<float<'uy>>) : Levels<'k> * Series<1, 'uy> =
+            Marey.Chart.Category.series name uy (Array.ofSeq keys) (Array.ofSeq values)
 
         /// A bar per row, in the band its key names, measured from zero.
-        let bar (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
-            Marey.Chart.Category.bar uy keys values
+        let bar (uy: U<'uy>) (keys: seq<'k>) (values: seq<float<'uy>>) : Figure =
+            Marey.Chart.Category.bar uy (Array.ofSeq keys) (Array.ofSeq values)
 
         /// The same axis with points instead of bars — a dot plot, and the shape a categorical
         /// colour channel hangs off.
-        let scatter (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
-            Marey.Chart.Category.scatter uy keys values
+        let scatter (uy: U<'uy>) (keys: seq<'k>) (values: seq<float<'uy>>) : Figure =
+            Marey.Chart.Category.scatter uy (Array.ofSeq keys) (Array.ofSeq values)
 
         /// **A box plot per level**, from the rows that carry it.
         ///
@@ -561,8 +561,8 @@ module Chart =
         /// the boxes alone is the tidier picture and it is a lie by omission: the points that
         /// fall outside it are exactly the ones a box plot is read to find, and clipping them
         /// hides them behind the panel edge rather than dropping them somewhere visible.
-        let boxplot (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
-            Marey.Chart.Category.boxplot uy keys values
+        let boxplot (uy: U<'uy>) (keys: seq<'k>) (values: seq<float<'uy>>) : Figure =
+            Marey.Chart.Category.boxplot uy (Array.ofSeq keys) (Array.ofSeq values)
 
         /// **A violin per level**: the same split, drawn as a density instead of a
         /// summary.
@@ -576,8 +576,8 @@ module Chart =
         /// point, which is what it is.
         ///
         /// A sample with no spread at all still has no density to estimate, and says so.
-        let violin (uy: U<'uy>) (keys: 'k[]) (values: float<'uy>[]) : Figure =
-            Marey.Chart.Category.violin uy keys values
+        let violin (uy: U<'uy>) (keys: seq<'k>) (values: seq<float<'uy>>) : Figure =
+            Marey.Chart.Category.violin uy (Array.ofSeq keys) (Array.ofSeq values)
 
         [<Obsolete("Marey.UnitsOfMeasure is open, so a categorical chart takes the values' witness: Chart.Category.series. Chart.Category.Series(…) is the unit-optional spelling, for code that does not open this namespace.", true)>]
         let Series (_: obj) : Figure = invalidOp "Marey: unreachable — an error-obsolete shadow."

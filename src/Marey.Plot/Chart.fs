@@ -780,8 +780,8 @@ module Chart =
         /// The level order is `Stat.count`'s, which is `Levels.ofSeq`'s, which is
         /// first-appearance — so a counted axis and a plotted one put the same category in the
         /// same band.
-        let count (keys: 'k[]) : Figure =
-            let pairs = Stat.count keys
+        let count (keys: seq<'k>) : Figure =
+            let pairs = Stat.count (Array.ofSeq keys)
             bar U.one (pairs |> Array.map fst) (pairs |> Array.map (snd >> float))
 
         /// One point per **level** rather than per row, which is what a summarising geom needs:
@@ -846,20 +846,20 @@ module Chart =
     [<AbstractClass; Sealed>]
     type Category =
 
-        static member Series(name: string, keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Levels<'k> * Series<1, 1> =
-            Category.series name (U.erase yUnit) keys values
+        static member Series(name: string, keys: seq<'k>, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Levels<'k> * Series<1, 1> =
+            Category.series name (U.erase yUnit) (Array.ofSeq keys) (Array.ofSeq values)
 
-        static member Bar(keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Figure =
-            Category.bar (U.erase yUnit) keys values
+        static member Bar(keys: seq<'k>, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Figure =
+            Category.bar (U.erase yUnit) (Array.ofSeq keys) (Array.ofSeq values)
 
-        static member Scatter(keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Figure =
-            Category.scatter (U.erase yUnit) keys values
+        static member Scatter(keys: seq<'k>, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Figure =
+            Category.scatter (U.erase yUnit) (Array.ofSeq keys) (Array.ofSeq values)
 
-        static member Boxplot(keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Figure =
-            Category.boxplot (U.erase yUnit) keys values
+        static member Boxplot(keys: seq<'k>, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Figure =
+            Category.boxplot (U.erase yUnit) (Array.ofSeq keys) (Array.ofSeq values)
 
-        static member Violin(keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Figure =
-            Category.violin (U.erase yUnit) keys values
+        static member Violin(keys: seq<'k>, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) : Figure =
+            Category.violin (U.erase yUnit) (Array.ofSeq keys) (Array.ofSeq values)
 
     // ---- Combinators. All pure; every one returns a new figure. -------------------------------
 
@@ -932,8 +932,8 @@ module Chart =
     let withStyle (f: GeomStyle -> GeomStyle) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = f l.Style }) fig
 
-    let withDash (d: float<px>[]) (fig: Figure) =
-        mapLastLayer (fun l -> { l with Style = Geom.withDash d l.Style }) fig
+    let withDash (d: seq<float<px>>) (fig: Figure) =
+        mapLastLayer (fun l -> { l with Style = Geom.withDash (Array.ofSeq d) l.Style }) fig
 
     let withMarker (s: MarkerShape) (fig: Figure) =
         mapLastLayer (fun l -> { l with Style = Geom.withShape s l.Style }) fig
@@ -950,8 +950,8 @@ module Chart =
     ///
     /// Only a scatter (`GeomPoint`) can honour it — that is the geom whose marks are a batch.
     /// Rows named on a layer that draws a `Path` are carried and never asked for.
-    let addressMarks (rows: int[]) (fig: Figure) : Figure =
-        mapLastLayer (fun l -> { l with Addressed = Array.distinct (Array.append l.Addressed rows) }) fig
+    let addressMarks (rows: seq<int>) (fig: Figure) : Figure =
+        mapLastLayer (fun l -> { l with Addressed = Array.distinct (Array.append l.Addressed (Array.ofSeq rows)) }) fig
 
     /// **Name the rows of the most recently added series**, one key per row. Its marks
     /// are then keyed by these rather than by row: drop row 3 and every later mark keeps its
@@ -959,7 +959,8 @@ module Chart =
     /// must be unique; a duplicate is refused here, with the duplicated keys and their rows.
     ///
     /// `plot { key (fun r -> r.Station) }` is the same thing in the encoding block.
-    let withKeys (keys: string[]) (fig: Figure) : Figure =
+    let withKeys (keys: seq<string>) (fig: Figure) : Figure =
+        let keys = Array.ofSeq keys
         mapLastLayer
             (fun l ->
                 Keys.validate (Erase.seriesLength l.Data) keys
@@ -1060,7 +1061,8 @@ module Chart =
     ///
     /// `Chart.withStyle` on the result moves the labels, because the offset and the face live in
     /// the geom and the style: `Chart.addLabels names |> Chart.withStyle (Geom.withFont small)`.
-    let addLabels (labels: string[]) (fig: Figure) : Figure =
+    let addLabels (labels: seq<string>) (fig: Figure) : Figure =
+        let labels = Array.ofSeq labels
         mapLast
             (fun p ->
                 if p.Layers.Length = 0 then
@@ -1124,7 +1126,8 @@ module Chart =
     /// Applying both to the same keys is the colour-blind-safe scatter, and it is still *one
     /// batch per level*: the two channels read the same level number, so the grouping does not
     /// take their product.
-    let colorByKey (keys: 'k[]) (fig: Figure) : Figure =
+    let colorByKey (keys: seq<'k>) (fig: Figure) : Figure =
+        let keys = Array.ofSeq keys
         let levels = Levels.ofSeq keys
 
         withChannel "colour" keys.Length (Channel.colorByLevel fig.Theme levels.Labels (Levels.positions levels keys)) fig
@@ -1132,7 +1135,8 @@ module Chart =
     /// **Shape by a category** — the redundant encoding that keeps a scatter readable in
     /// greyscale and under colour-vision deficiency, which is why `MarkerShape` is on the
     /// batched node at all.
-    let shapeByKey (keys: 'k[]) (fig: Figure) : Figure =
+    let shapeByKey (keys: seq<'k>) (fig: Figure) : Figure =
+        let keys = Array.ofSeq keys
         let levels = Levels.ofSeq keys
 
         withChannel "shape" keys.Length (Channel.shapeByLevel fig.Theme levels.Labels (Levels.positions levels keys)) fig
@@ -1370,16 +1374,16 @@ module Chart =
 
     /// Ticks at these values on the x axis, labelled as chosen ticks would be. Values
     /// outside the domain are left out.
-    let withXTicksAt (values: float[]) (fig: Figure) = withXTickSpec (TicksAt(Array.copy values)) U.unspecified fig
+    let withXTicksAt (values: seq<float>) (fig: Figure) = withXTickSpec (TicksAt(Array.ofSeq values)) U.unspecified fig
 
-    let withYTicksAt (values: float[]) (fig: Figure) = withYTickSpec (TicksAt(Array.copy values)) U.unspecified fig
+    let withYTicksAt (values: seq<float>) (fig: Figure) = withYTickSpec (TicksAt(Array.ofSeq values)) U.unspecified fig
 
     /// Ticks at these values on the x axis, each with its own label: the high-symmetry
     /// points of a band structure, `X`, `Γ`, `X`. The title keeps its unit, and a named tick is
     /// never dropped to make room (it may be tilted).
-    let withXTicksNamed (ticks: (float * string)[]) (fig: Figure) = withXTickSpec (TicksNamed(Array.copy ticks)) U.unspecified fig
+    let withXTicksNamed (ticks: seq<float * string>) (fig: Figure) = withXTickSpec (TicksNamed(Array.ofSeq ticks)) U.unspecified fig
 
-    let withYTicksNamed (ticks: (float * string)[]) (fig: Figure) = withYTickSpec (TicksNamed(Array.copy ticks)) U.unspecified fig
+    let withYTicksNamed (ticks: seq<float * string>) (fig: Figure) = withYTickSpec (TicksNamed(Array.ofSeq ticks)) U.unspecified fig
 
     /// Write the x axis in `prefix` rather than the one its domain selects:
     /// `withXPrefix Prefix.none` for an axis in plain metres, `Prefix.milli` for millimetres
@@ -1746,12 +1750,12 @@ module Chart =
     /// **The rows' plot heights, relative**: `withRowHeights [| 3.0; 1.0 |]` draws the first
     /// row's plots three times as tall as the second's, whatever their gutters (matplotlib's
     /// `height_ratios`). One weight per row of the figure as composed so far.
-    let withRowHeights (heights: float[]) (fig: Figure) =
-        { fig with RowWeights = weights "rows" (max 1 fig.Rows) heights }
+    let withRowHeights (heights: seq<float>) (fig: Figure) =
+        { fig with RowWeights = weights "rows" (max 1 fig.Rows) (Array.ofSeq heights) }
 
     /// The columns' plot widths, relative (matplotlib's `width_ratios`).
-    let withColWidths (widths: float[]) (fig: Figure) =
-        { fig with ColWeights = weights "columns" (max 1 fig.Cols) widths }
+    let withColWidths (widths: seq<float>) (fig: Figure) =
+        { fig with ColWeights = weights "columns" (max 1 fig.Cols) (Array.ofSeq widths) }
 
     /// **Panels laid out by a picture of the grid.** Each character of `layout` is a cell,
     /// rows separated by `;` or a newline, `.` an empty cell; every other character names a
@@ -1868,7 +1872,8 @@ module Chart =
     /// Each part is a **single-panel** figure and a title for it. A multi-panel figure is refused
     /// rather than flattened: a facet cell holds one panel, and silently spreading two of them
     /// across the grid would put a caller's `beside` composition somewhere they did not ask for.
-    let facetWith (mode: FacetScales) (cols: int) (parts: (string * Figure)[]) : Figure =
+    let facetWith (mode: FacetScales) (cols: int) (parts: seq<string * Figure>) : Figure =
+        let parts = Array.ofSeq parts
         if parts.Length = 0 then
             failwith "Marey: a facet needs at least one panel."
 
@@ -1900,12 +1905,13 @@ module Chart =
         |> keyOnFirstPanelOnly
 
     /// `facetWith` sharing both axes — what a facet means — over an automatic wrap width.
-    let facet (parts: (string * Figure)[]) : Figure =
+    let facet (parts: seq<string * Figure>) : Figure =
+        let parts = Array.ofSeq parts
         facetWith ShareBoth (wrapCols parts.Length) parts
 
     /// `facet` at a stated wrap width.
-    let facetIn (cols: int) (parts: (string * Figure)[]) : Figure =
-        facetWith ShareBoth cols parts
+    let facetIn (cols: int) (parts: seq<string * Figure>) : Figure =
+        facetWith ShareBoth cols (Array.ofSeq parts)
 
     // ---- Output ---------------------------------------------------------------------------------
 
@@ -1945,8 +1951,8 @@ module Chart =
 
     /// **One layout over states a caller lists**: `arrangeUnion` without the clock. A
     /// widget passes the states its controls reach at their extremes.
-    let arrangeOver (m: ITextMeasurer) (extent: Extent<px>) (states: Figure[]) : Shot =
-        Figure.arrangeOver m extent states
+    let arrangeOver (m: ITextMeasurer) (extent: Extent<px>) (states: seq<Figure>) : Shot =
+        Figure.arrangeOver m extent (Array.ofSeq states)
 
     /// **Whether this figure's labels fit a layout already decided**, planned exactly as
     /// `toSceneIn` would plan them. A state that does not fit is drawn in a new arrangement, and
@@ -2076,73 +2082,73 @@ module Chart =
 type Chart =
 
     static member Line
-        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        (x: seq<float>, y: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
         : Figure =
-        Chart.line (U.erase xUnit) (U.erase yUnit) x y
+        Chart.line (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y)
 
     static member Scatter
-        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        (x: seq<float>, y: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
         : Figure =
-        Chart.scatter (U.erase xUnit) (U.erase yUnit) x y
+        Chart.scatter (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y)
 
     static member Area
-        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        (x: seq<float>, y: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
         : Figure =
-        Chart.area (U.erase xUnit) (U.erase yUnit) x y
+        Chart.area (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y)
 
     static member Bar
-        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        (x: seq<float>, y: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
         : Figure =
-        Chart.bar (U.erase xUnit) (U.erase yUnit) x y
+        Chart.bar (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y)
 
     /// `err` is in `y`'s unit.
     static member Errorbar
         (
-            x: float[],
-            y: float[],
-            err: float[],
+            x: seq<float>,
+            y: seq<float>,
+            err: seq<float>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure =
-        Chart.errorbar (U.erase xUnit) (U.erase yUnit) x y err
+        Chart.errorbar (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y) (Array.ofSeq err)
 
     static member Step
-        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        (x: seq<float>, y: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
         : Figure =
-        Chart.step (U.erase xUnit) (U.erase yUnit) x y
+        Chart.step (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y)
 
     static member StepWith
         (
             align: StepAlign,
-            x: float[],
-            y: float[],
+            x: seq<float>,
+            y: seq<float>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure =
-        Chart.stepWith align (U.erase xUnit) (U.erase yUnit) x y
+        Chart.stepWith align (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y)
 
     /// `low` and `high` are in `y`'s unit.
     static member Ribbon
         (
-            x: float[],
-            low: float[],
-            high: float[],
+            x: seq<float>,
+            low: seq<float>,
+            high: seq<float>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure =
-        Chart.ribbon (U.erase xUnit) (U.erase yUnit) x low high
+        Chart.ribbon (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq low) (Array.ofSeq high)
 
     /// `width` is in `x`'s unit and `height` in `y`'s.
     static member Tile
         (
             width: float,
             height: float,
-            x: float[],
-            y: float[],
+            x: seq<float>,
+            y: seq<float>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure =
-        Chart.tile (U.erase xUnit) (U.erase yUnit) width height x y
+        Chart.tile (U.erase xUnit) (U.erase yUnit) width height (Array.ofSeq x) (Array.ofSeq y)
 
     static member Image
         (
@@ -2159,24 +2165,24 @@ type Chart =
 
     static member Segment
         (
-            x0: float[],
-            y0: float[],
-            x1: float[],
-            y1: float[],
+            x0: seq<float>,
+            y0: seq<float>,
+            x1: seq<float>,
+            y1: seq<float>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure =
-        Chart.segment (U.erase xUnit) (U.erase yUnit) x0 y0 x1 y1
+        Chart.segment (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x0) (Array.ofSeq y0) (Array.ofSeq x1) (Array.ofSeq y1)
 
     static member Text
         (
-            x: float[],
-            y: float[],
-            labels: string[],
+            x: seq<float>,
+            y: seq<float>,
+            labels: seq<string>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure =
-        Chart.text (U.erase xUnit) (U.erase yUnit) x y labels
+        Chart.text (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y) (Array.ofSeq labels)
 
     /// A horizontal rule at `y`, across whatever panel it is `add`ed to, without moving
     /// that panel's domain. `unit` is checked against the y axis when the figure is compiled.
@@ -2220,77 +2226,77 @@ type Chart =
 
     /// A least-squares line, to `add` over the data it was fitted to.
     static member Fit
-        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        (x: seq<float>, y: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
         : Figure =
-        Chart.fit (U.erase xUnit) (U.erase yUnit) x y
+        Chart.fit (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y)
 
     static member Loess
-        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        (x: seq<float>, y: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
         : Figure =
-        Chart.loess (U.erase xUnit) (U.erase yUnit) x y
+        Chart.loess (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y)
 
     static member LoessWith
         (
             span: float,
-            x: float[],
-            y: float[],
+            x: seq<float>,
+            y: seq<float>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure =
-        Chart.loessWith span (U.erase xUnit) (U.erase yUnit) x y
+        Chart.loessWith span (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y)
 
     /// Counts per bin. The y axis is a count whatever `unit` is.
-    static member Histogram(x: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
-        Chart.histogram (U.erase unit) x
+    static member Histogram(x: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.histogram (U.erase unit) (Array.ofSeq x)
 
-    static member HistogramWith(bins: int, x: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
-        Chart.histogramWith (U.erase unit) bins x
+    static member HistogramWith(bins: int, x: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.histogramWith (U.erase unit) bins (Array.ofSeq x)
 
     /// A kernel density estimate. The y axis is in the reciprocal of `unit`, derived at run time,
     /// so a density over metres reads `m⁻¹`.
-    static member Density(x: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
-        Chart.density (U.erase unit) x
+    static member Density(x: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.density (U.erase unit) (Array.ofSeq x)
 
-    static member Ecdf(x: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
-        Chart.ecdf (U.erase unit) x
+    static member Ecdf(x: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure =
+        Chart.ecdf (U.erase unit) (Array.ofSeq x)
 
     /// One tile per `(x, y)`, coloured by `z` in `valueUnit`.
     static member Heatmap
         (
-            x: float[],
-            y: float[],
-            z: float[],
+            x: seq<float>,
+            y: seq<float>,
+            z: seq<float>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] valueUnit: IUnit
         ) : Figure =
-        Chart.heatmap (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) x y z
+        Chart.heatmap (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) (Array.ofSeq x) (Array.ofSeq y) (Array.ofSeq z)
 
     static member Hexbin
-        (x: float[], y: float[], [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
+        (x: seq<float>, y: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit)
         : Figure =
-        Chart.hexbin (U.erase xUnit) (U.erase yUnit) x y
+        Chart.hexbin (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y)
 
     static member HexbinWith
         (
             across: int,
-            x: float[],
-            y: float[],
+            x: seq<float>,
+            y: seq<float>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure =
-        Chart.hexbinWith (U.erase xUnit) (U.erase yUnit) across x y
+        Chart.hexbinWith (U.erase xUnit) (U.erase yUnit) across (Array.ofSeq x) (Array.ofSeq y)
 
     /// The typed series under the axes, for `Chart.ofSeries` and the stats that take one.
     static member Series
         (
             name: string,
-            x: float[],
-            y: float[],
+            x: seq<float>,
+            y: seq<float>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Series<1, 1> =
-        Chart.series name (U.erase xUnit) (U.erase yUnit) x y
+        Chart.series name (U.erase xUnit) (U.erase yUnit) (Array.ofSeq x) (Array.ofSeq y)
 
     // ---- Channels that take data -------------------------------------------------------
     //
@@ -2298,13 +2304,13 @@ type Chart =
     // `fig |> Chart.ColorBy(temps, unit = U.kelvin)`.
 
     /// Colour the last layer's marks by `values` in `unit`, on the theme's sequential ramp.
-    static member ColorBy(values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure -> Figure =
-        Chart.colorBy (U.erase unit) values
+    static member ColorBy(values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure -> Figure =
+        Chart.colorBy (U.erase unit) (Array.ofSeq values)
 
     static member ColorByWith
-        (ramp: Ramp, values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit)
+        (ramp: Ramp, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit)
         : Figure -> Figure =
-        Chart.colorByWith ramp (U.erase unit) values
+        Chart.colorByWith ramp (U.erase unit) (Array.ofSeq values)
 
     /// State the last layer's colour domain. With a unit, the ends are converted into the
     /// channel's; with none, or on an unstated channel, they are the numbers given.
@@ -2313,14 +2319,14 @@ type Chart =
         : Figure -> Figure =
         Chart.withColorDomain (U.erase unit) lo hi
 
-    static member SizeBy(values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure -> Figure =
-        Chart.sizeBy (U.erase unit) values
+    static member SizeBy(values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) : Figure -> Figure =
+        Chart.sizeBy (U.erase unit) (Array.ofSeq values)
 
     static member SizeByWith
         (
             smallest: float<px>,
             largest: float<px>,
-            values: float[],
+            values: seq<float>,
             [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit
         ) : Figure -> Figure =
-        Chart.sizeByWith smallest largest (U.erase unit) values
+        Chart.sizeByWith smallest largest (U.erase unit) (Array.ofSeq values)

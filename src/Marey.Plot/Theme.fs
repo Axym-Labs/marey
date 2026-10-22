@@ -453,7 +453,7 @@ module Theme =
     // ---- Combinators. Every one returns a new value (Plotly.NET's documented flaw is that its
     // styling functions mutate). ------------------------------------------------
 
-    let withPalette (cs: Color[]) (t: Theme) = { t with Categorical = cs }
+    let withPalette (cs: seq<Color>) (t: Theme) = { t with Categorical = Array.ofSeq cs }
 
     /// Which way the ticks point: `TickIn` is the physics-journal convention.
     let withTickDirection (d: TickDirection) (t: Theme) = { t with TickDirection = d }

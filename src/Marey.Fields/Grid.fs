@@ -154,10 +154,13 @@ module ScalarGrid =
     /// A grid from data. Checks that both axes are strictly increasing and that there is one
     /// value per node.
     let create<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
-        (xs: float<'x>[])
-        (ys: float<'y>[])
-        (values: float<'v>[])
+        (xs: seq<float<'x>>)
+        (ys: seq<float<'y>>)
+        (values: seq<float<'v>>)
         : ScalarGrid<'x, 'y, 'v> =
+        let xs = Array.ofSeq xs
+        let ys = Array.ofSeq ys
+        let values = Array.ofSeq values
         Grid.check "xs" (Grid.raw xs)
         Grid.check "ys" (Grid.raw ys)
 
@@ -166,23 +169,25 @@ module ScalarGrid =
                 "values"
                 (sprintf "Marey: a %d × %d grid has %d nodes, but %d values were given." xs.Length ys.Length (xs.Length * ys.Length) values.Length)
 
-        { Xs = Array.copy xs
-          Ys = Array.copy ys
-          Values = Array.copy values }
+        { Xs = xs
+          Ys = ys
+          Values = values }
 
     /// Sample a function of two coordinates at every node. The function is called once per
     /// node, in row-major order.
     let sample<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'v>
-        (xs: float<'x>[])
-        (ys: float<'y>[])
+        (xs: seq<float<'x>>)
+        (ys: seq<float<'y>>)
         (f: float<'x> -> float<'y> -> float<'v>)
         : ScalarGrid<'x, 'y, 'v> =
+        let xs = Array.ofSeq xs
+        let ys = Array.ofSeq ys
         Grid.check "xs" (Grid.raw xs)
         Grid.check "ys" (Grid.raw ys)
         let nx = xs.Length
 
-        { Xs = Array.copy xs
-          Ys = Array.copy ys
+        { Xs = xs
+          Ys = ys
           Values = Array.init (nx * ys.Length) (fun k -> f xs.[k % nx] ys.[k / nx]) }
 
     /// The value at `(x, y)`, bilinear between nodes, exact on them, NaN outside the grid.
@@ -218,11 +223,15 @@ module VectorGrid =
 
     /// A grid from data: one `u` and one `w` per node.
     let create<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
-        (xs: float<'x>[])
-        (ys: float<'y>[])
-        (u: float<'u>[])
-        (w: float<'w>[])
+        (xs: seq<float<'x>>)
+        (ys: seq<float<'y>>)
+        (u: seq<float<'u>>)
+        (w: seq<float<'w>>)
         : VectorGrid<'x, 'y, 'u, 'w> =
+        let xs = Array.ofSeq xs
+        let ys = Array.ofSeq ys
+        let u = Array.ofSeq u
+        let w = Array.ofSeq w
         Grid.check "xs" (Grid.raw xs)
         Grid.check "ys" (Grid.raw ys)
         let n = xs.Length * ys.Length
@@ -232,18 +241,20 @@ module VectorGrid =
                 "u"
                 (sprintf "Marey: a %d × %d grid has %d nodes, but %d u and %d w values were given." xs.Length ys.Length n u.Length w.Length)
 
-        { Xs = Array.copy xs
-          Ys = Array.copy ys
-          U = Array.copy u
-          W = Array.copy w }
+        { Xs = xs
+          Ys = ys
+          U = u
+          W = w }
 
     /// Sample a function returning both components at every node, called once per node in
     /// row-major order.
     let sample<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 'u, [<Measure>] 'w>
-        (xs: float<'x>[])
-        (ys: float<'y>[])
+        (xs: seq<float<'x>>)
+        (ys: seq<float<'y>>)
         (f: float<'x> -> float<'y> -> struct (float<'u> * float<'w>))
         : VectorGrid<'x, 'y, 'u, 'w> =
+        let xs = Array.ofSeq xs
+        let ys = Array.ofSeq ys
         Grid.check "xs" (Grid.raw xs)
         Grid.check "ys" (Grid.raw ys)
         let nx = xs.Length
@@ -256,8 +267,8 @@ module VectorGrid =
             u.[k] <- a
             w.[k] <- b
 
-        { Xs = Array.copy xs
-          Ys = Array.copy ys
+        { Xs = xs
+          Ys = ys
           U = u
           W = w }
 

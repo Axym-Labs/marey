@@ -67,6 +67,13 @@ and reported when missing; Marey does not require a version of them.
 
 ### Changed
 
+- **Data is taken as any sequence.** Every chart constructor, `Stat` function, grid, field
+  sampler, colour and size channel, set of keys, labels or ticks, facet and palette takes a
+  `seq<_>` where it took an array, so an F# list, a `ResizeArray` or a C# `List<double>` is passed
+  as it is (C# members take `IEnumerable<T>`). An array still compiles where it did. The sequence
+  is read once, when the call is made, and copied: a figure no longer changes when the caller's
+  array is changed after it was built. Results (statistics, trajectories, grids' nodes) stay
+  arrays, and so do the scene, the wire format and the simulations' in-place steppers.
 - **A scale kind is the panel's axis's, not each layer's.** `withXLog`, `withYLog` and the
   `ScaleKind` verbs record the kind on the axis (`AxisConfig.Kind`, new), and a layer added later,
   a rule included, is drawn on it; before, it kept a linear scale under a log axis, so a rule at

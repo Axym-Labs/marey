@@ -396,11 +396,11 @@ type Phase =
 
     static member Marks
         (
-            points: FixedPoint<1, 1, 1>[],
+            points: seq<FixedPoint<1, 1, 1>>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure option =
-        Phase.marks (U.erase xUnit) (U.erase yUnit) points
+        Phase.marks (U.erase xUnit) (U.erase yUnit) (Array.ofSeq points)
 
     static member PortraitWith
         (

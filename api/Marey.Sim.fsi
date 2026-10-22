@@ -375,10 +375,10 @@ namespace Marey
     module Discs =
 
         val create:
-          x: float<'q> array ->
-            y: float<'q> array ->
-            vx: float<'q/Data.UnitSystems.SI.UnitSymbols.s> array ->
-            vy: float<'q/Data.UnitSystems.SI.UnitSymbols.s> array -> Discs<'q>
+          x: float<'q> seq ->
+            y: float<'q> seq ->
+            vx: float<'q/Data.UnitSystems.SI.UnitSymbols.s> seq ->
+            vy: float<'q/Data.UnitSystems.SI.UnitSymbols.s> seq -> Discs<'q>
 
         val copy: d: Discs<'q> -> Discs<'q>
 
@@ -397,8 +397,8 @@ namespace Marey
     module Collide =
 
         val create:
-          radii: float<'q> array ->
-            masses: float array -> e: float -> box: Box<'q> -> Collider<'q>
+          radii: float<'q> seq ->
+            masses: float seq -> e: float -> box: Box<'q> -> Collider<'q>
 
         val withCap: cap: int -> c: Collider<'q> -> Collider<'q>
 
@@ -440,8 +440,8 @@ namespace Marey
         val ofSteady: f: Flow<'x,'y,'t> -> Unsteady<'x,'y,'t>
 
         val ofSnapshots:
-          times: float<'t> array ->
-            grids: VectorGrid<'x,'y,'x/'t,'y/'t> array -> Unsteady<'x,'y,'t>
+          times: float<'t> seq ->
+            grids: VectorGrid<'x,'y,'x/'t,'y/'t> seq -> Unsteady<'x,'y,'t>
 
         val ofFunction:
           f: (float<'t> -> VectorGrid<'x,'y,'x/'t,'y/'t>) -> Unsteady<'x,'y,'t>
@@ -457,12 +457,12 @@ namespace Marey
             t: float<'t> -> h: float<'t> -> Particles<'x,'y> -> Particles<'x,'y>
 
         val streakStep:
-          seedsX: float<'x> array ->
-            seedsY: float<'y> array ->
+          seedsX: float<'x> seq ->
+            seedsY: float<'y> seq ->
             field: Unsteady<'x,'y,'t> -> Stepper<Particles<'x,'y>,'t>
 
         val pathlines:
-          times: float<Data.UnitSystems.SI.UnitSymbols.s> array ->
+          times: float<Data.UnitSystems.SI.UnitSymbols.s> seq ->
             trajectory: Anim<Particles<'x,'y>> ->
             struct (float<'x> array * float<'y> array) array
 

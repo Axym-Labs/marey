@@ -96,7 +96,7 @@ namespace Marey
     module Recording =
 
         val ofEvents:
-          events: (float<Data.UnitSystems.SI.UnitSymbols.s> * 'a) array ->
+          events: (float<Data.UnitSystems.SI.UnitSymbols.s> * 'a) seq ->
             Recording<'a>
 
         val duration:
