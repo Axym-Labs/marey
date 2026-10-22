@@ -2021,3 +2021,52 @@ module ``each mark composites on its own`` =
             // The first square's right edge is at x = 40 + 20 = 60 px, inside the second square.
             let r, _, b = SkiaPixels.rgbAt (SkiaBackend.renderPng extent opaque) 0.6 0.5
             Assert.True(b > 200 && r < 40, sprintf "the first mark's outline shows through the second: rgb(%d, _, %d)" r b))
+
+/// The faces the package carries: a built-in theme resolves to them before anything installed,
+/// so its PNG is the same on every machine.
+module ``carried faces`` =
+
+    let private specOf family weight italic : FontSpec =
+        { Family = family
+          Size = 9.0<pt>
+          Weight = weight
+          Italic = italic }
+
+    let private faceOf (m: SkiaTextMeasurer) family weight italic = m.Face(specOf family weight italic)
+
+    [<Fact>]
+    let ``every font of the built-in themes is a carried face`` () =
+        withSkia (fun () ->
+            for theme in [ Theme.modern; Theme.publication; Theme.notebook; Theme.presentation; Theme.dark ] do
+                use m = new SkiaTextMeasurer()
+
+                for spec in [ theme.TitleFont; theme.SubtitleFont; theme.PanelTitleFont; theme.AxisTitleFont; theme.TickFont; theme.LegendFont ] do
+                    let face = m.Face spec
+                    Assert.True(face.Bundled, sprintf "%s at %d%s resolved to %s, not a carried face" spec.Family spec.Weight (if spec.Italic then " italic" else "") face.Family)
+                    Assert.Contains(face.Family, [ "Inter"; "Liberation Serif" ]))
+
+    [<Fact>]
+    let ``a carried family wins wherever the stack names it, at the nearest weight`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer()
+            let serif = faceOf m Theme.Serif 400 false
+            Assert.Equal("Liberation Serif", serif.Family)
+            Assert.Equal(Some "Liberation Serif", serif.Matched)
+            Assert.True((faceOf m Theme.Sans 300 false).Bundled)
+            Assert.True((faceOf m Theme.Sans 900 false).Bundled)
+            Assert.True((faceOf m Theme.Serif 600 false).Bundled))
+
+    /// Inter is carried upright only, so an italic Sans is the machine's, and says so.
+    [<Fact>]
+    let ``a slant the package does not carry resolves against the machine`` () =
+        withSkia (fun () ->
+            use m = new SkiaTextMeasurer()
+            Assert.False((faceOf m Theme.Sans 400 true).Bundled)
+            Assert.False((faceOf m "DejaVu Sans, sans-serif" 400 false).Bundled))
+
+    [<Fact>]
+    let ``two measurers draw one PNG`` () =
+        withSkia (fun () ->
+            let fig = Chart.lineIn U.second U.metre [| 0.0<s>; 1.0<s> |] [| 0.0<m>; 2.0<m> |] |> Chart.withTitle "Inter, carried"
+            let png () = fig |> Chart.render SkiaBackend.renderPng (Chart.size 300.0 200.0)
+            Assert.Equal<byte[]>(png (), png ()))

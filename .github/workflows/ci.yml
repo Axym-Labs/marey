@@ -329,3 +329,53 @@ jobs:
             tests/Marey.Tests/golden/*.actual.svg
             tests/Marey.Fable/canvas/*.actual.txt
           if-no-files-found: ignore
+
+  # One script's PNGs on Linux and on Windows, compared pixel for pixel. The built-in themes draw
+  # in the faces Marey.Backend.Skia carries, so nothing installed on either runner may move a
+  # pixel; a difference here is a face resolved from the machine.
+  png:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+    name: png (${{ matrix.os }})
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        id: dotnet
+        with:
+          dotnet-version: '10.0.1xx'
+
+      - name: Pin the SDK
+        shell: bash
+        run: |
+          printf '{ "sdk": { "version": "%s", "rollForward": "disable" } }\n' '${{ steps.dotnet.outputs.dotnet-version }}' > global.json
+          echo "SDK $(dotnet --version)"
+
+      - name: Render
+        run: dotnet run --project tools/png -c Release -- png-${{ matrix.os }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: png-${{ matrix.os }}
+          path: png-${{ matrix.os }}
+
+  png-compare:
+    needs: png
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.1xx'
+
+      - uses: actions/download-artifact@v4
+
+      - name: Linux and Windows, pixel for pixel
+        run: dotnet fsi tools/png/compare.fsx png-ubuntu-latest png-windows-latest

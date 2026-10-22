@@ -74,19 +74,9 @@ let spec: FontSpec =
 let skia = new SkiaTextMeasurer()
 let shaper = skia :> ITextMeasurer
 
-// The face the shaper resolved, opened again to be measured without it. Linear metrics, because
-// a default `SKFont` hints and rounds every advance to a whole pixel, which the shaper does not.
-let unshaped (text: string) =
-    let face = skia.Face spec
-
-    use typeface =
-        match face.File with
-        | Some file -> SkiaSharp.SKTypeface.FromFile file
-        | None -> SkiaSharp.SKTypeface.FromFamilyName face.Family
-
-    use font = new SkiaSharp.SKFont(typeface, 12.0f)
-    font.LinearMetrics <- true
-    float (font.MeasureText text)
+// The face the shaper resolved, measured without shaping: linear metrics, because a default
+// `SKFont` hints and rounds every advance to a whole pixel, which the shaper does not.
+let unshaped (text: string) = skia.MeasureUnshaped(spec, text)
 
 let measureAll (text: string) =
     float (TextMeasure.approx.Measure spec text).Advance, unshaped text, float (shaper.Measure spec text).Advance
@@ -106,16 +96,16 @@ printfn "  of which kerning:                 %+6.2f px" (shapedAdvance - unshape
 // Helvetica's widths — Arial and Liberation Sans do, and the "of which widths" line is then zero.
 printfn "kerning made this string narrower:     %b" (shapedAdvance < unshapedAdvance)
 
-// Digits have nothing to kern, so shaping leaves them at their summed width — which is what
-// makes the AVATAR number above attributable to kerning rather than to anything else the
-// shaper does.
+// A string with nothing to kern shapes to its summed width, which is what makes the AVATAR
+// number above attributable to kerning rather than to anything else the shaper does. One glyph
+// repeated, because a face can kern digits: Inter tightens some pairs of its proportional ones.
 //
-// "Leaves them" to within the shaper's grid: SkiaSharp runs HarfBuzz at 512 units to the font
-// size, so each advance comes back rounded to 12/512 px, and is at most half that away from the
-// face's own value. Ten digits can drift by ten half-steps and no more.
-let _, digitsUnshaped, digitsShaped = measureAll "0123456789"
+// "Shapes to" within the shaper's grid: SkiaSharp runs HarfBuzz at 512 units to the font size,
+// so each advance comes back rounded to 12/512 px, and is at most half that away from the face's
+// own value. Ten glyphs can drift by ten half-steps and no more.
+let _, digitsUnshaped, digitsShaped = measureAll "0000000000"
 
-printfn "shaping left the digits alone:         %b" (abs (digitsShaped - digitsUnshaped) <= 10.0 * 12.0 / 1024.0)
+printfn "shaping left an unkerned run alone:     %b" (abs (digitsShaped - digitsUnshaped) <= 10.0 * 12.0 / 1024.0)
 
 // ----------------------------------------------------------------------------------------
 // Which face this actually drew with.
@@ -136,6 +126,9 @@ for face in reporting.ResolvedFaces |> Array.distinctBy (fun f -> f.Family) do
     | None -> printfn "the theme's stack matched nothing; Skia's default '%s' was used" face.Family
 
 printfn "a face was opened:                     %b" (reporting.ResolvedFaces.Length > 0)
+// The theme's stack names Inter, which the package carries, so the face is the same on every
+// machine and so is the PNG.
+printfn "the theme's face is the one carried:   %b" (reporting.ResolvedFaces |> Array.forall (fun f -> f.Bundled && f.Family = "Inter"))
 
 // ----------------------------------------------------------------------------------------
 // And the other thing this backend brings: a vector PDF, without a TeX installation.

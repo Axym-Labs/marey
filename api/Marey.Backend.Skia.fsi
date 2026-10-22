@@ -30,6 +30,8 @@ namespace Marey
 
           File: string option
 
+          Bundled: bool
+
           Fallbacks: FallbackFace array
 
           Missing: int array
@@ -44,6 +46,8 @@ namespace Marey
                SkiaTextMeasurer
 
         member Face: spec: FontSpec -> ResolvedFace
+
+        member MeasureUnshaped: spec: FontSpec * text: string -> float
 
         member Dpi: float<px/mm>
 
@@ -117,8 +121,8 @@ namespace Marey
     type SkiaPainter =
 
         new: canvas: SkiaSharp.SKCanvas * shaping: SkiaTextMeasurer *
-             antialias: bool * claim: (Affine<nd,px> -> Node -> bool) option ->
-               SkiaPainter
+             antialias: bool * claim: (Affine<nd,px> -> Node -> bool) option *
+             ?outlines: bool -> SkiaPainter
 
         static member RootTransform: extent: Extent<px> -> Affine<nd,px>
 

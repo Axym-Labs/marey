@@ -36,14 +36,23 @@ room than the estimate. Both reach the panel rectangle.
 
 ## Which font, and reproducibility
 
-SVG names a family and lets the viewer resolve it. Skia has to pick a real face from what is
-installed, so the same figure is a slightly different PNG on two machines. That is reported
-rather than hidden — `SkiaBackend.ResolvedFaces` names, for every run in the scene, the entry in
-the theme's stack that matched and the family that was opened, with `Matched = None` meaning the
-whole stack missed and Skia's default was used.
+SVG names a family and lets the viewer resolve it. Skia has to open a real face, so this package
+carries the two the built-in themes name: **Inter** (`Theme.Sans`, at weights 400, 500, 600 and 700)
+and **Liberation Serif** (`Theme.Serif`, upright, italic and bold), both under the SIL Open Font
+License 1.1, whose texts are in the package's `fonts/`. A stack that names a carried family
+resolves to it before anything installed, so a figure in a built-in theme is the same PNG on
+every machine; CI renders one script on Linux and on Windows and compares the pixels. A PNG draws
+its text as the glyphs' outlines, filled by Skia itself, because a glyph is rasterised by the
+platform's font engine (FreeType, DirectWrite), which smooths it differently on each; a PDF keeps
+its text as text. Inter is
+subset to Latin, Greek, punctuation, super- and subscripts, letterlike symbols, arrows and the
+mathematical operators, and a codepoint outside that falls back to the machine like any other.
 
-For output that must be identical everywhere, `SkiaOptions.FontFile` states a font file and
-resolution is skipped.
+A stack that names no carried family, or a slant the package does not carry, resolves against
+what is installed, and that is reported rather than hidden: `SkiaBackend.ResolvedFaces` names, for
+every run in the scene, the entry in the stack that matched, the family that was opened and
+whether it was a carried face, with `Matched = None` meaning the whole stack missed and Skia's
+default was used. `SkiaOptions.FontFile` states a font file and skips resolution.
 
 ## Font fallback
 
