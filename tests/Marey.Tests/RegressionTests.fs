@@ -830,11 +830,12 @@ module ``D41 a supplied factorisation is displayed`` =
         Assert.Equal("10⁶·kg·s⁻¹", text Unicode mega (U.div U.kilogram U.second))
 
     [<Fact>]
-    let ``a declared unit is unaffected`` () =
-        // `U.metrePerSecond` is declared, not composed, so it carries no factors and renders
-        // exactly as it did before D41. This is what kept all 29 golden baselines still.
-        Assert.Equal<(string * int) list>([], U.metrePerSecond.Factors)
+    let ``a compound SI witness is factored as its composition is`` () =
+        // `U.metrePerSecond` carries the factors `U.div U.metre U.second` builds, so it renders
+        // as that does, and a product with it cancels: `m/s²` times `s²` reads `m`.
+        Assert.Equal<(string * int) list>((U.div U.metre U.second).Factors, U.metrePerSecond.Factors)
         Assert.Equal("m·s⁻¹", text Unicode Prefix.none U.metrePerSecond)
+        Assert.Equal("m", text Unicode Prefix.none (U.mul U.metrePerSecondSquared (U.mul U.second U.second)))
 
     [<Fact>]
     let ``the erased path agrees with the measured one`` () =
@@ -905,7 +906,7 @@ module ``D98 an angle is not a frequency`` =
 
     [<Fact>]
     let ``a phase-space axis is titled ω [rad·s⁻¹]`` () =
-        let fig = Chart.line U.radian radPerSecond [| 0.0<rad>; 1.0<rad> |] [| 0.0<rad / s>; 2.0<rad / s> |]
+        let fig = Chart.lineIn U.radian radPerSecond [| 0.0<rad>; 1.0<rad> |] [| 0.0<rad / s>; 2.0<rad / s> |]
         let scene = Chart.toScene (Chart.size 400.0 300.0) fig
 
         let titles =
@@ -925,8 +926,8 @@ module ``D98 an angle is not a frequency`` =
         let ts = [| 0.0<s>; 1.0<s> |]
 
         let fig =
-            Chart.line U.second radPerSecond ts [| 0.0<rad / s>; 6.28<rad / s> |]
-            |> Chart.addLine U.second U.hertz ts [| 0.0<Hz>; 1.0<Hz> |]
+            Chart.lineIn U.second radPerSecond ts [| 0.0<rad / s>; 6.28<rad / s> |]
+            |> Chart.addLineIn U.second U.hertz ts [| 0.0<Hz>; 1.0<Hz> |]
 
         let ex = Assert.ThrowsAny<exn>(fun () -> Figure.unify fig.Panels.[0] |> ignore)
         Assert.Contains("2π", ex.Message)
@@ -939,8 +940,8 @@ module ``D98 an angle is not a frequency`` =
         let ts = [| 0.0<s>; 1.0<s> |]
 
         let fig =
-            Chart.line U.second radPerSecond ts [| 0.0<rad / s>; 6.28<rad / s> |]
-            |> Chart.addLine U.second radPerSecond ts [| 1.0<rad / s>; 2.0<rad / s> |]
+            Chart.lineIn U.second radPerSecond ts [| 0.0<rad / s>; 6.28<rad / s> |]
+            |> Chart.addLineIn U.second radPerSecond ts [| 1.0<rad / s>; 2.0<rad / s> |]
 
         Assert.Equal(2, (Figure.unify fig.Panels.[0]).Layers.Length)
 
@@ -958,13 +959,13 @@ module ``D98 an angle is not a frequency`` =
         Assert.Equal(1, (U.parse "°/s") |> fun u -> U.angleExponentOf u.Symbol u.Factors)
 
         let ts = [| 0.0<s>; 1.0<s> |]
-        let phase = Chart.line U.second U.degree ts [| 0.0<deg>; 180.0<deg> |]
+        let phase = Chart.lineIn U.second U.degree ts [| 0.0<deg>; 180.0<deg> |]
         let svg = phase |> Chart.render SvgBackend.render (Chart.size 400.0 300.0)
         Assert.Contains("θ [°]", svg)
 
         let rates =
-            Chart.line U.second degPerSecond ts [| 0.0<deg / s>; 1.0<deg / s> |]
-            |> Chart.addLine U.second U.hertz ts [| 0.0<Hz>; 1.0<Hz> |]
+            Chart.lineIn U.second degPerSecond ts [| 0.0<deg / s>; 1.0<deg / s> |]
+            |> Chart.addLineIn U.second U.hertz ts [| 0.0<Hz>; 1.0<Hz> |]
 
         Assert.Contains("2π", (Assert.ThrowsAny<exn>(fun () -> Figure.unify rates.Panels.[0] |> ignore)).Message)
 
