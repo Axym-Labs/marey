@@ -41,7 +41,7 @@ the title is written by hand. An anomaly is a temperature difference, in kelvin.
 
 ## Statistics are typed
 
-Each statistic is a function in `Stat` over typed arrays, and its result carries the units: a
+Each statistic is a function in `Stat` over a typed sequence, and its result carries the units: a
 least-squares slope of kelvin against ppm is in kelvin per ppm, which is kelvin. A bootstrap
 interval is in the statistic's unit, and carries its seed, so the interval can be cited.
 

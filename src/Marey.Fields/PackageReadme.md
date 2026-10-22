@@ -1,8 +1,7 @@
 # Marey.Fields
 
-Fields for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed visualization
-system for F#. **The gradient of a potential in volts over metres is a field in V/m, and the type
-says so.**
+Fields for [Marey](https://github.com/Axym-Labs/marey). **The gradient of a potential in volts over
+metres is a field in V/m, and the type says so.**
 
 ```fsharp
 #r "nuget: Marey.Fields"

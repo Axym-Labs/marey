@@ -9,7 +9,7 @@
     <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Backend.Svg</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>The reference backend. Pure F#, zero dependencies, doubles as the golden-image test oracle.</Description>
+    <Description>SVG output for Marey: the reference backend, in pure F# with no dependencies, deterministic to the byte, and the oracle Marey's golden tests compare against.</Description>
     <PackageTags>fsharp svg plotting charts rendering vector-graphics visualization deterministic</PackageTags>
   </PropertyGroup>
 

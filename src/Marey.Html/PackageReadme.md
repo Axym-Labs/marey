@@ -3,9 +3,8 @@
 HTML renderings of [Marey](https://github.com/Axym-Labs/marey) values, for a notebook
 cell. Host-neutral, **zero dependencies**, `netstandard2.1`.
 
-This is also the convenient package to reference, because it sits at the top of the graph:
-installing it brings `Marey.Core`, `Marey.Units`, `Marey.Plot`, `Marey.Interact` and the SVG
-backend with it.
+[`Marey`](https://www.nuget.org/packages/Marey) brings it with the rest of the library, and
+[`Marey.Verso`](https://www.nuget.org/packages/Marey.Verso) is what shows it in a Verso notebook.
 
 ```fsharp
 #r "nuget: Marey.Html"
@@ -13,10 +12,10 @@ backend with it.
 open Marey
 open Marey.UnitsOfMeasure
 
-let t = Array.init 24 (fun i -> float i * 0.025<s>)
-let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
+let g = U.metrePerSecondSquared.Of 9.81<m/s^2>
+let t = Q.init U.second 24 (fun i -> float i * 0.025<s>)
 
-let figure = Chart.lineIn U.second U.metre t x
+let figure = Chart.line t (0.5 * g * t * t)
 
 // something -> string. No kernel, no display call, no global registry.
 Html.figure figure

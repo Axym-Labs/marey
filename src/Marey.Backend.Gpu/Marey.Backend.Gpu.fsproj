@@ -12,7 +12,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Marey.Backend.Gpu</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>GPU rendering for Marey: Skia on OpenGL, with batched marks drawn by the GPU directly. A figure, a film's frames or a million points, offscreen; fluid solvers and LIC on the GPU.</Description>
+    <Description>GPU rendering for Marey: Skia on OpenGL, with batched marks drawn by the GPU itself. A window you drive from code, offscreen frames and films, a million points; fluid solvers and line integral convolution on the GPU. Linux and Windows.</Description>
     <PackageTags>fsharp opengl gpu skia plotting charts rendering visualization</PackageTags>
   </PropertyGroup>
 

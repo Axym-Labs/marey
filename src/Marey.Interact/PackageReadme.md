@@ -1,7 +1,7 @@
 # Marey.Interact
 
-Interaction for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed visualization
-system for F#. **A slider over kelvin hands the view kelvin, and labels itself in kelvin.**
+Interaction for [Marey](https://github.com/Axym-Labs/marey). **A slider over kelvin hands the view
+kelvin, and labels itself in kelvin.**
 
 ```fsharp
 #r "nuget: Marey.Interact"
@@ -32,6 +32,7 @@ let live =
 | `Control.sliderBy u label lo hi step init` | `float<'u>` | as above, with the places the step needs |
 | `Control.select label [ name, value; … ] init` | the chosen value | its name |
 | `Control.checkbox label init` | `bool` | `on` or `off` |
+| `Control.time label lo hi` | `float<s>` | a time with a play button, for a trajectory |
 
 A slider's witness is part of its type, so a slider over kelvin passed to a view over seconds does
 not compile. The block is applicative (`let! … and! …`, then `return`): a control cannot be

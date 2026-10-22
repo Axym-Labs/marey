@@ -17,7 +17,7 @@
     <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Anim</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>Animation as a pure function of time: a seekable, composable Anim&lt;'a&gt; with a verified algebra, the easing catalogue, and arc-length path morphing. Depends only on Marey.Core.</Description>
+    <Description>Animation as a pure function of time for Marey: a seekable, composable Anim&lt;'a&gt; whose algebra is property-tested, the easing catalogue, and morphing between paths along their arc length. Depends only on Marey.Core.</Description>
     <PackageTags>fsharp visualization plotting animation easing tweening scientific</PackageTags>
 
     <!-- A package ships with a producer: one nothing else can consume is a package a reader is

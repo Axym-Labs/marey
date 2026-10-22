@@ -242,6 +242,23 @@ jobs:
           done
           echo "every package requires FSharp.Core >= $want"
 
+      # Every package with code has its symbol package, and each PDB in it maps the sources to
+      # the commit on GitHub. `Marey`, which carries no code, has none.
+      - name: Check the symbol packages and their SourceLink
+        run: |
+          set -e
+          count=$(ls artifacts/*.snupkg | wc -l)
+          [ "$count" -eq 17 ] || { echo "::error::expected 17 symbol packages, packed $count"; exit 1; }
+          for sym in artifacts/*.snupkg; do
+            dir=$(mktemp -d)
+            unzip -q "$sym" -d "$dir"
+            for pdb in $(find "$dir" -name '*.pdb'); do
+              strings -n 20 "$pdb" | grep -q 'raw.githubusercontent.com/Axym-Labs/marey/' \
+                || { echo "::error::$sym: $(basename "$pdb") has no SourceLink to the repository"; exit 1; }
+            done
+          done
+          echo "17 symbol packages, every PDB with SourceLink"
+
       - uses: actions/upload-artifact@v4
         if: matrix.sdk == '10.0.1xx'
         with:

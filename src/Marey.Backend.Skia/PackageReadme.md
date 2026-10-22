@@ -1,7 +1,6 @@
 # Marey.Backend.Skia
 
-The PNG and PDF backend for [Marey](https://github.com/Axym-Labs/marey), a
-dimensionally-typed visualization system for F#. `netstandard2.1`.
+The PNG and PDF backend for [Marey](https://github.com/Axym-Labs/marey). `netstandard2.1`.
 
 ```fsharp
 #r "nuget: Marey.Plot"
@@ -10,10 +9,10 @@ dimensionally-typed visualization system for F#. `netstandard2.1`.
 open Marey
 open Marey.UnitsOfMeasure
 
-let t = Array.init 24 (fun i -> float i * 0.025<s>)
-let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
+let g = U.metrePerSecondSquared.Of 9.81<m/s^2>
+let t = Q.init U.second 24 (fun i -> float i * 0.025<s>)
 
-let figure = Chart.lineIn U.second U.metre t x
+let figure = Chart.line t (0.5 * g * t * t)
 
 // Bytes, or straight to a file. `toFileBytes` rather than `toFile`: writing text has an
 // encoding and writing bytes does not, and a PNG that picked up a byte-order mark on the way

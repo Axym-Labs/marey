@@ -10,7 +10,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>Marey.Backend.Tikz</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>TikZ/PGF backend. Emits a tikzpicture that inherits the host document's fonts and typesets siunitx units. Pure F#, zero dependencies.</Description>
+    <Description>TikZ/PGF output for Marey: a tikzpicture that takes the host document's fonts and typesets its units with siunitx. Pure F#, no dependencies.</Description>
     <PackageTags>fsharp tikz pgf latex siunitx plotting charts publication figures vector-graphics</PackageTags>
   </PropertyGroup>
 

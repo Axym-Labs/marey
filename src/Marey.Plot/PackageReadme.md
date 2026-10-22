@@ -1,7 +1,9 @@
 # Marey.Plot
 
-The chart API of [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
-visualization system for F#. This is the package most people install.
+The plotting grammar of [Marey](https://github.com/Axym-Labs/marey): figures whose axes take their
+titles, ticks and prefixes from the units of the data. Most projects reference
+[`Marey`](https://www.nuget.org/packages/Marey), which brings this package with the rest of the
+library; this one alone is the charts, without fields, simulations or live figures.
 
 ```fsharp
 #r "nuget: Marey.Plot"
@@ -10,96 +12,75 @@ visualization system for F#. This is the package most people install.
 open Marey
 open Marey.UnitsOfMeasure
 
-let t = Array.init 24 (fun i -> float i * 0.4<s>)
-let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
+let g = U.metrePerSecondSquared.Of 9.81<m/s^2>
+let t = Q.init U.second 61 (fun i -> float i * 0.01<s>)
+let drop = 0.5 * g * t * t
 
-Chart.lineIn U.second U.metre t x
-|> Chart.withTitle "Free fall"
-|> Chart.toSvg SvgBackend.render "fall.svg" (Chart.size 800.0 500.0)
+Chart.line t drop
+|> Chart.withName "½ g t²"
+|> Chart.addScatterIn U.second U.metre [| 0.1<s>; 0.3<s>; 0.5<s> |] [| 0.051<m>; 0.447<m>; 1.232<m> |]
+|> Chart.withName "light gate"
+|> Chart.withTitle "A dropped ball"
+|> Chart.withLegend LegendBest
+|> Chart.toSvg SvgBackend.render "fall.svg" (Chart.size 720.0 450.0)
 ```
 
-That prints an x axis reading `t [s]` and a y axis reading `x [m]` with **nothing configured**.
-The scale, the domain, the SI prefix, the tick values, the tick labels and both axis titles are
-derived from the two unit witnesses. `x` is never annotated as a length — the compiler works that
-out — and plotting metres against metres on these axes is a compile error.
+The axes read `t [ms]` and `x [m]`, and nothing set them. `t` carries its unit, `drop` was worked
+out from `g` and `t`, so its axis knows it is a length, and the measured points state theirs with
+`addScatterIn`. A pressure added to the metre axis would not compile.
 
-## What is in it
+## What it draws
 
-- **`Chart`** — twelve geoms: `line`, `scatter`, `area`, `bar`, `errorbar`, `step`, `ribbon`,
-  `tile`, `rect`, `image`, `segment` and `text`, with box plots and violins by category under
-  `Chart.Category`. Two modes: under `open Marey.UnitsOfMeasure` each takes a witness per axis,
-  checked at compile time, and most have an `add*` that layers onto the last panel; under `open
-  Marey` alone, `Chart.Line(xs, ys, yUnit = U.metre)` takes plain arrays and units that may be
-  left out, and `Chart.add` layers any figure onto another.
-- **The `plot` encoding block** — for data that is a table rather than two arrays. Declares x, y,
-  colour, shape and size in one place, with each dimensioned channel checked against its witness;
-  without `Marey.UnitsOfMeasure`, a channel may also leave its witness out.
-- **C#.** Extension methods on `Figure` and the `Category`, `Figures` and renderer-delegate doors,
-  in the `Marey.CSharp` namespace.
-- **Channels.** One colour or marker shape per category, with a legend that names the levels; or a
-  colour or size driven by a *quantity*, which brings a colorbar labelled from its unit witness.
-- **Statistics** — histogram, kernel density, ECDF, least-squares fit, and a five-number summary.
-  The measures carry through: a fit of metres against seconds has a slope of type `float<m/s>`.
-- **Facets.** `facetWrap` gives one panel per level of a key, over shared axes.
-- **Composition.** `beside`, `above` and `mosaic` place panels on one grid whose plots line up,
-  spanning rows or columns where the layout asks; `withRowHeights` and `withColWidths` set the
-  plots' proportions; `shareX` and `shareY` share an axis across any composition and label it once.
-  A second y axis, a secondary axis in another unit or through a map (photon energy over
-  wavelength), equal aspect, and insets with their zoom marked on the host.
-- **What a paper figure adds last.** Rules and spans across a panel, annotations with arrows,
-  panel letters, ticks stated by step, value or name in the axis's own unit, minor ticks, tick
-  formats, reversed axes, and legends outside the plot, in the emptiest corner, in columns, or
-  shared by every panel. None of them moves the axes the data chose.
-- **Themes.** Six, all measured against the colour validator below. `Theme.publication` is the box
-  physics journals print, framed with ticks inside; `Theme.tikz` inherits the host LaTeX
-  document's fonts.
-- **Palettes** — Okabe–Ito, viridis, cividis, magma and an Oklab diverging ramp, with a
-  colour-vision-deficiency and contrast validator that every shipped theme is checked against.
-- **A measure–arrange constraint layout**, and the axis and legend compilers.
-- **The `scene` storyboard block**, for a figure that moves:
+- **Marks.** Lines, scatters, areas, bars, error bars, steps, ribbons, tiles, rectangles, images,
+  segments and text, each layered onto the last panel with an `add` form; box plots, violins and
+  counts over categories under `Chart.Category`.
+- **Statistics with their units.** Histograms, kernel densities, ECDFs, fits and loess curves. A
+  fit of metres against seconds has a slope of type `float<m/s>`.
+- **Channels.** A colour or marker shape per category, with a legend naming the levels; a colour or
+  size driven by a quantity, with a colorbar titled from its unit.
+- **The `plot` block**, for a table rather than two series: x, y, colour, shape, size, facets and
+  layers declared in one place, each channel checked against its witness.
+- **Scales.** Log, symlog, power and reciprocal axes, set on the axis, so a layer added later is
+  drawn on them; stated domains, ticks by step, value or name, minor ticks, tick formats, reversed
+  axes.
+- **Units on one axis.** A layer in minutes on a seconds axis is drawn in seconds; a frequency and an
+  angular velocity are refused, naming both.
 
-  ```fsharp
-  open Marey.Storyboard
+## A figure for a paper
 
-  let intro =
-      scene {
-          let! curve = draw measured |> over 1.2<s>
-          do! wait 0.5<s>
-          do! parallel' [ curve |> morphTo fitted |> over 2.0<s>
-                          curve |> zoomToX (0.0, 8.0) |> over 2.0<s> ]
-          do! highlight curve.[42]
-      }
+`beside`, `above` and `mosaic` place panels on one grid whose plots line up, with stated row and
+column proportions; `shareX` and `shareY` share an axis across any composition and label it once.
+A second y axis, a secondary axis in another unit or through a map (photon energy over
+wavelength), equal aspect, insets with their zoom marked on the host, rules and spans, annotations
+with arrows, panel letters, and legends in the emptiest corner, outside the plot, in columns or
+shared by every panel. None of them moves the axes the data chose.
 
-  let anim = animate 32 (Chart.size 640.0 400.0) intro
-  ```
+Six themes, among them `Theme.publication`, the framed box with ticks inside that physics journals
+print, and `Theme.tikz`, which takes the LaTeX document's fonts. The palettes are Okabe–Ito,
+viridis, cividis, magma and an Oklab diverging ramp, and every theme is checked for contrast and
+under three colour-vision deficiencies.
 
-  `let!` binds a name for something on stage; `animate` lays the whole shot out **once**, against
-  the union of every state it sampled, so the panel holds still while the data moves. Seeking is
-  evaluation, so `anim.At 2.7<s>` is a direct call and frames render in any order, in parallel.
-- **The frame writer.** `Film.ofStory` pairs the scene animation with the layout it is drawn
-  inside, and `Frames.write` renders every frame over `Array.Parallel.map` and numbers them onto
-  disk as `frame-00000.png`. The concurrent and serial passes produce the same bytes in the same
-  order, and one memoised `ITextMeasurer` serves the whole film — because font resolution walks a
-  family stack against whatever is installed, and a measurer per thread is a chance for one frame
-  of a video to be set in a different typeface from the frame before it.
-- Per-layer styling that survives a theme change where it was set explicitly and is recoloured
-  where it was not, which is what makes `withTheme` safe to apply last.
+## A figure that moves
 
-## No backend reference
+The `scene` block (`open Marey.Storyboard`) draws, morphs, zooms and highlights the layers of a
+figure over time, and lays the whole shot out once, against every state it reaches, so the panel
+holds still while the data moves. `Film.ofStory` pairs it with that layout and `Frames.write`
+renders the frames in parallel to numbered PNGs, all set in one typeface.
 
-`Marey.Plot` does not depend on a renderer. A backend is a function passed in at render time,
-which is why the same figure goes to SVG or to LaTeX without the figure knowing either exists.
-Install one:
+## Output
 
-- [`Marey.Backend.Svg`](https://www.nuget.org/packages/Marey.Backend.Svg) — pure F#, zero
-  dependencies.
-- [`Marey.Backend.Tikz`](https://www.nuget.org/packages/Marey.Backend.Tikz) — `tikzpicture`
-  source for LaTeX, with `siunitx` units.
+A renderer is a function passed in when a figure is drawn, so this package references none and the
+same figure goes to any of them:
+[`Marey.Backend.Svg`](https://www.nuget.org/packages/Marey.Backend.Svg) (pure F#, no
+dependencies), [`Marey.Backend.Tikz`](https://www.nuget.org/packages/Marey.Backend.Tikz) (a
+`tikzpicture` for LaTeX, with `siunitx` units) and
+[`Marey.Backend.Skia`](https://www.nuget.org/packages/Marey.Backend.Skia) (PNG and PDF). From C#,
+`using Marey.CSharp` gives extension methods on `Figure`, and every chart takes its units as
+optional named arguments.
 
 Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core),
 [`Marey.Units`](https://www.nuget.org/packages/Marey.Units) and
-[`Marey.Anim`](https://www.nuget.org/packages/Marey.Anim) — the last because the storyboard names
-an `Anim` and a `Figure` in one signature. It is 36 KB and has no dependencies of its own.
+[`Marey.Anim`](https://www.nuget.org/packages/Marey.Anim).
 
 - [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide/README.md)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

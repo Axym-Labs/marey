@@ -1,9 +1,7 @@
 # Marey.Toolchain
 
-External-program resolution and invocation for
-[Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed visualization
-system for F#. **A tool is resolved and *reported*, or it is absent and the absence names what to
-install.**
+External-program resolution and invocation for [Marey](https://github.com/Axym-Labs/marey). **A tool
+is resolved and *reported*, or it is absent and the absence names what to install.**
 
 ```fsharp
 #r "nuget: Marey.Toolchain"

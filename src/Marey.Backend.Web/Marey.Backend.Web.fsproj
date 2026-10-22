@@ -9,7 +9,7 @@
     <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Backend.Web</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>The browser backend for Marey: a figure compiled in the browser by the same compiler, drawn on a canvas. Consumed by Fable.</Description>
+    <Description>The browser backend for Marey: under Fable, a figure built by the same F# is laid out in the page and drawn on a canvas, large marker batches by WebGL2.</Description>
     <PackageTags>fsharp fable canvas browser plotting charts rendering visualization</PackageTags>
   </PropertyGroup>
 

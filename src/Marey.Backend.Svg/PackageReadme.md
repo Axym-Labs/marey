@@ -1,7 +1,7 @@
 # Marey.Backend.Svg
 
-The SVG backend for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
-visualization system for F#. Pure F#, **zero dependencies**, `netstandard2.1`.
+The SVG backend for [Marey](https://github.com/Axym-Labs/marey). Pure F#, **zero dependencies**,
+`netstandard2.1`.
 
 ```fsharp
 #r "nuget: Marey.Plot"
@@ -10,9 +10,9 @@ visualization system for F#. Pure F#, **zero dependencies**, `netstandard2.1`.
 open Marey
 open Marey.UnitsOfMeasure
 
-let t = Array.init 24 (fun i -> float i * 0.025<s>)
-let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
-let figure = Chart.lineIn U.second U.metre t x
+let g = U.metrePerSecondSquared.Of 9.81<m/s^2>
+let t = Q.init U.second 24 (fun i -> float i * 0.025<s>)
+let figure = Chart.line t (0.5 * g * t * t)
 
 // To a string, or straight to a file.
 let svg = figure |> Chart.render SvgBackend.render (Chart.size 800.0 500.0)

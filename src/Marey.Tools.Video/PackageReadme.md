@@ -1,8 +1,7 @@
 # Marey.Tools.Video
 
-Video output for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
-visualization system for F#. **The frame sequence is the product; the mux is a convenience over
-it.**
+Video output for [Marey](https://github.com/Axym-Labs/marey). **The frame sequence is the product;
+the mux is a convenience over it.**
 
 ```fsharp
 #r "nuget: Marey"

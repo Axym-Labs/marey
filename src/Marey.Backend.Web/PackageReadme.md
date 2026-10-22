@@ -1,27 +1,22 @@
 # Marey.Backend.Web
 
-The browser backend for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
-visualization system for F#. A [Fable](https://fable.io) app builds a figure, lays it out with the
-same compiler a notebook kernel runs, and draws it on a canvas. Consumed from source by Fable;
-`Fable.Core` is its one dependency.
+The browser backend for [Marey](https://github.com/Axym-Labs/marey). A [Fable](https://fable.io) app
+builds a figure, lays it out with the same compiler a notebook kernel runs, and draws it on a
+canvas. Consumed from source by Fable; `Fable.Core` is its one dependency.
 
 ```fsharp norun
-open Fable.Core
 open Marey
 open Marey.UnitsOfMeasure
 
-[<Emit("document.getElementById($0)")>]
-let canvasById (_id: string) : CanvasElement = jsNative
-
-let ctx = (canvasById "plot").getContext "2d"
-let t = Array.init 24 (fun i -> float i * 0.025<s>)
-let x = t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)
+let ctx = WebCanvas.context (WebCanvas.byId "plot")
+let g = U.metrePerSecondSquared.Of 9.81<m/s^2>
+let t = Q.init U.second 24 (fun i -> float i * 0.025<s>)
 let extent = Chart.size 720.0 450.0
 
 WebText.measurer ()
 |> fun ready ->
     ready.``then`` (fun measurer ->
-        let scene = Chart.lineIn U.second U.metre t x |> Chart.toSceneWith measurer extent
+        let scene = Chart.line t (0.5 * g * t * t) |> Chart.toSceneWith measurer extent
         CanvasBackend.draw measurer ctx extent scene)
 ```
 
