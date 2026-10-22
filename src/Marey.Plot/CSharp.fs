@@ -40,6 +40,9 @@ type FigureExtensions =
     static member WithYLog(fig: Figure) = Chart.withYLog fig
 
     [<Extension>]
+    static member WithRightYLog(fig: Figure) = Chart.withRightYLog fig
+
+    [<Extension>]
     static member WithXDomain(fig: Figure, lo: float, hi: float) = Chart.withXDomain lo hi fig
 
     [<Extension>]
@@ -301,6 +304,9 @@ type FigureExtensions =
 
     [<Extension>]
     static member WithYScaleKind(fig: Figure, kind: ScaleKind) = Chart.withYScaleKind kind fig
+
+    [<Extension>]
+    static member WithRightYScaleKind(fig: Figure, kind: ScaleKind) = Chart.withRightYScaleKind kind fig
 
     /// The last panel's coordinate system: `fig.WithCoord(Coords.Polar)`.
     [<Extension>]

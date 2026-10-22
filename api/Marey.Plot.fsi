@@ -679,6 +679,8 @@ namespace Marey
 
           Reversed: bool
 
+          Kind: ScaleKind option
+
           Minor: MinorSpec
 
           Format: TickFormat
@@ -1110,13 +1112,17 @@ namespace Marey
 
         val withUnitStyle: s: UnitStyle -> fig: Figure -> Figure
 
+        val withXScaleKind: k: ScaleKind -> fig: Figure -> Figure
+
+        val withYScaleKind: k: ScaleKind -> fig: Figure -> Figure
+
+        val withRightYScaleKind: k: ScaleKind -> fig: Figure -> Figure
+
         val withXLog: fig: Figure -> Figure
 
         val withYLog: fig: Figure -> Figure
 
-        val withXScaleKind: k: ScaleKind -> fig: Figure -> Figure
-
-        val withYScaleKind: k: ScaleKind -> fig: Figure -> Figure
+        val withRightYLog: fig: Figure -> Figure
 
         val withXDomain: lo: float -> hi: float -> fig: Figure -> Figure
 
@@ -2712,6 +2718,14 @@ namespace Marey.CSharp
         [<System.Runtime.CompilerServices.Extension>]
         static member
           WithRightYLabel: fig: Marey.Figure * label: string -> Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member WithRightYLog: fig: Marey.Figure -> Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member
+          WithRightYScaleKind: fig: Marey.Figure * kind: Marey.ScaleKind ->
+                                 Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
         static member

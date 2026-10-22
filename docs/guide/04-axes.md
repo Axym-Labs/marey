@@ -5,7 +5,8 @@ the data and the unit. Each can be stated instead.
 
 **Scales.** `withXLog` and `withYLog` put an axis on a base-10 log scale; `withXScaleKind` takes
 any of the others: `ScaleKind.Log b`, `ScaleKind.Symlog (b, linthresh)` for data that crosses zero,
-`ScaleKind.Power p` and `ScaleKind.Reciprocal`. `withXDomain` and `withYDomain` pin a domain.
+`ScaleKind.Power p` and `ScaleKind.Reciprocal`. A scale belongs to the axis, so a layer added
+afterwards is drawn on it too. `withXDomain` and `withYDomain` pin a domain.
 A log axis that spans three decades or fewer is ticked in plain numbers under an SI prefix; a wider
 one is ticked in powers of ten, `10⁻⁸`, and takes no prefix.
 
@@ -36,7 +37,8 @@ unit in `Unicode`, `Ascii`, `Latex` or `Siunitx`. Each verb has a `Y` form.
 **A second y axis.** `withRightAxis` takes a figure built as any other and draws its layers
 against an axis on the right, as matplotlib's `twinx` does. The two sides must agree on x, which is
 checked when they meet. A side with one series draws its numbers and title in that series' colour,
-and the legend takes both sides. A second axis that reads the *same* quantity in other numbers is
+and the legend takes both sides. `withYLog` sets the left side's scale and `withRightYLog` the
+right's. A second axis that reads the *same* quantity in other numbers is
 `withTopAxisIn` or `withRightAxisIn`, or a map as in §2.
 
 ## A Bode plot

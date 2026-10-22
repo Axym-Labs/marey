@@ -877,3 +877,46 @@ module ``Axis looks`` =
         let fig = plain |> Chart.withXLook AxisFull |> Chart.above plain |> Chart.shareX
         let n = texts (Chart.toSceneWith measurer extent fig) |> List.filter ((=) "t [s]") |> List.length
         Assert.Equal(1, n)
+
+module ``a scale kind is the panel's`` =
+
+    let private fs = Array.init 41 (fun i -> 10.0 ** (1.0 + float i / 10.0) * 1.0<Hz>)
+    let private gain = Chart.line U.hertz U.one fs (fs |> Array.map (fun f -> 1.0 / (1.0 + float f / 1e3)))
+    let private phase = Chart.line U.hertz U.radian fs (fs |> Array.map (fun f -> -(atan (float f / 1e3)) * 1.0<rad>))
+
+    let private kinds (fig: Figure) =
+        (Figure.unify fig.Panels.[0]).Layers |> Array.map (fun l -> Erase.seriesScales l.Data |> fun (x, y) -> x.Kind, y.Kind)
+
+    let private log10 = ScaleKind.Log 10.0
+
+    /// A phase in −π/2 … 0 on the right has no positive values, so a log y there drew nothing.
+    [<Fact>]
+    let ``withYLog after withRightAxis logs the left side only`` () =
+        let k = gain |> Chart.withRightAxis phase |> Chart.withYLog |> kinds
+        Assert.Equal((ScaleKind.Linear, log10), k.[0])
+        Assert.Equal((ScaleKind.Linear, ScaleKind.Linear), k.[1])
+
+    [<Fact>]
+    let ``withRightYLog logs the right side only`` () =
+        let k = phase |> Chart.withRightAxis gain |> Chart.withRightYLog |> kinds
+        Assert.Equal((ScaleKind.Linear, ScaleKind.Linear), k.[0])
+        Assert.Equal((ScaleKind.Linear, log10), k.[1])
+
+    /// A rule at 1 kHz on a log 10 Hz … 100 kHz axis was drawn on a linear x, near the left edge.
+    [<Fact>]
+    let ``a layer added after withXLog is drawn on the log axis`` () =
+        let fig = gain |> Chart.withXLog |> Chart.addVLine U.hertz 1e3<Hz> |> Chart.withRightAxis phase
+        let k = kinds fig
+        Assert.All(k, fun (x, _) -> Assert.Equal(log10, x))
+        let unified = Figure.unify fig.Panels.[0]
+        let xOf i = fst (Erase.seriesScales unified.Layers.[i].Data)
+        Assert.Equal((xOf 0).Domain, (xOf 1).Domain)
+
+    [<Fact>]
+    let ``a later layer adopts the left y kind on a shared group too`` () =
+        let fig =
+            gain |> Chart.withYLog |> Chart.above (gain |> Chart.withYLog |> Chart.addHLine U.one 0.5) |> Chart.shareX
+
+        let scene = Chart.toSceneWith measurer (Chart.size 400.0 400.0) fig
+        Assert.NotNull scene
+        Assert.Equal((ScaleKind.Linear, log10), (Figure.unify fig.Panels.[1]).Layers.[1].Data |> Erase.seriesScales |> fun (x, y) -> x.Kind, y.Kind)

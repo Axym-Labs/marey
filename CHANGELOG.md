@@ -61,6 +61,13 @@ and reported when missing; Marey does not require a version of them.
 
 ### Changed
 
+- **A scale kind is the panel's axis's, not each layer's.** `withXLog`, `withYLog` and the
+  `ScaleKind` verbs record the kind on the axis (`AxisConfig.Kind`, new), and a layer added later,
+  a rule included, is drawn on it; before, it kept a linear scale under a log axis, so a rule at
+  1 kHz on a log 10 Hz … 100 kHz axis stood near the left edge. `withYLog` now acts on the left y
+  axis only: after `withRightAxis` it also logged the right side's layers, and a phase in −π … 0
+  there was not drawn. `withRightYLog` and `withRightYScaleKind` (C# `WithRightYLog`,
+  `WithRightYScaleKind`) are new and set the right axis's.
 - **A rate reads `s⁻¹`, a frequency `Hz`.** A unit written as the reciprocal of one base unit
   (`U.perSecond`, `U.recip U.second`) is shown as written, so a vorticity, a decay constant or a
   growth rate is no longer labelled as a frequency; `U.hertz` still reads `Hz`. Draw a frequency

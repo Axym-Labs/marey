@@ -1307,19 +1307,32 @@ module Chart =
                     YAxis = { p.YAxis with Style = Some s } })
             fig
 
-    let private mapLayers (f: PackedSeries -> PackedSeries) (fig: Figure) =
-        mapLast (fun p -> { p with Layers = p.Layers |> Array.map (fun l -> { l with Data = f l.Data }) }) fig
+    /// The last panel's x scale, for every layer on it and every layer added to it later.
+    let withXScaleKind (k: ScaleKind) (fig: Figure) =
+        mapLast (fun p -> Figure.adoptKinds { p with XAxis = { p.XAxis with Kind = Some k } }) fig
+
+    /// The last panel's left y scale, for its layers there and those added there later.
+    let withYScaleKind (k: ScaleKind) (fig: Figure) =
+        mapLast (fun p -> Figure.adoptKinds { p with YAxis = { p.YAxis with Kind = Some k } }) fig
+
+    /// The last panel's right y scale, giving the panel a right axis if it has none.
+    let withRightYScaleKind (k: ScaleKind) (fig: Figure) =
+        mapLast
+            (fun p -> Figure.adoptKinds { p with Y2Axis = Some { (defaultArg p.Y2Axis Figure.axisConfig) with Kind = Some k } })
+            fig
 
     /// Put the x axis on a log scale. The domain is re-derived from the positive data, because a
-    /// padded linear domain usually straddles zero and a log scale cannot.
-    let withXLog (fig: Figure) =
-        mapLayers (Figure.withKinds (Some(ScaleKind.Log 10.0)) None) fig
+    /// padded linear domain usually straddles zero and a log scale cannot. The scale is the
+    /// panel's: a layer added later, a rule included, is drawn on it too.
+    let withXLog (fig: Figure) = withXScaleKind (ScaleKind.Log 10.0) fig
 
-    let withYLog (fig: Figure) =
-        mapLayers (Figure.withKinds None (Some(ScaleKind.Log 10.0))) fig
+    /// Put the left y axis on a log scale. The layers on a second axis keep theirs; see
+    /// `withRightYLog`.
+    let withYLog (fig: Figure) = withYScaleKind (ScaleKind.Log 10.0) fig
 
-    let withXScaleKind (k: ScaleKind) (fig: Figure) = mapLayers (Figure.withKinds (Some k) None) fig
-    let withYScaleKind (k: ScaleKind) (fig: Figure) = mapLayers (Figure.withKinds None (Some k)) fig
+    /// Put the right y axis on a log scale, for the layers `withRightAxis` or `toRightAxis` put
+    /// there.
+    let withRightYLog (fig: Figure) = withRightYScaleKind (ScaleKind.Log 10.0) fig
 
     /// The last panel's x domain, in raw numeric values of the axis's own unit. Raw because the
     /// measure has already been erased into the figure; use `Chart.ofSeries` with a hand-built

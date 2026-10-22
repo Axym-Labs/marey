@@ -105,6 +105,11 @@ type AxisConfig =
       /// The axis runs from its high end to its low end, over the domain it would have
       /// had: a depth below a surface, a magnitude, a Hertzsprung–Russell diagram.
       Reversed: bool
+      /// The scale every layer on this axis is drawn with, a layer added later included
+      /// (`Chart.withXLog`, `Chart.withYScaleKind`, `Chart.withRightYLog`). `None` leaves each layer
+      /// the scale it was built with: linear, or categorical for levels. A categorical layer keeps
+      /// its levels whatever this says.
+      Kind: ScaleKind option
       /// The minor ticks. `MinorAuto` draws them where the theme does (`MinorTicks`); a
       /// stated step or count draws them whatever the theme.
       Minor: MinorSpec
@@ -812,6 +817,7 @@ module Figure =
           TickUnit = U.unspecified
           Prefix = None
           Reversed = false
+          Kind = None
           Minor = MinorAuto
           Format = FormatAuto
           ShowTickLabels = true
@@ -1013,6 +1019,32 @@ module Figure =
         |> joining included
         |> Scale.shareDomain autoPadding
 
+    /// Put every layer on the scale its panel's axis states: x for all of them, y from the
+    /// side the layer is on. A layer already on that scale is left as it is, domain included, so
+    /// this can run again; a categorical one keeps its levels.
+    let internal adoptKinds (p: Panel) : Panel =
+        let wanted (stated: ScaleKind option) (current: ScaleKind) =
+            match stated, current with
+            | _, ScaleKind.Ordinal _ -> None
+            | Some k, c when k <> c -> Some k
+            | _ -> None
+
+        let yKind (l: Layer) =
+            if onSecond p l then p.Y2Axis |> Option.bind (fun c -> c.Kind) else p.YAxis.Kind
+
+        if p.XAxis.Kind.IsNone && p.YAxis.Kind.IsNone && (p.Y2Axis |> Option.forall (fun c -> c.Kind.IsNone)) then
+            p
+        else
+            { p with
+                Layers =
+                    p.Layers
+                    |> Array.map (fun l ->
+                        let sx, sy = Erase.seriesScales l.Data
+
+                        match wanted p.XAxis.Kind sx.Kind, wanted (yKind l) sy.Kind with
+                        | None, None -> l
+                        | kx, ky -> { l with Data = withKinds kx ky l.Data }) }
+
     /// Give every layer on a panel the same x and y domains.
     ///
     /// Applied at **compile** time rather than at construction, and that is deliberate: a panel
@@ -1088,7 +1120,7 @@ module Figure =
 
     /// Give every layer on a panel the same x and y domains, and run a reversed axis backwards.
     /// See `share`; every reader of a panel's axes goes through here.
-    let internal unify (p: Panel) : Panel = p |> share |> orient
+    let internal unify (p: Panel) : Panel = p |> adoptKinds |> share |> orient
 
     /// **The plot's height over its width that a panel asks for**, over the states of it a
     /// shot holds (one for a still figure), unified. Equal aspect takes the union of their domains,
@@ -1337,7 +1369,10 @@ module Figure =
                                         p) })
                     f
 
-            let shared = fig |> regroup (fun p -> p.XShare) ShareX |> regroup (fun p -> p.YShare) ShareY
+            // Each panel's layers on its axes' scales first, so a group is shared over the domains
+            // it is drawn with.
+            let adopted = { fig with Panels = fig.Panels |> Array.map adoptKinds }
+            let shared = adopted |> regroup (fun p -> p.XShare) ShareX |> regroup (fun p -> p.YShare) ShareY
             let drawn = shared.Panels |> Array.filter (fun p -> p.Layers.Length > 0)
 
             let below (p: Panel) =
