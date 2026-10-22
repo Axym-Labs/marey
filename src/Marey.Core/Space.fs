@@ -35,7 +35,7 @@ type mm
 [<Measure>]
 type rad
 
-/// Degrees. Only ever a user-facing input; convert to `rad` at the boundary.
+/// Degrees. `U.degree` is its witness, π/180 rad, for an axis in degrees.
 [<Measure>]
 type deg
 

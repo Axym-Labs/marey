@@ -231,7 +231,8 @@ module Prefix =
               U.angstrom.Symbol
               U.atmosphere.Symbol
               U.degreeCelsius.Symbol
-              U.degreeFahrenheit.Symbol ]
+              U.degreeFahrenheit.Symbol
+              U.degree.Symbol ]
 
     /// Whether this *witness* may be prefixed. The witness knows two things the `Dim` does not,
     /// and both of them are disqualifying:

@@ -600,11 +600,12 @@ module Storyboard =
                     // frame from the stage as it stands. A zoom running in `parallel'` with a
                     // morph would otherwise chase the morph's own changing domain and never
                     // arrive.
-                    let start =
+                    // The target is in the first layer's unit, and each layer reads it in its own.
+                    let start, reference =
                         match layersIn h.Key fig |> Array.tryHead with
                         | Some(_, l) ->
                             let sx, sy = Erase.seriesScales l.Data
-                            if onX then sx.Domain else sy.Domain
+                            if onX then sx.Domain, sx else sy.Domain, sy
                         | None -> invalidOp (sprintf "Marey: %s names no layer with an axis to zoom." name)
 
                     let mix (a: float) (b: float) (u: float) = a + (b - a) * u
@@ -613,7 +614,7 @@ module Storyboard =
                     Anim.ofFraction d (fun u ->
                         fun s ->
                             let dom =
-                                Some(mix (fst start) (fst target) u, mix (snd start) (snd target) u)
+                                Some((mix (fst start) (fst target) u, mix (snd start) (snd target) u), reference)
 
                             let zoomed =
                                 onStage name s
@@ -621,9 +622,9 @@ module Storyboard =
                                     { l with
                                         Data =
                                             if onX then
-                                                Figure.withDomains dom None l.Data
+                                                Figure.withDomainsIn dom None l.Data
                                             else
-                                                Figure.withDomains None dom l.Data })
+                                                Figure.withDomainsIn None dom l.Data })
 
                             { s with Figure = Some zoomed })) }
 

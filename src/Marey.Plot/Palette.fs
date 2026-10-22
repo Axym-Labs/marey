@@ -28,10 +28,11 @@ type Ramp =
 [<RequireQualifiedAccess>]
 module Ramp =
 
-    let ofStops (name: string) (stops: (float * Color)[]) = { Name = name; Stops = stops }
+    let ofStops (name: string) (stops: seq<float * Color>) = { Name = name; Stops = Array.ofSeq stops }
 
     /// Evenly spaced stops from a list of colours.
-    let ofColors (name: string) (cs: Color[]) =
+    let ofColors (name: string) (cs: seq<Color>) =
+        let cs = Array.ofSeq cs
         if cs.Length = 0 then
             invalidArg "cs" "Marey: a ramp needs at least one colour."
         elif cs.Length = 1 then
@@ -40,8 +41,8 @@ module Ramp =
             { Name = name
               Stops = cs |> Array.mapi (fun i c -> float i / float (cs.Length - 1), c) }
 
-    let ofHex (name: string) (hexes: string[]) =
-        ofColors name (hexes |> Array.map Color.ofHex)
+    let ofHex (name: string) (hexes: seq<string>) =
+        ofColors name (Array.ofSeq hexes |> Array.map Color.ofHex)
 
     /// Evaluate at any `t`. Out-of-range `t` clamps to the end stops, which is what a colour
     /// scale should do — unlike a positional scale, an out-of-gamut colour has nowhere to go.
@@ -138,7 +139,8 @@ module Palette =
 
     /// Cycle a categorical palette. Series eight and series sixteen share a colour, which is
     /// honest: eight is the number of categories a reader can actually hold.
-    let pick (cs: Color[]) (i: int) =
+    let pick (cs: seq<Color>) (i: int) =
+        let cs = Array.ofSeq cs
         if cs.Length = 0 then Color.black else cs.[((i % cs.Length) + cs.Length) % cs.Length]
 
     // ---- Sequential ramps --------------------------------------------------------------
@@ -291,7 +293,8 @@ module Palette =
         sqrt (dl * dl + da * da + db * db)
 
     /// Minimum pairwise Oklab distance, and which pair achieved it.
-    let minSeparation (cs: Color[]) : float * int * int =
+    let minSeparation (cs: seq<Color>) : float * int * int =
+        let cs = Array.ofSeq cs
         let mutable best = System.Double.PositiveInfinity
         let mutable ia = -1
         let mutable ib = -1
@@ -348,7 +351,8 @@ module Palette =
 
     /// The validator. Measures rather than asserts: every field of the report is a number you
     /// can put in a commit message.
-    let validate (background: Color) (cs: Color[]) : PaletteReport =
+    let validate (background: Color) (cs: seq<Color>) : PaletteReport =
+        let cs = Array.ofSeq cs
         let seps =
             [| separationUnder "normal" None cs
                separationUnder "protanopia" (Some Protanopia) cs

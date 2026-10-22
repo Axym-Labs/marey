@@ -121,8 +121,8 @@ module Stat =
     /// range is zero — heavily tied data, a discrete measurement — where it asks for infinitely
     /// many bins; Sturges (`ceil(log2 n) + 1`) is the fallback, because it depends on `n` alone
     /// and therefore always answers.
-    let binCountFor (xs: float<'u>[]) : int =
-        let kept, _ = finiteOf xs
+    let binCountFor (xs: seq<float<'u>>) : int =
+        let kept, _ = finiteOf (Array.ofSeq xs)
         let n = kept.Length
 
         if n < 2 then
@@ -149,7 +149,7 @@ module Stat =
     /// counted in `Dropped` rather than folded into the end bins, because folding them in draws
     /// a spike that is an artefact of the domain rather than a feature of the data, and for the
     /// same reason a colour channel does not clamp.
-    let binIn (u: U<'u>) (count: int) (domain: float<'u> * float<'u>) (xs: float<'u>[]) : Histogram<'u> =
+    let binIn (u: U<'u>) (count: int) (domain: float<'u> * float<'u>) (xs: seq<float<'u>>) : Histogram<'u> =
         if count < 1 then
             invalidArg "count" "Marey: a histogram needs at least one bin."
 
@@ -191,8 +191,8 @@ module Stat =
           Dropped = dropped }
 
     /// A histogram over the data's own range, with a stated bin count.
-    let binWith (u: U<'u>) (count: int) (xs: float<'u>[]) : Histogram<'u> =
-        let kept, dropped = finiteOf xs
+    let binWith (u: U<'u>) (count: int) (xs: seq<float<'u>>) : Histogram<'u> =
+        let kept, dropped = finiteOf (Array.ofSeq xs)
 
         let domain =
             match Scale.domainOf kept with
@@ -203,7 +203,9 @@ module Stat =
         { h with Dropped = h.Dropped + dropped }
 
     /// A histogram over the data's own range, binned by Freedman–Diaconis.
-    let bin (u: U<'u>) (xs: float<'u>[]) : Histogram<'u> = binWith u (binCountFor xs) xs
+    let bin (u: U<'u>) (xs: seq<float<'u>>) : Histogram<'u> =
+        let xs = Array.ofSeq xs
+        binWith u (binCountFor xs) xs
 
     // ======================================================================================
     // count — the categorical counterpart of bin
@@ -215,7 +217,7 @@ module Stat =
     /// order that is itself information, and sorting destroys it in exactly that case. The two
     /// agree by construction, so counting a key set and laying it out on a categorical axis
     /// cannot disagree about which band is which.
-    let count (keys: 'k[]) : ('k * int)[] =
+    let count (keys: seq<'k>) : ('k * int)[] =
         let index = Collections.Generic.Dictionary<'k, int>(HashIdentity.Structural)
         let order = ResizeArray<'k>()
         let counts = ResizeArray<int>()
@@ -255,8 +257,8 @@ module Stat =
     /// Ties collapse to one point carrying the *higher* value of `F`, which is what makes this
     /// the right-continuous step function it is defined to be: one point per distinct value, at
     /// the top of its step.
-    let ecdf (u: U<'u>) (xs: float<'u>[]) : Ecdf<'u> =
-        let kept, dropped = finiteOf xs
+    let ecdf (u: U<'u>) (xs: seq<float<'u>>) : Ecdf<'u> =
+        let kept, dropped = finiteOf (Array.ofSeq xs)
         let n = kept.Length
 
         if n = 0 then
@@ -320,8 +322,8 @@ module Stat =
     ///
     /// Returns zero for a sample with no spread, which `densityWith` then refuses: a
     /// distribution concentrated on one point has no density to estimate.
-    let bandwidth (xs: float<'u>[]) : float<'u> =
-        let kept, _ = finiteOf xs
+    let bandwidth (xs: seq<float<'u>>) : float<'u> =
+        let kept, _ = finiteOf (Array.ofSeq xs)
         let n = kept.Length
 
         if n < 2 then
@@ -338,7 +340,8 @@ module Stat =
     /// The grid runs three bandwidths past the data at each end, which is where a Gaussian
     /// kernel has given up all but 0.14% of its mass — far enough that the curve reaches the
     /// axis rather than being cut off mid-slope, and near enough not to waste half the panel.
-    let densityWith (u: U<'u>) (h: float<'u>) (points: int) (xs: float<'u>[]) : Density<'u> =
+    let densityWith (u: U<'u>) (h: float<'u>) (points: int) (xs: seq<float<'u>>) : Density<'u> =
+        let xs = Array.ofSeq xs
         if points < 2 then
             invalidArg "points" "Marey: a density needs at least two grid points."
 
@@ -390,7 +393,8 @@ module Stat =
     [<Literal>]
     let DefaultDensityPoints = 128
 
-    let density (u: U<'u>) (xs: float<'u>[]) : Density<'u> =
+    let density (u: U<'u>) (xs: seq<float<'u>>) : Density<'u> =
+        let xs = Array.ofSeq xs
         densityWith u (bandwidth xs) DefaultDensityPoints xs
 
     // ======================================================================================
@@ -423,7 +427,8 @@ module Stat =
     /// It also removes a failure: `bandwidth` of a one-row panel is zero, and a density over it
     /// raises. Under a frame, that panel draws the whole sample's kernel over its one point,
     /// which is what it is.
-    let frameOf (xs: float<'u>[]) : Frame =
+    let frameOf (xs: seq<float<'u>>) : Frame =
+        let xs = Array.ofSeq xs
         let kept, _ = finiteOf xs
 
         let lo, hi =
@@ -447,8 +452,8 @@ module Stat =
     /// Public because it is the one number in this file a caller routinely wants on its own:
     /// a median, a 95th percentile, the IQR of a residual. Non-finite values are dropped
     /// first, on the same rule as every other stat here.
-    let quantile (p: float) (xs: float<'u>[]) : float<'u> =
-        let kept, _ = finiteOf xs
+    let quantile (p: float) (xs: seq<float<'u>>) : float<'u> =
+        let kept, _ = finiteOf (Array.ofSeq xs)
         quantileSorted (max 0.0 (min 1.0 p)) (Array.sort kept)
 
     /// **A five-number summary with Tukey whiskers**, which is what a box plot is
@@ -496,8 +501,8 @@ module Stat =
 
     /// The summary of a sample. An empty sample gives an all-zero summary rather than raising,
     /// because a categorical box plot with one empty level should draw the other levels.
-    let summary (u: U<'u>) (xs: float<'u>[]) : Summary<'u> =
-        let kept, dropped = finiteOf xs
+    let summary (u: U<'u>) (xs: seq<float<'u>>) : Summary<'u> =
+        let kept, dropped = finiteOf (Array.ofSeq xs)
         let n = kept.Length
 
         if n = 0 then
@@ -551,7 +556,9 @@ module Stat =
     ///
     /// The measure survives the grouping, so `summary` and `density` can be mapped straight
     /// over the result and a box plot of metres stays in metres.
-    let groupBy (keys: 'k[]) (values: float<'u>[]) : ('k * float<'u>[])[] =
+    let groupBy (keys: seq<'k>) (values: seq<float<'u>>) : ('k * float<'u>[])[] =
+        let keys = Array.ofSeq keys
+        let values = Array.ofSeq values
         if keys.Length <> values.Length then
             invalidArg "values" (sprintf "Marey: %d keys and %d values." keys.Length values.Length)
 
@@ -614,7 +621,9 @@ module Stat =
     /// than two finite pairs, and an x with no variance. Both are caller errors of the same kind
     /// as `Scale.reciprocal`'s domain touching zero — and the alternative is a NaN slope drawn
     /// as an empty layer, which is the failure mode this library exists not to have.
-    let regression (ux: U<'ux>) (uy: U<'uy>) (xs: float<'ux>[]) (ys: float<'uy>[]) : Fit<'ux, 'uy> =
+    let regression (ux: U<'ux>) (uy: U<'uy>) (xs: seq<float<'ux>>) (ys: seq<float<'uy>>) : Fit<'ux, 'uy> =
+        let xs = Array.ofSeq xs
+        let ys = Array.ofSeq ys
         if xs.Length <> ys.Length then
             invalidArg "ys" (sprintf "Marey: a fit needs matching arrays — %d x values and %d y values." xs.Length ys.Length)
 
@@ -667,8 +676,8 @@ module Stat =
 
     /// The two endpoints of the fitted line over the range of an x sample — the two-point series
     /// a `GeomLine` layer draws.
-    let fitLine (f: Fit<'ux, 'uy>) (xs: float<'ux>[]) : float<'ux>[] * float<'uy>[] =
-        let kept, _ = finiteOf xs
+    let fitLine (f: Fit<'ux, 'uy>) (xs: seq<float<'ux>>) : float<'ux>[] * float<'uy>[] =
+        let kept, _ = finiteOf (Array.ofSeq xs)
 
         let lo, hi =
             match Scale.domainOf kept with
@@ -731,9 +740,11 @@ module Stat =
         (width: float<'ux>)
         (rowSpacing: float<'uy>)
         (origin: float<'ux> * float<'uy>)
-        (xs: float<'ux>[])
-        (ys: float<'uy>[])
+        (xs: seq<float<'ux>>)
+        (ys: seq<float<'uy>>)
         : Hexbin<'ux, 'uy> =
+        let xs = Array.ofSeq xs
+        let ys = Array.ofSeq ys
         if xs.Length <> ys.Length then
             invalidArg "ys" (sprintf "Marey: a hexbin needs matching arrays — %d x values and %d y values." xs.Length ys.Length)
 
@@ -794,7 +805,9 @@ module Stat =
     /// `hexbinIn` with `across` hexagons spanning the x range, rows spaced so the hexagons are
     /// regular on a plot area `HexAspect` times as wide as it is tall, and the lattice starting
     /// at the data's lower-left corner.
-    let hexbinWith (ux: U<'ux>) (uy: U<'uy>) (across: int) (xs: float<'ux>[]) (ys: float<'uy>[]) : Hexbin<'ux, 'uy> =
+    let hexbinWith (ux: U<'ux>) (uy: U<'uy>) (across: int) (xs: seq<float<'ux>>) (ys: seq<float<'uy>>) : Hexbin<'ux, 'uy> =
+        let xs = Array.ofSeq xs
+        let ys = Array.ofSeq ys
         if across < 1 then
             invalidArg "across" (sprintf "Marey: a hexbin needs at least one hexagon across, not %d." across)
 
@@ -816,7 +829,7 @@ module Stat =
     let DefaultHexagons = 24
 
     /// `hexbinWith DefaultHexagons`.
-    let hexbin (ux: U<'ux>) (uy: U<'uy>) (xs: float<'ux>[]) (ys: float<'uy>[]) : Hexbin<'ux, 'uy> =
+    let hexbin (ux: U<'ux>) (uy: U<'uy>) (xs: seq<float<'ux>>) (ys: seq<float<'uy>>) : Hexbin<'ux, 'uy> =
         hexbinWith ux uy DefaultHexagons xs ys
 
     // ====================================================================================== loess
@@ -951,10 +964,13 @@ module Stat =
         (uy: U<'uy>)
         (span: float)
         (degree: int)
-        (at: float<'ux>[])
-        (xs: float<'ux>[])
-        (ys: float<'uy>[])
+        (at: seq<float<'ux>>)
+        (xs: seq<float<'ux>>)
+        (ys: seq<float<'uy>>)
         : Loess<'ux, 'uy> =
+        let at = Array.ofSeq at
+        let xs = Array.ofSeq xs
+        let ys = Array.ofSeq ys
         if xs.Length <> ys.Length then
             invalidArg "ys" (sprintf "Marey: a loess needs matching arrays — %d x values and %d y values." xs.Length ys.Length)
 
@@ -984,7 +1000,9 @@ module Stat =
           Dropped = xs.Length - pairs.Length }
 
     /// `loessIn` at `points` evenly spaced over the data's x range.
-    let loessWith (ux: U<'ux>) (uy: U<'uy>) (span: float) (points: int) (xs: float<'ux>[]) (ys: float<'uy>[]) : Loess<'ux, 'uy> =
+    let loessWith (ux: U<'ux>) (uy: U<'uy>) (span: float) (points: int) (xs: seq<float<'ux>>) (ys: seq<float<'uy>>) : Loess<'ux, 'uy> =
+        let xs = Array.ofSeq xs
+        let ys = Array.ofSeq ys
         let kept, _ = finiteOf xs
 
         let at =
@@ -996,7 +1014,7 @@ module Stat =
         loessIn ux uy span 2 at xs ys
 
     /// `loessWith` at the default span, 0.75, and 80 points.
-    let loess (ux: U<'ux>) (uy: U<'uy>) (xs: float<'ux>[]) (ys: float<'uy>[]) : Loess<'ux, 'uy> =
+    let loess (ux: U<'ux>) (uy: U<'uy>) (xs: seq<float<'ux>>) (ys: seq<float<'uy>>) : Loess<'ux, 'uy> =
         loessWith ux uy DefaultSpan DefaultLoessPoints xs ys
 
     // ======================================================================================
@@ -1084,13 +1102,13 @@ module Stat =
         (resamples: int)
         (level: float)
         (statistic: float<'u>[] -> float<'v>)
-        (xs: float<'u>[])
+        (xs: seq<float<'u>>)
         : Interval<'v> =
-        let kept, _ = finiteOf xs
+        let kept, _ = finiteOf (Array.ofSeq xs)
         percentile seed resamples level kept.Length (statistic kept) (fun idx -> statistic (idx |> Array.map (fun i -> kept.[i])))
 
     /// `bootstrapWith` at 2000 resamples and 95%.
-    let bootstrap (seed: uint64) (statistic: float<'u>[] -> float<'v>) (xs: float<'u>[]) : Interval<'v> =
+    let bootstrap (seed: uint64) (statistic: float<'u>[] -> float<'v>) (xs: seq<float<'u>>) : Interval<'v> =
         bootstrapWith seed DefaultResamples 0.95 statistic xs
 
     /// The pairs bootstrap: a statistic of (x, y) pairs, resampled together — a regression slope
@@ -1100,9 +1118,11 @@ module Stat =
         (resamples: int)
         (level: float)
         (statistic: float<'ux>[] -> float<'uy>[] -> float<'v>)
-        (xs: float<'ux>[])
-        (ys: float<'uy>[])
+        (xs: seq<float<'ux>>)
+        (ys: seq<float<'uy>>)
         : Interval<'v> =
+        let xs = Array.ofSeq xs
+        let ys = Array.ofSeq ys
         if xs.Length <> ys.Length then
             invalidArg "ys" (sprintf "Marey: a pairs bootstrap needs matching arrays — %d x values and %d y values." xs.Length ys.Length)
 
@@ -1117,7 +1137,7 @@ module Stat =
     let bootstrapPairs
         (seed: uint64)
         (statistic: float<'ux>[] -> float<'uy>[] -> float<'v>)
-        (xs: float<'ux>[])
-        (ys: float<'uy>[])
+        (xs: seq<float<'ux>>)
+        (ys: seq<float<'uy>>)
         : Interval<'v> =
         bootstrapPairsWith seed DefaultResamples 0.95 statistic xs ys

@@ -92,13 +92,6 @@ module internal Canvas =
     /// there is one, a detached canvas element otherwise.
     let scratch (width: int) (height: int) : CanvasContext = (create (max 1 width) (max 1 height)).getContext "2d"
 
-    /// The 2-D context of a canvas element, for a caller holding the element.
-    let context (canvas: CanvasElement) : CanvasContext = canvas.getContext "2d"
-
-    /// The canvas element with this id, or `null`.
-    [<Emit("document.getElementById($0)")>]
-    let byId (_id: string) : CanvasElement = jsNative
-
     /// Give a canvas element its size in CSS pixels, so a canvas drawn at a higher density shows
     /// at the size of its figure. An `OffscreenCanvas`, which has no style, is left alone.
     ///
@@ -110,3 +103,15 @@ module internal Canvas =
     /// The display's device pixels per CSS pixel, 1 where there is no window: on .NET too.
     [<Emit("(typeof window !== 'undefined' && window.devicePixelRatio) || 1")>]
     let devicePixelRatio () : float = 1.0
+
+/// The page's canvas elements, for an app that draws on one:
+/// `WebCanvas.context (WebCanvas.byId "plot")` is the context `CanvasBackend.draw` takes.
+[<RequireQualifiedAccess>]
+module WebCanvas =
+
+    /// The canvas element with this id in the page, or `null` when there is none.
+    [<Emit("document.getElementById($0)")>]
+    let byId (_id: string) : CanvasElement = jsNative
+
+    /// The 2-D context of a canvas element.
+    let context (canvas: CanvasElement) : CanvasContext = canvas.getContext "2d"

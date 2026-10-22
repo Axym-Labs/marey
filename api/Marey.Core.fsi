@@ -780,19 +780,19 @@ namespace Marey
 
             member Width: float<'u>
 
-        val binCountFor: xs: float<'u> array -> int
+        val binCountFor: xs: float<'u> seq -> int
 
         val binIn:
           u: U<'u> ->
             count: int ->
-            float<'u> * float<'u> -> xs: float<'u> array -> Histogram<'u>
+            float<'u> * float<'u> -> xs: float<'u> seq -> Histogram<'u>
 
         val binWith:
-          u: U<'u> -> count: int -> xs: float<'u> array -> Histogram<'u>
+          u: U<'u> -> count: int -> xs: float<'u> seq -> Histogram<'u>
 
-        val bin: u: U<'u> -> xs: float<'u> array -> Histogram<'u>
+        val bin: u: U<'u> -> xs: float<'u> seq -> Histogram<'u>
 
-        val count: keys: 'k array -> ('k * int) array when 'k: equality
+        val count: keys: 'k seq -> ('k * int) array when 'k: equality
 
         type Ecdf<[<Measure>] 'u> =
             {
@@ -806,7 +806,7 @@ namespace Marey
               Dropped: int
             }
 
-        val ecdf: u: U<'u> -> xs: float<'u> array -> Ecdf<'u>
+        val ecdf: u: U<'u> -> xs: float<'u> seq -> Ecdf<'u>
 
         type Density<[<Measure>] 'u> =
             {
@@ -821,16 +821,16 @@ namespace Marey
               Dropped: int
             }
 
-        val bandwidth: xs: float<'u> array -> float<'u>
+        val bandwidth: xs: float<'u> seq -> float<'u>
 
         val densityWith:
           u: U<'u> ->
-            h: float<'u> -> points: int -> xs: float<'u> array -> Density<'u>
+            h: float<'u> -> points: int -> xs: float<'u> seq -> Density<'u>
 
         [<Literal>]
         val DefaultDensityPoints: int = 128
 
-        val density: u: U<'u> -> xs: float<'u> array -> Density<'u>
+        val density: u: U<'u> -> xs: float<'u> seq -> Density<'u>
 
         type Frame =
             {
@@ -842,9 +842,9 @@ namespace Marey
               Bandwidth: float
             }
 
-        val frameOf: xs: float<'u> array -> Frame
+        val frameOf: xs: float<'u> seq -> Frame
 
-        val quantile: p: float -> xs: float<'u> array -> float<'u>
+        val quantile: p: float -> xs: float<'u> seq -> float<'u>
 
         type Summary<[<Measure>] 'u> =
             {
@@ -869,11 +869,10 @@ namespace Marey
 
             member Iqr: float<'u>
 
-        val summary: u: U<'u> -> xs: float<'u> array -> Summary<'u>
+        val summary: u: U<'u> -> xs: float<'u> seq -> Summary<'u>
 
         val groupBy:
-          keys: 'k array ->
-            values: float<'u> array -> ('k * float<'u> array) array
+          keys: 'k seq -> values: float<'u> seq -> ('k * float<'u> array) array
             when 'k: equality
 
         type Fit<[<Measure>] 'ux,[<Measure>] 'uy> =
@@ -894,13 +893,13 @@ namespace Marey
         val regression:
           ux: U<'ux> ->
             uy: U<'uy> ->
-            xs: float<'ux> array -> ys: float<'uy> array -> Fit<'ux,'uy>
+            xs: float<'ux> seq -> ys: float<'uy> seq -> Fit<'ux,'uy>
 
         val predict: f: Fit<'ux,'uy> -> x: float<'ux> -> float<'uy>
 
         val fitLine:
           f: Fit<'ux,'uy> ->
-            xs: float<'ux> array -> float<'ux> array * float<'uy> array
+            xs: float<'ux> seq -> float<'ux> array * float<'uy> array
 
         val slopeQuantity: f: Fit<'ux,'uy> -> PackedQuantity
 
@@ -934,13 +933,13 @@ namespace Marey
             width: float<'ux> ->
             rowSpacing: float<'uy> ->
             float<'ux> * float<'uy> ->
-              xs: float<'ux> array -> ys: float<'uy> array -> Hexbin<'ux,'uy>
+              xs: float<'ux> seq -> ys: float<'uy> seq -> Hexbin<'ux,'uy>
 
         val hexbinWith:
           ux: U<'ux> ->
             uy: U<'uy> ->
             across: int ->
-            xs: float<'ux> array -> ys: float<'uy> array -> Hexbin<'ux,'uy>
+            xs: float<'ux> seq -> ys: float<'uy> seq -> Hexbin<'ux,'uy>
 
         [<Literal>]
         val DefaultHexagons: int = 24
@@ -948,7 +947,7 @@ namespace Marey
         val hexbin:
           ux: U<'ux> ->
             uy: U<'uy> ->
-            xs: float<'ux> array -> ys: float<'uy> array -> Hexbin<'ux,'uy>
+            xs: float<'ux> seq -> ys: float<'uy> seq -> Hexbin<'ux,'uy>
 
         type Loess<[<Measure>] 'ux,[<Measure>] 'uy> =
             {
@@ -975,20 +974,20 @@ namespace Marey
             uy: U<'uy> ->
             span: float ->
             degree: int ->
-            at: float<'ux> array ->
-            xs: float<'ux> array -> ys: float<'uy> array -> Loess<'ux,'uy>
+            at: float<'ux> seq ->
+            xs: float<'ux> seq -> ys: float<'uy> seq -> Loess<'ux,'uy>
 
         val loessWith:
           ux: U<'ux> ->
             uy: U<'uy> ->
             span: float ->
             points: int ->
-            xs: float<'ux> array -> ys: float<'uy> array -> Loess<'ux,'uy>
+            xs: float<'ux> seq -> ys: float<'uy> seq -> Loess<'ux,'uy>
 
         val loess:
           ux: U<'ux> ->
             uy: U<'uy> ->
-            xs: float<'ux> array -> ys: float<'uy> array -> Loess<'ux,'uy>
+            xs: float<'ux> seq -> ys: float<'uy> seq -> Loess<'ux,'uy>
 
         type Interval<[<Measure>] 'v> =
             {
@@ -1013,24 +1012,24 @@ namespace Marey
             resamples: int ->
             level: float ->
             statistic: (float<'u> array -> float<'v>) ->
-            xs: float<'u> array -> Interval<'v>
+            xs: float<'u> seq -> Interval<'v>
 
         val bootstrap:
           seed: uint64 ->
             statistic: (float<'u> array -> float<'v>) ->
-            xs: float<'u> array -> Interval<'v>
+            xs: float<'u> seq -> Interval<'v>
 
         val bootstrapPairsWith:
           seed: uint64 ->
             resamples: int ->
             level: float ->
             statistic: (float<'ux> array -> float<'uy> array -> float<'v>) ->
-            xs: float<'ux> array -> ys: float<'uy> array -> Interval<'v>
+            xs: float<'ux> seq -> ys: float<'uy> seq -> Interval<'v>
 
         val bootstrapPairs:
           seed: uint64 ->
             statistic: (float<'ux> array -> float<'uy> array -> float<'v>) ->
-            xs: float<'ux> array -> ys: float<'uy> array -> Interval<'v>
+            xs: float<'ux> seq -> ys: float<'uy> seq -> Interval<'v>
 
 namespace Marey
 

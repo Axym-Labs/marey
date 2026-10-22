@@ -250,6 +250,9 @@ type Semantics =
       Data: (string * string)[] }
 
 /// The IR. Ten cases. Guard it obsessively.
+///
+/// **An open union**: a minor release may add a case, for a new kind of drawing, so a `match`
+/// over it keeps a wildcard case.
 [<NoComparison>]
 type Node =
     | Path of segments: PathSeg[] * stroke: Stroke option * fill: Paint option * rule: FillRule

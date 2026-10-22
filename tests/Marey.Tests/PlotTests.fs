@@ -52,6 +52,47 @@ let private textNodes (node: Node) =
         []
 
 // ======================================================================================
+// Data from any sequence
+// ======================================================================================
+
+/// A chart takes any sequence of values and reads it once, when the chart is built.
+module AnySequence =
+
+    let private ts = [| 0.0<s>; 1.0<s>; 2.0<s>; 3.0<s> |]
+    let private xs = [| 0.0<m>; 0.4<m>; 1.9<m>; 4.1<m> |]
+    let private svg (fig: Figure) = renderFig surface fig
+
+    [<Fact>]
+    let ``a list, a ResizeArray and a lazy sequence draw what an array draws`` () =
+        let fromArrays = svg (Chart.line U.second U.metre ts xs)
+        Assert.Equal(fromArrays, svg (Chart.line U.second U.metre (List.ofArray ts) (List.ofArray xs)))
+        Assert.Equal(fromArrays, svg (Chart.line U.second U.metre (ResizeArray ts) (xs |> Seq.map id)))
+        Assert.Equal((Stat.summary U.metre xs).Median, (Stat.summary U.metre (List.ofArray xs)).Median)
+
+    [<Fact>]
+    let ``a lazy sequence is enumerated once`` () =
+        let mutable reads = 0
+
+        let lazyXs =
+            seq {
+                reads <- reads + 1
+                yield! xs
+            }
+
+        Chart.line U.second U.metre ts lazyXs |> svg |> ignore
+        Assert.Equal(1, reads)
+
+    /// The figure holds its own copy: an array changed after the chart was built leaves the
+    /// figure as it was.
+    [<Fact>]
+    let ``changing the caller's array afterwards leaves the figure alone`` () =
+        let mine = Array.copy xs
+        let fig = Chart.line U.second U.metre ts mine
+        let before = svg fig
+        mine.[2] <- 40.0<m>
+        Assert.Equal(before, svg fig)
+
+// ======================================================================================
 // The headline: axes label themselves from the witness
 // ======================================================================================
 
@@ -91,8 +132,8 @@ module SelfLabellingAxes =
 // Plain numbers: unspecified, and dimensionless
 // ======================================================================================
 
-/// `Chart.Plain` was `Chart` at `U.one U.one`; D109 retired it for the unit-optional
-/// constructors, which leave a unit out as `U.unspecified`. The two witnesses differ in
+/// The unit-optional constructors leave a unit out as `U.unspecified`, where `U.one` states that
+/// the data is dimensionless. The two witnesses differ in
 /// what they *claim* — `one` says dimensionless, and the axis-sharing check acts on it — and not
 /// in how a single layer is drawn, so that is pinned here, along with the honesty of a bare axis:
 /// a plain `x`, never `x [1]`, and never rescaled into a prefix.

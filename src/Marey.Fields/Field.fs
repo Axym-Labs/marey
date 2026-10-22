@@ -62,16 +62,16 @@ module Field =
 
     /// Sample a scalar field over a plane with one unit on both axes.
     let sampleScalar<[<Measure>] 'x, [<Measure>] 'v>
-        (xs: float<'x>[])
-        (ys: float<'x>[])
+        (xs: seq<float<'x>>)
+        (ys: seq<float<'x>>)
         (f: Scalar2<'x, 'v>)
         : ScalarGrid<'x, 'x, 'v> =
         ScalarGrid.sample xs ys (fun x y -> f { X = x; Y = y })
 
     /// Sample a vector field over a plane with one unit on both axes.
     let sample<[<Measure>] 'x, [<Measure>] 'v>
-        (xs: float<'x>[])
-        (ys: float<'x>[])
+        (xs: seq<float<'x>>)
+        (ys: seq<float<'x>>)
         (f: Field2<'x, 'v>)
         : VectorGrid<'x, 'x, 'v, 'v> =
         VectorGrid.sample xs ys (fun x y ->
@@ -80,8 +80,8 @@ module Field =
 
     /// Sample a flow. The grid's components are the rates, in `'x/'t` and `'y/'t`.
     let sampleFlow<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
-        (xs: float<'x>[])
-        (ys: float<'y>[])
+        (xs: seq<float<'x>>)
+        (ys: seq<float<'y>>)
         (f: Flow<'x, 'y, 't>)
         : VectorGrid<'x, 'y, 'x / 't, 'y / 't> =
         VectorGrid.sample xs ys f
@@ -556,12 +556,12 @@ type Field =
 
     static member ContoursAt
         (
-            levels: float[],
+            levels: seq<float>,
             g: ScalarGrid<1, 1, 1>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit
         ) : Figure =
-        Field.contoursAt levels (U.erase xUnit) (U.erase yUnit) g
+        Field.contoursAt (Array.ofSeq levels) (U.erase xUnit) (U.erase yUnit) g
 
     static member Contours
         (
@@ -574,13 +574,13 @@ type Field =
     static member BandsWith
         (
             ramp: Ramp,
-            levels: float[],
+            levels: seq<float>,
             g: ScalarGrid<1, 1, 1>,
             [<Optional; DefaultParameterValue(null: IUnit)>] xUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit,
             [<Optional; DefaultParameterValue(null: IUnit)>] valueUnit: IUnit
         ) : Figure =
-        Field.bandsWith ramp levels (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) g
+        Field.bandsWith ramp (Array.ofSeq levels) (U.erase xUnit) (U.erase yUnit) (U.erase valueUnit) g
 
     static member Bands
         (

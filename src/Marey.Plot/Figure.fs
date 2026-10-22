@@ -105,6 +105,11 @@ type AxisConfig =
       /// The axis runs from its high end to its low end, over the domain it would have
       /// had: a depth below a surface, a magnitude, a Hertzsprung–Russell diagram.
       Reversed: bool
+      /// The scale every layer on this axis is drawn with, a layer added later included
+      /// (`Chart.withXLog`, `Chart.withYScaleKind`, `Chart.withRightYLog`). `None` leaves each layer
+      /// the scale it was built with: linear, or categorical for levels. A categorical layer keeps
+      /// its levels whatever this says.
+      Kind: ScaleKind option
       /// The minor ticks. `MinorAuto` draws them where the theme does (`MinorTicks`); a
       /// stated step or count draws them whatever the theme.
       Minor: MinorSpec
@@ -752,6 +757,29 @@ module Figure =
 
                     Erase.packSeries { s with XScale = x; YScale = y } }
 
+    /// A number in `from`'s unit read in `into`'s: the same quantity in another unit of its
+    /// dimension, a minute as 60 s, a degree as π/180 rad. An unspecified unit claims nothing, so
+    /// a number to or from one is taken as it is.
+    let internal convertBetween (from: IScaleErased) (into: IScaleErased) (v: float) : float =
+        if not from.Stated || not into.Stated || (from.ToSI = into.ToSI && from.OffsetSI = into.OffsetSI) then
+            v
+        else
+            (v * from.ToSI + from.OffsetSI - into.OffsetSI) / into.ToSI
+
+    let private convertDomain (from: IScaleErased) (into: IScaleErased) (lo: float, hi: float) =
+        convertBetween from into lo, convertBetween from into hi
+
+    /// `withDomains` with each domain beside the scale whose unit it is in, read in the series'
+    /// own unit. Every domain an axis shares or is given is in the axis's unit, its reference
+    /// layer's, and a layer in another unit of the dimension keeps its own numbers.
+    let internal withDomainsIn
+        (dx: ((float * float) * IScaleErased) option)
+        (dy: ((float * float) * IScaleErased) option)
+        (p: PackedSeries)
+        : PackedSeries =
+        let sx, sy = Erase.seriesScales p
+        withDomains (dx |> Option.map (fun (d, r) -> convertDomain r sx d)) (dy |> Option.map (fun (d, r) -> convertDomain r sy d)) p
+
     /// Change a packed series' scale kind. A log scale needs a positive domain, so switching to
     /// one re-derives the domain from the positive data rather than raising on the zero that a
     /// padded linear domain will usually contain.
@@ -812,6 +840,7 @@ module Figure =
           TickUnit = U.unspecified
           Prefix = None
           Reversed = false
+          Kind = None
           Minor = MinorAuto
           Format = FormatAuto
           ShowTickLabels = true
@@ -900,10 +929,13 @@ module Figure =
     /// constant and the axis is only its padding. `unify` has given every layer the panel's
     /// domain, so one layer with a real span is enough to make the axis a span.
     let private panelPoints (p: Panel) : float option * float option =
-        let shared (layers: Layer[]) pick (inDomain: Layer -> bool) =
+        let shared (layers: Layer[]) pick (scaleOf: IScaleErased * IScaleErased -> IScaleErased) (inDomain: Layer -> bool) =
+            // In the axis's unit, so 60 s and 1 min are one constant.
+            let into = scaleOf (Erase.seriesScales (axisLayer (Erase.seriesScales >> scaleOf) layers))
+
             let points =
                 layers
-                |> Array.map (fun l -> pick (pointsOf l.Data))
+                |> Array.map (fun l -> pick (pointsOf l.Data) |> Option.map (convertBetween (scaleOf (Erase.seriesScales l.Data)) into))
                 |> joining (layers |> Array.map inDomain)
 
             match points.[0] with
@@ -911,7 +943,7 @@ module Figure =
             | _ -> None
 
         // Y over the left axis's layers; a second axis is a panel of its own (`secondaryOf`).
-        shared p.Layers fst (fun l -> fst l.InDomain), shared (primaryLayers p) snd (fun l -> snd l.InDomain)
+        shared p.Layers fst fst (fun l -> fst l.InDomain), shared (primaryLayers p) snd snd (fun l -> snd l.InDomain)
 
     /// **The check, once.** Whether a set of things can share one axis, and what domain they
     /// share if they can.
@@ -936,7 +968,7 @@ module Figure =
         (scales: IScaleErased[])
         (points: float option[])
         (included: bool[])
-        : float * float =
+        : (float * float) * IScaleErased =
         let s0 = scales.[0]
 
         let reference =
@@ -1008,10 +1040,42 @@ module Figure =
 
         // The union is of domains, except that a constant's padding is not a domain: a flat line
         // at zero is padded to ±1 in its own unit, and taking that as data turned a ±1 mm axis
-        // into a ±1 m one.
-        Array.zip (scales |> Array.map (fun s -> s.Domain)) points
-        |> joining included
-        |> Scale.shareDomain autoPadding
+        // into a ±1 m one. It is taken in the reference's unit, so a layer in minutes on an axis
+        // in seconds joins it as the seconds it is.
+        let into = match reference with Some(_, r) -> r | None -> s0
+
+        let union =
+            Array.zip (scales |> Array.map (fun s -> convertDomain s into s.Domain)) (Array.map2 (fun (s: IScaleErased) pt -> pt |> Option.map (convertBetween s into)) scales points)
+            |> joining included
+            |> Scale.shareDomain autoPadding
+
+        union, into
+
+    /// Put every layer on the scale its panel's axis states: x for all of them, y from the
+    /// side the layer is on. A layer already on that scale is left as it is, domain included, so
+    /// this can run again; a categorical one keeps its levels.
+    let internal adoptKinds (p: Panel) : Panel =
+        let wanted (stated: ScaleKind option) (current: ScaleKind) =
+            match stated, current with
+            | _, ScaleKind.Ordinal _ -> None
+            | Some k, c when k <> c -> Some k
+            | _ -> None
+
+        let yKind (l: Layer) =
+            if onSecond p l then p.Y2Axis |> Option.bind (fun c -> c.Kind) else p.YAxis.Kind
+
+        if p.XAxis.Kind.IsNone && p.YAxis.Kind.IsNone && (p.Y2Axis |> Option.forall (fun c -> c.Kind.IsNone)) then
+            p
+        else
+            { p with
+                Layers =
+                    p.Layers
+                    |> Array.map (fun l ->
+                        let sx, sy = Erase.seriesScales l.Data
+
+                        match wanted p.XAxis.Kind sx.Kind, wanted (yKind l) sy.Kind with
+                        | None, None -> l
+                        | kx, ky -> { l with Data = withKinds kx ky l.Data }) }
 
     /// Give every layer on a panel the same x and y domains.
     ///
@@ -1065,7 +1129,7 @@ module Figure =
                     p.Layers
                     |> Array.map (fun l ->
                         { l with
-                            Data = withDomains (Some dx) (if onSecond p l then dy2 else dy) l.Data }) }
+                            Data = withDomainsIn (Some dx) (if onSecond p l then dy2 else dy) l.Data }) }
 
     /// Run a reversed axis from its high end to its low end, over the domain it would
     /// have had. After the sharing, so the padding and the union are the ones a forward axis gets.
@@ -1088,7 +1152,7 @@ module Figure =
 
     /// Give every layer on a panel the same x and y domains, and run a reversed axis backwards.
     /// See `share`; every reader of a panel's axes goes through here.
-    let internal unify (p: Panel) : Panel = p |> share |> orient
+    let internal unify (p: Panel) : Panel = p |> adoptKinds |> share |> orient
 
     /// **The plot's height over its width that a panel asks for**, over the states of it a
     /// shot holds (one for a still figure), unified. Equal aspect takes the union of their domains,
@@ -1243,7 +1307,7 @@ module Figure =
                                 p.Layers
                                 |> Array.map (fun l ->
                                     { l with
-                                        Data = withDomains dx (if onSecond p l then None else dy) l.Data }) }) }
+                                        Data = withDomainsIn dx (if onSecond p l then None else dy) l.Data }) }) }
 
     // ---- Share groups ------------------------------------------------------------------
 
@@ -1279,6 +1343,13 @@ module Figure =
         let onX (q: Panel) = dx.IsSome && targets |> Array.exists (fun p -> inXGroup p q)
         let onY (q: Panel) = dy.IsSome && targets |> Array.exists (fun p -> inYGroup p q)
 
+        // The domain is in the axis's unit of the panel it was stated on, and every panel of its
+        // group reads it in its own.
+        let reference = targets |> Array.tryFind (fun p -> p.Layers.Length > 0) |> Option.map axisScalesErased
+
+        let inAxis (d: (float * float) option) (pick: IScaleErased * IScaleErased -> IScaleErased) (l: Layer) =
+            d |> Option.map (fun d -> d, pick (defaultArg reference (Erase.seriesScales l.Data)))
+
         { fig with
             Panels =
                 fig.Panels
@@ -1290,7 +1361,11 @@ module Figure =
                         q
                     else
                         // A y domain is the left axis's; `withPanelDomainsY2` states the right's.
-                        { q with Layers = q.Layers |> Array.map (fun l -> { l with Data = withDomains x (if onSecond q l then None else y) l.Data }) }) }
+                        { q with
+                            Layers =
+                                q.Layers
+                                |> Array.map (fun l ->
+                                    { l with Data = withDomainsIn (inAxis x fst l) (if onSecond q l then None else inAxis y snd l) l.Data }) }) }
 
     /// Renumber `b`'s share groups past `a`'s, so composing two figures never merges a
     /// group of one with a group of the other.
@@ -1337,7 +1412,10 @@ module Figure =
                                         p) })
                     f
 
-            let shared = fig |> regroup (fun p -> p.XShare) ShareX |> regroup (fun p -> p.YShare) ShareY
+            // Each panel's layers on its axes' scales first, so a group is shared over the domains
+            // it is drawn with.
+            let adopted = { fig with Panels = fig.Panels |> Array.map adoptKinds }
+            let shared = adopted |> regroup (fun p -> p.XShare) ShareX |> regroup (fun p -> p.YShare) ShareY
             let drawn = shared.Panels |> Array.filter (fun p -> p.Layers.Length > 0)
 
             let below (p: Panel) =
@@ -3435,9 +3513,10 @@ module Figure =
                             Insets =
                                 p.Insets
                                 |> Array.mapi (fun i ins ->
-                                    if i = inset then
-                                        { ins with
-                                            Panel = { ins.Panel with Layers = ins.Panel.Layers |> Array.map (fun l -> { l with Data = withDomains dx dy l.Data }) } }
+                                    if i = inset && ins.Panel.Layers.Length > 0 then
+                                        let rx, ry = axisScalesErased ins.Panel
+                                        let layers = ins.Panel.Layers |> Array.map (fun l -> { l with Data = withDomainsIn (dx |> Option.map (fun d -> d, rx)) (dy |> Option.map (fun d -> d, ry)) l.Data })
+                                        { ins with Panel = { ins.Panel with Layers = layers } }
                                     else
                                         ins) }
                     else
@@ -3450,10 +3529,15 @@ module Figure =
                 fig.Panels
                 |> Array.map (fun p ->
                     if p.Row = row && p.Col = col then
-                        { p with
-                            Layers =
-                                p.Layers
-                                |> Array.map (fun l -> if onSecond p l then { l with Data = withDomains None (Some(lo, hi)) l.Data } else l) }
+                        match secondaryOf p with
+                        | Some second ->
+                            let ry = snd (axisScalesErased second)
+
+                            { p with
+                                Layers =
+                                    p.Layers
+                                    |> Array.map (fun l -> if onSecond p l then { l with Data = withDomainsIn None (Some((lo, hi), ry)) l.Data } else l) }
+                        | None -> p
                     else
                         p) }
 

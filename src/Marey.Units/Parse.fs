@@ -51,14 +51,14 @@ module UnitParsing =
           of' U.coulomb; of' U.volt; of' U.farad; of' U.ohm; of' U.siemens
           of' U.weber; of' U.tesla; of' U.henry; of' U.lumen; of' U.lux
           of' U.becquerel; of' U.gray; of' U.sievert; of' U.katal
-          of' U.radian; of' U.steradian
+          of' U.radian; of' U.steradian; of' U.degree
           of' U.electronvolt; of' U.calorie; of' U.angstrom; of' U.astronomicalUnit
           of' U.lightYear; of' U.parsec; of' U.barn; of' U.litre; of' U.bar
           of' U.atmosphere; of' U.minute; of' U.hour; of' U.day; of' U.year
           of' U.dalton; of' U.gauss; of' U.degreeCelsius; of' U.degreeFahrenheit ]
 
     let private aliases =
-        [ "degC", "°C"; "deg_C", "°C"; "celsius", "°C"; "degF", "°F"; "deg_F", "°F"
+        [ "deg", "°"; "degC", "°C"; "deg_C", "°C"; "celsius", "°C"; "degF", "°F"; "deg_F", "°F"
           "ohm", "Ω"; "Ohm", "Ω"; "Angstrom", "Å"; "l", "L"; "sec", "s" ]
 
     let private symbols =

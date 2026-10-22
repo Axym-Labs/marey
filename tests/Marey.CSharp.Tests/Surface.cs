@@ -305,6 +305,14 @@ public class Surface
     }
 
     [Fact]
+    public void AnyEnumerable()
+    {
+        var fromArrays = Svg(Chart.Line(X, Y, xUnit: Units.Second));
+        Assert.Equal(fromArrays, Svg(Chart.Line(new List<double>(X), Y.Select(v => v), xUnit: Units.Second)));
+        Assert.Equal(Svg(Chart.Histogram(Sample)), Svg(Chart.Histogram(Sample.ToList())));
+    }
+
+    [Fact]
     public void AnAxisLook()
     {
         var fig = Chart.Line(X, Y, xUnit: Units.Second, yUnit: Units.Metre);

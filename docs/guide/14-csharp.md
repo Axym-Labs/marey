@@ -1,8 +1,9 @@
 # 14. From C#
 
-C# has no units of measure, so it has the unit-optional mode: a chart takes `double[]`, and each
-axis a unit as an optional named argument. A stated unit gives the axis what a witness gives it in
-F#, its title, prefix and the check when two layers meet, at the moment the figure is drawn. The
+C# has no units of measure, so it has the unit-optional mode: a chart takes any
+`IEnumerable<double>` (an array, a `List<double>`, a LINQ query), and each axis a unit as an
+optional named argument. A stated unit gives the axis what a witness gives it in F#, its title,
+prefix and the check when two layers meet, at the moment the figure is drawn. The
 witnesses and their algebra are under `Units`, the combinators are extension methods on `Figure`,
 and the themes, coordinate systems and prefixes are `Themes`, `Coords` and `Prefixes`, all in the
 `Marey.CSharp` namespace. The renderers are `SvgRenderer`, `TikzRenderer`, `PngRenderer` and

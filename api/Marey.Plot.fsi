@@ -20,7 +20,7 @@ namespace Marey
 
         val datum: layerKey: Key -> k: string -> Key
 
-        val validate: rows: int -> keys: string array -> unit
+        val validate: rows: int -> keys: string seq -> unit
 
         val axisX: panelKey: Key -> Key
 
@@ -58,11 +58,11 @@ namespace Marey
     [<RequireQualifiedAccess>]
     module Ramp =
 
-        val ofStops: name: string -> stops: (float * Color) array -> Ramp
+        val ofStops: name: string -> stops: (float * Color) seq -> Ramp
 
-        val ofColors: name: string -> cs: Color array -> Ramp
+        val ofColors: name: string -> cs: Color seq -> Ramp
 
-        val ofHex: name: string -> hexes: string array -> Ramp
+        val ofHex: name: string -> hexes: string seq -> Ramp
 
         val at: r: Ramp -> t: float -> Color
 
@@ -124,7 +124,7 @@ namespace Marey
 
         val seriesDark: Color array
 
-        val pick: cs: Color array -> i: int -> Color
+        val pick: cs: Color seq -> i: int -> Color
 
         val viridis: Ramp
 
@@ -148,7 +148,7 @@ namespace Marey
 
         val distance: a: Color -> b: Color -> float
 
-        val minSeparation: cs: Color array -> float * int * int
+        val minSeparation: cs: Color seq -> float * int * int
 
         [<Literal>]
         val SeparationFloor: float = 0.065
@@ -156,7 +156,7 @@ namespace Marey
         [<Literal>]
         val ContrastFloor: float = 3
 
-        val validate: background: Color -> cs: Color array -> PaletteReport
+        val validate: background: Color -> cs: Color seq -> PaletteReport
 
         val isLightnessMonotone: tolerance: float -> r: Ramp -> bool
 
@@ -287,7 +287,7 @@ namespace Marey
 
         val tryByName: name: string -> Theme option
 
-        val withPalette: cs: Color array -> t: Theme -> Theme
+        val withPalette: cs: Color seq -> t: Theme -> Theme
 
         val withTickDirection: d: TickDirection -> t: Theme -> Theme
 
@@ -525,7 +525,7 @@ namespace Marey
 
         val withWidth: w: float<px> -> s: GeomStyle -> GeomStyle
 
-        val withDash: d: float<px> array -> s: GeomStyle -> GeomStyle
+        val withDash: d: float<px> seq -> s: GeomStyle -> GeomStyle
 
         val withOpacity: o: float -> s: GeomStyle -> GeomStyle
 
@@ -537,13 +537,13 @@ namespace Marey
 
         val withFont: f: FontSpec -> s: GeomStyle -> GeomStyle
 
-        val errorY: s: Series<'ux,'uy> -> err: float<'uy> array -> Geom
+        val errorY: s: Series<'ux,'uy> -> err: float<'uy> seq -> Geom
 
         val errorYBetween:
           s: Series<'ux,'uy> ->
-            low: float<'uy> array -> high: float<'uy> array -> Geom
+            low: float<'uy> seq -> high: float<'uy> seq -> Geom
 
-        val errorX: s: Series<'ux,'uy> -> err: float<'ux> array -> Geom
+        val errorX: s: Series<'ux,'uy> -> err: float<'ux> seq -> Geom
 
         val area: _s: Series<'ux,'uy> -> Geom
 
@@ -551,15 +551,15 @@ namespace Marey
 
         val ribbon:
           s: Series<'ux,'uy> ->
-            low: float<'uy> array -> high: float<'uy> array -> Geom
+            low: float<'uy> seq -> high: float<'uy> seq -> Geom
 
-        val ribbonAround: s: Series<'ux,'uy> -> err: float<'uy> array -> Geom
+        val ribbonAround: s: Series<'ux,'uy> -> err: float<'uy> seq -> Geom
 
         val rect:
           s: Series<'ux,'uy> ->
-            x0: float<'ux> array ->
-            y0: float<'uy> array ->
-            x1: float<'ux> array -> y1: float<'uy> array -> Geom
+            x0: float<'ux> seq ->
+            y0: float<'uy> seq ->
+            x1: float<'ux> seq -> y1: float<'uy> seq -> Geom
 
         val tile: w: float<'ux> -> h: float<'uy> -> s: Series<'ux,'uy> -> Geom
 
@@ -571,23 +571,22 @@ namespace Marey
             x1: float<'ux> -> y1: float<'uy> -> smooth: bool -> Geom
 
         val segment:
-          s: Series<'ux,'uy> ->
-            x2: float<'ux> array -> y2: float<'uy> array -> Geom
+          s: Series<'ux,'uy> -> x2: float<'ux> seq -> y2: float<'uy> seq -> Geom
 
-        val text: labels: string array -> GeomOf<'p>
+        val text: labels: string seq -> GeomOf<'p>
 
         val textAt:
           anchor: TextAnchor ->
             baseline: TextBaseline ->
-            offset: Vec2<px> -> labels: string array -> GeomOf<'p>
+            offset: Vec2<px> -> labels: string seq -> GeomOf<'p>
 
         val boxplot:
           widthFraction: float ->
-            s: Series<'ux,'uy> -> summaries: Stat.Summary<'uy> array -> Geom
+            s: Series<'ux,'uy> -> summaries: Stat.Summary<'uy> seq -> Geom
 
         val violin:
           widthFraction: float ->
-            s: Series<'ux,'uy> -> densities: Stat.Density<'uy> array -> Geom
+            s: Series<'ux,'uy> -> densities: Stat.Density<'uy> seq -> Geom
 
 namespace Marey
 
@@ -678,6 +677,8 @@ namespace Marey
           Prefix: Prefix option
 
           Reversed: bool
+
+          Kind: ScaleKind option
 
           Minor: MinorSpec
 
@@ -894,7 +895,7 @@ namespace Marey
         val tryIndexOf: ls: Levels<'k> -> k: 'k -> int when 'k: equality
 
         val positions:
-          ls: Levels<'k> -> keys: 'k array -> float array when 'k: equality
+          ls: Levels<'k> -> keys: 'k seq -> float array when 'k: equality
 
         val scale: ls: Levels<'k> -> Scale<1> when 'k: equality
 
@@ -929,113 +930,43 @@ namespace Marey
 
         val ofEcdf: e: Stat.Ecdf<'u> -> Figure
 
-        [<System.Obsolete
-          ("Chart.Plain is retired. Use Chart.Line(xs, ys), which leaves the units unspecified, or pass U.one where the data is dimensionless.");
-          RequireQualifiedAccess>]
-        module Plain =
-
-            val line: x: float array -> y: float array -> Figure
-
-            val scatter: x: float array -> y: float array -> Figure
-
-            val area: x: float array -> y: float array -> Figure
-
-            val bar: x: float array -> y: float array -> Figure
-
-            val errorbar:
-              x: float array -> y: float array -> err: float array -> Figure
-
-            val addLine:
-              x: float array -> y: float array -> fig: Figure -> Figure
-
-            val addScatter:
-              x: float array -> y: float array -> fig: Figure -> Figure
-
-            val addArea:
-              x: float array -> y: float array -> fig: Figure -> Figure
-
-            val addErrorbar:
-              x: float array ->
-                y: float array -> err: float array -> fig: Figure -> Figure
-
-            val histogram: x: float array -> Figure
-
-            val histogramWith: bins: int -> x: float array -> Figure
-
-            val density: x: float array -> Figure
-
-            val ecdf: x: float array -> Figure
-
-            val addFit:
-              x: float array -> y: float array -> fig: Figure -> Figure
-
-            val step: x: float array -> y: float array -> Figure
-
-            val stepWith:
-              align: StepAlign -> x: float array -> y: float array -> Figure
-
-            val ribbon:
-              x: float array -> low: float array -> high: float array -> Figure
-
-            val tile:
-              w: float -> h: float -> x: float array -> y: float array -> Figure
-
-            val segment:
-              x0: float array ->
-                y0: float array -> x1: float array -> y1: float array -> Figure
-
-            val text:
-              x: float array -> y: float array -> labels: string array -> Figure
-
-            val addStep:
-              x: float array -> y: float array -> fig: Figure -> Figure
-
-            val addRibbon:
-              x: float array ->
-                low: float array -> high: float array -> fig: Figure -> Figure
-
-            val addSegment:
-              x0: float array ->
-                y0: float array ->
-                x1: float array -> y1: float array -> fig: Figure -> Figure
-
         [<RequireQualifiedAccess>]
         module Category =
 
-            val count: keys: 'k array -> Figure when 'k: equality
+            val count: keys: 'k seq -> Figure when 'k: equality
 
         [<AbstractClass; Sealed; Class>]
         type Category =
 
             static member
-              Bar: keys: 'k array * values: float array *
+              Bar: keys: 'k seq * values: float seq *
                    [<System.Runtime.InteropServices.Optional;
                      System.Runtime.InteropServices.DefaultParameterValue
                      ((null :> obj))>] yUnit: IUnit -> Figure when 'k: equality
 
             static member
-              Boxplot: keys: 'k array * values: float array *
+              Boxplot: keys: 'k seq * values: float seq *
                        [<System.Runtime.InteropServices.Optional;
                          System.Runtime.InteropServices.DefaultParameterValue
                          ((null :> obj))>] yUnit: IUnit -> Figure
                          when 'k: equality
 
             static member
-              Scatter: keys: 'k array * values: float array *
+              Scatter: keys: 'k seq * values: float seq *
                        [<System.Runtime.InteropServices.Optional;
                          System.Runtime.InteropServices.DefaultParameterValue
                          ((null :> obj))>] yUnit: IUnit -> Figure
                          when 'k: equality
 
             static member
-              Series: name: string * keys: 'k array * values: float array *
+              Series: name: string * keys: 'k seq * values: float seq *
                       [<System.Runtime.InteropServices.Optional;
                         System.Runtime.InteropServices.DefaultParameterValue
                         ((null :> obj))>] yUnit: IUnit ->
                         Levels<'k> * Series<1,1> when 'k: equality
 
             static member
-              Violin: keys: 'k array * values: float array *
+              Violin: keys: 'k seq * values: float seq *
                       [<System.Runtime.InteropServices.Optional;
                         System.Runtime.InteropServices.DefaultParameterValue
                         ((null :> obj))>] yUnit: IUnit -> Figure
@@ -1053,13 +984,13 @@ namespace Marey
 
         val withStyle: f: (GeomStyle -> GeomStyle) -> fig: Figure -> Figure
 
-        val withDash: d: float<px> array -> fig: Figure -> Figure
+        val withDash: d: float<px> seq -> fig: Figure -> Figure
 
         val withMarker: s: MarkerShape -> fig: Figure -> Figure
 
-        val addressMarks: rows: int array -> fig: Figure -> Figure
+        val addressMarks: rows: int seq -> fig: Figure -> Figure
 
-        val withKeys: keys: string array -> fig: Figure -> Figure
+        val withKeys: keys: string seq -> fig: Figure -> Figure
 
         val withOpacity: o: float -> fig: Figure -> Figure
 
@@ -1080,13 +1011,11 @@ namespace Marey
         val withPanelLettersWith:
           letter: LetterStyle -> bold: bool -> fig: Figure -> Figure
 
-        val addLabels: labels: string array -> fig: Figure -> Figure
+        val addLabels: labels: string seq -> fig: Figure -> Figure
 
-        val colorByKey:
-          keys: 'k array -> fig: Figure -> Figure when 'k: equality
+        val colorByKey: keys: 'k seq -> fig: Figure -> Figure when 'k: equality
 
-        val shapeByKey:
-          keys: 'k array -> fig: Figure -> Figure when 'k: equality
+        val shapeByKey: keys: 'k seq -> fig: Figure -> Figure when 'k: equality
 
         val withColorLabel: label: string -> fig: Figure -> Figure
 
@@ -1110,13 +1039,17 @@ namespace Marey
 
         val withUnitStyle: s: UnitStyle -> fig: Figure -> Figure
 
+        val withXScaleKind: k: ScaleKind -> fig: Figure -> Figure
+
+        val withYScaleKind: k: ScaleKind -> fig: Figure -> Figure
+
+        val withRightYScaleKind: k: ScaleKind -> fig: Figure -> Figure
+
         val withXLog: fig: Figure -> Figure
 
         val withYLog: fig: Figure -> Figure
 
-        val withXScaleKind: k: ScaleKind -> fig: Figure -> Figure
-
-        val withYScaleKind: k: ScaleKind -> fig: Figure -> Figure
+        val withRightYLog: fig: Figure -> Figure
 
         val withXDomain: lo: float -> hi: float -> fig: Figure -> Figure
 
@@ -1126,15 +1059,15 @@ namespace Marey
 
         val withYTicksEvery: step: float -> fig: Figure -> Figure
 
-        val withXTicksAt: values: float array -> fig: Figure -> Figure
+        val withXTicksAt: values: float seq -> fig: Figure -> Figure
 
-        val withYTicksAt: values: float array -> fig: Figure -> Figure
+        val withYTicksAt: values: float seq -> fig: Figure -> Figure
 
         val withXTicksNamed:
-          ticks: (float * string) array -> fig: Figure -> Figure
+          ticks: (float * string) seq -> fig: Figure -> Figure
 
         val withYTicksNamed:
-          ticks: (float * string) array -> fig: Figure -> Figure
+          ticks: (float * string) seq -> fig: Figure -> Figure
 
         val withXPrefix: prefix: Prefix -> fig: Figure -> Figure
 
@@ -1210,9 +1143,9 @@ namespace Marey
 
         val shareAxes: fig: Figure -> Figure
 
-        val withRowHeights: heights: float array -> fig: Figure -> Figure
+        val withRowHeights: heights: float seq -> fig: Figure -> Figure
 
-        val withColWidths: widths: float array -> fig: Figure -> Figure
+        val withColWidths: widths: float seq -> fig: Figure -> Figure
 
         val mosaic: layout: string -> parts: (char * Figure) list -> Figure
 
@@ -1220,11 +1153,11 @@ namespace Marey
 
         val facetWith:
           mode: FacetScales ->
-            cols: int -> parts: (string * Figure) array -> Figure
+            cols: int -> parts: (string * Figure) seq -> Figure
 
-        val facet: parts: (string * Figure) array -> Figure
+        val facet: parts: (string * Figure) seq -> Figure
 
-        val facetIn: cols: int -> parts: (string * Figure) array -> Figure
+        val facetIn: cols: int -> parts: (string * Figure) seq -> Figure
 
         val toScene: extent: Extent<px> -> fig: Figure -> Node
 
@@ -1240,7 +1173,7 @@ namespace Marey
             extent: Extent<px> -> sample: (float -> Figure) -> Shot
 
         val arrangeOver:
-          m: ITextMeasurer -> extent: Extent<px> -> states: Figure array -> Shot
+          m: ITextMeasurer -> extent: Extent<px> -> states: Figure seq -> Shot
 
         val fitsIn: m: ITextMeasurer -> shot: Shot -> fig: Figure -> bool
 
@@ -1289,7 +1222,7 @@ namespace Marey
                         ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          Area: x: float array * y: float array *
+          Area: x: float seq * y: float seq *
                 [<System.Runtime.InteropServices.Optional;
                   System.Runtime.InteropServices.DefaultParameterValue
                   ((null :> obj))>] xUnit: IUnit *
@@ -1298,7 +1231,7 @@ namespace Marey
                   ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          Bar: x: float array * y: float array *
+          Bar: x: float seq * y: float seq *
                [<System.Runtime.InteropServices.Optional;
                  System.Runtime.InteropServices.DefaultParameterValue
                  ((null :> obj))>] xUnit: IUnit *
@@ -1307,31 +1240,31 @@ namespace Marey
                  ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          ColorBy: values: float array *
+          ColorBy: values: float seq *
                    [<System.Runtime.InteropServices.Optional;
                      System.Runtime.InteropServices.DefaultParameterValue
                      ((null :> obj))>] unit: IUnit -> (Figure -> Figure)
 
         static member
-          ColorByWith: ramp: Ramp * values: float array *
+          ColorByWith: ramp: Ramp * values: float seq *
                        [<System.Runtime.InteropServices.Optional;
                          System.Runtime.InteropServices.DefaultParameterValue
                          ((null :> obj))>] unit: IUnit -> (Figure -> Figure)
 
         static member
-          Density: x: float array *
+          Density: x: float seq *
                    [<System.Runtime.InteropServices.Optional;
                      System.Runtime.InteropServices.DefaultParameterValue
                      ((null :> obj))>] unit: IUnit -> Figure
 
         static member
-          Ecdf: x: float array *
+          Ecdf: x: float seq *
                 [<System.Runtime.InteropServices.Optional;
                   System.Runtime.InteropServices.DefaultParameterValue
                   ((null :> obj))>] unit: IUnit -> Figure
 
         static member
-          Errorbar: x: float array * y: float array * err: float array *
+          Errorbar: x: float seq * y: float seq * err: float seq *
                     [<System.Runtime.InteropServices.Optional;
                       System.Runtime.InteropServices.DefaultParameterValue
                       ((null :> obj))>] xUnit: IUnit *
@@ -1340,7 +1273,7 @@ namespace Marey
                       ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          Fit: x: float array * y: float array *
+          Fit: x: float seq * y: float seq *
                [<System.Runtime.InteropServices.Optional;
                  System.Runtime.InteropServices.DefaultParameterValue
                  ((null :> obj))>] xUnit: IUnit *
@@ -1361,7 +1294,7 @@ namespace Marey
                    ((null :> obj))>] unit: IUnit -> Figure
 
         static member
-          Heatmap: x: float array * y: float array * z: float array *
+          Heatmap: x: float seq * y: float seq * z: float seq *
                    [<System.Runtime.InteropServices.Optional;
                      System.Runtime.InteropServices.DefaultParameterValue
                      ((null :> obj))>] xUnit: IUnit *
@@ -1373,7 +1306,7 @@ namespace Marey
                      ((null :> obj))>] valueUnit: IUnit -> Figure
 
         static member
-          Hexbin: x: float array * y: float array *
+          Hexbin: x: float seq * y: float seq *
                   [<System.Runtime.InteropServices.Optional;
                     System.Runtime.InteropServices.DefaultParameterValue
                     ((null :> obj))>] xUnit: IUnit *
@@ -1382,7 +1315,7 @@ namespace Marey
                     ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          HexbinWith: across: int * x: float array * y: float array *
+          HexbinWith: across: int * x: float seq * y: float seq *
                       [<System.Runtime.InteropServices.Optional;
                         System.Runtime.InteropServices.DefaultParameterValue
                         ((null :> obj))>] xUnit: IUnit *
@@ -1391,13 +1324,13 @@ namespace Marey
                         ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          Histogram: x: float array *
+          Histogram: x: float seq *
                      [<System.Runtime.InteropServices.Optional;
                        System.Runtime.InteropServices.DefaultParameterValue
                        ((null :> obj))>] unit: IUnit -> Figure
 
         static member
-          HistogramWith: bins: int * x: float array *
+          HistogramWith: bins: int * x: float seq *
                          [<System.Runtime.InteropServices.Optional;
                            System.Runtime.InteropServices.DefaultParameterValue
                            ((null :> obj))>] unit: IUnit -> Figure
@@ -1413,7 +1346,7 @@ namespace Marey
                    ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          Line: x: float array * y: float array *
+          Line: x: float seq * y: float seq *
                 [<System.Runtime.InteropServices.Optional;
                   System.Runtime.InteropServices.DefaultParameterValue
                   ((null :> obj))>] xUnit: IUnit *
@@ -1431,7 +1364,7 @@ namespace Marey
                          ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          Loess: x: float array * y: float array *
+          Loess: x: float seq * y: float seq *
                  [<System.Runtime.InteropServices.Optional;
                    System.Runtime.InteropServices.DefaultParameterValue
                    ((null :> obj))>] xUnit: IUnit *
@@ -1440,7 +1373,7 @@ namespace Marey
                    ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          LoessWith: span: float * x: float array * y: float array *
+          LoessWith: span: float * x: float seq * y: float seq *
                      [<System.Runtime.InteropServices.Optional;
                        System.Runtime.InteropServices.DefaultParameterValue
                        ((null :> obj))>] xUnit: IUnit *
@@ -1449,7 +1382,7 @@ namespace Marey
                        ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          Ribbon: x: float array * low: float array * high: float array *
+          Ribbon: x: float seq * low: float seq * high: float seq *
                   [<System.Runtime.InteropServices.Optional;
                     System.Runtime.InteropServices.DefaultParameterValue
                     ((null :> obj))>] xUnit: IUnit *
@@ -1458,7 +1391,7 @@ namespace Marey
                     ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          Scatter: x: float array * y: float array *
+          Scatter: x: float seq * y: float seq *
                    [<System.Runtime.InteropServices.Optional;
                      System.Runtime.InteropServices.DefaultParameterValue
                      ((null :> obj))>] xUnit: IUnit *
@@ -1467,8 +1400,7 @@ namespace Marey
                      ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          Segment: x0: float array * y0: float array * x1: float array *
-                   y1: float array *
+          Segment: x0: float seq * y0: float seq * x1: float seq * y1: float seq *
                    [<System.Runtime.InteropServices.Optional;
                      System.Runtime.InteropServices.DefaultParameterValue
                      ((null :> obj))>] xUnit: IUnit *
@@ -1477,7 +1409,7 @@ namespace Marey
                      ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          Series: name: string * x: float array * y: float array *
+          Series: name: string * x: float seq * y: float seq *
                   [<System.Runtime.InteropServices.Optional;
                     System.Runtime.InteropServices.DefaultParameterValue
                     ((null :> obj))>] xUnit: IUnit *
@@ -1486,20 +1418,20 @@ namespace Marey
                     ((null :> obj))>] yUnit: IUnit -> Series<1,1>
 
         static member
-          SizeBy: values: float array *
+          SizeBy: values: float seq *
                   [<System.Runtime.InteropServices.Optional;
                     System.Runtime.InteropServices.DefaultParameterValue
                     ((null :> obj))>] unit: IUnit -> (Figure -> Figure)
 
         static member
           SizeByWith: smallest: float<px> * largest: float<px> *
-                      values: float array *
+                      values: float seq *
                       [<System.Runtime.InteropServices.Optional;
                         System.Runtime.InteropServices.DefaultParameterValue
                         ((null :> obj))>] unit: IUnit -> (Figure -> Figure)
 
         static member
-          Step: x: float array * y: float array *
+          Step: x: float seq * y: float seq *
                 [<System.Runtime.InteropServices.Optional;
                   System.Runtime.InteropServices.DefaultParameterValue
                   ((null :> obj))>] xUnit: IUnit *
@@ -1508,7 +1440,7 @@ namespace Marey
                   ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          StepWith: align: StepAlign * x: float array * y: float array *
+          StepWith: align: StepAlign * x: float seq * y: float seq *
                     [<System.Runtime.InteropServices.Optional;
                       System.Runtime.InteropServices.DefaultParameterValue
                       ((null :> obj))>] xUnit: IUnit *
@@ -1517,7 +1449,7 @@ namespace Marey
                       ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          Text: x: float array * y: float array * labels: string array *
+          Text: x: float seq * y: float seq * labels: string seq *
                 [<System.Runtime.InteropServices.Optional;
                   System.Runtime.InteropServices.DefaultParameterValue
                   ((null :> obj))>] xUnit: IUnit *
@@ -1526,7 +1458,7 @@ namespace Marey
                   ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          Tile: width: float * height: float * x: float array * y: float array *
+          Tile: width: float * height: float * x: float seq * y: float seq *
                 [<System.Runtime.InteropServices.Optional;
                   System.Runtime.InteropServices.DefaultParameterValue
                   ((null :> obj))>] xUnit: IUnit *
@@ -1939,57 +1871,57 @@ namespace Marey.UnitsOfMeasure
           name: string ->
             ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Series<'ux,'uy>
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Series<'ux,'uy>
 
         val line:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
         val scatter:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
         val area:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
         val bar:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
         val errorbar:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array ->
-            y: float<'uy> array -> err: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq ->
+            y: float<'uy> seq -> err: float<'uy> seq -> Marey.Figure
 
         val step:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
         val stepWith:
           align: Marey.StepAlign ->
             ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
         val ribbon:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array ->
-            low: float<'uy> array -> high: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq ->
+            low: float<'uy> seq -> high: float<'uy> seq -> Marey.Figure
 
         val tile:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             w: float<'ux> ->
             h: float<'uy> ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
         val image:
           ux: Marey.U<'ux> ->
@@ -2002,114 +1934,114 @@ namespace Marey.UnitsOfMeasure
         val segment:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x0: float<'ux> array ->
-            y0: float<'uy> array ->
-            x1: float<'ux> array -> y1: float<'uy> array -> Marey.Figure
+            x0: float<'ux> seq ->
+            y0: float<'uy> seq ->
+            x1: float<'ux> seq -> y1: float<'uy> seq -> Marey.Figure
 
         val text:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array ->
-            y: float<'uy> array -> labels: string array -> Marey.Figure
+            x: float<'ux> seq ->
+            y: float<'uy> seq -> labels: string seq -> Marey.Figure
 
         val addLine:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array ->
-            y: float<'uy> array -> fig: Marey.Figure -> Marey.Figure
+            x: float<'ux> seq ->
+            y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addScatter:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array ->
-            y: float<'uy> array -> fig: Marey.Figure -> Marey.Figure
+            x: float<'ux> seq ->
+            y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addArea:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array ->
-            y: float<'uy> array -> fig: Marey.Figure -> Marey.Figure
+            x: float<'ux> seq ->
+            y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addErrorbar:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array ->
-            y: float<'uy> array ->
-            err: float<'uy> array -> fig: Marey.Figure -> Marey.Figure
+            x: float<'ux> seq ->
+            y: float<'uy> seq ->
+            err: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addStep:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array ->
-            y: float<'uy> array -> fig: Marey.Figure -> Marey.Figure
+            x: float<'ux> seq ->
+            y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addRibbon:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array ->
-            low: float<'uy> array ->
-            high: float<'uy> array -> fig: Marey.Figure -> Marey.Figure
+            x: float<'ux> seq ->
+            low: float<'uy> seq ->
+            high: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addSegment:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x0: float<'ux> array ->
-            y0: float<'uy> array ->
-            x1: float<'ux> array ->
-            y1: float<'uy> array -> fig: Marey.Figure -> Marey.Figure
+            x0: float<'ux> seq ->
+            y0: float<'uy> seq ->
+            x1: float<'ux> seq ->
+            y1: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
-        val histogram: u: Marey.U<'u> -> xs: float<'u> array -> Marey.Figure
+        val histogram: u: Marey.U<'u> -> xs: float<'u> seq -> Marey.Figure
 
         val histogramWith:
-          u: Marey.U<'u> -> bins: int -> xs: float<'u> array -> Marey.Figure
+          u: Marey.U<'u> -> bins: int -> xs: float<'u> seq -> Marey.Figure
 
-        val density: u: Marey.U<'u> -> xs: float<'u> array -> Marey.Figure
+        val density: u: Marey.U<'u> -> xs: float<'u> seq -> Marey.Figure
 
-        val ecdf: u: Marey.U<'u> -> xs: float<'u> array -> Marey.Figure
+        val ecdf: u: Marey.U<'u> -> xs: float<'u> seq -> Marey.Figure
 
         val addFit:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array ->
-            y: float<'uy> array -> fig: Marey.Figure -> Marey.Figure
+            x: float<'ux> seq ->
+            y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addLoess:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array ->
-            y: float<'uy> array -> fig: Marey.Figure -> Marey.Figure
+            x: float<'ux> seq ->
+            y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val addLoessWith:
           span: float ->
             ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array ->
-            y: float<'uy> array -> fig: Marey.Figure -> Marey.Figure
+            x: float<'ux> seq ->
+            y: float<'uy> seq -> fig: Marey.Figure -> Marey.Figure
 
         val fit:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
         val loess:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
         val loessWith:
           span: float ->
             ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
         val colorByWith:
           ramp: Marey.Ramp ->
             u: Marey.U<'u> ->
-            values: float<'u> array -> fig: Marey.Figure -> Marey.Figure
+            values: float<'u> seq -> fig: Marey.Figure -> Marey.Figure
 
         val colorBy:
           u: Marey.U<'u> ->
-            values: float<'u> array -> fig: Marey.Figure -> Marey.Figure
+            values: float<'u> seq -> fig: Marey.Figure -> Marey.Figure
 
         val withColorDomain:
           u: Marey.U<'u> ->
@@ -2119,29 +2051,29 @@ namespace Marey.UnitsOfMeasure
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             uz: Marey.U<'uz> ->
-            x: float<'ux> array ->
-            y: float<'uy> array -> z: float<'uz> array -> Marey.Figure
+            x: float<'ux> seq ->
+            y: float<'uy> seq -> z: float<'uz> seq -> Marey.Figure
 
         val hexbinWith:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
             across: int ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
         val hexbin:
           ux: Marey.U<'ux> ->
             uy: Marey.U<'uy> ->
-            x: float<'ux> array -> y: float<'uy> array -> Marey.Figure
+            x: float<'ux> seq -> y: float<'uy> seq -> Marey.Figure
 
         val sizeByWith:
           smallest: float<Marey.px> ->
             largest: float<Marey.px> ->
             u: Marey.U<'u> ->
-            values: float<'u> array -> fig: Marey.Figure -> Marey.Figure
+            values: float<'u> seq -> fig: Marey.Figure -> Marey.Figure
 
         val sizeBy:
           u: Marey.U<'u> ->
-            values: float<'u> array -> fig: Marey.Figure -> Marey.Figure
+            values: float<'u> seq -> fig: Marey.Figure -> Marey.Figure
 
         val withTopAxisMapped:
           u: Marey.U<'v> ->
@@ -2218,21 +2150,19 @@ namespace Marey.UnitsOfMeasure
 
         val withXTicksAt:
           u: Marey.U<'u> ->
-            values: float<'u> array -> fig: Marey.Figure -> Marey.Figure
+            values: float<'u> seq -> fig: Marey.Figure -> Marey.Figure
 
         val withYTicksAt:
           u: Marey.U<'u> ->
-            values: float<'u> array -> fig: Marey.Figure -> Marey.Figure
+            values: float<'u> seq -> fig: Marey.Figure -> Marey.Figure
 
         val withXTicksNamed:
           u: Marey.U<'u> ->
-            ticks: (float<'u> * string) array ->
-            fig: Marey.Figure -> Marey.Figure
+            ticks: (float<'u> * string) seq -> fig: Marey.Figure -> Marey.Figure
 
         val withYTicksNamed:
           u: Marey.U<'u> ->
-            ticks: (float<'u> * string) array ->
-            fig: Marey.Figure -> Marey.Figure
+            ticks: (float<'u> * string) seq -> fig: Marey.Figure -> Marey.Figure
 
         [<System.Obsolete
           ("Marey.UnitsOfMeasure is open, so an annotation takes a witness per axis: Chart.annotate or Chart.annotation. Chart.Annotation(…) is the unit-optional spelling, for code that does not open this namespace.",
@@ -2410,28 +2340,28 @@ namespace Marey.UnitsOfMeasure
             val series:
               name: string ->
                 uy: Marey.U<'uy> ->
-                keys: 'k array ->
-                values: float<'uy> array ->
-                Marey.Levels<'k> * Marey.Series<1,'uy> when 'k: equality
+                keys: 'k seq ->
+                values: float<'uy> seq -> Marey.Levels<'k> * Marey.Series<1,'uy>
+                when 'k: equality
 
             val bar:
               uy: Marey.U<'uy> ->
-                keys: 'k array -> values: float<'uy> array -> Marey.Figure
+                keys: 'k seq -> values: float<'uy> seq -> Marey.Figure
                 when 'k: equality
 
             val scatter:
               uy: Marey.U<'uy> ->
-                keys: 'k array -> values: float<'uy> array -> Marey.Figure
+                keys: 'k seq -> values: float<'uy> seq -> Marey.Figure
                 when 'k: equality
 
             val boxplot:
               uy: Marey.U<'uy> ->
-                keys: 'k array -> values: float<'uy> array -> Marey.Figure
+                keys: 'k seq -> values: float<'uy> seq -> Marey.Figure
                 when 'k: equality
 
             val violin:
               uy: Marey.U<'uy> ->
-                keys: 'k array -> values: float<'uy> array -> Marey.Figure
+                keys: 'k seq -> values: float<'uy> seq -> Marey.Figure
                 when 'k: equality
 
             [<System.Obsolete
@@ -2483,7 +2413,7 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
-          AddLabels: fig: Marey.Figure * labels: string array -> Marey.Figure
+          AddLabels: fig: Marey.Figure * labels: string seq -> Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
@@ -2496,20 +2426,19 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
-          ColorBy: fig: Marey.Figure * values: float array *
+          ColorBy: fig: Marey.Figure * values: float seq *
                    [<System.Runtime.InteropServices.Optional;
                      System.Runtime.InteropServices.DefaultParameterValue
                      ((null :> obj))>] unit: Marey.IUnit -> Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
-          ColorByKey: fig: Marey.Figure * keys: 'k array -> Marey.Figure
+          ColorByKey: fig: Marey.Figure * keys: 'k seq -> Marey.Figure
                         when 'k: equality
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
-          ColorByWith: fig: Marey.Figure * ramp: Marey.Ramp *
-                       values: float array *
+          ColorByWith: fig: Marey.Figure * ramp: Marey.Ramp * values: float seq *
                        [<System.Runtime.InteropServices.Optional;
                          System.Runtime.InteropServices.DefaultParameterValue
                          ((null :> obj))>] unit: Marey.IUnit -> Marey.Figure
@@ -2539,7 +2468,7 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
-          ShapeByKey: fig: Marey.Figure * keys: 'k array -> Marey.Figure
+          ShapeByKey: fig: Marey.Figure * keys: 'k seq -> Marey.Figure
                         when 'k: equality
 
         [<System.Runtime.CompilerServices.Extension>]
@@ -2553,7 +2482,7 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
-          SizeBy: fig: Marey.Figure * values: float array *
+          SizeBy: fig: Marey.Figure * values: float seq *
                   [<System.Runtime.InteropServices.Optional;
                     System.Runtime.InteropServices.DefaultParameterValue
                     ((null :> obj))>] unit: Marey.IUnit -> Marey.Figure
@@ -2561,7 +2490,7 @@ namespace Marey.CSharp
         [<System.Runtime.CompilerServices.Extension>]
         static member
           SizeByWith: fig: Marey.Figure * smallest: float<Marey.px> *
-                      largest: float<Marey.px> * values: float array *
+                      largest: float<Marey.px> * values: float seq *
                       [<System.Runtime.InteropServices.Optional;
                         System.Runtime.InteropServices.DefaultParameterValue
                         ((null :> obj))>] unit: Marey.IUnit -> Marey.Figure
@@ -2614,7 +2543,7 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
-          WithDash: fig: Marey.Figure * dash: float<Marey.px> array ->
+          WithDash: fig: Marey.Figure * dash: float<Marey.px> seq ->
                       Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
@@ -2642,7 +2571,7 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
-          WithKeys: fig: Marey.Figure * keys: string array -> Marey.Figure
+          WithKeys: fig: Marey.Figure * keys: string seq -> Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
@@ -2712,6 +2641,14 @@ namespace Marey.CSharp
         [<System.Runtime.CompilerServices.Extension>]
         static member
           WithRightYLabel: fig: Marey.Figure * label: string -> Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member WithRightYLog: fig: Marey.Figure -> Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member
+          WithRightYScaleKind: fig: Marey.Figure * kind: Marey.ScaleKind ->
+                                 Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
@@ -2814,7 +2751,7 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
-          WithXTicksAt: fig: Marey.Figure * values: float array *
+          WithXTicksAt: fig: Marey.Figure * values: float seq *
                         [<System.Runtime.InteropServices.Optional;
                           System.Runtime.InteropServices.DefaultParameterValue
                           ((null :> obj))>] unit: Marey.IUnit -> Marey.Figure
@@ -2828,8 +2765,8 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
-          WithXTicksNamed: fig: Marey.Figure * values: float array *
-                           labels: string array *
+          WithXTicksNamed: fig: Marey.Figure * values: float seq *
+                           labels: string seq *
                            [<System.Runtime.InteropServices.Optional;
                              System.Runtime.InteropServices.DefaultParameterValue
                              ((null :> obj))>] unit: Marey.IUnit -> Marey.Figure
@@ -2883,7 +2820,7 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
-          WithYTicksAt: fig: Marey.Figure * values: float array *
+          WithYTicksAt: fig: Marey.Figure * values: float seq *
                         [<System.Runtime.InteropServices.Optional;
                           System.Runtime.InteropServices.DefaultParameterValue
                           ((null :> obj))>] unit: Marey.IUnit -> Marey.Figure
@@ -2897,8 +2834,8 @@ namespace Marey.CSharp
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
-          WithYTicksNamed: fig: Marey.Figure * values: float array *
-                           labels: string array *
+          WithYTicksNamed: fig: Marey.Figure * values: float seq *
+                           labels: string seq *
                            [<System.Runtime.InteropServices.Optional;
                              System.Runtime.InteropServices.DefaultParameterValue
                              ((null :> obj))>] unit: Marey.IUnit -> Marey.Figure
@@ -2909,16 +2846,15 @@ namespace Marey.CSharp
         static member Axis: label: string -> Marey.AxisConfig
 
         static member
-          Facet: titles: string array * parts: Marey.Figure array ->
-                   Marey.Figure
+          Facet: titles: string seq * parts: Marey.Figure seq -> Marey.Figure
 
         static member
-          FacetIn: cols: int * titles: string array * parts: Marey.Figure array ->
+          FacetIn: cols: int * titles: string seq * parts: Marey.Figure seq ->
                      Marey.Figure
 
         static member
-          FacetWith: mode: Marey.FacetScales * cols: int * titles: string array *
-                     parts: Marey.Figure array -> Marey.Figure
+          FacetWith: mode: Marey.FacetScales * cols: int * titles: string seq *
+                     parts: Marey.Figure seq -> Marey.Figure
 
         static member
           Mosaic: layout: string * names: string *
@@ -2961,30 +2897,30 @@ namespace Marey.CSharp
     type Category =
 
         static member
-          Bar: keys: 'k array * values: float array *
+          Bar: keys: 'k seq * values: float seq *
                [<System.Runtime.InteropServices.Optional;
                  System.Runtime.InteropServices.DefaultParameterValue
                  ((null :> obj))>] yUnit: Marey.IUnit -> Marey.Figure
                  when 'k: equality
 
         static member
-          Boxplot: keys: 'k array * values: float array *
+          Boxplot: keys: 'k seq * values: float seq *
                    [<System.Runtime.InteropServices.Optional;
                      System.Runtime.InteropServices.DefaultParameterValue
                      ((null :> obj))>] yUnit: Marey.IUnit -> Marey.Figure
                      when 'k: equality
 
-        static member Count: keys: 'k array -> Marey.Figure when 'k: equality
+        static member Count: keys: 'k seq -> Marey.Figure when 'k: equality
 
         static member
-          Scatter: keys: 'k array * values: float array *
+          Scatter: keys: 'k seq * values: float seq *
                    [<System.Runtime.InteropServices.Optional;
                      System.Runtime.InteropServices.DefaultParameterValue
                      ((null :> obj))>] yUnit: Marey.IUnit -> Marey.Figure
                      when 'k: equality
 
         static member
-          Violin: keys: 'k array * values: float array *
+          Violin: keys: 'k seq * values: float seq *
                   [<System.Runtime.InteropServices.Optional;
                     System.Runtime.InteropServices.DefaultParameterValue
                     ((null :> obj))>] yUnit: Marey.IUnit -> Marey.Figure

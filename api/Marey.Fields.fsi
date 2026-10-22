@@ -36,13 +36,12 @@ namespace Marey
     module ScalarGrid =
 
         val create:
-          xs: float<'x> array ->
-            ys: float<'y> array ->
-            values: float<'v> array -> ScalarGrid<'x,'y,'v>
+          xs: float<'x> seq ->
+            ys: float<'y> seq -> values: float<'v> seq -> ScalarGrid<'x,'y,'v>
 
         val sample:
-          xs: float<'x> array ->
-            ys: float<'y> array ->
+          xs: float<'x> seq ->
+            ys: float<'y> seq ->
             f: (float<'x> -> float<'y> -> float<'v>) -> ScalarGrid<'x,'y,'v>
 
         val at:
@@ -60,13 +59,13 @@ namespace Marey
     module VectorGrid =
 
         val create:
-          xs: float<'x> array ->
-            ys: float<'y> array ->
-            u: float<'u> array -> w: float<'w> array -> VectorGrid<'x,'y,'u,'w>
+          xs: float<'x> seq ->
+            ys: float<'y> seq ->
+            u: float<'u> seq -> w: float<'w> seq -> VectorGrid<'x,'y,'u,'w>
 
         val sample:
-          xs: float<'x> array ->
-            ys: float<'y> array ->
+          xs: float<'x> seq ->
+            ys: float<'y> seq ->
             f: (float<'x> -> float<'y> -> struct (float<'u> * float<'w>)) ->
             VectorGrid<'x,'y,'u,'w>
 
@@ -103,16 +102,16 @@ namespace Marey
     module Field =
 
         val sampleScalar:
-          xs: float<'x> array ->
-            ys: float<'x> array -> f: Scalar2<'x,'v> -> ScalarGrid<'x,'x,'v>
+          xs: float<'x> seq ->
+            ys: float<'x> seq -> f: Scalar2<'x,'v> -> ScalarGrid<'x,'x,'v>
 
         val sample:
-          xs: float<'x> array ->
-            ys: float<'x> array -> f: Field2<'x,'v> -> VectorGrid<'x,'x,'v,'v>
+          xs: float<'x> seq ->
+            ys: float<'x> seq -> f: Field2<'x,'v> -> VectorGrid<'x,'x,'v,'v>
 
         val sampleFlow:
-          xs: float<'x> array ->
-            ys: float<'y> array ->
+          xs: float<'x> seq ->
+            ys: float<'y> seq ->
             f: Flow<'x,'y,'t> -> VectorGrid<'x,'y,'x/'t,'y/'t>
 
         val grad: g: ScalarGrid<'x,'y,'v> -> VectorGrid<'x,'y,'v/'x,'v/'y>
@@ -146,7 +145,7 @@ namespace Marey
                    ((null :> obj))>] valueUnit: IUnit -> Figure
 
         static member
-          BandsWith: ramp: Ramp * levels: float array * g: ScalarGrid<1,1,1> *
+          BandsWith: ramp: Ramp * levels: float seq * g: ScalarGrid<1,1,1> *
                      [<System.Runtime.InteropServices.Optional;
                        System.Runtime.InteropServices.DefaultParameterValue
                        ((null :> obj))>] xUnit: IUnit *
@@ -167,7 +166,7 @@ namespace Marey
                       ((null :> obj))>] yUnit: IUnit -> Figure
 
         static member
-          ContoursAt: levels: float array * g: ScalarGrid<1,1,1> *
+          ContoursAt: levels: float seq * g: ScalarGrid<1,1,1> *
                       [<System.Runtime.InteropServices.Optional;
                         System.Runtime.InteropServices.DefaultParameterValue
                         ((null :> obj))>] xUnit: IUnit *
@@ -379,7 +378,7 @@ namespace Marey
                       ((null :> obj))>] timeUnit: IUnit -> string
 
         static member
-          Marks: points: FixedPoint<1,1,1> array *
+          Marks: points: FixedPoint<1,1,1> seq *
                  [<System.Runtime.InteropServices.Optional;
                    System.Runtime.InteropServices.DefaultParameterValue
                    ((null :> obj))>] xUnit: IUnit *
@@ -432,7 +431,7 @@ namespace Marey.UnitsOfMeasure
             uv: Marey.U<'v> -> g: Marey.ScalarGrid<'x,'y,'v> -> Marey.Figure
 
         val contoursAt:
-          levels: float<'v> array ->
+          levels: float<'v> seq ->
             ux: Marey.U<'x> ->
             uy: Marey.U<'y> -> g: Marey.ScalarGrid<'x,'y,'v> -> Marey.Figure
 
@@ -442,7 +441,7 @@ namespace Marey.UnitsOfMeasure
 
         val bandsWith:
           ramp: Marey.Ramp ->
-            levels: float<'v> array ->
+            levels: float<'v> seq ->
             ux: Marey.U<'x> ->
             uy: Marey.U<'y> ->
             uv: Marey.U<'v> -> g: Marey.ScalarGrid<'x,'y,'v> -> Marey.Figure
@@ -590,7 +589,7 @@ namespace Marey.UnitsOfMeasure
         val marks:
           ux: Marey.U<'x> ->
             uy: Marey.U<'y> ->
-            points: Marey.FixedPoint<'x,'y,'t> array -> Marey.Figure option
+            points: Marey.FixedPoint<'x,'y,'t> seq -> Marey.Figure option
 
         val portraitWith:
           separation: float<Marey.px> ->
@@ -662,10 +661,10 @@ namespace Marey.CSharp
         static member Log: lo: float * hi: float * count: int -> float array
 
         static member
-          Scalar: xs: float array * ys: float array *
+          Scalar: xs: float seq * ys: float seq *
                   f: System.Func<float,float,float> -> Marey.ScalarGrid<1,1,1>
 
         static member
-          Vector: xs: float array * ys: float array *
+          Vector: xs: float seq * ys: float seq *
                   f: System.Func<float,float,struct (float * float)> ->
                     Marey.VectorGrid<1,1,1,1>

@@ -58,9 +58,29 @@ and reported when missing; Marey does not require a version of them.
   reference: `Marey.Backend.Skia` for PNG and PDF, `Marey.Backend.Gpu` for a window,
   `Marey.Tools.Tex` and `Marey.Tools.Video`. A Fable app can reference it too, and compiles the
   packages in it that carry their sources. Eighteen packages.
+- **`WebCanvas.byId` and `WebCanvas.context`** in `Marey.Backend.Web`: the page's canvas element
+  by id, and its 2-D context, which `CanvasBackend.draw` takes. A Fable app no longer declares an
+  `Emit` for `getElementById`.
+- **`U.degree`**, π/180 rad, for a phase, an angle of incidence or a latitude in degrees (C#
+  `Units.Degree`; `U.parse "deg"` or `"°"`). It is an angle as the radian is: an axis in it
+  reads `θ [°]` and takes no prefix, and `°/s` does not share an axis with `Hz`.
 
 ### Changed
 
+- **Data is taken as any sequence.** Every chart constructor, `Stat` function, grid, field
+  sampler, colour and size channel, set of keys, labels or ticks, facet and palette takes a
+  `seq<_>` where it took an array, so an F# list, a `ResizeArray` or a C# `List<double>` is passed
+  as it is (C# members take `IEnumerable<T>`). An array still compiles where it did. The sequence
+  is read once, when the call is made, and copied: a figure no longer changes when the caller's
+  array is changed after it was built. Results (statistics, trajectories, grids' nodes) stay
+  arrays, and so do the scene, the wire format and the simulations' in-place steppers.
+- **A scale kind is the panel's axis's, not each layer's.** `withXLog`, `withYLog` and the
+  `ScaleKind` verbs record the kind on the axis (`AxisConfig.Kind`, new), and a layer added later,
+  a rule included, is drawn on it; before, it kept a linear scale under a log axis, so a rule at
+  1 kHz on a log 10 Hz … 100 kHz axis stood near the left edge. `withYLog` now acts on the left y
+  axis only: after `withRightAxis` it also logged the right side's layers, and a phase in −π … 0
+  there was not drawn. `withRightYLog` and `withRightYScaleKind` (C# `WithRightYLog`,
+  `WithRightYScaleKind`) are new and set the right axis's.
 - **A rate reads `s⁻¹`, a frequency `Hz`.** A unit written as the reciprocal of one base unit
   (`U.perSecond`, `U.recip U.second`) is shown as written, so a vorticity, a decay constant or a
   growth rate is no longer labelled as a frequency; `U.hertz` still reads `Hz`. Draw a frequency
@@ -112,6 +132,20 @@ and reported when missing; Marey does not require a version of them.
 - **The pointer's readout keeps clear of a `LegendBest` that went top left.** It moved to the right
   only for a legend stated as `LegendTopLeft`. It now resolves `LegendBest` as the drawing pass
   does, through `PanelLayout.legendPlacement`, which is new.
+
+### Removed
+
+- **`Chart.Plain`**, deprecated in 0.4. Use `Chart.Line(xs, ys)`, which leaves the units
+  unspecified, or pass `U.one` where the data is dimensionless.
+
+### Fixed
+
+- **Two units of one dimension on one axis are converted.** A layer in minutes added to an axis
+  in seconds was drawn in its own numbers, so 4 min stood at 4 s; so were degrees beside radians,
+  °C beside K and a kilometre panel sharing x with a metre one. The domain an axis shares
+  or is given (`withXDomain`, a zoom, an inset's, a storyboard's) is now in the axis's unit,
+  the first stated layer's, and each layer reads it in its own, offsets included.
+
 
 ## [0.7.0] — 2026-10-16
 

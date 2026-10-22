@@ -68,6 +68,10 @@ corner the data leaves emptiest. `xModel` was never declared a length: `0.5 * g 
 `float<m>` because `g` is in m/s² and `t` in seconds, and putting it on a seconds axis would not
 compile.
 
+A chart takes any sequence of values: an array, a list, a `ResizeArray`, a `seq`. It reads the
+sequence once, when it is built, and keeps its own copy, so changing the array afterwards leaves
+the figure as it was.
+
 ## The same figure, four ways
 
 A figure is a value. Each output is a renderer applied to it at a size:

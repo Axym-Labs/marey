@@ -126,6 +126,9 @@ type ArrowStyle =
 /// second layer (`Figure.unify`), `Chart.withXDomain` or a switch to a log axis moved the points
 /// and left the geom's own arrays behind: a ±0.5 m error bar added to a 0–10 m line spanned
 /// 0–10 m. Carrying data and projecting once, beside the points, leaves nothing to remember.
+///
+/// **An open union**: a minor release may add a case, for a new mark, so a `match` over it
+/// keeps a wildcard case.
 [<NoComparison>]
 type GeomOf<[<Measure>] 'p> =
     | GeomLine
@@ -283,7 +286,7 @@ module Geom =
 
     let withColor (c: Color) (s: GeomStyle) = { s with Color = c }
     let withWidth (w: float<px>) (s: GeomStyle) = { s with Width = w }
-    let withDash (d: float<px>[]) (s: GeomStyle) = { s with Dash = d }
+    let withDash (d: seq<float<px>>) (s: GeomStyle) = { s with Dash = Array.ofSeq d }
     let withOpacity (o: float) (s: GeomStyle) = { s with Opacity = o }
     let withShape (sh: MarkerShape) (s: GeomStyle) = { s with Shape = sh }
     let withMarkerSize (sz: float<px>) (s: GeomStyle) = { s with MarkerSize = sz }
@@ -319,7 +322,8 @@ module Geom =
     /// **The signature is the point.** `err` is `float('uy)[]` — the same measure as the y data
     /// — so an uncertainty in seconds on a displacement axis does not compile. Projection uses
     /// the series' own y scale, so a log axis gets asymmetric-looking bars, correctly.
-    let errorY (s: Series<'ux, 'uy>) (err: float<'uy>[]) : Geom =
+    let errorY (s: Series<'ux, 'uy>) (err: seq<float<'uy>>) : Geom =
+        let err = Array.ofSeq err
         if err.Length <> s.Y.Length then
             invalidArg "err" (sprintf "Marey: series '%s' has %d y values and %d error values." s.Name s.Y.Length err.Length)
 
@@ -329,14 +333,17 @@ module Geom =
         )
 
     /// Asymmetric error bars on y, given as absolute low and high values in the y unit.
-    let errorYBetween (s: Series<'ux, 'uy>) (low: float<'uy>[]) (high: float<'uy>[]) : Geom =
+    let errorYBetween (s: Series<'ux, 'uy>) (low: seq<float<'uy>>) (high: seq<float<'uy>>) : Geom =
+        let low = Array.ofSeq low
+        let high = Array.ofSeq high
         if low.Length <> s.Y.Length || high.Length <> s.Y.Length then
             invalidArg "low" (sprintf "Marey: series '%s' has %d y values; low/high must match." s.Name s.Y.Length)
 
         GeomErrorY(Array.map float low, Array.map float high)
 
     /// Symmetric error bars on x. Same dimensional guarantee, other axis.
-    let errorX (s: Series<'ux, 'uy>) (err: float<'ux>[]) : Geom =
+    let errorX (s: Series<'ux, 'uy>) (err: seq<float<'ux>>) : Geom =
+        let err = Array.ofSeq err
         if err.Length <> s.X.Length then
             invalidArg "err" (sprintf "Marey: series '%s' has %d x values and %d error values." s.Name s.X.Length err.Length)
 
@@ -369,14 +376,17 @@ module Geom =
     ///
     /// The band alone. `Chart.ribbon` draws the middle line as a second layer, which is the
     /// composition rather than a decision this geom makes.
-    let ribbon (s: Series<'ux, 'uy>) (low: float<'uy>[]) (high: float<'uy>[]) : Geom =
+    let ribbon (s: Series<'ux, 'uy>) (low: seq<float<'uy>>) (high: seq<float<'uy>>) : Geom =
+        let low = Array.ofSeq low
+        let high = Array.ofSeq high
         lengthCheck s "low" low.Length
         lengthCheck s "high" high.Length
         GeomRibbon(Array.map float low, Array.map float high)
 
     /// A band of `y +/- err`. The signature `errorY` has, and the same guarantee: an
     /// uncertainty in seconds around a displacement does not compile.
-    let ribbonAround (s: Series<'ux, 'uy>) (err: float<'uy>[]) : Geom =
+    let ribbonAround (s: Series<'ux, 'uy>) (err: seq<float<'uy>>) : Geom =
+        let err = Array.ofSeq err
         lengthCheck s "err" err.Length
 
         GeomRibbon(
@@ -386,7 +396,11 @@ module Geom =
 
     /// Rectangles from opposite corners, in the series' own units. Both measures are checked,
     /// so a rectangle cannot be given its width in the y unit.
-    let rect (s: Series<'ux, 'uy>) (x0: float<'ux>[]) (y0: float<'uy>[]) (x1: float<'ux>[]) (y1: float<'uy>[]) : Geom =
+    let rect (s: Series<'ux, 'uy>) (x0: seq<float<'ux>>) (y0: seq<float<'uy>>) (x1: seq<float<'ux>>) (y1: seq<float<'uy>>) : Geom =
+        let x0 = Array.ofSeq x0
+        let y0 = Array.ofSeq y0
+        let x1 = Array.ofSeq x1
+        let y1 = Array.ofSeq y1
         lengthCheck s "x0" x0.Length
         lengthCheck s "y0" y0.Length
         lengthCheck s "x1" x1.Length
@@ -438,7 +452,9 @@ module Geom =
         )
 
     /// A line from each of the series' points to a second point, in the series' own units.
-    let segment (s: Series<'ux, 'uy>) (x2: float<'ux>[]) (y2: float<'uy>[]) : Geom =
+    let segment (s: Series<'ux, 'uy>) (x2: seq<float<'ux>>) (y2: seq<float<'uy>>) : Geom =
+        let x2 = Array.ofSeq x2
+        let y2 = Array.ofSeq y2
         lengthCheck s "x2" x2.Length
         lengthCheck s "y2" y2.Length
         GeomSegment(Array.map float x2, Array.map float y2)
@@ -449,20 +465,21 @@ module Geom =
     /// there is no measure to spend. Worth being explicit that this is not a hole in the
     /// pattern: everything else here exists to turn a measured value into `nd` with a scale, and
     /// a label has no value to turn.
-    let text (labels: string[]) : GeomOf<'p> =
-        GeomText(labels, AnchorMiddle, BaselineAlphabetic, { X = 0.0<px>; Y = 7.0<px> })
+    let text (labels: seq<string>) : GeomOf<'p> =
+        GeomText(Array.ofSeq labels, AnchorMiddle, BaselineAlphabetic, { X = 0.0<px>; Y = 7.0<px> })
 
     /// Labels with their placement stated. The offset is a **device** length, so a label sits
     /// the same distance off its mark on a tall panel and a wide one.
-    let textAt (anchor: TextAnchor) (baseline: TextBaseline) (offset: Vec2<px>) (labels: string[]) : GeomOf<'p> =
-        GeomText(labels, anchor, baseline, offset)
+    let textAt (anchor: TextAnchor) (baseline: TextBaseline) (offset: Vec2<px>) (labels: seq<string>) : GeomOf<'p> =
+        GeomText(Array.ofSeq labels, anchor, baseline, offset)
 
     /// Box plots, one per point of the series, from summaries in the **y** unit.
     ///
     /// `Stat.Summary<'uy>` is what carries the guarantee: a summary is entirely in the unit of
     /// the sample it was taken from, so a box plot of metres cannot be drawn against a joule
     /// axis, and the whiskers and the outliers are projected by the same scale as the box.
-    let boxplot (widthFraction: float) (s: Series<'ux, 'uy>) (summaries: Stat.Summary<'uy>[]) : Geom =
+    let boxplot (widthFraction: float) (s: Series<'ux, 'uy>) (summaries: seq<Stat.Summary<'uy>>) : Geom =
+        let summaries = Array.ofSeq summaries
         lengthCheck s "summaries" summaries.Length
 
         GeomBox(
@@ -487,7 +504,8 @@ module Geom =
     ///
     /// The densities' `X` is the *sample* axis and therefore the panel's **y**: a violin is a
     /// density turned on its side, which is why `d.X` goes through `s.YScale`.
-    let violin (widthFraction: float) (s: Series<'ux, 'uy>) (densities: Stat.Density<'uy>[]) : Geom =
+    let violin (widthFraction: float) (s: Series<'ux, 'uy>) (densities: seq<Stat.Density<'uy>>) : Geom =
+        let densities = Array.ofSeq densities
         lengthCheck s "densities" densities.Length
 
         let peak =

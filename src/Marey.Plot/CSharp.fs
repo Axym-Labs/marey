@@ -40,6 +40,9 @@ type FigureExtensions =
     static member WithYLog(fig: Figure) = Chart.withYLog fig
 
     [<Extension>]
+    static member WithRightYLog(fig: Figure) = Chart.withRightYLog fig
+
+    [<Extension>]
     static member WithXDomain(fig: Figure, lo: float, hi: float) = Chart.withXDomain lo hi fig
 
     [<Extension>]
@@ -80,20 +83,20 @@ type FigureExtensions =
         Chart.withYTickSpec (TicksEvery step) (U.erase unit) fig
 
     [<Extension>]
-    static member WithXTicksAt(fig: Figure, values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
-        Chart.withXTickSpec (TicksAt(Array.copy values)) (U.erase unit) fig
+    static member WithXTicksAt(fig: Figure, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withXTickSpec (TicksAt(Array.ofSeq values)) (U.erase unit) fig
 
     [<Extension>]
-    static member WithYTicksAt(fig: Figure, values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
-        Chart.withYTickSpec (TicksAt(Array.copy values)) (U.erase unit) fig
+    static member WithYTicksAt(fig: Figure, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withYTickSpec (TicksAt(Array.ofSeq values)) (U.erase unit) fig
 
     [<Extension>]
-    static member WithXTicksNamed(fig: Figure, values: float[], labels: string[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
-        Chart.withXTickSpec (TicksNamed(Array.zip values labels)) (U.erase unit) fig
+    static member WithXTicksNamed(fig: Figure, values: seq<float>, labels: seq<string>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withXTickSpec (TicksNamed(Array.zip (Array.ofSeq values) (Array.ofSeq labels))) (U.erase unit) fig
 
     [<Extension>]
-    static member WithYTicksNamed(fig: Figure, values: float[], labels: string[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
-        Chart.withYTickSpec (TicksNamed(Array.zip values labels)) (U.erase unit) fig
+    static member WithYTicksNamed(fig: Figure, values: seq<float>, labels: seq<string>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+        Chart.withYTickSpec (TicksNamed(Array.zip (Array.ofSeq values) (Array.ofSeq labels))) (U.erase unit) fig
 
     [<Extension>]
     static member WithXPrefix(fig: Figure, prefix: Prefix) = Chart.withXPrefix prefix fig
@@ -167,32 +170,32 @@ type FigureExtensions =
 
     /// Dash lengths in device pixels.
     [<Extension>]
-    static member WithDash(fig: Figure, dash: float<px>[]) = Chart.withDash dash fig
+    static member WithDash(fig: Figure, dash: seq<float<px>>) = Chart.withDash dash fig
 
     [<Extension>]
     static member WithStyle(fig: Figure, restyle: Func<GeomStyle, GeomStyle>) = Chart.withStyle restyle.Invoke fig
 
     [<Extension>]
-    static member WithKeys(fig: Figure, keys: string[]) = Chart.withKeys keys fig
+    static member WithKeys(fig: Figure, keys: seq<string>) = Chart.withKeys keys fig
 
     [<Extension>]
-    static member AddLabels(fig: Figure, labels: string[]) = Chart.addLabels labels fig
+    static member AddLabels(fig: Figure, labels: seq<string>) = Chart.addLabels labels fig
 
     // ---- Channels --------------------------------------------------------------------------------
 
     [<Extension>]
-    static member ColorByKey(fig: Figure, keys: 'k[]) = Chart.colorByKey keys fig
+    static member ColorByKey(fig: Figure, keys: seq<'k>) = Chart.colorByKey keys fig
 
     [<Extension>]
-    static member ShapeByKey(fig: Figure, keys: 'k[]) = Chart.shapeByKey keys fig
+    static member ShapeByKey(fig: Figure, keys: seq<'k>) = Chart.shapeByKey keys fig
 
     [<Extension>]
-    static member ColorBy(fig: Figure, values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+    static member ColorBy(fig: Figure, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
         Chart.ColorBy(values, unit) fig
 
     [<Extension>]
     static member ColorByWith
-        (fig: Figure, ramp: Ramp, values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit)
+        (fig: Figure, ramp: Ramp, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit)
         =
         Chart.ColorByWith(ramp, values, unit) fig
 
@@ -206,7 +209,7 @@ type FigureExtensions =
         Chart.WithColorDomain(lo, hi, unit) fig
 
     [<Extension>]
-    static member SizeBy(fig: Figure, values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
+    static member SizeBy(fig: Figure, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit) =
         Chart.SizeBy(values, unit) fig
 
     [<Extension>]
@@ -215,7 +218,7 @@ type FigureExtensions =
             fig: Figure,
             smallest: float<px>,
             largest: float<px>,
-            values: float[],
+            values: seq<float>,
             [<Optional; DefaultParameterValue(null: IUnit)>] unit: IUnit
         ) =
         Chart.SizeByWith(smallest, largest, values, unit) fig
@@ -302,6 +305,9 @@ type FigureExtensions =
     [<Extension>]
     static member WithYScaleKind(fig: Figure, kind: ScaleKind) = Chart.withYScaleKind kind fig
 
+    [<Extension>]
+    static member WithRightYScaleKind(fig: Figure, kind: ScaleKind) = Chart.withRightYScaleKind kind fig
+
     /// The last panel's coordinate system: `fig.WithCoord(Coords.Polar)`.
     [<Extension>]
     static member WithCoord(fig: Figure, coord: Coord) = Chart.withCoord coord fig
@@ -369,12 +375,12 @@ type Figures =
         Array.zip titles parts
 
     /// One panel per figure, sharing both axes, wrapped into a near-square grid.
-    static member Facet(titles: string[], parts: Figure[]) = Chart.facet (Figures.Parts(titles, parts))
+    static member Facet(titles: seq<string>, parts: seq<Figure>) = Chart.facet (Figures.Parts(Array.ofSeq titles, Array.ofSeq parts))
 
-    static member FacetIn(cols: int, titles: string[], parts: Figure[]) = Chart.facetIn cols (Figures.Parts(titles, parts))
+    static member FacetIn(cols: int, titles: seq<string>, parts: seq<Figure>) = Chart.facetIn cols (Figures.Parts(Array.ofSeq titles, Array.ofSeq parts))
 
-    static member FacetWith(mode: FacetScales, cols: int, titles: string[], parts: Figure[]) =
-        Chart.facetWith mode cols (Figures.Parts(titles, parts))
+    static member FacetWith(mode: FacetScales, cols: int, titles: seq<string>, parts: seq<Figure>) =
+        Chart.facetWith mode cols (Figures.Parts(Array.ofSeq titles, Array.ofSeq parts))
 
     /// Panels laid out by a picture of the grid: `Figures.Mosaic("AB;AC", "ABC", a, b, c)`,
     /// where the i-th character of `names` names the i-th figure.
@@ -435,17 +441,17 @@ type Coords =
 [<AbstractClass; Sealed>]
 type Category =
 
-    static member Bar(keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) =
+    static member Bar(keys: seq<'k>, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) =
         Chart.Category.Bar(keys, values, yUnit)
 
-    static member Scatter(keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) =
+    static member Scatter(keys: seq<'k>, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) =
         Chart.Category.Scatter(keys, values, yUnit)
 
-    static member Boxplot(keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) =
+    static member Boxplot(keys: seq<'k>, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) =
         Chart.Category.Boxplot(keys, values, yUnit)
 
-    static member Violin(keys: 'k[], values: float[], [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) =
+    static member Violin(keys: seq<'k>, values: seq<float>, [<Optional; DefaultParameterValue(null: IUnit)>] yUnit: IUnit) =
         Chart.Category.Violin(keys, values, yUnit)
 
     /// One bar per key, as tall as the number of rows with that key.
-    static member Count(keys: 'k[]) = Chart.Category.count keys
+    static member Count(keys: seq<'k>) = Chart.Category.count keys

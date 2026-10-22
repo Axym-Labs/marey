@@ -138,7 +138,7 @@ module U =
     /// Order is first-appearance, left operand first, so `div volt metre` reads `V·m⁻¹` rather
     /// than `m⁻¹·V`: a caller who wrote a numerator first expects to read it first, and nothing
     /// downstream re-sorts.
-    /// How many powers of angle a witness carries: a radian counts once, a steradian twice
+    /// How many powers of angle a witness carries: a radian or a degree counts once, a steradian twice
     /// (solid angle is angle squared). Read from the factorisation, or from the declared symbol
     /// when the witness was declared rather than built — `U.radian` is `rad` with no
     /// factors.
@@ -156,7 +156,7 @@ module U =
             elif System.String.IsNullOrEmpty symbol then []
             else [ symbol, 1 ]
 
-        parts |> List.sumBy (fun (s, e) -> if s = "rad" then e elif s = "sr" then 2 * e else 0)
+        parts |> List.sumBy (fun (s, e) -> if s = "rad" || s = "°" then e elif s = "sr" then 2 * e else 0)
 
     let private mergeFactors (a: (string * int) list) (b: (string * int) list) =
         let merged =

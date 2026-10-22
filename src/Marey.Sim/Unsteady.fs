@@ -91,9 +91,11 @@ module Unsteady =
     /// snapshot must be on the same grid, and the times strictly increasing; outside them, or
     /// outside the grid, the velocity is NaN. Second order in the snapshots' spacing.
     let ofSnapshots<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
-        (times: float<'t>[])
-        (grids: VectorGrid<'x, 'y, 'x / 't, 'y / 't>[])
+        (times: seq<float<'t>>)
+        (grids: seq<VectorGrid<'x, 'y, 'x / 't, 'y / 't>>)
         : Unsteady<'x, 'y, 't> =
+        let grids = Array.ofSeq grids
+        let times = Array.ofSeq times
         if times.Length < 2 || times.Length <> grids.Length then
             invalidArg "grids" (sprintf "Marey: snapshots need at least two times and one grid for each; got %d times and %d grids." times.Length grids.Length)
 
@@ -192,10 +194,12 @@ module Particles =
     /// at each seed. The particles a streak holds grow by the seeds' count every step; a
     /// trajectory over it checkpoints growing arrays, which `trajectory`'s size cap sees.
     let streakStep<[<Measure>] 'x, [<Measure>] 'y, [<Measure>] 't>
-        (seedsX: float<'x>[])
-        (seedsY: float<'y>[])
+        (seedsX: seq<float<'x>>)
+        (seedsY: seq<float<'y>>)
         (field: Unsteady<'x, 'y, 't>)
         : Stepper<Particles<'x, 'y>, 't> =
+        let seedsX = Array.ofSeq seedsX
+        let seedsY = Array.ofSeq seedsY
         if seedsX.Length <> seedsY.Length then
             invalidArg "seedsY" "Marey: one y for every seed's x."
 
@@ -209,10 +213,10 @@ module Particles =
     /// as one `(xs, ys)` per particle, ready for `Chart.line`. A particle that did not exist yet at
     /// an early time (a streak's later ones) is NaN there.
     let pathlines<[<Measure>] 'x, [<Measure>] 'y>
-        (times: float<Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols.s>[])
+        (times: seq<float<Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols.s>>)
         (trajectory: Anim<Particles<'x, 'y>>)
         : struct (float<'x>[] * float<'y>[])[] =
-        let states = times |> Array.map trajectory.At
+        let states = Array.ofSeq times |> Array.map trajectory.At
         let n = states |> Array.fold (fun m (struct (x, _)) -> max m x.Length) 0
 
         Array.init n (fun i ->
