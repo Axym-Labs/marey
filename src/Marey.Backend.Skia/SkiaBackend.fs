@@ -657,18 +657,24 @@ type SkiaPainter
 
                 if outlines then
                     // The shaper's glyphs at the shaper's positions, so the outline is where the
-                    // glyph would have been. Unhinted, from a copy: hinting moves an outline, and
-                    // each engine moves it differently.
+                    // glyph would have been. A carried face's outlines are read from the face;
+                    // any other's come from the platform's engine, unhinted, from a copy, since
+                    // hinting moves an outline and each engine moves it differently.
                     use unhinted = new SKFont(font.Typeface, font.Size, font.ScaleX, font.SkewX)
                     unhinted.Hinting <- SKFontHinting.None
                     let shaped = shaper.Shape(s, pen, oy, unhinted)
                     use builder = new SKPathBuilder()
 
                     for g in 0 .. shaped.Codepoints.Length - 1 do
-                        use glyph = unhinted.GetGlyphPath(uint16 shaped.Codepoints.[g])
+                        let glyph, at = uint16 shaped.Codepoints.[g], shaped.Points.[g]
 
-                        if not (isNull glyph) then
-                            builder.AddPath(glyph, shaped.Points.[g].X, shaped.Points.[g].Y)
+                        match run.Outlines.[i] with
+                        | Some carried -> carried.Add(builder, glyph, font.Size, at.X, at.Y)
+                        | None ->
+                            use outline = unhinted.GetGlyphPath glyph
+
+                            if not (isNull outline) then
+                                builder.AddPath(outline, at.X, at.Y)
 
                     use path = builder.Detach()
                     canvas.DrawPath(path, paint)
