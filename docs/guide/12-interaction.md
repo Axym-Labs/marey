@@ -23,7 +23,7 @@ period, a stroboscopic Poincaré section, after the transient has died. At a sma
 is a point, a periodic orbit; as the drive grows the orbit doubles and the section fills out into a
 strange attractor, with windows where order returns. One slider sets the drive's amplitude:
 
-```fsharp
+```fsharp output=driven-pendulum-live
 let naturalRate = 1.0<1/s^2>
 let pendulumDamping = 0.5</s>
 let driveFrequency = 2.0 / 3.0 * 1.0<rad/s>
@@ -56,7 +56,11 @@ let explorer =
         let! amplitude = Control.slider angularAcceleration "A" 0.9<rad/s^2> 1.5<rad/s^2> 0.9<rad/s^2>
         return sectionAt amplitude
     }
+
+explorer
 ```
+
+![The driven pendulum's Poincaré section at a drive of 0.9 rad/s², a single point: a periodic orbit. On the site, the slider above it walks the drive to 1.5 rad/s²](../figures/driven-pendulum-live.svg)
 
 In Verso, `explorer` as a cell's value is the live figure: drag the slider and the section is
 recomputed for that drive. On the figure, a drag zooms onto a box, shift-drag pans, a double-click

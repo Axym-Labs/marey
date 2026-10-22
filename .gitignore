@@ -70,3 +70,8 @@ fable-packages/
 # tools/view/build.sh (step F, D157): the bundler it installs and the Fable output it bundles.
 tools/view/node_modules/
 tools/view/out/
+
+# The documentation site (tools/site/build.sh) and fsdocs' cache.
+/site/
+/site.scenes/
+/.fsdocs/
