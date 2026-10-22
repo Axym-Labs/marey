@@ -221,68 +221,6 @@ type ResolvedFace =
       /// figure that has boxes in it.
       Missing: int[] }
 
-/// A face this measurer has opened: the typeface, the shaper bound to it, and its sized fonts.
-///
-/// One of these per distinct face — the primary, each stated fallback, each face the machine
-/// answered with — created once and registered once, so that disposal can walk a single list
-/// and free everything exactly once. The alternative, which is what stood here before a stated
-/// face could be shared by more than one entry, was a `if stated.IsNone` branch in `Dispose`
-/// guarding against a double free; a handle that is created in one place cannot be freed twice.
-[<NoComparison; NoEquality>]
-type internal FaceHandle =
-    { Typeface: SKTypeface
-      Shaper: SKShaper
-      /// The file it was opened from, when the caller stated one.
-      File: string option
-      /// Opened from a face this package carries.
-      Bundled: bool
-      /// Sized fonts, keyed by the exact bits of the size, because two sizes differing in the
-      /// last place are two different `SKFont`s to Skia.
-      Fonts: Dictionary<int, SKFont> }
-
-/// One `(family, weight, italic)` a render has asked for: the face it resolved to, and the
-/// account of everything fallback has had to do for it since.
-[<NoComparison; NoEquality>]
-type internal FaceSlot =
-    { Primary: FaceHandle
-      Requested: string
-      Weight: int
-      Italic: bool
-      Matched: string option
-      /// Fallback faces actually used, in first-seen order, each with what it covered.
-      Fallbacks: ResizeArray<FaceHandle * SortedSet<int>>
-      /// Codepoints no face covered.
-      Missing: SortedSet<int>
-      /// Which face draws a codepoint: `-1` the primary — which is also where a `.notdef` box
-      /// is drawn — otherwise an index into `Fallbacks`.
-      ///
-      /// **Decided once and never revisited.** One measurer serves a whole film
-      /// precisely so that a video cannot change typeface on a frame boundary, and a fallback
-      /// that asked the font manager again on frame 200 would put that back.
-      Decision: Dictionary<int, int> }
-
-/// A run of text split by coverage, and the vertical band the whole of it shares.
-///
-/// Internal because it puts SkiaSharp types in a signature, and the only caller that needs them
-/// is the backend in the next file, which must draw with exactly what it measured.
-[<NoComparison; NoEquality>]
-type internal ShapedRun =
-    { /// The pieces, in order: concatenating the strings gives the original back. Empty for an
-      /// empty string.
-      Segments: struct (SKFont * SKShaper * string)[]
-      /// Ascent and descent, **positive and y-up** the way `TextMetrics` wants them, taken as
-      /// the maximum over the primary face and every face a segment uses.
-      ///
-      /// The maximum, and the primary is always in it. Font-wide metrics rather than the
-      /// string's ink box is what stops `e` and `E` centring at different heights (see
-      /// `Measure`); a *run*-wide maximum is the same argument one level up — a run that
-      /// reserved only the Latin band would have its CJK glyphs hang out of it, and a run that
-      /// reserved only the CJK band would make a Latin label taller than the label beside it.
-      /// Including the primary unconditionally is what keeps every number measured without
-      /// fallback unchanged: a run the primary covers on its own folds over exactly one face.
-      Ascent: float32
-      Descent: float32 }
-
 /// **The faces this package carries**: Inter at the four weights the themes use, and Liberation
 /// Serif upright, italic and bold. A stack that names one of these families resolves to it before
 /// the machine is asked, wherever the name stands in the stack, which is what makes a built-in
@@ -345,6 +283,245 @@ module internal BundledFaces =
         use data = SKData.CreateCopy(bytes.GetOrAdd(f.Resource, read))
         SKTypeface.FromData data
 
+    // ---- Outlines, read from the face itself -------------------------------------------
+    //
+    // A PNG draws text as outlines filled by Skia, and Skia asks the platform's engine for an
+    // outline: FreeType and DirectWrite give a few glyphs of one face differently (CI's Linux
+    // and Windows PNGs differed in 21 pixels of a serif title). A carried face's outlines are
+    // read here, from its `glyf` table, the same on every machine.
+
+    /// A point of a contour, in font units, and whether it is on the curve.
+    [<Struct>]
+    type private Point = { X: float32; Y: float32; On: bool }
+
+    type Outlines(data: byte[]) =
+        let u16 (o: int) = (int data.[o] <<< 8) ||| int data.[o + 1]
+        let i16 (o: int) = int16 (u16 o) |> int
+        let u32 (o: int) = (u16 o <<< 16) ||| u16 (o + 2)
+
+        let table (tag: string) =
+            let count = u16 4
+
+            seq { 0 .. count - 1 }
+            |> Seq.map (fun i -> 12 + 16 * i)
+            |> Seq.tryFind (fun r -> Text.Encoding.ASCII.GetString(data, r, 4) = tag)
+            |> Option.map (fun r -> u32 (r + 8))
+            |> Option.defaultWith (fun () -> invalidOp (sprintf "Marey.Backend.Skia: a carried face has no '%s' table." tag))
+
+        let head = table "head"
+        let glyf = table "glyf"
+        let loca = table "loca"
+        let longLoca = i16 (head + 50) = 1
+        let unitsPerEm = float32 (u16 (head + 18))
+
+        let offset (g: int) = if longLoca then u32 (loca + 4 * g) else 2 * u16 (loca + 2 * g)
+
+        let cache = System.Collections.Concurrent.ConcurrentDictionary<int, Point[][]>()
+
+        let f2dot14 (o: int) = float32 (i16 o) / 16384.0f
+
+        /// A glyph's contours. A composite's components are placed by their offsets as stated,
+        /// not rounded to a grid: rounding is hinting, and the outline is drawn unhinted.
+        let rec contours (g: int) : Point[][] =
+            cache.GetOrAdd(g, fun g ->
+                let start = glyf + offset g
+
+                if offset (g + 1) = offset g then
+                    [||]
+                else
+                    let n = i16 start
+
+                    if n >= 0 then
+                        let ends = Array.init n (fun i -> u16 (start + 10 + 2 * i))
+                        let points = if n = 0 then 0 else ends.[n - 1] + 1
+                        let mutable o = start + 10 + 2 * n
+                        o <- o + 2 + u16 o
+                        let flags = Array.zeroCreate<byte> points
+                        let mutable i = 0
+
+                        while i < points do
+                            let f = data.[o]
+                            o <- o + 1
+                            flags.[i] <- f
+                            i <- i + 1
+
+                            if f &&& 8uy <> 0uy then
+                                let repeat = int data.[o]
+                                o <- o + 1
+
+                                for _ in 1..repeat do
+                                    flags.[i] <- f
+                                    i <- i + 1
+
+                        let coordinates (short: byte) (same: byte) =
+                            let values = Array.zeroCreate<int> points
+                            let mutable v = 0
+
+                            for k in 0 .. points - 1 do
+                                let f = flags.[k]
+
+                                if f &&& short <> 0uy then
+                                    let d = int data.[o]
+                                    o <- o + 1
+                                    v <- v + (if f &&& same <> 0uy then d else -d)
+                                elif f &&& same = 0uy then
+                                    v <- v + i16 o
+                                    o <- o + 2
+
+                                values.[k] <- v
+
+                            values
+
+                        let xs = coordinates 2uy 16uy
+                        let ys = coordinates 4uy 32uy
+                        let mutable first = 0
+
+                        ends
+                        |> Array.map (fun last ->
+                            let c = Array.init (last - first + 1) (fun k -> let j = first + k in { X = float32 xs.[j]; Y = float32 ys.[j]; On = flags.[j] &&& 1uy <> 0uy })
+                            first <- last + 1
+                            c)
+                    else
+                        let parts = ResizeArray<Point[]>()
+                        let mutable o = start + 10
+                        let mutable more = true
+
+                        while more do
+                            let flags = u16 o
+                            let glyph = u16 (o + 2)
+                            o <- o + 4
+                            let words = flags &&& 0x1 <> 0
+                            let dx, dy = if words then i16 o, i16 (o + 2) else int (sbyte data.[o]), int (sbyte data.[o + 1])
+                            let dx, dy = if flags &&& 0x2 <> 0 then float32 dx, float32 dy else 0.0f, 0.0f
+                            o <- o + (if words then 4 else 2)
+
+                            let a, b, c, d =
+                                if flags &&& 0x8 <> 0 then
+                                    let k = f2dot14 o
+                                    o <- o + 2
+                                    k, 0.0f, 0.0f, k
+                                elif flags &&& 0x40 <> 0 then
+                                    let kx, ky = f2dot14 o, f2dot14 (o + 2)
+                                    o <- o + 4
+                                    kx, 0.0f, 0.0f, ky
+                                elif flags &&& 0x80 <> 0 then
+                                    let m = f2dot14 o, f2dot14 (o + 2), f2dot14 (o + 4), f2dot14 (o + 6)
+                                    o <- o + 8
+                                    m
+                                else
+                                    1.0f, 0.0f, 0.0f, 1.0f
+
+                            for contour in contours glyph do
+                                parts.Add(contour |> Array.map (fun p -> { p with X = a * p.X + c * p.Y + dx; Y = b * p.X + d * p.Y + dy }))
+
+                            more <- flags &&& 0x20 <> 0
+
+                        parts.ToArray())
+
+        /// Glyph `g` at `size` px with its origin at (`x`, `y`), y down, added to `into`.
+        member _.Add(into: SKPathBuilder, g: uint16, size: float32, x: float32, y: float32) =
+            let k = size / unitsPerEm
+            let at (p: Point) = SKPoint(x + k * p.X, y - k * p.Y)
+            let mid (p: Point) (q: Point) = { X = (p.X + q.X) / 2.0f; Y = (p.Y + q.Y) / 2.0f; On = true }
+
+            for c in contours (int g) do
+                if c.Length > 0 then
+                    // Start on the curve: the first on-curve point, or the midpoint of the first
+                    // two off-curve ones when there is none.
+                    let s = c |> Array.tryFindIndex (fun p -> p.On)
+                    let ring = match s with Some s -> Array.append c.[s..] c.[.. s - 1] | None -> Array.append [| mid c.[0] c.[1] |] c.[1..]
+                    let ring = match s with Some _ -> ring | None -> Array.append ring [| c.[0] |]
+                    into.MoveTo(at ring.[0])
+                    let mutable control: Point option = None
+
+                    for k in 1 .. ring.Length do
+                        let p = if k = ring.Length then ring.[0] else ring.[k]
+
+                        match control, p.On with
+                        | None, true -> into.LineTo(at p)
+                        | None, false -> control <- Some p
+                        | Some q, true ->
+                            into.QuadTo(at q, at p)
+                            control <- None
+                        | Some q, false ->
+                            into.QuadTo(at q, at (mid q p))
+                            control <- Some p
+
+                    match control with
+                    | Some q -> into.QuadTo(at q, at ring.[0])
+                    | None -> ()
+
+                    into.Close()
+
+    let private outlines = System.Collections.Concurrent.ConcurrentDictionary<string, Outlines>()
+
+    /// The face's outlines, read once.
+    let outlinesOf (f: Face) : Outlines = outlines.GetOrAdd(f.Resource, fun r -> Outlines(bytes.GetOrAdd(r, read)))
+
+/// A face this measurer has opened: the typeface, the shaper bound to it, and its sized fonts.
+///
+/// One of these per distinct face — the primary, each stated fallback, each face the machine
+/// answered with — created once and registered once, so that disposal can walk a single list
+/// and free everything exactly once. The alternative, which is what stood here before a stated
+/// face could be shared by more than one entry, was a `if stated.IsNone` branch in `Dispose`
+/// guarding against a double free; a handle that is created in one place cannot be freed twice.
+[<NoComparison; NoEquality>]
+type internal FaceHandle =
+    { Typeface: SKTypeface
+      Shaper: SKShaper
+      /// The file it was opened from, when the caller stated one.
+      File: string option
+      /// The carried face it was opened from, when it was.
+      Carried: BundledFaces.Face option
+      /// Sized fonts, keyed by the exact bits of the size, because two sizes differing in the
+      /// last place are two different `SKFont`s to Skia.
+      Fonts: Dictionary<int, SKFont> }
+
+/// One `(family, weight, italic)` a render has asked for: the face it resolved to, and the
+/// account of everything fallback has had to do for it since.
+[<NoComparison; NoEquality>]
+type internal FaceSlot =
+    { Primary: FaceHandle
+      Requested: string
+      Weight: int
+      Italic: bool
+      Matched: string option
+      /// Fallback faces actually used, in first-seen order, each with what it covered.
+      Fallbacks: ResizeArray<FaceHandle * SortedSet<int>>
+      /// Codepoints no face covered.
+      Missing: SortedSet<int>
+      /// Which face draws a codepoint: `-1` the primary — which is also where a `.notdef` box
+      /// is drawn — otherwise an index into `Fallbacks`.
+      ///
+      /// **Decided once and never revisited.** One measurer serves a whole film
+      /// precisely so that a video cannot change typeface on a frame boundary, and a fallback
+      /// that asked the font manager again on frame 200 would put that back.
+      Decision: Dictionary<int, int> }
+
+/// A run of text split by coverage, and the vertical band the whole of it shares.
+///
+/// Internal because it puts SkiaSharp types in a signature, and the only caller that needs them
+/// is the backend in the next file, which must draw with exactly what it measured.
+[<NoComparison; NoEquality>]
+type internal ShapedRun =
+    { /// The pieces, in order: concatenating the strings gives the original back. Empty for an
+      /// empty string.
+      Segments: struct (SKFont * SKShaper * string)[]
+      /// For each segment, the carried face's outlines, when its face is one.
+      Outlines: BundledFaces.Outlines option[]
+      /// Ascent and descent, **positive and y-up** the way `TextMetrics` wants them, taken as
+      /// the maximum over the primary face and every face a segment uses.
+      ///
+      /// The maximum, and the primary is always in it. Font-wide metrics rather than the
+      /// string's ink box is what stops `e` and `E` centring at different heights (see
+      /// `Measure`); a *run*-wide maximum is the same argument one level up — a run that
+      /// reserved only the Latin band would have its CJK glyphs hang out of it, and a run that
+      /// reserved only the CJK band would make a Latin label taller than the label beside it.
+      /// Including the primary unconditionally is what keeps every number measured without
+      /// fallback unchanged: a run the primary covers on its own folds over exactly one face.
+      Ascent: float32
+      Descent: float32 }
+
 /// A real text measurer: HarfBuzz shaping through `SKShaper`, against a resolved face.
 ///
 /// This is the first `ITextMeasurer` other than the approximation, and it is the reason
@@ -386,18 +563,18 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
     let mutable disposed = false
 
     /// Register a typeface: one shaper, one font cache, one entry in the disposal list.
-    let handleWith (bundled: bool) (tf: SKTypeface) (file: string option) =
+    let handleWith (carried: BundledFaces.Face option) (tf: SKTypeface) (file: string option) =
         let h =
             { Typeface = tf
               Shaper = new SKShaper(tf)
               File = file
-              Bundled = bundled
+              Carried = carried
               Fonts = Dictionary<int, SKFont>() }
 
         handles.Add h
         h
 
-    let handleOf (tf: SKTypeface) (file: string option) = handleWith false tf file
+    let handleOf (tf: SKTypeface) (file: string option) = handleWith None tf file
 
     /// Open a stated file, eagerly: a bad path should fail at construction with a message
     /// naming the path, not on the first tick label with a null dereference.
@@ -477,10 +654,10 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
                     pick (i + 1)
 
         match carried with
-        | Some(name, face) -> BundledFaces.typeface face, Some name, true
+        | Some(name, face) -> BundledFaces.typeface face, Some name, Some face
         | None ->
             let tf, matched = pick 0
-            tf, matched, false
+            tf, matched, None
 
     let slotOf (spec: FontSpec) =
         let key = struct (spec.Family, spec.Weight, spec.Italic)
@@ -493,8 +670,8 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
                     statedChain.[0], None
                 else
                     SkiaNative.guard (fun () ->
-                        let tf, matched, bundled = resolveStack spec.Family spec.Weight spec.Italic
-                        handleWith bundled tf None, matched)
+                        let tf, matched, carried = resolveStack spec.Family spec.Weight spec.Italic
+                        handleWith carried tf None, matched)
 
             let slot =
                 { Primary = primary
@@ -657,6 +834,8 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
         let mutable ascent = -primaryFont.Metrics.Ascent
         let mutable descent = primaryFont.Metrics.Descent
 
+        let handles = pieces.ToArray() |> Array.map (fun struct (d, _, _) -> if d < 0 then slot.Primary else fst slot.Fallbacks.[d])
+
         let segments =
             pieces.ToArray()
             |> Array.map (fun struct (d, s, len) ->
@@ -667,6 +846,7 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
                 struct (font, h.Shaper, text.Substring(s, len)))
 
         { Segments = segments
+          Outlines = handles |> Array.map (fun h -> h.Carried |> Option.map BundledFaces.outlinesOf)
           Ascent = ascent
           Descent = descent }
 
@@ -677,7 +857,7 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
           Matched = slot.Matched
           Family = (if isNull slot.Primary.Typeface then "" else slot.Primary.Typeface.FamilyName)
           File = slot.Primary.File
-          Bundled = slot.Primary.Bundled
+          Bundled = slot.Primary.Carried.IsSome
           Fallbacks =
             slot.Fallbacks.ToArray()
             |> Array.map (fun (h, covered) ->
