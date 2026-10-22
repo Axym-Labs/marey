@@ -41,7 +41,10 @@ carries the two the built-in themes name: **Inter** (`Theme.Sans`, at weights 40
 and **Liberation Serif** (`Theme.Serif`, upright, italic and bold), both under the SIL Open Font
 License 1.1, whose texts are in the package's `fonts/`. A stack that names a carried family
 resolves to it before anything installed, so a figure in a built-in theme is the same PNG on
-every machine; CI renders one script on Linux and on Windows and compares the pixels. Inter is
+every machine; CI renders one script on Linux and on Windows and compares the pixels. A PNG draws
+its text as the glyphs' outlines, filled by Skia itself, because a glyph is rasterised by the
+platform's font engine (FreeType, DirectWrite), which smooths it differently on each; a PDF keeps
+its text as text. Inter is
 subset to Latin, Greek, punctuation, super- and subscripts, letterlike symbols, arrows and the
 mathematical operators, and a codepoint outside that falls back to the machine like any other.
 

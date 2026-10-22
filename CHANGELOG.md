@@ -55,7 +55,9 @@ and reported when missing; Marey does not require a version of them.
   Latin, Greek and the symbols units use) and Liberation Serif (upright, italic and bold), both SIL
   OFL 1.1 with their licences in the package's `fonts/`, and a stack that names one of them
   resolves to it before anything installed. The built-in themes' PNGs and PDFs no longer depend on
-  the machine's fonts; CI compares one script's PNGs from Linux and Windows pixel for pixel.
+  the machine's fonts; CI compares one script's PNGs from Linux and Windows pixel for pixel. A PNG
+  and the GPU window draw text as the glyphs' outlines, which Skia fills itself, since FreeType
+  and DirectWrite smooth one glyph differently; a PDF keeps its text as text.
   `ResolvedFace.Bundled` says when a carried face was used, and
   `SkiaTextMeasurer.MeasureUnshaped` gives a run's advance without shaping. The package grows by
   about 1 MB.

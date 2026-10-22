@@ -205,7 +205,20 @@ type PainterClip =
 /// Not thread-safe, like the canvas it draws on. The measurer is shared, and must be the one
 /// layout ran against: the traversal centres text with the advances it measured.
 [<Sealed>]
-type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, claim: (Affine<nd, px> -> Node -> bool) option) =
+type SkiaPainter
+    (
+        canvas: SKCanvas,
+        shaping: SkiaTextMeasurer,
+        antialias: bool,
+        claim: (Affine<nd, px> -> Node -> bool) option,
+        ?outlines: bool
+    ) =
+
+    /// Text drawn as its glyphs' outlines, filled as paths, rather than as glyphs. A glyph is
+    /// rasterised by the platform's font engine, FreeType on Linux and DirectWrite on Windows,
+    /// which hint and smooth it each its own way, so one face is two PNGs; an outline is filled
+    /// by Skia's own rasteriser, the same everywhere. A PDF keeps its text as text.
+    let outlines = defaultArg outlines false
 
     let mutable layers = 0
     let mutable clip = PainterClip.Unclipped
@@ -641,7 +654,27 @@ type SkiaPainter(canvas: SKCanvas, shaping: SkiaTextMeasurer, antialias: bool, c
 
             for i in 0 .. run.Segments.Length - 1 do
                 let struct (font, shaper, s) = run.Segments.[i]
-                canvas.DrawShapedText(shaper, s, pen, oy, SKTextAlign.Left, font, paint)
+
+                if outlines then
+                    // The shaper's glyphs at the shaper's positions, so the outline is where the
+                    // glyph would have been. Unhinted, from a copy: hinting moves an outline, and
+                    // each engine moves it differently.
+                    use unhinted = new SKFont(font.Typeface, font.Size, font.ScaleX, font.SkewX)
+                    unhinted.Hinting <- SKFontHinting.None
+                    let shaped = shaper.Shape(s, pen, oy, unhinted)
+                    use builder = new SKPathBuilder()
+
+                    for g in 0 .. shaped.Codepoints.Length - 1 do
+                        use glyph = unhinted.GetGlyphPath(uint16 shaped.Codepoints.[g])
+
+                        if not (isNull glyph) then
+                            builder.AddPath(glyph, shaped.Points.[g].X, shaped.Points.[g].Y)
+
+                    use path = builder.Detach()
+                    canvas.DrawPath(path, paint)
+                else
+                    canvas.DrawShapedText(shaper, s, pen, oy, SKTextAlign.Left, font, paint)
+
                 pen <- pen + widths.[i]
 
             if rotated then
@@ -1051,7 +1084,7 @@ type SkiaBackend(?options: SkiaOptions, ?format: SkiaFormat) =
             // conversion, so the traversal — and `RootTransform`, and every coordinate a test
             // checks — stays in one unit whichever container is being written.
             root <- SkiaPainter.RootTransform extent
-            painter <- Some(SkiaPainter(canvas, shaping, opts.Antialias, None))
+            painter <- Some(SkiaPainter(canvas, shaping, opts.Antialias, None, outlines = (format = SkiaFormat.Png)))
 
         member _.Draw(node: Node) =
             requireStarted ()
