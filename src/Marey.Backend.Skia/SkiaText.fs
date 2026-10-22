@@ -309,6 +309,7 @@ module internal BundledFaces =
             |> Option.defaultWith (fun () -> invalidOp (sprintf "Marey.Backend.Skia: a carried face has no '%s' table." tag))
 
         let head = table "head"
+        let hhea = table "hhea"
         let glyf = table "glyf"
         let loca = table "loca"
         let longLoca = i16 (head + 50) = 1
@@ -417,6 +418,10 @@ module internal BundledFaces =
                             more <- flags &&& 0x20 <> 0
 
                         parts.ToArray())
+
+        /// The ascent and descent at `size` px, positive, from `hhea`: what FreeType reports, read
+        /// here so that DirectWrite, which may read another table, cannot move a baseline.
+        member _.Band(size: float32) = struct (size * float32 (i16 (hhea + 4)) / unitsPerEm, -size * float32 (i16 (hhea + 6)) / unitsPerEm)
 
         /// Glyph `g` at `size` px with its origin at (`x`, `y`), y down, added to `into`.
         member _.Add(into: SKPathBuilder, g: uint16, size: float32, x: float32, y: float32) =
@@ -831,8 +836,15 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
         if text.Length > start then
             pieces.Add(struct (current, start, text.Length - start))
 
-        let mutable ascent = -primaryFont.Metrics.Ascent
-        let mutable descent = primaryFont.Metrics.Descent
+        // A carried face's band from its own tables, any other's from the engine.
+        let band (h: FaceHandle) (font: SKFont) =
+            match h.Carried with
+            | Some f -> (BundledFaces.outlinesOf f).Band font.Size
+            | None -> struct (-font.Metrics.Ascent, font.Metrics.Descent)
+
+        let struct (primaryAscent, primaryDescent) = band slot.Primary primaryFont
+        let mutable ascent = primaryAscent
+        let mutable descent = primaryDescent
 
         let handles = pieces.ToArray() |> Array.map (fun struct (d, _, _) -> if d < 0 then slot.Primary else fst slot.Fallbacks.[d])
 
@@ -841,8 +853,9 @@ type SkiaTextMeasurer(?fontFile: string, ?dpi: float<px / mm>, ?fontFiles: strin
             |> Array.map (fun struct (d, s, len) ->
                 let h = if d < 0 then slot.Primary else fst slot.Fallbacks.[d]
                 let font = fontOf h sizePx
-                ascent <- max ascent -font.Metrics.Ascent
-                descent <- max descent font.Metrics.Descent
+                let struct (a, d) = band h font
+                ascent <- max ascent a
+                descent <- max descent d
                 struct (font, h.Shaper, text.Substring(s, len)))
 
         { Segments = segments
