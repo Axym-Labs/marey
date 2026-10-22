@@ -30,6 +30,9 @@ type Live =
       View: float[] -> Figure }
 
 /// Which axis of a panel a zoom states.
+///
+/// **An open union**: a minor release may add a case, for a new way to zoom, so a `match` over
+/// it keeps a wildcard case.
 [<RequireQualifiedAccess>]
 type ZoomAxis =
     | X

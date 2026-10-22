@@ -31,6 +31,9 @@ type internal LegendEntry =
 /// Outside placement is hard because it changes the panel's width and the tick plan is
 /// measured against that width. The colorbar shows the way round: a column of the
 /// panel's own grid, sized before the ticks are planned, so the loop is still two passes.
+///
+/// **An open union**: a minor release may add a case, for a new place to put a legend, so a
+/// `match` over it keeps a wildcard case.
 type LegendPlacement =
     | LegendNone
     | LegendTopRight

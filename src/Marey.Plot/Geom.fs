@@ -126,6 +126,9 @@ type ArrowStyle =
 /// second layer (`Figure.unify`), `Chart.withXDomain` or a switch to a log axis moved the points
 /// and left the geom's own arrays behind: a ±0.5 m error bar added to a 0–10 m line spanned
 /// 0–10 m. Carrying data and projecting once, beside the points, leaves nothing to remember.
+///
+/// **An open union**: a minor release may add a case, for a new mark, so a `match` over it
+/// keeps a wildcard case.
 [<NoComparison>]
 type GeomOf<[<Measure>] 'p> =
     | GeomLine
