@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+    # A release tag also publishes the documentation site (the `pages` job).
+    tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -246,6 +248,36 @@ jobs:
           name: packages
           path: artifacts/*.nupkg
           retention-days: 7
+
+      # The documentation site (tools/site/build.sh): the guide's pages around the scenes its
+      # session draws, the gallery, and fsdocs' API reference. In this job because the guide
+      # draws with the toolchain installed above. Built on every run, so a page that no longer
+      # builds fails here; uploaded for GitHub Pages from a release tag.
+      - name: Site
+        if: matrix.sdk == '10.0.1xx'
+        run: sh tools/site/build.sh site
+
+      - uses: actions/upload-pages-artifact@v3
+        if: matrix.sdk == '10.0.1xx' && startsWith(github.ref, 'refs/tags/v')
+        with:
+          path: site
+
+  pages:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
 
   # D130 — the Fable claim, as a job rather than a sentence. Fable compiles the projects that
   # claim it, with the scenes and figures behind the SVG baselines (`tests/Shared`), and Node

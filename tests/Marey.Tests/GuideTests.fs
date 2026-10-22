@@ -247,15 +247,64 @@ module GuideOutput =
 
         sb.Append("</svg>\n").ToString()
 
+    /// Where the site's build wants each figure's scene, when it asked: `MAREY_SITE_SCENES`.
+    let private sceneDir =
+        match System.Environment.GetEnvironmentVariable "MAREY_SITE_SCENES" with
+        | null | "" -> None
+        | d -> System.IO.Directory.CreateDirectory d |> ignore; Some d
+
+    /// A scene's bytes for a canvas, laid out and measured as a notebook's canvas page is.
+    let private sceneBytes (n: Marey.Node) = System.Convert.ToBase64String(Marey.Wire.encodeWith Marey.TextMeasure.approx n)
+
+    let private scene (name: string) (n: Marey.Node) =
+        sceneDir |> Option.iter (fun d -> System.IO.File.WriteAllText(System.IO.Path.Combine(d, name + ".scene"), sceneBytes n))
+
+    /// A live figure of one control, sampled along it for a page with no kernel behind it: each
+    /// sample's scene, what the control reads there, and which sample it starts at.
+    let private baked (name: string) (live: Marey.Live) (size: Marey.Extent<Marey.px>) =
+        sceneDir
+        |> Option.iter (fun d ->
+            match live.Controls with
+            | [| c |] ->
+                let start = Marey.Live.initAt size live
+                let values =
+                    match c.Kind with
+                    | Marey.ControlKind.Slider(lo, hi, step) when step > 0.0 -> [| lo .. step .. hi + step / 2.0 |]
+                    | Marey.ControlKind.Slider(lo, hi, _)
+                    | Marey.ControlKind.Time(lo, hi, _, _) -> Array.init 31 (fun i -> lo + (hi - lo) * float i / 30.0)
+                    | Marey.ControlKind.Select options -> Array.init options.Length float
+                    | Marey.ControlKind.Checkbox -> [| 0.0; 1.0 |]
+                // At most 41, ends included: a page carries every sample's scene.
+                let values = if values.Length > 41 then Array.init 41 (fun i -> values.[i * (values.Length - 1) / 40]) else values
+                let states = values |> Array.map (fun v -> Marey.Live.step live start (Marey.LiveMsg.Set(0, v)))
+                let first = values |> Array.mapi (fun i v -> i, abs (v - c.Init)) |> Array.minBy snd |> fst
+                let quote (s: string) = "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\""
+                let json =
+                    sprintf "{\"label\":%s,\"width\":%g,\"height\":%g,\"start\":%d,\"shown\":[%s],\"scenes\":[%s]}"
+                        (quote c.Label) (float size.Width) (float size.Height) first
+                        (states |> Array.map (fun s -> quote (Marey.Live.shown live s).[0]) |> String.concat ",")
+                        (states |> Array.map (fun s -> quote (sceneBytes (Marey.Live.scene live s))) |> String.concat ",")
+                System.IO.File.WriteAllText(System.IO.Path.Combine(d, name + ".live"), json)
+            | _ -> ())
+
     let write (dir: string) (name: string) (w: float) (h: float) (frames: int) (value: obj) =
         let path = System.IO.Path.Combine(dir, name + ".svg")
+        let size = Marey.Chart.size w h
 
         match value with
-        | :? Marey.Figure as f -> Marey.Chart.toSvg Marey.SvgBackend.render path (Marey.Chart.size w h) f
-        | :? Marey.Node as n -> System.IO.File.WriteAllText(path, Marey.SvgBackend.render (Marey.Chart.size w h) n)
+        | :? Marey.Figure as f ->
+            Marey.Chart.toSvg Marey.SvgBackend.render path size f
+            scene name (Marey.Chart.toSceneWith Marey.TextMeasure.approx size f)
+        | :? Marey.Node as n ->
+            System.IO.File.WriteAllText(path, Marey.SvgBackend.render size n)
+            scene name n
+        | :? Marey.Live as live ->
+            let state = Marey.Live.initAt size live
+            System.IO.File.WriteAllText(path, Marey.SvgBackend.render size (Marey.Live.scene live state))
+            baked name live size
         | :? Marey.Film as film -> System.IO.File.WriteAllText(path, filmSvg frames film)
         | :? Marey.Anim<Marey.Figure> as anim ->
-            System.IO.File.WriteAllText(path, filmSvg frames (Marey.Film.ofFigures frames (Marey.Chart.size w h) anim))
+            System.IO.File.WriteAllText(path, filmSvg frames (Marey.Film.ofFigures frames size anim))
         | v -> failwithf "output=%s is a %s, which the guide does not draw" name (v.GetType().Name)
 """
 
