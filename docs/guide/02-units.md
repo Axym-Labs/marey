@@ -121,7 +121,7 @@ printfn "metres and kelvin on one axis are refused: %b" refused.IsSome
 
 ## Without units
 
-`open Marey` without `Marey.UnitsOfMeasure` is the unit-optional mode. A chart takes plain arrays,
+`open Marey` without `Marey.UnitsOfMeasure` is the unit-optional mode. A chart takes plain numbers,
 and a unit is a named argument that may be left out. A stated unit gives the axis what a witness
 gives it, and the check when two layers meet still runs:
 

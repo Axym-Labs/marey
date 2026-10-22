@@ -1,8 +1,7 @@
 # Marey.Backend.Tikz
 
-The TikZ backend for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
-visualization system for F#. Emits `tikzpicture` source for pasting into a LaTeX document. Pure F#,
-**zero dependencies**, `netstandard2.1`.
+The TikZ backend for [Marey](https://github.com/Axym-Labs/marey). Emits `tikzpicture` source for
+pasting into a LaTeX document. Pure F#, **zero dependencies**, `netstandard2.1`.
 
 ```fsharp
 #r "nuget: Marey.Plot"

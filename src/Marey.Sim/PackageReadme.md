@@ -1,8 +1,8 @@
 # Marey.Sim
 
-Simulation for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed visualization
-system for F#. **A simulation is a start and a step, and its trajectory is an animation**: it
-seeks, it films, and a seek to any time is exactly the state a straight run reaches.
+Simulation for [Marey](https://github.com/Axym-Labs/marey). **A simulation is a start and a step,
+and its trajectory is an animation**: it seeks, it films, and a seek to any time is exactly the
+state a straight run reaches.
 
 ```fsharp
 #r "nuget: Marey.Sim"

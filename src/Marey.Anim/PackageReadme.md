@@ -1,7 +1,7 @@
 # Marey.Anim
 
-Animation for [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
-visualization system for F#. **An animation is a pure function of time, not a mutation.**
+Animation for [Marey](https://github.com/Axym-Labs/marey). **An animation is a pure function of
+time, not a mutation.**
 
 ```fsharp
 #r "nuget: Marey.Anim"

@@ -1,48 +1,45 @@
 # Marey.Core
 
-The foundation of [Marey](https://github.com/Axym-Labs/marey), a dimensionally-typed
-visualization system for F#. **Zero dependencies**, `netstandard2.1`.
-
-Take this package on its own for the types without the plotting: dimension vectors, unit
-witnesses, unit-indexed geometry, scales, and the scene graph that backends consume.
+The types under [Marey](https://github.com/Axym-Labs/marey): dimensions, unit witnesses, values
+that carry their unit, unit-indexed geometry, scales, typed statistics, and the scene every backend
+draws. No dependencies, `netstandard2.1`, and it compiles under Fable.
 
 ```fsharp
 open Marey
 
-// A unit witness ties a compile-time [<Measure>] to runtime metadata, which is what makes an
-// axis able to label itself. F# erases measures; this is how the information survives.
-let metre = U.metre                  // U<m>
-printfn "%A" (U.dim metre)           // the SI dimension vector
+// A witness is the runtime half of a measure: F# erases `m`, and `U<m>` keeps its symbol,
+// dimension and factor to SI, which is what an axis titles itself from.
+printfn "%s" (Dim.show (U.dim U.metre))
 
-// Scales are unit-indexed, so a scale over metres cannot be handed seconds.
+// Scales are indexed by the unit, so a scale over metres cannot be handed seconds.
 let scale = Scale.linear U.metre (0.0<m>, 10.0<m>)
-printfn "%A" (scale.Forward 5.0<m>)  // normalized panel space
+printfn "%g" (float (scale.Forward 5.0<m>))
+
+// Values with their witness: arithmetic composes the witnesses as it composes the measures.
+let travelled = U.metre.Of [| 0.0<m>; 2.0<m>; 8.0<m> |]
+let speed = travelled / U.second.Of 2.0<s>
+printfn "%s" speed.Unit.Symbol
 ```
 
-## What is in it
+- **`Dim`**, the seven SI exponents, and **`U<'u>`**, the witness: a symbol, a dimension, a factor
+  to SI and an offset for an affine unit such as degrees Celsius. `U.mul`, `U.div` and `U.recip`
+  compose witnesses and keep the factorisation, so `V·m⁻¹` still reads as itself.
+- **`Q<'u>` and `Quantity<'u>`**, values and one value with their witness, made by `U.second.Of`.
+  A chart over them takes no witness, and their products, quotients, sums and differences compute
+  the witness of the result.
+- **`Stat`**: bins, densities, ECDFs, quantiles and summaries, regression, loess, hexbins and
+  bootstrap intervals, each in the units of its input. A fit of metres against seconds has a slope
+  of type `float<m/s>`.
+- **`Scale`**: linear, log, symlog, power, reciprocal and categorical, each `Forward` and
+  `Inverse` checked as mutual inverses. **`Vec2`**, **`Affine`** and **`Coord`**: geometry and
+  coordinate systems indexed by unit.
+- **`Scene`**, the closed set of ten nodes every backend draws, and **`Wire`**, which writes a
+  scene or a patch to bytes and back exactly, with the text metrics its layout used: what a kernel
+  sends a page to draw.
 
-- **`Dim`** — the seven-element SI dimension vector, with group laws checked by property tests.
-- **`U<'u>`** — the unit witness: a symbol, a dimension, a factor to SI, and an offset for affine
-  units like degrees Celsius. `U.mul`/`div`/`recip`/`square`/`cube` compose them, carrying the
-  factorisation structurally so a composed unit can still name itself.
-- **`Vec2`/`Vec3`, `Affine`, `Coord`** — unit-indexed geometry and coordinate transforms.
-- **`Scale`** — seven scale kinds, each with `Forward`/`Inverse` verified as mutual inverses.
-- **`Scene`** — a small closed IR of ten cases. Every backend consumes this and nothing else.
-- **`Wire`** — a scene or a patch as bytes and back, exactly: little-endian float64, versioned,
-  with the text metrics its layout used (`TextTable`). What a kernel sends a page to draw.
-- **`Interp`**, tick generation, and text metrics.
-
-## Zero dependencies
-
-Nothing is added to this package's references. That is what lets the same IR run in a notebook, in
-a browser through Fable, and in an AOT-compiled binary. `FSharp.Core` is the language runtime, not
-a dependency.
-
-## Related packages
-
-`Marey.Core` has no units table, no chart API and no renderer. For the usual case install
-[`Marey.Plot`](https://www.nuget.org/packages/Marey.Plot) and a backend, or
-[`Marey.Html`](https://www.nuget.org/packages/Marey.Html), which pulls in everything.
+Most projects reference [`Marey`](https://www.nuget.org/packages/Marey), which brings this with the
+plotting grammar, units table and outputs. On its own this package has no units table (that is
+[`Marey.Units`](https://www.nuget.org/packages/Marey.Units)), no charts and no renderer.
 
 - [The guide on the scene](https://github.com/Axym-Labs/marey/blob/main/docs/guide/15-underneath.md)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

@@ -1,47 +1,39 @@
 # Marey.Units
 
-Unit witnesses and unit rendering for [Marey](https://github.com/Axym-Labs/marey), a
-dimensionally-typed visualization system for F#.
-
-SI base units, 22 derived units and 18 common non-SI units, each as a witness carrying its symbol,
-dimension, conversion factor and — where it needs one — its affine offset, together with the
-rendering machinery that lets an axis write its own title.
+The units table of [Marey](https://github.com/Axym-Labs/marey), and how a unit is written. The
+seven SI base units, the named derived units and the non-SI units physics writes in, each a witness
+with its symbol, dimension, factor to SI and, for an affine unit, its offset.
 
 ```fsharp
 open Marey
 
-// Canonicalisation is keyed on the dimension, not on strings. A newton composed out of base
-// units and a newton stated outright are the same unit, and print the same symbol.
+// A unit is named from its dimension, not from its spelling: a newton composed from base units
+// prints as one.
 let composed = U.mul U.kilogram U.metrePerSecondSquared
-printfn "%s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none composed)   // N
+printfn "%s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none composed)
 
-// Four spellings, because a LaTeX document and a terminal want different things.
-printfn "%s" (UnitDisplay.unitText Siunitx UnitRegistry.si Prefix.none composed)   // \qty{}{\newton}
+// Four spellings, for a screen, a terminal, LaTeX and siunitx.
+printfn "%s" (UnitDisplay.unitText Siunitx UnitRegistry.si Prefix.none composed)
+
+// Read from text, in UDUNITS-2's syntax.
+printfn "%s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none (U.parse "kV/mm"))
 ```
 
-## What it does
-
-- **Canonical symbols from physics, not from string matching.** The registry is keyed on the
-  seven-element dimension vector, so anything that composes to a newton prints `N`.
-- **Prefix selection.** A domain spanning 1e-9 to 5e-9 metres yields an axis labelled `nm` with
-  ticks `1, 2, 3, 4, 5`. The kilogram is handled correctly — a prefix of 10⁻⁶ on `float<kg>`
-  prints `mg`, against the gram, not `µkg`.
-- **Composed units still name themselves.** `U.div U.volt U.metre` has no SI name and its
-  dimension spells out as `kg·m·s⁻³·A⁻¹`. It renders `V·m⁻¹`, and `MV·m⁻¹` when prefixed, because
-  the witness records the factorisation it was built from. Nothing is guessed: a bare dimension is
-  never factorised, since the same vector is both `J/K` and `N·m/K`.
-- **Four rendering styles** — Unicode, ASCII, LaTeX and `siunitx`.
-- **Affine units.** Degrees Celsius and Fahrenheit carry an offset, and `IsAffine` reports it.
-  A composed unit built from an affine one drops the offset, because the quotient of an affine
-  unit is not affine.
-- **Units read from text.** `U.parse "V/m"` reads UDUNITS-2's syntax — products, quotients,
-  integer powers, SI prefixes, `degC` — and composes as `U.div` would, so the axis label is the
-  same. `U.tryAs U.metre (U.parse "km")` asserts the measure back, checked on the dimension.
-- **C#.** `Units.Metre` and every other witness under one name, with the algebra and
-  `Units.Parse`, in the `Marey.CSharp` namespace.
-- **Non-SI units physics actually writes in** — `electronvolt`, `angstrom`, `parsec`, `lightYear`,
-  `dalton`, `atmosphere`, `bar`, `barn`, `calorie`, `gauss`, `litre`, `minute`, `hour`, `day`,
-  `year`. An electronvolt axis reads `keV`, not `kJ`.
+- **Names from dimensions.** Anything that composes to a newton prints `N`. A composed unit without
+  an SI name reads as it was composed, `V·m⁻¹`, and takes a prefix on its leading factor, `MV·m⁻¹`;
+  a bare dimension is never factorised, since one vector is both `J/K` and `N·m/K`.
+- **Prefixes from the data.** An axis over 1–5 nm reads `nm` with ticks `1 … 5`. A mass takes its
+  prefix against the gram: 10⁻⁶ kg is `mg`. A rate reads `s⁻¹` and a frequency `Hz`, and a
+  wavenumber `nm⁻¹`.
+- **Angles.** The radian and `U.degree` are angles, so an axis in either reads `θ`, and `rad/s` or
+  `°/s` never shares an axis with `Hz`, which is 2π away.
+- **Non-SI units**: the electronvolt (an axis reads `keV`, not `kJ`), ångström, astronomical unit,
+  light year, parsec, barn, litre, bar, atmosphere, minute, hour, day, year, dalton, gauss, calorie,
+  degree, and degrees Celsius and Fahrenheit with their offsets.
+- **Units from text.** `U.parse "V/m"` reads products, quotients, integer powers, SI prefixes and
+  `degC`, and composes as `U.div` would; `U.tryAs U.metre (U.parse "km")` asserts the measure back,
+  checked on the dimension.
+- **C#.** `Units.Metre` and the rest under `Marey.CSharp`, with the algebra and `Units.Parse`.
 
 Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else.
 

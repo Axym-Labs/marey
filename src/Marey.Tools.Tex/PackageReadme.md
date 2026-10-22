@@ -1,8 +1,7 @@
 # Marey.Tools.Tex
 
-Mathematical typesetting for [Marey](https://github.com/Axym-Labs/marey), a
-dimensionally-typed visualization system for F#. **TeX sets the formula; the result is geometry,
-so every backend draws it.**
+Mathematical typesetting for [Marey](https://github.com/Axym-Labs/marey). **TeX sets the formula;
+the result is geometry, so every backend draws it.**
 
 ```fsharp
 #r "nuget: Marey"
