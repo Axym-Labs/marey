@@ -133,6 +133,20 @@ and reported when missing; Marey does not require a version of them.
   only for a legend stated as `LegendTopLeft`. It now resolves `LegendBest` as the drawing pass
   does, through `PanelLayout.legendPlacement`, which is new.
 
+### Removed
+
+- **`Chart.Plain`**, deprecated in 0.4. Use `Chart.Line(xs, ys)`, which leaves the units
+  unspecified, or pass `U.one` where the data is dimensionless.
+
+### Fixed
+
+- **Two units of one dimension on one axis are converted.** A layer in minutes added to an axis
+  in seconds was drawn in its own numbers, so 4 min stood at 4 s; so were degrees beside radians,
+  °C beside K and a kilometre panel sharing x with a metre one. The domain an axis shares
+  or is given (`withXDomain`, a zoom, an inset's, a storyboard's) is now in the axis's unit,
+  the first stated layer's, and each layer reads it in its own, offsets included.
+
+
 ## [0.7.0] — 2026-10-16
 
 **Paper figures.** What a figure for a paper adds last, and where its panels sit. Rules, spans and
