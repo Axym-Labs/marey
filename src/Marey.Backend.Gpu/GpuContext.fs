@@ -334,7 +334,8 @@ type internal GpuContext(?shown: string * int * int * bool) =
                 true
             | _ -> false
 
-        let painter = SkiaPainter(canvas, shaping, opts.Antialias, (if instanced then Some claim else None))
+        // Text as outlines, as `renderPng` draws it, so a frame and its export agree.
+        let painter = SkiaPainter(canvas, shaping, opts.Antialias, (if instanced then Some claim else None), outlines = true)
         self <- Some painter
 
         for ctm, node in layers do

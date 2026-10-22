@@ -121,8 +121,8 @@ namespace Marey
     type SkiaPainter =
 
         new: canvas: SkiaSharp.SKCanvas * shaping: SkiaTextMeasurer *
-             antialias: bool * claim: (Affine<nd,px> -> Node -> bool) option ->
-               SkiaPainter
+             antialias: bool * claim: (Affine<nd,px> -> Node -> bool) option *
+             ?outlines: bool -> SkiaPainter
 
         static member RootTransform: extent: Extent<px> -> Affine<nd,px>
 
