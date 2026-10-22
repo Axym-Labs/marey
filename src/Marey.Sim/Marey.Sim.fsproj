@@ -17,7 +17,7 @@
     <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Sim</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>Simulation for Marey: ODE integrators typed by units of measure (Euler, RK4, Dormand-Prince, velocity Verlet, leapfrog), trajectories that seek like any other animation, invariants, events and collisions, Poincare sections, pathlines and particles, finite-difference heat, wave and Poisson solvers, and fluids by stable fluids and lattice Boltzmann.</Description>
+    <Description>Simulation for Marey: ODE integrators typed by units of measure (Euler, RK4, Dormand-Prince, velocity Verlet, leapfrog), trajectories that seek like any other animation, invariants, events and collisions, Poincaré sections, pathlines and particles, finite-difference heat, wave and Poisson solvers, and fluids by stable fluids and lattice Boltzmann.</Description>
     <PackageTags>fsharp simulation ode integrator runge-kutta verlet symplectic fluid lattice-boltzmann units-of-measure scientific</PackageTags>
     <!-- Its producer is the integrators: a step is usable alone, folded by hand or by
          `Sim.run`. -->

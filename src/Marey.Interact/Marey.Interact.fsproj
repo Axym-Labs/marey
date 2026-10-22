@@ -17,7 +17,7 @@
     <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Interact</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>Interaction for Marey: typed controls (a slider over kelvin hands the view kelvin, and labels itself in them), composed into a live figure by an applicative block, and stepped by a pure function a notebook host drives: controls, zoom, pan, a readout in the axes' units, and recordings that replay as films.</Description>
+    <Description>Interaction for Marey: typed controls (a slider over kelvin hands the view kelvin and labels itself in them) composed into a live figure by the interact block, stepped by a pure function a notebook host drives, with zoom, pan, a readout in the axes' units, and recordings that replay as films.</Description>
     <PackageTags>fsharp visualization plotting interactive widgets notebook units-of-measure</PackageTags>
 
     <!-- A package ships with a producer: here, the widget document `Html.widget` draws what

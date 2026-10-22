@@ -15,7 +15,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>Marey.Backend.Skia</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>PNG and PDF output through SkiaSharp, with real text shaping via HarfBuzz. The first Marey backend that measures text rather than estimating it.</Description>
+    <Description>PNG and PDF output for Marey through SkiaSharp, with text shaped by HarfBuzz. The faces the built-in themes use travel in the package, so a figure is the same PNG on every machine.</Description>
     <PackageTags>fsharp skia png pdf plotting charts rendering rasterization visualization harfbuzz</PackageTags>
   </PropertyGroup>
 

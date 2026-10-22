@@ -9,8 +9,8 @@
     <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Plot</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>Themes, palettes, constraint layout, and the axis/legend compiler that turns figures into Scene IR.</Description>
-    <PackageTags>fsharp plotting charts visualization themes color-blind palettes layout scientific units-of-measure</PackageTags>
+    <Description>The plotting grammar of Marey: charts whose axes take their titles, ticks and prefixes from unit witnesses; layered marks, statistics, colour and size channels and the plot block; panels, insets and shared axes; themes and colour-blind-safe palettes; all compiled to the scene IR.</Description>
+    <PackageTags>fsharp plotting charts visualization themes color-blind palettes layout scientific units-of-measure grammar-of-graphics</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
