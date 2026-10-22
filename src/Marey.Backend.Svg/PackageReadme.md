@@ -1,6 +1,6 @@
 # Marey.Backend.Svg
 
-The SVG backend for [Marey](https://github.com/Axym-Labs/marey). Pure F#, **zero dependencies**,
+The SVG backend for [Marey](https://axym-labs.github.io/marey/). Pure F#, **zero dependencies**,
 `netstandard2.1`.
 
 ```fsharp
@@ -37,5 +37,5 @@ knows what to do with one, without an extension installed.
 
 Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else.
 
-- [The guide on output](https://github.com/Axym-Labs/marey/blob/main/docs/guide/01-start.md)
+- [The guide on output](https://axym-labs.github.io/marey/guide/01-start.html)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

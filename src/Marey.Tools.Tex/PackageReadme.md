@@ -1,6 +1,6 @@
 # Marey.Tools.Tex
 
-Mathematical typesetting for [Marey](https://github.com/Axym-Labs/marey). **TeX sets the formula;
+Mathematical typesetting for [Marey](https://axym-labs.github.io/marey/). **TeX sets the formula;
 the result is geometry, so every backend draws it.**
 
 ```fsharp

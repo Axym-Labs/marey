@@ -1,6 +1,6 @@
 # Marey.Backend.Gpu
 
-GPU rendering for [Marey](https://github.com/Axym-Labs/marey). Skia draws on an OpenGL 3.3 core
+GPU rendering for [Marey](https://axym-labs.github.io/marey/). Skia draws on an OpenGL 3.3 core
 context, offscreen or in a window. `net8.0`.
 
 ```fsharp

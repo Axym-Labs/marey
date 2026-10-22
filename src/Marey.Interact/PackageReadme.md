@@ -1,6 +1,6 @@
 # Marey.Interact
 
-Interaction for [Marey](https://github.com/Axym-Labs/marey). **A slider over kelvin hands the view
+Interaction for [Marey](https://axym-labs.github.io/marey/). **A slider over kelvin hands the view
 kelvin, and labels itself in kelvin.**
 
 ```fsharp

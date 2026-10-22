@@ -1,6 +1,6 @@
 # Marey.Backend.Skia
 
-The PNG and PDF backend for [Marey](https://github.com/Axym-Labs/marey). `netstandard2.1`.
+The PNG and PDF backend for [Marey](https://axym-labs.github.io/marey/). `netstandard2.1`.
 
 ```fsharp
 #r "nuget: Marey.Plot"
@@ -87,5 +87,5 @@ library is missing, the entry points raise a message naming the package to add r
 dependency on this package or on SkiaSharp, and a test asserts it against the built assembly
 graph.
 
-- [The guide](https://github.com/Axym-Labs/marey/blob/main/docs/guide/01-start.md)
+- [The guide](https://axym-labs.github.io/marey/guide/01-start.html)
 - [Examples](https://github.com/Axym-Labs/marey/tree/main/examples)

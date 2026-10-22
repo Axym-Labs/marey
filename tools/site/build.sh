@@ -30,4 +30,17 @@ dotnet fsdocs build --projects $projects --input tools/site/reference --output "
         fsdocs-license-link https://github.com/Axym-Labs/marey/blob/main/LICENSE \
         fsdocs-release-notes-link https://github.com/Axym-Labs/marey/blob/main/CHANGELOG.md
 rm -rf "$scenes"
+
+# 4. Every link the README and the package readmes make into the published site names a page
+#    this build wrote, and a heading on it when the link has a fragment. The site is published
+#    from a release tag, so a readme that links ahead of it fails here rather than on nuget.org.
+site=https://axym-labs.github.io/marey/
+grep -ohE "${site}[^) \"'>]*" README.md NUGET.md src/*/PackageReadme.md | sort -u | while read -r url; do
+    path=${url#"$site"}
+    fragment=
+    case $path in *'#'*) fragment=${path#*#}; path=${path%%#*} ;; esac
+    case $path in '' | */) path="${path}index.html" ;; esac
+    [ -f "$out/$path" ] || { echo "no page for $url" >&2; exit 1; }
+    [ -z "$fragment" ] || grep -q "id=\"$fragment\"" "$out/$path" || { echo "no heading for $url" >&2; exit 1; }
+done
 echo "site: $out"

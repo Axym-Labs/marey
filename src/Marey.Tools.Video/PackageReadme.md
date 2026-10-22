@@ -1,6 +1,6 @@
 # Marey.Tools.Video
 
-Video output for [Marey](https://github.com/Axym-Labs/marey). **The frame sequence is the product;
+Video output for [Marey](https://axym-labs.github.io/marey/). **The frame sequence is the product;
 the mux is a convenience over it.**
 
 ```fsharp
@@ -63,5 +63,5 @@ Depends on [`Marey.Plot`](https://www.nuget.org/packages/Marey.Plot) and
 [`Marey.Toolchain`](https://www.nuget.org/packages/Marey.Toolchain), and on nothing outside this
 repository.
 
-- [The guide on frames and video](https://github.com/Axym-Labs/marey/blob/main/docs/guide/10-storyboard.md)
+- [The guide on frames and video](https://axym-labs.github.io/marey/guide/10-storyboard.html)
 - [examples/video.fsx](https://github.com/Axym-Labs/marey/blob/main/examples/video.fsx)

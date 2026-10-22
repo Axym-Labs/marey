@@ -269,7 +269,8 @@ jobs:
       # The documentation site (tools/site/build.sh): the guide's pages around the scenes its
       # session draws, the gallery, and fsdocs' API reference. In this job because the guide
       # draws with the toolchain installed above. Built on every run, so a page that no longer
-      # builds fails here; uploaded for GitHub Pages from a release tag.
+      # builds, or a readme link into the site that names no page of it, fails here; uploaded
+      # for GitHub Pages from a release tag.
       - name: Site
         if: matrix.sdk == '10.0.1xx'
         run: sh tools/site/build.sh site
