@@ -1,0 +1,23 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"fsharp","items":[{"aliases":[],"languageName":"fsharp","name":"fsharp"}]}}
+
+#!markdown
+
+# The one-cell setup, extension first
+
+The guide's first cell, with the extension and the library pinned to the version under test. The
+second cell's figure must be drawn by the extension that cell loaded.
+
+#!fsharp
+
+#!extension Marey.Verso @VERSION@
+#r "nuget: Marey, @VERSION@"
+
+open Marey
+open Marey.UnitsOfMeasure
+
+#!fsharp
+
+let t = Q.init U.second 41 (fun i -> float i * 0.05<s>)
+Chart.lineIn U.second U.metre t (t |> Seq.map (fun ti -> 0.1<m> * cos (2.0 * System.Math.PI * float ti)))
