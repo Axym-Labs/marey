@@ -127,7 +127,14 @@
   }
   function hello() {
     var w = Math.round(fig.clientWidth || document.documentElement.clientWidth || 0);
-    if (w > 0) { send('size', 'size', [w, Math.round(w * 0.625)], performance.now()); }
+    if (w <= 0) { return; }
+    var vh = 0;
+    try { vh = window.top.innerHeight; } catch (e) { }
+    vh = vh || window.screen.availHeight || 0;
+    var room = 0.8 * vh - document.getElementById('controls').offsetHeight - status.offsetHeight;
+    var h = Math.round(w * 0.625);
+    if (room >= 200 && h > room) { h = Math.round(room); w = Math.round(h / 0.625); }
+    send('size', 'size', [w, h], performance.now());
   }
   window.addEventListener('verso:channelmessage', function (e) {
     var d = e.detail || {}, p = d.payload || {};
@@ -349,7 +356,14 @@
   }
   function hello() {
     var w = Math.round(fig.clientWidth || document.documentElement.clientWidth || 0);
-    if (w > 0) { send('size', 'size', [w, Math.round(w * 0.625)], performance.now()); }
+    if (w <= 0) { return; }
+    var vh = 0;
+    try { vh = window.top.innerHeight; } catch (e) { }
+    vh = vh || window.screen.availHeight || 0;
+    var room = 0.8 * vh - document.getElementById('controls').offsetHeight - status.offsetHeight;
+    var h = Math.round(w * 0.625);
+    if (room >= 200 && h > room) { h = Math.round(room); w = Math.round(h / 0.625); }
+    send('size', 'size', [w, h], performance.now());
   }
   window.addEventListener('verso:channelmessage', function (e) {
     var d = e.detail || {}, p = d.payload || {};
