@@ -166,6 +166,60 @@ module internal FieldMarks =
 
     let private bilinearAt (p: Plane) (x: float) (y: float) = interpolate p p.V x y
 
+    /// The part of the plane inside the plot area, 0 to 1 each way in `nd`: the nodes inside it,
+    /// and a row or column of nodes on each edge the grid reaches past. A new node takes the
+    /// value the plane's interpolant has there, along its row or column when it lies on one, so
+    /// the part's interpolant is the plane's own wherever the plane's is defined. The plane
+    /// itself when it lies inside; `None` when no area of it does. What is traced or rastered
+    /// over this part is bounded by the plot area, however far a zoom takes the grid past it.
+    let private visible (p: Plane) : Plane option =
+        let inside (cs: float[]) = cs.[0] >= 0.0 && cs.[cs.Length - 1] <= 1.0
+
+        // The coordinates kept along one axis, each with its node's index, or -1 for a new one.
+        let cut (cs: float[]) =
+            let lo, hi = max cs.[0] 0.0, min cs.[cs.Length - 1] 1.0
+
+            if not (lo < hi) then
+                None
+            else
+                let kept = [| for i in 0 .. cs.Length - 1 do if cs.[i] >= lo && cs.[i] <= hi then struct (cs.[i], i) |]
+                let edge (c: float) = if kept |> Array.exists (fun (struct (k, _)) -> k = c) then [||] else [| struct (c, -1) |]
+                Some(Array.concat [ edge lo; kept; edge hi ])
+
+        if inside p.X && inside p.Y then
+            Some p
+        else
+            match cut p.X, cut p.Y with
+            | Some xs, Some ys ->
+                // The node below a new coordinate, which lies strictly inside a cell.
+                let below (cs: float[]) (c: float) = Array.findIndexBack (fun v -> v < c) cs
+                let lerp (a: float) (b: float) (t: float) = a + (b - a) * t
+
+                let sample (values: float[]) (struct (x, i)) (struct (y, j)) =
+                    let at i j = values.[j * p.Nx + i]
+
+                    if i >= 0 && j >= 0 then
+                        at i j
+                    elif i >= 0 then
+                        let j0 = below p.Y y
+                        lerp (at i j0) (at i (j0 + 1)) ((y - p.Y.[j0]) / (p.Y.[j0 + 1] - p.Y.[j0]))
+                    elif j >= 0 then
+                        let i0 = below p.X x
+                        lerp (at i0 j) (at (i0 + 1) j) ((x - p.X.[i0]) / (p.X.[i0 + 1] - p.X.[i0]))
+                    else
+                        interpolate p values x y
+
+                let resample (values: float[]) =
+                    if values.Length = 0 then [||] else [| for y in ys do for x in xs -> sample values x y |]
+
+                Some
+                    { X = xs |> Array.map (fun (struct (x, _)) -> x)
+                      Y = ys |> Array.map (fun (struct (y, _)) -> y)
+                      V = resample p.V
+                      U = resample p.U
+                      W = resample p.W }
+            | _ -> None
+
     // ---- The heatmap ----------------------------------------------------------------
 
     /// One pixel per node, the pixel centres on the nodes. A grid uneven in panel space — a log
@@ -679,11 +733,14 @@ module internal FieldMarks =
     //
     // **Evenly spaced by Jobard and Lefer's method** ("Creating evenly-spaced streamlines of
     // arbitrary density", 1997). A line is integrated both ways from a seed until it comes within
-    // `dTest = separation / 2` of a point of another line, leaves the grid, meets a missing value,
-    // reaches a fixed point, or turns back on itself. New seeds are proposed `separation` to
-    // either side of every finished line, and one is accepted only if nothing is closer than
-    // `separation`. Seeds are tried in a fixed order — never at random — because a film of a
-    // changing field whose lines are reseeded at random flickers.
+    // `dTest = separation / 2` of a point of another line, leaves the grid or the plot area,
+    // meets a missing value, reaches a fixed point, or turns back on itself. New seeds are
+    // proposed `separation` to either side of every finished line, and one is accepted only if
+    // nothing is closer than `separation`. Seeds are tried in a fixed order — never at random —
+    // because a film of a changing field whose lines are reseeded at random flickers.
+    //
+    // **Only the grid's part in the plot area is traced.** Zoomed in k times, the whole grid
+    // would hold k² times the lines, all but the plot area's share drawn only to be clipped.
     //
     // **A line that comes back to where it started is closed**, which is what a centre's orbits
     // are. A line's own points near its start are exempt from the separation test for that
@@ -700,7 +757,7 @@ module internal FieldMarks =
     /// The lines as polylines in pixels, each with whether it closed, in the order they were
     /// found. Public for the tests; `streamlines` draws them.
     let streamlinePolylines (plot: Extent<px>) (separation: float<px>) (f: FieldPayload<nd>) : (struct (float * float)[] * bool)[] =
-        match plane f with
+        match plane f |> Option.bind visible with
         | Some p when p.U.Length > 0 ->
             let w, h = float plot.Width, float plot.Height
             let dSep = max 2.0 (float separation)
@@ -863,8 +920,8 @@ module internal FieldMarks =
                         tryLine (ax + nx) (ay + ny)
                         tryLine (ax - nx) (ay - ny)
 
-            // The first seed is the grid's centre; then every line's neighbours; then, for
-            // regions no line reached, a lattice of candidates in row order.
+            // The first seed is the centre of the grid's part in the plot area; then every line's
+            // neighbours; then, for regions no line reached, a lattice of candidates in row order.
             let drain () =
                 while queue.Count > 0 do
                     propose (queue.Dequeue())
@@ -1022,10 +1079,11 @@ module internal FieldMarks =
     // brightness then scales the colour from 0.2 to 1 of itself, so the darkest strokes still
     // carry the colour a colorbar reads.
 
-    /// The image and the panel rectangle it covers, which is the grid's extent; `None` for a
-    /// payload with no vector components. Public for the tests; `lic` draws it.
+    /// The image and the panel rectangle it covers, which is the grid's extent inside the plot
+    /// area; `None` for a payload with no vector components, or a grid wholly outside the plot
+    /// area. Public for the tests; `lic` draws it.
     let licImage (measurer: ITextMeasurer) (plot: Extent<px>) (colourOf: float -> Color option) (options: LicOptions) (f: FieldPayload<nd>) : (Image * Rect<nd>) option =
-        match plane f with
+        match plane f |> Option.bind visible with
         | Some p when p.U.Length > 0 ->
             let gx0, gx1 = p.X.[0], p.X.[p.Nx - 1]
             let gy0, gy1 = p.Y.[0], p.Y.[p.Ny - 1]

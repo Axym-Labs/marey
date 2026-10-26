@@ -736,6 +736,84 @@ module ``streamlines`` =
             Assert.Equal(ca, cb)
             Assert.True((a = b), "a line differs between two runs")
 
+    /// The payload as a zoom by `k` about the panel's centre projects it: the nodes `k` times as
+    /// far from the centre, and the components `k` times as long, as `Geom.project` scales them.
+    let private zoomed (k: float) (f: FieldPayload<nd>) : FieldPayload<nd> =
+        let out (c: float<nd>) = (c - 0.5<nd>) * k + 0.5<nd>
+
+        { f with
+            Xs = f.Xs |> Array.map out
+            Ys = f.Ys |> Array.map out
+            U = f.U |> Array.map (fun u -> u * k)
+            W = f.W |> Array.map (fun w -> w * k) }
+
+    let private points (ls: (struct (float * float)[] * bool)[]) = ls |> Array.sumBy (fun (pts, _) -> pts.Length)
+
+    /// Zoomed in, only the grid's part in the plot area is traced, so the lines cost what the
+    /// plot area holds rather than what the zoom puts past it: at 10 and 100 times no more points
+    /// than twice the unzoomed field's, where tracing the whole grid made 100 and 10⁴ times as
+    /// many. Every point is on the plot area, and every chord is still tangent to the field.
+    [<Theory>]
+    [<InlineData(10.0)>]
+    [<InlineData(100.0)>]
+    let ``a zoomed field traces only the plot area's lines`` (k: float) =
+        let unzoomed = points (lines.Force())
+        let clock = Diagnostics.Stopwatch.StartNew()
+        let ls = FieldMarks.streamlinePolylines plot 16.0<px> (zoomed k rotation)
+        let took = clock.Elapsed.TotalSeconds
+
+        Assert.True(ls.Length > 10, sprintf "only %d lines" ls.Length)
+        Assert.True(points ls <= 2 * unzoomed, sprintf "%d points zoomed %g times, %d unzoomed" (points ls) k unzoomed)
+        Assert.True(took < 1.0, sprintf "%g s zoomed %g times" took k)
+
+        for pts, _ in ls do
+            for struct (x, y) in pts do
+                // Within a step of it: the last step before an edge can end a little past it.
+                Assert.True(x >= -1.0 && x <= 401.0 && y >= -1.0 && y <= 251.0, sprintf "a point at (%g, %g) is off the plot area" x y)
+
+            for j in 1 .. pts.Length - 1 do
+                let struct (ax, ay) = pts.[j - 1]
+                let struct (bx, by) = pts.[j]
+                let mx, my = (ax + bx) / 2.0 / 400.0, (ay + by) / 2.0 / 250.0
+                let expected = atan2 ((mx - 0.5) * 250.0) (-(my - 0.5) * 400.0)
+                let actual = atan2 (by - ay) (bx - ax)
+                let diff = abs (atan2 (sin (expected - actual)) (cos (expected - actual)))
+                Assert.True(diff < 1e-3, sprintf "a chord at (%g, %g) is %g rad off the field" mx my diff)
+
+    /// The plot area's edge cuts the grid's cells exactly: a missing node's cells stay empty, and
+    /// a whole cell beside them, cut by the edge on the row the missing node's cell ends at, is
+    /// still traced. Interpolated across that row instead of along it, the cut would take the
+    /// missing node's NaN into the whole cell.
+    [<Fact>]
+    let ``the plot area's edge cuts a cell beside a missing value exactly`` () =
+        let big: Extent<px> = { Width = 800.0<px>; Height = 800.0<px> }
+        let field = payload 11 (fun _ _ -> 0.0, 1.0)
+        // The node at x = 0.3, y = 0.5 is missing; the grid moved 0.35 left puts the plot area's
+        // left edge at x = 0.35 of the grid, inside the cells either side of it.
+        let missing = 5 * 11 + 3
+
+        let cut =
+            { field with
+                Xs = field.Xs |> Array.map (fun x -> x - 0.35<nd>)
+                U = field.U |> Array.mapi (fun k u -> if k = missing then nan else u)
+                W = field.W |> Array.mapi (fun k w -> if k = missing then nan else w) }
+
+        let pts = FieldMarks.streamlinePolylines big 6.0<px> cut |> Array.collect fst
+        let within (x0, x1) (y0, y1) = pts |> Array.exists (fun (struct (x, y)) -> x > x0 && x < x1 && y > y0 && y < y1)
+
+        // The missing node's cells: x in [0.2, 0.4] of the grid, y in [0.4, 0.6]; on the page,
+        // x in [0, 0.05] of the plot area. A line ends at the cells' edge, so their inside stays empty.
+        Assert.False(within (1.0, 39.0) (0.4 * 800.0 + 1.0, 0.6 * 800.0 - 1.0), "a line crosses a missing node's cell")
+        // The whole cell below them, y in [0.3, 0.4], cut by the plot area's left edge.
+        Assert.True(within (0.0, 40.0) (0.3 * 800.0, 0.4 * 800.0), "the cut cell beside the missing one has no line")
+
+    /// A grid moved wholly off the plot area draws no line, and no texture.
+    [<Fact>]
+    let ``a grid off the plot area draws nothing`` () =
+        let away = { rotation with Xs = rotation.Xs |> Array.map (fun x -> x + 2.0<nd>) }
+        Assert.Empty(FieldMarks.streamlinePolylines plot 16.0<px> away)
+        Assert.True((FieldMarks.licImage TextMeasure.approx plot (fun _ -> Some Color.white) Field.licDefaults away).IsNone)
+
     /// On a log axis the lines are still the field's: a radial field u = x, w = y is a fan of
     /// straight lines through the origin in data space, and on a log-x panel each chord points
     /// along the field's direction there, J·v.
@@ -950,6 +1028,26 @@ module ``line-integral convolution`` =
 
         let three = image { Field.licDefaults with Oversample = 3 } rotation
         Assert.Equal((600, 360), (three.Width, three.Height))
+
+    /// Zoomed in, the raster covers only the grid's part in the plot area: the plot area's
+    /// pixels, not the 10⁴ times as many the whole grid would take at 100 times.
+    [<Fact>]
+    let ``a zoomed field is rastered over the plot area only`` () =
+        let k = 100.0
+        let out (c: float<nd>) = (c - 0.5<nd>) * k + 0.5<nd>
+
+        let zoomed =
+            { rotation with
+                Xs = rotation.Xs |> Array.map out
+                Ys = rotation.Ys |> Array.map out
+                U = rotation.U |> Array.map (fun u -> u * k)
+                W = rotation.W |> Array.map (fun w -> w * k) }
+
+        match FieldMarks.licImage TextMeasure.approx plot white Field.licDefaults zoomed with
+        | Some(img, bounds) ->
+            Assert.Equal((200, 120), (img.Width, img.Height))
+            Assert.Equal((0.0, 0.0, 1.0, 1.0), (float bounds.X0, float bounds.Y0, float bounds.X1, float bounds.Y1))
+        | None -> failwith "no image"
 
     /// **Gate 11.** A seed, a field and a plot size name one image: two renders are identical
     /// byte for byte, so are four computed at once on the thread pool, and a different seed
@@ -1199,6 +1297,37 @@ module ``phase portraits`` =
         | TexToolchain.Unavailable -> Console.WriteLine("SKIPPED: " + TexToolchain.report ())
         | TexToolchain.Compiled -> ()
         | TexToolchain.Failed why -> failwithf "the portrait baseline does not compile:\n%s" why
+
+    /// A portrait zoomed in twice on a live view, as a window's drag zooms it, draws no more
+    /// than twice the path segments it draws unzoomed, in well under a second. Traced over the
+    /// whole grid, the second zoom took seconds and drew a scene some 200 times as large, and its
+    /// PDF ran to tens of megabytes.
+    [<Fact>]
+    let ``a portrait zoomed in on a live view costs what the plot area holds`` () =
+        let live = Live.ofControl (Control.constant portrait)
+        let zoom (s: LiveState) (x0, y0, x1, y1) = Live.step live s (Zoom { X0 = x0 * 1.0<px>; Y0 = y0 * 1.0<px>; X1 = x1 * 1.0<px>; Y1 = y1 * 1.0<px> })
+        let size = Chart.size 1200.0 800.0
+
+        let rec segments (n: Node) =
+            match n with
+            | Path(segs, _, _, _) -> segs.Length
+            | Group ns -> ns |> Array.sumBy segments
+            | Transform(_, c)
+            | Clip(_, c)
+            | Keyed(_, c)
+            | Annotated(_, c)
+            | Opacity(_, c) -> segments c
+            | _ -> 0
+
+        let s0 = Live.init live
+        let unzoomed = segments (Chart.toScene size (Live.view live s0))
+        let twice = zoom (zoom s0 (300.0, 200.0, 500.0, 350.0)) (500.0, 300.0, 560.0, 340.0)
+        let clock = Diagnostics.Stopwatch.StartNew()
+        let drawn = segments (Chart.toScene size (Live.view live twice))
+        let took = clock.Elapsed.TotalSeconds
+
+        Assert.True(drawn <= 2 * unzoomed, sprintf "%d path segments zoomed, %d unzoomed" drawn unzoomed)
+        Assert.True(took < 1.0, sprintf "the zoomed scene took %g s" took)
 
 // ======================================================================================
 // Phase 7 — a field in motion. Gate 14.
