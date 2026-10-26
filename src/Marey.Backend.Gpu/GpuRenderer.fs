@@ -31,6 +31,13 @@ open SkiaSharp
 /// with no display, or a driver too old. Under Linux with no GPU, `xvfb-run` and Mesa's
 /// `llvmpipe` provide both.
 ///
+/// **At a scale, for a HiDPI screen.** `RenderImageAt 2.0` draws the scene as a window at a
+/// scaling of 2 shows it: an image of twice the extent's pixels each way, with the geometry, the
+/// strokes, the marks and the text all twice their px size. The scene cannot be scaled from
+/// outside: its geometry follows the extent, while a stroke width, a marker size and a font size
+/// are px and a `Transform` node leaves them alone. So the scale is the canvas's, as Skia's own
+/// canvas is scaled for a HiDPI window.
+///
 /// **Marker batches are one instanced draw each**, where the batch is one this renderer can
 /// draw exactly as Skia would: solid paints, no dash, a mitered or circular outline, outside any
 /// opacity layer, under no clip or a rectangular one. Any other batch, and every other node, is
@@ -85,9 +92,12 @@ type GpuRenderer(?options: SkiaOptions, ?instancedMarkers: bool) =
     let caps = GpuContext.Capabilities
 
     /// Draw on the render thread and read the pixels back, RGBA8 premultiplied, top row first.
-    let draw (extent: Extent<px>) (node: Node) : int * int * byte[] =
+    let draw (scale: float) (extent: Extent<px>) (node: Node) : int * int * byte[] =
         if disposed then
             raise (ObjectDisposedException "GpuRenderer")
+
+        if not (Double.IsFinite scale && scale > 0.0) then
+            invalidArg "scale" (sprintf "Marey.GpuRenderer: a scale of %g device pixels per px; it must be positive and finite." scale)
 
         // The scene is degraded here, off the render thread, so that a film's frames do this work
         // in parallel and the queue holds only the drawing.
@@ -96,11 +106,11 @@ type GpuRenderer(?options: SkiaOptions, ?instancedMarkers: bool) =
         thread.Invoke(fun () ->
             // Rounded up, as `SkiaBackend` does: a figure laid out for 400.5 px that rasterises
             // to 400 loses the half pixel at its right edge, which is where the axis line is.
-            let w = max 1 (int (ceil (float extent.Width)))
-            let h = max 1 (int (ceil (float extent.Height)))
+            let w = max 1 (int (ceil (float extent.Width * scale)))
+            let h = max 1 (int (ceil (float extent.Height * scale)))
 
             let target =
-                context.Paint(opts, shaping, instanced, w, h, [ SkiaPainter.RootTransform extent, scene ])
+                context.Paint(opts, shaping, instanced, w, h, scale, [ SkiaPainter.RootTransform extent, scene ])
 
             w, h, target.Read())
 
@@ -126,16 +136,25 @@ type GpuRenderer(?options: SkiaOptions, ?instancedMarkers: bool) =
 
     /// Render a scene to PNG bytes. Curried, so `gpu.RenderPng` is a renderer function for
     /// `Chart.render` and `Frames.render`.
-    member _.RenderPng (extent: Extent<px>) (node: Node) : byte[] =
-        let w, h, pixels = draw extent node
+    member this.RenderPng (extent: Extent<px>) (node: Node) : byte[] = this.RenderPngAt 1.0 extent node
+
+    /// Render a scene to PNG bytes at `scale` device pixels per px, as `RenderImageAt` draws it.
+    member _.RenderPngAt (scale: float) (extent: Extent<px>) (node: Node) : byte[] =
+        let w, h, pixels = draw scale extent node
         use image = SKImage.FromPixelCopy(SKImageInfo(w, h, SKColorType.Rgba8888, SKAlphaType.Premul), pixels)
         use data = image.Encode(SKEncodedImageFormat.Png, 100)
         data.ToArray()
 
     /// Render a scene to an `Image`: RGBA8, not premultiplied, top row first, as a `Raster` node
     /// carries one.
-    member _.RenderImage (extent: Extent<px>) (node: Node) : Image =
-        let w, h, pixels = draw extent node
+    member this.RenderImage (extent: Extent<px>) (node: Node) : Image = this.RenderImageAt 1.0 extent node
+
+    /// Render a scene to an `Image` at `scale` device pixels per px: ceil(extent × scale)
+    /// pixels each way, drawn as `RenderImage` draws it on a canvas scaled by `scale`. The scene
+    /// is laid out for the extent, in px, so a window at a scaling of 2 passes 2.0 and the same
+    /// extent it laid out for, and draws the image at the extent's size.
+    member _.RenderImageAt (scale: float) (extent: Extent<px>) (node: Node) : Image =
+        let w, h, pixels = draw scale extent node
 
         for i in 0 .. 4 .. pixels.Length - 4 do
             let a = int pixels.[i + 3]

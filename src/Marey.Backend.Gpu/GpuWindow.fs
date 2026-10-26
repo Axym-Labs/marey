@@ -358,7 +358,7 @@ type GpuWindow private (live: Live, recorder: Recorder option, title: string, si
                         figure <- Some(session.State, node)
                         node
 
-                let target = context.Paint(options, shaping, true, w, h, WindowScene.layers shaping live session scene)
+                let target = context.Paint(options, shaping, true, w, h, 1.0, WindowScene.layers shaping live session scene)
                 let fb = window.FramebufferSize
                 gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, target.Framebuffer)
                 gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0u)
