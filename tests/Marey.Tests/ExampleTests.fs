@@ -99,11 +99,20 @@ let private fsharpLines (path: string) : string[] =
     else
         lines
 
-/// The xunit `MemberData` source: one case per example, named by its file so a failure in the
-/// runner output names the example rather than an index.
-let exampleNames: IEnumerable<obj[]> =
+/// How many parts the examples are run in. Each example is a `dotnet fsi` process that spends
+/// seconds compiling, and xunit runs the cases of one theory one after another but separate
+/// classes side by side, so the examples are split across this many modules, each a class of its
+/// own. Four is the core count of a CI runner.
+let private parts = 4
+
+/// The xunit `MemberData` source of one part: every `parts`-th example of the sorted list, starting
+/// at `part`, so the file names alone decide where an example runs. One case per example, named by
+/// its file so a failure in the runner output names the example rather than an index.
+let private casesOf (part: int) : IEnumerable<obj[]> =
     exampleFiles ()
-    |> Array.map (fun p -> [| box (Path.GetFileName p) |])
+    |> Array.indexed
+    |> Array.filter (fun (i, _) -> i % parts = part)
+    |> Array.map (fun (_, p) -> [| box (Path.GetFileName p) |])
     :> IEnumerable<obj[]>
 
 [<Fact>]
@@ -131,9 +140,9 @@ let ``the examples reference their packages`` () =
                 (Path.GetFileName file)
         )
 
-[<Theory>]
-[<MemberData(nameof exampleNames)>]
-let ``the example compiles and runs`` (name: string) =
+/// Each example is run in its own working directory (below), and none writes outside it, so two
+/// running at once share no file.
+let private compilesAndRuns (name: string) =
     let tool = Tools.dotnet.Force()
 
     match tool.Path with
@@ -260,3 +269,45 @@ let ``the example compiles and runs`` (name: string) =
                 workDir
                 stdout
         )
+
+module ``part 1`` =
+    let cases = casesOf 0
+
+    [<Theory>]
+    [<MemberData(nameof cases)>]
+    let ``the example compiles and runs`` (name: string) = compilesAndRuns name
+
+module ``part 2`` =
+    let cases = casesOf 1
+
+    [<Theory>]
+    [<MemberData(nameof cases)>]
+    let ``the example compiles and runs`` (name: string) = compilesAndRuns name
+
+module ``part 3`` =
+    let cases = casesOf 2
+
+    [<Theory>]
+    [<MemberData(nameof cases)>]
+    let ``the example compiles and runs`` (name: string) = compilesAndRuns name
+
+module ``part 4`` =
+    let cases = casesOf 3
+
+    [<Theory>]
+    [<MemberData(nameof cases)>]
+    let ``the example compiles and runs`` (name: string) = compilesAndRuns name
+
+/// A part with no module of its own would hold examples that never run, and a theory with no cases
+/// passes. So the modules' cases together are the examples, each once.
+[<Fact>]
+let ``the parts hold every example once`` () =
+    let inParts =
+        [ ``part 1``.cases; ``part 2``.cases; ``part 3``.cases; ``part 4``.cases ]
+        |> Seq.concat
+        |> Seq.map (fun case -> string case.[0])
+        |> Seq.sort
+        |> Array.ofSeq
+
+    let all = exampleFiles () |> Array.map Path.GetFileName |> Array.sort
+    Assert.Equal<string[]>(all, inParts)

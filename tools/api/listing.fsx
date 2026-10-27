@@ -4,6 +4,14 @@
         dotnet fsi tools/api/listing.fsx           rewrites api/*.fsi
         dotnet fsi tools/api/listing.fsx --check   fails, with the diff, when they differ
 
+    Either builds the solution to have the compiler write the signatures. `--signatures <dir>`
+    reads them from a build that already wrote them there instead, as CI's build does. That build
+    has to compile every package, so a clean one: a project that is up to date writes nothing,
+    and its signature in `<dir>` would be whatever an earlier build left there.
+
+        dotnet build Marey.slnx -c Release -p:MareyApiSig=<dir>
+        dotnet fsi tools/api/listing.fsx --check --signatures <dir>
+
     The signature comes from `fsc --sig` (hooked in Directory.Build.targets as `MareyApiSig`), not
     from reflection, because reflection erases units of measure: `float<m>` and `float<s>` are
     both `Double` to it, and a change between them is exactly the break this listing is for. The
@@ -52,17 +60,39 @@ let packages =
             None)
     |> Array.sort
 
-let sigDir = Path.Combine(Path.GetTempPath(), sprintf "marey-api-%d" (Process.GetCurrentProcess().Id))
-Directory.CreateDirectory sigDir |> ignore
-AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> try Directory.Delete(sigDir, true) with _ -> ())
+let given =
+    fsi.CommandLineArgs
+    |> Array.tryFindIndex ((=) "--signatures")
+    |> Option.map (fun i ->
+        if i + 1 >= fsi.CommandLineArgs.Length then
+            eprintfn "--signatures needs the directory the build wrote them to"
+            exit 2
 
-// `--no-incremental`, because a project that is up to date is not compiled and writes no signature.
-let built =
-    run "dotnet" [ "build"; "Marey.slnx"; "-c"; "Release"; "--no-incremental"; "-nologo"; "-v:q"; sprintf "-p:MareyApiSig=%s" sigDir ]
+        Path.GetFullPath fsi.CommandLineArgs.[i + 1])
 
-if built <> 0 then
-    eprintfn "the build failed (exit %d)" built
-    exit built
+let sigDir =
+    match given with
+    | Some dir ->
+        if not (Directory.Exists dir) then
+            eprintfn "no signatures at %s: build with -p:MareyApiSig=%s first" dir dir
+            exit 2
+
+        dir
+    | None ->
+        let dir = Path.Combine(Path.GetTempPath(), sprintf "marey-api-%d" (Process.GetCurrentProcess().Id))
+        Directory.CreateDirectory dir |> ignore
+        AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> try Directory.Delete(dir, true) with _ -> ())
+
+        // `--no-incremental`, because a project that is up to date is not compiled and writes no
+        // signature.
+        let built =
+            run "dotnet" [ "build"; "Marey.slnx"; "-c"; "Release"; "--no-incremental"; "-nologo"; "-v:q"; sprintf "-p:MareyApiSig=%s" dir ]
+
+        if built <> 0 then
+            eprintfn "the build failed (exit %d)" built
+            exit built
+
+        dir
 
 /// A declaration a user cannot reach: `val private`, `member internal`, `type private`,
 /// `module internal`, … where the accessibility follows the keyword and any modifiers, or
@@ -164,6 +194,10 @@ let listings =
 
 if check then
     let fresh = Path.Combine(sigDir, "listing")
+
+    if Directory.Exists fresh then
+        Directory.Delete(fresh, true)
+
     Directory.CreateDirectory fresh |> ignore
 
     for name, text in listings do
