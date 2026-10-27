@@ -1,21 +1,30 @@
 #!/bin/sh
 # Builds the documentation site into OUT (site/ by default):
 #
-#     tools/site/build.sh [OUT]
+#     tools/site/build.sh [OUT [SCENES]]
 #
 # 1. The guide's session and the readmes' run as the test suite runs them, and write each
-#    figure's scene for a canvas (MAREY_SITE_SCENES). A broken example fails here.
+#    figure's scene for a canvas (MAREY_SITE_SCENES). A broken example fails here. Given
+#    SCENES, the scenes a test run with MAREY_SITE_SCENES=SCENES already wrote, as CI's does,
+#    this build reads those and does not run the sessions a second time.
 # 2. tools/site/build.fsx turns the Markdown into pages around those scenes.
 # 3. fsdocs writes the API reference of every package into OUT/reference.
 set -eu
 root=$(cd "$(dirname "$0")/../.." && pwd)
 out=$(mkdir -p "${1:-$root/site}" && cd "${1:-$root/site}" && pwd)
-scenes="$out.scenes"
+given=${2:+$(cd "$2" && pwd)}
 
 cd "$root"
-rm -rf "$scenes"
-MAREY_SITE_SCENES="$scenes" dotnet test tests/Marey.Tests -c Release --nologo -v q \
-    --filter "FullyQualifiedName~GuideTests"
+if [ -n "$given" ]; then
+    scenes=$given
+    # A run that was not asked for them writes none, and the pages would quietly lose their canvases.
+    ls "$scenes"/*.scene >/dev/null 2>&1 || { echo "no scenes in $scenes" >&2; exit 1; }
+else
+    scenes="$out.scenes"
+    rm -rf "$scenes"
+    MAREY_SITE_SCENES="$scenes" dotnet test tests/Marey.Tests -c Release --nologo -v q \
+        --filter "FullyQualifiedName~GuideTests"
+fi
 dotnet fsi tools/site/build.fsx "$scenes" "$out"
 
 dotnet tool restore >/dev/null
@@ -29,7 +38,7 @@ dotnet fsdocs build --projects $projects --input tools/site/reference --output "
         fsdocs-repository-link https://github.com/Axym-Labs/marey \
         fsdocs-license-link https://github.com/Axym-Labs/marey/blob/main/LICENSE \
         fsdocs-release-notes-link https://github.com/Axym-Labs/marey/blob/main/CHANGELOG.md
-rm -rf "$scenes"
+[ -n "$given" ] || rm -rf "$scenes"
 
 # 4. Every link the README and the package readmes make into the published site names a page
 #    this build wrote, and a heading on it when the link has a fragment. The site is published

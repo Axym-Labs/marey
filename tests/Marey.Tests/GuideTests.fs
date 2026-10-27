@@ -421,20 +421,60 @@ module GuideOutput =
         finally
             try Directory.Delete(work, true) with _ -> ()
 
-    let packageReadmes: obj[] seq =
+    let private packageReadmes () =
         Directory.GetFiles(Path.Combine(Golden.repoRoot.Force(), "src"), "PackageReadme.md", SearchOption.AllDirectories)
         |> Array.sort
         |> Array.map (fun p -> Path.GetRelativePath(Golden.repoRoot.Force(), p).Replace('\\', '/'))
         |> Array.append [| "NUGET.md" |]
-        |> Seq.map (fun p -> [| box p |])
+
+    /// The readmes are run in three parts, each a class of its own, so xunit runs them side by side
+    /// with each other and with the tour rather than one after another. Every third readme of the
+    /// list, starting at `part`, so the file names alone decide where one runs.
+    let private readmesOf (part: int) : obj[] seq =
+        packageReadmes ()
+        |> Array.indexed
+        |> Array.filter (fun (i, _) -> i % 3 = part)
+        |> Seq.map (fun (_, p) -> [| box p |])
 
     /// Each package's readme is the first page of it a reader sees on nuget.org, and its example is a
     /// session of its own. `NUGET.md` is the readme of a package that has none of its own, `Marey`.
-    [<Theory>]
-    [<MemberData(nameof packageReadmes)>]
-    let ``a package readme's example runs`` (readme: string) =
+    /// Each session has a working directory of its own and draws figures no other session draws, so
+    /// two running at once share no file.
+    let private readmeRuns (readme: string) =
         let text = File.ReadAllText(Path.Combine(Golden.repoRoot.Force(), readme), Encoding.UTF8).Replace("\r\n", "\n")
         let blocks = blocksOf text |> List.filter (fun b -> not b.Optional)
 
         if not blocks.IsEmpty then
             runAndCompare false readme ("readme-" + (match Path.GetDirectoryName readme with "" -> "nuget" | d -> Path.GetFileName d)) blocks
+
+    module ``package readmes part 1`` =
+        let readmes = readmesOf 0
+
+        [<Theory>]
+        [<MemberData(nameof readmes)>]
+        let ``a package readme's example runs`` (readme: string) = readmeRuns readme
+
+    module ``package readmes part 2`` =
+        let readmes = readmesOf 1
+
+        [<Theory>]
+        [<MemberData(nameof readmes)>]
+        let ``a package readme's example runs`` (readme: string) = readmeRuns readme
+
+    module ``package readmes part 3`` =
+        let readmes = readmesOf 2
+
+        [<Theory>]
+        [<MemberData(nameof readmes)>]
+        let ``a package readme's example runs`` (readme: string) = readmeRuns readme
+
+    [<Fact>]
+    let ``the parts hold every package readme once`` () =
+        let inParts =
+            [ ``package readmes part 1``.readmes; ``package readmes part 2``.readmes; ``package readmes part 3``.readmes ]
+            |> Seq.concat
+            |> Seq.map (fun case -> string case.[0])
+            |> Seq.sort
+            |> Array.ofSeq
+
+        Assert.Equal<string[]>(packageReadmes () |> Array.sort, inParts)

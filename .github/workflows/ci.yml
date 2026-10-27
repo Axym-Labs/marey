@@ -15,6 +15,13 @@ on:
 permissions:
   contents: read
 
+# A pull request's run is cancelled by the next push to it: only the newest commit's result is
+# read. Every other run has a group of its own, so each push to main and each tag is checked to
+# the end -- a group shared by them would keep one pending run and cancel the one before it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # D146 — two SDK legs. `10.0.1xx` is the band the repository is developed and released with,
   # and the oldest a .NET 10 consumer can have; `10.0.x` is the newest, so a change in a newer
@@ -50,12 +57,23 @@ jobs:
       # download entirely; measured locally at 16s to fetch cold and 35s to install with the
       # network refused outright.
       #
-      # Keyed on the package list, so adding a package fetches once and caches from then on.
+      # Keyed on the runner's Ubuntu, the package list and the week. A cache is saved only under a
+      # key that missed, so a key of the package list alone was saved once and then restored for
+      # good, while the archive moved on: every run downloaded the newer .debs again. With the
+      # week in it, the first run of a week starts from last week's archives, fetches what moved
+      # and saves the result; a new package list or a new Ubuntu starts from the closest key left.
+      - name: The runner's Ubuntu and the week, for the cache key
+        id: week
+        run: echo "key=$ImageOS-$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+
       - name: Cache the TeX .debs
         uses: actions/cache@v4
         with:
           path: ~/apt-archives
-          key: apt-tex-${{ runner.os }}-${{ hashFiles('.github/tex-packages.txt') }}
+          key: apt-tex-${{ hashFiles('.github/tex-packages.txt') }}-${{ steps.week.outputs.key }}
+          restore-keys: |
+            apt-tex-${{ hashFiles('.github/tex-packages.txt') }}-
+            apt-tex-
 
       # Several of this suite's gates shell out, and every one of them is written to report
       # "not installed" rather than to fail -- which is right on a contributor's laptop and
@@ -89,6 +107,8 @@ jobs:
             -o Dir::Cache::archives="$HOME/apt-archives" $pkgs
           sudo apt-get install --no-install-recommends -y \
             -o Dir::Cache::archives="$HOME/apt-archives" $pkgs
+          # The versions the archive has moved past, so a restored cache does not grow every week.
+          sudo apt-get autoclean -o Dir::Cache::archives="$HOME/apt-archives"
           # actions/cache runs as the runner user and cannot read root-owned archives.
           sudo chown -R "$(id -u):$(id -g)" "$HOME/apt-archives"
           echo "cache holds $(ls "$HOME/apt-archives"/*.deb 2>/dev/null | wc -l) .debs"
@@ -136,8 +156,20 @@ jobs:
       # TreatWarningsAsErrors is on in Directory.Build.props, so this is also the FS0064 gate:
       # a measure over-constraint (design.md 12.1) fails the build rather than printing a
       # warning nobody reads.
+      #
+      # On the band the public API listing is checked on, the build also writes each package's
+      # signature for it (MareyApiSig, Directory.Build.targets), so the listing below reads this
+      # build rather than compiling the solution a second time.
       - name: Build
-        run: dotnet build Marey.slnx --configuration Release --no-restore
+        env:
+          API_SIGNATURES: ${{ matrix.sdk == '10.0.1xx' && format('{0}/api-signatures', runner.temp) || '' }}
+        run: |
+          if [ -n "$API_SIGNATURES" ]; then
+            mkdir -p "$API_SIGNATURES"
+            dotnet build Marey.slnx --configuration Release --no-restore "-p:MareyApiSig=$API_SIGNATURES"
+          else
+            dotnet build Marey.slnx --configuration Release --no-restore
+          fi
 
       # What ships names no internal decision: no decision number, design-document section,
       # milestone, phase or gate in the sources, the project files, the package readmes or the
@@ -163,9 +195,13 @@ jobs:
       # gate at once, and a PATH that differs between the shell and the runner. The census in
       # Verification.fs prints all nine dependencies either way; this decides whether an absent
       # one is fatal.
+      #
+      # On the band that builds the site, the guide's sessions also write each figure's scene for
+      # it (MAREY_SITE_SCENES), so the Site step below does not run them a second time.
       - name: Test
         env:
           MAREY_REQUIRE_TOOLCHAIN: '1'
+          MAREY_SITE_SCENES: ${{ matrix.sdk == '10.0.1xx' && format('{0}/site-scenes', runner.temp) || '' }}
         # Under a virtual display, for the GPU renderer's context (M5 phase 4); the census names
         # the driver it got, which here is llvmpipe. `--blame` because a native crash in a driver
         # aborts the test host with no failing test to read: with it, the log names the test that
@@ -178,15 +214,16 @@ jobs:
       - name: Pack
         run: dotnet pack Marey.slnx --configuration Release --no-build -o artifacts -p:Version=0.0.0-ci
 
-      # 1.0 (C3, G1) — the public API is what api/ says it is. The listing is the compiler's own
-      # signature of each package with private and internal declarations and doc comments taken
-      # out (tools/api/listing.fsx), so a rename, a changed parameter or a changed unit of measure
+      # The public API is what api/ says it is. The listing is the compiler's own signature of
+      # each package with private and internal declarations and doc comments taken out
+      # (tools/api/listing.fsx), so a rename, a changed parameter or a changed unit of measure
       # fails here until api/ is regenerated in the same change. Only on the band the repository
-      # is built and released with: another compiler may print the same API differently. After
-      # Pack, because it rebuilds with `--no-incremental` to have every project emit its signature.
+      # is built and released with: another compiler may print the same API differently. It reads
+      # the signatures the Build step wrote, from a clean checkout, so every package was compiled
+      # and wrote its own.
       - name: Public API listing
         if: matrix.sdk == '10.0.1xx'
-        run: dotnet fsi tools/api/listing.fsx --check
+        run: dotnet fsi tools/api/listing.fsx --check --signatures "$RUNNER_TEMP/api-signatures"
 
       # The readme filename is deliberately not pinned. Directory.Build.targets packs a project's
       # own PackageReadme.md when it has one and falls back to NUGET.md when it does not, so a
@@ -270,10 +307,11 @@ jobs:
       # session draws, the gallery, and fsdocs' API reference. In this job because the guide
       # draws with the toolchain installed above. Built on every run, so a page that no longer
       # builds, or a readme link into the site that names no page of it, fails here; uploaded
-      # for GitHub Pages from a release tag.
+      # for GitHub Pages from a release tag. The scenes are the ones the Test step's guide
+      # sessions wrote.
       - name: Site
         if: matrix.sdk == '10.0.1xx'
-        run: sh tools/site/build.sh site
+        run: sh tools/site/build.sh site "$RUNNER_TEMP/site-scenes"
 
       - uses: actions/upload-pages-artifact@v3
         if: matrix.sdk == '10.0.1xx' && startsWith(github.ref, 'refs/tags/v')
