@@ -170,6 +170,13 @@ and reported when missing; Marey does not require a version of them.
   °C beside K and a kilometre panel sharing x with a metre one. The domain an axis shares
   or is given (`withXDomain`, a zoom, an inset's, a storyboard's) is now in the axis's unit,
   the first stated layer's, and each layer reads it in its own, offsets included.
+- **A zoomed field drew its streamlines over the whole grid.** Streamlines are spaced in pixels,
+  and they were traced, and the LIC texture rastered, over the grid's whole extent on the page, so
+  zoomed in k times a portrait traced k² times the lines and clipped all but the plot area's
+  share. A pendulum's portrait zoomed twice on a live view took 6.5 s to lay out and wrote a
+  93 MB PDF. Both marks now cover only the grid's part in the plot area: 0.05 s and 519 KB. An
+  unzoomed figure draws as it did. Zoomed, a LIC texture's noise now belongs to the visible part,
+  so panning redraws the texture rather than sliding it.
 
 
 ## [0.7.0] — 2026-10-16
