@@ -309,3 +309,108 @@ module ``instanced markers`` =
                 let cpuMs = best 2 (fun () -> SkiaBackend.renderPng wide tenth |> ignore)
                 Console.WriteLine(sprintf "gate 9: 10^6 marks in %.1f ms on %s; 10^5 on the CPU raster in %.1f ms" gpuMs gpu.Description cpuMs)
                 Assert.True(gpuMs < cpuMs / 2.0, sprintf "10^6 marks took %.1f ms on the GPU, 10^5 took %.1f ms on the CPU raster" gpuMs cpuMs))
+
+// ======================================================================================
+// At a scale, for a HiDPI window
+// ======================================================================================
+
+module ``at a scale`` =
+
+    /// What a HiDPI window shows: `SkiaPainter` on a CPU raster canvas scaled by `scale`, as
+    /// PNG bytes.
+    let private scaledRaster (caps: Capabilities) (scale: float) (extent: Extent<px>) (node: Node) : byte[] =
+        let o = SkiaOptions.Default
+        use shaping = new SkiaTextMeasurer(?fontFile = o.FontFile, dpi = o.Dpi, fontFiles = o.FontFiles)
+        let w = max 1 (int (ceil (float extent.Width * scale)))
+        let h = max 1 (int (ceil (float extent.Height * scale)))
+        use surface = SKSurface.Create(SKImageInfo(w, h, SKColorType.Rgba8888, SKAlphaType.Premul))
+        let canvas = surface.Canvas
+        canvas.Clear(SkiaColor.ofColor o.Background)
+        canvas.Scale(float32 scale)
+        let scene = node |> Degrade.forCaps caps |> Degrade.splitBatches caps
+        SkiaPainter(canvas, shaping, o.Antialias, None, outlines = true).Draw(SkiaPainter.RootTransform extent, scene)
+        use image = surface.Snapshot()
+        use data = image.Encode(SKEncodedImageFormat.Png, 100)
+        data.ToArray()
+
+    let private extent: Extent<px> = { Width = 200.0<px>; Height = 120.0<px> }
+
+    let private batch (shape: MarkerShape) =
+        Markers
+            { Points = [| for i in 0..8 -> { X = 0.1<nd> + 0.1<nd> * float i; Y = 0.5<nd> + 0.02<nd> * float (i % 3) } |]
+              Shape = shape
+              Size = 18.0<px>
+              Fill = Some(Solid(Color.rgba 0.1 0.4 0.8 0.6))
+              Stroke = Some(Stroke.solid (Color.rgb 0.1 0.1 0.1) 1.5<px>) }
+
+    [<Fact>]
+    let ``the image is the extent times the scale, rounded up`` () =
+        withGpu (fun gpu ->
+            let odd: Extent<px> = { Width = 201.0<px>; Height = 120.5<px> }
+            let image = gpu.RenderImageAt 1.5 odd (batch MarkCircle)
+            Assert.Equal((302, 181), (image.Width, image.Height)))
+
+    [<Fact>]
+    let ``a scale of one is RenderImage`` () =
+        withGpu (fun gpu ->
+            let node = batch MarkSquare
+            Assert.Equal<byte[]>((gpu.RenderImage extent node).Rgba, (gpu.RenderImageAt 1.0 extent node).Rgba))
+
+    /// The renderer reuses its target, and the scale is undone on it after each call.
+    [<Fact>]
+    let ``a render at a scale leaves the next one at its own`` () =
+        withGpu (fun gpu ->
+            let node = batch MarkDiamond
+            let before = gpu.RenderImage extent node
+            gpu.RenderImageAt 2.0 extent node |> ignore
+            gpu.RenderImageAt 2.0 { Width = 100.0<px>; Height = 60.0<px> } node |> ignore
+            Assert.Equal<byte[]>(before.Rgba, (gpu.RenderImage extent node).Rgba))
+
+    [<Fact>]
+    let ``every golden at a scale of two is within the tolerance of a scaled CPU raster`` () =
+        withGpu (fun gpu ->
+            let measured =
+                [ for name, (extent, node) in scenes gpu.Measurer ->
+                      name, blurredDistance (scaledRaster gpu.Caps 2.0 extent node) (gpu.RenderPngAt 2.0 extent node) ]
+
+            for name, d in measured do
+                Console.WriteLine(sprintf "  %-26s %5.1f at 2x" name d)
+
+            let over = measured |> List.filter (fun (_, d) -> d > Tolerance)
+            Assert.True(over.IsEmpty, sprintf "over %.0f: %A" Tolerance over))
+
+    /// The instanced path scales a mark's size, its outline and its position, and draws, not
+    /// leaves it to Skia.
+    [<Fact>]
+    let ``instanced markers at a scale agree with a scaled CPU raster`` () =
+        withGpu (fun gpu ->
+            for scale in [ 1.25; 2.0; 3.0 ] do
+                for shape in [ MarkCircle; MarkSquare; MarkDiamond; MarkTriangleUp; MarkTriangleDown; MarkPlus; MarkCross ] do
+                    let node = batch shape
+                    let d = blurredDistance (scaledRaster gpu.Caps scale extent node) (gpu.RenderPngAt scale extent node)
+                    Assert.True(d <= Tolerance, sprintf "%A at %gx is %.1f from the scaled CPU raster" shape scale d)
+
+            let bySkia = (skiaOnly.Force()).RenderImageAt 2.0 extent (batch MarkCircle)
+            Assert.NotEqual<byte[]>(bySkia.Rgba, (gpu.RenderImageAt 2.0 extent (batch MarkCircle)).Rgba))
+
+    /// A rectangular clip reaches the shader in px, as the painter keeps it, and is scaled there.
+    /// The clip's edge crosses the marks, so a clip left at 1x would cut them at half the place.
+    [<Fact>]
+    let ``a clipped batch at a scale is clipped where the scaled CPU raster clips it`` () =
+        withGpu (fun gpu ->
+            let box =
+                [| MoveTo { X = 0.05<nd>; Y = 0.3<nd> }
+                   LineTo { X = 0.62<nd>; Y = 0.3<nd> }
+                   LineTo { X = 0.62<nd>; Y = 0.7<nd> }
+                   LineTo { X = 0.05<nd>; Y = 0.7<nd> }
+                   ClosePath |]
+
+            let node = Clip(box, batch MarkSquare)
+            let d = blurredDistance (scaledRaster gpu.Caps 2.0 extent node) (gpu.RenderPngAt 2.0 extent node)
+            Assert.True(d <= Tolerance, sprintf "%.1f from the scaled CPU raster" d))
+
+    [<Fact>]
+    let ``a scale that is not a positive number is refused`` () =
+        withGpu (fun gpu ->
+            for scale in [ 0.0; -1.0; nan; infinity ] do
+                Assert.Throws<ArgumentException>(fun () -> gpu.RenderImageAt scale extent (batch MarkCircle) |> ignore) |> ignore)

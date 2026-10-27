@@ -310,14 +310,21 @@ type internal GpuContext(?shown: string * int * int * bool) =
             t
 
     /// **Draw layers on the target for a size**, each a scene under the transform that places
-    /// it, in order, and flush. Every node is Skia's but a marker batch the instanced drawer can
-    /// draw exactly as Skia would, which is claimed and drawn between Skia's flushes, so it
-    /// lands over what came before it and under what comes after. The scenes are degraded by the
-    /// caller.
-    member this.Paint(opts: SkiaOptions, shaping: SkiaTextMeasurer, instanced: bool, width: int, height: int, layers: (Affine<nd, px> * Node) seq) : GpuTarget =
+    /// it, in order, and flush. The target is `width` × `height` device pixels and the scenes are
+    /// in px, drawn at `scale` device pixels per px. Every node is Skia's but a marker batch the
+    /// instanced drawer can draw exactly as Skia would, which is claimed and drawn between Skia's
+    /// flushes, so it lands over what came before it and under what comes after. The scenes are
+    /// degraded by the caller.
+    member this.Paint(opts: SkiaOptions, shaping: SkiaTextMeasurer, instanced: bool, width: int, height: int, scale: float, layers: (Affine<nd, px> * Node) seq) : GpuTarget =
         let target = this.Target(width, height)
         let canvas = target.Surface.Canvas
         canvas.Clear(SkiaColor.ofColor opts.Background)
+
+        // The scale is the canvas's, not the scene's. Stroke widths, marker sizes and font sizes
+        // are px, and a canvas scale is the one transform that scales them with the geometry, as
+        // the PDF page's unit conversion does. The target outlives the call, so it is undone.
+        let saved = canvas.Save()
+        canvas.Scale(float32 scale)
 
         // The claim needs the painter's clip and layer depth, so it reads the painter it is
         // handed to.
@@ -329,7 +336,7 @@ type internal GpuContext(?shown: string * int * int * bool) =
                 // Skia's queued drawing first, then Skia is told its GL state was touched.
                 target.Surface.Flush()
                 gr.Flush()
-                markers.Draw(target.Framebuffer, width, height, ctm, b, painter.Clip)
+                markers.Draw(target.Framebuffer, width, height, scale, ctm, b, painter.Clip)
                 gr.ResetContext()
                 true
             | _ -> false
@@ -338,8 +345,11 @@ type internal GpuContext(?shown: string * int * int * bool) =
         let painter = SkiaPainter(canvas, shaping, opts.Antialias, (if instanced then Some claim else None), outlines = true)
         self <- Some painter
 
-        for ctm, node in layers do
-            painter.Draw(ctm, node)
+        try
+            for ctm, node in layers do
+                painter.Draw(ctm, node)
+        finally
+            canvas.RestoreToCount saved
 
         target.Surface.Flush()
         gr.Flush()

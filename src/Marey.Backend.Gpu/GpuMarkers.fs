@@ -15,9 +15,14 @@ open SkiaSharp
 /// the destination is the same as filling and then stroking it. A rectangular clip is applied in
 /// the shader with an antialiased edge, as Skia's clip has.
 ///
-/// Coordinates reach the GPU as `float32` in device pixels, after the panel transform has been
-/// applied in `float`: a coordinate on a 4000-pixel surface keeps a sub-pixel of
-/// precision to spare.
+/// Coordinates reach the GPU as `float32` in device pixels, after the panel transform and the
+/// render scale have been applied in `float`: a coordinate on a 4000-pixel surface keeps a
+/// sub-pixel of precision to spare.
+///
+/// **At a render scale every px length is scaled with the positions.** The canvas draws `scale`
+/// device pixels per px, and a mark drawn beside it has to as well: its size and its outline
+/// width are px, and so is the painter's clip. The antialiased edge stays one device pixel wide,
+/// as Skia's does on a scaled canvas.
 [<Sealed>]
 type internal MarkerDrawer(gl: GL) =
 
@@ -182,21 +187,22 @@ void main() {
             | PainterClip.Shaped -> false
             | _ -> true)
 
-    /// Draw a batch into the bound framebuffer of `width` × `height`. The caller has flushed
-    /// Skia and resets Skia's view of the GL state afterwards.
-    member _.Draw(framebuffer: uint32, width: int, height: int, ctm: Affine<nd, px>, b: MarkerBatch, clip: PainterClip) =
+    /// Draw a batch into the bound framebuffer of `width` × `height` device pixels, at `scale`
+    /// device pixels per px. The caller has flushed Skia and resets Skia's view of the GL state
+    /// afterwards.
+    member _.Draw(framebuffer: uint32, width: int, height: int, scale: float, ctm: Affine<nd, px>, b: MarkerBatch, clip: PainterClip) =
         let centres = Array.zeroCreate<float32> (b.Points.Length * 2)
 
         for i in 0 .. b.Points.Length - 1 do
             let q = Affine.apply ctm b.Points.[i]
-            centres.[2 * i] <- float32 (float q.X)
-            centres.[2 * i + 1] <- float32 (float q.Y)
+            centres.[2 * i] <- float32 (float q.X * scale)
+            centres.[2 * i + 1] <- float32 (float q.Y * scale)
 
-        let r = float32 (float b.Size) / 2.0f
+        let r = float32 (float b.Size * scale) / 2.0f
 
         let halfStroke =
             match b.Stroke with
-            | Some s -> float32 (float s.Width) / 2.0f
+            | Some s -> float32 (float s.Width * scale) / 2.0f
             | None -> 0.0f
 
         let shape =
@@ -219,7 +225,9 @@ void main() {
 
         let clipRect =
             match clip with
-            | PainterClip.Rectangle rect -> rect
+            | PainterClip.Rectangle rect ->
+                let k = float32 scale
+                SKRect(rect.Left * k, rect.Top * k, rect.Right * k, rect.Bottom * k)
             | _ -> SKRect(-1.0e9f, -1.0e9f, 1.0e9f, 1.0e9f)
 
         gl.BindFramebuffer(FramebufferTarget.Framebuffer, framebuffer)

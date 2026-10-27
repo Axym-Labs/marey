@@ -30,6 +30,10 @@ thread, at the same time; the calls take turns on the GPU. So `gpu.RenderPng` is
 function like `SkiaBackend.renderPng`, and `Frames.render FramePass.Concurrent gpu.RenderPng`
 compiles a film's frames in parallel and draws them in turn.
 
+On a HiDPI screen, `gpu.RenderImageAt 2.0 extent scene` draws the scene as a window at a scaling
+of 2 shows it: twice the extent's pixels each way, with strokes, marks and text scaled with the
+geometry. `RenderPngAt` is the same for PNG bytes.
+
 Keep one renderer for many renders. Creating one opens a context and resolves fonts, which is the
 cost a renderer exists to pay once.
 

@@ -8,7 +8,15 @@ namespace Marey
 
         member RenderImage: extent: Extent<px> -> node: Node -> Image
 
+        member
+          RenderImageAt: scale: float ->
+                           extent: Extent<px> -> node: Node -> Image
+
         member RenderPng: extent: Extent<px> -> node: Node -> byte array
+
+        member
+          RenderPngAt: scale: float ->
+                         extent: Extent<px> -> node: Node -> byte array
 
         member Caps: Capabilities
 

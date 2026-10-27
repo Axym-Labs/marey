@@ -82,6 +82,12 @@ and reported when missing; Marey does not require a version of them.
 - **`U.degree`**, π/180 rad, for a phase, an angle of incidence or a latitude in degrees (C#
   `Units.Degree`; `U.parse "deg"` or `"°"`). It is an angle as the radian is: an axis in it
   reads `θ [°]` and takes no prefix, and `°/s` does not share an axis with `Hz`.
+- **`GpuRenderer.RenderImageAt` and `RenderPngAt`**, a scene at a scale, for a HiDPI window:
+  `gpu.RenderImageAt 2.0 extent scene` is an image of twice the extent's pixels each way, with
+  strokes, marks and text twice their px size as well as the geometry, as a window at a scaling of
+  2 shows it. `RenderImage` stretched to the window was soft; at 2× the scaled image is within the
+  GPU's tolerance of a CPU raster canvas scaled by 2 on every golden. Instanced marker batches
+  take the scale too.
 
 ### Changed
 
