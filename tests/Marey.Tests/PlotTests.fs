@@ -1389,6 +1389,100 @@ module CategoricalFrontDoor =
         Assert.Equal(xs.[0], xs.[2], 12)
         Assert.NotEqual(xs.[0], xs.[1])
 
+    // Model names against a score, sorted by the score: the names are long and the
+    // categorical axis is the one a reader looks things up on.
+    let private models =
+        [| "tcn_dwt9_256_241"; "tcn_dwt7_128_153"; "tcn_dwt8_224_217"; "branch_elm_best"; "branch_elm_m100"; "branch_elm_m30"; "branch_elm_m1" |]
+
+    let private auc = [| 0.466; 0.528; 0.777; 0.863; 0.865; 0.885; 0.889 |]
+
+    let private aucFigure () =
+        Chart.Category.scatterIn U.one models auc |> Chart.withYLabel "spike AUC"
+
+    /// The data's marker centres in figure nd, through every transform above them. A legend
+    /// swatch is a `Markers` node too, so only those under a series count.
+    let private markerPoints (node: Node) =
+        let rec go (series: bool) (ctm: Affine<nd, nd>) (n: Node) : Vec2<nd> list =
+            match n with
+            | Markers b when series -> b.Points |> Array.map (Affine.apply ctm) |> List.ofArray
+            | Transform(a, child) -> go series (Affine.compose a ctm) child
+            | Group ns -> ns |> List.ofArray |> List.collect (go series ctm)
+            | Clip(_, child)
+            | Opacity(_, child)
+            | Keyed(_, child) -> go series ctm child
+            | Annotated(sem, child) -> go (series || sem.Role = RoleSeries) ctm child
+            | Markers _
+            | Path _
+            | Text _
+            | Raster _ -> []
+
+        go false Affine.identity node |> Array.ofList
+
+    let private textOf (scene: Node) (s: string) =
+        match textNodes scene |> List.filter (fun t -> t.Text = s) with
+        | [ t ] -> t
+        | ts -> failwithf "expected one '%s' in the scene, found %d" s ts.Length
+
+    /// `Coord.flipped` turns the panel, so it turns the axes with it: the categories stand on
+    /// the vertical axis with their names upright beside it, the values run along the bottom,
+    /// and every mark sits level with its own band's name and above its own value.
+    [<Fact>]
+    let ``a flipped categorical figure puts the bands on the vertical axis`` () =
+        let scene =
+            Chart.toScene surface (aucFigure () |> Chart.withCoord (Coord.flipped Coord.cartesian))
+
+        let points = markerPoints scene
+        Assert.Equal(models.Length, points.Length)
+
+        let left = points |> Array.map (fun p -> float p.X) |> Array.min
+        let below = points |> Array.map (fun p -> float p.Y) |> Array.min
+
+        for i, name in Array.indexed models do
+            let t = textOf scene name
+            Assert.Equal(0.0, float t.Rotation, 12)
+            Assert.True(float t.At.X < left, sprintf "'%s' should stand left of the marks, at x %f < %f" name (float t.At.X) left)
+            Assert.Equal(float points.[i].Y, float t.At.Y, 6)
+
+        // The value axis's title is under the plot and reads horizontally.
+        let title = textOf scene "spike AUC"
+        Assert.Equal(0.0, float title.Rotation, 12)
+        Assert.True(float title.At.Y < below, "the value axis's title should be under the plot")
+
+        // The value ticks run along the bottom, and a mark's x is its value read against them.
+        let lo, hi = textOf scene "0.5", textOf scene "0.9"
+        Assert.Equal(float lo.At.Y, float hi.At.Y, 12)
+        Assert.True(float lo.At.Y < below)
+
+        let xAt (v: float) =
+            float lo.At.X + (v - 0.5) / 0.4 * (float hi.At.X - float lo.At.X)
+
+        for i, v in Array.indexed auc do
+            Assert.Equal(xAt v, float points.[i].X, 6)
+
+    /// A skipped numeric tick can be read back off its neighbours; a skipped band name
+    /// cannot. Every level of a categorical axis is labelled, and no two labels overlap.
+    [<Fact>]
+    let ``a categorical axis labels every level, without overlap`` () =
+        let scene = Chart.toScene surface (aucFigure ())
+        let w, h = float surface.Width, float surface.Height
+
+        let boxes =
+            models
+            |> Array.map (fun name ->
+                let t = textOf scene name
+                let b = TextMeasure.bounds TextMeasure.approx t.Font t.Anchor t.Baseline t.Rotation t.Text
+                let x, y = float t.At.X * w, (1.0 - float t.At.Y) * h
+                x + float b.X0, y + float b.Y0, x + float b.X1, y + float b.Y1)
+
+        for i in 0 .. boxes.Length - 2 do
+            let ax0, ay0, ax1, ay1 = boxes.[i]
+            let bx0, by0, bx1, by1 = boxes.[i + 1]
+            let apart = ax1 <= bx0 || bx1 <= ax0 || ay1 <= by0 || by1 <= ay0
+            Assert.True(apart, sprintf "'%s' and '%s' overlap" models.[i] models.[i + 1])
+
+        for x0, y0, x1, y1 in boxes do
+            Assert.True(x0 >= 0.0 && x1 <= w && y0 >= 0.0 && y1 <= h, "a band name should be inside the figure")
+
 // ======================================================================================
 // Layout invariants
 // ======================================================================================

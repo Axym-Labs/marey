@@ -1770,6 +1770,20 @@ module Figure =
 
             let xSpec, ySpec = axisSpecs theme (pinX, pinY) p
 
+            // A coord that lays x up the panel and y across it, as `Coord.flipped cartesian`
+            // does, takes the axes with it: the one reading x stands on the left and the one
+            // reading y along the bottom. Each axis keeps its own config, spec and plan; only
+            // the side it is measured and drawn on changes.
+            let transposed = Coord.transposes p.Coord
+            let xSide, ySide = if transposed then AxisLeft, AxisBottom else AxisBottom, AxisLeft
+
+            // The axes by where they stand, bottom then left, each as config, spec and plan.
+            let sides (xPlan: TickPlan) (yPlan: TickPlan) =
+                if transposed then
+                    (p.YAxis, ySpec, yPlan), (p.XAxis, xSpec, xPlan)
+                else
+                    (p.XAxis, xSpec, xPlan), (p.YAxis, ySpec, yPlan)
+
             // The second y axis, read as a panel of its own: its config and its spec.
             let second = secondaryOf p
 
@@ -1832,6 +1846,9 @@ module Figure =
                 secondaryOn "x" p.XAxis AxisTop pinX2 primaryX |> Option.map (fun spec -> shown p.XAxis, spec)
 
             let ySecondary = secondaryOn "y" p.YAxis AxisRight pinY2 primaryY
+
+            if transposed && (x2.IsSome || ySecondary.IsSome) then
+                failwith "Marey: a secondary axis needs a cartesian panel; this one is flipped."
 
             if ySecondary.IsSome && y2.IsSome then
                 failwith "Marey: a panel has one right side, and this one has both a second y axis and a secondary one."
@@ -1951,19 +1968,26 @@ module Figure =
                 | TickOut
                 | TickInOut -> theme.TickLength
 
-            // A reader who asked for Γ sees Γ: named ticks may be tilted by the ladder,
-            // and are never thinned.
-            let keepNamed (cfg: AxisConfig) (spec: AxisSpec) (plan: TickPlan) =
-                match cfg.Ticks with
-                | TicksNamed _ when plan.Kept.Length < spec.Ticks.Length ->
-                    { plan with
-                        Kept = Array.init spec.Ticks.Length id
-                        Rule = plan.Rule + ", named ticks kept" }
-                | _ -> plan
+            // An axis of names is labelled at every tick, turned rather than thinned when they
+            // collide. A reader who asked for Γ sees Γ, and a band's name cannot be read off its
+            // neighbours the way a number can.
+            let names (cfg: AxisConfig) (kind: ScaleKind) =
+                match cfg.Ticks, kind with
+                | TicksNamed _, _
+                | _, ScaleKind.Ordinal _ -> true
+                | _ -> false
+
+            let planAxis (cfg: AxisConfig) (kind: ScaleKind) (length: float<px>) (side: AxisSide) (spec: AxisSpec) =
+                Axes.planTicksWith (not (names cfg kind)) m theme.TickFont theme.LabelGap length side spec.Ticks
 
             // The second axis's plan, against the plot's height as the first's is.
             let planY2 (h: float<px>) =
-                right |> Option.map (fun (cfg, spec) -> keepNamed cfg spec (Axes.planTicks m theme.TickFont theme.LabelGap h AxisRight spec.Ticks))
+                let kind =
+                    match second with
+                    | Some sp -> (snd (axisScalesErased sp)).Kind
+                    | None -> primaryY.Kind
+
+                right |> Option.map (fun (cfg, spec) -> planAxis cfg kind h AxisRight spec)
 
             // How far the annotations' text stands past each edge of a plot of this size,
             // in px, as left, right, top and bottom (zero where it does not).
@@ -2006,6 +2030,7 @@ module Figure =
 
             let gutters (xPlan: TickPlan) (yPlan: TickPlan) (barPlan: TickPlan option) (probe: Extent<px>) : PanelLayout =
                 let legendScores = scores probe
+                let (bottomCfg, bottomSpec, bottomPlan), (leftCfg, leftSpec, leftPlan) = sides xPlan yPlan
 
                 let x2Ticks, x2Title, x2Overhang =
                     match x2 with
@@ -2041,24 +2066,24 @@ module Figure =
                       | _ -> 0.0<px>
 
                     XTicksH =
-                      if not p.XAxis.Visible then 0.0<px>
-                      elif p.XAxis.ShowTickLabels then Axes.tickExtent m theme AxisBottom xSpec xPlan
-                      else marksOnly p.XAxis
+                      if not bottomCfg.Visible then 0.0<px>
+                      elif bottomCfg.ShowTickLabels then Axes.tickExtent m theme AxisBottom bottomSpec bottomPlan
+                      else marksOnly bottomCfg
 
                     YTicksW =
-                      if not p.YAxis.Visible then 0.0<px>
-                      elif p.YAxis.ShowTickLabels then Axes.tickExtent m theme AxisLeft ySpec yPlan
-                      else marksOnly p.YAxis
+                      if not leftCfg.Visible then 0.0<px>
+                      elif leftCfg.ShowTickLabels then Axes.tickExtent m theme AxisLeft leftSpec leftPlan
+                      else marksOnly leftCfg
 
                     XTitleH =
-                      if p.XAxis.Visible && p.XAxis.ShowTitle then
-                          Axes.titleExtent m theme xSpec.Title
+                      if bottomCfg.Visible && bottomCfg.ShowTitle then
+                          Axes.titleExtent m theme bottomSpec.Title
                       else
                           0.0<px>
 
                     YTitleW =
-                      if p.YAxis.Visible && p.YAxis.ShowTitle then
-                          Axes.titleExtent m theme ySpec.Title
+                      if leftCfg.Visible && leftCfg.ShowTitle then
+                          Axes.titleExtent m theme leftSpec.Title
                       else
                           0.0<px>
 
@@ -2068,8 +2093,8 @@ module Figure =
                     // A second y axis's labels already stand where the last x label hangs, so
                     // only what still sticks out past them is reserved.
                     RightPad =
-                      if p.XAxis.Visible && p.XAxis.ShowTickLabels then
-                          max 0.0<px> (max (Axes.labelOverhang m theme AxisBottom xSpec xPlan) x2Overhang - y2Ticks - y2Title)
+                      if bottomCfg.Visible && bottomCfg.ShowTickLabels then
+                          max 0.0<px> (max (Axes.labelOverhang m theme AxisBottom bottomSpec bottomPlan) x2Overhang - y2Ticks - y2Title)
                       else
                           max 0.0<px> (x2Overhang - y2Ticks - y2Title)
 
@@ -2079,8 +2104,8 @@ module Figure =
                           0.0<px>
                           (max
                               y2Overhang
-                              (if p.YAxis.Visible && p.YAxis.ShowTickLabels then
-                                   Axes.labelOverhang m theme AxisLeft ySpec yPlan
+                              (if leftCfg.Visible && leftCfg.ShowTickLabels then
+                                   Axes.labelOverhang m theme AxisLeft leftSpec leftPlan
                                else
                                    0.0<px>)
                            - x2Ticks
@@ -2125,8 +2150,10 @@ module Figure =
             // nothing here is circular and the loop is still the same two passes.
 
             let plan (w: float<px>) (h: float<px>) =
-                keepNamed p.XAxis xSpec (Axes.planTicks m theme.TickFont theme.LabelGap w AxisBottom xSpec.Ticks),
-                keepNamed p.YAxis ySpec (Axes.planTicks m theme.TickFont theme.LabelGap h AxisLeft ySpec.Ticks),
+                let along (side: AxisSide) = if side = AxisBottom then w else h
+
+                planAxis p.XAxis primaryX.Kind (along xSide) xSide xSpec,
+                planAxis p.YAxis primaryY.Kind (along ySide) ySide ySpec,
                 colorbar |> Option.map (fun (spec, _) -> Colorbar.planTicks m theme h spec)
 
             let layout =
@@ -2346,7 +2373,7 @@ module Figure =
                               Direction = theme.TickDirection
                               // Mirrored onto the frame, so only where a frame is drawn, and only
                               // around a rectangle.
-                              Mirror = mirrored && theme.MirrorTicks && theme.PanelFrame && Coord.isIdentity p.Coord
+                              Mirror = mirrored && theme.MirrorTicks && theme.PanelFrame && (Coord.isIdentity p.Coord || transposed)
                               ShowMinor =
                                 match cfg.Minor with
                                 | MinorOff -> false
@@ -2448,8 +2475,8 @@ module Figure =
                                 [| Axes.panelBackground theme p.Coord plotNd
                                    Keyed(Keys.grid panelKey, Axes.gridlines theme p.Coord plotNd gridX gridY)
                                    data
-                                   Keyed(Keys.axisX panelKey, axisNodeIn theme x2.IsNone AxisBottom p.XAxis xSpec xPlan)
-                                   Keyed(Keys.axisY panelKey, axisNodeIn (tint (primaryLayers p)) right.IsNone AxisLeft p.YAxis ySpec yPlan)
+                                   Keyed(Keys.axisX panelKey, axisNodeIn theme x2.IsNone xSide p.XAxis xSpec xPlan)
+                                   Keyed(Keys.axisY panelKey, axisNodeIn (tint (primaryLayers p)) right.IsNone ySide p.YAxis ySpec yPlan)
                                    match right, planY2 layout.Probe.Height with
                                    | Some(cfg, spec), Some plan ->
                                        Keyed(Keys.axisY2 panelKey, axisNodeIn (tint (p.Layers |> Array.filter (onSecond p))) false AxisRight cfg spec plan)

@@ -193,6 +193,9 @@ module internal Axes =
     /// in `nd`, which is y-up.
     let private slant = System.Math.PI / 4.0 * 1.0<rad>
 
+    /// A label turned to read bottom to top, the steepest a horizontal axis's label is turned.
+    let private steep = System.Math.PI / 2.0 * 1.0<rad>
+
     /// Footprint of a label *along the axis*, at a given rotation.
     let private footprint (m: ITextMeasurer) (font: FontSpec) (horizontal: bool) (rot: float<rad>) (text: string) =
         let b = TextMeasure.bounds m font AnchorMiddle BaselineMiddle rot text
@@ -219,7 +222,24 @@ module internal Axes =
     ///
     /// Ticks are never *moved* and never relabelled: `Marey.Units` already guaranteed the
     /// labels are injective, and a thinned axis is still a correct axis.
-    let planTicks
+    ///
+    /// With `thin` false no rung drops a label, for an axis whose labels are names rather than
+    /// numbers. A skipped number can be read back off its neighbours; a skipped band name or a
+    /// named tick cannot, so such an axis is turned instead:
+    ///
+    /// 1. every label, upright;
+    /// 2. every label, rotated 45° (horizontal axes);
+    /// 3. every label, rotated 90° (horizontal axes);
+    /// 4. every label as the last rung left it, crowded, and the rule says so.
+    ///
+    /// Turning is chosen over wrapping and shrinking. A name such as `tcn_dwt9_256_241` has no
+    /// break a reader would expect, and is often looked up verbatim; a smaller font on one axis
+    /// breaks the figure's single type size, which a paper's figure is held to. A turned label
+    /// keeps both, and the gutter grows to hold it. The last rung draws an overlap rather than
+    /// failing, because a live window passes through sizes too small for its labels on the way
+    /// to a size that fits, and `TickPlan.Rule` still names it.
+    let planTicksWith
+        (thin: bool)
         (m: ITextMeasurer)
         (font: FontSpec)
         (minGap: float<px>)
@@ -273,16 +293,22 @@ module internal Axes =
             let ladder =
                 seq {
                     yield 1, 0.0<rad>, "all"
-                    yield 2, 0.0<rad>, "every-2nd"
 
-                    if horizontal then
-                        yield 1, slant, "rotated-45"
-
-                        for k in 2..6 do
-                            yield k, slant, sprintf "rotated-45-every-%dth" k
+                    if not thin then
+                        if horizontal then
+                            yield 1, slant, "rotated-45"
+                            yield 1, steep, "rotated-90"
                     else
-                        for k in 3..6 do
-                            yield k, 0.0<rad>, sprintf "every-%dth" k
+                        yield 2, 0.0<rad>, "every-2nd"
+
+                        if horizontal then
+                            yield 1, slant, "rotated-45"
+
+                            for k in 2..6 do
+                                yield k, slant, sprintf "rotated-45-every-%dth" k
+                        else
+                            for k in 3..6 do
+                                yield k, 0.0<rad>, sprintf "every-%dth" k
                 }
 
             let hit =
@@ -291,10 +317,14 @@ module internal Axes =
 
             match hit with
             | Some p -> p
+            | None when not thin -> plan (Array.init n id) (if horizontal then steep else 0.0<rad>) "all-crowded"
             | None ->
                 // Nothing fits. Two labels is the minimum that still communicates a scale, and
                 // the endpoints are the two that carry the most.
                 plan [| 0; n - 1 |] (if horizontal then slant else 0.0<rad>) "ends-only"
+
+    /// The collision rule for a numeric axis, which may thin.
+    let planTicks m font minGap lengthPx side ticks = planTicksWith true m font minGap lengthPx side ticks
 
     /// The kept ticks, in order.
     let keptTicks (spec: AxisSpec) (plan: TickPlan) =
