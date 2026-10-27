@@ -183,6 +183,17 @@ and reported when missing; Marey does not require a version of them.
   93 MB PDF. Both marks now cover only the grid's part in the plot area: 0.05 s and 519 KB. An
   unzoomed figure draws as it did. Zoomed, a LIC texture's noise now belongs to the visible part,
   so panning redraws the texture rather than sliding it.
+- **A flipped panel turns its axes too.** Under `Chart.withCoord (Coord.flipped Coord.cartesian)`
+  the marks moved and the axes stayed: a categorical scatter kept its band names under the x axis
+  and its values up the left, so every mark stood against the wrong numbers. The axis reading x now
+  stands on the left and the one reading y along the bottom, each with its own title, ticks, plan
+  and gutter, so the categories of a flipped `Chart.Category` figure run down the left with their
+  names upright. A secondary axis on a flipped panel is refused, as a second y axis already was.
+- **A categorical axis names every band.** Seven model names at 800 px were thinned to every
+  other one, and a skipped band name cannot be read off its neighbours as a skipped number can.
+  An axis over an ordinal scale, or with named ticks, is never thinned: crowded labels are turned
+  45°, then 90°, which keeps each name whole and the figure's one type size, and the gutter grows
+  to hold them. Named ticks that collided used to stay upright and overlap; they turn now too.
 
 
 ## [0.7.0] — 2026-10-16

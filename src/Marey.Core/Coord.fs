@@ -151,6 +151,17 @@ module Coord =
 
             member _.Clip = inner.Clip }
 
+    /// True when the coord lays x up the panel and y across it, as `flipped cartesian` does,
+    /// so the axis reading x stands on the left and the one reading y along the bottom.
+    ///
+    /// Asked of the map rather than of which coord it is, at the unit square's corners and an
+    /// off-diagonal point, so a user's own transposing coord gets its axes moved too.
+    let internal transposes (c: Coord) =
+        [| 0.0, 0.0; 1.0, 0.0; 0.0, 1.0; 1.0, 1.0; 0.25, 0.75 |]
+        |> Array.forall (fun (x, y) ->
+            let q = c.ToPanel { X = x * 1.0<nd>; Y = y * 1.0<nd> }
+            abs (float q.X - y) < 1e-9 && abs (float q.Y - x) < 1e-9)
+
     /// Apply a coord to a polyline, resampling straight segments so they curve correctly.
     ///
     /// This is the function that keeps the leak sealed: a geom emits straight segments in
