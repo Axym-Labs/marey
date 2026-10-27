@@ -770,7 +770,8 @@ module Html =
               "var(--verso-cell-output-background,transparent);font-size:0.85em;font-variant-numeric:tabular-nums;white-space:nowrap}"
               "#status{" + Muted + "}" ]
 
-    /// The view's half of the protocol. It measures the frame and says how wide it is, reports
+    /// The view's half of the protocol. It measures the frame and asks for the figure at the
+    /// size that fits it and the window, reports
     /// itself ready, posts a control's value whenever it moves with one request in flight and
     /// the newest value of each control waiting behind it, swaps in whatever the kernel sends,
     /// and disables the controls when the channel closes. With no channel it disables them at
@@ -816,7 +817,9 @@ module Html =
               if canvas then
                   yield "  var cv = document.getElementById('cv');"
                   yield "  var poster = document.getElementById('poster');"
-                  yield "  function draw(b64, w, h) { cv.setAttribute('data-w', w); cv.setAttribute('data-h', h); var why = MareyView.show(cv, b64, Number(w), Number(h)); if (why) { status.textContent = why; } else if (poster) { poster.remove(); poster = null; } }"
+                  // The canvas is placed over its box, so the box is what the frame's height
+                  // follows; a scene at a new size resizes it, or the frame crops the canvas.
+                  yield "  function draw(b64, w, h) { cv.setAttribute('data-w', w); cv.setAttribute('data-h', h); cv.parentNode.style.width = w + 'px'; cv.parentNode.style.height = h + 'px'; var why = MareyView.show(cv, b64, Number(w), Number(h)); if (why) { status.textContent = why; } else if (poster) { poster.remove(); poster = null; } }"
                   yield "  draw(document.getElementById('scene').textContent, cv.getAttribute('data-w'), cv.getAttribute('data-h'));"
 
               yield "  function disable(why) {"
@@ -894,9 +897,21 @@ module Html =
               yield "    }"
               yield "    return true;"
               yield "  }"
+              // As wide as the frame, unless that makes it taller than the window can show with
+              // the controls above it: then as tall as 80% of the window leaves room for, so the
+              // controls and the whole figure are on screen together. A frame's own height
+              // follows its content, so the window is the top one's where it can be read and
+              // the screen's where it cannot.
               yield "  function hello() {"
               yield "    var w = Math.round(fig.clientWidth || document.documentElement.clientWidth || 0);"
-              yield sprintf "    if (w > 0) { send('size', 'size', [w, Math.round(w * %s)], performance.now()); }" (exact aspect)
+              yield "    if (w <= 0) { return; }"
+              yield "    var vh = 0;"
+              yield "    try { vh = window.top.innerHeight; } catch (e) { }"
+              yield "    vh = vh || window.screen.availHeight || 0;"
+              yield "    var room = 0.8 * vh - document.getElementById('controls').offsetHeight - status.offsetHeight;"
+              yield sprintf "    var h = Math.round(w * %s);" (exact aspect)
+              yield sprintf "    if (room >= 200 && h > room) { h = Math.round(room); w = Math.round(h / %s); }" (exact aspect)
+              yield "    send('size', 'size', [w, h], performance.now());"
               yield "  }"
               yield "  window.addEventListener('verso:channelmessage', function (e) {"
               yield "    var d = e.detail || {}, p = d.payload || {};"
@@ -1157,8 +1172,9 @@ module Html =
     /// The .NET Interactive design had no way to ask how wide the cell was, so `defaultSize`
     /// picked 720x450 and hoped. Verso's `IFormatterContext` carries `MaxWidth`/`MaxHeight`, but
     /// on its F# path they are the constants 800 and 600, so the guess moved into the host and
-    /// is still a guess. A live figure does better: its page measures its own frame and sends the
-    /// width with its first message, and the kernel lays the figure out for that.
+    /// is still a guess. A live figure does better: its page measures its own frame and the
+    /// window, sends the size that fits both with its first message, and the kernel lays the
+    /// figure out for that.
     ///
     /// Clamped at both ends. Below ~320px a figure is not a figure, it is a smudge with axis
     /// labels; above ~1100 the line weights and font sizes chosen for a screen figure start to

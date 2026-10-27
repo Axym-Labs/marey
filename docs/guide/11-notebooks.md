@@ -9,6 +9,9 @@ library, and Verso asks once before loading the extension's code:
 #r "nuget: Marey"
 ```
 
+The `#!extension` line comes first: Verso reads such lines only at the top of a cell, and below
+the `#r` it is ignored without an error, so figures show as tables of their fields.
+
 What displays: a `Figure`, a `Film`, a scene `Node`, a `Color`, a `Ramp` and a palette, a
 `PaletteReport`, a `Dim`, a unit witness, a scale, and a live figure (§12). Without the extension a
 figure rendered to an SVG string still displays, through Verso's own SVG formatter.

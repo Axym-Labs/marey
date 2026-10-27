@@ -45,6 +45,14 @@ rendering. Verso has no `#r`-time extension hook.
 Install `Marey.Verso` from Verso's **Extensions** panel, then approve it once — extensions are
 executable code that runs inside the notebook host, so approval is requested per version.
 
+Or load it from the notebook's first cell, as the first line of that cell: Verso reads
+`#!extension` only at the top of a cell, and below a `#r` it is ignored without an error.
+
+```
+#!extension Marey.Verso
+#r "nuget: Marey"
+```
+
 ## Setting up
 
 | | |

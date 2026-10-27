@@ -811,8 +811,9 @@ module ``the widget document`` =
         Assert.DoesNotContain("<b>&amp", doc)
         XDocument.Parse doc |> ignore
 
-    /// The view announces its width at the state's aspect, so the kernel lays out for the frame
-    /// it is drawn in; a resize re-arranges, and a nonsense size is ignored.
+    /// The view announces a size at the state's aspect, so the kernel lays out for the frame
+    /// it is drawn in, kept short enough for the window to show it under its controls; a
+    /// resize re-arranges, and a nonsense size is ignored.
     [<Fact>]
     let ``a size re-arranges, and a nonsense one is ignored`` () =
         let l, s = at []
@@ -820,7 +821,9 @@ module ``the widget document`` =
         Assert.Equal(960.0, float wide.Shot.Outer.Extent.Width)
         Assert.Same(s, Live.step l s (Resize(nan, 400.0)))
         Assert.Same(s, Live.step l s (Resize(-5.0, 400.0)))
-        Assert.Contains("[w, Math.round(w * 0.625)]", Html.widget l s true)
+        let doc = Html.widget l s true
+        Assert.Contains("var h = Math.round(w * 0.625);", doc)
+        Assert.Contains("w = Math.round(h / 0.625);", doc)
 
 // ======================================================================================
 // Gate 5 — a widget does not breathe

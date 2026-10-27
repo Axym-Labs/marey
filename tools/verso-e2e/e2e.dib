@@ -1,0 +1,98 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"fsharp","items":[{"aliases":[],"languageName":"fsharp","name":"fsharp"}]}}
+
+#!markdown
+
+# Marey in Verso, end to end
+
+Marey @VERSION@. `CHECKLIST.md` beside this notebook says what each cell should show. The first
+cell loads the extension and the library, in the guide's order; approve the extension when asked.
+
+#!fsharp
+
+#!extension Marey.Verso @VERSION@
+#r "nuget: Marey, @VERSION@"
+
+open Marey
+open Marey.UnitsOfMeasure
+
+#!markdown
+
+**A figure.** Drawn as SVG, sized to the cell.
+
+#!fsharp
+
+let t = Q.init U.second 201 (fun i -> float i * 0.05<s>)
+let x = t |> Seq.map (fun ti -> 0.1<m> * exp (-0.2 * float ti) * cos (2.0 * System.Math.PI * float ti))
+
+Chart.lineIn U.second U.metre t x
+|> Chart.withTitle "A damped spring"
+|> Chart.withXLabel "time"
+|> Chart.withYLabel "position"
+
+#!markdown
+
+**A film.** Plays in the cell as a flipbook, looping.
+
+#!fsharp
+
+let pulse (width: float<s>) =
+    Chart.lineIn U.second U.metre t (t |> Seq.map (fun ti -> 0.1<m> * exp (-((float ti - 5.0) ** 2.0) / float (width * width))))
+    |> Chart.withTitle "A pulse, widening"
+
+Film.ofFigures 24 (Chart.size 480.0 300.0) (Anim.tween 2.0<s> 0.3<s> 2.0<s> |> Anim.map pulse)
+
+#!markdown
+
+**A large figure.** 10⁴ points, above `Html.CanvasThreshold`, so it is drawn on a canvas, with no
+kernel needed once drawn.
+
+#!fsharp
+
+let crowdT = Array.init 10_000 (fun i -> float i / 1000.0 * 1.0<s>)
+let crowdX = crowdT |> Array.mapi (fun i ti -> (sin (float ti) + 0.3 * sin (float i * 12.9898)) * 1.0<m>)
+
+Chart.scatterIn U.second U.metre crowdT crowdX |> Chart.withTitle "Ten thousand points"
+
+#!markdown
+
+**A live figure.** Drag the slider: the kernel redraws the curve. Drag a box to zoom, shift-drag to
+pan, double-click to go back, hover to read the position.
+
+#!fsharp
+
+interact {
+    let! amplitude = Control.slider U.metre "amplitude" 0.02<m> 0.2<m> 0.1<m>
+    and! damping = Control.slider U.hertz "damping" 0.0<Hz> 1.0<Hz> 0.2<Hz>
+    return
+        Chart.lineIn U.second U.metre t (t |> Seq.map (fun ti -> amplitude * exp (-float (damping * ti)) * cos (2.0 * System.Math.PI * float ti)))
+        |> Chart.withTitle "A spring, live"
+}
+
+#!markdown
+
+**A large live figure.** 10⁵ points on a canvas. Moving the slider moves the one large marker and
+sends only that mark.
+
+#!fsharp
+
+let manyT = Array.init 100_000 (fun i -> float i / 100_000.0 * 10.0<s>)
+let manyX = manyT |> Array.mapi (fun i ti -> (sin (float ti) + 0.3 * sin (float i * 12.9898)) * 1.0<m>)
+
+interact {
+    let! at = Control.slider U.second "t" 1.0<s> 9.0<s> 5.0<s>
+    return
+        Chart.scatterIn U.second U.metre manyT manyX
+        |> Chart.addScatterIn U.second U.metre [| at |] [| sin (float at) * 1.0<m> |]
+        |> Chart.withStyle (Geom.withMarkerSize 10.0<px>)
+}
+
+#!markdown
+
+**An error.** Metres plus seconds does not compile; the cell should fail with F#'s unit-mismatch
+message, pointing at this line.
+
+#!fsharp
+
+let wrong = 1.0<m> + 1.0<s>
