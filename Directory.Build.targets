@@ -83,6 +83,9 @@
     <InternalsVisibleTo Include="Marey.Tools.Video" />
     <InternalsVisibleTo Include="Marey.Units" />
     <InternalsVisibleTo Include="Marey.Verso" />
+    <InternalsVisibleTo Include="Marey.Witnesses" />
+    <InternalsVisibleTo Include="Marey.Analyzers" />
+    <InternalsVisibleTo Include="Marey.Analyzers.Tests" />
     <InternalsVisibleTo Include="Marey.Tests" />
     <InternalsVisibleTo Include="Marey.CSharp.Tests" />
   </ItemGroup>

@@ -240,7 +240,7 @@ jobs:
         run: |
           set -e
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 18 ] || { echo "::error::expected 18 packages, packed $count"; exit 1; }
+          [ "$count" -eq 20 ] || { echo "::error::expected 20 packages, packed $count"; exit 1; }
           fable=0
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
@@ -263,7 +263,7 @@ jobs:
             echo "  $(basename "$pkg"): $readme"
           done
           [ "$fable" -eq 9 ] || { echo "::error::expected 9 packages with Fable sources, found $fable"; exit 1; }
-          echo "18 packages, each with an MIT expression and the readme it declares; 9 with Fable sources"
+          echo "20 packages, each with an MIT expression and the readme it declares; 9 with Fable sources"
 
       # D146, gate 1: the FSharp.Core a consumer needs is the one src/Directory.Build.props states,
       # not the one this leg's SDK bundles. 0.5.0 shipped `>= 10.1.401` because it was the latter.
@@ -272,20 +272,28 @@ jobs:
           set -e
           want=$(sed -n 's:.*<MareyFSharpCore[^>]*>\([^<]*\)</MareyFSharpCore>.*:\1:p' src/Directory.Build.props)
           [ -n "$want" ] || { echo "::error::no MareyFSharpCore in src/Directory.Build.props"; exit 1; }
+          # The compiler service pins its FSharp.Core exactly, so the package built on it states
+          # that one; the analyzer package, which its host loads, states none.
+          fcs=$(sed -n 's:.*<MareyCompilerServiceFSharpCore>\([^<]*\)</MareyCompilerServiceFSharpCore>.*:\1:p' Directory.Build.props)
+          [ -n "$fcs" ] || { echo "::error::no MareyCompilerServiceFSharpCore in Directory.Build.props"; exit 1; }
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
             got=$(grep -o 'id="FSharp.Core" version="[^"]*"' /tmp/nuspec.xml | sed 's:.*version="::;s:"::' | sort -u)
-            [ "$got" = "$want" ] || { echo "::error::$pkg requires FSharp.Core $got, expected $want"; exit 1; }
+            expected=$want
+            grep -q 'id="FSharp.Compiler.Service"' /tmp/nuspec.xml && expected=$fcs
+            grep -q '<developmentDependency>true</developmentDependency>' /tmp/nuspec.xml && expected=
+            [ "$got" = "$expected" ] || { echo "::error::$pkg requires FSharp.Core '$got', expected '$expected'"; exit 1; }
           done
-          echo "every package requires FSharp.Core >= $want"
+          echo "every package requires FSharp.Core >= $want, but the compiler service's (>= $fcs) and the analyzers (none)"
 
       # Every package with code has its symbol package, and each PDB in it maps the sources to
-      # the commit on GitHub. `Marey`, which carries no code, has none.
+      # the commit on GitHub. `Marey`, which carries no code, has none, and `Marey.Analyzers` carries
+      # its PDBs in its analyzer folder.
       - name: Check the symbol packages and their SourceLink
         run: |
           set -e
           count=$(ls artifacts/*.snupkg | wc -l)
-          [ "$count" -eq 17 ] || { echo "::error::expected 17 symbol packages, packed $count"; exit 1; }
+          [ "$count" -eq 18 ] || { echo "::error::expected 18 symbol packages, packed $count"; exit 1; }
           for sym in artifacts/*.snupkg; do
             dir=$(mktemp -d)
             unzip -q "$sym" -d "$dir"
@@ -294,7 +302,7 @@ jobs:
                 || { echo "::error::$sym: $(basename "$pdb") has no SourceLink to the repository"; exit 1; }
             done
           done
-          echo "17 symbol packages, every PDB with SourceLink"
+          echo "18 symbol packages, every PDB with SourceLink"
 
       - uses: actions/upload-artifact@v4
         if: matrix.sdk == '10.0.1xx'
