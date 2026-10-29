@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- `Marey.Witnesses` behind FSharp.Analyzers.SDK, so Ionide's editor and the
+         `fsharp-analyzers` CLI offer its fixes. An analyzer is loaded by its host, which brings the
+         SDK, the compiler service and FSharp.Core, and finds it in the package's
+         `analyzers/dotnet/fs`: so the package has no library and no dependency, and carries this
+         assembly and `Marey.Witnesses` there.
+
+         net10.0 and the SDK's exact version, because a host loads only an analyzer built
+         against the SDK it runs. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Marey.Analyzers</AssemblyName>
+    <RootNamespace>Marey.Analyzers</RootNamespace>
+    <Description>F# analyzers for Marey's unit witnesses, for Ionide and the fsharp-analyzers CLI: a fix for a call missing its witnesses, a witness for another unit than its data, and measured arrays where a Q is taken.</Description>
+    <PackageTags>fsharp analyzers fsharp-analyzers units-of-measure code-fix</PackageTags>
+    <IsPackable>true</IsPackable>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- Nothing in lib/, deliberately: the analyzer folder is the package. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <IncludeSymbols>false</IncludeSymbols>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);MareyAnalyzerFolder</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Analyzer.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Analyzers.SDK" Version="$(MareyAnalyzersSdk)" PrivateAssets="all" />
+    <PackageReference Update="FSharp.Core" PrivateAssets="all" Version="10.1.402" />
+    <ProjectReference Include="..\Marey.Witnesses\Marey.Witnesses.fsproj" PrivateAssets="all" />
+  </ItemGroup>
+
+  <Target Name="MareyAnalyzerFolder">
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(OutputPath)Marey.Analyzers.dll;$(OutputPath)Marey.Analyzers.pdb;$(OutputPath)Marey.Witnesses.dll;$(OutputPath)Marey.Witnesses.pdb" PackagePath="analyzers/dotnet/fs" />
+    </ItemGroup>
+  </Target>
+
+</Project>

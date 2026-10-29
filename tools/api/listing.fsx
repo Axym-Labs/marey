@@ -42,8 +42,9 @@ let run (file: string) (args: string list) =
     p.WaitForExit()
     p.ExitCode
 
-/// The packages: every project under `src/` that does not say `IsPackable=false`, less the one
-/// that packs no assembly (`Marey`, which only gathers the others) and so has no API.
+/// The packages: every project under `src/` that does not say `IsPackable=false`, less those
+/// that pack no library and so have no API: `Marey`, which only gathers the others, and
+/// `Marey.Analyzers`, whose assembly a host loads from its analyzer folder.
 let packages =
     Directory.GetDirectories(Path.Combine(root, "src"))
     |> Array.choose (fun dir ->
@@ -180,7 +181,7 @@ let clean (text: string) =
     |> fun s -> s + "\n"
 
 let signatureOf (name: string) =
-    [ "netstandard2.1"; "net8.0"; "net10.0" ]
+    [ "netstandard2.1"; "netstandard2.0"; "net8.0"; "net10.0" ]
     |> List.map (fun tfm -> Path.Combine(sigDir, sprintf "%s.%s.fsi" name tfm))
     |> List.tryFind File.Exists
     |> Option.map (File.ReadAllText >> clean)

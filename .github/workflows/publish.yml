@@ -1,6 +1,6 @@
 name: Publish
 
-# Publishes the eighteen packages to nuget.org using **trusted publishing**: GitHub mints a
+# Publishes the twenty packages to nuget.org using **trusted publishing**: GitHub mints a
 # short-lived OIDC token, nuget.org validates it against a policy you registered and hands back
 # an API key valid for one hour. No long-lived secret is stored in this repository.
 #
@@ -165,7 +165,7 @@ jobs:
       - name: Check the packages before anything leaves the machine
         run: |
           set -e
-          # Eighteen since the `Marey` metapackage, which gathers the others. Seventeen since M5.5 phase 2, which published Marey.Sim. Sixteen since M5 phase 8, which published Marey.Backend.Web. Fifteen since M5 phase 4, which published Marey.Backend.Gpu. Fourteen since M4.5 phase 2, which published Marey.Interact. Thirteen since M4 phase 2,
+          # Twenty since `Marey.Witnesses` and `Marey.Analyzers`, the code fixes. Eighteen since the `Marey` metapackage, which gathers the others. Seventeen since M5.5 phase 2, which published Marey.Sim. Sixteen since M5 phase 8, which published Marey.Backend.Web. Fifteen since M5 phase 4, which published Marey.Backend.Gpu. Fourteen since M4.5 phase 2, which published Marey.Interact. Thirteen since M4 phase 2,
           # which published Marey.Fields. Twelve since M3 phase 8, which
           # published Marey.Tools.Tex. Eleven since phase 6,
           # which published Marey.Tools.Video and — because a published package may not depend
@@ -175,11 +175,11 @@ jobs:
           # automatically, and a count that has to be edited by hand is what stops one
           # appearing on nuget.org because somebody added an .fsproj.
           count=$(ls artifacts/*.nupkg | wc -l)
-          [ "$count" -eq 18 ] || { echo "::error::expected 18 packages, packed $count"; exit 1; }
-          # A symbol package beside each but `Marey`, which carries no code; `nuget push` sends each
-          # with its package.
+          [ "$count" -eq 20 ] || { echo "::error::expected 20 packages, packed $count"; exit 1; }
+          # A symbol package beside each but `Marey`, which carries no code, and `Marey.Analyzers`,
+          # whose PDBs travel in its analyzer folder; `nuget push` sends each with its package.
           symbols=$(ls artifacts/*.snupkg | wc -l)
-          [ "$symbols" -eq 17 ] || { echo "::error::expected 17 symbol packages, packed $symbols"; exit 1; }
+          [ "$symbols" -eq 18 ] || { echo "::error::expected 18 symbol packages, packed $symbols"; exit 1; }
           fable=0
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
@@ -213,12 +213,19 @@ jobs:
           set -e
           want=$(sed -n 's:.*<MareyFSharpCore[^>]*>\([^<]*\)</MareyFSharpCore>.*:\1:p' src/Directory.Build.props)
           [ -n "$want" ] || { echo "::error::no MareyFSharpCore in src/Directory.Build.props"; exit 1; }
+          # The compiler service pins its FSharp.Core exactly, so the package built on it states
+          # that one; the analyzer package, which its host loads, states none.
+          fcs=$(sed -n 's:.*<MareyCompilerServiceFSharpCore>\([^<]*\)</MareyCompilerServiceFSharpCore>.*:\1:p' Directory.Build.props)
+          [ -n "$fcs" ] || { echo "::error::no MareyCompilerServiceFSharpCore in Directory.Build.props"; exit 1; }
           for pkg in artifacts/*.nupkg; do
             unzip -p "$pkg" '*.nuspec' > /tmp/nuspec.xml
             got=$(grep -o 'id="FSharp.Core" version="[^"]*"' /tmp/nuspec.xml | sed 's:.*version="::;s:"::' | sort -u)
-            [ "$got" = "$want" ] || { echo "::error::$pkg requires FSharp.Core $got, expected $want"; exit 1; }
+            expected=$want
+            grep -q 'id="FSharp.Compiler.Service"' /tmp/nuspec.xml && expected=$fcs
+            grep -q '<developmentDependency>true</developmentDependency>' /tmp/nuspec.xml && expected=
+            [ "$got" = "$expected" ] || { echo "::error::$pkg requires FSharp.Core '$got', expected '$expected'"; exit 1; }
           done
-          echo "every package requires FSharp.Core >= $want"
+          echo "every package requires FSharp.Core >= $want, but the compiler service's (>= $fcs) and the analyzers (none)"
 
       # Deliberately the last thing before the push. The key nuget.org returns is valid for one
       # hour and each OIDC token buys exactly one key, so requesting it before a ten-minute

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- The fixes a host that checks F# itself offers on a Marey call that does not type-check:
+         the witnesses a `…In` form is missing, a witness that names another unit than the data,
+         raw measured arrays where a `Q` is taken. Tambour's editor calls it on its own checker's
+         results; `Marey.Analyzers` puts it behind FSharp.Analyzers.SDK for Ionide and the CLI.
+
+         **It does not reference Marey.** It reads the user's code through the compiler service,
+         and Marey's witnesses through the symbols of the Marey assemblies the checked file
+         references, so it works on any Marey version the file was checked against and adds no
+         runtime dependency to a host that already has the compiler.
+
+         netstandard2.0, FSharp.Compiler.Service's own target, so any host that loads the compiler
+         loads this. The compiler service is referenced at the lowest version this compiles
+         against, as a lower bound, so a host pins its own. It requires the FSharp.Core it was
+         built with, exactly, which is why this package states that one and not the libraries'. -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>Marey.Witnesses</AssemblyName>
+    <RootNamespace>Marey.Witnesses</RootNamespace>
+    <Description>Code fixes for Marey's unit witnesses, over the F# compiler service: a call missing its witnesses, a witness for another unit than its data, measured arrays where a Q is taken. U.second for a float&lt;s&gt;, composed as the unit is written where Marey declares no witness for it.</Description>
+    <PackageTags>fsharp units-of-measure compiler-service code-fix tooling</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Measure.fs" />
+    <Compile Include="Index.fs" />
+    <Compile Include="Findings.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Compiler.Service" Version="$(MareyCompilerService)" />
+    <PackageReference Update="FSharp.Core" Version="$(MareyCompilerServiceFSharpCore)" />
+  </ItemGroup>
+
+</Project>
