@@ -249,12 +249,14 @@ module ``the host`` =
 
             let got = w.State
 
+            // In the screen's pixels: twice the px each way where the desktop scales by 200 %.
             let frame = w.Capture()
-            let strip = int (WindowStrip.height l.Controls)
-            Assert.Equal(800, frame.Width)
-            Assert.Equal(500 + strip, frame.Height)
+            let scale = frame.Width / 800
+            let strip = int (WindowStrip.height l.Controls) * scale
+            Assert.Equal(800 * scale, frame.Width)
+            Assert.Equal(500 * scale + strip, frame.Height)
 
-            let figure = gpu.RenderImage got.Shot.Outer.Extent (Live.scene l got)
+            let figure = gpu.RenderImageAt (float scale) got.Shot.Outer.Extent (Live.scene l got)
             let fw = figure.Width
             let mutable differing = 0
 
