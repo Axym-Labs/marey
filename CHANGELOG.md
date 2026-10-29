@@ -171,6 +171,10 @@ and reported when missing; Marey does not require a version of them.
 
 ### Fixed
 
+- **`GpuWindow` is sharp on a high-density display.** It drew each frame at one pixel per px and
+  stretched it to the screen, so at a scaling of 200 % its lines and text were soft. It now draws
+  at the screen's pixels per px, as `RenderImageAt` does, and `Capture` returns the frame in those
+  pixels.
 - **Two units of one dimension on one axis are converted.** A layer in minutes added to an axis
   in seconds was drawn in its own numbers, so 4 min stood at 4 s; so were degrees beside radians,
   °C beside K and a kilometre panel sharing x with a metre one. The domain an axis shares

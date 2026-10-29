@@ -235,8 +235,8 @@ module internal WindowScene =
 /// window with the process. On Linux and Windows GLFW accepts a window off the main thread;
 /// macOS does not, and is not supported here.
 ///
-/// The figure is drawn at the window's size in its own px and copied to the screen, scaled where
-/// the screen's framebuffer is larger (a high-density display), so it is sharp at a scale of one.
+/// The figure is laid out at the window's size in its own px and drawn at the screen's pixels per
+/// px, so on a high-density display its lines and text are as sharp as the screen.
 [<Sealed>]
 type GpuWindow private (live: Live, recorder: Recorder option, title: string, size: Extent<px>, options: SkiaOptions, visible: bool) =
 
@@ -327,6 +327,7 @@ type GpuWindow private (live: Live, recorder: Recorder option, title: string, si
             let mutable shownSize: Extent<px> = { Width = 0.0<px>; Height = 0.0<px> }
             let mutable figure: (LiveState * Node) option = None
             let mutable dirty = true
+            let mutable painted = (1, 1)
 
             let sizeNow () : Extent<px> =
                 let s = window.Size
@@ -340,7 +341,17 @@ type GpuWindow private (live: Live, recorder: Recorder option, title: string, si
 
             let draw () =
                 let g = session.Gesture.Window
-                let w, h = max 1 (int (ceil (float g.Width))), max 1 (int (ceil (float g.Height)))
+                let fb = window.FramebufferSize
+
+                // The window's size is its px and the framebuffer its screen's pixels, more of
+                // them on a high-density display. The frame is drawn at that ratio, at the
+                // framebuffer's size, so it reaches the screen pixel for pixel. A minimised
+                // window has no framebuffer, and is drawn at one pixel per px.
+                let w, h, scale =
+                    if fb.X > 0 && fb.Y > 0 && g.Width > 0.0<px> then
+                        fb.X, fb.Y, float fb.X / float g.Width
+                    else
+                        max 1 (int (ceil (float g.Width))), max 1 (int (ceil (float g.Height))), 1.0
 
                 let scene =
                     match figure with
@@ -358,8 +369,8 @@ type GpuWindow private (live: Live, recorder: Recorder option, title: string, si
                         figure <- Some(session.State, node)
                         node
 
-                let target = context.Paint(options, shaping, true, w, h, 1.0, WindowScene.layers shaping live session scene)
-                let fb = window.FramebufferSize
+                let target = context.Paint(options, shaping, true, w, h, scale, WindowScene.layers shaping live session scene)
+                painted <- (w, h)
                 gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, target.Framebuffer)
                 gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0u)
                 gl.Viewport(0, 0, uint32 fb.X, uint32 fb.Y)
@@ -375,10 +386,7 @@ type GpuWindow private (live: Live, recorder: Recorder option, title: string, si
                 window.GLContext.SwapBuffers()
                 dirty <- false
 
-            readFrame <-
-                fun () ->
-                    let g = session.Gesture.Window
-                    (context.Target(max 1 (int (ceil (float g.Width))), max 1 (int (ceil (float g.Height))))).ReadImage()
+            readFrame <- fun () -> (context.Target painted).ReadImage()
 
             // Every event waiting, through the session; then a frame, if anything changed.
             let pump () =
@@ -490,8 +498,9 @@ type GpuWindow private (live: Live, recorder: Recorder option, title: string, si
     /// The live state as it stands, as `Session`.
     member this.State: LiveState = this.Session.State
 
-    /// The frame on the screen, as an `Image`, once every event posted before the call has been
-    /// stepped and drawn.
+    /// The frame on the screen, as an `Image` in the screen's pixels (twice the window's px each
+    /// way at a scaling of 200 %), once every event posted before the call has been stepped and
+    /// drawn.
     member _.Capture() : Marey.Image =
         invoke (fun () -> readFrame ())
 
