@@ -5,10 +5,12 @@
 // over it by `Marey.Backend.Web` from the scene the session wrote to SCENES (`MAREY_SITE_SCENES`,
 // see tests/Marey.Tests/GuideTests.fs); a live figure gets its control, over the states the session
 // sampled. A link to another page, or to the published site, is a link into the site, and a link
-// to any other file in the repository is a link to it on GitHub. The API reference is fsdocs',
+// to any other file in the repository is a link to it on GitHub. The code is coloured by
+// highlight.fsx, against the assemblies the guide's test built. The API reference is fsdocs',
 // built beside this into OUT/reference by tools/site/build.sh.
 
 #r "nuget: Markdig, 0.40.0"
+#load "highlight.fsx"
 
 open System
 open System.IO
@@ -119,6 +121,89 @@ let figure (toRoot: string) (name: string) (alt: string) =
 
     sprintf "<figure class=\"marey\" id=\"figure-%s\"><div class=\"stage\">%s%s</div></figure>" name poster canvas
 
+// ---- Code -----------------------------------------------------------------------------
+
+/// The assemblies the guide's test runs its sessions with, beside its Release build.
+let assemblies =
+    let bin = Path.Combine(root, "tests", "Marey.Tests", "bin", "Release")
+
+    let dir =
+        (if Directory.Exists bin then Directory.GetFiles(bin, "Marey.Core.dll", SearchOption.AllDirectories) else [||])
+        |> Array.tryHead
+        |> Option.map Path.GetDirectoryName
+        |> Option.defaultWith (fun () -> failwithf "no Release build of tests/Marey.Tests in %s, whose assemblies colour the code" bin)
+
+    [ for f in Directory.GetFiles(dir, "*.dll") |> Array.sort do
+          let name = Path.GetFileName f
+          if (name.StartsWith "Marey." && name <> "Marey.Tests.dll") || name.StartsWith "SkiaSharp" then f ]
+
+/// A fenced block of F# or C#: its language, what its fence says after it, and its code.
+type Fenced = { Language: string; Attrs: string; Code: string }
+
+let fences (md: string) =
+    [ for m in Regex.Matches(md, "^```(fsharp-error|fsharp|csharp)((?: [^\n]*)?)\n(.*?)^```$", RegexOptions.Multiline ||| RegexOptions.Singleline) ->
+          { Language = m.Groups.[1].Value; Attrs = m.Groups.[2].Value; Code = m.Groups.[3].Value } ]
+
+/// Each page's blocks as coloured HTML, in the order the page has them. The guide's pages are one
+/// session, as its test runs them, with the blocks of the unit-optional mode a second; every other
+/// page is a session of its own.
+let coloured =
+    let opens = "open Marey\nopen Marey.UnitsOfMeasure"
+    let fenced = pages |> Array.map (fun p -> p.Source, fences (read (Path.Combine(root, p.Source)))) |> dict
+    let result = Collections.Generic.Dictionary<string * int, string>()
+
+    let fsharp (prelude: string) (blocks: (string * int * Fenced) list) =
+        let html =
+            blocks
+            |> List.map (fun (_, _, f) -> { Highlight.Code = f.Code; Highlight.Aside = f.Language = "fsharp-error" || Regex.IsMatch(f.Attrs, @"\bnorun\b") })
+            |> Highlight.fsharp assemblies prelude
+
+        for (source, i, _), h in List.zip blocks html do
+            result.[(source, i)] <- h
+
+    let ofPages (ps: Page seq) (keep: Fenced -> bool) =
+        [ for p in ps do
+              for i, f in List.indexed fenced.[p.Source] do
+                  if keep f then p.Source, i, f ]
+
+    let isFSharp (f: Fenced) = f.Language <> "csharp"
+    let isOptional (f: Fenced) = Regex.IsMatch(f.Attrs, @"\boptional\b")
+    let guide = pages |> Array.filter (fun p -> p.Guide)
+
+    fsharp opens (ofPages guide (fun f -> isFSharp f && not (isOptional f)))
+    fsharp "" (ofPages guide (fun f -> isFSharp f && isOptional f))
+
+    for p in pages |> Array.filter (fun p -> not p.Guide) do
+        match ofPages [ p ] isFSharp with
+        | [] -> ()
+        | blocks -> fsharp opens blocks
+
+    for p in pages do
+        match ofPages [ p ] (fun f -> f.Language = "csharp") with
+        | [] -> ()
+        | blocks ->
+            for (source, i, _), h in List.zip blocks (Highlight.csharp assemblies [ for _, _, f in blocks -> f.Code ]) do
+                result.[(source, i)] <- h
+
+    fun (source: string) (i: int) -> result.[(source, i)]
+
+/// The page's code blocks, as Markdig wrote them, coloured. They are the page's fences in order,
+/// and each must hold the code its fence does.
+let colour (p: Page) (body: string) =
+    let fenced = fences (read (Path.Combine(root, p.Source)))
+    let mutable i = 0
+
+    let body =
+        Regex.Replace(body, "<pre><code class=\"language-(fsharp-error|fsharp|csharp)\">(.*?)</code></pre>", MatchEvaluator(fun m ->
+            let f = List.item i fenced
+            if Net.WebUtility.HtmlDecode m.Groups.[2].Value <> f.Code then failwithf "%s: block %d is not the page's fence %d" p.Source (i + 1) (i + 1)
+            let h = coloured p.Source i
+            i <- i + 1
+            sprintf "<pre><code class=\"language-%s\">%s</code></pre>" m.Groups.[1].Value h), RegexOptions.Singleline)
+
+    if i <> fenced.Length then failwithf "%s: %d fences, and Markdig wrote %d" p.Source fenced.Length i
+    body
+
 // ---- Rendering ------------------------------------------------------------------------
 
 let pipeline =
@@ -159,6 +244,7 @@ let render (p: Page) =
             if m.Value.Contains "figures/" && m.Groups.[1].Value = "src" then m.Value
             else sprintf "%s=\"%s\"" m.Groups.[1].Value (link p.Source p.Target (Net.WebUtility.HtmlDecode m.Groups.[2].Value))))
 
+    let body = colour p body
     let body = body.Replace("<pre><code class=\"language-fsharp-error\">", "<pre class=\"refused\"><code class=\"language-fsharp\">")
     toRoot, body
 

@@ -7,7 +7,8 @@
 #    figure's scene for a canvas (MAREY_SITE_SCENES). A broken example fails here. Given
 #    SCENES, the scenes a test run with MAREY_SITE_SCENES=SCENES already wrote, as CI's does,
 #    this build reads those and does not run the sessions a second time.
-# 2. tools/site/build.fsx turns the Markdown into pages around those scenes.
+# 2. tools/site/build.fsx turns the Markdown into pages around those scenes, their code coloured
+#    against the assemblies of the test run's Release build (tools/site/highlight.fsx).
 # 3. fsdocs writes the API reference of every package into OUT/reference.
 set -eu
 root=$(cd "$(dirname "$0")/../.." && pwd)
