@@ -233,14 +233,15 @@ module PlainNumbers =
             Assert.DoesNotContain("[]", svg)
 
     /// `Prefix` refuses to rescale a quantity with no dimension, and an unspecified one has none
-    /// to rescale by. A ratio spanning 1e-9 is a small ratio, not a nano-ratio.
+    /// to rescale by. A ratio spanning 1e-9 is a small ratio, not a nano-ratio, and is written over
+    /// a power of ten.
     [<Fact>]
     let ``tiny plain data is never given an SI prefix`` () =
         let tiny = ys |> Array.map (fun y -> y * 1e-9)
 
         for fig in [ Marey.Chart.Line(xs, tiny); Chart.lineIn U.one U.one xs tiny ] do
             let svg = renderFig surface fig
-            Assert.Contains(">y<", svg)
+            Assert.Contains(">y [10⁻⁹]<", svg)
             Assert.DoesNotContain("[n]", svg)
             Assert.DoesNotContain("[p]", svg)
 
@@ -1100,6 +1101,57 @@ module TickFormats =
             yAxis (over 0.0 4.0 |> Chart.withYTicksNamed U.metre [| 1.0<m>, "low"; 3.0<m>, "high" |] |> Chart.withYTickFormat FormatPercent)
 
         Assert.Equal<string[]>([| "low"; "high" |], axis.Ticks |> Array.map (fun t -> t.Label))
+
+    let private unitless (lo: float) (hi: float) = Marey.Chart.Line([| 0.0; 1.0 |], [| lo; hi |])
+
+    let private labels (axis: AxisSpec) = axis.Ticks |> Array.map (fun t -> t.Label)
+
+    /// An axis no prefix can carry takes a power of ten from 10⁶ and to 10⁻⁵, stated or not, as
+    /// `FormatScientific` would have written it.
+    [<Fact>]
+    let ``an unprefixed axis far from 1 is written over a power of ten`` () =
+        let huge = yAxis (unitless 0.0 4e9)
+        Assert.Equal("y [10⁹]", huge.Title)
+        Assert.Equal(9, huge.Power)
+        Assert.Equal<string[]>([| "0"; "1"; "2"; "3"; "4" |], labels huge)
+
+        let tiny = yAxis (Chart.lineIn U.one U.one [| 0.0; 1.0 |] [| 0.0; 4e-9 |])
+        Assert.Equal("10⁻⁹", tiny.UnitText)
+        Assert.Equal<string[]>([| "0"; "1"; "2"; "3"; "4" |], labels tiny)
+
+        Assert.Equal(yAxis (unitless 0.0 4e9 |> Chart.withYTickFormat FormatScientific), huge)
+
+    /// Numbers short enough to read keep their digits: a count in the hundred thousands, a year, a
+    /// ten-thousandth.
+    [<Fact>]
+    let ``an unprefixed axis near 1 keeps its digits`` () =
+        Assert.Equal<string[]>([| "0"; "200000"; "400000"; "600000"; "800000" |], labels (yAxis (unitless 0.0 9e5)))
+        Assert.Equal("y", (yAxis (unitless 1950.0 2020.0)).Title)
+        Assert.Equal(0, (yAxis (unitless 0.0 4e-4)).Power)
+
+    /// A unit with prefixes takes one, and a pinned prefix, `Prefix.none` too, keeps the numbers
+    /// whole.
+    [<Fact>]
+    let ``a prefix wins over a power of ten`` () =
+        let metres = yAxis (over 0.0 4e9)
+        Assert.Equal("Gm", metres.UnitText)
+        Assert.Equal(0, metres.Power)
+
+        let pinned = yAxis (unitless 0.0 4e9 |> Chart.withYPrefix Prefix.none)
+        Assert.Equal("y", pinned.Title)
+        Assert.Contains("4000000000", labels pinned)
+
+    /// The pointer reads the value the ticks show, the power multiplying their mantissa.
+    [<Fact>]
+    let ``the pointer reads an axis over a power of ten in it`` () =
+        let read (fig: Figure) =
+            let m = TextMeasure.approx
+            let v = (Chart.panelsIn m (Chart.arrangeFor m surface fig) fig).[0]
+            let mid: Vec2<px> = { X = (v.Plot.X0 + v.Plot.X1) / 2.0; Y = (v.Plot.Y0 + v.Plot.Y1) / 2.0 }
+            (PanelView.read mid v).Value.[1]
+
+        Assert.Equal("y = 2.00×10⁹", read (unitless 0.0 4e9))
+        Assert.Equal("x = 2.00×10⁻³·m", read (over 0.0 0.004 |> Chart.withYTickFormat FormatScientific))
 
     /// A custom format compares by reference, so a figure carrying one is still a value: equal
     /// to itself, and not to a figure with another function.

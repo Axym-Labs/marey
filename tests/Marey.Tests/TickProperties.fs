@@ -461,15 +461,13 @@ module InjectivityLimits =
         Assert.Equal("10¹⁸", labels.[36])
         Assert.Equal("x [m]", ax.Title)
 
-    /// The Core-level case D19 describes, on a dimensionless axis, where prefix selection
-    /// deliberately declines to rescale ("a ratio, a probability, a count: there is no unit to
-    /// hang a prefix on, so rescaling the numbers would be a silent lie about them").
-    ///
-    /// The consequence is that §4's injectivity does not hold for a dimensionless axis over a
-    /// sub-1e-15 range. That is a defensible trade — but it is a trade, so it is written down.
+    /// A dimensionless axis takes no prefix, since there is no unit to hang one on, and used to
+    /// run out of decimals below 1e-15 for that reason, every tick a row of zeros. It is now
+    /// written over a power of ten instead, which says the same numbers.
     [<Fact>]
-    let ``DEFECT a dimensionless axis below 1e-15 produces duplicate labels`` () =
+    let ``a dimensionless axis below 1e-15 is labelled over a power of ten`` () =
         let ax = Axis.auto Unicode "p" (Scale.linear U.one (0.0, 5e-18))
         let labels = ax.Ticks |> Array.map (fun t -> t.Label)
-        Assert.True((Array.distinct labels).Length < labels.Length)
+        Assert.Equal(labels.Length, (Array.distinct labels).Length)
         Assert.Equal(Prefix.none.Exponent, ax.Prefix.Exponent)
+        Assert.Equal("p [10⁻¹⁸]", ax.Title)

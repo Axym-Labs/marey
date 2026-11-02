@@ -6,7 +6,8 @@ namespace Marey
 /// `x (fun r -> r.Time)` where `Time : float<s>` gives a linear scale over seconds with the axis
 /// labelled `t [s]`, with no configuration. That is the user-visible payoff of typed units.
 type AxisSpec =
-    { /// The finished title: `t [s]`, `x [nm]`, or bare `x` when the quantity is dimensionless.
+    { /// The finished title: `t [s]`, `x [nm]`, `y [10⁹]`, or bare `x` when the quantity is
+      /// dimensionless and needs no power of ten.
       ///
       /// **Always plain text**, never markup. When the requested `UnitStyle` is `Latex` or
       /// `Siunitx` this holds the `Unicode` rendering and the requested one goes to `TitleTex`.
@@ -14,7 +15,8 @@ type AxisSpec =
       Title: string
       /// The quantity name alone, as supplied by the caller.
       Label: string
-      /// The unit alone, prefix included, in plain text. Empty when dimensionless.
+      /// The unit alone, prefix or power of ten included, in plain text. Empty when
+      /// dimensionless and written without a power.
       UnitText: string
       /// The finished title as TeX source, when the requested style was a TeX one.
       ///
@@ -38,10 +40,13 @@ type AxisSpec =
       UnitTextTex: string option
       /// The prefix the data range selected. `Prefix.none` when no rescaling happened.
       Prefix: Prefix
+      /// The power of ten the tick numbers are written over, beside the unit in the title: 9 for
+      /// `y [10⁹]`, whose tick `2` is 2×10⁹. 0 when there is none.
+      Power: int
       /// Tick values, positions and labels. **`Value` is the rescaled number that `Label`
-      /// prints** — 1.0 for a tick at 1 nm, not 1e-9 — so that `Value` and `Label` can never
-      /// disagree. `Position` is untouched normalized panel space: rescaling is a relabelling,
-      /// it never moves a tick.
+      /// prints**, before any power of ten is taken out — 1.0 for a tick at 1 nm, not 1e-9 — so
+      /// that `Value` and `Label` can never disagree. `Position` is untouched normalized panel
+      /// space: rescaling is a relabelling, it never moves a tick.
       Ticks: TickLabel[]
       /// The minor ticks' positions, in normalized panel space, none on a major tick.
       Minor: float<nd>[] }
@@ -87,7 +92,9 @@ type TickFormatter(format: float -> string) =
 /// How tick numbers are written, after the prefix has rescaled them.
 [<NoComparison>]
 type TickFormat =
-    /// The decimals the step needs: the default.
+    /// The decimals the step needs: the default. A linear axis that no prefix brings near 1, a
+    /// dimensionless one say, is written as `FormatScientific` once its ticks reach 10⁶ or fall
+    /// to 10⁻⁵, unless a prefix is pinned: `Prefix.none` keeps its numbers whole.
     | FormatAuto
     /// This many decimals.
     | FormatFixed of decimals: int
@@ -371,12 +378,22 @@ module Axis =
 
         let labelStep = (defaultArg step (float (Ticks.linearStep tickCount scale.Domain))) / factor
 
-        // The common power of ten a scientific axis takes into its title.
+        // The common power of ten a scientific axis takes into its title. A linear axis whose
+        // numbers no prefix brought near 1 takes one by itself where its labels would run to a
+        // row of digits or zeros: from 10⁶ and to 10⁻⁵, matplotlib's limits, which leave a count
+        // in the thousands and a year as they are. A stated prefix, `Prefix.none` included, keeps
+        // the numbers whole, and so does an animation's pin, under which the power could step
+        // from one frame to the next.
         let exponent =
-            match format with
-            | FormatScientific ->
-                let largest = rescaled |> Array.fold (fun m v -> max m (abs v)) 0.0
-                if largest > 0.0 then int (floor (log10 largest)) else 0
+            let largest = rescaled |> Array.fold (fun m v -> max m (abs v)) 0.0
+            let order = if largest > 0.0 then int (floor (log10 largest)) else 0
+
+            match format, pin, scale.Kind, ticks with
+            | FormatScientific, _, _, _ -> order
+            | FormatAuto, None, ScaleKind.Linear, (TicksAuto | TicksEvery _ | TicksAt _) when
+                prefix = Prefix.none && (order >= 6 || order <= -5)
+                ->
+                order
             | _ -> 0
 
         let labels =
@@ -384,12 +401,13 @@ module Axis =
 
             let formatted =
                 match format, scale.Kind with
-                | FormatAuto, _
                 | _, ScaleKind.Ordinal _ -> tickLabels style scale.Kind domain step rescaled
+                | FormatAuto, _ when exponent = 0 -> tickLabels style scale.Kind domain step rescaled
                 | FormatFixed decimals, _ -> rescaled |> Array.map (fun v -> Ticks.format decimals v, None)
                 | FormatPercent, _ ->
                     let decimals = Ticks.decimalsFor (step * 100.0)
                     rescaled |> Array.map (fun v -> Ticks.format decimals (v * 100.0) + "%", None)
+                | FormatAuto, _
                 | FormatScientific, _ ->
                     let power = 10.0 ** float exponent
                     let decimals = Ticks.decimalsFor (step / power)
@@ -460,6 +478,7 @@ module Axis =
           TitleTex = unitTextTex |> Option.map (title (Tex.escape label))
           UnitTextTex = unitTextTex
           Prefix = prefix
+          Power = exponent
           Ticks = ticks
           Minor = minorPositions }
 
@@ -638,6 +657,7 @@ module Axis =
           TitleTex = unitTextTex |> Option.map (title (Tex.escape label))
           UnitTextTex = unitTextTex
           Prefix = prefix
+          Power = 0
           Ticks = ticks
           Minor = [||] }
 
