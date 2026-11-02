@@ -15,6 +15,20 @@
   --accent: #0b63b6;
   --refused: #b3261e;
   --figure-bg: #ffffff;
+  /* The code's colours, by what highlight.fsx says each token is: Visual Studio Code's Light+ and
+     Dark+, as Tambour's editor has them, with a colour of their own for modules and units. */
+  --code-keyword: #0000ff;
+  --code-type: #22748c;
+  --code-struct: #237a52;
+  --code-module: #6f42c1;
+  --code-function: #795e26;
+  --code-value: #001080;
+  --code-case: #0070c1;
+  --code-unit: #ad5300;
+  --code-string: #a31515;
+  --code-number: #077a50;
+  --code-comment: #008000;
+  --code-operator: #5d6573;
   color-scheme: light;
 }
 
@@ -28,6 +42,18 @@
     --accent: #6cb4ff;
     --refused: #ff8a80;
     --figure-bg: #ffffff;
+    --code-keyword: #569cd6;
+    --code-type: #4ec9b0;
+    --code-struct: #86c691;
+    --code-module: #b392f0;
+    --code-function: #dcdcaa;
+    --code-value: #9cdcfe;
+    --code-case: #4fc1ff;
+    --code-unit: #f0a050;
+    --code-string: #ce9178;
+    --code-number: #b5cea8;
+    --code-comment: #6a9955;
+    --code-operator: #a3adbb;
     color-scheme: dark;
   }
 }
@@ -73,6 +99,18 @@ code { font: 0.88em/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
 pre { background: var(--code-bg); padding: 14px 16px; border-radius: 6px; overflow-x: auto; }
 pre code { padding: 0; background: none; }
 pre.refused { border-left: 3px solid var(--refused); }
+pre .kw { color: var(--code-keyword); }
+pre .ty { color: var(--code-type); }
+pre .st { color: var(--code-struct); }
+pre .mod { color: var(--code-module); }
+pre .fn { color: var(--code-function); }
+pre .val, pre .prop { color: var(--code-value); }
+pre .case { color: var(--code-case); }
+pre .unit { color: var(--code-unit); }
+pre .str { color: var(--code-string); }
+pre .num { color: var(--code-number); }
+pre .com { color: var(--code-comment); font-style: italic; }
+pre .op { color: var(--code-operator); }
 
 table { border-collapse: collapse; display: block; overflow-x: auto; }
 th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
