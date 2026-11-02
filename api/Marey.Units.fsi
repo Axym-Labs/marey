@@ -475,6 +475,8 @@ namespace Marey
 
           Prefix: Prefix
 
+          Power: int
+
           Ticks: TickLabel array
 
           Minor: float<nd> array

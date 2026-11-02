@@ -611,7 +611,7 @@ module PanelView =
                     match scale.Kind with
                     | ScaleKind.Ordinal levels -> Scale.levelLabel levels value
                     | _ ->
-                        let factor = Prefix.factor spec.Prefix
+                        let factor = Prefix.factor spec.Prefix * 10.0 ** float spec.Power
                         let r = resolution / factor
                         let scaled = value / factor
 
@@ -631,7 +631,11 @@ module PanelView =
                             else
                                 Ticks.format (Ticks.decimalsFor r) scaled
 
-                        UnitDisplay.withUnit spec.UnitText number
+                        // Over a power of ten the number is the ticks' mantissa, and the power
+                        // multiplies it, as in a log tick's `2×10⁻⁸`: `2.00×10⁹`, `2.00×10⁻³·m`.
+                        if spec.Power = 0 then UnitDisplay.withUnit spec.UnitText number
+                        elif spec.UnitText.StartsWith "10^" then number + "x" + spec.UnitText
+                        else number + "×" + spec.UnitText
 
                 if spec.Label = "" then shown else spec.Label + " = " + shown
 

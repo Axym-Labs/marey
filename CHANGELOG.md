@@ -181,6 +181,16 @@ and reported when missing; Marey does not require a version of them.
 
 ### Fixed
 
+- **An axis with no prefix is written over a power of ten when it needs one.** Data without a
+  unit, or in a unit that takes no prefix, was ticked in its plain digits: counts to 4×10⁹ read
+  `4000000000`, ratios of 10⁻⁹ read `0.000000004`, and below 10⁻¹⁵ every tick read as zeros. A
+  linear axis that no prefix brings near 1 now takes the power into its title once its ticks reach
+  10⁶ or fall to 10⁻⁵, as `FormatScientific` does: `y [10⁹]` over `0` to `4`. Counts in the
+  thousands and years keep their digits, and a stated prefix, `Prefix.none` included, keeps the
+  old labels. `AxisSpec.Power` (new) is the power the ticks are written over.
+- **The pointer read a scientific axis a power of ten off.** Under `FormatScientific` it wrote the
+  value beside the power, `0.00200 10⁻³·m` for 2 mm; it now writes the ticks' mantissa times the
+  power, `2.00×10⁻³·m`.
 - **`GpuWindow` is sharp on a high-density display.** It drew each frame at one pixel per px and
   stretched it to the screen, so at a scaling of 200 % its lines and text were soft. It now draws
   at the screen's pixels per px, as `RenderImageAt` does, and `Capture` returns the frame in those

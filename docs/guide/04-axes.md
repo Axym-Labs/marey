@@ -30,7 +30,10 @@ printfn "ticked every 50 nm: %b" (spectrumSvg.Contains ">450<" && spectrumSvg.Co
 
 **Numbers and titles.** `withXPrefix` writes an axis in a prefix of your choosing, `Prefix.none`
 for plain metres. `withXTickFormat` takes `FormatFixed n`, `FormatPercent`, `FormatScientific` or
-`TickFormat.custom`. `withXReversed` runs an axis from its high end, for a depth or a magnitude.
+`TickFormat.custom`. An axis no prefix can carry, a dimensionless one or one with no unit stated,
+takes a power of ten into its title once its ticks reach 10⁶ or fall to 10⁻⁵: counts up to
+4×10⁹ read `y [10⁹]` over ticks of `0` to `4`. `withXPrefix Prefix.none` keeps the digits.
+`withXReversed` runs an axis from its high end, for a depth or a magnitude.
 `withXLabel` replaces the quantity in the title and keeps the unit, and `withUnitStyle` spells the
 unit in `Unicode`, `Ascii`, `Latex` or `Siunitx`. Each verb has a `Y` form.
 
