@@ -116,6 +116,7 @@ spring |> Chart.withTheme Theme.tikz |> Chart.toFile TikzBackend.render "spring.
 | `Marey.Backend.Web` | A canvas in a browser, for a Fable app. |
 | `Marey.Tools.Tex`, `Marey.Tools.Video` | Typeset text through `latex` and `dvisvgm`, video through `ffmpeg`. |
 | `Marey.Verso` | The Verso notebook extension, loaded by `#!extension Marey.Verso`. |
+| `Marey.Analyzers`, `Marey.Witnesses` | Fixes for a call missing the right unit witness: F# analyzers for Ionide and the CLI, and the same fixes over the compiler service. |
 
 ## Documentation
 

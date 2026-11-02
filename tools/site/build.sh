@@ -29,7 +29,8 @@ dotnet fsi tools/site/build.fsx "$scenes" "$out"
 
 dotnet tool restore >/dev/null
 rm -rf "$out/reference" "$root/.fsdocs"
-projects=$(ls src/*/*.fsproj | grep -v -e Marey.Html.View -e '/Marey/Marey.fsproj' | tr '\n' ' ')
+# Marey.Analyzers has no library to document: a host loads its two analyzers.
+projects=$(ls src/*/*.fsproj | grep -v -e Marey.Html.View -e '/Marey/Marey.fsproj' -e Marey.Analyzers | tr '\n' ' ')
 # shellcheck disable=SC2086
 dotnet fsdocs build --projects $projects --input tools/site/reference --output "$out/reference" \
     --mdcomments --properties Configuration=Release \

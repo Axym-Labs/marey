@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- The code fixes, checked by the compiler they are for: each script below is checked with
+         the compiler service against the Marey assemblies built beside this one, its fixes are
+         applied, and the result has to compile.
+
+         A project of its own, apart from Marey.Tests: the compiler service pins FSharp.Core
+         exactly, a newer one than the SDK's own, and this keeps that pin out of the library
+         tests. On the analyzer SDK's compiler service, the later of the two pins. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Marey.Analyzers.Tests</AssemblyName>
+    <RootNamespace>Marey.Analyzers.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Scripts.fs" />
+    <Compile Include="WitnessTests.fs" />
+    <Compile Include="AnalyzerTests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" Version="10.1.402" />
+    <PackageReference Include="FSharp.Analyzers.SDK.Testing" Version="$(MareyAnalyzersSdk)" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Marey.Witnesses\Marey.Witnesses.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Analyzers\Marey.Analyzers.fsproj" />
+    <!-- Not called: built beside the tests so that the scripts reference them. -->
+    <ProjectReference Include="..\..\src\Marey.Plot\Marey.Plot.fsproj" />
+  </ItemGroup>
+
+</Project>

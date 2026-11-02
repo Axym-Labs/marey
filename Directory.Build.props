@@ -50,6 +50,16 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
+  <!-- The compiler service `Marey.Witnesses` reads F# through, at the lowest version it compiles
+       against, a lower bound under a host's own pin (Tambour's, the first host); the FSharp.Core
+       that version pins exactly; and the analyzer SDK `Marey.Analyzers` and its tests are built
+       on, which pins a later compiler service of its own. -->
+  <PropertyGroup>
+    <MareyCompilerService>43.12.202</MareyCompilerService>
+    <MareyCompilerServiceFSharpCore>10.1.202</MareyCompilerServiceFSharpCore>
+    <MareyAnalyzersSdk>0.41.0</MareyAnalyzersSdk>
+  </PropertyGroup>
+
   <!-- A pack with `NoBuild` packs what was built, so it must not build project
        references either. The F# SDK hooks `PackageFSharpDesignTimeTools` into a package's content,
        which depends on `_GetFrameworkAssemblyReferences` and so on `ResolveReferences`; on SDK

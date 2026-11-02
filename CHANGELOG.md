@@ -51,6 +51,16 @@ and reported when missing; Marey does not require a version of them.
 
 ### Added
 
+- **Code fixes for unit witnesses: `Marey.Witnesses` and `Marey.Analyzers`.** A call the compiler
+  refuses for want of the right witness gets a fix that makes it compile. `Chart.lineIn t x`
+  gets the witnesses it is missing, `Chart.lineIn U.second U.metre t x`. A witness for another
+  unit than its data is replaced by the right one. Raw measured arrays where a `Q` is taken,
+  `Chart.line t x`, become the witness form or `Chart.line (U.second.Of t) (U.metre.Of x)`. A
+  witness is the one Marey declares for the measure as written, or composed as it is written
+  (`U.div U.volt U.metre` for `V/m`), and Marey's witnesses are read from the referenced
+  assemblies, so a new one needs no change to the fixes. `Marey.Witnesses` works over the F#
+  compiler service, for a tool that checks F# itself; `Marey.Analyzers` puts it behind
+  FSharp.Analyzers.SDK 0.41.0 for Ionide and the `fsharp-analyzers` CLI. Neither is in `Marey`.
 - **Symbol packages with SourceLink.** Each package with code ships a `.snupkg` whose PDBs map
   its sources to the commit on GitHub, so a debugger steps into Marey's source.
 - **One PNG on every machine.** `Marey.Backend.Skia` carries Inter (weights 400 to 700, subset to

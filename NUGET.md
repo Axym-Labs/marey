@@ -48,6 +48,7 @@ others are separate references.
 | `Marey.Backend.Web` | A canvas in a browser, for a Fable app. Not in `Marey`. |
 | `Marey.Tools.Tex`, `Marey.Tools.Video` | Typeset text through `latex` and `dvisvgm`, video through `ffmpeg`. Not in `Marey`. |
 | `Marey.Verso` | The Verso notebook extension, loaded by `#!extension Marey.Verso`. |
+| `Marey.Analyzers`, `Marey.Witnesses` | Fixes for a call missing the right unit witness: F# analyzers for Ionide and the CLI, and the same fixes over the compiler service. Not in `Marey`. |
 
 Pre-1.0: the next release is 1.0.0, and the compatibility page says what it will promise. MIT
 licensed.

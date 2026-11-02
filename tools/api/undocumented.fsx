@@ -24,7 +24,8 @@ let packages =
 
         let text = if File.Exists proj then File.ReadAllText proj else ""
 
-        // `Marey` packs no assembly, so there is nothing of it to document.
+        // `Marey` packs no assembly, and `Marey.Analyzers` none a user calls, so there is
+        // nothing of them to document.
         if File.Exists proj
            && not (text.Contains "<IsPackable>false</IsPackable>")
            && not (text.Contains "<IncludeBuildOutput>false</IncludeBuildOutput>") then

@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Marey/Marey.fsproj" />
+    <Project Path="src/Marey.Analyzers/Marey.Analyzers.fsproj" />
     <Project Path="src/Marey.Anim/Marey.Anim.fsproj" />
     <Project Path="src/Marey.Backend.Skia/Marey.Backend.Skia.fsproj" />
     <Project Path="src/Marey.Backend.Gpu/Marey.Backend.Gpu.fsproj" />
@@ -18,8 +19,10 @@
     <Project Path="src/Marey.Tools.Video/Marey.Tools.Video.fsproj" />
     <Project Path="src/Marey.Units/Marey.Units.fsproj" />
     <Project Path="src/Marey.Verso/Marey.Verso.fsproj" />
+    <Project Path="src/Marey.Witnesses/Marey.Witnesses.fsproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Marey.Analyzers.Tests/Marey.Analyzers.Tests.fsproj" />
     <Project Path="tests/Marey.CSharp.Tests/Marey.CSharp.Tests.csproj" />
     <Project Path="tests/Marey.Tests/Marey.Tests.fsproj" />
   </Folder>
