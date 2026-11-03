@@ -48,9 +48,9 @@ lineTo 100.89 248.567
 lineTo 100.89 204.571
 lineTo 47.005 204.571
 closePath
-fillStyle = rgba(68,2,85,0.1804)
+fillStyle = rgba(68,2,85,1)
 fill nonzero
-strokeStyle = rgba(68,2,85,0.1804)
+strokeStyle = rgba(68,2,85,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -64,9 +64,9 @@ lineTo 154.775 248.567
 lineTo 154.775 204.571
 lineTo 100.89 204.571
 closePath
-fillStyle = rgba(72,36,115,0.1804)
+fillStyle = rgba(72,36,115,1)
 fill nonzero
-strokeStyle = rgba(72,36,115,0.1804)
+strokeStyle = rgba(72,36,115,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -80,9 +80,9 @@ lineTo 100.89 204.571
 lineTo 100.89 160.575
 lineTo 47.005 160.575
 closePath
-fillStyle = rgba(68,59,129,0.1804)
+fillStyle = rgba(68,59,129,1)
 fill nonzero
-strokeStyle = rgba(68,59,129,0.1804)
+strokeStyle = rgba(68,59,129,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -96,9 +96,9 @@ lineTo 208.66 248.567
 lineTo 208.66 204.571
 lineTo 154.775 204.571
 closePath
-fillStyle = rgba(66,66,133,0.1804)
+fillStyle = rgba(66,66,133,1)
 fill nonzero
-strokeStyle = rgba(66,66,133,0.1804)
+strokeStyle = rgba(66,66,133,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -112,9 +112,9 @@ lineTo 154.775 204.571
 lineTo 154.775 160.575
 lineTo 100.89 160.575
 closePath
-fillStyle = rgba(58,86,139,0.1804)
+fillStyle = rgba(58,86,139,1)
 fill nonzero
-strokeStyle = rgba(58,86,139,0.1804)
+strokeStyle = rgba(58,86,139,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -128,9 +128,9 @@ lineTo 262.545 248.567
 lineTo 262.545 204.571
 lineTo 208.66 204.571
 closePath
-fillStyle = rgba(55,93,140,0.1804)
+fillStyle = rgba(55,93,140,1)
 fill nonzero
-strokeStyle = rgba(55,93,140,0.1804)
+strokeStyle = rgba(55,93,140,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -144,9 +144,9 @@ lineTo 100.89 160.575
 lineTo 100.89 116.579
 lineTo 47.005 116.579
 closePath
-fillStyle = rgba(48,106,142,0.1804)
+fillStyle = rgba(48,106,142,1)
 fill nonzero
-strokeStyle = rgba(48,106,142,0.1804)
+strokeStyle = rgba(48,106,142,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -160,9 +160,9 @@ lineTo 208.66 204.571
 lineTo 208.66 160.575
 lineTo 154.775 160.575
 closePath
-fillStyle = rgba(47,112,142,0.1804)
+fillStyle = rgba(47,112,142,1)
 fill nonzero
-strokeStyle = rgba(47,112,142,0.1804)
+strokeStyle = rgba(47,112,142,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -176,9 +176,9 @@ lineTo 316.43 248.567
 lineTo 316.43 204.571
 lineTo 262.545 204.571
 closePath
-fillStyle = rgba(45,117,142,0.1804)
+fillStyle = rgba(45,117,142,1)
 fill nonzero
-strokeStyle = rgba(45,117,142,0.1804)
+strokeStyle = rgba(45,117,142,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -192,9 +192,9 @@ lineTo 154.775 160.575
 lineTo 154.775 116.579
 lineTo 100.89 116.579
 closePath
-fillStyle = rgba(39,129,142,0.1804)
+fillStyle = rgba(39,129,142,1)
 fill nonzero
-strokeStyle = rgba(39,129,142,0.1804)
+strokeStyle = rgba(39,129,142,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -208,9 +208,9 @@ lineTo 262.545 204.571
 lineTo 262.545 160.575
 lineTo 208.66 160.575
 closePath
-fillStyle = rgba(37,135,141,0.1804)
+fillStyle = rgba(37,135,141,1)
 fill nonzero
-strokeStyle = rgba(37,135,141,0.1804)
+strokeStyle = rgba(37,135,141,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -224,9 +224,9 @@ lineTo 370.315 248.567
 lineTo 370.315 204.571
 lineTo 316.43 204.571
 closePath
-fillStyle = rgba(36,141,140,0.1804)
+fillStyle = rgba(36,141,140,1)
 fill nonzero
-strokeStyle = rgba(36,141,140,0.1804)
+strokeStyle = rgba(36,141,140,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -240,9 +240,9 @@ lineTo 100.89 116.579
 lineTo 100.89 72.583
 lineTo 47.005 72.583
 closePath
-fillStyle = rgba(34,147,139,0.1804)
+fillStyle = rgba(34,147,139,1)
 fill nonzero
-strokeStyle = rgba(34,147,139,0.1804)
+strokeStyle = rgba(34,147,139,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -256,9 +256,9 @@ lineTo 208.66 160.575
 lineTo 208.66 116.579
 lineTo 154.775 116.579
 closePath
-fillStyle = rgba(32,153,138,0.1804)
+fillStyle = rgba(32,153,138,1)
 fill nonzero
-strokeStyle = rgba(32,153,138,0.1804)
+strokeStyle = rgba(32,153,138,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -272,9 +272,9 @@ lineTo 316.43 204.571
 lineTo 316.43 160.575
 lineTo 262.545 160.575
 closePath
-fillStyle = rgba(32,159,136,0.1804)
+fillStyle = rgba(32,159,136,1)
 fill nonzero
-strokeStyle = rgba(32,159,136,0.1804)
+strokeStyle = rgba(32,159,136,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -288,9 +288,9 @@ lineTo 154.775 116.579
 lineTo 154.775 72.583
 lineTo 100.89 72.583
 closePath
-fillStyle = rgba(42,171,130,0.1804)
+fillStyle = rgba(42,171,130,1)
 fill nonzero
-strokeStyle = rgba(42,171,130,0.1804)
+strokeStyle = rgba(42,171,130,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -304,9 +304,9 @@ lineTo 262.545 160.575
 lineTo 262.545 116.579
 lineTo 208.66 116.579
 closePath
-fillStyle = rgba(47,176,126,0.1804)
+fillStyle = rgba(47,176,126,1)
 fill nonzero
-strokeStyle = rgba(47,176,126,0.1804)
+strokeStyle = rgba(47,176,126,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -320,9 +320,9 @@ lineTo 370.315 204.571
 lineTo 370.315 160.575
 lineTo 316.43 160.575
 closePath
-fillStyle = rgba(51,181,122,0.1804)
+fillStyle = rgba(51,181,122,1)
 fill nonzero
-strokeStyle = rgba(51,181,122,0.1804)
+strokeStyle = rgba(51,181,122,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -336,9 +336,9 @@ lineTo 208.66 116.579
 lineTo 208.66 72.583
 lineTo 154.775 72.583
 closePath
-fillStyle = rgba(78,192,110,0.1804)
+fillStyle = rgba(78,192,110,1)
 fill nonzero
-strokeStyle = rgba(78,192,110,0.1804)
+strokeStyle = rgba(78,192,110,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -352,9 +352,9 @@ lineTo 316.43 160.575
 lineTo 316.43 116.579
 lineTo 262.545 116.579
 closePath
-fillStyle = rgba(89,197,104,0.1804)
+fillStyle = rgba(89,197,104,1)
 fill nonzero
-strokeStyle = rgba(89,197,104,0.1804)
+strokeStyle = rgba(89,197,104,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -368,9 +368,9 @@ lineTo 262.545 116.579
 lineTo 262.545 72.583
 lineTo 208.66 72.583
 closePath
-fillStyle = rgba(130,210,80,0.1804)
+fillStyle = rgba(130,210,80,1)
 fill nonzero
-strokeStyle = rgba(130,210,80,0.1804)
+strokeStyle = rgba(130,210,80,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -384,9 +384,9 @@ lineTo 370.315 160.575
 lineTo 370.315 116.579
 lineTo 316.43 116.579
 closePath
-fillStyle = rgba(146,214,72,0.1804)
+fillStyle = rgba(146,214,72,1)
 fill nonzero
-strokeStyle = rgba(146,214,72,0.1804)
+strokeStyle = rgba(146,214,72,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -400,9 +400,9 @@ lineTo 316.43 116.579
 lineTo 316.43 72.583
 lineTo 262.545 72.583
 closePath
-fillStyle = rgba(192,223,42,0.1804)
+fillStyle = rgba(192,223,42,1)
 fill nonzero
-strokeStyle = rgba(192,223,42,0.1804)
+strokeStyle = rgba(192,223,42,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round
@@ -416,9 +416,9 @@ lineTo 370.315 116.579
 lineTo 370.315 72.583
 lineTo 316.43 72.583
 closePath
-fillStyle = rgba(252,231,37,0.1804)
+fillStyle = rgba(252,231,37,1)
 fill nonzero
-strokeStyle = rgba(252,231,37,0.1804)
+strokeStyle = rgba(252,231,37,1)
 lineWidth = 1
 miterLimit = 4
 lineCap = round

@@ -181,6 +181,16 @@ and reported when missing; Marey does not require a version of them.
 
 ### Fixed
 
+- **A bar chart shows its outer bars whole.** A bar is 0.7 of the spacing between bars wide, and
+  the x axis was padded from the bars' centres alone, so the outer half of the first and last bar
+  of `Chart.Bar([1; 2; 3; 4], …)` fell outside the panel. The x domain now holds every bar and is
+  padded beyond them, in `Chart.bar`, `Chart.Bar` and a block's `bars`. A categorical bar chart
+  was not affected.
+- **A heatmap is drawn in its colorbar's colours.** Its tiles took the theme's translucent area
+  fill, 18 % under `Theme.modern`, so every colour was washed out against the bar beside it, and
+  each tile's edge, drawn in its fill so tiles meet without a seam, overlapped its neighbour's
+  and drew a grid. Tiles and a hexbin's hexagons now fill opaquely under every theme; bars and
+  areas keep the theme's fill. The `figure-heatmap` baselines moved accordingly.
 - **An axis with no prefix is written over a power of ten when it needs one.** Data without a
   unit, or in a unit that takes no prefix, was ticked in its plain digits: counts to 4×10⁹ read
   `4000000000`, ratios of 10⁻⁹ read `0.000000004`, and below 10⁻¹⁵ every tick read as zeros. A

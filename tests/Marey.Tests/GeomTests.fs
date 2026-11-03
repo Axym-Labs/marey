@@ -1140,6 +1140,71 @@ module ``area and bars from a block`` =
         Assert.Equal(layers.[0].Style.Color, layers.[1].Style.Color)
         Assert.Equal(0.5, layers.[0].Style.Opacity, 12)
 
+    /// A block's bars reach half their width past the first and last x, and the domain is padded
+    /// beyond them, as `Chart.bar`'s is. Over eight rows the padding of the centres alone ended
+    /// exactly on the outer bars' edges.
+    [<Fact>]
+    let ``a block's x domain holds its bars`` () =
+        let fig =
+            plot rows {
+                x U.second (fun r -> r.T)
+                y U.metre (fun r -> r.P)
+                bars
+            }
+
+        let x, _ = Erase.seriesScales fig.Panels.[0].Layers.[0].Data
+        Assert.True(fst x.Domain < -0.4 && snd x.Domain > 7.4, sprintf "the bars touch the edge of %A" x.Domain)
+
+// ======================================================================================
+// Bars and tiles: the whole mark on the panel, in the colour it stands for
+// ======================================================================================
+
+module ``bars and tiles`` =
+
+    let private xDomain (fig: Figure) =
+        (fst (Erase.seriesScales fig.Panels.[0].Layers.[0].Data)).Domain
+
+    /// A bar is 0.7 of the median spacing wide, centred on its x. The x domain used to be padded
+    /// from the centres alone, 5 % of their span, so the outer half of the first and last bar of
+    /// four was cut off by the panel.
+    [<Fact>]
+    let ``every bar is inside its axis`` () =
+        let check (xs: float[]) (spacing: float) =
+            let lo, hi = xDomain (Marey.Chart.Bar(xs, xs |> Array.map (fun x -> x + 1.0)))
+            let half = 0.35 * spacing
+            Assert.True(lo <= Array.min xs - half && hi >= Array.max xs + half, sprintf "%A overhangs %A" xs (lo, hi))
+
+        check [| 1.0; 2.0; 3.0; 4.0 |] 1.0
+        check [| 4.0; 3.0; 2.0; 1.0 |] 1.0
+        check [| 1.0; 2.0; 4.0 |] 2.0
+        check [| 0.0; 0.5; 1.0; nan; 1.5 |] 0.5
+
+    /// One bar has no spacing to be a fraction of, and keeps the padding a lone value gets.
+    [<Fact>]
+    let ``a lone bar keeps its padding`` () =
+        Assert.Equal((2.85, 3.15), xDomain (Marey.Chart.Bar([| 3.0 |], [| 1.0 |])))
+
+    /// A heatmap's tiles are drawn in the colour the colorbar gives their value, not the theme's
+    /// translucent area fill, under every theme and after a change of theme.
+    [<Fact>]
+    let ``tiles and hexagons fill opaquely`` () =
+        let xs = [| 0.0; 1.0; 0.0; 1.0 |]
+        let ys = [| 0.0; 0.0; 1.0; 1.0 |]
+        let heat = Marey.Chart.Heatmap(xs, ys, [| 1.0; 2.0; 3.0; 4.0 |])
+        let hex = Marey.Chart.Hexbin(Array.init 50 (fun i -> sin (float i)), Array.init 50 (fun i -> cos (float i * 1.3)))
+
+        for fig in [ heat; hex; heat |> Chart.withTheme Theme.publication; hex |> Chart.withTheme Theme.tikz ] do
+            Assert.Equal(1.0, fig.Panels.[0].Layers.[0].Style.FillOpacity)
+
+        let svg = heat |> Chart.render SvgBackend.render (Chart.size 300.0 200.0)
+        Assert.DoesNotContain("fill-opacity=\"0.18\"", svg)
+
+    /// Bars keep the theme's light fill; only marks that tessellate are opaque.
+    [<Fact>]
+    let ``bars keep the theme's fill`` () =
+        let bar = Marey.Chart.Bar([| 1.0; 2.0 |], [| 1.0; 2.0 |])
+        Assert.Equal(Theme.modern.FillOpacity, bar.Panels.[0].Layers.[0].Style.FillOpacity)
+
 // ======================================================================================
 // A geom draws where its data is, whatever the panel's domain became after it was built
 // ======================================================================================

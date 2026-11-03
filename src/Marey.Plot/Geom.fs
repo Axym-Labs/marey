@@ -278,10 +278,17 @@ module Geom =
 
     /// The style a layer drawing `geom` starts with in palette slot `i`: what a constructor gives
     /// it, and what `Chart.withTheme` compares against to tell a default from a choice.
+    ///
+    /// Tiles and polygons fill opaquely. They tessellate and their colour is read against a
+    /// colorbar, so the theme's translucent area fill, meant for a band over a line, would wash
+    /// every colour out, and each cell's outline, in the fill's paint, would overlap its
+    /// neighbour's and draw a grid.
     let internal styleOf (theme: Theme) (i: int) (geom: GeomOf<'p>) : GeomStyle =
         match geom with
         | GeomRule r -> ruleStyle theme r
         | GeomAnnotation _ -> annotationStyle theme
+        | GeomRect _
+        | GeomPolygon _ -> { styleFor theme i with FillOpacity = 1.0 }
         | _ -> styleFor theme i
 
     let withColor (c: Color) (s: GeomStyle) = { s with Color = c }

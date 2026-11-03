@@ -65,6 +65,10 @@ type internal IGeomFor =
     /// scales are final.
     abstract NeedsZero: bool
 
+    /// How far past its x the mark reaches on each side, as a fraction of the median spacing
+    /// between consecutive points: half a bar's width, so the x domain can hold the bars.
+    abstract Reach: float
+
 /// **The accumulated encoding block**, before it becomes a `Figure`.
 ///
 /// Public only because `PlotBuilder`'s members are, and F# requires a type to be at least as
@@ -149,19 +153,22 @@ module private PlotCompile =
     let constant (g: Geom) : IGeomFor =
         { new IGeomFor with
             member _.For<[<Measure>] 'ux, [<Measure>] 'uy>(_: Series<'ux, 'uy>) = g
-            member _.NeedsZero = false }
+            member _.NeedsZero = false
+            member _.Reach = 0.0 }
 
     /// An area filled to zero on the block's own y scale.
     let areaFor: IGeomFor =
         { new IGeomFor with
             member _.For<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) = Geom.area s
-            member _.NeedsZero = true }
+            member _.NeedsZero = true
+            member _.Reach = 0.0 }
 
     /// Bars from zero on the block's own y scale, at the same width fraction `Chart.bar` uses.
     let barsFor: IGeomFor =
         { new IGeomFor with
             member _.For<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) = Geom.bar 0.7 s
-            member _.NeedsZero = true }
+            member _.NeedsZero = true
+            member _.Reach = 0.35 }
 
     let append (spec: PlotSpec) (mk: Theme -> Channel) =
         { spec with
@@ -312,6 +319,22 @@ module private PlotCompile =
             else
                 packed
 
+        // A bar reaches half its width past its x, so the x domain holds the bars, as
+        // `Chart.bar`'s does. A categorical x has its bands already.
+        let packed =
+            match spec.Layers |> List.fold (fun r (g, _) -> max r g.Reach) 0.0 with
+            | 0.0 -> packed
+            | reach ->
+                packed.Accept
+                    { new ISeriesConsumer<PackedSeries> with
+                        member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
+                            match s.XScale.Kind with
+                            | ScaleKind.Linear ->
+                                Erase.packSeries
+                                    { s with
+                                        XScale = Scale.withDomain (Chart.reachingDomain reach s.X) s.XScale }
+                            | _ -> packed }
+
         // The one place both measures of the block are alive again. Every layer
         // whose geom depends on the scales is built here and nowhere else.
         let geomOf (f: IGeomFor) =
@@ -348,7 +371,8 @@ module private PlotCompile =
         // which advances the palette because each of its calls adds a *different series*. The
         // layers here are alternative renderings of a single encoding: `layer GeomLine` beside
         // `layer GeomPoint` is a line with markers, and drawing them in two palette colours
-        // would say there were two things to tell apart.
+        // would say there were two things to tell apart. A tile's fill is still opaque, as
+        // `Geom.styleOf` gives it.
         let baseStyle = Geom.styleFor theme 0
 
         let layers =
@@ -357,7 +381,7 @@ module private PlotCompile =
                 { Name = (if i = 0 then spec.Name else "")
                   Data = packed
                   Geom = g
-                  Style = restyle baseStyle
+                  Style = restyle { baseStyle with FillOpacity = (Geom.styleOf theme 0 g).FillOpacity }
                   // Channels reach *every* layer, because an encoding belongs to the block
                   // rather than to one geom. The length check `Chart.withChannel` performs is
                   // not repeated here and does not need to be: every array in the block is one
