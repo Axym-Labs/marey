@@ -67,6 +67,26 @@ module Chart =
     let private withZero (lo: float<'u>, hi: float<'u>) : float<'u> * float<'u> =
         min lo (tag<'u> 0.0), max hi (tag<'u> 0.0)
 
+    /// **A bar reaches past its centre**, by half its width, so its x domain is padded around the
+    /// bars and not only their centres: padded from the centres alone, the outer half of the first
+    /// and last bar fell outside the panel. `reach` is that half width as a fraction of the median
+    /// spacing of consecutive centres, which is how `Geom.bar` sizes a bar. With no spacing to
+    /// measure, a lone bar, the centres' padding stands.
+    let internal reachingDomain (reach: float) (x: float<'u>[]) : float<'u> * float<'u> =
+        let gaps =
+            x
+            |> Array.pairwise
+            |> Array.map (fun (a, b) -> abs (float b - float a))
+            |> Array.filter (fun g -> g > 0.0)
+            |> Array.sort
+
+        if reach <= 0.0 || gaps.Length = 0 then
+            paddedOr 0.05 x
+        else
+            let half = gaps.[gaps.Length / 2] * reach
+            let shifted (by: float) = x |> Array.map (fun v -> tag<'u> (float v + by))
+            paddedOr 0.05 (Array.append (shifted -half) (shifted half))
+
     let internal series (name: string) (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Series<'ux, 'uy> =
         if x.Length <> y.Length then
             invalidArg "y" (sprintf "Marey: series '%s' has %d x values and %d y values." name x.Length y.Length)
@@ -84,7 +104,7 @@ module Chart =
         { Name = name
           Data = data
           Geom = g
-          Style = Geom.styleFor theme index
+          Style = Geom.styleOf theme index g
           Channels = [||]
           ShowInLegend = not (System.String.IsNullOrEmpty name)
           Addressed = [||]
@@ -117,12 +137,14 @@ module Chart =
 
     let internal bar (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) : Figure =
         let s = series "" ux uy x y
+        let width = 0.7
 
         let s =
             { s with
+                XScale = Scale.withDomain (reachingDomain (width / 2.0) x) s.XScale
                 YScale = Scale.withDomain (withZero (paddedOr 0.05 y)) s.YScale }
 
-        ofSeries (Geom.bar 0.7 s) s
+        ofSeries (Geom.bar width s) s
 
     let internal errorbar (ux: U<'ux>) (uy: U<'uy>) (x: float<'ux>[]) (y: float<'uy>[]) (err: float<'uy>[]) : Figure =
         if err.Length <> y.Length then
