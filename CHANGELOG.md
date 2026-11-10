@@ -181,6 +181,8 @@ and reported when missing; Marey does not require a version of them.
 
 ### Fixed
 
+- **`U.dalton` is CODATA 2022's atomic mass constant**, 1.66053906892 × 10⁻²⁷ kg; it was 2018's,
+  1.66053906660 × 10⁻²⁷ kg, 1.4 × 10⁻⁹ smaller.
 - **A bar chart shows its outer bars whole.** A bar is 0.7 of the spacing between bars wide, and
   the x axis was padded from the bars' centres alone, so the outer half of the first and last bar
   of `Chart.Bar([1; 2; 3; 4], …)` fell outside the panel. The x domain now holds every bar and is
