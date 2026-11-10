@@ -267,6 +267,104 @@ namespace Marey
 
 namespace Marey
 
+    module Constants =
+
+        val speedOfLight: float<m/s>
+
+        val planck: float<J s>
+
+        val elementaryCharge: float<C>
+
+        val boltzmann: float<J/K>
+
+        val avogadro: float</mol>
+
+        val reducedPlanck: float<J s>
+
+        val molarGas: float<J/(K mol)>
+
+        val faraday: float<C/mol>
+
+        val stefanBoltzmann: float<W/(K ^ 4 m ^ 2)>
+
+        val wienDisplacement: float<K m>
+
+        val electronvolt: float<J>
+
+        val standardGravity: float<m/s ^ 2>
+
+        val gravitational: float<m ^ 3/(kg s ^ 2)>
+
+        val fineStructure: float
+
+        val vacuumPermeability: float<N/A ^ 2>
+
+        val vacuumPermittivity: float<F/m>
+
+        val electronMass: float<kg>
+
+        val protonMass: float<kg>
+
+        val neutronMass: float<kg>
+
+        val atomicMass: float<kg>
+
+        val rydberg: float</m>
+
+        val bohrRadius: float<m>
+
+        val bohrMagneton: float<J/T>
+
+        module Quantities =
+
+            val speedOfLight: Quantity<m/s>
+
+            val planck: Quantity<J s>
+
+            val elementaryCharge: Quantity<C>
+
+            val boltzmann: Quantity<J/K>
+
+            val avogadro: Quantity</mol>
+
+            val reducedPlanck: Quantity<J s>
+
+            val molarGas: Quantity<J/(K mol)>
+
+            val faraday: Quantity<C/mol>
+
+            val stefanBoltzmann: Quantity<W/(K ^ 4 m ^ 2)>
+
+            val wienDisplacement: Quantity<K m>
+
+            val electronvolt: Quantity<J>
+
+            val standardGravity: Quantity<m/s ^ 2>
+
+            val gravitational: Quantity<m ^ 3/(kg s ^ 2)>
+
+            val fineStructure: Quantity<1>
+
+            val vacuumPermeability: Quantity<N/A ^ 2>
+
+            val vacuumPermittivity: Quantity<F/m>
+
+            val electronMass: Quantity<kg>
+
+            val protonMass: Quantity<kg>
+
+            val neutronMass: Quantity<kg>
+
+            val atomicMass: Quantity<kg>
+
+            val rydberg: Quantity</m>
+
+            val bohrRadius: Quantity<m>
+
+            val bohrMagneton: Quantity<J/T>
+
+namespace Marey
+
     type UnitSymbol =
         {
 

@@ -38,6 +38,7 @@
     <Compile Include="RegressionTests.fs" />
     <!-- Before TexToolchain.fs: the external-tool registry every shelling gate reads. -->
     <Compile Include="Tools.fs" />
+    <Compile Include="ConstantsTests.fs" />
     <Compile Include="ToolchainTests.fs" />
     <Compile Include="TexToolchain.fs" />
     <Compile Include="Raster.fs" />

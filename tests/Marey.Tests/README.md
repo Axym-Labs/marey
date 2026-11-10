@@ -49,6 +49,7 @@ without a notebook host installed.
 | `MorphProperties.fs` | Path morphing: the endpoint law stated against `Morph.prepare`, arc-length sampling against vertex-index sampling, subpath pairing and padding, closure policy, overshoot, and totality over deliberately malformed paths. |
 | `RegressionTests.fs` | The regression pins: §12's six type-system findings, and D16, D17, D32, D38 and D41, locked in. |
 | `Tools.fs` | The registry of the three external programs the suite drives, resolved through `Marey.Toolchain`. |
+| `ConstantsTests.fs` | The physical constants against CODATA 2022, the exact relations between them (ħ = h/2π, R = N_A·k, F = N_A·e), the measured ones' agreement within their uncertainties, their units as compile-time bindings, and a formula in the wrong unit refused by `fsi`. |
 | `ToolchainTests.fs` | `Marey.Toolchain` itself, including the pipe-buffer deadlock gate — checked against a deliberately restored sequential implementation rather than assumed. |
 | `TexToolchain.fs` | Drives a real `pdflatex`. A deliberately-broken document is part of the suite, so that the gate is shown to be able to fail. |
 | `Raster.fs` | Compiles a document and counts pixels, via `pdftoppm -gray`. Measurement only, no assertions; renders a bitmap as ASCII for failure messages. |

@@ -144,7 +144,8 @@ module NonSiWitnesses =
 
         // ---- Mass ------------------------------------------------------------------------
 
-        /// Dalton, the unified atomic mass unit: the atomic mass constant, CODATA 2022.
+        /// Dalton, the unified atomic mass unit: the atomic mass constant, CODATA 2022
+        /// (`Constants.atomicMass`).
         let dalton: U<Da> = U<Da>("Da", Dim.mass, 1.66053906892e-27)
 
         // ---- Magnetism -------------------------------------------------------------------

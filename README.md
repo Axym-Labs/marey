@@ -106,7 +106,7 @@ spring |> Chart.withTheme Theme.tikz |> Chart.toFile TikzBackend.render "spring.
 | Package | |
 |---|---|
 | `Marey` | The packages below that need no native library or external program, in one reference. |
-| `Marey.Core`, `Marey.Units` | Dimensions, unit witnesses, scales, colour, and the scene every backend draws. |
+| `Marey.Core`, `Marey.Units` | Dimensions, unit witnesses, physical constants, scales, colour, and the scene every backend draws. |
 | `Marey.Plot` | `Chart`, the `plot` block, layout, themes, the storyboard. |
 | `Marey.Anim`, `Marey.Fields`, `Marey.Sim` | Animation, fields, simulation. |
 | `Marey.Interact`, `Marey.Html` | Live figures, and HTML for a notebook cell. |
