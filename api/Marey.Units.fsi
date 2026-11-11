@@ -269,17 +269,17 @@ namespace Marey
 
     module Constants =
 
-        val speedOfLight: float<m/s>
+        val c: float<m/s>
 
-        val planck: float<J s>
+        val h: float<J s>
 
-        val elementaryCharge: float<C>
+        val e: float<C>
 
-        val boltzmann: float<J/K>
+        val kB: float<J/K>
 
-        val avogadro: float</mol>
+        val NA: float</mol>
 
-        val reducedPlanck: float<J s>
+        val hbar: float<J s>
 
         val molarGas: float<J/(K mol)>
 
@@ -293,19 +293,19 @@ namespace Marey
 
         val standardGravity: float<m/s ^ 2>
 
-        val gravitational: float<m ^ 3/(kg s ^ 2)>
+        val G: float<m ^ 3/(kg s ^ 2)>
 
         val fineStructure: float
 
-        val vacuumPermeability: float<N/A ^ 2>
+        val mu0: float<N/A ^ 2>
 
-        val vacuumPermittivity: float<F/m>
+        val eps0: float<F/m>
 
-        val electronMass: float<kg>
+        val me: float<kg>
 
-        val protonMass: float<kg>
+        val mp: float<kg>
 
-        val neutronMass: float<kg>
+        val mn: float<kg>
 
         val atomicMass: float<kg>
 
@@ -317,17 +317,17 @@ namespace Marey
 
         module Quantities =
 
-            val speedOfLight: Quantity<m/s>
+            val c: Quantity<m/s>
 
-            val planck: Quantity<J s>
+            val h: Quantity<J s>
 
-            val elementaryCharge: Quantity<C>
+            val e: Quantity<C>
 
-            val boltzmann: Quantity<J/K>
+            val kB: Quantity<J/K>
 
-            val avogadro: Quantity</mol>
+            val NA: Quantity</mol>
 
-            val reducedPlanck: Quantity<J s>
+            val hbar: Quantity<J s>
 
             val molarGas: Quantity<J/(K mol)>
 
@@ -341,19 +341,19 @@ namespace Marey
 
             val standardGravity: Quantity<m/s ^ 2>
 
-            val gravitational: Quantity<m ^ 3/(kg s ^ 2)>
+            val G: Quantity<m ^ 3/(kg s ^ 2)>
 
             val fineStructure: Quantity<1>
 
-            val vacuumPermeability: Quantity<N/A ^ 2>
+            val mu0: Quantity<N/A ^ 2>
 
-            val vacuumPermittivity: Quantity<F/m>
+            val eps0: Quantity<F/m>
 
-            val electronMass: Quantity<kg>
+            val me: Quantity<kg>
 
-            val protonMass: Quantity<kg>
+            val mp: Quantity<kg>
 
-            val neutronMass: Quantity<kg>
+            val mn: Quantity<kg>
 
             val atomicMass: Quantity<kg>
 

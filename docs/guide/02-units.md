@@ -148,7 +148,7 @@ radiance is a `float<W/(sr m^3)>`, and the witness for the y axis is composed to
 axis reads the same wavelengths as photon energies, `E = hc/λ`, through the map and its inverse:
 
 ```fsharp output=black-body
-let h, c, k = Constants.planck, Constants.speedOfLight, Constants.boltzmann
+let h, c, k = Constants.h, Constants.c, Constants.kB
 
 let radiance (temperature: float<K>) (wavelength: float<m>) =
     let l5 = wavelength * wavelength * wavelength * wavelength * wavelength
@@ -187,17 +187,19 @@ energies are chosen as round numbers of eV and placed through the inverse map, s
 they crowd toward short wavelengths. A map that is not monotone over the axis, or whose inverse
 does not return each point, is refused when the figure is drawn.
 
-The constants are `float`s in their units: `Constants.speedOfLight`, `planck`, `reducedPlanck`,
-`elementaryCharge`, `boltzmann`, `avogadro`, `molarGas`, `faraday`, `gravitational`,
-`standardGravity`, `vacuumPermittivity`, `vacuumPermeability`, the electron, proton and neutron
-masses, `atomicMass`, `stefanBoltzmann`, `wienDisplacement`, `fineStructure`, `rydberg`,
-`bohrRadius`, `bohrMagneton` and `electronvolt`. The ones that define the SI are exact, and so are
-those computed from them; the doc comment of a measured one gives its standard uncertainty.
+The constants are `float`s in their units. The ones physics writes most go by their symbols:
+`Constants.c`, `h`, `hbar`, `e`, `kB`, `NA`, `G`, `eps0`, `mu0`, and the electron, proton and
+neutron masses `me`, `mp` and `mn`. The rest are spelled out where a symbol would mean more than
+one thing: `molarGas`, `faraday`, `standardGravity`, `atomicMass`, `stefanBoltzmann`,
+`wienDisplacement`, `fineStructure`, `rydberg`, `bohrRadius`, `bohrMagneton` and `electronvolt`.
+A script that wants other names binds them, as `k` above. The ones that define the SI are exact,
+and so are those computed from them; the doc comment of a measured one gives its standard
+uncertainty.
 `Constants.Quantities` holds each with its witness, for arithmetic with a `Q`:
 
 ```fsharp
 let flight = U.second.Of [ 0.0<s>; 1e-9<s>; 2e-9<s> ]
-let lightPath = Constants.Quantities.speedOfLight * flight
+let lightPath = Constants.Quantities.c * flight
 
 printfn "light travels %.1f cm in a nanosecond, a Q<m>: %b" (float lightPath.[1] * 100.0) (lightPath.Unit.Dim = Dim.length)
 ```

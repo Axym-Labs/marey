@@ -103,9 +103,10 @@ and reported when missing; Marey does not require a version of them.
   constant, Faraday constant, gravitational constant, standard gravity, vacuum permittivity and
   permeability, electron, proton and neutron masses, atomic mass constant, Stefan–Boltzmann and
   Wien constants, fine-structure constant, Rydberg constant, Bohr radius, Bohr magneton and the
-  electronvolt in joules. Each is a `float` in its unit, so `Constants.planck *
-  Constants.speedOfLight / wavelength` is a `float<J>`; `Constants.Quantities` holds each with its
-  witness, for arithmetic with a `Q`. The SI's defining constants are exact, those derived from
+  electronvolt in joules. Each is a `float` in its unit, so `Constants.h * Constants.c /
+  wavelength` is a `float<J>`; `Constants.Quantities` holds each with its witness, for arithmetic
+  with a `Q`. The common ones go by their symbols (`c`, `h`, `hbar`, `e`, `kB`, `NA`, `G`, `eps0`,
+  `mu0`, `me`, `mp`, `mn`), the rest by name (`molarGas`, `rydberg`, `fineStructure`). The SI's defining constants are exact, those derived from
   them (ħ, R, F, σ, b) are computed from them, and each measured one's doc comment gives its
   standard uncertainty.
 

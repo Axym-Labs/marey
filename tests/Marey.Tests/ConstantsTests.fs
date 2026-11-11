@@ -22,25 +22,25 @@ let private assertClose tol (expected: float) (actual: float) =
 /// Each constant at the measure it must have. A binding, so a wrong unit is a compile error.
 module UnitsCompile =
 
-    let speedOfLight: float<m / s> = Constants.speedOfLight
-    let planck: float<J / Hz> = Constants.planck
-    let reducedPlanck: float<J s> = Constants.reducedPlanck
-    let elementaryCharge: float<A s> = Constants.elementaryCharge
-    let boltzmann: float<J / K> = Constants.boltzmann
-    let avogadro: float<1 / mol> = Constants.avogadro
+    let c: float<m / s> = Constants.c
+    let h: float<J / Hz> = Constants.h
+    let hbar: float<J s> = Constants.hbar
+    let e: float<A s> = Constants.e
+    let kB: float<J / K> = Constants.kB
+    let NA: float<1 / mol> = Constants.NA
     let molarGas: float<J / mol / K> = Constants.molarGas
     let faraday: float<C / mol> = Constants.faraday
     let stefanBoltzmann: float<W / m^2 / K^4> = Constants.stefanBoltzmann
     let wienDisplacement: float<m K> = Constants.wienDisplacement
     let electronvolt: float<J> = Constants.electronvolt
     let standardGravity: float<m / s^2> = Constants.standardGravity
-    let gravitational: float<N m^2 / kg^2> = Constants.gravitational
+    let G: float<N m^2 / kg^2> = Constants.G
     let fineStructure: float = Constants.fineStructure
-    let vacuumPermeability: float<H / m> = Constants.vacuumPermeability
-    let vacuumPermittivity: float<C^2 / (N m^2)> = Constants.vacuumPermittivity
-    let electronMass: float<kg> = Constants.electronMass
-    let protonMass: float<kg> = Constants.protonMass
-    let neutronMass: float<kg> = Constants.neutronMass
+    let mu0: float<H / m> = Constants.mu0
+    let eps0: float<C^2 / (N m^2)> = Constants.eps0
+    let me: float<kg> = Constants.me
+    let mp: float<kg> = Constants.mp
+    let mn: float<kg> = Constants.mn
     let atomicMass: float<kg> = Constants.atomicMass
     let rydberg: float<1 / m> = Constants.rydberg
     let bohrRadius: float<m> = Constants.bohrRadius
@@ -48,22 +48,22 @@ module UnitsCompile =
 
     /// Formulas over the constants type as physics says: E = hc/λ is an energy, and α built from
     /// e, ε₀, ħ and c has no unit.
-    let photonEnergy (wavelength: float<m>) : float<J> = Constants.planck * Constants.speedOfLight / wavelength
+    let photonEnergy (wavelength: float<m>) : float<J> = Constants.h * Constants.c / wavelength
 
     let fineStructureFromCharge: float =
-        Constants.elementaryCharge * Constants.elementaryCharge
-        / (4.0 * Math.PI * Constants.vacuumPermittivity * Constants.reducedPlanck * Constants.speedOfLight)
+        Constants.e * Constants.e
+        / (4.0 * Math.PI * Constants.eps0 * Constants.hbar * Constants.c)
 
     /// A quantity times a `Q` is a `Q` in the product's unit.
-    let distance (t: Q<s>) : Q<m> = Constants.Quantities.speedOfLight * t
+    let distance (t: Q<s>) : Q<m> = Constants.Quantities.c * t
 
 [<Fact>]
 let ``the defining constants are exact`` () =
-    Assert.Equal(299792458.0, float Constants.speedOfLight)
-    Assert.Equal(6.62607015e-34, float Constants.planck)
-    Assert.Equal(1.602176634e-19, float Constants.elementaryCharge)
-    Assert.Equal(1.380649e-23, float Constants.boltzmann)
-    Assert.Equal(6.02214076e23, float Constants.avogadro)
+    Assert.Equal(299792458.0, float Constants.c)
+    Assert.Equal(6.62607015e-34, float Constants.h)
+    Assert.Equal(1.602176634e-19, float Constants.e)
+    Assert.Equal(1.380649e-23, float Constants.kB)
+    Assert.Equal(6.02214076e23, float Constants.NA)
     Assert.Equal(1.602176634e-19, float Constants.electronvolt)
     Assert.Equal(9.80665, float Constants.standardGravity)
 
@@ -71,7 +71,7 @@ let ``the defining constants are exact`` () =
 /// with an ellipsis, so they agree to that many digits.
 [<Fact>]
 let ``the derived exact constants match CODATA 2022 to its printed digits`` () =
-    assertClose 1e-9 1.054571817e-34 (float Constants.reducedPlanck)
+    assertClose 1e-9 1.054571817e-34 (float Constants.hbar)
     assertClose 1e-10 8.314462618 (float Constants.molarGas)
     assertClose 1e-10 96485.33212 (float Constants.faraday)
     assertClose 1e-9 5.670374419e-8 (float Constants.stefanBoltzmann)
@@ -79,13 +79,13 @@ let ``the derived exact constants match CODATA 2022 to its printed digits`` () =
 
 [<Fact>]
 let ``the measured constants are CODATA 2022's values`` () =
-    Assert.Equal(6.67430e-11, float Constants.gravitational)
+    Assert.Equal(6.67430e-11, float Constants.G)
     Assert.Equal(7.2973525643e-3, Constants.fineStructure)
-    Assert.Equal(1.25663706127e-6, float Constants.vacuumPermeability)
-    Assert.Equal(8.8541878188e-12, float Constants.vacuumPermittivity)
-    Assert.Equal(9.1093837139e-31, float Constants.electronMass)
-    Assert.Equal(1.67262192595e-27, float Constants.protonMass)
-    Assert.Equal(1.67492750056e-27, float Constants.neutronMass)
+    Assert.Equal(1.25663706127e-6, float Constants.mu0)
+    Assert.Equal(8.8541878188e-12, float Constants.eps0)
+    Assert.Equal(9.1093837139e-31, float Constants.me)
+    Assert.Equal(1.67262192595e-27, float Constants.mp)
+    Assert.Equal(1.67492750056e-27, float Constants.mn)
     Assert.Equal(1.66053906892e-27, float Constants.atomicMass)
     Assert.Equal(10973731.568157, float Constants.rydberg)
     Assert.Equal(5.29177210544e-11, float Constants.bohrRadius)
@@ -94,14 +94,14 @@ let ``the measured constants are CODATA 2022's values`` () =
 /// The exact relations hold to a float's rounding, since the derived constants are computed.
 [<Fact>]
 let ``the exact derived constants follow from the defining ones`` () =
-    assertClose 1e-15 (float Constants.planck) (float (2.0 * Math.PI * Constants.reducedPlanck))
-    assertClose 1e-15 (float (Constants.avogadro * Constants.boltzmann)) (float Constants.molarGas)
-    assertClose 1e-15 (float (Constants.avogadro * Constants.elementaryCharge)) (float Constants.faraday)
-    assertClose 1e-15 (float Constants.elementaryCharge) (float Constants.electronvolt)
+    assertClose 1e-15 (float Constants.h) (float (2.0 * Math.PI * Constants.hbar))
+    assertClose 1e-15 (float (Constants.NA * Constants.kB)) (float Constants.molarGas)
+    assertClose 1e-15 (float (Constants.NA * Constants.e)) (float Constants.faraday)
+    assertClose 1e-15 (float Constants.e) (float Constants.electronvolt)
 
-    let k = float Constants.boltzmann
-    let h = float Constants.planck
-    let c = float Constants.speedOfLight
+    let k = float Constants.kB
+    let h = float Constants.h
+    let c = float Constants.c
     assertClose 1e-14 (2.0 * Math.PI ** 5.0 * k ** 4.0 / (15.0 * h ** 3.0 * c ** 2.0)) (float Constants.stefanBoltzmann)
 
 /// Wien's x is the root of x = 5(1 − e⁻ˣ), and b = hc/(kx).
@@ -109,25 +109,22 @@ let ``the exact derived constants follow from the defining ones`` () =
 let ``the Wien constant is hc over k times the root of its equation`` () =
     let x = 4.965114231744276
     Assert.True(abs (x - 5.0 * (1.0 - exp (-x))) < 1e-14)
-    let b = float (Constants.planck * Constants.speedOfLight / Constants.boltzmann) / x
+    let b = float (Constants.h * Constants.c / Constants.kB) / x
     assertClose 1e-15 b (float Constants.wienDisplacement)
 
 /// The measured constants are not independent: CODATA adjusts them together, so the relations
 /// between them hold to well within their uncertainties (all about 10⁻¹⁰ relative, or less).
 [<Fact>]
 let ``the measured constants agree with each other within their uncertainties`` () =
-    let c = Constants.speedOfLight
-    let hbar = Constants.reducedPlanck
-    let e = Constants.elementaryCharge
-    let me = Constants.electronMass
     let alpha = Constants.fineStructure
+    let c, hbar, e, me = Constants.c, Constants.hbar, Constants.e, Constants.me
 
     // ε₀μ₀c² = 1, to the eleven digits CODATA prints of each
-    assertClose 1e-11 1.0 (float (Constants.vacuumPermittivity * Constants.vacuumPermeability * c * c))
+    assertClose 1e-11 1.0 (float (Constants.eps0 * Constants.mu0 * c * c))
     // α = e²/(4πε₀ħc)
     assertClose 1e-9 alpha UnitsCompile.fineStructureFromCharge
     // R∞ = α²m_e c/2h
-    assertClose 1e-9 (float Constants.rydberg) (float (alpha * alpha * me * c / (2.0 * Constants.planck)))
+    assertClose 1e-9 (float Constants.rydberg) (float (alpha * alpha * me * c / (2.0 * Constants.h)))
     // a₀ = ħ/(αm_e c)
     assertClose 1e-9 (float Constants.bohrRadius) (float (hbar / (alpha * me * c)))
     // μ_B = eħ/2m_e
@@ -150,25 +147,25 @@ let ``each quantity is its float with the witness of its dimension`` () =
         Assert.Equal(1.0, q.Unit.ToSI)
         Assert.Equal(dim, q.Unit.Dim)
 
-    check Constants.speedOfLight Constants.Quantities.speedOfLight (d 1 0 -1 0 0 0)
-    check Constants.planck Constants.Quantities.planck (d 2 1 -1 0 0 0)
-    check Constants.reducedPlanck Constants.Quantities.reducedPlanck (d 2 1 -1 0 0 0)
-    check Constants.elementaryCharge Constants.Quantities.elementaryCharge (d 0 0 1 1 0 0)
-    check Constants.boltzmann Constants.Quantities.boltzmann (d 2 1 -2 0 -1 0)
-    check Constants.avogadro Constants.Quantities.avogadro (d 0 0 0 0 0 -1)
+    check Constants.c Constants.Quantities.c (d 1 0 -1 0 0 0)
+    check Constants.h Constants.Quantities.h (d 2 1 -1 0 0 0)
+    check Constants.hbar Constants.Quantities.hbar (d 2 1 -1 0 0 0)
+    check Constants.e Constants.Quantities.e (d 0 0 1 1 0 0)
+    check Constants.kB Constants.Quantities.kB (d 2 1 -2 0 -1 0)
+    check Constants.NA Constants.Quantities.NA (d 0 0 0 0 0 -1)
     check Constants.molarGas Constants.Quantities.molarGas (d 2 1 -2 0 -1 -1)
     check Constants.faraday Constants.Quantities.faraday (d 0 0 1 1 0 -1)
     check Constants.stefanBoltzmann Constants.Quantities.stefanBoltzmann (d 0 1 -3 0 -4 0)
     check Constants.wienDisplacement Constants.Quantities.wienDisplacement (d 1 0 0 0 1 0)
     check Constants.electronvolt Constants.Quantities.electronvolt (d 2 1 -2 0 0 0)
     check Constants.standardGravity Constants.Quantities.standardGravity (d 1 0 -2 0 0 0)
-    check Constants.gravitational Constants.Quantities.gravitational (d 3 -1 -2 0 0 0)
+    check Constants.G Constants.Quantities.G (d 3 -1 -2 0 0 0)
     check Constants.fineStructure Constants.Quantities.fineStructure Dim.zero
-    check Constants.vacuumPermeability Constants.Quantities.vacuumPermeability (d 1 1 -2 -2 0 0)
-    check Constants.vacuumPermittivity Constants.Quantities.vacuumPermittivity (d -3 -1 4 2 0 0)
-    check Constants.electronMass Constants.Quantities.electronMass (d 0 1 0 0 0 0)
-    check Constants.protonMass Constants.Quantities.protonMass (d 0 1 0 0 0 0)
-    check Constants.neutronMass Constants.Quantities.neutronMass (d 0 1 0 0 0 0)
+    check Constants.mu0 Constants.Quantities.mu0 (d 1 1 -2 -2 0 0)
+    check Constants.eps0 Constants.Quantities.eps0 (d -3 -1 4 2 0 0)
+    check Constants.me Constants.Quantities.me (d 0 1 0 0 0 0)
+    check Constants.mp Constants.Quantities.mp (d 0 1 0 0 0 0)
+    check Constants.mn Constants.Quantities.mn (d 0 1 0 0 0 0)
     check Constants.atomicMass Constants.Quantities.atomicMass (d 0 1 0 0 0 0)
     check Constants.rydberg Constants.Quantities.rydberg (d -1 0 0 0 0 0)
     check Constants.bohrRadius Constants.Quantities.bohrRadius (d 1 0 0 0 0 0)
@@ -181,7 +178,7 @@ let ``a quantity's witness reaches a chart's axis`` () =
     let t = U.second.Of [ 0.0<s>; 1e-9<s>; 2e-9<s>; 3e-9<s> ]
     let x = UnitsCompile.distance t
     Assert.Equal(Dim.length, x.Unit.Dim)
-    Assert.Equal(float Constants.speedOfLight * 2e-9, float x.[2])
+    Assert.Equal(float Constants.c * 2e-9, float x.[2])
 
     let svg = Chart.line t x |> Chart.render SvgBackend.render (Chart.size 400.0 300.0)
     Assert.Contains("[ns]", svg)
@@ -221,8 +218,8 @@ module WrongUnits =
     [<Fact>]
     let ``a formula in the right unit compiles under open Marey.Constants`` () =
         let body =
-            "let energy: float<J> = planck * speedOfLight / 500e-9<m>\n"
-            + "let capacitance: float<F> = vacuumPermittivity * 1.0<m>\n"
+            "let energy: float<J> = h * c / 500e-9<m>\n"
+            + "let capacitance: float<F> = eps0 * 1.0<m>\n"
             + "let shift: float<h> = 2.0<h>\n"
             + "printfn \"%g %g %g %d\" (float energy) (float capacitance) (float shift) (min 1 2)"
 
@@ -232,7 +229,7 @@ module WrongUnits =
 
     [<Fact>]
     let ``a formula in the wrong unit does not compile`` () =
-        match compile "wrong" "let energy: float<J> = planck * speedOfLight" with
+        match compile "wrong" "let energy: float<J> = h * c" with
         | None -> skipped ()
         | Some(code, path, output) ->
             Assert.True(code <> 0, sprintf "h·c compiled as an energy: %s" path)
