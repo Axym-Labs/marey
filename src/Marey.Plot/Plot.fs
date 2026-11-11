@@ -88,6 +88,11 @@ type PlotSpec =
           /// The positional channels, each erased where it was declared.
           X: PackedChannel option
           Y: PackedChannel option
+          /// The half-length of each row's error bar along x and along y, if the block states one.
+          XError: PackedChannel option
+          YError: PackedChannel option
+          /// What the legend calls the error bars. Empty keeps them out of it.
+          ErrorLabel: string
           /// Non-positional channels, in declaration order, as functions of the final theme.
           Channels: (Theme -> Channel) list
           /// The quantity name a continuous colour channel puts in front of its unit: `T` in
@@ -123,6 +128,9 @@ module private PlotCompile =
         { Name = ""
           X = None
           Y = None
+          XError = None
+          YError = None
+          ErrorLabel = ""
           Keys = None
           Channels = []
           ColorLabel = ""
@@ -190,6 +198,50 @@ module private PlotCompile =
                 what
                 what
 
+    /// **The two ends of every row's error bar**, as numbers in the unit of the axis they lie
+    /// along.
+    ///
+    /// The error channel was erased apart from the channel it belongs to, so the compiler never
+    /// saw the two together, and this is where they meet. A bar is a length along its axis: an
+    /// error in another unit of the axis's dimension is read in the axis's unit, by its scale
+    /// alone (half a degree Celsius is half a kelvin), and one of another dimension is refused.
+    /// A channel nobody stated a unit for is taken in the other's.
+    let private barEnds (axis: string) (values: PackedChannel) (errors: PackedChannel) : float[] * float[] =
+        Erase.reunify
+            values
+            errors
+            { new IChannelPairConsumer<float[] * float[]> with
+                member _.Apply<[<Measure>] 'u, [<Measure>] 'e>(u: U<'u>, xs: float<'u>[], ue: U<'e>, es: float<'e>[]) =
+                    let scale =
+                        if not u.Stated || not ue.Stated then
+                            1.0
+                        elif u.Dim <> ue.Dim then
+                            failwithf
+                                "Marey: this plot block's `%sError` is a %s and its `%s` channel a %s. An error bar is a length along its axis, so the two are of one dimension."
+                                axis
+                                (Dim.show ue.Dim)
+                                axis
+                                (Dim.show u.Dim)
+                        else
+                            ue.ToSI / u.ToSI
+
+                    let half (i: int) = scale * abs (float es.[i])
+                    Array.init xs.Length (fun i -> float xs.[i] - half i), Array.init xs.Length (fun i -> float xs.[i] + half i) }
+
+    /// A linear scale widened to hold the bars' ends, padded as the data's own domain is.
+    let private holding (ends: (float[] * float[]) option) (scale: Scale<'u>) : Scale<'u> =
+        match ends, scale.Kind with
+        | Some(low, high), ScaleKind.Linear ->
+            let all =
+                Array.append low high
+                |> Array.filter (fun v -> not (System.Double.IsNaN v || System.Double.IsInfinity v))
+                |> Array.map LanguagePrimitives.FloatWithMeasure<'u>
+
+            match Scale.paddedDomain 0.05 all with
+            | Some domain -> Scale.withDomain domain scale
+            | None -> scale
+        | _ -> scale
+
     /// **The fitted line, built where both measures exist and nowhere else**.
     ///
     /// `Stat.regression` is typed — its slope is `float<'uy/'ux>` — and the
@@ -250,6 +302,11 @@ module private PlotCompile =
                 "Marey: a `%s` block cannot carry a colour, size or shape channel. The stat changes the row count, so a per-row channel has nothing left to line up with. Facet the block instead, or bin each group yourself and add the series."
                 what
 
+        if spec.XError.IsSome || spec.YError.IsSome then
+            failwithf
+                "Marey: a `%s` block cannot carry `xError` or `yError`. The stat makes its own rows (bins, a curve, a staircase), and a per-row error has none of them to belong to."
+                what
+
         if spec.Keys.IsSome then
             failwithf
                 "Marey: a `%s` block cannot carry a `key`. The stat makes its own rows (bins, a curve, a staircase), and none of them is a row of the data, so there is nothing for a key to name."
@@ -305,6 +362,23 @@ module private PlotCompile =
     let private runPositional (spec: PlotSpec) : Figure =
         let packed =
             Erase.channelSeries spec.Name (required "x" spec.X) (required "y" spec.Y)
+
+        // The error bars' ends, and domains that hold them: the data's own domain stops at the
+        // outermost points, and a bar reaches past its point.
+        let xEnds = spec.XError |> Option.map (barEnds "x" (required "x" spec.X))
+        let yEnds = spec.YError |> Option.map (barEnds "y" (required "y" spec.Y))
+
+        let packed =
+            if xEnds.IsNone && yEnds.IsNone then
+                packed
+            else
+                packed.Accept
+                    { new ISeriesConsumer<PackedSeries> with
+                        member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
+                            Erase.packSeries
+                                { s with
+                                    XScale = holding xEnds s.XScale
+                                    YScale = holding yEnds s.YScale } }
 
         // The zero baseline, through the block. A bar is read as a length from zero, so zero is in
         // the domain — and the widening has to happen *before* the geoms are built, because a
@@ -402,6 +476,34 @@ module private PlotCompile =
                   InDomain = (true, true)
                   SecondaryY = false })
 
+        // **The error bars are layers of their own, and they go first.** Under the marks, as
+        // `Chart.errorbar` draws them, and ahead of the block's layers so that the last layer is
+        // still the block's own and `Chart.withName` afterwards names the series. They carry no
+        // channels: a bar is drawn in the block's base colour whatever colours its point. The
+        // first of them carries the label, if the block gave one, and that is its legend entry.
+        let errorLayers =
+            [ match yEnds with
+              | Some(low, high) -> yield GeomErrorY(low, high)
+              | None -> ()
+              match xEnds with
+              | Some(low, high) -> yield GeomErrorX(low, high)
+              | None -> () ]
+            |> List.mapi (fun i g ->
+                let labelled = i = 0 && not (System.String.IsNullOrEmpty spec.ErrorLabel)
+
+                { Name = (if labelled then spec.ErrorLabel else "")
+                  Data = packed
+                  Geom = g
+                  Style = baseStyle
+                  Channels = [||]
+                  ShowInLegend = labelled
+                  Addressed = [||]
+                  RowKeys = [||]
+                  InDomain = (true, true)
+                  SecondaryY = false })
+
+        let layers = errorLayers @ layers
+
         // **The fitted line is a layer, and it is appended — the order is load-bearing**.
         //
         // It carries no channels, because it has two points and the channels have one entry per
@@ -430,6 +532,14 @@ module private PlotCompile =
         let panel =
             { Figure.panelOf (List.toArray layers) with
                 Coord = spec.Coord }
+
+        // Labelled bars put a legend on a panel that may have had none, so it goes to the corner
+        // that hides the least of the data.
+        let panel =
+            if errorLayers |> List.exists (fun l -> l.ShowInLegend) then
+                { panel with Legend = LegendBest }
+            else
+                panel
 
         { Figure.create [| panel |] with Theme = theme }
 
@@ -479,6 +589,8 @@ module private PlotCompile =
                 Frame = frame
                 X = spec.X |> Option.map (Erase.selectChannel rows)
                 Y = spec.Y |> Option.map (Erase.selectChannel rows)
+                XError = spec.XError |> Option.map (Erase.selectChannel rows)
+                YError = spec.YError |> Option.map (Erase.selectChannel rows)
                 Keys = spec.Keys |> Option.map (fun ks -> rows |> Array.map (fun i -> ks.[i]))
                 Channels = spec.Channels |> List.map (fun mk -> mk >> Channel.select rows) }
 
@@ -527,6 +639,26 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
     member _.Y(spec: PlotSpec, u: U<'u>, f: 'r -> float<'u>) : PlotSpec =
         { spec with
             Y = Some(Erase.packChannel u (Array.map f rows)) }
+
+    /// **An error bar along x for every row**: a witness, and an accessor to the bar's half-length,
+    /// drawn that far either side of the point. The x domain grows to hold the bars. The witness
+    /// may name another unit of the x channel's dimension (millimetres on a metre axis); one of
+    /// another dimension is refused when the block runs.
+    [<CustomOperation("xError")>]
+    member _.XError(spec: PlotSpec, u: U<'u>, f: 'r -> float<'u>) : PlotSpec =
+        { spec with
+            XError = Some(Erase.packChannel u (Array.map f rows)) }
+
+    /// **An error bar along y for every row**: `yError U.metre (fun r -> r.Uncertainty)`. See `xError`.
+    [<CustomOperation("yError")>]
+    member _.YError(spec: PlotSpec, u: U<'u>, f: 'r -> float<'u>) : PlotSpec =
+        { spec with
+            YError = Some(Erase.packChannel u (Array.map f rows)) }
+
+    /// **What the error bars are**, for the legend: `errorLabel "standard deviation"`. Bars
+    /// nobody labelled are the commonest thing a figure leaves a reader to guess.
+    [<CustomOperation("errorLabel")>]
+    member _.ErrorLabel(spec: PlotSpec, label: string) : PlotSpec = { spec with ErrorLabel = label }
 
     /// **The data's own name for each row.** A mark is then keyed by it rather than by
     /// its row, so it keeps its name when the data is edited, and a storyboard's morph pairs it
@@ -909,6 +1041,18 @@ type PlotBuilder<'r>(rows: 'r[]) =
     member _.Y(spec: PlotSpec, f: 'r -> float) : PlotSpec =
         { spec with
             Y = Some(Erase.packChannel U.unspecified (Array.map f rows)) }
+
+    /// Error bars along x over plain numbers.
+    [<CustomOperation("xError")>]
+    member _.XError(spec: PlotSpec, f: 'r -> float) : PlotSpec =
+        { spec with
+            XError = Some(Erase.packChannel U.unspecified (Array.map f rows)) }
+
+    /// Error bars along y over plain numbers.
+    [<CustomOperation("yError")>]
+    member _.YError(spec: PlotSpec, f: 'r -> float) : PlotSpec =
+        { spec with
+            YError = Some(Erase.packChannel U.unspecified (Array.map f rows)) }
 
     /// Colour by plain numbers, over the theme's sequential ramp.
     [<CustomOperation("colorBy")>]

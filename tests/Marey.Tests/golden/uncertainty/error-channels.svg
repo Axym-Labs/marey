@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="480" height="300" viewBox="0 0 480 300">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M57.013 248.567L241.671 248.567L241.671 68.883L57.013 68.883Z"/></clipPath>
+    <circle id="qm" r="2.5"/>
+    <clipPath id="qc-2" clipPathUnits="userSpaceOnUse"><path d="M278.007 248.567L462.664 248.567L462.664 68.883L278.007 68.883Z"/></clipPath>
+  </defs>
+  <g id="figure">
+    <path d="M0 300L480 300L480 0L0 0Z" fill="#ffffff"/>
+    <g id="figure_panel-0-0">
+      <g role="graphics-object" data-marey-role="other:panel" aria-label="Monday" data-row="0" data-col="0" data-layers="3" data-x-tick-rule="all" data-y-tick-rule="all">
+        <g id="figure_panel-0-0_grid">
+          <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="4">
+            <path d="M57.013 227.326L241.671 227.326M57.013 176.51L241.671 176.51M57.013 125.695L241.671 125.695M57.013 74.88L241.671 74.88" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+          </g>
+        </g>
+        <g clip-path="url(#qc)">
+          <g id="figure_panel-0-0_layer-0">
+            <g role="graphics-object" data-marey-role="series" aria-label="standard deviation" data-series="standard deviation" data-points="5">
+              <path d="M65.407 241.554L65.407 233.424M62.907 241.554L67.907 241.554M62.907 233.424L67.907 233.424M107.374 213.606L107.374 200.394M104.874 213.606L109.874 213.606M104.874 200.394L109.874 200.394M149.342 185.657L149.342 167.364M146.842 185.657L151.842 185.657M146.842 167.364L151.842 167.364M191.31 157.709L191.31 134.334M188.81 157.709L193.81 157.709M188.81 134.334L193.81 134.334M233.277 129.76L233.277 101.304M230.777 129.76L235.777 129.76M230.777 101.304L235.777 101.304" fill="none" stroke="#0072b2" stroke-width="2" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="figure_panel-0-0_layer-1">
+            <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="5">
+              <path d="M65.407 237.489L107.374 207L149.342 176.51L191.31 146.021L233.277 115.532" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="figure_panel-0-0_layer-2">
+            <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="5">
+              <g fill="#0072b2">
+                <use xlink:href="#qm" x="65.407" y="237.489"/>
+                <use xlink:href="#qm" x="107.374" y="207"/>
+                <use xlink:href="#qm" x="149.342" y="176.51"/>
+                <use xlink:href="#qm" x="191.31" y="146.021"/>
+                <use xlink:href="#qm" x="233.277" y="115.532"/>
+              </g>
+            </g>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="bottom" data-unit="s" data-prefix="" data-ticks="5" data-tick-rule="all">
+            <path d="M57.013 248.567L241.671 248.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M65.407 248.567L65.407 251.567M107.374 248.567L107.374 251.567M149.342 248.567L149.342 251.567M191.31 248.567L191.31 251.567M233.277 248.567L233.277 251.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="65.407" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+            <text x="107.374" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">1</text>
+            <text x="149.342" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
+            <text x="191.31" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">3</text>
+            <text x="233.277" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
+            <text x="149.342" y="273.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">t [s]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="left" data-unit="m" data-prefix="" data-ticks="4" data-tick-rule="all">
+            <path d="M57.013 248.567L57.013 68.883" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M57.013 227.326L54.013 227.326M57.013 176.51L54.013 176.51M57.013 125.695L54.013 125.695M57.013 74.88L54.013 74.88" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="50.013" y="227.326" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0.5</text>
+            <text x="50.013" y="176.51" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.0</text>
+            <text x="50.013" y="125.695" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">1.5</text>
+            <text x="50.013" y="74.88" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">2.0</text>
+            <text x="26.333" y="158.725" transform="rotate(-90 26.333 158.725)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">x [m]</text>
+          </g>
+        </g>
+        <text x="149.342" y="44" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">Monday</text>
+        <g id="figure_panel-0-0_legend">
+          <g role="group" data-marey-role="legend" aria-label="legend" data-entries="1">
+            <path d="M91.171 101.6L234.671 101.6L234.671 75.883L91.171 75.883Z" fill="#ffffff" fill-opacity="0.9"/>
+            <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="standard deviation" data-series="standard deviation" data-color="#0072b2">
+              <path d="M98.171 88.742L116.171 88.742" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round"/>
+              <g fill="#0072b2">
+                <use xlink:href="#qm" x="107.171" y="88.742"/>
+              </g>
+              <text x="124.171" y="88.742" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">standard deviation</text>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+    <g id="figure_panel-0-1">
+      <g role="graphics-object" data-marey-role="other:panel" aria-label="Tuesday" data-row="0" data-col="1" data-layers="3" data-x-tick-rule="all" data-y-tick-rule="all">
+        <g id="figure_panel-0-1_grid">
+          <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="4">
+            <path d="M278.007 227.326L462.664 227.326M278.007 176.51L462.664 176.51M278.007 125.695L462.664 125.695M278.007 74.88L462.664 74.88" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+          </g>
+        </g>
+        <g clip-path="url(#qc-2)">
+          <g id="figure_panel-0-1_layer-0">
+            <g role="graphics-object" data-marey-role="series" aria-label="standard deviation" data-series="standard deviation" data-points="5">
+              <path d="M286.4 216.146L286.4 208.016M283.9 216.146L288.9 216.146M283.9 208.016L288.9 208.016M328.368 188.198L328.368 174.986M325.868 188.198L330.868 188.198M325.868 174.986L330.868 174.986M370.335 160.249L370.335 141.956M367.835 160.249L372.835 160.249M367.835 141.956L372.835 141.956M412.303 132.301L412.303 108.926M409.803 132.301L414.803 132.301M409.803 108.926L414.803 108.926M454.27 104.352L454.27 75.896M451.77 104.352L456.77 104.352M451.77 75.896L456.77 75.896" fill="none" stroke="#0072b2" stroke-width="2" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="figure_panel-0-1_layer-1">
+            <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="5">
+              <path d="M286.4 212.081L328.368 181.592L370.335 151.103L412.303 120.613L454.27 90.124" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="figure_panel-0-1_layer-2">
+            <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="5">
+              <g fill="#0072b2">
+                <use xlink:href="#qm" x="286.4" y="212.081"/>
+                <use xlink:href="#qm" x="328.368" y="181.592"/>
+                <use xlink:href="#qm" x="370.335" y="151.103"/>
+                <use xlink:href="#qm" x="412.303" y="120.613"/>
+                <use xlink:href="#qm" x="454.27" y="90.124"/>
+              </g>
+            </g>
+          </g>
+        </g>
+        <g id="figure_panel-0-1_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="t [s]" data-side="bottom" data-unit="s" data-prefix="" data-ticks="5" data-tick-rule="all">
+            <path d="M278.007 248.567L462.664 248.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M286.4 248.567L286.4 251.567M328.368 248.567L328.368 251.567M370.335 248.567L370.335 251.567M412.303 248.567L412.303 251.567M454.27 248.567L454.27 251.567" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="286.4" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+            <text x="328.368" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">1</text>
+            <text x="370.335" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">2</text>
+            <text x="412.303" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">3</text>
+            <text x="454.27" y="255.567" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">4</text>
+            <text x="370.335" y="273.667" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">t [s]</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-1_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="x [m]" data-side="left" data-unit="m" data-prefix="" data-ticks="4" data-tick-rule="all">
+            <path d="M278.007 248.567L278.007 68.883" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M278.007 227.326L275.007 227.326M278.007 176.51L275.007 176.51M278.007 125.695L275.007 125.695M278.007 74.88L275.007 74.88" fill="none" stroke="#39414d" stroke-width="0.9"/>
+          </g>
+        </g>
+        <text x="370.335" y="49.55" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">Tuesday</text>
+      </g>
+    </g>
+  </g>
+</svg>

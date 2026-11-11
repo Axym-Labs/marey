@@ -66,7 +66,9 @@
          the one gate that rasterises a typeset formula to check there is ink in it. -->
     <Compile Include="TypesetTests.fs" />
     <Compile Include="ChannelTests.fs" />
+    <Compile Include="ErrorChannelTests.fs" />
     <Compile Include="StatTests.fs" />
+    <Compile Include="../Shared/UncertaintyScenes.fs" Link="UncertaintyScenes.fs" />
     <Compile Include="UncertaintyTests.fs" />
     <Compile Include="FacetTests.fs" />
     <Compile Include="CompositionTests.fs" />

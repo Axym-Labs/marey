@@ -1541,6 +1541,9 @@ namespace Marey
         [<CustomOperation ("ecdf")>]
         member Ecdf: spec: PlotSpec -> PlotSpec
 
+        [<CustomOperation ("errorLabel")>]
+        member ErrorLabel: spec: PlotSpec * label: string -> PlotSpec
+
         [<CustomOperation ("facetScales")>]
         member FacetScales: spec: PlotSpec * mode: FacetScales -> PlotSpec
 
@@ -1607,10 +1610,20 @@ namespace Marey
           X<[<Measure>] 'u> : spec: PlotSpec * u: U<'u> * f: ('r -> float<'u>) ->
                                 PlotSpec
 
+        [<CustomOperation ("xError")>]
+        member
+          XError<[<Measure>] 'u> : spec: PlotSpec * u: U<'u> *
+                                   f: ('r -> float<'u>) -> PlotSpec
+
         [<CustomOperation ("y")>]
         member
           Y<[<Measure>] 'u> : spec: PlotSpec * u: U<'u> * f: ('r -> float<'u>) ->
                                 PlotSpec
+
+        [<CustomOperation ("yError")>]
+        member
+          YError<[<Measure>] 'u> : spec: PlotSpec * u: U<'u> *
+                                   f: ('r -> float<'u>) -> PlotSpec
 
         member Yield: unit -> PlotSpec
 
@@ -1642,8 +1655,14 @@ namespace Marey
         [<CustomOperation ("x")>]
         member X: spec: PlotSpec * f: ('r -> float) -> PlotSpec
 
+        [<CustomOperation ("xError")>]
+        member XError: spec: PlotSpec * f: ('r -> float) -> PlotSpec
+
         [<CustomOperation ("y")>]
         member Y: spec: PlotSpec * f: ('r -> float) -> PlotSpec
+
+        [<CustomOperation ("yError")>]
+        member YError: spec: PlotSpec * f: ('r -> float) -> PlotSpec
 
     [<AutoOpen>]
     module Grammar =

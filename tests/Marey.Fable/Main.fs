@@ -99,7 +99,16 @@ let private simFailures =
 // Uncertainty propagation gets .NET's numbers.
 let private uncertaintyFailures: string list =
 #if MAREY_UNCERTAINTY
-    let found = UncertaintyGate.check ()
+    let figures =
+        [ for name, render in UncertaintyScenes.svg do
+              let expected = normalise (readFileSync (dir + "/uncertainty/" + name + ".svg", "utf8"))
+              let actual = normalise (render ())
+
+              if actual <> expected then
+                  writeFileSync (dir + "/uncertainty/" + name + ".actual.svg", actual)
+                  yield sprintf "the figure %s, %s" name (firstDifference expected actual) ]
+
+    let found = UncertaintyGate.check () @ figures
 
     for f in found do
         printfn "  FAIL  uncertainty: %s" f

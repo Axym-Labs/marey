@@ -543,6 +543,140 @@ let ``the TeX forms compile`` () =
         Console.WriteLine("SKIPPED: " + TexToolchain.Engine + " not found")
 
 // ======================================================================================
+// Charts
+// ======================================================================================
+
+let private layersOf (fig: Figure) = fig.Panels.[0].Layers
+
+let private textsOf (fig: Figure) =
+    Chart.toScene UncertaintyScenes.surface fig
+    |> Scene.fold
+        (fun acc n ->
+            match n with
+            | Text t -> t.Text :: acc
+            | _ -> acc)
+        []
+
+[<Fact>]
+let ``the uncertainty figures are their baselines`` () =
+    for name, render in UncertaintyScenes.svg do
+        Golden.check ("uncertainty/" + name + ".svg") (render ())
+
+[<Fact>]
+let ``the legend says what the bars are`` () =
+    Assert.Contains("standard uncertainty", textsOf (UncertaintyScenes.errorbars ()))
+    // The extensions' uncertainty is taken as known (k = 1.96), the forces have two degrees of
+    // freedom each (k = 4.30).
+    Assert.Contains("expanded uncertainty, k = 1.96 to 4.30 (95 %)", textsOf (UncertaintyScenes.coverage ()))
+    Assert.Contains("x [cm]", textsOf (UncertaintyScenes.errorbars ()) |> List.map (fun t -> t.Replace("extension", "x")))
+    Assert.Contains("force [N]", textsOf (UncertaintyScenes.errorbars ()))
+
+    let x = [| 1.0<m> +- 0.1<m>; 2.0<m> +- 0.1<m> |]
+    Assert.Equal("expanded uncertainty, k = 1.96 (95 %)", (layersOf (Chart.errorbarsWith (ErrorBars.Coverage 0.95) x x)).[0].Name)
+
+    Assert.Equal(
+        "expanded uncertainty, k = 2.58 (99 %, normal)",
+        (layersOf (Chart.errorbarsWith (ErrorBars.CoverageAssumingNormal 0.99) x x)).[0].Name
+    )
+
+/// With every uncertainty taken as known, 95 % bars are the standard ones times 1.960, and
+/// nothing else about the layers moves.
+[<Fact>]
+let ``standard and expanded bars differ by the factor alone`` () =
+    let x = [| 1.0; 2.0; 3.5 |] |> Array.map (fun v -> Uncertain.standard "" U.second (v * 1.0<s>) 0.05<s>)
+    let y = [| 0.9; 2.2; 3.4 |] |> Array.map (fun v -> Uncertain.standard "" U.metre (v * 1.0<m>) (0.1<m> * v))
+    let standard = layersOf (Chart.errorbars x y)
+    let expanded = layersOf (Chart.errorbarsWith (ErrorBars.Coverage 0.95) x y)
+    let k = Coverage.normal 0.95
+    Assert.Equal(3, standard.Length)
+    Assert.Equal(3, expanded.Length)
+
+    let halves (centres: float[]) (l: Layer) =
+        match l.Geom with
+        | GeomErrorY(low, high)
+        | GeomErrorX(low, high) ->
+            Array.init centres.Length (fun i ->
+                near 1e-12 (float high.[i] - centres.[i]) (centres.[i] - float low.[i])
+                float high.[i] - centres.[i])
+        | _ -> failwith "not an error-bar layer"
+
+    for i, centres in [ 0, y |> Array.map (fun v -> float v.Value); 1, x |> Array.map (fun v -> float v.Value) ] do
+        Array.iter2 (fun s e -> near 1e-12 (k * s) e) (halves centres standard.[i]) (halves centres expanded.[i])
+        Assert.Equal(standard.[i].Style, expanded.[i].Style)
+
+    near 1e-12 0.05 (halves (x |> Array.map (fun v -> float v.Value)) standard.[1]).[0]
+    Assert.Equal(GeomPoint, standard.[2].Geom)
+    Assert.Equal(GeomPoint, expanded.[2].Geom)
+    Assert.Equal("standard uncertainty", standard.[0].Name)
+    Assert.Equal<bool[]>([| true; false; false |], standard |> Array.map (fun l -> l.ShowInLegend))
+
+[<Fact>]
+let ``a value with no uncertainty gets no bar`` () =
+    let t = U.second.Of [ 1.0<s>; 2.0<s> ]
+    let x = [| 1.0<m> +- 0.1<m>; 2.0<m> +- 0.1<m> |]
+    let onY = layersOf (Chart.errorbars (Uncertain.exactly t) x)
+    Assert.Equal(2, onY.Length)
+    Assert.True(match onY.[0].Geom with GeomErrorY _ -> true | _ -> false)
+    let onX = layersOf (Chart.errorbars x (Uncertain.exactly t))
+    Assert.True(match onX.[0].Geom with GeomErrorX _ -> true | _ -> false)
+    Assert.Equal("standard uncertainty", onX.[0].Name)
+    let none = layersOf (Chart.errorbarsWith (ErrorBars.Coverage 0.95) (Uncertain.exactly t) (Uncertain.exactly t))
+    Assert.Equal(1, none.Length)
+    Assert.False(none.[0].ShowInLegend)
+    Assert.Throws<ArgumentException>(fun () -> Chart.errorbars x [| x.[0] |] |> ignore) |> ignore
+
+[<Fact>]
+let ``expanded bars are refused where no factor can be stated`` () =
+    let a = Uncertain.standard "a" U.metre 1.0<m> 0.3<m>
+    let b = Uncertain.standard "b" U.metre 1.0<m> 0.4<m>
+    Uncertain.correlate 0.5 a b
+    let t = Uncertain.exactly (U.second.Of [ 1.0<s> ])
+    Assert.Throws<InvalidOperationException>(fun () -> Chart.errorbarsWith (ErrorBars.Coverage 0.95) t [| a + b |] |> ignore) |> ignore
+    Assert.Equal(2, (layersOf (Chart.errorbarsWith (ErrorBars.CoverageAssumingNormal 0.95) t [| a + b |])).Length)
+    Assert.Equal(2, (layersOf (Chart.errorbars t [| a + b |])).Length)
+
+[<Fact>]
+let ``added series keep their bars and take the next colour`` () =
+    let layers = layersOf (UncertaintyScenes.added ())
+    Assert.Equal(4, layers.Length)
+    Assert.Equal(layers.[0].Style, layers.[1].Style |> fun s -> { s with Shape = layers.[0].Style.Shape })
+    Assert.NotEqual(layers.[0].Style, layers.[2].Style)
+    Assert.Equal<string[]>([| "standard uncertainty"; "run 1"; "standard uncertainty"; "run 2" |], layers |> Array.map (fun l -> l.Name))
+    // The second series' bars are what the first's already said they are.
+    Assert.Equal<bool[]>([| true; true; false; true |], layers |> Array.map (fun l -> l.ShowInLegend))
+
+[<Fact>]
+let ``the block takes uncertain values and draws their bars`` () =
+    let fig = UncertaintyScenes.block ()
+    let layers = layersOf fig
+    Assert.Equal(4, layers.Length)
+    Assert.True(match layers.[0].Geom with GeomErrorY _ -> true | _ -> false)
+    Assert.True(match layers.[1].Geom with GeomErrorX _ -> true | _ -> false)
+    Assert.Equal(GeomPoint, layers.[2].Geom)
+    Assert.Equal(GeomLine, layers.[3].Geom)
+    Assert.Equal("standard uncertainty", layers.[0].Name)
+    let texts = textsOf fig
+    Assert.Contains("standard uncertainty", texts)
+    Assert.Contains("x [cm]", texts)
+    Assert.Contains("F [N]", texts)
+
+    // The first row: 1.1 cm with 0.15 cm either side.
+    match layers.[1].Geom with
+    | GeomErrorX(low, high) ->
+        near 1e-12 0.95 (float low.[0])
+        near 1e-12 1.25 (float high.[0])
+    | _ -> ()
+
+    // Values with no uncertainty are a plain channel.
+    let exact =
+        plot [ 1.0; 2.0; 3.0 ] {
+            xUncertain (fun v -> Uncertain.exact U.second (v * 1.0<s>))
+            yUncertain (fun v -> Uncertain.exact U.metre (v * 2.0<m>))
+        }
+
+    Assert.Equal(1, (layersOf exact).Length)
+
+// ======================================================================================
 // Cost
 // ======================================================================================
 

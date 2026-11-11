@@ -18,6 +18,7 @@
     <Compile Include="WireGate.fs" />
     <!-- Marey.Uncertainty is not published yet, so its gate is in the build against the projects
          only. `MAREY_UNCERTAINTY` tells Main.fs which build it is in. -->
+    <Compile Include="../Shared/UncertaintyScenes.fs" Link="UncertaintyScenes.fs" Condition="'$(MAREY_FROM_PACKAGES)' == ''" />
     <Compile Include="UncertaintyGate.fs" Condition="'$(MAREY_FROM_PACKAGES)' == ''" />
     <Compile Include="Main.fs" />
   </ItemGroup>
