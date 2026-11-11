@@ -16,8 +16,15 @@
     <Compile Include="CanvasLog.fs" />
     <Compile Include="FontsGate.fs" />
     <Compile Include="WireGate.fs" />
+    <!-- Marey.Uncertainty is not published yet, so its gate is in the build against the projects
+         only. `MAREY_UNCERTAINTY` tells Main.fs which build it is in. -->
+    <Compile Include="UncertaintyGate.fs" Condition="'$(MAREY_FROM_PACKAGES)' == ''" />
     <Compile Include="Main.fs" />
   </ItemGroup>
+
+  <PropertyGroup Condition="'$(MAREY_FROM_PACKAGES)' == ''">
+    <DefineConstants>$(DefineConstants);MAREY_UNCERTAINTY</DefineConstants>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Fable.Core" Version="5.3.0" />
@@ -34,6 +41,7 @@
     <ProjectReference Include="../../src/Marey.Fields/Marey.Fields.fsproj" />
     <ProjectReference Include="../../src/Marey.Backend.Web/Marey.Backend.Web.fsproj" />
     <ProjectReference Include="../../src/Marey.Sim/Marey.Sim.fsproj" />
+    <ProjectReference Include="../../src/Marey.Uncertainty/Marey.Uncertainty.fsproj" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(MAREY_FROM_PACKAGES)' != ''">

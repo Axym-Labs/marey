@@ -17,6 +17,7 @@
     <Project Path="src/Marey.Toolchain/Marey.Toolchain.fsproj" />
     <Project Path="src/Marey.Tools.Tex/Marey.Tools.Tex.fsproj" />
     <Project Path="src/Marey.Tools.Video/Marey.Tools.Video.fsproj" />
+    <Project Path="src/Marey.Uncertainty/Marey.Uncertainty.fsproj" />
     <Project Path="src/Marey.Units/Marey.Units.fsproj" />
     <Project Path="src/Marey.Verso/Marey.Verso.fsproj" />
     <Project Path="src/Marey.Witnesses/Marey.Witnesses.fsproj" />

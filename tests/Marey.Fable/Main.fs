@@ -96,5 +96,28 @@ let private simFailures =
         printfn "  FAIL  the simulations, %s" (firstDifference expected actual)
         [ "sim-runs" ]
 
-if not (failures.IsEmpty && canvasFailures.IsEmpty && wireFailures.IsEmpty && fontFailures.IsEmpty && simFailures.IsEmpty) then
+// Uncertainty propagation gets .NET's numbers.
+let private uncertaintyFailures: string list =
+#if MAREY_UNCERTAINTY
+    let found = UncertaintyGate.check ()
+
+    for f in found do
+        printfn "  FAIL  uncertainty: %s" f
+
+    printfn "the uncertainty gate: %s" (if found.IsEmpty then "holds" else "fails")
+    found
+#else
+    []
+#endif
+
+if
+    not (
+        failures.IsEmpty
+        && canvasFailures.IsEmpty
+        && wireFailures.IsEmpty
+        && fontFailures.IsEmpty
+        && simFailures.IsEmpty
+        && uncertaintyFailures.IsEmpty
+    )
+then
     setExitCode 1

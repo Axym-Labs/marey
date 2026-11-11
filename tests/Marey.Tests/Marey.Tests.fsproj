@@ -67,6 +67,7 @@
     <Compile Include="TypesetTests.fs" />
     <Compile Include="ChannelTests.fs" />
     <Compile Include="StatTests.fs" />
+    <Compile Include="UncertaintyTests.fs" />
     <Compile Include="FacetTests.fs" />
     <Compile Include="CompositionTests.fs" />
     <Compile Include="GeomTests.fs" />
@@ -94,6 +95,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Marey.Core\Marey.Core.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Units\Marey.Units.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Uncertainty\Marey.Uncertainty.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Anim\Marey.Anim.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Fields\Marey.Fields.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Sim\Marey.Sim.fsproj" />
