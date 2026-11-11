@@ -37,7 +37,7 @@ means upgrading all of them; referencing `Marey` does that in one line.
 | Target frameworks | netstandard2.1, except the GPU backend (net8.0) and the Verso extension (net8.0 and net10.0) |
 | FSharp.Core | 8.0.100 or newer |
 | .NET SDK | each release is checked on the 10.0.100 band and on the newest SDK |
-| Fable | the nine packages that carry their sources are built and tested with Fable 5.20 |
+| Fable | the nine packages that carry their sources are built and tested with Fable 5.27 |
 | Verso | a live figure needs 1.2.3 or newer |
 | The window | Linux and Windows; not macOS, which allows a window only on the main thread |
 | External programs | `latex` and `dvisvgm` for typeset text, `ffmpeg` and `ffprobe` for video: found on `PATH`, reported when missing, and not required at any version |

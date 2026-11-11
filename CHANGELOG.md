@@ -45,7 +45,7 @@ means upgrading all of them; referencing `Marey` does that in one line.
 Every package targets netstandard2.1, except the GPU backend (net8.0) and the Verso extension
 (net8.0 and net10.0), and requires FSharp.Core 8.0.100 or newer. Each release is checked on the .NET
 SDK 10.0.100 band and on the newest SDK. The nine packages that carry their sources for Fable are
-built and tested with Fable 5.20. A live figure in a notebook needs Verso 1.2.3 or newer. The GPU
+built and tested with Fable 5.27. A live figure in a notebook needs Verso 1.2.3 or newer. The GPU
 window runs on Linux and Windows, not on macOS. `latex`, `dvisvgm` and `ffmpeg` are found on `PATH`
 and reported when missing; Marey does not require a version of them.
 
@@ -173,6 +173,10 @@ and reported when missing; Marey does not require a version of them.
 - **The pointer's readout keeps clear of a `LegendBest` that went top left.** It moved to the right
   only for a legend stated as `LegendTopLeft`. It now resolves `LegendBest` as the drawing pass
   does, through `PanelLayout.legendPlacement`, which is new.
+- **Built and tested with Fable 5.27**, from 5.20. Every golden, canvas log and simulation is
+  identical under Node, compiled from the projects and from the packages. 5.27 fixes the rounding
+  and the JSDoc escaping Marey had reported upstream; Marey's own exact rounding stays, so an app on
+  an older Fable draws the same figures.
 
 ### Removed
 
