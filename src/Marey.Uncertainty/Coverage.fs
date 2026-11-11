@@ -19,7 +19,7 @@ module Coverage =
            9.9843695780195716e-6
            1.5056327351493116e-7 |]
 
-    let private logGamma (x: float) =
+    let internal logGamma (x: float) =
         let x = x - 1.0
         let mutable a = lanczos.[0]
 

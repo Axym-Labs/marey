@@ -218,7 +218,7 @@ module internal LeastSquares =
             else
                 let inputs =
                     Array.init n (fun i ->
-                        Input(Parts.nextId (), sprintf "Scatter about %s, point %d" what (i + 1), 0.0, scatter, float dof, InputKind.TypeA, yUnit))
+                        Input(Parts.nextId (), sprintf "Scatter about %s, point %d" what (i + 1), 0.0, scatter, float dof, InputKind.TypeA, Distribution.StudentT, yUnit))
 
                 let pool = Parts.nextId ()
 

@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="480" height="300" viewBox="0 0 480 300">
+  <defs>
+    <clipPath id="qc" clipPathUnits="userSpaceOnUse"><path d="M60.349 175.133L457.33 175.133L457.33 72.583L60.349 72.583Z"/></clipPath>
+  </defs>
+  <g id="figure">
+    <path d="M0 300L480 300L480 0L0 0Z" fill="#ffffff"/>
+    <g role="note" data-marey-role="annotation" aria-label="One wide rectangular input">
+      <text x="240" y="14" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="17.333" font-weight="600" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">One wide rectangular input</text>
+    </g>
+    <g id="figure_panel-0-0">
+      <g role="graphics-object" data-marey-role="other:panel" aria-label="panel" data-row="0" data-col="0" data-layers="4" data-x-tick-rule="all" data-y-tick-rule="all">
+        <g id="figure_panel-0-0_grid">
+          <g role="presentation" data-marey-role="decoration" aria-hidden="true" data-lines="7">
+            <path d="M60.349 175.133L457.33 175.133M60.349 158.048L457.33 158.048M60.349 140.962L457.33 140.962M60.349 123.876L457.33 123.876M60.349 106.79L457.33 106.79M60.349 89.704L457.33 89.704M60.349 72.618L457.33 72.618" fill="none" stroke="#e7e9ed" stroke-width="1"/>
+          </g>
+        </g>
+        <g clip-path="url(#qc)">
+          <g id="figure_panel-0-0_layer-0">
+            <g role="graphics-object" data-marey-role="series" aria-label="Monte Carlo, 20000 trials" data-series="Monte Carlo, 20000 trials" data-points="60">
+              <path d="M60.349 175.133L66.966 175.133L66.966 174.962L60.349 174.962ZM66.966 175.133L73.582 175.133L73.582 174.45L66.966 174.45ZM73.582 175.133L80.198 175.133L80.198 171.374L73.582 171.374ZM80.198 175.133L86.815 175.133L86.815 167.957L80.198 167.957ZM86.815 175.133L93.431 175.133L93.431 164.369L86.815 164.369ZM93.431 175.133L100.047 175.133L100.047 149.675L93.431 149.675ZM100.047 175.133L106.664 175.133L106.664 144.208L100.047 144.208ZM106.664 175.133L113.28 175.133L113.28 127.293L106.664 127.293ZM113.28 175.133L119.896 175.133L119.896 116.7L113.28 116.7ZM119.896 175.133L126.513 175.133L126.513 111.916L119.896 111.916ZM126.513 175.133L133.129 175.133L133.129 110.549L126.513 110.549ZM133.129 175.133L139.745 175.133L139.745 107.986L133.129 107.986ZM139.745 175.133L146.362 175.133L146.362 95.855L139.745 95.855ZM146.362 175.133L152.978 175.133L152.978 99.101L146.362 99.101ZM152.978 175.133L159.594 175.133L159.594 105.936L152.978 105.936ZM159.594 175.133L166.211 175.133L166.211 95.684L159.594 95.684ZM166.211 175.133L172.827 175.133L172.827 108.499L166.211 108.499ZM172.827 175.133L179.444 175.133L179.444 99.956L172.827 99.956ZM179.444 175.133L186.06 175.133L186.06 107.815L179.444 107.815ZM186.06 175.133L192.676 175.133L192.676 101.664L186.06 101.664ZM192.676 175.133L199.293 175.133L199.293 103.885L192.676 103.885ZM199.293 175.133L205.909 175.133L205.909 100.81L199.293 100.81ZM205.909 175.133L212.525 175.133L212.525 103.544L205.909 103.544ZM212.525 175.133L219.142 175.133L219.142 105.423L212.525 105.423ZM219.142 175.133L225.758 175.133L225.758 99.443L219.142 99.443ZM225.758 175.133L232.374 175.133L232.374 110.72L225.758 110.72ZM232.374 175.133L238.991 175.133L238.991 101.152L232.374 101.152ZM238.991 175.133L245.607 175.133L245.607 104.398L238.991 104.398ZM245.607 175.133L252.223 175.133L252.223 101.664L245.607 101.664ZM252.223 175.133L258.84 175.133L258.84 105.936L252.223 105.936ZM258.84 175.133L265.456 175.133L265.456 92.951L258.84 92.951ZM265.456 175.133L272.072 175.133L272.072 99.785L265.456 99.785ZM272.072 175.133L278.689 175.133L278.689 105.423L272.072 105.423ZM278.689 175.133L285.305 175.133L285.305 105.936L278.689 105.936ZM285.305 175.133L291.921 175.133L291.921 104.569L285.305 104.569ZM291.921 175.133L298.538 175.133L298.538 107.815L291.921 107.815ZM298.538 175.133L305.154 175.133L305.154 105.081L298.538 105.081ZM305.154 175.133L311.77 175.133L311.77 108.328L305.154 108.328ZM311.77 175.133L318.387 175.133L318.387 101.664L311.77 101.664ZM318.387 175.133L325.003 175.133L325.003 109.182L318.387 109.182ZM325.003 175.133L331.619 175.133L331.619 103.373L325.003 103.373ZM331.619 175.133L338.236 175.133L338.236 101.664L331.619 101.664ZM338.236 175.133L344.852 175.133L344.852 106.277L338.236 106.277ZM344.852 175.133L351.468 175.133L351.468 105.081L344.852 105.081ZM351.468 175.133L358.085 175.133L358.085 104.227L351.468 104.227ZM358.085 175.133L364.701 175.133L364.701 100.468L358.085 100.468ZM364.701 175.133L371.318 175.133L371.318 103.373L364.701 103.373ZM371.318 175.133L377.934 175.133L377.934 104.74L371.318 104.74ZM377.934 175.133L384.55 175.133L384.55 103.715L377.934 103.715ZM384.55 175.133L391.167 175.133L391.167 105.594L384.55 105.594ZM391.167 175.133L397.783 175.133L397.783 110.036L391.167 110.036ZM397.783 175.133L404.399 175.133L404.399 114.308L397.783 114.308ZM404.399 175.133L411.016 175.133L411.016 120.459L404.399 120.459ZM411.016 175.133L417.632 175.133L417.632 127.806L411.016 127.806ZM417.632 175.133L424.248 175.133L424.248 141.987L417.632 141.987ZM424.248 175.133L430.865 175.133L430.865 150.871L424.248 150.871ZM430.865 175.133L437.481 175.133L437.481 159.756L430.865 159.756ZM437.481 175.133L444.097 175.133L444.097 166.932L437.481 166.932ZM444.097 175.133L450.714 175.133L450.714 171.887L444.097 171.887ZM450.714 175.133L457.33 175.133L457.33 174.621L450.714 174.621Z" fill="#0072b2" fill-opacity="0.18" stroke="#0072b2" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="figure_panel-0-0_layer-1">
+            <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="2">
+              <path d="M107.764 175.133L107.764 72.583M417.566 175.133L417.566 72.583" fill="none" stroke="#0072b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="figure_panel-0-0_layer-2">
+            <g role="graphics-object" data-marey-role="series" aria-label="law of propagation" data-series="law of propagation" data-points="201">
+              <path d="M60.349 166.275L62.334 165.85L64.319 165.409L66.304 164.952L68.289 164.478L70.274 163.988L72.259 163.48L74.244 162.955L76.229 162.411L78.213 161.85L80.198 161.271L82.183 160.673L84.168 160.056L86.153 159.42L88.138 158.765L90.123 158.09L92.108 157.396L94.093 156.681L96.078 155.948L98.062 155.194L100.047 154.42L102.032 153.625L104.017 152.811L106.002 151.977L107.987 151.122L109.972 150.248L111.957 149.354L113.942 148.439L115.927 147.505L117.912 146.552L119.896 145.58L121.881 144.588L123.866 143.578L125.851 142.549L127.836 141.502L129.821 140.438L131.806 139.357L133.791 138.259L135.776 137.145L137.761 136.015L139.745 134.87L141.73 133.711L143.715 132.538L145.7 131.353L147.685 130.155L149.67 128.945L151.655 127.725L153.64 126.495L155.625 125.257L157.61 124.01L159.594 122.757L161.579 121.497L163.564 120.233L165.549 118.965L167.534 117.693L169.519 116.421L171.504 115.148L173.489 113.875L175.474 112.605L177.459 111.337L179.444 110.074L181.428 108.817L183.413 107.566L185.398 106.324L187.383 105.091L189.368 103.869L191.353 102.66L193.338 101.463L195.323 100.282L197.308 99.117L199.293 97.969L201.277 96.84L203.262 95.732L205.247 94.644L207.232 93.58L209.217 92.54L211.202 91.525L213.187 90.536L215.172 89.576L217.157 88.644L219.142 87.743L221.127 86.873L223.111 86.036L225.096 85.232L227.081 84.463L229.066 83.73L231.051 83.033L233.036 82.374L235.021 81.753L237.006 81.172L238.991 80.63L240.976 80.129L242.96 79.67L244.945 79.253L246.93 78.878L248.915 78.547L250.9 78.259L252.885 78.016L254.87 77.816L256.855 77.661L258.84 77.551L260.825 77.487L262.809 77.467L264.794 77.492L266.779 77.562L268.764 77.678L270.749 77.838L272.734 78.042L274.719 78.292L276.704 78.585L278.689 78.921L280.674 79.301L282.659 79.723L284.643 80.187L286.628 80.693L288.613 81.239L290.598 81.826L292.583 82.451L294.568 83.115L296.553 83.816L298.538 84.554L300.523 85.327L302.508 86.135L304.492 86.976L306.477 87.85L308.462 88.755L310.447 89.69L312.432 90.654L314.417 91.645L316.402 92.663L318.387 93.707L320.372 94.774L322.357 95.864L324.341 96.975L326.326 98.106L328.311 99.256L330.296 100.423L332.281 101.606L334.266 102.804L336.251 104.016L338.236 105.239L340.221 106.473L342.206 107.716L344.191 108.968L346.175 110.226L348.16 111.489L350.145 112.757L352.13 114.028L354.115 115.301L356.1 116.574L358.085 117.846L360.07 119.117L362.055 120.385L364.04 121.649L366.024 122.907L368.009 124.16L369.994 125.406L371.979 126.644L373.964 127.872L375.949 129.091L377.934 130.299L379.919 131.496L381.904 132.68L383.889 133.851L385.873 135.008L387.858 136.151L389.843 137.279L391.828 138.392L393.813 139.488L395.798 140.567L397.783 141.629L399.768 142.674L401.753 143.7L403.738 144.708L405.723 145.697L407.707 146.668L409.692 147.619L411.677 148.55L413.662 149.462L415.647 150.354L417.632 151.226L419.617 152.078L421.602 152.91L423.587 153.722L425.572 154.514L427.556 155.285L429.541 156.037L431.526 156.768L433.511 157.48L435.496 158.172L437.481 158.844L439.466 159.497L441.451 160.131L443.436 160.746L445.421 161.341L447.405 161.919L449.39 162.478L451.375 163.019L453.36 163.542L455.345 164.047L457.33 164.536" fill="none" stroke="#009e73" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+          <g id="figure_panel-0-0_layer-3">
+            <g role="graphics-object" data-marey-role="series" aria-label="series" data-series="" data-points="2">
+              <path d="M81.683 175.133L81.683 72.583M443.697 175.133L443.697 72.583" fill="none" stroke="#009e73" stroke-width="2" stroke-dasharray="5 3" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-x">
+          <g role="graphics-object" data-marey-role="axis" aria-label="y" data-side="bottom" data-unit="" data-prefix="" data-ticks="5" data-tick-rule="all">
+            <path d="M60.349 175.133L457.33 175.133" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M80.696 175.133L80.696 178.133M171.693 175.133L171.693 178.133M262.69 175.133L262.69 178.133M353.688 175.133L353.688 178.133M444.685 175.133L444.685 178.133" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="80.696" y="182.133" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">-20</text>
+            <text x="171.693" y="182.133" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">-10</text>
+            <text x="262.69" y="182.133" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">0</text>
+            <text x="353.688" y="182.133" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">10</text>
+            <text x="444.685" y="182.133" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">20</text>
+            <text x="258.84" y="200.233" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" dominant-baseline="hanging" fill="#14181f">y</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_axis-y">
+          <g role="graphics-object" data-marey-role="axis" aria-label="trials" data-side="left" data-unit="" data-prefix="" data-ticks="7" data-tick-rule="all">
+            <path d="M60.349 175.133L60.349 72.583" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <path d="M60.349 175.133L57.349 175.133M60.349 158.048L57.349 158.048M60.349 140.962L57.349 140.962M60.349 123.876L57.349 123.876M60.349 106.79L57.349 106.79M60.349 89.704L57.349 89.704M60.349 72.618L57.349 72.618" fill="none" stroke="#39414d" stroke-width="0.9"/>
+            <text x="53.349" y="175.133" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">0</text>
+            <text x="53.349" y="158.048" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">100</text>
+            <text x="53.349" y="140.962" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">200</text>
+            <text x="53.349" y="123.876" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">300</text>
+            <text x="53.349" y="106.79" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">400</text>
+            <text x="53.349" y="89.704" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">500</text>
+            <text x="53.349" y="72.618" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12" text-anchor="end" dominant-baseline="central" fill="#14181f">600</text>
+            <text x="26.333" y="123.858" transform="rotate(-90 26.333 123.858)" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="13.333" font-weight="500" text-anchor="middle" fill="#14181f">trials</text>
+          </g>
+        </g>
+        <g id="figure_panel-0-0_legend">
+          <g role="group" data-marey-role="legend" aria-label="legend" data-entries="2">
+            <path d="M168.09 286L349.589 286L349.589 242.567L168.09 242.567Z" fill="#ffffff" fill-opacity="0.9"/>
+            <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="Monte Carlo, 20000 trials" data-series="Monte Carlo, 20000 trials" data-color="#0072b2">
+              <path d="M175.09 258.94L193.09 258.94L193.09 251.91L175.09 251.91Z" fill="#0072b2"/>
+              <text x="201.09" y="255.425" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">Monte Carlo, 20000 trials</text>
+            </g>
+            <g role="graphics-object" data-marey-role="other:legend-entry" aria-label="law of propagation" data-series="law of propagation" data-color="#009e73">
+              <path d="M175.09 273.142L193.09 273.142" fill="none" stroke="#009e73" stroke-width="2" stroke-linecap="round"/>
+              <text x="201.09" y="273.142" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif" font-size="12.667" text-anchor="start" dominant-baseline="central" fill="#14181f">law of propagation</text>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

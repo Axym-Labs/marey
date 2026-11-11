@@ -56,6 +56,18 @@ let fitted () : Figure =
     |> Chart.withXLabel "extension"
     |> Chart.withYLabel "force"
 
+/// JCGM 101's additive model with one rectangular input ten times wider than the rest (9.2.4):
+/// the output is near rectangular, and the law of propagation's normal interval too long.
+let monteCarlo () : Figure =
+    let x i (u: float) = Uncertain.rectangular (sprintf "X%d" i) U.one 0.0 (u * sqrt 3.0)
+
+    MonteCarlo.model4 (fun a b c d -> a + b + c + d) (x 1 1.0) (x 2 1.0) (x 3 1.0) (x 4 10.0)
+    |> MonteCarlo.checkWith { MonteCarlo.defaults with Trials = 20_000; Adaptive = false }
+    |> Chart.monteCarlo
+    |> Chart.withTitle "One wide rectangular input"
+    |> Chart.withXLabel "y"
+    |> Chart.withYLabel "trials"
+
 type Reading =
     { Run: string
       Extension: Uncertain<m>
@@ -108,4 +120,5 @@ let svg: (string * (unit -> string)) list =
       "added", (fun () -> Chart.render SvgBackend.render surface (added ()))
       "block", (fun () -> Chart.render SvgBackend.render surface (block ()))
       "error-channels", (fun () -> Chart.render SvgBackend.render surface (channels ()))
-      "fit", (fun () -> Chart.render SvgBackend.render surface (fitted ())) ]
+      "fit", (fun () -> Chart.render SvgBackend.render surface (fitted ()))
+      "monte-carlo", (fun () -> Chart.render SvgBackend.render surface (monteCarlo ())) ]

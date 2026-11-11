@@ -108,6 +108,23 @@ module internal ChartAxis =
         let quiet (l: Layer) = if l.ShowInLegend && stated.Contains l.Name then { l with ShowInLegend = false } else l
         Chart.add { top with Panels = top.Panels |> Array.map (fun p -> { p with Layers = Array.map quiet p.Layers }) } fig
 
+/// The figure of a Monte Carlo check.
+module internal MonteCarloChart =
+
+    /// The law of propagation's density for the output: normal, or Student's t scaled by u at the
+    /// degrees of freedom its interval was read at.
+    let density (c: MonteCarloCheck<'u>) (x: float) : float =
+        let y = float c.Linear.Value
+        let u = float c.Linear.Uncertainty
+        let t = (x - y) / u
+        let nu = c.LinearInterval.Dof
+
+        if Double.IsPositiveInfinity nu then
+            exp (-0.5 * t * t) / (sqrt (2.0 * Math.PI) * u)
+        else
+            exp (Coverage.logGamma ((nu + 1.0) / 2.0) - Coverage.logGamma (nu / 2.0)) / (sqrt (nu * Math.PI) * u)
+            * Math.Pow(1.0 + t * t / nu, -(nu + 1.0) / 2.0)
+
 /// Charts of uncertain values. `open Marey` adds these to `Chart`.
 [<AutoOpen>]
 module UncertaintyCharts =
@@ -219,6 +236,79 @@ module UncertaintyCharts =
         /// spanned, `Chart.fitBand (Fit.line t x)`. The band is the uncertainty of the curve at each
         /// x, from all its coefficients together, and the legend says so.
         let fitBand (fit: IFittedCurve<'ux, 'uy>) : Figure = fitBandWith ErrorBars.Standard fit
+
+        /// **What a Monte Carlo check found, drawn**: a histogram of the model's values, the law
+        /// of propagation's distribution over it as a curve (normal, or t at its degrees of
+        /// freedom) in the next colour, and each method's coverage interval as a pair of vertical
+        /// lines in its colour, the linear one dashed. Where the curve and the bars part, the
+        /// model is too curved for the law of propagation. The histogram spans both intervals and
+        /// half as much again either side; the legend gives the share of values beyond it.
+        let monteCarlo (c: MonteCarloCheck<'u>) : Figure =
+            let y = float c.Linear.Value
+            let big = float c.LinearInterval.Expanded
+            let lo = min (float c.Low) (y - big)
+            let hi = max (float c.High) (y + big)
+            let pad = 0.5 * (hi - lo)
+            let first = float c.Values.[0]
+            let last = float c.Values.[c.Values.Length - 1]
+            let from, upto = max first (lo - pad), min last (hi + pad)
+            let from, upto = if upto > from then from, upto else lo - 1.0, hi + 1.0
+            let h = Stat.binIn c.Unit 60 (Parts.tag from, Parts.tag upto) c.Values
+            let width = float h.Width
+            let trials = float c.Values.Length
+            let outside = trials - float h.Total
+
+            let name =
+                let e = int (Math.Round(log10 trials))
+                let count = if Math.Pow(10.0, float e) = trials then "10" + Num.superscript e else string c.Values.Length
+                let beyond = if outside > 0.0 then ", " + Num.upTo 2 (100.0 * outside / trials) + " % beyond" else ""
+                "Monte Carlo, " + count + " trials" + beyond
+
+            let xs = Array.init 201 (fun i -> from + (upto - from) * float i / 200.0)
+            let curve = xs |> Array.map (fun x -> trials * width * MonteCarloChart.density c x)
+            let top = 1.05 * max (Array.max h.Frequencies) (Array.max curve)
+
+            let verticals (a: float) (b: float) : Series<'u, 1> * Geom =
+                let s: Series<'u, 1> =
+                    { Name = ""
+                      X = [| Parts.tag a; Parts.tag b |]
+                      Y = [| 0.0; 0.0 |]
+                      XScale = Scale.linear c.Unit (Parts.tag from, Parts.tag upto)
+                      YScale = Scale.linear U.one (0.0, top) }
+
+                s, Geom.segment s s.X [| top; top |]
+
+            let layerOf (g: Geom) (s: Series<'u, 1>) = (Chart.ofSeries g s).Panels.[0].Layers.[0]
+
+            let bars = Chart.ofHistogram h
+            let barLayer = { bars.Panels.[0].Layers.[0] with Name = name; ShowInLegend = true }
+            let mcSeries, mcGeom = verticals (float c.Low) (float c.High)
+            let mcLines = { layerOf mcGeom mcSeries with ShowInLegend = false }
+
+            let curveSeries: Series<'u, 1> =
+                { Name = ""
+                  X = Array.map Parts.tag xs
+                  Y = curve
+                  XScale = Scale.linear c.Unit (Parts.tag from, Parts.tag upto)
+                  YScale = Scale.linear U.one (0.0, top) }
+
+            let curveFigure = Chart.ofSeries GeomLine curveSeries
+            let curveLayer = { curveFigure.Panels.[0].Layers.[0] with Name = "law of propagation"; ShowInLegend = true }
+            let linSeries, linGeom = verticals (y - big) (y + big)
+            let linLines = layerOf linGeom linSeries
+
+            let linLines = { linLines with ShowInLegend = false }
+
+            let lower =
+                { bars with Panels = [| { bars.Panels.[0] with Layers = [| barLayer; mcLines |] } |] }
+
+            let upper =
+                { curveFigure with Panels = [| { curveFigure.Panels.[0] with Layers = [| curveLayer; linLines |] } |] }
+
+            // `Chart.add` gives the added layers the next colour's style, so the dash goes on
+            // after. A histogram leaves no corner free, so the legend goes below.
+            let fig = Chart.add upper lower |> Chart.withDash [ 5.0<px>; 3.0<px> ]
+            { fig with Panels = fig.Panels |> Array.map (fun p -> { p with Legend = LegendOutsideBottom }) }
 
         /// `fitBandWith` as the next series of a figure, in the next colour.
         let addFitBandWith (band: ErrorBars) (fit: IFittedCurve<'ux, 'uy>) (fig: Figure) : Figure =

@@ -9,11 +9,30 @@ type InputKind =
     | TypeA
     | TypeB
 
+/// The distribution an input's value is taken to follow (JCGM 101, 6.4): what a Monte Carlo check
+/// draws it from. The law of propagation uses only its standard deviation, the input's
+/// standard uncertainty.
+[<RequireQualifiedAccess>]
+type Distribution =
+    /// Gaussian, with the standard uncertainty as its standard deviation: a stated u, a certificate.
+    | Normal
+    /// Uniform within ± √3 u: a half-width, a resolution.
+    | Rectangular
+    /// Within ± √6 u and likeliest in the middle.
+    | Triangular
+    /// Within ± √2 u and likeliest at the ends: a quantity that oscillates between two limits,
+    /// such as a room's temperature under a thermostat.
+    | Arcsine
+    /// Student's t with the input's degrees of freedom, scaled by its standard uncertainty: the
+    /// mean of repeated readings (JCGM 101, 6.4.9). Its standard deviation is larger than u for
+    /// few readings, and undefined for three or fewer, which is what the readings say.
+    | StudentT
+
 /// **One elementary source of uncertainty**: a reading, a resolution, a calibration. It is made
 /// once and has an identity, so two results that both depend on it are known to be correlated
 /// through it.
 [<Sealed>]
-type Input internal (id: int, label: string, value: float, standard: float, dof: float, kind: InputKind, unit: IUnit) =
+type Input internal (id: int, label: string, value: float, standard: float, dof: float, kind: InputKind, distribution: Distribution, unit: IUnit) =
 
     /// Unique within a run, and increasing in the order inputs are made.
     member _.Id = id
@@ -31,6 +50,9 @@ type Input internal (id: int, label: string, value: float, standard: float, dof:
     member _.Dof = dof
 
     member _.Kind = kind
+
+    /// The distribution a Monte Carlo check draws the input from.
+    member _.Distribution = distribution
 
     member _.Unit = unit
 
@@ -544,20 +566,20 @@ module Budget =
 [<RequireQualifiedAccess>]
 module Uncertain =
 
-    let private make (label: string) (unit: U<'u>) (value: float<'u>) (u: float<'u>) (dof: float) (kind: InputKind) : Uncertain<'u> =
+    let private make (label: string) (unit: U<'u>) (value: float<'u>) (u: float<'u>) (dof: float) (kind: InputKind) (distribution: Distribution) : Uncertain<'u> =
         if Double.IsNaN(float u) || u < Parts.tag 0.0 then
             invalidArg "u" (sprintf "Marey: a standard uncertainty is zero or positive, and %s was given %g." (if label = "" then "an input" else "\"" + label + "\"") (float u))
 
         if Double.IsNaN dof || dof <= 0.0 then
             invalidArg "dof" (sprintf "Marey: degrees of freedom are positive, and these are %g." dof)
 
-        let input = Input(Parts.nextId (), label, float value, float u, dof, kind, unit)
+        let input = Input(Parts.nextId (), label, float value, float u, dof, kind, distribution, unit)
         Uncertain(value, unit, [| input |], [| float u |])
 
     /// An input whose standard uncertainty is stated: `Uncertain.standard "Length" U.metre 1.000<m> 0.002<m>`.
     /// The uncertainty is taken as exactly known (infinite degrees of freedom) until `withDof` says otherwise.
     let standard (label: string) (unit: U<'u>) (value: float<'u>) (u: float<'u>) : Uncertain<'u> =
-        make label unit value u Double.PositiveInfinity InputKind.TypeB
+        make label unit value u Double.PositiveInfinity InputKind.TypeB Distribution.Normal
 
     /// Repeated readings of one quantity, a type A evaluation (GUM 4.2): the mean, with the
     /// experimental standard deviation of the mean s/√n and n − 1 degrees of freedom.
@@ -570,22 +592,27 @@ module Uncertain =
         let n = float xs.Length
         let mean = Array.sum xs / n
         let s2 = Array.sumBy (fun x -> (x - mean) * (x - mean)) xs / (n - 1.0)
-        make label unit (Parts.tag mean) (Parts.tag (sqrt (s2 / n))) (n - 1.0) InputKind.TypeA
+        make label unit (Parts.tag mean) (Parts.tag (sqrt (s2 / n))) (n - 1.0) InputKind.TypeA Distribution.StudentT
 
     /// A value known to lie within ± `halfWidth` with no place in between more likely than
     /// another (GUM 4.3.7): the standard uncertainty is a/√3.
     let rectangular (label: string) (unit: U<'u>) (value: float<'u>) (halfWidth: float<'u>) : Uncertain<'u> =
-        make label unit value (abs halfWidth / sqrt 3.0) Double.PositiveInfinity InputKind.TypeB
+        make label unit value (abs halfWidth / sqrt 3.0) Double.PositiveInfinity InputKind.TypeB Distribution.Rectangular
 
     /// A value within ± `halfWidth` and likelier near the middle (GUM 4.3.9): a/√6.
     let triangular (label: string) (unit: U<'u>) (value: float<'u>) (halfWidth: float<'u>) : Uncertain<'u> =
-        make label unit value (abs halfWidth / sqrt 6.0) Double.PositiveInfinity InputKind.TypeB
+        make label unit value (abs halfWidth / sqrt 6.0) Double.PositiveInfinity InputKind.TypeB Distribution.Triangular
+
+    /// A value that swings between ± `halfWidth` and spends most of its time near the ends, as a
+    /// temperature under a thermostat does (JCGM 101, 6.4.6): a/√2.
+    let arcsine (label: string) (unit: U<'u>) (value: float<'u>) (halfWidth: float<'u>) : Uncertain<'u> =
+        make label unit value (abs halfWidth / sqrt 2.0) Double.PositiveInfinity InputKind.TypeB Distribution.Arcsine
 
     /// A reading from a scale or a display whose smallest step is `step`: the last digit of a
     /// ruler read to 1 mm. The value lies within half a step either way, so the standard
     /// uncertainty is step/√12.
     let resolution (label: string) (unit: U<'u>) (value: float<'u>) (step: float<'u>) : Uncertain<'u> =
-        make label unit value (abs step / sqrt 12.0) Double.PositiveInfinity InputKind.TypeB
+        make label unit value (abs step / sqrt 12.0) Double.PositiveInfinity InputKind.TypeB Distribution.Rectangular
 
     /// A value from a certificate that states an expanded uncertainty `expanded` and its coverage
     /// factor `k` (GUM 4.3.3): the standard uncertainty is U/k.
@@ -593,12 +620,12 @@ module Uncertain =
         if not (k > 0.0) then
             invalidArg "k" (sprintf "Marey: a coverage factor is positive, and \"%s\" was given %g." label k)
 
-        make label unit value (abs expanded / k) Double.PositiveInfinity InputKind.TypeB
+        make label unit value (abs expanded / k) Double.PositiveInfinity InputKind.TypeB Distribution.Normal
 
     /// A value from a certificate that states an expanded uncertainty and a coverage probability
     /// (`0.95`) in place of a factor: the factor is taken from the normal distribution (GUM 4.3.4).
     let certificateAt (label: string) (unit: U<'u>) (value: float<'u>) (expanded: float<'u>) (coverage: float) : Uncertain<'u> =
-        make label unit value (abs expanded / Coverage.normal coverage) Double.PositiveInfinity InputKind.TypeB
+        make label unit value (abs expanded / Coverage.normal coverage) Double.PositiveInfinity InputKind.TypeB Distribution.Normal
 
     /// A value with no uncertainty that still names its unit.
     let exact (unit: U<'u>) (value: float<'u>) : Uncertain<'u> = Uncertain(value, unit, [||], [||])
@@ -619,7 +646,7 @@ module Uncertain =
     /// input, so values already computed from the old one do not share it.
     let withDof (dof: float) (x: Uncertain<'u>) : Uncertain<'u> =
         let input = elementary "Uncertain.withDof" x
-        make input.Label x.Unit x.Value (Parts.tag input.Standard) dof input.Kind
+        make input.Label x.Unit x.Value (Parts.tag input.Standard) dof input.Kind input.Distribution
 
     /// Declares two inputs correlated with coefficient `r`, for inputs that vary together without a
     /// cause the model names. Where the cause is known (one calibration behind two readings), make

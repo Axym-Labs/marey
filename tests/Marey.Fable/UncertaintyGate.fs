@@ -69,6 +69,42 @@ let private fit () : string list =
       yield! near "u(b(30 °C))" 5e-5 0.0041 (float at30.Uncertainty)
       yield! near "ν(b(30 °C))" 1e-9 9.0 dof ]
 
+/// Monte Carlo checks drawn under JavaScript as .NET draws them: the generator, every shape of
+/// input, the t's gamma draw and the correlated normals give the same values to the last bits a
+/// sum and a sort can move.
+let private monteCarlo () : string list =
+    let near (name: string) (expected: float) (actual: float) =
+        if abs (expected - actual) <= 1e-12 * max 1.0 (abs expected) then []
+        else [ sprintf "%s: expected %.17g, got %.17g" name expected actual ]
+
+    let fixedAt n = { MonteCarlo.defaults with Trials = n; Adaptive = false }
+
+    let same (name: string) (e: float, u: float, lo: float, hi: float) (c: MonteCarloCheck<'u>) =
+        near (name + " y") e (float c.Estimate)
+        @ near (name + " u") u (float c.Uncertainty)
+        @ near (name + " low") lo (float c.Low)
+        @ near (name + " high") hi (float c.High)
+
+    let x i (u: float) = Uncertain.rectangular (sprintf "X%d" i) U.one 0.0 (u * sqrt 3.0)
+
+    let rectangular =
+        MonteCarlo.model4 (fun a b c d -> a + b + c + d) (x 1 1.0) (x 2 1.0) (x 3 1.0) (x 4 10.0)
+        |> MonteCarlo.checkWith (fixedAt 20_000)
+
+    let t = Uncertain.ofReadings "t" U.second [ 2.01<s>; 2.00<s>; 2.01<s>; 2.02<s>; 2.00<s> ]
+    let w = Uncertain.triangular "w" U.metre 1.0<m> 0.01<m>
+    let studentT = MonteCarlo.model2 (fun w t -> w / (t * t)) w t |> MonteCarlo.checkWith (fixedAt 20_000)
+
+    let a = Uncertain.standard "a" U.metre 1.0<m> 0.3<m>
+    let b = Uncertain.arcsine "b" U.metre 1.0<m> 0.4<m>
+    let c = Uncertain.standard "c" U.metre 2.0<m> 0.2<m>
+    Uncertain.correlate 0.6 a c
+    let correlated = MonteCarlo.model3 (fun a b c -> a * b - c * c) a b c |> MonteCarlo.checkWith (fixedAt 20_000)
+
+    same "rectangular" (-0.12578658620837571, 10.179455013745223, -17.025326882022306, 17.019787020572608) rectangular
+    @ same "t" (0.24799689553979687, 0.0016835995572727185, 0.24477024720775697, 0.25120515024241197) studentT
+    @ same "correlated" (-3.0477660979609884, 0.72985212303251135, -4.5768076758004863, -1.7108083024589278) correlated
+
 /// The failures, by description; empty when the gate holds.
 let check () : string list =
     let near (name: string) (tolerance: float) (expected: float) (actual: float) =
@@ -103,4 +139,5 @@ let check () : string list =
       if (sqrt (l * l)).Unit.Symbol <> "m" then
           yield "the witness of sqrt (l · l) is not the metre"
       yield! reports ()
-      yield! fit () ]
+      yield! fit ()
+      yield! monteCarlo () ]

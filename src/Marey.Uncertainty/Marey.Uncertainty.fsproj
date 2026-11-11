@@ -20,6 +20,8 @@
     <Compile Include="Report.fs" />
     <Compile Include="Uncertain.fs" />
     <Compile Include="Fit.fs" />
+    <Compile Include="Sampling.fs" />
+    <Compile Include="MonteCarlo.fs" />
     <!-- The charts: what the package takes from Plot. -->
     <Compile Include="Charts.fs" />
   </ItemGroup>
