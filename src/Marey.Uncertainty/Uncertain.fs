@@ -37,6 +37,11 @@ type Input internal (id: int, label: string, value: float, standard: float, dof:
     /// The inputs this one was declared correlated with, by identity, and the coefficients.
     member val internal Correlated: (int * float) list = [] with get, set
 
+    /// The one estimate of a variance this input's uncertainty shares with others, by an identity
+    /// of its own: the scatter about a fit, estimated once from all its residuals and standing
+    /// behind each point's uncertainty. Zero for an input that shares none.
+    member val internal Pool: int = 0 with get, set
+
     override _.ToString() = if label = "" then sprintf "input %d" id else label
 
 /// The effective degrees of freedom of a result (GUM G.4, the Welch–Satterthwaite formula), or
@@ -166,7 +171,10 @@ module internal Parts =
 
     let inline tag<[<Measure>] 'u> (x: float) : float<'u> = LanguagePrimitives.FloatWithMeasure<'u> x
 
-    /// The Welch–Satterthwaite formula (GUM G.4.1), which assumes independent inputs.
+    /// The Welch–Satterthwaite formula (GUM G.4.1), which assumes independent inputs. Inputs
+    /// whose uncertainties rest on one estimate of a variance enter it as one term, the sum of
+    /// their squared contributions with that estimate's degrees of freedom: they are one
+    /// chi-squared variable, not several.
     let effectiveDof (inputs: Input[]) (parts: float[]) : EffectiveDof =
         if correlated inputs parts then
             EffectiveDof.Undefined
@@ -174,13 +182,22 @@ module internal Parts =
         else
             let mutable denominator = 0.0
             let mutable variance = 0.0
+            let mutable pools: Map<int, float * float> = Map.empty
 
             for i in 0 .. inputs.Length - 1 do
                 let p2 = parts.[i] * parts.[i]
                 variance <- variance + p2
+                let input = inputs.[i]
 
                 if p2 > 0.0 then
-                    denominator <- denominator + p2 * p2 / inputs.[i].Dof
+                    if input.Pool = 0 then
+                        denominator <- denominator + p2 * p2 / input.Dof
+                    else
+                        let sum = match pools.TryFind input.Pool with Some(s, _) -> s | None -> 0.0
+                        pools <- pools.Add(input.Pool, (sum + p2, input.Dof))
+
+            for KeyValue(_, (p2, dof)) in pools do
+                denominator <- denominator + p2 * p2 / dof
 
             if denominator = 0.0 then
                 EffectiveDof.Known Double.PositiveInfinity

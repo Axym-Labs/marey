@@ -19,6 +19,7 @@
     <!-- Before the type: its ToString is a report. -->
     <Compile Include="Report.fs" />
     <Compile Include="Uncertain.fs" />
+    <Compile Include="Fit.fs" />
     <!-- The charts: what the package takes from Plot. -->
     <Compile Include="Charts.fs" />
   </ItemGroup>

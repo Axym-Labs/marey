@@ -45,6 +45,17 @@ let added () : Figure =
     |> Chart.addErrorbars (Uncertain.exactly t) (run 1.5)
     |> Chart.withName "run 2"
 
+/// The spring's line, fitted with both axes' uncertainties, over its points: the band is the
+/// line's standard uncertainty.
+let fitted () : Figure =
+    let extension, force = spring ()
+
+    Chart.errorbars extension force
+    |> Chart.addFitBand (Fit.line extension force)
+    |> Chart.withTitle "A spring and its line"
+    |> Chart.withXLabel "extension"
+    |> Chart.withYLabel "force"
+
 type Reading =
     { Run: string
       Extension: Uncertain<m>
@@ -96,4 +107,5 @@ let svg: (string * (unit -> string)) list =
       "coverage", (fun () -> Chart.render SvgBackend.render surface (coverage ()))
       "added", (fun () -> Chart.render SvgBackend.render surface (added ()))
       "block", (fun () -> Chart.render SvgBackend.render surface (block ()))
-      "error-channels", (fun () -> Chart.render SvgBackend.render surface (channels ())) ]
+      "error-channels", (fun () -> Chart.render SvgBackend.render surface (channels ()))
+      "fit", (fun () -> Chart.render SvgBackend.render surface (fitted ())) ]

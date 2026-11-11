@@ -43,6 +43,32 @@ let private reports () : string list =
       yield! same "siunitx" "\\qty{9.804(59)}{\\metre\\per\\second\\squared}" (Uncertain.reportWith { Uncertain.reportFormat with Style = Siunitx } g)
       yield! same "budget" budget (Budget.text (Uncertain.budget g)) ]
 
+/// GUM H.3's thermometer line, from the scatter of eleven exact points, as .NET fits it.
+let private fit () : string list =
+    let near (name: string) (tolerance: float) (expected: float) (actual: float) =
+        if abs (expected - actual) <= tolerance then [] else [ sprintf "%s: expected %.12g, got %.12g" name expected actual ]
+
+    let t = [| 21.521; 22.012; 22.512; 23.003; 23.507; 23.999; 24.513; 25.002; 25.503; 26.010; 26.511 |]
+    let b = [| -0.171; -0.169; -0.166; -0.159; -0.164; -0.165; -0.156; -0.157; -0.159; -0.161; -0.160 |]
+    let readings = U.kelvin.Of(t |> Array.map (fun c -> (c + 273.15) * 1.0<K>))
+    let corrections = U.kelvin.Of(b |> Array.map (fun c -> c * 1.0<K>))
+    let line = Fit.lineAbout 293.15<K> (Uncertain.exactly readings) (Uncertain.exactly corrections)
+    let at30 = line.At 303.15<K>
+
+    let dof =
+        match Uncertain.dof at30 with
+        | EffectiveDof.Known nu -> nu
+        | EffectiveDof.Undefined _ -> nan
+
+    [ yield! near "y₁" 5e-5 -0.1712 (float line.Intercept.Value)
+      yield! near "u(y₁)" 5e-5 0.0029 (float line.Intercept.Uncertainty)
+      yield! near "y₂" 5e-6 0.00218 (float line.Slope.Value)
+      yield! near "u(y₂)" 5e-6 0.00067 (float line.Slope.Uncertainty)
+      yield! near "r(y₁, y₂)" 5e-4 -0.930 (Uncertain.correlation line.Intercept line.Slope)
+      yield! near "b(30 °C)" 5e-5 -0.1494 (float at30.Value)
+      yield! near "u(b(30 °C))" 5e-5 0.0041 (float at30.Uncertainty)
+      yield! near "ν(b(30 °C))" 1e-9 9.0 dof ]
+
 /// The failures, by description; empty when the gate holds.
 let check () : string list =
     let near (name: string) (tolerance: float) (expected: float) (actual: float) =
@@ -76,4 +102,5 @@ let check () : string list =
       yield! near "k(0.95)" 5e-7 1.959964 (Coverage.normal 0.95)
       if (sqrt (l * l)).Unit.Symbol <> "m" then
           yield "the witness of sqrt (l · l) is not the metre"
-      yield! reports () ]
+      yield! reports ()
+      yield! fit () ]

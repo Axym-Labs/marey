@@ -76,8 +76,8 @@ module internal ChartAxis =
             (Array.init axis.Values.Length (fun i -> axis.Values.[i] - axis.Bars.[i]))
             (Array.init axis.Values.Length (fun i -> axis.Values.[i] + axis.Bars.[i]))
 
-    /// What the legend says the bars are.
-    let describe (bars: ErrorBars) (factors: float[]) : string =
+    /// What the legend says the bars are, or a band: `of` names whose uncertainty it is.
+    let describeOf (subject: string) (bars: ErrorBars) (factors: float[]) : string =
         let percent (p: float) = Num.upTo 2 (100.0 * p) + " %"
 
         let k () =
@@ -88,10 +88,25 @@ module internal ChartAxis =
                 let hi = Num.fixedPoint 2 (Array.max factors)
                 if lo = hi then ", k = " + lo else ", k = " + lo + " to " + hi
 
+        let subject = if subject = "" then "" else " of " + subject
+
         match bars with
-        | ErrorBars.Standard -> "standard uncertainty"
-        | ErrorBars.Coverage p -> "expanded uncertainty" + k () + " (" + percent p + ")"
-        | ErrorBars.CoverageAssumingNormal p -> "expanded uncertainty" + k () + " (" + percent p + ", normal)"
+        | ErrorBars.Standard -> "standard uncertainty" + subject
+        | ErrorBars.Coverage p -> "expanded uncertainty" + subject + k () + " (" + percent p + ")"
+        | ErrorBars.CoverageAssumingNormal p -> "expanded uncertainty" + subject + k () + " (" + percent p + ", normal)"
+
+    /// What the legend says the bars are.
+    let describe (bars: ErrorBars) (factors: float[]) : string = describeOf "" bars factors
+
+    /// `top` as the next series of `fig`, without a statement the figure's legend already makes.
+    let addQuietly (top: Figure) (fig: Figure) : Figure =
+        let stated =
+            match Array.tryLast fig.Panels with
+            | Some p -> p.Layers |> Array.filter (fun l -> l.ShowInLegend) |> Array.map (fun l -> l.Name) |> Set.ofArray
+            | None -> Set.empty
+
+        let quiet (l: Layer) = if l.ShowInLegend && stated.Contains l.Name then { l with ShowInLegend = false } else l
+        Chart.add { top with Panels = top.Panels |> Array.map (fun p -> { p with Layers = Array.map quiet p.Layers }) } fig
 
 /// Charts of uncertain values. `open Marey` adds these to `Chart`.
 [<AutoOpen>]
@@ -156,20 +171,61 @@ module UncertaintyCharts =
 
         /// `errorbarsWith` as the next series of a figure, in the next colour.
         let addErrorbarsWith (bars: ErrorBars) (x: seq<Uncertain<'ux>>) (y: seq<Uncertain<'uy>>) (fig: Figure) : Figure =
-            let top = errorbarsWith bars x y
-
-            // A statement the figure's legend already makes is not made a second time.
-            let stated =
-                match Array.tryLast fig.Panels with
-                | Some p -> p.Layers |> Array.filter (fun l -> l.ShowInLegend) |> Array.map (fun l -> l.Name) |> Set.ofArray
-                | None -> Set.empty
-
-            let quiet (l: Layer) = if l.ShowInLegend && stated.Contains l.Name then { l with ShowInLegend = false } else l
-            Chart.add { top with Panels = top.Panels |> Array.map (fun p -> { p with Layers = Array.map quiet p.Layers }) } fig
+            ChartAxis.addQuietly (errorbarsWith bars x y) fig
 
         /// `errorbars` as the next series of a figure, in the next colour.
         let addErrorbars (x: seq<Uncertain<'ux>>) (y: seq<Uncertain<'uy>>) (fig: Figure) : Figure =
             addErrorbarsWith ErrorBars.Standard x y fig
+
+        /// `fitBand` with a choice of what the band spans: `Chart.fitBandWith (ErrorBars.Coverage 0.95) fit`,
+        /// its factor read at the curve's effective degrees of freedom.
+        let fitBandWith (band: ErrorBars) (fit: IFittedCurve<'ux, 'uy>) : Figure =
+            let lo, hi = fit.Span
+            let count = 101
+            let xs = Array.init count (fun i -> lo + (hi - lo) * (float i / float (count - 1)))
+            let axis = ChartAxis.ofValues band (Array.map fit.ValueAt xs)
+            let low = Array.init count (fun i -> axis.Values.[i] - axis.Bars.[i])
+            let high = Array.init count (fun i -> axis.Values.[i] + axis.Bars.[i])
+            let domain (span: float<'u>[]) = Scale.paddedDomain 0.05 span |> Option.defaultValue (Parts.tag 0.0, Parts.tag 1.0)
+
+            let s: Series<'ux, 'uy> =
+                { Name = ""
+                  X = xs
+                  Y = axis.Values
+                  XScale = Scale.linear fit.XWitness (domain xs)
+                  YScale = Scale.linear axis.Unit (domain (Array.append low high)) }
+
+            let line = Chart.ofSeries GeomLine s
+            let lineLayer = { line.Panels.[0].Layers.[0] with ShowInLegend = false }
+
+            // The band under the curve, carrying the statement; the curve last, so a name given
+            // to the series afterwards is its.
+            let layers =
+                if ChartAxis.hasBars axis then
+                    let bandLayer = (Chart.ofSeries (Geom.ribbon s low high) s).Panels.[0].Layers.[0]
+
+                    [| { bandLayer with Name = ChartAxis.describeOf "the fit" band axis.Factors; ShowInLegend = true }
+                       lineLayer |]
+                else
+                    [| lineLayer |]
+
+            { line with
+                Panels =
+                    [| { line.Panels.[0] with
+                           Layers = layers
+                           Legend = LegendBest } |] }
+
+        /// **A fitted curve with the band of its standard uncertainty** over the x its points
+        /// spanned, `Chart.fitBand (Fit.line t x)`. The band is the uncertainty of the curve at each
+        /// x, from all its coefficients together, and the legend says so.
+        let fitBand (fit: IFittedCurve<'ux, 'uy>) : Figure = fitBandWith ErrorBars.Standard fit
+
+        /// `fitBandWith` as the next series of a figure, in the next colour.
+        let addFitBandWith (band: ErrorBars) (fit: IFittedCurve<'ux, 'uy>) (fig: Figure) : Figure =
+            ChartAxis.addQuietly (fitBandWith band fit) fig
+
+        /// `fitBand` as the next series of a figure: `Chart.errorbars t x |> Chart.addFitBand fit`.
+        let addFitBand (fit: IFittedCurve<'ux, 'uy>) (fig: Figure) : Figure = addFitBandWith ErrorBars.Standard fit fig
 
 /// The `plot` block's channels for uncertain values. `open Marey` adds them to the block.
 [<AutoOpen>]

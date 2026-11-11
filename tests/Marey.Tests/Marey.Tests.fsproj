@@ -70,6 +70,7 @@
     <Compile Include="StatTests.fs" />
     <Compile Include="../Shared/UncertaintyScenes.fs" Link="UncertaintyScenes.fs" />
     <Compile Include="UncertaintyTests.fs" />
+    <Compile Include="UncertaintyFitTests.fs" />
     <Compile Include="FacetTests.fs" />
     <Compile Include="CompositionTests.fs" />
     <Compile Include="GeomTests.fs" />
