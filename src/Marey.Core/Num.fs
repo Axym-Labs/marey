@@ -34,13 +34,14 @@ open System.Numerics
 //     a document that then fails to parse, or "inf" into a TeX dimension.
 //
 //   * No rounding and no formatting is left to the platform. Under Fable the "same
-//     compiler" is JavaScript's arithmetic, and the two runtimes disagree on exact halves:
-//     Fable reads `Math.Round(x, MidpointRounding.AwayFromZero)` as rounding to one decimal
-//     place, ignores the mode in `Math.Round(x, d, mode)`, calls anything within 10⁻⁸ of a half
-//     a tie in `Math.Round(x)`, and JavaScript's `toFixed` rounds a
-//     half the other way from .NET's "F". So rounding is done here, in operations IEEE 754
-//     makes exact on both, and each function below reproduces what .NET produced before it,
-//     which is what keeps every golden byte-identical.
+//     compiler" is JavaScript's arithmetic, and before Fable 5.27 the two runtimes disagreed on
+//     exact halves: Fable read `Math.Round(x, MidpointRounding.AwayFromZero)` as rounding to one
+//     decimal place, ignored the mode in `Math.Round(x, d, mode)`, called anything within 10⁻⁸
+//     of a half a tie in `Math.Round(x)`, and formatted "F" with JavaScript's `toFixed`, which
+//     rounds a half the other way from .NET. 5.27 fixes all four, but the packages carry their
+//     sources and a Fable app compiles them with its own Fable, which may be older. So rounding
+//     is done here, in operations IEEE 754 makes exact on both, and each function below
+//     reproduces what .NET produced before it, which is what keeps every golden byte-identical.
 //
 // Zero dependencies, so this costs `Marey.Core` nothing.
 // ======================================================================================
@@ -63,8 +64,8 @@ module Num =
         if abs (x - t) >= 0.5 then t + float (sign x) else t
 
     /// The nearest integer, a half rounded to the even one. `Math.Round(x)` without the platform
-    ///: Fable's version calls anything within 10⁻⁸ of a half a tie, so it rounds 2.500000001
-    /// down and 3.4999999999 up. The fraction is exact, so a tie here is an exact half.
+    ///: Fable's version before 5.27 calls anything within 10⁻⁸ of a half a tie, so it rounds
+    /// 2.500000001 down and 3.4999999999 up. The fraction is exact, so a tie here is an exact half.
     let roundEven (x: float) : float =
         let t = Math.Truncate x
         let f = abs (x - t)

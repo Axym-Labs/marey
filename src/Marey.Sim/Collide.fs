@@ -240,8 +240,8 @@ module Collide =
         | Box.Periodic(w, hgt) ->
             let w = float w
             let hgt = float hgt
-            // `floor (x + 0.5)` rather than `Math.Round`, which Fable rounds differently near a
-            // half, and ties to even on .NET.
+            // `floor (x + 0.5)` rather than `Math.Round`, which Fable before 5.27 rounds
+            // differently near a half, and ties to even on .NET.
             dx <- dx - w * floor (dx / w + 0.5)
             dy <- dy - hgt * floor (dy / hgt + 0.5)
         | _ -> ()
