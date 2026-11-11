@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <!-- Compiles under Fable like Core, on which alone it depends. -->
+    <!-- Compiles under Fable like Core and Units, on which it depends. -->
     <MareyFable>true</MareyFable>
     <!-- Not published yet: the surface is still being built, and a release must not pick it up
          half made. Remove this line, and add the project to the `Marey` metapackage and to the
@@ -16,11 +16,14 @@
 
   <ItemGroup>
     <Compile Include="Coverage.fs" />
+    <!-- Before the type: its ToString is a report. -->
+    <Compile Include="Report.fs" />
     <Compile Include="Uncertain.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
+    <ProjectReference Include="..\Marey.Units\Marey.Units.fsproj" />
   </ItemGroup>
 
 </Project>

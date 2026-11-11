@@ -342,6 +342,207 @@ let ``GUM H.2, correlated inputs`` () =
     near 1e-9 (Coverage.normal 0.95 * float resistance.Uncertainty) (float (Uncertain.expandedAssumingNormal 0.95 resistance).Expanded)
 
 // ======================================================================================
+// Inputs as a lab names them
+// ======================================================================================
+
+[<Fact>]
+let ``repeated readings are a type A input`` () =
+    let t = Uncertain.ofReadings "Period" U.second [ 2.01<s>; 2.00<s>; 2.01<s> ]
+    near 1e-12 (6.02 / 3.0) (float t.Value)
+    // s = 0.01 s / √3 over three readings, so s/√n is a third of 0.01 s.
+    near 1e-12 (0.01 / 3.0) (float t.Uncertainty)
+    let input, _ = (Uncertain.contributions t).[0]
+    Assert.Equal(2.0, input.Dof)
+    Assert.Equal(InputKind.TypeA, input.Kind)
+    Assert.Equal("Period", input.Label)
+    Assert.Throws<ArgumentException>(fun () -> Uncertain.ofReadings "One" U.second [ 2.0<s> ] |> ignore) |> ignore
+
+[<Fact>]
+let ``type B inputs divide by what their distribution says`` () =
+    let u (x: Uncertain<m>) = float x.Uncertainty
+    near 1e-15 (1e-3 / sqrt 12.0) (u (Uncertain.resolution "Ruler" U.metre 1.000<m> 1e-3<m>))
+    near 1e-15 (2e-3 / sqrt 3.0) (u (Uncertain.rectangular "Tolerance" U.metre 1.000<m> 2e-3<m>))
+    near 1e-15 (2e-3 / sqrt 6.0) (u (Uncertain.triangular "Tolerance" U.metre 1.000<m> 2e-3<m>))
+    near 1e-15 0.025e-6 (u (Uncertain.certificate "Gauge" U.metre 0.05<m> 0.075e-6<m> 3.0))
+    // GUM 4.3.4: a 95 % interval is 1.960 standard deviations wide.
+    near 1e-7 (0.5 / 1.959964) (u (Uncertain.certificateAt "Gauge" U.metre 1.0<m> 0.5<m> 0.95))
+    let input, _ = (Uncertain.contributions (Uncertain.resolution "Ruler" U.metre 1.000<m> 1e-3<m>)).[0]
+    Assert.Equal(InputKind.TypeB, input.Kind)
+    Assert.True(Double.IsPositiveInfinity input.Dof)
+    Assert.Throws<ArgumentException>(fun () -> Uncertain.certificate "Gauge" U.metre 1.0<m> 0.1<m> 0.0 |> ignore) |> ignore
+
+[<Fact>]
+let ``apply takes a function arithmetic does not reach`` () =
+    let x = Uncertain.standard "x" U.one 0.37 1e-3
+    let viaApply = Uncertain.apply U.one (fun v -> sin v) x
+    near 1e-15 (sin 0.37) viaApply.Value
+    // The slope is a secant over ± u, a part in 10⁷ from the tangent here.
+    near 1e-9 (sin x).Uncertainty viaApply.Uncertainty
+    // The result still depends on x, and knows it.
+    near 1e-9 0.0 (viaApply - sin x).Uncertainty
+    Assert.Equal(0.0, (viaApply - viaApply).Uncertainty)
+
+    let l = Uncertain.standard "Length" U.metre 2.0<m> 0.1<m>
+    let w = Uncertain.standard "Width" U.metre 3.0<m> 0.2<m>
+    let area: Uncertain<m^2> = Uncertain.apply2 (U.square U.metre) (fun a b -> a * b) l w
+    near 1e-12 (float (l * w).Uncertainty) (float area.Uncertainty)
+    near 1e-12 0.0 (float (area - l * w).Uncertainty)
+    near 1e-15 (0.1 / 2.0) (Uncertain.relative l)
+
+// ======================================================================================
+// Reporting
+// ======================================================================================
+
+/// The gram under the kilogram's measure: the unit the GUM's example is in.
+let private gram: U<kg> = U.scaled "g" 1e-3 U.kilogram
+
+/// GUM 7.2.2: m_S = 100.021 47 g with u_c = 0.35 mg, in the forms the text numbers 2 to 4.
+[<Fact>]
+let ``GUM 7.2.2, the forms of a result`` () =
+    let m = Uncertain.standard "m_S" gram 100.02147<kg> 0.00035<kg>
+    let inForm form = Uncertain.reportWith { Uncertain.reportFormat with Form = form } m
+    Assert.Equal("100.02147(35) g", Uncertain.report m)
+    Assert.Equal("100.02147(35) g", string m)
+    Assert.Equal("100.02147(0.00035) g", inForm ReportForm.Explicit)
+    Assert.Equal("(100.02147 ± 0.00035) g", inForm ReportForm.PlusMinus)
+
+/// GUM 7.2.4: the same mass with U = 0.79 mg from k = 2.26, Student's t at 9 degrees of
+/// freedom and 95 %.
+[<Fact>]
+let ``GUM 7.2.4, an expanded uncertainty states what it rests on`` () =
+    let m = Uncertain.standard "m_S" gram 100.02147<kg> 0.00035<kg> |> Uncertain.withDof 9.0
+    Assert.Equal("(100.02147 ± 0.00079) g (k = 2.26, 95 %, ν = 9)", Uncertain.reportExpanded (Uncertain.expanded 0.95 m))
+
+    Assert.Equal(
+        "(100.02147 ± 0.00069) g (k = 1.96, 95 %, ν = ∞)",
+        Uncertain.reportExpanded (Uncertain.expandedAssumingNormal 0.95 m)
+    )
+
+[<Theory>]
+// GUM 7.2.6: at most two significant digits, and the estimate rounded to match: 10.057 62 Ω with
+// 27 mΩ is 10.058 Ω, and 28.05 kHz is 28 kHz.
+[<InlineData(10.05762, 0.027, "10.058(27)", "10.058 ± 0.027")>]
+[<InlineData(28050.0, 28.05, "28050(28)", "28050 ± 28")>]
+// A second digit that rounds up to a third moves the place.
+[<InlineData(5.0, 0.0996, "5.00(10)", "5.00 ± 0.10")>]
+// Across the decimal point the parentheses keep it, and past it the zeros stay.
+[<InlineData(12.34, 1.23, "12.3(1.2)", "12.3 ± 1.2")>]
+[<InlineData(1234.0, 120.0, "1230(120)", "1230 ± 120")>]
+[<InlineData(-0.5, 0.12, "-0.50(12)", "-0.50 ± 0.12")>]
+[<InlineData(-0.0001, 0.04, "0.000(40)", "0.000 ± 0.040")>]
+[<InlineData(0.001234, 0.000056, "0.001234(56)", "0.001234 ± 0.000056")>]
+// Outside 10⁻⁴ to 10⁶ a power of ten is taken out.
+[<InlineData(6.62607e-34, 1.2e-38, "6.62607(12) × 10⁻³⁴", "(6.62607 ± 0.00012) × 10⁻³⁴")>]
+[<InlineData(123456789.0, 4321.0, "1.234568(43) × 10⁸", "(1.234568 ± 0.000043) × 10⁸")>]
+let ``GUM 7.2.6, rounding`` (value: float, u: float, concise: string, plusMinus: string) =
+    let x = Uncertain.standard "" U.one value u
+    Assert.Equal(concise, Uncertain.report x)
+    Assert.Equal(plusMinus, Uncertain.reportWith { Uncertain.reportFormat with Form = ReportForm.PlusMinus } x)
+
+[<Fact>]
+let ``a report in each typography`` () =
+    let l = Uncertain.standard "Length" U.metre 1.000<m> 0.002<m>
+    let t = Uncertain.standard "Period" U.second 2.006<s> 0.004<s>
+    let g = 4.0 * Math.PI ** 2.0 * l / (t * t)
+    let inStyle style form = Uncertain.reportWith { Form = form; Style = style; Digits = 2 } g
+    Assert.Equal("9.811(44) m·s⁻²", inStyle Unicode ReportForm.Concise)
+    Assert.Equal("9.811(44) m.s^-2", inStyle Ascii ReportForm.Concise)
+    Assert.Equal("(9.811 +- 0.044) m.s^-2", inStyle Ascii ReportForm.PlusMinus)
+    Assert.Equal(@"9.811(44)\,\mathrm{m}\,\mathrm{s}^{-2}", inStyle Latex ReportForm.Concise)
+    Assert.Equal(@"(9.811 \pm 0.044)\,\mathrm{m}\,\mathrm{s}^{-2}", inStyle Latex ReportForm.PlusMinus)
+    Assert.Equal(@"\qty{9.811(44)}{\metre\per\second\squared}", inStyle Siunitx ReportForm.Concise)
+    Assert.Equal(@"\qty[separate-uncertainty=true]{9.811(44)}{\metre\per\second\squared}", inStyle Siunitx ReportForm.PlusMinus)
+    Assert.Equal("9.81(4) m·s⁻²", Uncertain.reportWith { Uncertain.reportFormat with Digits = 1 } g)
+
+    // No uncertainty, no parentheses; no stated unit, no unit.
+    Assert.Equal("2.5 m", Uncertain.report (Uncertain.exact U.metre 2.5<m>))
+    Assert.Equal("6.02214076 × 10²³", Uncertain.report (Uncertain.exact U.one 6.02214076e23))
+    Assert.Equal("1.00(30)", Uncertain.report (1.0<m> +- 0.3<m>))
+    Assert.Equal(@"\num{6.62607(12)e-34}", Uncertain.reportWith { Uncertain.reportFormat with Style = Siunitx } (Uncertain.standard "h" U.one 6.62607e-34 1.2e-38))
+
+// ======================================================================================
+// The budget
+// ======================================================================================
+
+let private pendulum () =
+    let l = Uncertain.resolution "Pendulum length" U.metre 1.000<m> 1e-3<m>
+    let t = Uncertain.ofReadings "Period" U.second [ 2.01<s>; 2.00<s>; 2.01<s> ]
+    let calibration = Uncertain.certificate "Stopwatch calibration" U.second 0.0<s> 0.01<s> 2.0
+    4.0 * Math.PI ** 2.0 * l / ((t + calibration) * (t + calibration))
+
+[<Fact>]
+let ``a budget's shares sum to one for independent inputs, largest first`` () =
+    let budget = Uncertain.budget (pendulum ())
+    near 1e-12 1.0 (budget.Rows |> Array.sumBy (fun row -> row.Share))
+    near 1e-12 0.0 budget.Correlations
+    Assert.Equal<string[]>([| "Stopwatch calibration"; "Period"; "Pendulum length" |], budget.Rows |> Array.map (fun row -> row.Input.Label))
+    // |∂g/∂l| = g / l.
+    near 1e-9 (float budget.Estimate / 1.0) (budget.Rows.[2].Sensitivity)
+
+    near
+        1e-15
+        (float budget.Uncertainty)
+        (sqrt (budget.Rows |> Array.sumBy (fun row -> float row.Contribution ** 2.0)))
+
+[<Fact>]
+let ``a budget as text`` () =
+    let expected =
+        [ "Input                  Value            ν     Type  Contribution  Share"
+          "Stopwatch calibration  0.0000(50) s     ∞     B     0.049 m·s⁻²   69.1 %"
+          "Period                 2.0067(33) s     2     A     0.033 m·s⁻²   30.7 %"
+          "Pendulum length        1.00000(29) m    ∞     B     0.0028 m·s⁻²  0.2 %"
+          "Combined               9.804(59) m·s⁻²  21.2        0.059 m·s⁻²" ]
+        |> String.concat "\n"
+
+    Assert.Equal(expected, Budget.text (Uncertain.budget (pendulum ())))
+
+[<Fact>]
+let ``declared correlations take their own line in a budget`` () =
+    let a = Uncertain.standard "a" U.metre 1.0<m> 0.3<m>
+    let b = Uncertain.standard "b" U.metre 1.0<m> 0.4<m>
+    Uncertain.correlate 1.0 a b
+    let budget = Uncertain.budget (a + b)
+    // u² = 0.49, of which the rows carry 0.09 and 0.16.
+    near 1e-12 (0.24 / 0.49) budget.Correlations
+    near 1e-12 1.0 (budget.Correlations + (budget.Rows |> Array.sumBy (fun row -> row.Share)))
+    Assert.Contains("Correlations", Budget.text budget)
+
+    match budget.Dof with
+    | EffectiveDof.Undefined _ -> ()
+    | EffectiveDof.Known nu -> failwithf "expected none, got %g" nu
+
+/// The LaTeX and siunitx forms and the budget's table, through the engine.
+[<Fact>]
+let ``the TeX forms compile`` () =
+    let g = pendulum ()
+    let named = Uncertain.standard "δθ_1 & 50 %" U.kelvin 0.0<K> 0.029<K> |> Uncertain.withDof 2.0
+    let small = Uncertain.standard "h" U.one 6.62607e-34 1.2e-38
+
+    let forms =
+        [ for form in [ ReportForm.Concise; ReportForm.Explicit; ReportForm.PlusMinus ] do
+              yield "$" + Uncertain.reportWith { Form = form; Style = Latex; Digits = 2 } g + "$"
+              yield Uncertain.reportWith { Form = form; Style = Siunitx; Digits = 2 } g
+              yield "$" + Uncertain.reportWith { Form = form; Style = Latex; Digits = 2 } small + "$"
+              yield Uncertain.reportWith { Form = form; Style = Siunitx; Digits = 2 } small ]
+
+    let document =
+        String.concat
+            "\n"
+            [ @"\documentclass{article}"
+              @"\usepackage{siunitx}"
+              @"\begin{document}"
+              String.concat "\n\n" forms
+              ""
+              Budget.latex (Uncertain.budget g)
+              ""
+              Budget.latex (Uncertain.budget (named + named * 2.0))
+              @"\end{document}"
+              "" ]
+
+    if not (TexToolchain.accepts "uncertainty-forms" document) then
+        Console.WriteLine("SKIPPED: " + TexToolchain.Engine + " not found")
+
+// ======================================================================================
 // Cost
 // ======================================================================================
 

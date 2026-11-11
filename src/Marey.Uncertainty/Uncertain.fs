@@ -53,6 +53,7 @@ type EffectiveDof =
 type Expanded<[<Measure>] 'u> =
     { Estimate: float<'u>
       Expanded: float<'u>
+      Unit: U<'u>
       CoverageFactor: float
       Coverage: float
       /// The degrees of freedom the factor was read at: the effective ones, truncated to a whole
@@ -164,6 +165,27 @@ module internal Parts =
         any
 
     let inline tag<[<Measure>] 'u> (x: float) : float<'u> = LanguagePrimitives.FloatWithMeasure<'u> x
+
+    /// The Welch–Satterthwaite formula (GUM G.4.1), which assumes independent inputs.
+    let effectiveDof (inputs: Input[]) (parts: float[]) : EffectiveDof =
+        if correlated inputs parts then
+            EffectiveDof.Undefined
+                "two inputs declared correlated both contribute, and the Welch–Satterthwaite formula holds for independent inputs only"
+        else
+            let mutable denominator = 0.0
+            let mutable variance = 0.0
+
+            for i in 0 .. inputs.Length - 1 do
+                let p2 = parts.[i] * parts.[i]
+                variance <- variance + p2
+
+                if p2 > 0.0 then
+                    denominator <- denominator + p2 * p2 / inputs.[i].Dof
+
+            if denominator = 0.0 then
+                EffectiveDof.Known Double.PositiveInfinity
+            else
+                EffectiveDof.Known(variance * variance / denominator)
 
     /// A witness that states nothing, at any measure.
     let unstated<[<Measure>] 'u> () : U<'u> = U<'u>("", Dim.zero, 1.0, 0.0, [], false)
@@ -377,9 +399,129 @@ type Uncertain<[<Measure>] 'u> internal (value: float<'u>, unit: U<'u>, inputs: 
 
         Uncertain<1>(y, Parts.one, inputs, parts)
 
-    override this.ToString() =
-        let symbol = if unit.Symbol = "" then "" else " " + unit.Symbol
-        sprintf "%g ± %g%s" (float value) (float this.Uncertainty) symbol
+    /// The concise report: `9.811(44) m·s⁻²`.
+    override this.ToString() = Rounding.write Rounding.standard (float value) (float this.Uncertainty) unit
+
+/// One input's line in an uncertainty budget.
+type BudgetRow<[<Measure>] 'u> =
+    { Input: Input
+      /// The sensitivity coefficient |∂y/∂xᵢ|, as a number: the result's unit per the input's.
+      /// Not a number for an input with no uncertainty, which leaves nothing to read it from.
+      Sensitivity: float
+      /// The contribution |∂y/∂xᵢ| · u(xᵢ), in the result's unit.
+      Contribution: float<'u>
+      /// The contribution's part of the combined variance u(y)², between 0 and 1 for independent inputs.
+      Share: float }
+
+/// **An uncertainty budget**: what each input contributes to a result's uncertainty, largest
+/// first. It is the table that says which measurement to improve.
+type Budget<[<Measure>] 'u> =
+    { Estimate: float<'u>
+      /// The combined standard uncertainty.
+      Uncertainty: float<'u>
+      Unit: U<'u>
+      Rows: BudgetRow<'u>[]
+      /// The part of the variance that comes from inputs declared correlated: what the rows'
+      /// shares leave of 1. Zero for independent inputs, and negative where the correlation
+      /// narrows the result.
+      Correlations: float
+      Dof: EffectiveDof }
+
+/// Writing a budget as a table.
+[<RequireQualifiedAccess>]
+module Budget =
+
+    let internal ofValue (x: Uncertain<'u>) : Budget<'u> =
+        let variance = float x.Uncertainty * float x.Uncertainty
+
+        let rows =
+            Array.init x.Inputs.Length (fun i ->
+                let input = x.Inputs.[i]
+                let part = abs x.Parts.[i]
+
+                { Input = input
+                  Sensitivity = (if input.Standard > 0.0 then part / input.Standard else nan)
+                  Contribution = Parts.tag<'u> part
+                  Share = (if variance > 0.0 then part * part / variance else 0.0) })
+            |> Array.sortBy (fun row -> -row.Share)
+
+        { Estimate = x.Value
+          Uncertainty = x.Uncertainty
+          Unit = x.Unit
+          Rows = rows
+          Correlations = (if variance > 0.0 then 1.0 - Array.sumBy (fun row -> row.Share) rows else 0.0)
+          Dof = Parts.effectiveDof x.Inputs x.Parts }
+
+    let private labelOf (input: Input) = if input.Label = "" then sprintf "input %d" input.Id else input.Label
+
+    let private kindOf (input: Input) =
+        match input.Kind with
+        | InputKind.TypeA -> "A"
+        | InputKind.TypeB -> "B"
+
+    let private percent (share: float) = Num.fixedPoint 1 (100.0 * share)
+
+    let private concise (style: UnitStyle) : ReportFormat = { Rounding.standard with Style = style }
+
+    /// The cells of the table, row by row, with the heading first: input, value with its
+    /// standard uncertainty, degrees of freedom, type of evaluation, contribution, share.
+    let private cells (style: UnitStyle) (infinity: string) (percentSign: string) (label: string -> string) (math: string -> string) (b: Budget<'u>) =
+        let dofText (dof: float) = if Double.IsPositiveInfinity dof then infinity else Num.upTo 1 dof
+
+        [ yield [ "Input"; "Value"; math (if style = Latex || style = Siunitx then "\\nu" else "ν"); "Type"; "Contribution"; "Share" ]
+
+          for row in b.Rows do
+              yield
+                  [ label (labelOf row.Input)
+                    math (Rounding.write (concise style) row.Input.Value row.Input.Standard row.Input.Unit)
+                    (if Double.IsPositiveInfinity row.Input.Dof then math infinity else dofText row.Input.Dof)
+                    kindOf row.Input
+                    math (Rounding.quantity style 2 (float row.Contribution) b.Unit)
+                    percent row.Share + percentSign ]
+
+          if abs b.Correlations > 5e-4 then
+              yield [ "Correlations"; ""; ""; ""; ""; percent b.Correlations + percentSign ]
+
+          yield
+              [ "Combined"
+                math (Rounding.write (concise style) (float b.Estimate) (float b.Uncertainty) b.Unit)
+                (match b.Dof with
+                 | EffectiveDof.Known dof when Double.IsPositiveInfinity dof -> math infinity
+                 | EffectiveDof.Known dof -> dofText dof
+                 | EffectiveDof.Undefined _ -> "")
+                ""
+                math (Rounding.quantity style 2 (float b.Uncertainty) b.Unit)
+                "" ] ]
+
+    /// The budget as aligned plain text, one input per line and the combined result last.
+    let text (b: Budget<'u>) : string =
+        let table = cells Unicode "∞" " %" id id b
+        let widths = [ for c in 0..5 -> table |> List.map (fun row -> row.[c].Length) |> List.max ]
+
+        table
+        |> List.map (fun row ->
+            (List.map2 (fun (cell: string) (width: int) -> cell.PadRight width) row widths |> String.concat "  ").TrimEnd())
+        |> String.concat "\n"
+
+    /// The budget as a LaTeX `tabular`, needing no package.
+    let latex (b: Budget<'u>) : string =
+        let math (s: string) = if s = "" then "" else "$" + s + "$"
+        let table = cells Latex "\\infty" "\\,\\%" Tex.escape math b
+        let line (row: string list) = String.concat " & " row + " \\\\"
+
+        [ yield "\\begin{tabular}{llrcrr}"
+          yield "\\hline"
+          yield line table.Head
+          yield "\\hline"
+
+          for row in table.Tail |> List.take (table.Length - 2) do
+              yield line row
+
+          yield "\\hline"
+          yield line (List.last table)
+          yield "\\hline"
+          yield "\\end{tabular}" ]
+        |> String.concat "\n"
 
 /// Making uncertain values and asking what they carry.
 [<RequireQualifiedAccess>]
@@ -399,6 +541,47 @@ module Uncertain =
     /// The uncertainty is taken as exactly known (infinite degrees of freedom) until `withDof` says otherwise.
     let standard (label: string) (unit: U<'u>) (value: float<'u>) (u: float<'u>) : Uncertain<'u> =
         make label unit value u Double.PositiveInfinity InputKind.TypeB
+
+    /// Repeated readings of one quantity, a type A evaluation (GUM 4.2): the mean, with the
+    /// experimental standard deviation of the mean s/√n and n − 1 degrees of freedom.
+    let ofReadings (label: string) (unit: U<'u>) (readings: seq<float<'u>>) : Uncertain<'u> =
+        let xs = readings |> Seq.map float |> Array.ofSeq
+
+        if xs.Length < 2 then
+            invalidArg "readings" (sprintf "Marey: \"%s\" has %d reading(s), and a standard deviation needs two or more." label xs.Length)
+
+        let n = float xs.Length
+        let mean = Array.sum xs / n
+        let s2 = Array.sumBy (fun x -> (x - mean) * (x - mean)) xs / (n - 1.0)
+        make label unit (Parts.tag mean) (Parts.tag (sqrt (s2 / n))) (n - 1.0) InputKind.TypeA
+
+    /// A value known to lie within ± `halfWidth` with no place in between more likely than
+    /// another (GUM 4.3.7): the standard uncertainty is a/√3.
+    let rectangular (label: string) (unit: U<'u>) (value: float<'u>) (halfWidth: float<'u>) : Uncertain<'u> =
+        make label unit value (abs halfWidth / sqrt 3.0) Double.PositiveInfinity InputKind.TypeB
+
+    /// A value within ± `halfWidth` and likelier near the middle (GUM 4.3.9): a/√6.
+    let triangular (label: string) (unit: U<'u>) (value: float<'u>) (halfWidth: float<'u>) : Uncertain<'u> =
+        make label unit value (abs halfWidth / sqrt 6.0) Double.PositiveInfinity InputKind.TypeB
+
+    /// A reading from a scale or a display whose smallest step is `step`: the last digit of a
+    /// ruler read to 1 mm. The value lies within half a step either way, so the standard
+    /// uncertainty is step/√12.
+    let resolution (label: string) (unit: U<'u>) (value: float<'u>) (step: float<'u>) : Uncertain<'u> =
+        make label unit value (abs step / sqrt 12.0) Double.PositiveInfinity InputKind.TypeB
+
+    /// A value from a certificate that states an expanded uncertainty `expanded` and its coverage
+    /// factor `k` (GUM 4.3.3): the standard uncertainty is U/k.
+    let certificate (label: string) (unit: U<'u>) (value: float<'u>) (expanded: float<'u>) (k: float) : Uncertain<'u> =
+        if not (k > 0.0) then
+            invalidArg "k" (sprintf "Marey: a coverage factor is positive, and \"%s\" was given %g." label k)
+
+        make label unit value (abs expanded / k) Double.PositiveInfinity InputKind.TypeB
+
+    /// A value from a certificate that states an expanded uncertainty and a coverage probability
+    /// (`0.95`) in place of a factor: the factor is taken from the normal distribution (GUM 4.3.4).
+    let certificateAt (label: string) (unit: U<'u>) (value: float<'u>) (expanded: float<'u>) (coverage: float) : Uncertain<'u> =
+        make label unit value (abs expanded / Coverage.normal coverage) Double.PositiveInfinity InputKind.TypeB
 
     /// A value with no uncertainty that still names its unit.
     let exact (unit: U<'u>) (value: float<'u>) : Uncertain<'u> = Uncertain(value, unit, [||], [||])
@@ -464,25 +647,7 @@ module Uncertain =
     /// The effective degrees of freedom by the Welch–Satterthwaite formula (GUM G.4.1). The
     /// formula assumes independent inputs, so a value to which two correlated inputs both
     /// contribute has none to state.
-    let dof (x: Uncertain<'u>) : EffectiveDof =
-        if Parts.correlated x.Inputs x.Parts then
-            EffectiveDof.Undefined
-                "two inputs declared correlated both contribute, and the Welch–Satterthwaite formula holds for independent inputs only"
-        else
-            let mutable denominator = 0.0
-            let mutable variance = 0.0
-
-            for i in 0 .. x.Inputs.Length - 1 do
-                let p2 = x.Parts.[i] * x.Parts.[i]
-                variance <- variance + p2
-
-                if p2 > 0.0 then
-                    denominator <- denominator + p2 * p2 / x.Inputs.[i].Dof
-
-            if denominator = 0.0 then
-                EffectiveDof.Known Double.PositiveInfinity
-            else
-                EffectiveDof.Known(variance * variance / denominator)
+    let dof (x: Uncertain<'u>) : EffectiveDof = Parts.effectiveDof x.Inputs x.Parts
 
     /// The expanded uncertainty for a coverage probability, `Uncertain.expanded 0.95 g`, with the
     /// coverage factor read from Student's t at the effective degrees of freedom (GUM G.6.4).
@@ -502,6 +667,7 @@ module Uncertain =
 
             { Estimate = x.Value
               Expanded = k * x.Uncertainty
+              Unit = x.Unit
               CoverageFactor = k
               Coverage = coverage
               Dof = nu }
@@ -513,9 +679,66 @@ module Uncertain =
 
         { Estimate = x.Value
           Expanded = k * x.Uncertainty
+          Unit = x.Unit
           CoverageFactor = k
           Coverage = coverage
           Dof = Double.PositiveInfinity }
+
+    /// The standard uncertainty relative to the estimate, u(y)/|y|.
+    let relative (x: Uncertain<'u>) : float = float x.Uncertainty / abs (float x.Value)
+
+    /// A function arithmetic does not reach, into the unit `unit` names:
+    /// `Uncertain.apply U.one (fun x -> besselJ0 (float x)) x`. Its slope is the central difference
+    /// over one standard uncertainty either side, (f(x + u) − f(x − u)) / 2u (GUM 5.1.3, note 2),
+    /// so `f` is called at those two points and at `x`.
+    let apply (unit: U<'v>) (f: float<'u> -> float<'v>) (x: Uncertain<'u>) : Uncertain<'v> =
+        let h = x.Uncertainty
+
+        if float h = 0.0 then
+            Uncertain(f x.Value, unit, x.Inputs, Parts.scale 0.0 x.Parts)
+        else
+            let slope = float (f (x.Value + h) - f (x.Value - h)) / (2.0 * float h)
+            Uncertain(f x.Value, unit, x.Inputs, Parts.scale slope x.Parts)
+
+    /// `apply` for a function of two values, each varied by its own standard uncertainty.
+    let apply2 (unit: U<'w>) (f: float<'u> -> float<'v> -> float<'w>) (a: Uncertain<'u>) (b: Uncertain<'v>) : Uncertain<'w> =
+        let ha = a.Uncertainty
+        let hb = b.Uncertainty
+
+        let slopeA =
+            if float ha = 0.0 then 0.0 else float (f (a.Value + ha) b.Value - f (a.Value - ha) b.Value) / (2.0 * float ha)
+
+        let slopeB =
+            if float hb = 0.0 then 0.0 else float (f a.Value (b.Value + hb) - f a.Value (b.Value - hb)) / (2.0 * float hb)
+
+        let struct (inputs, parts) = Parts.combine a.Inputs a.Parts slopeA b.Inputs b.Parts slopeB
+        Uncertain(f a.Value b.Value, unit, inputs, parts)
+
+    /// How `report` writes: the concise form, the uncertainty to two significant digits, the unit
+    /// in Unicode. Change a field for another: `{ Uncertain.reportFormat with Style = Siunitx }`.
+    let reportFormat: ReportFormat = Rounding.standard
+
+    /// The value with its standard uncertainty in a chosen form (GUM 7.2.2), rounded as the GUM
+    /// asks (7.2.6): `(9.811 ± 0.044) m·s⁻²`, or `\qty{9.811(44)}{\metre\per\second\squared}` for siunitx.
+    /// The LaTeX style is for math mode.
+    let reportWith (format: ReportFormat) (x: Uncertain<'u>) : string =
+        Rounding.write format (float x.Value) (float x.Uncertainty) x.Unit
+
+    /// The value with its standard uncertainty, concisely: `9.811(44) m·s⁻²`.
+    let report (x: Uncertain<'u>) : string = reportWith reportFormat x
+
+    /// An expanded uncertainty with what it rests on (GUM 7.2.4):
+    /// `(100.02147 ± 0.00079) g (k = 2.26, 95 %, ν = 9)`.
+    let reportExpanded (e: Expanded<'u>) : string =
+        let interval =
+            Rounding.write { reportFormat with Form = ReportForm.PlusMinus } (float e.Estimate) (float e.Expanded) e.Unit
+
+        let dof = if Double.IsPositiveInfinity e.Dof then "∞" else Num.upTo 1 e.Dof
+        sprintf "%s (k = %s, %s %%, ν = %s)" interval (Num.fixedPoint 2 e.CoverageFactor) (Num.upTo 2 (100.0 * e.Coverage)) dof
+
+    /// The uncertainty budget: each input's contribution and its share of the variance, largest
+    /// first. `Budget.text` and `Budget.latex` write it as a table.
+    let budget (x: Uncertain<'u>) : Budget<'u> = Budget.ofValue x
 
     /// The sine of an angle in radians.
     let sin (a: Uncertain<rad>) : Uncertain<1> =

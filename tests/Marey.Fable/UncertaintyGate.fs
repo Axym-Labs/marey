@@ -5,6 +5,44 @@ module Marey.Fable.UncertaintyGate
 open System
 open Marey
 
+/// The reports and a budget, character for character as .NET writes them.
+let private reports () : string list =
+    let same (name: string) (expected: string) (actual: string) =
+        if expected = actual then [] else [ sprintf "%s: expected «%s», got «%s»" name expected actual ]
+
+    let plain (value: float) (u: float) = Uncertain.standard "" U.one value u
+    let plusMinus = { Uncertain.reportFormat with Form = ReportForm.PlusMinus }
+    let gram: U<kg> = U.scaled "g" 1e-3 U.kilogram
+    let mass = Uncertain.standard "m_S" gram 100.02147<kg> 0.00035<kg> |> Uncertain.withDof 9.0
+
+    let g =
+        let l = Uncertain.resolution "Pendulum length" U.metre 1.000<m> 1e-3<m>
+        let t = Uncertain.ofReadings "Period" U.second [ 2.01<s>; 2.00<s>; 2.01<s> ]
+        let calibration = Uncertain.certificate "Stopwatch calibration" U.second 0.0<s> 0.01<s> 2.0
+        4.0 * Math.PI ** 2.0 * l / ((t + calibration) * (t + calibration))
+
+    let budget =
+        [ "Input                  Value            ν     Type  Contribution  Share"
+          "Stopwatch calibration  0.0000(50) s     ∞     B     0.049 m·s⁻²   69.1 %"
+          "Period                 2.0067(33) s     2     A     0.033 m·s⁻²   30.7 %"
+          "Pendulum length        1.00000(29) m    ∞     B     0.0028 m·s⁻²  0.2 %"
+          "Combined               9.804(59) m·s⁻²  21.2        0.059 m·s⁻²" ]
+        |> String.concat "\n"
+
+    [ yield! same "concise" "100.02147(35) g" (Uncertain.report mass)
+      yield! same "ToString" "100.02147(35) g" (string mass)
+      yield! same "plus-minus" "(100.02147 ± 0.00035) g" (Uncertain.reportWith plusMinus mass)
+      yield! same "expanded" "(100.02147 ± 0.00079) g (k = 2.26, 95 %, ν = 9)" (Uncertain.reportExpanded (Uncertain.expanded 0.95 mass))
+      yield! same "a place moved" "5.00(10)" (Uncertain.report (plain 5.0 0.0996))
+      yield! same "across the point" "12.3(1.2)" (Uncertain.report (plain 12.34 1.23))
+      yield! same "past the point" "1230(120)" (Uncertain.report (plain 1234.0 120.0))
+      yield! same "negative zero" "0.000(40)" (Uncertain.report (plain -0.0001 0.04))
+      yield! same "small" "(6.62607 ± 0.00012) × 10⁻³⁴" (Uncertain.reportWith plusMinus (plain 6.62607e-34 1.2e-38))
+      yield! same "large" "1.234568(43) × 10⁸" (Uncertain.report (plain 123456789.0 4321.0))
+      yield! same "exact" "6.02214076 × 10²³" (Uncertain.report (Uncertain.exact U.one 6.02214076e23))
+      yield! same "siunitx" "\\qty{9.804(59)}{\\metre\\per\\second\\squared}" (Uncertain.reportWith { Uncertain.reportFormat with Style = Siunitx } g)
+      yield! same "budget" budget (Budget.text (Uncertain.budget g)) ]
+
 /// The failures, by description; empty when the gate holds.
 let check () : string list =
     let near (name: string) (tolerance: float) (expected: float) (actual: float) =
@@ -37,4 +75,5 @@ let check () : string list =
       yield! near "t₉₉(16)" 5e-5 2.9208 (Coverage.studentT 0.99 16.0)
       yield! near "k(0.95)" 5e-7 1.959964 (Coverage.normal 0.95)
       if (sqrt (l * l)).Unit.Symbol <> "m" then
-          yield "the witness of sqrt (l · l) is not the metre" ]
+          yield "the witness of sqrt (l · l) is not the metre"
+      yield! reports () ]
