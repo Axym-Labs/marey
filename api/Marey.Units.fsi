@@ -267,6 +267,104 @@ namespace Marey
 
 namespace Marey
 
+    module Constants =
+
+        val c: float<m/s>
+
+        val h: float<J s>
+
+        val e: float<C>
+
+        val kB: float<J/K>
+
+        val NA: float</mol>
+
+        val hbar: float<J s>
+
+        val molarGas: float<J/(K mol)>
+
+        val faraday: float<C/mol>
+
+        val stefanBoltzmann: float<W/(K ^ 4 m ^ 2)>
+
+        val wienDisplacement: float<K m>
+
+        val electronvolt: float<J>
+
+        val standardGravity: float<m/s ^ 2>
+
+        val G: float<m ^ 3/(kg s ^ 2)>
+
+        val fineStructure: float
+
+        val mu0: float<N/A ^ 2>
+
+        val eps0: float<F/m>
+
+        val me: float<kg>
+
+        val mp: float<kg>
+
+        val mn: float<kg>
+
+        val atomicMass: float<kg>
+
+        val rydberg: float</m>
+
+        val bohrRadius: float<m>
+
+        val bohrMagneton: float<J/T>
+
+        module Quantities =
+
+            val c: Quantity<m/s>
+
+            val h: Quantity<J s>
+
+            val e: Quantity<C>
+
+            val kB: Quantity<J/K>
+
+            val NA: Quantity</mol>
+
+            val hbar: Quantity<J s>
+
+            val molarGas: Quantity<J/(K mol)>
+
+            val faraday: Quantity<C/mol>
+
+            val stefanBoltzmann: Quantity<W/(K ^ 4 m ^ 2)>
+
+            val wienDisplacement: Quantity<K m>
+
+            val electronvolt: Quantity<J>
+
+            val standardGravity: Quantity<m/s ^ 2>
+
+            val G: Quantity<m ^ 3/(kg s ^ 2)>
+
+            val fineStructure: Quantity<1>
+
+            val mu0: Quantity<N/A ^ 2>
+
+            val eps0: Quantity<F/m>
+
+            val me: Quantity<kg>
+
+            val mp: Quantity<kg>
+
+            val mn: Quantity<kg>
+
+            val atomicMass: Quantity<kg>
+
+            val rydberg: Quantity</m>
+
+            val bohrRadius: Quantity<m>
+
+            val bohrMagneton: Quantity<J/T>
+
+namespace Marey
+
     type UnitSymbol =
         {
 

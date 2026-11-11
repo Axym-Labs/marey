@@ -7,14 +7,16 @@
     <MareyFable>true</MareyFable>
     <AssemblyName>Marey.Units</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
-    <Description>Unit witnesses for Marey: SI, derived and common non-SI units, each with its dimension, symbol and conversion to SI; prefix selection, unit parsing, and Unicode, ASCII, LaTeX and siunitx spelling.</Description>
-    <PackageTags>fsharp units-of-measure si-units dimensional-analysis physics siunitx unit-conversion scientific</PackageTags>
+    <Description>Unit witnesses for Marey: SI, derived and common non-SI units, each with its dimension, symbol and conversion to SI; prefix selection, unit parsing, and Unicode, ASCII, LaTeX and siunitx spelling; the physical constants of CODATA 2022, each in its unit.</Description>
+    <PackageTags>fsharp units-of-measure si-units dimensional-analysis physics siunitx unit-conversion physical-constants codata scientific</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="Si.fs" />
     <Compile Include="Derived.fs" />
     <Compile Include="NonSi.fs" />
+    <!-- Constants: CODATA 2022, as floats in their units and as Quantities with their witnesses. -->
+    <Compile Include="Constants.fs" />
     <Compile Include="Registry.fs" />
     <Compile Include="Prefix.fs" />
     <Compile Include="UnitDisplay.fs" />

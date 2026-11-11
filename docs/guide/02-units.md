@@ -142,21 +142,18 @@ C# is in this mode, with the witnesses under `Units` (§14).
 
 ## A spectrum in two units
 
-Planck's law gives the radiance of a black body per unit wavelength. Written with the constants'
-units, the compiler works out that it is a `float<W/(sr m^3)>`, and the witness for the y axis is
-composed to match. The top axis reads the same wavelengths as photon energies, `E = hc/λ`, through
-the map and its inverse:
+Planck's law gives the radiance of a black body per unit wavelength. `Constants` holds the
+physical constants, CODATA 2022's values each in its unit, so the compiler works out that the
+radiance is a `float<W/(sr m^3)>`, and the witness for the y axis is composed to match. The top
+axis reads the same wavelengths as photon energies, `E = hc/λ`, through the map and its inverse:
 
 ```fsharp output=black-body
-let planckH = 6.62607015e-34<J s>
-let lightSpeed = 2.99792458e8<m/s>
-let boltzmann = 1.380649e-23<J/K>
-let joulesPerEv = 1.602176634e-19<J/eV>
+let h, c, k = Constants.h, Constants.c, Constants.kB
 
 let radiance (temperature: float<K>) (wavelength: float<m>) =
     let l5 = wavelength * wavelength * wavelength * wavelength * wavelength
-    let x = planckH * lightSpeed / (wavelength * boltzmann * temperature)
-    2.0 * planckH * lightSpeed * lightSpeed / l5 / (exp x - 1.0) / 1.0<sr>
+    let x = h * c / (wavelength * k * temperature)
+    2.0 * h * c * c / l5 / (exp x - 1.0) / 1.0<sr>
 
 let spectralRadiance = U.div U.watt (U.mul U.steradian (U.mul U.metre (U.mul U.metre U.metre)))
 let wavelengths = Array.init 291 (fun i -> (250.0 + 5.0 * float i) * 1e-9<m>)
@@ -165,8 +162,8 @@ let curve (temperature: float<K>) =
     Chart.lineIn U.metre spectralRadiance wavelengths (wavelengths |> Array.map (radiance temperature))
     |> Chart.withName (sprintf "%g K" (float temperature))
 
-let toEnergy (l: float<m>) = planckH * lightSpeed / l / joulesPerEv
-let toWavelength (e: float<eV>) = planckH * lightSpeed / (e * joulesPerEv)
+let toEnergy (l: float<m>) = U.convert U.joule U.electronvolt (h * c / l)
+let toWavelength (e: float<eV>) = h * c / U.convert U.electronvolt U.joule e
 
 let blackBody =
     curve 3000.0<K>
@@ -189,3 +186,20 @@ and the axis reads `TW·sr⁻¹·m⁻³`, which is the kW·sr⁻¹·m⁻²·nm�
 energies are chosen as round numbers of eV and placed through the inverse map, so on a reciprocal
 they crowd toward short wavelengths. A map that is not monotone over the axis, or whose inverse
 does not return each point, is refused when the figure is drawn.
+
+The constants are `float`s in their units. The ones physics writes most go by their symbols:
+`Constants.c`, `h`, `hbar`, `e`, `kB`, `NA`, `G`, `eps0`, `mu0`, and the electron, proton and
+neutron masses `me`, `mp` and `mn`. The rest are spelled out where a symbol would mean more than
+one thing: `molarGas`, `faraday`, `standardGravity`, `atomicMass`, `stefanBoltzmann`,
+`wienDisplacement`, `fineStructure`, `rydberg`, `bohrRadius`, `bohrMagneton` and `electronvolt`.
+A script that wants other names binds them, as `k` above. The ones that define the SI are exact,
+and so are those computed from them; the doc comment of a measured one gives its standard
+uncertainty.
+`Constants.Quantities` holds each with its witness, for arithmetic with a `Q`:
+
+```fsharp
+let flight = U.second.Of [ 0.0<s>; 1e-9<s>; 2e-9<s> ]
+let lightPath = Constants.Quantities.c * flight
+
+printfn "light travels %.1f cm in a nanosecond, a Q<m>: %b" (float lightPath.[1] * 100.0) (lightPath.Unit.Dim = Dim.length)
+```

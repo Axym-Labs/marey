@@ -98,6 +98,17 @@ and reported when missing; Marey does not require a version of them.
   2 shows it. `RenderImage` stretched to the window was soft; at 2× the scaled image is within the
   GPU's tolerance of a CPU raster canvas scaled by 2 on every golden. Instanced marker batches
   take the scale too.
+- **Physical constants, `Constants`**, in `Marey.Units`: CODATA 2022's speed of light, Planck
+  and reduced Planck constants, elementary charge, Boltzmann and Avogadro constants, molar gas
+  constant, Faraday constant, gravitational constant, standard gravity, vacuum permittivity and
+  permeability, electron, proton and neutron masses, atomic mass constant, Stefan–Boltzmann and
+  Wien constants, fine-structure constant, Rydberg constant, Bohr radius, Bohr magneton and the
+  electronvolt in joules. Each is a `float` in its unit, so `Constants.h * Constants.c /
+  wavelength` is a `float<J>`; `Constants.Quantities` holds each with its witness, for arithmetic
+  with a `Q`. The common ones go by their symbols (`c`, `h`, `hbar`, `e`, `kB`, `NA`, `G`, `eps0`,
+  `mu0`, `me`, `mp`, `mn`), the rest by name (`molarGas`, `rydberg`, `fineStructure`). The SI's defining constants are exact, those derived from
+  them (ħ, R, F, σ, b) are computed from them, and each measured one's doc comment gives its
+  standard uncertainty.
 
 ### Changed
 
@@ -185,6 +196,8 @@ and reported when missing; Marey does not require a version of them.
 
 ### Fixed
 
+- **`U.dalton` is CODATA 2022's atomic mass constant**, 1.66053906892 × 10⁻²⁷ kg; it was 2018's,
+  1.66053906660 × 10⁻²⁷ kg, 1.4 × 10⁻⁹ smaller, so it now equals `Constants.atomicMass`.
 - **A bar chart shows its outer bars whole.** A bar is 0.7 of the spacing between bars wide, and
   the x axis was padded from the bars' centres alone, so the outer half of the first and last bar
   of `Chart.Bar([1; 2; 3; 4], …)` fell outside the panel. The x domain now holds every bar and is

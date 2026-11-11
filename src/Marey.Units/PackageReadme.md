@@ -30,6 +30,13 @@ printfn "%s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none (U.parse 
 - **Non-SI units**: the electronvolt (an axis reads `keV`, not `kJ`), ångström, astronomical unit,
   light year, parsec, barn, litre, bar, atmosphere, minute, hour, day, year, dalton, gauss, calorie,
   degree, and degrees Celsius and Fahrenheit with their offsets.
+- **Physical constants**, CODATA 2022, each a `float` in its unit: `Constants.h * Constants.c /
+  wavelength` is a `float<J>`. The common ones go by their symbols (`c`, `h`, `hbar`, `e`, `kB`,
+  `NA`, `G`, `eps0`, `mu0`, `me`, `mp`, `mn`), the rest by name. The speed of light, the Planck, Boltzmann,
+  Avogadro, gas, Faraday, gravitational, Stefan–Boltzmann, Wien, fine-structure and Rydberg
+  constants, the elementary charge, standard gravity, ε₀ and μ₀, the electron, proton, neutron and
+  atomic masses, the Bohr radius and magneton, and the electronvolt. `Constants.Quantities` holds
+  each with its witness, for arithmetic with a `Q`.
 - **Units from text.** `U.parse "V/m"` reads products, quotients, integer powers, SI prefixes and
   `degC`, and composes as `U.div` would; `U.tryAs U.metre (U.parse "km")` asserts the measure back,
   checked on the dimension.
