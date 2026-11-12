@@ -271,9 +271,12 @@ module internal Parts =
 
     /// `b`'s value read in `a`'s unit, and the factor its contributions take with it. Two witnesses
     /// of one measure can differ in scale, and a sum is in the left one's unit, as it is for a
-    /// `Quantity`. An unstated witness converts nothing.
+    /// `Quantity`. An unstated witness converts nothing. Two witnesses of different dimensions
+    /// can only meet where the measure is erased, as from C#, and `U.convert` refuses them.
     let aligned<[<Measure>] 'u> (a: U<'u>) (b: U<'u>) (x: float<'u>) : struct (float<'u> * float) =
-        if obj.ReferenceEquals(a, b) || not a.Stated || not b.Stated || (a.ToSI = b.ToSI && a.OffsetSI = b.OffsetSI) then
+        if obj.ReferenceEquals(a, b) || not a.Stated || not b.Stated then
+            struct (x, 1.0)
+        elif a.ToSI = b.ToSI && a.OffsetSI = b.OffsetSI && a.Dim = b.Dim then
             struct (x, 1.0)
         else
             struct (U.convert b a x, b.ToSI / a.ToSI)

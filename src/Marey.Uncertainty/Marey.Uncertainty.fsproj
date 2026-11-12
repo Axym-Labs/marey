@@ -24,6 +24,8 @@
     <Compile Include="MonteCarlo.fs" />
     <!-- The charts: what the package takes from Plot. -->
     <Compile Include="Charts.fs" />
+    <!-- The C# surface, `using Marey.CSharp`. -->
+    <Compile Include="CSharp.fs" />
   </ItemGroup>
 
   <ItemGroup>
