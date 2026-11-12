@@ -108,7 +108,10 @@ and reported when missing; Marey does not require a version of them.
   with a `Q`. The common ones go by their symbols (`c`, `h`, `hbar`, `e`, `kB`, `NA`, `G`, `eps0`,
   `mu0`, `me`, `mp`, `mn`), the rest by name (`molarGas`, `rydberg`, `fineStructure`). The SI's defining constants are exact, those derived from
   them (ħ, R, F, σ, b) are computed from them, and each measured one's doc comment gives its
-  standard uncertainty.
+  standard uncertainty. C# reaches them as `PhysicalConstants` in `Marey.CSharp`, each a
+  `Quantity` with its name (`PhysicalConstants.Planck * PhysicalConstants.SpeedOfLight /
+  wavelength`), so that a file with both `using Marey;` and `using Marey.CSharp;` sees one
+  `Constants`, not two.
 
 ### Changed
 

@@ -63,6 +63,9 @@ var bode = Chart.Line(f, gain, xUnit: Units.Hertz, yUnit: Units.One)
 bode.Save(SvgRenderer.Render, "bode.svg", 720, 450);
 ```
 
-A unit known only as text is `Units.Parse("V/m")`, or `Units.Div(Units.Volt, Units.Metre)`.
+A unit known only as text is `Units.Parse("V/m")`, or `Units.Div(Units.Volt, Units.Metre)`. The
+physical constants are `PhysicalConstants`, each a `Quantity` that carries its unit through
+arithmetic: `PhysicalConstants.Planck * PhysicalConstants.SpeedOfLight / new Quantity(500e-9,
+Units.Metre)` is a photon's energy, with the joule's dimension, and `.Value` is the `double`.
 `Category` puts categories on the x axis, `Figures.Facet` draws small multiples, and `Grids` samples
 a field from a delegate for §7's marks.

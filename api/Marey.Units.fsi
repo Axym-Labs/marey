@@ -846,3 +846,54 @@ namespace Marey.CSharp
         static member Zepto: Marey.Prefix
 
         static member Zetta: Marey.Prefix
+
+    [<AbstractClass; Sealed; Class>]
+    type PhysicalConstants =
+
+        static member AtomicMass: Marey.Quantity<Marey.kg>
+
+        static member Avogadro: Marey.Quantity</Marey.mol>
+
+        static member BohrMagneton: Marey.Quantity<Marey.J/Marey.T>
+
+        static member BohrRadius: Marey.Quantity<Marey.m>
+
+        static member Boltzmann: Marey.Quantity<Marey.J/Marey.K>
+
+        static member ElectronMass: Marey.Quantity<Marey.kg>
+
+        static member Electronvolt: Marey.Quantity<Marey.J>
+
+        static member ElementaryCharge: Marey.Quantity<Marey.C>
+
+        static member Faraday: Marey.Quantity<Marey.C/Marey.mol>
+
+        static member FineStructure: Marey.Quantity<1>
+
+        static member
+          Gravitation: Marey.Quantity<Marey.m ^ 3/(Marey.kg Marey.s ^ 2)>
+
+        static member MolarGas: Marey.Quantity<Marey.J/(Marey.K Marey.mol)>
+
+        static member NeutronMass: Marey.Quantity<Marey.kg>
+
+        static member Planck: Marey.Quantity<Marey.J Marey.s>
+
+        static member ProtonMass: Marey.Quantity<Marey.kg>
+
+        static member ReducedPlanck: Marey.Quantity<Marey.J Marey.s>
+
+        static member Rydberg: Marey.Quantity</Marey.m>
+
+        static member SpeedOfLight: Marey.Quantity<Marey.m/Marey.s>
+
+        static member StandardGravity: Marey.Quantity<Marey.m/Marey.s ^ 2>
+
+        static member
+          StefanBoltzmann: Marey.Quantity<Marey.W/(Marey.K ^ 4 Marey.m ^ 2)>
+
+        static member VacuumPermeability: Marey.Quantity<Marey.N/Marey.A ^ 2>
+
+        static member VacuumPermittivity: Marey.Quantity<Marey.F/Marey.m>
+
+        static member WienDisplacement: Marey.Quantity<Marey.K Marey.m>

@@ -152,3 +152,95 @@ type Prefixes =
     /// The prefix a range of values in `unit` would be written with.
     static member For(unit: IUnit, lo: float, hi: float) =
         Prefix.selectForErased unit.Symbol unit.Dim unit.ToSI unit.OffsetSI (lo, hi)
+
+/// **The physical constants of CODATA 2022, for C#**, each a `Quantity` in its SI unit:
+/// `PhysicalConstants.Planck * PhysicalConstants.SpeedOfLight / new Quantity(500e-9, Units.Metre)`
+/// is a photon's energy, and its `Unit` has the dimension of `Units.Joule`. `.Value` is the bare
+/// `double`, in SI.
+///
+/// F# reaches them as `Constants.c`, `Constants.h` and `Constants.Quantities.c`, named by their
+/// symbols. Here each has its name, `SpeedOfLight` and `Planck`, as a C# reader expects, and is
+/// F#'s `Constants.Quantities` value itself, not a copy. The doc comment of the F# constant gives
+/// the value and, for a measured one, its standard uncertainty.
+///
+/// Not `Constants`: a C# file with `using Marey;` and `using Marey.CSharp;` would then see two
+/// types of that name, F#'s module and this, and every use of either would be ambiguous.
+[<AbstractClass; Sealed>]
+type PhysicalConstants =
+
+    // ---- The SI's defining constants: exact ------------------------------------------
+
+    /// c, the speed of light in vacuum, in m·s⁻¹. Exact.
+    static member SpeedOfLight = Constants.Quantities.c
+
+    /// h, the Planck constant, in J·s. Exact.
+    static member Planck = Constants.Quantities.h
+
+    /// e, the elementary charge, in C. Exact.
+    static member ElementaryCharge = Constants.Quantities.e
+
+    /// k, the Boltzmann constant, in J·K⁻¹. Exact.
+    static member Boltzmann = Constants.Quantities.kB
+
+    /// N_A, the Avogadro constant, in mol⁻¹. Exact.
+    static member Avogadro = Constants.Quantities.NA
+
+    // ---- Exact, derived from the defining constants ----------------------------------
+
+    /// ħ = h/2π, the reduced Planck constant, in J·s. Exact.
+    static member ReducedPlanck = Constants.Quantities.hbar
+
+    /// R = N_A·k, the molar gas constant, in J·mol⁻¹·K⁻¹. Exact.
+    static member MolarGas = Constants.Quantities.molarGas
+
+    /// F = N_A·e, the Faraday constant, in C·mol⁻¹. Exact.
+    static member Faraday = Constants.Quantities.faraday
+
+    /// σ, the Stefan–Boltzmann constant, in W·m⁻²·K⁻⁴. Exact.
+    static member StefanBoltzmann = Constants.Quantities.stefanBoltzmann
+
+    /// b, the Wien wavelength displacement law constant, in m·K. Exact.
+    static member WienDisplacement = Constants.Quantities.wienDisplacement
+
+    /// The electronvolt, in J. Exact. As a unit, for an axis, it is `Units.Electronvolt`.
+    static member Electronvolt = Constants.Quantities.electronvolt
+
+    // ---- Conventional, exact by definition --------------------------------------------
+
+    /// g_n, the standard acceleration of gravity, in m·s⁻². Exact, by convention.
+    static member StandardGravity = Constants.Quantities.standardGravity
+
+    // ---- Measured -----------------------------------------------------------------------
+
+    /// G, the Newtonian constant of gravitation, in m³·kg⁻¹·s⁻². Measured.
+    static member Gravitation = Constants.Quantities.G
+
+    /// α, the fine-structure constant, dimensionless. Measured.
+    static member FineStructure = Constants.Quantities.fineStructure
+
+    /// μ₀, the vacuum magnetic permeability, in N·A⁻². Measured.
+    static member VacuumPermeability = Constants.Quantities.mu0
+
+    /// ε₀, the vacuum electric permittivity, in F·m⁻¹. Measured.
+    static member VacuumPermittivity = Constants.Quantities.eps0
+
+    /// m_e, the electron mass, in kg. Measured.
+    static member ElectronMass = Constants.Quantities.me
+
+    /// m_p, the proton mass, in kg. Measured.
+    static member ProtonMass = Constants.Quantities.mp
+
+    /// m_n, the neutron mass, in kg. Measured.
+    static member NeutronMass = Constants.Quantities.mn
+
+    /// m_u, the atomic mass constant, in kg: the dalton, `Units.Dalton`. Measured.
+    static member AtomicMass = Constants.Quantities.atomicMass
+
+    /// R∞, the Rydberg constant, in m⁻¹. Measured.
+    static member Rydberg = Constants.Quantities.rydberg
+
+    /// a₀, the Bohr radius, in m. Measured.
+    static member BohrRadius = Constants.Quantities.bohrRadius
+
+    /// μ_B, the Bohr magneton, in J·T⁻¹. Measured.
+    static member BohrMagneton = Constants.Quantities.bohrMagneton

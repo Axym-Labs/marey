@@ -40,7 +40,9 @@ printfn "%s" (UnitDisplay.unitText Unicode UnitRegistry.si Prefix.none (U.parse 
 - **Units from text.** `U.parse "V/m"` reads products, quotients, integer powers, SI prefixes and
   `degC`, and composes as `U.div` would; `U.tryAs U.metre (U.parse "km")` asserts the measure back,
   checked on the dimension.
-- **C#.** `Units.Metre` and the rest under `Marey.CSharp`, with the algebra and `Units.Parse`.
+- **C#.** `Units.Metre` and the rest under `Marey.CSharp`, with the algebra and `Units.Parse`; the
+  constants as `PhysicalConstants.Planck`, `PhysicalConstants.SpeedOfLight` and the rest, each a
+  `Quantity`.
 
 Depends on [`Marey.Core`](https://www.nuget.org/packages/Marey.Core) and nothing else.
 
