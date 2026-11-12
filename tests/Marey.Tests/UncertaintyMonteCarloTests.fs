@@ -283,3 +283,22 @@ let ``the figure draws the values, the linear distribution and both intervals`` 
     // The linear interval's ends are dashed, the Monte Carlo ones not.
     Assert.Empty(layers.[1].Style.Dash)
     Assert.NotEmpty(layers.[3].Style.Dash)
+
+/// A linear interval that reaches where no trial fell is drawn whole: a release height
+/// h = L(1 − cos θ), θ between 0 and 0.1 rad, cannot be negative, and the law of propagation's
+/// interval goes to −1.3 mm. The axis has to show it, or the figure hides its own point.
+[<Fact>]
+let ``the figure shows a linear interval past the trials`` () =
+    let mm = U.scaled "mm" 1e-3 U.metre
+    let length = Uncertain.resolution "Length" U.metre 0.800<m> 1e-3<m>
+    let angle = Uncertain.rectangular "Release angle" U.radian 0.05<rad> 0.05<rad>
+
+    let c =
+        MonteCarlo.model2 (fun l a -> l * (1.0 - Uncertain.cos a) |> Uncertain.convert mm) length angle
+        |> MonteCarlo.checkWith { MonteCarlo.defaults with Trials = 20_000; Adaptive = false }
+
+    Assert.True(float c.LinearInterval.Estimate - float c.LinearInterval.Expanded < -1.0)
+    Assert.Equal(0.0, float c.Values.[0], 6)
+    let svg = Chart.monteCarlo c |> Chart.render SvgBackend.render (Chart.size 720.0 450.0)
+    Assert.Contains(">-1<", svg)
+    Assert.Contains(">trials<", svg)

@@ -744,6 +744,29 @@ let ``the electron's specific charge carries m_e's uncertainty`` () =
     Assert.Equal("1.75882000838(54) × 10¹¹ C·kg⁻¹", Uncertain.report eOverM)
 
 // ======================================================================================
+// The guide's pendulum
+// ======================================================================================
+
+/// The guide's uncertainty chapter shows what its first block prints, in a `text` block that the
+/// guide's own run does not compare. This does: the report and the budget, line for line.
+[<Fact>]
+let ``the guide shows what its pendulum prints`` () =
+    let page = IO.File.ReadAllText(IO.Path.Combine(Golden.repoRoot.Force(), "docs", "guide", "16-uncertainty.md")).Replace("\r\n", "\n")
+    let shown = Text.RegularExpressions.Regex.Match(page, "^```text\n(.*?)^```$", Text.RegularExpressions.RegexOptions.Multiline ||| Text.RegularExpressions.RegexOptions.Singleline)
+    Assert.True(shown.Success, "the chapter has no text block")
+
+    let pendulumLength = Uncertain.resolution "Length" U.metre 0.800<m> 1e-3<m>
+    let tenSwings = Uncertain.ofReadings "Ten periods" U.second [ 17.951<s>; 17.901<s>; 17.971<s>; 17.921<s>; 17.911<s> ]
+    let stopwatch = Uncertain.certificate "Stopwatch calibration" U.second 0.0<s> 0.02<s> 2.0
+    let swingPeriod = (tenSwings + stopwatch) / 10.0
+    let gPendulum = 4.0 * Math.PI ** 2.0 * pendulumLength / (swingPeriod * swingPeriod)
+
+    let printed = Uncertain.report gPendulum + "\n" + Budget.text (Uncertain.budget gPendulum) + "\n"
+    Assert.Equal(printed, shown.Groups.[1].Value)
+    Assert.Contains("Uncertain.resolution \"Length\" U.metre 0.800<m> 1e-3<m>", page)
+    Assert.Contains("[ 17.951<s>; 17.901<s>; 17.971<s>; 17.921<s>; 17.911<s> ]", page)
+
+// ======================================================================================
 // Cost
 // ======================================================================================
 

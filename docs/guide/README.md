@@ -1,6 +1,6 @@
 # The guide
 
-A tour of Marey, in fifteen sections that build on one another: each introduces a few calls and
+A tour of Marey, in sixteen sections that build on one another: each introduces a few calls and
 ends on a worked example that uses them, with what it draws. Every `fsharp` block runs, in order,
 as one session (`tests/Marey.Tests/GuideTests.fs`), and every figure on these pages is drawn by the
 block above it, so a page that stopped matching the library would fail the build.
@@ -34,6 +34,10 @@ block above it, so a page that stopped matching the library would fail the build
 
 14. [From C#](14-csharp.md)
 15. [The scene, and the way out](15-underneath.md)
+
+**Measurement**
+
+16. [Measurement uncertainty](16-uncertainty.md): inputs as a lab names them, the budget, a weighted fit and its band, a Monte Carlo check; g from a pendulum
 
 Beside the guide: [Compatibility](../compatibility.md), [Not in 1.0](../not-in-1.0.md), and
 [Why Marey is like this](../why.md).

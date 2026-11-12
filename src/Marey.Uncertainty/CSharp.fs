@@ -186,6 +186,11 @@ type UncertainExtensions =
     [<Extension>]
     static member Report(x: Uncertain<1>, format: ReportFormat) : string = Uncertain.reportWith format x
 
+    /// The value in another unit of its dimension: `h.Convert(Units.Scaled("mm", 1e-3, Units.Metre))`.
+    /// See `Uncertain.convert`.
+    [<Extension>]
+    static member Convert(x: Uncertain<1>, into: IUnit) : Uncertain<1> = Uncertain.convert (U.erase into) x
+
     /// The relative standard uncertainty, u/|y|.
     [<Extension>]
     static member Relative(x: Uncertain<1>) : float = Uncertain.relative x

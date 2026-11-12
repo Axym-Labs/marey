@@ -64,7 +64,9 @@ let private assemblies =
       // solvers step its states.
       "Marey.Sim"
       // M5 phase 10, with the GPU and window chapter.
-      "Marey.Backend.Gpu" ]
+      "Marey.Backend.Gpu"
+      // With the uncertainty chapter.
+      "Marey.Uncertainty" ]
 
 /// `dotnet` on PATH, or `None`.
 ///

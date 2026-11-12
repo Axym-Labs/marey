@@ -676,6 +676,14 @@ module Uncertain =
     /// The witness of the unit.
     let unit (x: Uncertain<'u>) : U<'u> = x.Unit
 
+    /// The value in another witness of its measure, its contributions rescaled with it:
+    /// `Uncertain.convert U.metrePerSecondSquared g` writes a g worked out as 4π²/slope in m·s⁻²
+    /// rather than s⁻²·m, and `Uncertain.convert (U.scaled "mm" 1e-3 U.metre) h` reads h in
+    /// millimetres. As `Q.convert` does for values.
+    let convert (into: U<'u>) (x: Uncertain<'u>) : Uncertain<'u> =
+        let struct (v, k) = Parts.aligned into x.Unit x.Value
+        Uncertain(v, into, x.Inputs, Parts.scale k x.Parts)
+
     /// Each input the value depends on with its contribution `∂y/∂xᵢ · u(xᵢ)`, signed, in the
     /// value's unit and in the order the inputs were made.
     let contributions (x: Uncertain<'u>) : (Input * float<'u>)[] =

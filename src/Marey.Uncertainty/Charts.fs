@@ -251,7 +251,11 @@ module UncertaintyCharts =
             let pad = 0.5 * (hi - lo)
             let first = float c.Values.[0]
             let last = float c.Values.[c.Values.Length - 1]
-            let from, upto = max first (lo - pad), min last (hi + pad)
+            // Half again either side where trials fell there, and both intervals whole, with a
+            // margin, where one reaches past them: a linear interval below zero for a value that
+            // cannot be negative is what the figure is for.
+            let margin = 0.05 * (hi - lo)
+            let from, upto = min (lo - margin) (max first (lo - pad)), max (hi + margin) (min last (hi + pad))
             let from, upto = if upto > from then from, upto else lo - 1.0, hi + 1.0
             let h = Stat.binIn c.Unit 60 (Parts.tag from, Parts.tag upto) c.Values
             let width = float h.Width
@@ -307,7 +311,7 @@ module UncertaintyCharts =
 
             // `Chart.add` gives the added layers the next colour's style, so the dash goes on
             // after. A histogram leaves no corner free, so the legend goes below.
-            let fig = Chart.add upper lower |> Chart.withDash [ 5.0<px>; 3.0<px> ]
+            let fig = Chart.add upper lower |> Chart.withDash [ 5.0<px>; 3.0<px> ] |> Chart.withYLabel "trials"
             { fig with Panels = fig.Panels |> Array.map (fun p -> { p with Legend = LegendOutsideBottom }) }
 
         /// `fitBandWith` as the next series of a figure, in the next colour.
