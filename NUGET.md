@@ -41,6 +41,7 @@ others are separate references.
 | `Marey.Core`, `Marey.Units` | Dimensions, unit witnesses, scales, colour, and the scene every backend draws. |
 | `Marey.Plot` | `Chart`, the `plot` block, layout, themes, the storyboard. |
 | `Marey.Anim`, `Marey.Fields`, `Marey.Sim` | Animation, fields, simulation. |
+| `Marey.Uncertainty` | Measured values with their standard uncertainty, as the GUM evaluates it: budgets, error bars, weighted fits, a Monte Carlo check. |
 | `Marey.Interact`, `Marey.Html` | Live figures, and HTML for a notebook cell. |
 | `Marey.Backend.Svg`, `Marey.Backend.Tikz` | SVG, and `tikzpicture` source for LaTeX. |
 | `Marey.Backend.Skia` | PNG and vector PDF with text shaped by HarfBuzz. Not in `Marey`: it brings SkiaSharp's natives. |

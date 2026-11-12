@@ -13,7 +13,7 @@
     <!-- No assembly, so no documentation file and no symbols to pack. -->
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <IncludeSymbols>false</IncludeSymbols>
-    <Description>Marey in one reference: units, the plotting grammar, fields, simulations, animation, live figures, and SVG, TikZ and HTML output. Add Marey.Backend.Skia for PNG and PDF, Marey.Backend.Gpu for a window, Marey.Tools.Tex and Marey.Tools.Video for typeset labels and video.</Description>
+    <Description>Marey in one reference: units, the plotting grammar, measurement uncertainty, fields, simulations, animation, live figures, and SVG, TikZ and HTML output. Add Marey.Backend.Skia for PNG and PDF, Marey.Backend.Gpu for a window, Marey.Tools.Tex and Marey.Tools.Video for typeset labels and video.</Description>
     <PackageTags>fsharp plotting visualization units-of-measure physics scientific svg tikz notebook animation simulation</PackageTags>
   </PropertyGroup>
 
@@ -30,6 +30,7 @@
     <ProjectReference Include="..\Marey.Plot\Marey.Plot.fsproj" />
     <ProjectReference Include="..\Marey.Fields\Marey.Fields.fsproj" />
     <ProjectReference Include="..\Marey.Sim\Marey.Sim.fsproj" />
+    <ProjectReference Include="..\Marey.Uncertainty\Marey.Uncertainty.fsproj" />
     <ProjectReference Include="..\Marey.Interact\Marey.Interact.fsproj" />
     <ProjectReference Include="..\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />
     <ProjectReference Include="..\Marey.Backend.Tikz\Marey.Backend.Tikz.fsproj" />

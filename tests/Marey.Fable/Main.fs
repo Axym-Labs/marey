@@ -98,7 +98,6 @@ let private simFailures =
 
 // Uncertainty propagation gets .NET's numbers.
 let private uncertaintyFailures: string list =
-#if MAREY_UNCERTAINTY
     let figures =
         [ for name, render in UncertaintyScenes.svg do
               let expected = normalise (readFileSync (dir + "/uncertainty/" + name + ".svg", "utf8"))
@@ -115,9 +114,6 @@ let private uncertaintyFailures: string list =
 
     printfn "the uncertainty gate: %s" (if found.IsEmpty then "holds" else "fails")
     found
-#else
-    []
-#endif
 
 if
     not (

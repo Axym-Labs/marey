@@ -4,10 +4,6 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <!-- Compiles under Fable like Core, Units and Plot, on which it depends. -->
     <MareyFable>true</MareyFable>
-    <!-- Not published yet: the surface is still being built, and a release must not pick it up
-         half made. Remove this line, and add the project to the `Marey` metapackage and to the
-         package counts in `ci.yml`, when it ships. -->
-    <IsPackable>false</IsPackable>
     <AssemblyName>Marey.Uncertainty</AssemblyName>
     <RootNamespace>Marey</RootNamespace>
     <Description>Measurement uncertainty for Marey, as the GUM (JCGM 100) evaluates it: values that carry their standard uncertainty and its sources through arithmetic under F# units of measure, with correlations through shared inputs, effective degrees of freedom and expanded uncertainties.</Description>

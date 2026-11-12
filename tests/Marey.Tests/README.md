@@ -20,9 +20,9 @@ tick alone.
 Targets `net10.0`; the projects under test target `netstandard2.1`. Warnings are errors here
 too, inherited from `Directory.Build.props`.
 
-Scope is all fifteen shipped packages: `Marey.Core`, `Marey.Units`, `Marey.Plot`, `Marey.Anim`,
-`Marey.Fields`, `Marey.Interact`, the four backends (`Svg`, `Tikz`, `Skia`, `Gpu`), `Marey.Html`,
-`Marey.Verso`, `Marey.Toolchain`, `Marey.Tools.Video` and `Marey.Tools.Tex`.
+Scope is all sixteen shipped packages: `Marey.Core`, `Marey.Units`, `Marey.Plot`, `Marey.Anim`,
+`Marey.Fields`, `Marey.Interact`, `Marey.Uncertainty`, the four backends (`Svg`, `Tikz`, `Skia`,
+`Gpu`), `Marey.Html`, `Marey.Verso`, `Marey.Toolchain`, `Marey.Tools.Video` and `Marey.Tools.Tex`.
 
 The one package reference that is not a test tool is `Verso.Testing`. It supplies the stub contexts
 Verso ships for extension authors, which is what lets `MareyFormatter` be exercised as a real
@@ -73,6 +73,9 @@ without a notebook host installed.
 | `FacetTests.fs` | Small multiples: that every panel reports the same domains and the same plot rectangle, and that a faceted histogram bins every panel into one grid. |
 | `GeomTests.fs` | The geoms: the five-number summary, each geom's compiled geometry, the row-alignment gate for channelled layers, and cross-backend coordinate agreement over every geom. |
 | `FieldTests.fs` | `Marey.Fields`, and gates 2–11, 13 and 14 of `m4-plan.md`: differences exact on quadratics, units checked by compiling (curl over a phase space must not), contours on their level, the quiver key true to its arrows, streamlines tangent and evenly spaced, LIC deterministic and smooth along the flow, fixed points located and classified, and a film whose colour scale holds still. |
+| `UncertaintyTests.fs` | `Marey.Uncertainty`: the GUM's worked examples H.1 and H.2 to the digits the text prints, correlation through a shared input exact, the inputs, the reports and rounding of 7.2.6, the budget, the measured constants with CODATA's values and correlations, the guide's printed pendulum, and the cost of 10⁴ rows in a collection of its own. |
+| `UncertaintyFitTests.fs` | Weighted fits: GUM H.3 reproduced, a derived quantity of slope and intercept against the covariance matrix, χ²/ν near 1 on data with known σ, and the band. |
+| `UncertaintyMonteCarloTests.fs` | The Monte Carlo check: JCGM 101's tables 2 to 4, the adaptive stop, strongly nonlinear models flagged, each distribution's moments, and the figure, which keeps a linear interval past the trials on its axis. |
 | `TypesetTests.fs` | `Marey.Tools.Tex`: the SVG path reader, the outline's baseline, the scene pass, the degrade on a machine without TeX, and the caches — per call, and the `TexCache` a film holds. |
 | `VideoTests.fs` | `Marey.Tools.Video`: the argument vector as a value, a bit-exact encode read back with `ffprobe`, the build tags kept out of the container, and the degrade without `ffmpeg`. |
 | `InteractTests.fs` | `Marey.Interact`: one quantity formatter, typed controls (a kelvin slider feeding a view over seconds must not compile), the pure step replayed and run in parallel, zoom and pan read back through linear, log and phase-space scales, the readout checked against the datum under the pointer, the widget page parsed and searched for a number formatted in the browser, a plot rectangle that holds still across every control extreme, and a recording written out, read back and filmed byte for byte. |

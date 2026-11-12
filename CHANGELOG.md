@@ -44,7 +44,7 @@ means upgrading all of them; referencing `Marey` does that in one line.
 
 Every package targets netstandard2.1, except the GPU backend (net8.0) and the Verso extension
 (net8.0 and net10.0), and requires FSharp.Core 8.0.100 or newer. Each release is checked on the .NET
-SDK 10.0.100 band and on the newest SDK. The nine packages that carry their sources for Fable are
+SDK 10.0.100 band and on the newest SDK. The ten packages that carry their sources for Fable are
 built and tested with Fable 5.27. A live figure in a notebook needs Verso 1.2.3 or newer. The GPU
 window runs on Linux and Windows, not on macOS. `latex`, `dvisvgm` and `ffmpeg` are found on `PATH`
 and reported when missing; Marey does not require a version of them.
@@ -112,6 +112,30 @@ and reported when missing; Marey does not require a version of them.
   `Quantity` with its name (`PhysicalConstants.Planck * PhysicalConstants.SpeedOfLight /
   wavelength`), so that a file with both `using Marey;` and `using Marey.CSharp;` sees one
   `Constants`, not two.
+
+- **Measurement uncertainty: `Marey.Uncertainty`**, in `Marey`. An `Uncertain<'u>` carries its
+  standard uncertainty and the contribution of each input it rests on through `+ - * /`, the
+  math functions and `Uncertain.apply`, under the measure the compiler checks and with a witness
+  that composes as a `Quantity`'s does. A shared input is one input wherever it is used, so
+  `x - x` is exactly zero and a calibration two readings share drops out of their difference.
+  Inputs are made as a lab names them: `ofReadings`, `resolution`, `rectangular`, `triangular`,
+  `arcsine`, `certificate`, `standard` and `x +- u`. `Uncertain.report` writes the GUM's concise
+  form, `9.823(18) m·s⁻²`, `reportWith` the ± and siunitx forms, `expanded` a coverage factor
+  from Student's t at the Welch–Satterthwaite degrees of freedom, and `budget` each input's share,
+  as text or a LaTeX `tabular`. `Chart.errorbars` draws uncertain values with their bars on x and
+  y; `Fit.line` and `Fit.linear` fit them weighted, with coefficients that are themselves
+  uncertain, and `Chart.fitBand` draws the band. `MonteCarlo.check` evaluates a model by JCGM 101
+  and says whether the first-order interval holds; `Chart.monteCarlo` draws the comparison.
+  `Uncertain.Constants` holds CODATA 2022's measured constants with their uncertainties,
+  correlated through α, R∞ and the relative atomic masses they rest on. The GUM's worked
+  examples H.1, H.2 and H.3 and JCGM 101's tables 2 to 4 are reproduced by the tests. C# reaches
+  it through `Uncertainty`, `UncertainExtensions` and `UncertainConstants`. It carries its sources
+  for Fable, whose numbers are .NET's. Guide §16 follows one lab through it, and
+  `examples/pendulum-uncertainty.fsx` is the same lab.
+- **Error channels in the `plot` block**, in `Marey.Plot`: `xError` and `yError` draw an error
+  bar for every row from an accessor, in a unit of their own, and `errorLabel` says in the legend
+  what a bar spans. `Marey.Uncertainty` adds `xUncertain` and `yUncertain`, which take a row's
+  `Uncertain` value for the position and its bar at once.
 
 ### Changed
 
