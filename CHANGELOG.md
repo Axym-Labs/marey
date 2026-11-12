@@ -122,7 +122,7 @@ and reported when missing; Marey does not require a version of them.
   `arcsine`, `certificate`, `standard` and `x +- u`. `Uncertain.report` writes the GUM's concise
   form, `9.823(18) m·s⁻²`, `reportWith` the ± and siunitx forms, `expanded` a coverage factor
   from Student's t at the Welch–Satterthwaite degrees of freedom, and `budget` each input's share,
-  as text or a LaTeX `tabular`. `Chart.errorbars` draws uncertain values with their bars on x and
+  as text or a LaTeX `tabular`. `Chart.uncertain` draws uncertain values with their bars on x and
   y; `Fit.line` and `Fit.linear` fit them weighted, with coefficients that are themselves
   uncertain, and `Chart.fitBand` draws the band. `MonteCarlo.check` evaluates a model by JCGM 101
   and says whether the first-order interval holds; `Chart.monteCarlo` draws the comparison.

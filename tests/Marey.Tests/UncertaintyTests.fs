@@ -572,11 +572,11 @@ let ``the legend says what the bars are`` () =
     Assert.Contains("force [N]", textsOf (UncertaintyScenes.errorbars ()))
 
     let x = [| 1.0<m> +- 0.1<m>; 2.0<m> +- 0.1<m> |]
-    Assert.Equal("expanded uncertainty, k = 1.96 (95 %)", (layersOf (Chart.errorbarsWith (ErrorBars.Coverage 0.95) x x)).[0].Name)
+    Assert.Equal("expanded uncertainty, k = 1.96 (95 %)", (layersOf (Chart.uncertainWith (ErrorBars.Coverage 0.95) x x)).[0].Name)
 
     Assert.Equal(
         "expanded uncertainty, k = 2.58 (99 %, normal)",
-        (layersOf (Chart.errorbarsWith (ErrorBars.CoverageAssumingNormal 0.99) x x)).[0].Name
+        (layersOf (Chart.uncertainWith (ErrorBars.CoverageAssumingNormal 0.99) x x)).[0].Name
     )
 
 /// With every uncertainty taken as known, 95 % bars are the standard ones times 1.960, and
@@ -585,8 +585,8 @@ let ``the legend says what the bars are`` () =
 let ``standard and expanded bars differ by the factor alone`` () =
     let x = [| 1.0; 2.0; 3.5 |] |> Array.map (fun v -> Uncertain.standard "" U.second (v * 1.0<s>) 0.05<s>)
     let y = [| 0.9; 2.2; 3.4 |] |> Array.map (fun v -> Uncertain.standard "" U.metre (v * 1.0<m>) (0.1<m> * v))
-    let standard = layersOf (Chart.errorbars x y)
-    let expanded = layersOf (Chart.errorbarsWith (ErrorBars.Coverage 0.95) x y)
+    let standard = layersOf (Chart.uncertain x y)
+    let expanded = layersOf (Chart.uncertainWith (ErrorBars.Coverage 0.95) x y)
     let k = Coverage.normal 0.95
     Assert.Equal(3, standard.Length)
     Assert.Equal(3, expanded.Length)
@@ -614,16 +614,16 @@ let ``standard and expanded bars differ by the factor alone`` () =
 let ``a value with no uncertainty gets no bar`` () =
     let t = U.second.Of [ 1.0<s>; 2.0<s> ]
     let x = [| 1.0<m> +- 0.1<m>; 2.0<m> +- 0.1<m> |]
-    let onY = layersOf (Chart.errorbars (Uncertain.exactly t) x)
+    let onY = layersOf (Chart.uncertain (Uncertain.exactly t) x)
     Assert.Equal(2, onY.Length)
     Assert.True(match onY.[0].Geom with GeomErrorY _ -> true | _ -> false)
-    let onX = layersOf (Chart.errorbars x (Uncertain.exactly t))
+    let onX = layersOf (Chart.uncertain x (Uncertain.exactly t))
     Assert.True(match onX.[0].Geom with GeomErrorX _ -> true | _ -> false)
     Assert.Equal("standard uncertainty", onX.[0].Name)
-    let none = layersOf (Chart.errorbarsWith (ErrorBars.Coverage 0.95) (Uncertain.exactly t) (Uncertain.exactly t))
+    let none = layersOf (Chart.uncertainWith (ErrorBars.Coverage 0.95) (Uncertain.exactly t) (Uncertain.exactly t))
     Assert.Equal(1, none.Length)
     Assert.False(none.[0].ShowInLegend)
-    Assert.Throws<ArgumentException>(fun () -> Chart.errorbars x [| x.[0] |] |> ignore) |> ignore
+    Assert.Throws<ArgumentException>(fun () -> Chart.uncertain x [| x.[0] |] |> ignore) |> ignore
 
 [<Fact>]
 let ``expanded bars are refused where no factor can be stated`` () =
@@ -631,9 +631,9 @@ let ``expanded bars are refused where no factor can be stated`` () =
     let b = Uncertain.standard "b" U.metre 1.0<m> 0.4<m>
     Uncertain.correlate 0.5 a b
     let t = Uncertain.exactly (U.second.Of [ 1.0<s> ])
-    Assert.Throws<InvalidOperationException>(fun () -> Chart.errorbarsWith (ErrorBars.Coverage 0.95) t [| a + b |] |> ignore) |> ignore
-    Assert.Equal(2, (layersOf (Chart.errorbarsWith (ErrorBars.CoverageAssumingNormal 0.95) t [| a + b |])).Length)
-    Assert.Equal(2, (layersOf (Chart.errorbars t [| a + b |])).Length)
+    Assert.Throws<InvalidOperationException>(fun () -> Chart.uncertainWith (ErrorBars.Coverage 0.95) t [| a + b |] |> ignore) |> ignore
+    Assert.Equal(2, (layersOf (Chart.uncertainWith (ErrorBars.CoverageAssumingNormal 0.95) t [| a + b |])).Length)
+    Assert.Equal(2, (layersOf (Chart.uncertain t [| a + b |])).Length)
 
 [<Fact>]
 let ``added series keep their bars and take the next colour`` () =

@@ -133,9 +133,9 @@ module UncertaintyCharts =
     [<RequireQualifiedAccess>]
     module Chart =
 
-        /// `errorbars` with a choice of what the bars span: `Chart.errorbarsWith (ErrorBars.Coverage 0.95) t x`.
+        /// `uncertain` with a choice of what the bars span: `Chart.uncertainWith (ErrorBars.Coverage 0.95) t x`.
         /// The legend states the choice and the coverage factor.
-        let errorbarsWith (bars: ErrorBars) (x: seq<Uncertain<'ux>>) (y: seq<Uncertain<'uy>>) : Figure =
+        let uncertainWith (bars: ErrorBars) (x: seq<Uncertain<'ux>>) (y: seq<Uncertain<'uy>>) : Figure =
             let xs = Array.ofSeq x
             let ys = Array.ofSeq y
 
@@ -184,15 +184,15 @@ module UncertaintyCharts =
         /// Points with the error bars their values carry, on x and on y: one standard uncertainty
         /// either side, which the legend says. A value with no uncertainty gets no bar, so an
         /// exact x (`Uncertain.exactly t`) leaves bars on y alone.
-        let errorbars (x: seq<Uncertain<'ux>>) (y: seq<Uncertain<'uy>>) : Figure = errorbarsWith ErrorBars.Standard x y
+        let uncertain (x: seq<Uncertain<'ux>>) (y: seq<Uncertain<'uy>>) : Figure = uncertainWith ErrorBars.Standard x y
 
-        /// `errorbarsWith` as the next series of a figure, in the next colour.
-        let addErrorbarsWith (bars: ErrorBars) (x: seq<Uncertain<'ux>>) (y: seq<Uncertain<'uy>>) (fig: Figure) : Figure =
-            ChartAxis.addQuietly (errorbarsWith bars x y) fig
+        /// `uncertainWith` as the next series of a figure, in the next colour.
+        let addUncertainWith (bars: ErrorBars) (x: seq<Uncertain<'ux>>) (y: seq<Uncertain<'uy>>) (fig: Figure) : Figure =
+            ChartAxis.addQuietly (uncertainWith bars x y) fig
 
-        /// `errorbars` as the next series of a figure, in the next colour.
-        let addErrorbars (x: seq<Uncertain<'ux>>) (y: seq<Uncertain<'uy>>) (fig: Figure) : Figure =
-            addErrorbarsWith ErrorBars.Standard x y fig
+        /// `uncertain` as the next series of a figure, in the next colour.
+        let addUncertain (x: seq<Uncertain<'ux>>) (y: seq<Uncertain<'uy>>) (fig: Figure) : Figure =
+            addUncertainWith ErrorBars.Standard x y fig
 
         /// `fitBand` with a choice of what the band spans: `Chart.fitBandWith (ErrorBars.Coverage 0.95) fit`,
         /// its factor read at the curve's effective degrees of freedom.
@@ -318,7 +318,7 @@ module UncertaintyCharts =
         let addFitBandWith (band: ErrorBars) (fit: IFittedCurve<'ux, 'uy>) (fig: Figure) : Figure =
             ChartAxis.addQuietly (fitBandWith band fit) fig
 
-        /// `fitBand` as the next series of a figure: `Chart.errorbars t x |> Chart.addFitBand fit`.
+        /// `fitBand` as the next series of a figure: `Chart.uncertain t x |> Chart.addFitBand fit`.
         let addFitBand (fit: IFittedCurve<'ux, 'uy>) (fig: Figure) : Figure = addFitBandWith ErrorBars.Standard fit fig
 
 /// The `plot` block's channels for uncertain values. `open Marey` adds them to the block.

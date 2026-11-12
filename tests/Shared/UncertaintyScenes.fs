@@ -24,13 +24,13 @@ let private spring () =
 /// Bars on both axes, one standard uncertainty either side.
 let errorbars () : Figure =
     let extension, force = spring ()
-    Chart.errorbars extension force |> Chart.withTitle "A spring" |> Chart.withXLabel "extension" |> Chart.withYLabel "force"
+    Chart.uncertain extension force |> Chart.withTitle "A spring" |> Chart.withXLabel "extension" |> Chart.withYLabel "force"
 
 /// The same values with 95 % bars, each from its own degrees of freedom.
 let coverage () : Figure =
     let extension, force = spring ()
 
-    Chart.errorbarsWith (ErrorBars.Coverage 0.95) extension force
+    Chart.uncertainWith (ErrorBars.Coverage 0.95) extension force
     |> Chart.withTitle "A spring"
     |> Chart.withXLabel "extension"
     |> Chart.withYLabel "force"
@@ -40,9 +40,9 @@ let added () : Figure =
     let t = U.second.Of [ 1.0<s>; 2.0<s>; 3.0<s>; 4.0<s> ]
     let run (offset: float) = [| 0.9; 2.1; 2.9; 4.2 |] |> Array.map (fun v -> Uncertain.standard "" U.metre ((v + offset) * 1.0<m>) 0.2<m>)
 
-    Chart.errorbars (Uncertain.exactly t) (run 0.0)
+    Chart.uncertain (Uncertain.exactly t) (run 0.0)
     |> Chart.withName "run 1"
-    |> Chart.addErrorbars (Uncertain.exactly t) (run 1.5)
+    |> Chart.addUncertain (Uncertain.exactly t) (run 1.5)
     |> Chart.withName "run 2"
 
 /// The spring's line, fitted with both axes' uncertainties, over its points: the band is the
@@ -50,7 +50,7 @@ let added () : Figure =
 let fitted () : Figure =
     let extension, force = spring ()
 
-    Chart.errorbars extension force
+    Chart.uncertain extension force
     |> Chart.addFitBand (Fit.line extension force)
     |> Chart.withTitle "A spring and its line"
     |> Chart.withXLabel "extension"

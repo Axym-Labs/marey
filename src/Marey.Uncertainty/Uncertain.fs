@@ -641,7 +641,7 @@ module Uncertain =
             invalidArg "x" (sprintf "Marey: %s takes an input as it was made, not a value computed from inputs." what)
 
     /// Values with no uncertainty, from a series that carries its unit: the exact side of a chart
-    /// of uncertain values, `Chart.errorbars (Uncertain.exactly t) x`.
+    /// of uncertain values, `Chart.uncertain (Uncertain.exactly t) x`.
     let exactly (values: Q<'u>) : Uncertain<'u>[] = values |> Seq.map (exact values.Unit) |> Array.ofSeq
 
     /// The same input with the degrees of freedom of its uncertainty stated, where it is made:

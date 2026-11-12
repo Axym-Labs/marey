@@ -61,14 +61,14 @@ printfn "%s\n" (Budget.text (Uncertain.budget gLine))
 let residuals = Array.map2 (fun (l: Uncertain<m>) (t2: Uncertain<s^2>) -> t2 - (line.At l.Value).Value) lengths squares
 
 let figure =
-    Chart.errorbars lengths squares
+    Chart.uncertain lengths squares
     |> Chart.addFitBand line
     |> Chart.withYLabel "T²"
     |> Chart.withLegend LegendTopLeft
     |> Chart.withTitle "g from a pendulum"
     |> Chart.withSubtitle (sprintf "g = %s from the slope of T² against L" (Uncertain.report gLine))
     |> Chart.above (
-        Chart.errorbars lengths residuals
+        Chart.uncertain lengths residuals
         |> Chart.addHLine (U.square U.second) 0.0<s^2>
         |> Chart.withXLabel "L"
         |> Chart.withYLabel "residual"

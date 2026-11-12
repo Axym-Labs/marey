@@ -38,8 +38,8 @@ Uncertain.expanded 0.95 g |> Uncertain.reportExpanded // (9.823 ± 0.041) m·s�
   `\qty{9.823(18)}{…}`, rounded as the GUM asks (7.2.6). Effective degrees of freedom
   (Welch–Satterthwaite), expanded uncertainties with Student's t, and the budget as text or a
   LaTeX `tabular`.
-- **Charts.** `Chart.errorbars` draws the uncertainties uncertain values carry, on x and on y, and
-  the legend says what a bar spans. The `plot` block takes them through `xUncertain` and
+- **Charts.** `Chart.uncertain` draws uncertain values as points with their error bars, on x and on y,
+  and the legend says what a bar spans. The `plot` block takes them through `xUncertain` and
   `yUncertain`.
 - **Weighted fits.** `Fit.line` and `Fit.linear` weight each point by its uncertainty, x's too by
   effective variance. The coefficients are `Uncertain` values whose contributions point back to

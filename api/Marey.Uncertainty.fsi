@@ -506,19 +506,19 @@ namespace Marey
         [<RequireQualifiedAccess>]
         module Chart =
 
-            val errorbarsWith:
+            val uncertainWith:
               bars: ErrorBars ->
                 x: Uncertain<'ux> seq -> y: Uncertain<'uy> seq -> Figure
 
-            val errorbars:
+            val uncertain:
               x: Uncertain<'ux> seq -> y: Uncertain<'uy> seq -> Figure
 
-            val addErrorbarsWith:
+            val addUncertainWith:
               bars: ErrorBars ->
                 x: Uncertain<'ux> seq ->
                 y: Uncertain<'uy> seq -> fig: Figure -> Figure
 
-            val addErrorbars:
+            val addUncertain:
               x: Uncertain<'ux> seq ->
                 y: Uncertain<'uy> seq -> fig: Figure -> Figure
 
@@ -604,16 +604,6 @@ namespace Marey.CSharp
 
         static member
           Covariance: a: Marey.Uncertain<1> * b: Marey.Uncertain<1> -> float
-
-        static member
-          Errorbars: x: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> *
-                     y: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> ->
-                       Marey.Figure
-
-        static member
-          Errorbars: x: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> *
-                     y: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> *
-                     bars: Marey.ErrorBars -> Marey.Figure
 
         static member
           Exact: value: float *
@@ -716,26 +706,22 @@ namespace Marey.CSharp
                         ((null :> obj))>] unit: Marey.IUnit ->
                         Marey.Uncertain<1>
 
+        static member
+          Uncertain: x: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> *
+                     y: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> ->
+                       Marey.Figure
+
+        static member
+          Uncertain: x: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> *
+                     y: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> *
+                     bars: Marey.ErrorBars -> Marey.Figure
+
         static member MonteCarloDefaults: Marey.MonteCarloOptions
 
         static member ReportFormat: Marey.ReportFormat
 
     [<System.Runtime.CompilerServices.Extension; AbstractClass; Sealed; Class>]
     type UncertainExtensions =
-
-        [<System.Runtime.CompilerServices.Extension>]
-        static member
-          AddErrorbars: fig: Marey.Figure *
-                        x: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> *
-                        y: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> ->
-                          Marey.Figure
-
-        [<System.Runtime.CompilerServices.Extension>]
-        static member
-          AddErrorbars: fig: Marey.Figure *
-                        x: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> *
-                        y: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> *
-                        bars: Marey.ErrorBars -> Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
         static member
@@ -746,6 +732,20 @@ namespace Marey.CSharp
         static member
           AddFitBand: fig: Marey.Figure * fit: Marey.IFittedCurve<1,1> *
                       band: Marey.ErrorBars -> Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member
+          AddUncertain: fig: Marey.Figure *
+                        x: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> *
+                        y: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> ->
+                          Marey.Figure
+
+        [<System.Runtime.CompilerServices.Extension>]
+        static member
+          AddUncertain: fig: Marey.Figure *
+                        x: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> *
+                        y: System.Collections.Generic.IEnumerable<Marey.Uncertain<1>> *
+                        bars: Marey.ErrorBars -> Marey.Figure
 
         [<System.Runtime.CompilerServices.Extension>]
         static member Budget: x: Marey.Uncertain<1> -> Marey.Budget<1>

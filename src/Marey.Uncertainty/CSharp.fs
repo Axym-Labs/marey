@@ -153,12 +153,12 @@ type Uncertainty =
 
     /// Points with the error bars their values carry, on x and on y: one standard uncertainty
     /// either side, which the legend says. See
-    /// `Chart.errorbars`.
-    static member Errorbars(x: IEnumerable<Uncertain<1>>, y: IEnumerable<Uncertain<1>>) : Figure = Chart.errorbars x y
+    /// `Chart.uncertain`.
+    static member Uncertain(x: IEnumerable<Uncertain<1>>, y: IEnumerable<Uncertain<1>>) : Figure = Chart.uncertain x y
 
-    /// `Errorbars` spanning what `bars` says: `ErrorBars.NewCoverage(0.95)`. See `Chart.errorbarsWith`.
-    static member Errorbars(x: IEnumerable<Uncertain<1>>, y: IEnumerable<Uncertain<1>>, bars: ErrorBars) : Figure =
-        Chart.errorbarsWith bars x y
+    /// `Uncertain` spanning what `bars` says: `ErrorBars.NewCoverage(0.95)`. See `Chart.uncertainWith`.
+    static member Uncertain(x: IEnumerable<Uncertain<1>>, y: IEnumerable<Uncertain<1>>, bars: ErrorBars) : Figure =
+        Chart.uncertainWith bars x y
 
     /// A fitted curve with its band, one standard uncertainty either side. See `Chart.fitBand`.
     static member FitBand(fit: IFittedCurve<1, 1>) : Figure = Chart.fitBand fit
@@ -233,15 +233,15 @@ type UncertainExtensions =
     [<Extension>]
     static member Report(c: MonteCarloCheck<1>) : string = MonteCarlo.report c
 
-    /// `Uncertainty.Errorbars` as the next series of a figure, in the next colour.
+    /// `Uncertainty.Uncertain` as the next series of a figure, in the next colour.
     [<Extension>]
-    static member AddErrorbars(fig: Figure, x: IEnumerable<Uncertain<1>>, y: IEnumerable<Uncertain<1>>) : Figure =
-        Chart.addErrorbars x y fig
+    static member AddUncertain(fig: Figure, x: IEnumerable<Uncertain<1>>, y: IEnumerable<Uncertain<1>>) : Figure =
+        Chart.addUncertain x y fig
 
-    /// `AddErrorbars` spanning what `bars` says.
+    /// `AddUncertain` spanning what `bars` says.
     [<Extension>]
-    static member AddErrorbars(fig: Figure, x: IEnumerable<Uncertain<1>>, y: IEnumerable<Uncertain<1>>, bars: ErrorBars) : Figure =
-        Chart.addErrorbarsWith bars x y fig
+    static member AddUncertain(fig: Figure, x: IEnumerable<Uncertain<1>>, y: IEnumerable<Uncertain<1>>, bars: ErrorBars) : Figure =
+        Chart.addUncertainWith bars x y fig
 
     /// `Uncertainty.FitBand` added to a figure: the line and its band over the points.
     [<Extension>]

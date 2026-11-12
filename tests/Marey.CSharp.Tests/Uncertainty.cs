@@ -99,12 +99,12 @@ public class UncertaintyFromCSharp
         Assert.Equal(3, fit.Dof);
         Assert.Equal("m/s", fit.Slope.Unit.Symbol);
 
-        var fig = Uncertainty.Errorbars(tx, xs).AddFitBand(fit);
+        var fig = Uncertainty.Uncertain(tx, xs).AddFitBand(fit);
         var svg = Svg(fig);
         Assert.Contains("[m]", svg);
         Assert.Contains("standard uncertainty", svg);
         Assert.Contains("[s]", Svg(Uncertainty.FitBand(fit, ErrorBars.NewCoverage(0.95))));
-        Assert.Contains("[m]", Svg(Chart.Line(t, x, yUnit: Units.Metre).AddErrorbars(tx, xs, ErrorBars.NewCoverage(0.95))));
+        Assert.Contains("[m]", Svg(Chart.Line(t, x, yUnit: Units.Metre).AddUncertain(tx, xs, ErrorBars.NewCoverage(0.95))));
     }
 
     [Fact]

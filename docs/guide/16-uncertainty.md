@@ -125,12 +125,12 @@ A line with its band, over the residuals with their error bars:
 let pendulumResiduals =
     Array.map2 (fun (l: Uncertain<m>) (t2: Uncertain<s^2>) -> t2 - (pendulumLine.At l.Value).Value) lengthsUncertain periodsSquared
 
-Chart.errorbars lengthsUncertain periodsSquared
+Chart.uncertain lengthsUncertain periodsSquared
 |> Chart.addFitBand pendulumLine
 |> Chart.withYLabel "T²"
 |> Chart.withLegend LegendTopLeft
 |> Chart.above (
-    Chart.errorbars lengthsUncertain pendulumResiduals
+    Chart.uncertain lengthsUncertain pendulumResiduals
     |> Chart.addHLine (U.square U.second) 0.0<s^2>
     |> Chart.withXLabel "L"
     |> Chart.withYLabel "residual"
@@ -142,8 +142,8 @@ Chart.errorbars lengthsUncertain periodsSquared
 ![T² against L with the fitted line and its band, over the residuals with their error bars](../figures/pendulum-fit.svg)
 
 The error bars are too small to see against T² itself, as they are in most labs; the residuals
-show them. `Chart.errorbars` draws what the values carry, on x and on y, and the legend says what a
-bar spans. `Chart.errorbarsWith (ErrorBars.Coverage 0.95)` draws expanded uncertainties instead,
+show them. `Chart.uncertain` draws uncertain values as points with the error bars they carry, on x and on
+y, and the legend says what a bar spans. `Chart.uncertainWith (ErrorBars.Coverage 0.95)` draws expanded uncertainties instead,
 each with its own factor. The `plot` block takes uncertain values too, with `xUncertain` and
 `yUncertain`.
 
