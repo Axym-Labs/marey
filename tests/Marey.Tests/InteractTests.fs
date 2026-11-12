@@ -469,10 +469,11 @@ module ``polar zoom`` =
 
     let private turn = 2.0 * Math.PI
 
-    /// A curve all the way round, so every sector has data in it.
+    /// A curve all the way round and in to near the pole, so every sector has data in it. Its
+    /// radius starts at the pole, as a polar panel's does.
     let private rose () =
         let th = Array.init 721 (fun i -> float i / 720.0 * turn)
-        Chart.lineIn U.radian U.metre (th |> Array.map (fun t -> t * 1.0<rad>)) (th |> Array.map (fun t -> (1.0 + cos t * cos t) * 1.0<m>))
+        Chart.lineIn U.radian U.metre (th |> Array.map (fun t -> t * 1.0<rad>)) (th |> Array.map (fun t -> (0.1 + cos t * cos t) * 1.0<m>))
         |> Chart.withCoord Coord.polar
 
     /// The px of a point in the plot's unit square, given as its offset from the pole at the
@@ -574,7 +575,7 @@ module ``polar zoom`` =
     let private points =
         Array.init 721 (fun i ->
             let t = float i / 720.0 * turn
-            t, 1.0 + cos t * cos t)
+            t, 0.1 + cos t * cos t)
 
     /// The points of `inBox` (in `v0`'s unit square) are drawn inside `v1`'s clip and on its
     /// plot, and they move by one scale and one shift, so angles are still true angles. The
@@ -597,8 +598,10 @@ module ``polar zoom`` =
 
         Assert.True(moved.Length >= 3, sprintf "only %d points in the box" moved.Length)
 
-        // One scale and one shift: every step between two points is the old step times k.
-        let (_, a0, a1), (_, b0, b1) = moved.[0], moved.[moved.Length - 1]
+        // One scale and one shift: every step between two points is the old step times k. Read
+        // off the point farthest from the first, since a closed curve's last point is its first.
+        let (_, a0, a1) = moved.[0]
+        let (_, b0, b1) = moved |> Array.maxBy (fun (_, p0, _) -> float (Vec2.norm (p0 - a0)))
         let k = float (Vec2.norm (b1 - a1)) / float (Vec2.norm (b0 - a0))
         Assert.True(k > 1.0, sprintf "the zoom magnifies, by %g" k)
 

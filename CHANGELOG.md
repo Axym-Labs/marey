@@ -215,6 +215,19 @@ and reported when missing; Marey does not require a version of them.
   identical under Node, compiled from the projects and from the packages. 5.27 fixes the rounding
   and the JSDoc escaping Marey had reported upstream; Marey's own exact rounding stays, so an app on
   an older Fable draws the same figures.
+- **A plain polar figure draws its data where it belongs.** A polar panel took the padding,
+  the shape and the axes a cartesian one has: θ = 0 was drawn at about 16° with a gap at the
+  start of the turn, r = 0 was lifted off the pole, the circle was an ellipse in a wide plot, and
+  the axes were straight lines along the bottom and left. With nothing stated, the panel now takes
+  them from its coord. An angle in an angle unit spans the coord's turn, `0 … 2π` or `0 … 360°`,
+  and one in any other unit, or none, spans its data exactly. A radius starts at the pole, or at
+  its least value below zero, with room only outside. The plot takes the sector's shape: square
+  for `Coord.polar`, twice as wide as tall for a half-disc, which now fills its plot rather than
+  half of a square. The angle is labelled round the rim, every eighth of a turn and in π for
+  radians, and the radius along the ray at the start of the turn; they are titled `θ` and `r`. A
+  stated domain, tick spec, label or box aspect wins, and a cartesian panel is unchanged.
+  `figure-rules` moves: its polar spiral now starts on the ray at θ = 0 and its 1 … 1.5 rad
+  wedge stands at its true angles.
 
 ### Removed
 

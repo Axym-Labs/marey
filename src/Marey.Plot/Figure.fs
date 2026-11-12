@@ -939,6 +939,50 @@ module Figure =
 
                     point s.XScale s.X, point s.YScale s.Y }
 
+    /// True for a unit of plane angle alone: the radian, the degree, the turn.
+    let private isAngle (symbol: string) (factors: (string * int) list) (dim: Dim) =
+        dim = Dim.zero && U.angleExponentOf symbol factors = 1
+
+    /// **The domains a layer takes from its panel's coord**, on each axis the coord names, where
+    /// the layer's domain is still the padding its constructor gave it: an angle in an angle unit
+    /// spans the coord's angles, so that it is drawn at its true angle; an angle in any other unit
+    /// spans its data exactly, so the turn neither opens a gap nor overlaps; a radius starts at
+    /// the pole, or at its least value below zero, and keeps its room only outside. `None` on an
+    /// axis left as it was: a plain one, a stated or widened domain, a scale that is not linear.
+    let private coordDomains (coord: Coord) (p: PackedSeries) : (float * float) option * (float * float) option =
+        p.Accept
+            { new ISeriesConsumer<(float * float) option * (float * float) option> with
+                member _.Apply<[<Measure>] 'ux, [<Measure>] 'uy>(s: Series<'ux, 'uy>) =
+                    let wanted (role: AxisRole) (sc: Scale<'u>) (xs: float<'u>[]) =
+                        match role, sc.Kind, Scale.domainOf xs with
+                        | AxisRole.Plain, _, _
+                        | _, _, None -> None
+                        | _, kind, _ when kind <> ScaleKind.Linear -> None
+                        | _, _, Some _ when Scale.paddedDomain autoPadding xs <> Some sc.Domain -> None
+                        | AxisRole.Angle(a0, a1), _, Some _ when isAngle sc.Unit.Symbol sc.Unit.Factors sc.Unit.Dim ->
+                            Some(a0 / sc.Unit.ToSI, a1 / sc.Unit.ToSI)
+                        | AxisRole.Angle _, _, Some(lo, hi) -> if hi > lo then Some(float lo, float hi) else None
+                        | AxisRole.Radius, _, Some(lo, hi) ->
+                            let lo = min 0.0 (float lo)
+                            let hi = float hi
+                            if hi > lo then Some(lo, hi + autoPadding * (hi - lo)) else None
+
+                    wanted (Coord.roleOf coord 0) s.XScale s.X, wanted (Coord.roleOf coord 1) s.YScale s.Y }
+
+    /// Every layer on its coord's domains (`coordDomains`). A cartesian panel, whose axes are
+    /// both plain, is left as it is.
+    let private fromCoord (p: Panel) : Panel =
+        if Coord.roleOf p.Coord 0 = AxisRole.Plain && Coord.roleOf p.Coord 1 = AxisRole.Plain then
+            p
+        else
+            { p with
+                Layers =
+                    p.Layers
+                    |> Array.map (fun l ->
+                        match coordDomains p.Coord l.Data with
+                        | None, None -> l
+                        | dx, dy -> { l with Data = withDomains dx dy l.Data }) }
+
     /// The entries whose layer joins the domain, or all of them when none does, so that a
     /// panel of rules alone still has an axis. `included` is one flag per entry.
     let private joining (included: bool[]) (entries: 'a[]) : 'a[] =
@@ -1174,7 +1218,7 @@ module Figure =
 
     /// Give every layer on a panel the same x and y domains, and run a reversed axis backwards.
     /// See `share`; every reader of a panel's axes goes through here.
-    let internal unify (p: Panel) : Panel = p |> adoptKinds |> share |> orient
+    let internal unify (p: Panel) : Panel = p |> adoptKinds |> fromCoord |> share |> orient
 
     /// **The plot's height over its width that a panel asks for**, over the states of it a
     /// shot holds (one for a still figure), unified. Equal aspect takes the union of their domains,
@@ -1187,7 +1231,7 @@ module Figure =
             None
         else
             match drawn.[0].Aspect with
-            | None -> None
+            | None -> Coord.aspectOf drawn.[0].Coord
             | Some(Aspect.Box r) ->
                 if not (r > 0.0) || System.Double.IsInfinity r then
                     failwithf "Marey: a box aspect is a positive height over width; got %g." r
@@ -1640,6 +1684,24 @@ module Figure =
     /// A panel's two axes as they are drawn, under the prefixes given (`None` chooses from the
     /// panel's own domain). The drawing pass and `panelsIn` both take them from here, so a
     /// pointer's reading cannot be written in a unit the axis is not.
+    /// An angle in radians written as a multiple of π, in quarters: `0`, `π/4`, `π/2`, `3π/4`,
+    /// `π`. One that is not a whole number of quarters is written as a number.
+    let private inPi (v: float) =
+        let quarters = v / (System.Math.PI / 4.0)
+        let n = System.Math.Round quarters
+
+        if abs (quarters - n) > 1e-6 then
+            Ticks.format 2 v
+        elif n = 0.0 then
+            "0"
+        else
+            let minus = (Ticks.format 0 -1.0).TrimEnd('1')
+            let a = abs (int n)
+            let g = if a % 4 = 0 then 4 elif a % 2 = 0 then 2 else 1
+            let num, den = a / g, 4 / g
+            let body = (if num = 1 then "π" else sprintf "%dπ" num) + (if den = 1 then "" else sprintf "/%d" den)
+            (if n < 0.0 then minus else "") + body
+
     let private axisSpecs (theme: Theme) (pinX: Prefix option, pinY: Prefix option) (p: Panel) : AxisSpec * AxisSpec =
         let (xPacked, yPacked) = axisScales p
 
@@ -1687,15 +1749,50 @@ module Figure =
             let isLength (packed: PackedScale) = Axes.dimOf packed = Dim.length && Axes.angleOf packed = 0
             isLength xPacked && isLength yPacked
 
-        let label (cfg: AxisConfig) (positional: string) =
-            match cfg.Label with
-            | None when lengths -> Some positional
-            | l -> l
+        // An axis its coord makes an angle or a radius is named for it: `θ` for an angle in an
+        // angle unit or in none, `r` for a radius that is a length or a number.
+        let byRole (axis: int) (packed: PackedScale) =
+            let plain = Axes.angleOf packed = 0 && Axes.dimOf packed = Dim.zero
+
+            match Coord.roleOf p.Coord axis with
+            | AxisRole.Angle _ when plain || (Axes.angleOf packed = 1 && Axes.dimOf packed = Dim.zero) -> Some "θ"
+            | AxisRole.Radius when plain || (Axes.angleOf packed = 0 && Axes.dimOf packed = Dim.length) -> Some "r"
+            | _ -> None
+
+        let label (axis: int) (packed: PackedScale) (cfg: AxisConfig) (positional: string) =
+            match cfg.Label, byRole axis packed with
+            | None, Some name -> Some name
+            | None, None when lengths -> Some positional
+            | l, _ -> l
 
         let xErased, yErased = axisScalesErased p
 
-        Axes.specTicked (ticksOf "x" p.XAxis xErased) p.XAxis.Minor p.XAxis.Format (pin p.XAxis pinX) (unitStyle p.XAxis) p.XAxis.TickCount (label p.XAxis "x") AxisBottom xPacked,
-        Axes.specTicked (ticksOf "y" p.YAxis yErased) p.YAxis.Minor p.YAxis.Format (pin p.YAxis pinY) (unitStyle p.YAxis) p.YAxis.TickCount (label p.YAxis "y") AxisLeft yPacked
+        // An angle its coord turns through, in an angle unit and over at least a quarter turn,
+        // is ticked every eighth of a turn, and in radians written in π, unless it states its own.
+        let turned (axis: int) (scale: IScaleErased) (cfg: AxisConfig) =
+            let lo, hi = scale.Domain
+            let eighth = System.Math.PI / 4.0
+
+            match Coord.roleOf p.Coord axis, cfg.Ticks with
+            | AxisRole.Angle _, TicksAuto when
+                isAngle scale.Symbol scale.Factors scale.Dim
+                && scale.Kind = ScaleKind.Linear
+                && abs (hi - lo) * scale.ToSI >= 2.0 * eighth - 1e-9
+                ->
+                let format =
+                    match cfg.Format with
+                    | FormatAuto when scale.ToSI = 1.0 -> FormatCustom(TickFormatter inPi)
+                    | f -> f
+
+                { cfg with
+                    Ticks = TicksEvery(eighth / scale.ToSI)
+                    Format = format }
+            | _ -> cfg
+
+        let xCfg, yCfg = turned 0 xErased p.XAxis, turned 1 yErased p.YAxis
+
+        Axes.specTicked (ticksOf "x" xCfg xErased) xCfg.Minor xCfg.Format (pin xCfg pinX) (unitStyle xCfg) xCfg.TickCount (label 0 xPacked xCfg "x") AxisBottom xPacked,
+        Axes.specTicked (ticksOf "y" yCfg yErased) yCfg.Minor yCfg.Format (pin yCfg pinY) (unitStyle yCfg) yCfg.TickCount (label 1 yPacked yCfg "y") AxisLeft yPacked
 
     /// The panel letters' face, and the height of the row they need: none without letters.
     let private letterFont (theme: Theme) (letters: PanelLetters) =
@@ -1798,6 +1895,13 @@ module Figure =
             // the side it is measured and drawn on changes.
             let transposed = Coord.transposes p.Coord
             let xSide, ySide = if transposed then AxisLeft, AxisBottom else AxisBottom, AxisLeft
+
+            // A coord that names the line of its unit square an axis is drawn along, as polar
+            // names its rim for the angle and a ray for the radius, gets that axis drawn through
+            // it there (`Axes.compileThrough`) rather than along the plot's edge. Its title stays
+            // on the side the axis would have had.
+            let throughX, throughY = Coord.axisAt p.Coord 0, Coord.axisAt p.Coord 1
+            let bottomThrough, leftThrough = if transposed then throughY, throughX else throughX, throughY
 
             // The axes by where they stand, bottom then left, each as config, spec and plan.
             let sides (xPlan: TickPlan) (yPlan: TickPlan) =
@@ -2088,12 +2192,12 @@ module Figure =
                       | _ -> 0.0<px>
 
                     XTicksH =
-                      if not bottomCfg.Visible then 0.0<px>
+                      if not bottomCfg.Visible || bottomThrough.IsSome then 0.0<px>
                       elif bottomCfg.ShowTickLabels then Axes.tickExtent m theme AxisBottom bottomSpec bottomPlan
                       else marksOnly bottomCfg
 
                     YTicksW =
-                      if not leftCfg.Visible then 0.0<px>
+                      if not leftCfg.Visible || leftThrough.IsSome then 0.0<px>
                       elif leftCfg.ShowTickLabels then Axes.tickExtent m theme AxisLeft leftSpec leftPlan
                       else marksOnly leftCfg
 
@@ -2115,7 +2219,7 @@ module Figure =
                     // A second y axis's labels already stand where the last x label hangs, so
                     // only what still sticks out past them is reserved.
                     RightPad =
-                      if bottomCfg.Visible && bottomCfg.ShowTickLabels then
+                      if bottomCfg.Visible && bottomCfg.ShowTickLabels && bottomThrough.IsNone then
                           max 0.0<px> (max (Axes.labelOverhang m theme AxisBottom bottomSpec bottomPlan) x2Overhang - y2Ticks - y2Title)
                       else
                           max 0.0<px> (x2Overhang - y2Ticks - y2Title)
@@ -2126,7 +2230,7 @@ module Figure =
                           0.0<px>
                           (max
                               y2Overhang
-                              (if leftCfg.Visible && leftCfg.ShowTickLabels then
+                              (if leftCfg.Visible && leftCfg.ShowTickLabels && leftThrough.IsNone then
                                    Axes.labelOverhang m theme AxisLeft leftSpec leftPlan
                                else
                                    0.0<px>)
@@ -2151,6 +2255,27 @@ module Figure =
                     LeftPad = 0.0<px>
                     BottomPad = 0.0<px> }
 
+                // An axis drawn through the coord stands its labels round the plot, on every
+                // side; the gutter on each side holds what stands past it, the bottom's and the
+                // left's under the titles.
+                let g =
+                    let drawn (axis: int) (through: float option) (cfg: AxisConfig) (spec: AxisSpec) (plan: TickPlan) =
+                        match through with
+                        | Some at when cfg.Visible && cfg.ShowTickLabels ->
+                            Some(Axes.overhangThrough m theme p.Coord axis at probe spec plan)
+                        | _ -> None
+
+                    match [ drawn 0 throughX p.XAxis xSpec xPlan; drawn 1 throughY p.YAxis ySpec yPlan ] |> List.choose id with
+                    | [] -> g
+                    | overhangs ->
+                        let most (pick: Rect<px> -> float<px>) = overhangs |> List.map pick |> List.max
+
+                        { g with
+                            XTicksH = max g.XTicksH (most (fun r -> r.Y1))
+                            YTicksW = max g.YTicksW (most (fun r -> r.X0))
+                            RightPad = max g.RightPad (most (fun r -> r.X1))
+                            TopPad = max g.TopPad (most (fun r -> r.Y0)) }
+
                 // An annotation's text may stand past the plot, and is not clipped, so the
                 // gutter on that side grows until it holds it, over whatever the axis already
                 // takes there.
@@ -2174,8 +2299,13 @@ module Figure =
             let plan (w: float<px>) (h: float<px>) =
                 let along (side: AxisSide) = if side = AxisBottom then w else h
 
-                planAxis p.XAxis primaryX.Kind (along xSide) xSide xSpec,
-                planAxis p.YAxis primaryY.Kind (along ySide) ySide ySpec,
+                let planOf (axis: int) (through: float option) (cfg: AxisConfig) (kind: ScaleKind) (side: AxisSide) (spec: AxisSpec) =
+                    match through with
+                    | Some at -> Axes.planThrough m theme theme.LabelGap p.Coord axis at { Width = w; Height = h } spec.Ticks
+                    | None -> planAxis cfg kind (along side) side spec
+
+                planOf 0 throughX p.XAxis primaryX.Kind xSide xSpec,
+                planOf 1 throughY p.YAxis primaryY.Kind ySide ySpec,
                 colorbar |> Option.map (fun (spec, _) -> Colorbar.planTicks m theme h spec)
 
             let layout =
@@ -2376,11 +2506,25 @@ module Figure =
                                Transform(Axes.panelTransform plotNd, Group free) |]
 
                 // ---- axes -----------------------------------------------------------------------
-                let axisNodeIn (theme: Theme) (mirrored: bool) (side: AxisSide) (cfg: AxisConfig) (spec: AxisSpec) (tickPlan: TickPlan) =
+                let axisNodeIn (theme: Theme) (mirrored: bool) (through: (int * float) option) (side: AxisSide) (cfg: AxisConfig) (spec: AxisSpec) (tickPlan: TickPlan) =
                     if not cfg.Visible then
                         Scene.empty
                     else
-                        Axes.compile
+                        let compile =
+                            match through with
+                            | Some(axis, at) -> Axes.compileThrough p.Coord axis at
+                            | None -> Axes.compile
+
+                        // An axis drawn through the coord took its labels' room in the gutter
+                        // its title stands beyond.
+                        let ticksRoom =
+                            match through, side with
+                            | Some _, AxisBottom -> layout.XTicksH
+                            | Some _, AxisLeft -> layout.YTicksW
+                            | Some _, _ -> 0.0<px>
+                            | None, _ -> Axes.tickExtent m theme side spec tickPlan
+
+                        compile
                             { Spec = spec
                               Side = side
                               Plan = tickPlan
@@ -2391,7 +2535,7 @@ module Figure =
                               ShowTicks = cfg.ShowTicks
                               ShowLabels = cfg.ShowTickLabels
                               ShowTitle = cfg.ShowTitle
-                              TitleOffset = Axes.tickExtent m theme side spec tickPlan + theme.TitleGap
+                              TitleOffset = ticksRoom + theme.TitleGap
                               Direction = theme.TickDirection
                               // Mirrored onto the frame, so only where a frame is drawn, and only
                               // around a rectangle.
@@ -2497,16 +2641,16 @@ module Figure =
                                 [| Axes.panelBackground theme p.Coord plotNd
                                    Keyed(Keys.grid panelKey, Axes.gridlines theme p.Coord plotNd gridX gridY)
                                    data
-                                   Keyed(Keys.axisX panelKey, axisNodeIn theme x2.IsNone xSide p.XAxis xSpec xPlan)
-                                   Keyed(Keys.axisY panelKey, axisNodeIn (tint (primaryLayers p)) right.IsNone ySide p.YAxis ySpec yPlan)
+                                   Keyed(Keys.axisX panelKey, axisNodeIn theme x2.IsNone (throughX |> Option.map (fun at -> 0, at)) xSide p.XAxis xSpec xPlan)
+                                   Keyed(Keys.axisY panelKey, axisNodeIn (tint (primaryLayers p)) right.IsNone (throughY |> Option.map (fun at -> 1, at)) ySide p.YAxis ySpec yPlan)
                                    match right, planY2 layout.Probe.Height with
                                    | Some(cfg, spec), Some plan ->
-                                       Keyed(Keys.axisY2 panelKey, axisNodeIn (tint (p.Layers |> Array.filter (onSecond p))) false AxisRight cfg spec plan)
+                                       Keyed(Keys.axisY2 panelKey, axisNodeIn (tint (p.Layers |> Array.filter (onSecond p))) false None AxisRight cfg spec plan)
                                    | _ -> ()
                                    match x2 with
                                    | Some(cfg, spec) ->
                                        let plan = Axes.planTicks m theme.TickFont theme.LabelGap layout.Probe.Width AxisTop spec.Ticks
-                                       Keyed(Keys.axisX2 panelKey, axisNodeIn theme false AxisTop cfg spec plan)
+                                       Keyed(Keys.axisX2 panelKey, axisNodeIn theme false None AxisTop cfg spec plan)
                                    | None -> ()
                                    Axes.panelFrame theme p.Coord plotNd
                                    panelTitle

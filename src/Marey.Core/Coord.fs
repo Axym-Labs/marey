@@ -51,6 +51,55 @@ module internal CoordPath =
            for i in 1 .. n - 1 do
                yield LineTo(f (float i / float (n - 1))) |]
 
+/// What one axis of a coord's unit square is, for the defaults a panel takes from its coord.
+[<RequireQualifiedAccess>]
+type internal AxisRole =
+    /// Neither of the others: padded, ticked and drawn as a cartesian axis is.
+    | Plain
+    /// An angle about a pole, from `from` at the axis's 0 to `till` at its 1, in radians.
+    | Angle of from: float * till: float
+    /// A distance out from a pole, which is 0.
+    | Radius
+
+/// **A coord that shapes the panel it is drawn on**, as a polar one does: what each axis of its
+/// unit square is, the shape of plot it is drawn undistorted in, and the line of its unit square
+/// each axis is drawn along when that is not the plot's edge.
+///
+/// Internal, and asked of through `Coord.roleOf`, `Coord.aspectOf` and `Coord.axisAt`, so that
+/// nothing outside the coord asks which coord it is, and a coord a user writes keeps the
+/// interface's members and the defaults a cartesian panel has. An abstract class rather than an
+/// interface so the type test survives Fable.
+[<AbstractClass>]
+type internal ShapingCoord() =
+    /// What axis `axis` of the unit square is: 0 for x, 1 for y.
+    abstract Role: axis: int -> AxisRole
+    default _.Role _ = AxisRole.Plain
+
+    /// The plot's height over its width that draws the unit square undistorted, or `None` for
+    /// any shape.
+    abstract Aspect: float option
+    default _.Aspect = None
+
+    /// The value of the other coordinate along which axis `axis` is drawn, through the coord: the
+    /// rim of a polar plot, y = 1, for x. `None` for an axis drawn along the plot's edge.
+    abstract AxisAt: axis: int -> float option
+    default _.AxisAt _ = None
+
+    static member RoleOf(c: Coord, axis: int) =
+        match box c with
+        | :? ShapingCoord as s -> s.Role axis
+        | _ -> AxisRole.Plain
+
+    static member AspectOf(c: Coord) =
+        match box c with
+        | :? ShapingCoord as s -> s.Aspect
+        | _ -> None
+
+    static member AxisAtOf(c: Coord, axis: int) =
+        match box c with
+        | :? ShapingCoord as s -> s.AxisAt axis
+        | _ -> None
+
 /// **A coord that zooms by changing its own view**, as a polar one does: a box dragged over it
 /// is shown as the region of its unit square that bounds the box, drawn in that coord's own
 /// geometry and magnified, rather than as that region's domains stretched over the whole coord.
@@ -59,6 +108,8 @@ module internal CoordPath =
 /// keeps the interface's three members and zooms by its domains alone, as before.
 [<AbstractClass>]
 type internal ZoomingCoord() =
+    inherit ShapingCoord()
+
     /// The part of the unit square, before the warp, that bounds `area`, a rectangle of the
     /// panel after it. `None` where the coord cannot say.
     abstract ZoomTo: area: Rect<nd> -> Rect<nd> option
@@ -77,10 +128,45 @@ type internal ZoomingCoord() =
         | :? ZoomingCoord as z -> z.Zoomed part
         | _ -> c
 
+/// The drawing of a polar coord before its view: offsets from the pole, at a full radius of one
+/// half.
+module internal PolarView =
+
+    let private quarter = System.Math.PI / 2.0
+
+    /// The box `(x0, x1, y0, y1)` bounding the annular sector from angle `lo` to `hi` and radius
+    /// `inner` to `outer`, in offsets from the pole at a full radius of one half.
+    let bounds (lo: float) (hi: float) (inner: float) (outer: float) =
+        let at (a: float) (r: float) = 0.5 * r * cos a, 0.5 * r * sin a
+        let rIn = max 0.0 inner
+
+        let pts =
+            if abs (hi - lo) >= 2.0 * System.Math.PI - 1e-12 then
+                [ at 0.0 outer; at quarter outer; at System.Math.PI outer; at (-quarter) outer ]
+            else
+                let a, b = min lo hi, max lo hi
+
+                [ yield at a rIn
+                  yield at b rIn
+                  yield at a outer
+                  yield at b outer
+                  // The outer arc's extremes, where it crosses an axis.
+                  for q in ceil (a / quarter) .. floor (b / quarter) do
+                      yield at (q * quarter) outer ]
+
+        let xs, ys = List.map fst pts, List.map snd pts
+        List.min xs, List.max xs, List.min ys, List.max ys
+
+    /// The height over width of the box bounding the whole sector.
+    let aspect (a0: float) (a1: float) (r0: float) =
+        let x0, x1, y0, y1 = bounds a0 a1 r0 1.0
+        if x1 - x0 > 1e-12 && y1 - y0 > 1e-12 then (y1 - y0) / (x1 - x0) else 1.0
+
 /// **Polar**, drawing the part `gx` by `gy` of its unit square: x becomes the angle from `a0` to
 /// `a1` and y the radius out from `r0`, and that part of it, an annular sector, is drawn as large
-/// as the panel holds. The whole square is `Coord.polarBetween`.
-type internal PolarCoord(a0: float, a1: float, r0: float, gx: float * float, gy: float * float) =
+/// as a plot of height over width `aspect` holds. The whole square is `Coord.polarBetween`, and
+/// `aspect` is the whole sector's, so it fills its plot; a part of it keeps that plot.
+type internal PolarCoord(a0: float, a1: float, r0: float, gx: float * float, gy: float * float, aspect: float) =
     inherit ZoomingCoord()
 
     let turn = 2.0 * System.Math.PI
@@ -99,43 +185,23 @@ type internal PolarCoord(a0: float, a1: float, r0: float, gx: float * float, gy:
     let inner, outer = radiusAt 0.0, radiusAt 1.0
     let round = abs (hi - lo) >= turn - 1e-12
 
-    // **The view**: the pole at `(cx, cy)` of the panel and the full radius `k` halves of it. The
-    // whole square keeps the pole in the middle and the full radius at the edge; a part of it is
-    // its sector's bounding box, scaled the same way on both axes to fill the panel, so that
-    // angles are still true angles.
-    let cx, cy, k =
-        if whole then
-            0.5, 0.5, 1.0
-        else
-            // Offsets from the pole, at a full radius of one half.
-            let at (a: float) (r: float) = 0.5 * r * cos a, 0.5 * r * sin a
-            let rIn = max 0.0 inner
-
-            let pts =
-                if round then
-                    [ at 0.0 outer; at (System.Math.PI / 2.0) outer; at System.Math.PI outer; at (-System.Math.PI / 2.0) outer ]
-                else
-                    let a, b = min lo hi, max lo hi
-
-                    [ yield at a rIn
-                      yield at b rIn
-                      yield at a outer
-                      yield at b outer
-                      // The outer arc's extremes, where it crosses an axis.
-                      for q in ceil (a / (System.Math.PI / 2.0)) .. floor (b / (System.Math.PI / 2.0)) do
-                          yield at (q * System.Math.PI / 2.0) outer ]
-
-            let xs, ys = List.map fst pts, List.map snd pts
-            let x0, x1, y0, y1 = List.min xs, List.max xs, List.min ys, List.max ys
-            let k = 1.0 / max (max (x1 - x0) (y1 - y0)) 1e-12
-            0.5 - k * (x0 + x1) / 2.0, 0.5 - k * (y0 + y1) / 2.0, k
+    // **The view**: the pole at `(cx, cy)` of the panel, and an offset from it `kx` and `ky` of
+    // the panel across and up. The drawn sector's bounding box fills as much of the panel as it
+    // can at one scale in the plot's own px, `kx` over `ky` being the plot's height over its
+    // width, so that angles are true angles. The whole circle keeps the pole in the middle and
+    // the full radius at the edge.
+    let cx, cy, kx, ky =
+        let x0, x1, y0, y1 = PolarView.bounds lo hi inner outer
+        let kx = min (1.0 / max (x1 - x0) 1e-12) (aspect / max (y1 - y0) 1e-12)
+        let ky = kx / aspect
+        0.5 - kx * (x0 + x1) / 2.0, 0.5 - ky * (y0 + y1) / 2.0, kx, ky
 
     let toPanel (p: Vec2<nd>) : Vec2<nd> =
         let theta = angleAt (p.X / 1.0<nd>)
         let r = radiusAt (p.Y / 1.0<nd>) * 0.5
 
-        { X = (cx + k * (r * cos theta)) * 1.0<nd>
-          Y = (cy + k * (r * sin theta)) * 1.0<nd> }
+        { X = (cx + kx * (r * cos theta)) * 1.0<nd>
+          Y = (cy + ky * (r * sin theta)) * 1.0<nd> }
 
     // An angle into the turn centred on the drawn sector, so a point reads the side of the
     // sector it is nearer: the lower half of a full circle is the end of its turn, not angles
@@ -159,8 +225,8 @@ type internal PolarCoord(a0: float, a1: float, r0: float, gx: float * float, gy:
             None
         else
             // The box as offsets from the pole, before the view, at a full radius of one half.
-            let ox (x: float<nd>) = (float x - cx) / k
-            let oy (y: float<nd>) = (float y - cy) / k
+            let ox (x: float<nd>) = (float x - cx) / kx
+            let oy (y: float<nd>) = (float y - cy) / ky
             let x0, x1 = min (ox area.X0) (ox area.X1), max (ox area.X0) (ox area.X1)
             let y0, y1 = min (oy area.Y0) (oy area.Y1), max (oy area.Y0) (oy area.Y1)
             let radius (x: float) (y: float) = 2.0 * sqrt (x * x + y * y)
@@ -203,14 +269,22 @@ type internal PolarCoord(a0: float, a1: float, r0: float, gx: float * float, gy:
         let within (g0: float, g1: float) (p0: float<nd>) (p1: float<nd>) =
             g0 + (g1 - g0) * float p0, g0 + (g1 - g0) * float p1
 
-        PolarCoord(a0, a1, r0, within gx part.X0 part.X1, within gy part.Y0 part.Y1)
+        PolarCoord(a0, a1, r0, within gx part.X0 part.X1, within gy part.Y0 part.Y1, aspect)
+
+    override _.Role axis =
+        if axis = 0 then AxisRole.Angle(a0, a1) else AxisRole.Radius
+
+    override _.Aspect = Some aspect
+
+    // The angle round the rim, and the radius along the ray its turn starts at.
+    override _.AxisAt axis = Some(if axis = 0 then 1.0 else 0.0)
 
     interface Coord with
         member _.ToPanel p = toPanel p
 
         member _.FromPanel p =
-            let dx = (p.X / 1.0<nd> - cx) / k
-            let dy = (p.Y / 1.0<nd> - cy) / k
+            let dx = (p.X / 1.0<nd> - cx) / kx
+            let dy = (p.Y / 1.0<nd> - cy) / ky
             let r = sqrt (dx * dx + dy * dy) * 2.0
 
             // The pole carries no angular information: inverting there would invent one.
@@ -237,7 +311,7 @@ type internal PolarCoord(a0: float, a1: float, r0: float, gx: float * float, gy:
         member _.Clip =
             let arc (y: float<nd>) (t: float) = toPanel { X = t * 1.0<nd>; Y = y }
 
-            if whole then
+            if whole && round then
                 let outer = CoordPath.sampleCurve 64 (arc 1.0<nd>)
                 Array.append outer [| ClosePath |]
             else
@@ -271,6 +345,10 @@ type internal FlippedCoord(inner: Coord) =
 
     override _.Zoomed part =
         FlippedCoord(ZoomingCoord.Zoomed(inner, swapRect part))
+
+    override _.Role axis = ShapingCoord.RoleOf(inner, 1 - axis)
+    override _.Aspect = ShapingCoord.AspectOf inner
+    override _.AxisAt axis = ShapingCoord.AxisAtOf(inner, 1 - axis)
 
     interface Coord with
         member _.ToPanel p = inner.ToPanel(swap p)
@@ -315,10 +393,17 @@ module Coord =
     /// Polar: x becomes the angle, y becomes the radius.
     ///
     /// `startAngle`/`endAngle` let this cover the full circle, a half-disc, or a wedge without
-    /// a second implementation. The radial extent is fixed to the inscribed circle of the
-    /// panel, so the panel's own aspect ratio — a layout concern — never leaks in here.
+    /// a second implementation. The sector fills the panel, and a panel drawn with this coord is
+    /// given the sector's shape unless it states its own: square for the full circle, twice as
+    /// wide as tall for a half-disc.
+    ///
+    /// A panel under it takes its defaults from it rather than from the cartesian ones: an angle
+    /// in an angle unit spans `startAngle` to `endAngle`, and one in any other unit spans its data
+    /// exactly; the radius starts at zero, or at the least value below it; the angle is labelled
+    /// round the rim and the radius along the ray at `startAngle`.
     let polarBetween (startAngle: float<rad>) (endAngle: float<rad>) (innerRadius: float) : Coord =
-        PolarCoord(float startAngle, float endAngle, max 0.0 (min 0.999 innerRadius), (0.0, 1.0), (0.0, 1.0))
+        let a0, a1, r0 = float startAngle, float endAngle, max 0.0 (min 0.999 innerRadius)
+        PolarCoord(a0, a1, r0, (0.0, 1.0), (0.0, 1.0), PolarView.aspect a0 a1 r0)
 
     /// Full-circle polar.
     let polar = polarBetween 0.0<rad> (2.0 * System.Math.PI * 1.0<rad>) 0.0
@@ -360,6 +445,17 @@ module Coord =
                     out.Add(c.ToPanel(Vec2.lerp t a b))
 
             out.ToArray()
+
+    /// What axis `axis` of the coord's unit square is, 0 for x and 1 for y: an angle, a radius,
+    /// or neither, as every axis of a coord written outside Marey is.
+    let internal roleOf (c: Coord) (axis: int) : AxisRole = ShapingCoord.RoleOf(c, axis)
+
+    /// The plot's height over its width that draws the coord undistorted, or `None` for any.
+    let internal aspectOf (c: Coord) : float option = ShapingCoord.AspectOf c
+
+    /// The value of the other coordinate of the unit square along which axis `axis` is drawn
+    /// through the coord, or `None` for an axis drawn along the plot's edge.
+    let internal axisAt (c: Coord) (axis: int) : float option = ShapingCoord.AxisAtOf(c, axis)
 
     /// True when the coord is the identity, so callers can skip resampling entirely.
     /// A hint, not a question about *which* coord it is — the distinction that keeps
