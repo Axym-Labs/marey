@@ -137,6 +137,7 @@ Chart.uncertain lengthsUncertain periodsSquared
     |> Chart.withLegend LegendNone
 )
 |> Chart.shareX
+|> Chart.withRowHeights [| 3.0; 1.0 |]
 ```
 
 ![T² against L with the fitted line and its band, over the residuals with their error bars](../figures/pendulum-fit.svg)

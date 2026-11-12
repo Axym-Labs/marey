@@ -75,6 +75,7 @@ let figure =
         |> Chart.withLegend LegendNone
     )
     |> Chart.shareX
+    |> Chart.withRowHeights [| 3.0; 1.0 |]
 
 let out = IO.Path.Combine(IO.Directory.GetCurrentDirectory(), "pendulum-uncertainty.svg")
 figure |> Chart.toSvg SvgBackend.render out (Chart.size 800.0 580.0)
