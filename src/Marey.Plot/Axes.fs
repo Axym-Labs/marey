@@ -402,6 +402,49 @@ module internal Axes =
         let v = float p
         v >= -1e-9 && v <= 1.0 + 1e-9
 
+    /// The axis's title, standing `TitleOffset` out from the middle of its side.
+    let private titleOf (a: AxisRender) : Node =
+        let t = a.Theme
+        let panel = a.Panel
+        let textPaint = Solid t.Foreground
+
+        let offset (d: float<px>) : Vec2<nd> =
+            match a.Side with
+            | AxisBottom -> { X = 0.0<nd>; Y = -(Layout.ndY a.Extent d) }
+            | AxisTop -> { X = 0.0<nd>; Y = Layout.ndY a.Extent d }
+            | AxisLeft -> { X = -(Layout.ndX a.Extent d); Y = 0.0<nd> }
+            | AxisRight -> { X = Layout.ndX a.Extent d; Y = 0.0<nd> }
+
+        if not a.ShowTitle || System.String.IsNullOrEmpty a.Spec.Title then
+            Scene.empty
+        else
+            let mid = tag 0.5
+            let d = offset a.TitleOffset
+
+            let at, rotation, baseline =
+                match a.Side with
+                | AxisBottom -> { X = alongX panel mid; Y = panel.Y0 } + d, 0.0<rad>, BaselineHanging
+                | AxisTop -> { X = alongX panel mid; Y = panel.Y1 } + d, 0.0<rad>, BaselineAlphabetic
+                // +90 degrees counter-clockwise in nd reads bottom-to-top, and the glyph
+                // body then extends away from the panel.
+                | AxisLeft ->
+                    { X = panel.X0; Y = alongY panel mid } + d, System.Math.PI / 2.0 * 1.0<rad>, BaselineAlphabetic
+                | AxisRight ->
+                    { X = panel.X1; Y = alongY panel mid } + d, -System.Math.PI / 2.0 * 1.0<rad>, BaselineAlphabetic
+
+            Text
+                { Text = a.Spec.Title
+                  // The axis title is where the units story reaches a TeX backend: when the
+                  // axis was compiled in the Latex or Siunitx style, `AxisSpec` carries the
+                  // TeX spelling of the same title alongside the Unicode one.
+                  Tex = a.Spec.TitleTex
+                  At = at
+                  Font = t.AxisTitleFont
+                  Paint = textPaint
+                  Anchor = AnchorMiddle
+                  Baseline = baseline
+                  Rotation = rotation }
+
     /// Compile one axis into `Path` and `Text`.
     ///
     /// Every offset in the theme is in device px and is converted here, once, through
@@ -537,37 +580,7 @@ module internal Axes =
                                      Baseline = baseline
                                      Rotation = a.Plan.Rotation } |]
 
-        // ---- the title -----------------------------------------------------------------
-        let title =
-            if not a.ShowTitle || System.String.IsNullOrEmpty a.Spec.Title then
-                Scene.empty
-            else
-                let mid = tag 0.5
-                let d = offset a.TitleOffset
-
-                let at, rotation, baseline =
-                    match a.Side with
-                    | AxisBottom -> { X = alongX panel mid; Y = panel.Y0 } + d, 0.0<rad>, BaselineHanging
-                    | AxisTop -> { X = alongX panel mid; Y = panel.Y1 } + d, 0.0<rad>, BaselineAlphabetic
-                    // +90 degrees counter-clockwise in nd reads bottom-to-top, and the glyph
-                    // body then extends away from the panel.
-                    | AxisLeft ->
-                        { X = panel.X0; Y = alongY panel mid } + d, System.Math.PI / 2.0 * 1.0<rad>, BaselineAlphabetic
-                    | AxisRight ->
-                        { X = panel.X1; Y = alongY panel mid } + d, -System.Math.PI / 2.0 * 1.0<rad>, BaselineAlphabetic
-
-                Text
-                    { Text = a.Spec.Title
-                      // The axis title is where the units story reaches a TeX backend: when the
-                      // axis was compiled in the Latex or Siunitx style, `AxisSpec` carries the
-                      // TeX spelling of the same title alongside the Unicode one.
-                      Tex = a.Spec.TitleTex
-                      At = at
-                      Font = t.AxisTitleFont
-                      Paint = textPaint
-                      Anchor = AnchorMiddle
-                      Baseline = baseline
-                      Rotation = rotation }
+        let title = titleOf a
 
         let sideName =
             match a.Side with
@@ -586,6 +599,257 @@ module internal Axes =
                    "ticks", string kept.Length
                    "tick-rule", a.Plan.Rule |] },
             Scene.prune (Group [| spine; marks; labels; title |])
+        )
+
+    // ---- Axes drawn through the coord ---------------------------------------------------
+
+    /// **An axis drawn through its coord** rather than along the plot's edge: along the line of
+    /// the coord's unit square where the other coordinate is `at`, as a polar plot's angle is
+    /// drawn round its rim and its radius along a ray. Asked of the coord's map alone, so a coord
+    /// that names such a line gets axes along it without this module knowing what it is.
+    ///
+    /// Each tick stands where the coord puts it, and its mark and label stand out along the
+    /// line's normal, on the side away from the middle of the unit square. All of it is in the
+    /// plot's own px, y up, from its lower left corner, at `size`.
+    [<NoComparison>]
+    type private Through =
+        { /// A point of the line, in px.
+          At: float -> float * float
+          /// The unit normal there, away from the middle of the unit square.
+          Normal: float -> float * float
+          /// The line comes back to where it starts, as a full circle's rim does.
+          Closed: bool }
+
+    let private through (coord: Coord) (axis: int) (at: float) (size: Extent<px>) : Through =
+        let w, h = float size.Width, float size.Height
+
+        let square (t: float) (o: float) : Vec2<nd> =
+            if axis = 0 then { X = t * 1.0<nd>; Y = o * 1.0<nd> } else { X = o * 1.0<nd>; Y = t * 1.0<nd> }
+
+        let px (v: Vec2<nd>) = float v.X * w, float v.Y * h
+        let point (t: float) = px (coord.ToPanel(square t at))
+
+        let tangent (t: float) =
+            let step = 1e-4
+            let (x0, y0), (x1, y1) = point (max 0.0 (t - step)), point (min 1.0 (t + step))
+            let dx, dy = x1 - x0, y1 - y0
+            let n = sqrt (dx * dx + dy * dy)
+            if n < 1e-12 then None else Some(dx / n, dy / n)
+
+        // Which way a quarter turn of the tangent faces out, settled at the middle of the line
+        // against a point a little way into the unit square from it.
+        let sense, middle =
+            let tx, ty = defaultArg (tangent 0.5) (1.0, 0.0)
+            let mx, my = point 0.5
+            let ix, iy = px (coord.ToPanel(square 0.5 (if at <= 0.5 then at + 0.05 else at - 0.05)))
+            let s = if ty * (ix - mx) - tx * (iy - my) > 0.0 then -1.0 else 1.0
+            s, (s * ty, -s * tx)
+
+        let normal (t: float) =
+            match tangent t with
+            | Some(tx, ty) -> sense * ty, -sense * tx
+            | None -> middle
+
+        let (x0, y0), (x1, y1) = point 0.0, point 1.0
+
+        { At = point
+          Normal = normal
+          Closed = sqrt ((x1 - x0) ** 2.0 + (y1 - y0) ** 2.0) < 0.5 }
+
+    /// The anchor that keeps a label on the outward side of its point.
+    let private placeFor (nx: float, ny: float) =
+        (if nx > 0.38 then AnchorStart elif nx < -0.38 then AnchorEnd else AnchorMiddle),
+        (if ny > 0.38 then BaselineAlphabetic elif ny < -0.38 then BaselineHanging else BaselineMiddle)
+
+    /// How far out from its tick a label stands.
+    let private labelDistance (t: Theme) =
+        (match t.TickDirection with
+         | TickIn -> 0.0<px>
+         | TickOut
+         | TickInOut -> t.TickLength)
+        + t.LabelGap
+
+    /// Each tick's label as it stands: the tick, its anchor point in the plot's px, y up, and the
+    /// anchor and baseline that keep it outside.
+    let private placed (t: Theme) (line: Through) (ticks: TickLabel[]) =
+        let d = float (labelDistance t)
+
+        ticks
+        |> Array.map (fun k ->
+            let x, y = line.At(float k.Position)
+            let nx, ny = line.Normal(float k.Position)
+            let anchor, baseline = placeFor (nx, ny)
+            k, (x + nx * d, y + ny * d), anchor, baseline)
+
+    /// A label's box in the plot's px, y down from its upper left corner, as `TextMeasure` gives.
+    let private boxOf (m: ITextMeasurer) (t: Theme) (size: Extent<px>) (k: TickLabel, (x: float, y: float), anchor, baseline) : Rect<px> =
+        let b = TextMeasure.bounds m t.TickFont anchor baseline 0.0<rad> k.Label
+        let x, y = x * 1.0<px>, (float size.Height - y) * 1.0<px>
+
+        { X0 = x + b.X0
+          X1 = x + b.X1
+          Y0 = y + b.Y0
+          Y1 = y + b.Y1 }
+
+    /// **The collision rule for an axis drawn through its coord.** Labels are kept upright, and
+    /// thinned to every second, third, … up to every sixth until no two neighbours' boxes come
+    /// within `minGap`, the last and the first being neighbours on a line that closes; past that,
+    /// the two ends. The end of a closed line is the start again, and is not ticked twice.
+    let planThrough (m: ITextMeasurer) (theme: Theme) (minGap: float<px>) (coord: Coord) (axis: int) (at: float) (size: Extent<px>) (ticks: TickLabel[]) : TickPlan =
+        let line = through coord axis at size
+
+        let inside =
+            ticks |> Array.indexed |> Array.filter (fun (_, k) -> inPanel k.Position) |> Array.map fst
+
+        let starts = inside |> Array.exists (fun i -> abs (float ticks.[i].Position) < 1e-9)
+
+        let candidates =
+            if line.Closed && starts then
+                inside |> Array.filter (fun i -> abs (float ticks.[i].Position - 1.0) >= 1e-9)
+            else
+                inside
+
+        let boxes = placed theme line ticks |> Array.map (boxOf m theme size)
+
+        let apart (a: int) (b: int) =
+            let p, q = boxes.[a], boxes.[b]
+
+            p.X1 + minGap <= q.X0 || q.X1 + minGap <= p.X0 || p.Y1 + minGap <= q.Y0 || q.Y1 + minGap <= p.Y0
+
+        let fits (kept: int[]) =
+            let pairs = [ for k in 1 .. kept.Length - 1 -> kept.[k - 1], kept.[k] ]
+            let pairs = if line.Closed && kept.Length > 2 then (kept.[kept.Length - 1], kept.[0]) :: pairs else pairs
+            pairs |> List.forall (fun (a, b) -> apart a b)
+
+        let plan kept rule =
+            { Kept = kept
+              Rotation = 0.0<rad>
+              Rule = rule }
+
+        if candidates.Length < 2 then
+            plan candidates (if candidates.Length = 0 then "empty" else "single")
+        else
+            seq { 1..6 }
+            |> Seq.tryPick (fun stride ->
+                let kept = candidates |> Array.indexed |> Array.filter (fun (j, _) -> j % stride = 0) |> Array.map snd
+
+                if fits kept then
+                    Some(plan kept (if stride = 1 then "through-coord" else sprintf "through-coord-every-%d" stride))
+                else
+                    None)
+            |> Option.defaultValue (plan [| candidates.[0]; candidates.[candidates.Length - 1] |] "through-coord-ends-only")
+
+    /// How far an axis drawn through its coord stands past each edge of a plot of `size`, in px,
+    /// as left, right, top and bottom: zero where it does not.
+    let overhangThrough (m: ITextMeasurer) (theme: Theme) (coord: Coord) (axis: int) (at: float) (size: Extent<px>) (spec: AxisSpec) (plan: TickPlan) : Rect<px> =
+        let line = through coord axis at size
+        let w, h = size.Width, size.Height
+
+        placed theme line (keptTicks spec plan)
+        |> Array.map (boxOf m theme size)
+        |> Array.fold
+            (fun (acc: Rect<px>) b ->
+                { X0 = max acc.X0 (-b.X0)
+                  X1 = max acc.X1 (b.X1 - w)
+                  Y0 = max acc.Y0 (-b.Y0)
+                  Y1 = max acc.Y1 (b.Y1 - h) })
+            { X0 = 0.0<px>; X1 = 0.0<px>; Y0 = 0.0<px>; Y1 = 0.0<px> }
+
+    /// Compile an axis drawn through its coord, along the line where its other coordinate is
+    /// `at`: the line itself as its spine, a mark and a label at each tick out along the line's
+    /// normal, and the title where `a.Side` puts it, `TitleOffset` out from the plot.
+    let compileThrough (coord: Coord) (axis: int) (at: float) (a: AxisRender) : Node =
+        let t = a.Theme
+        let e = a.Extent
+        let panel = a.Panel
+
+        let size: Extent<px> =
+            { Width = Layout.pxX e (panel.X1 - panel.X0)
+              Height = Layout.pxY e (panel.Y1 - panel.Y0) }
+
+        let line = through coord axis at size
+        let kept = keptTicks a.Spec a.Plan |> Array.filter (fun k -> inPanel k.Position)
+
+        // The plot's px, y up, into figure nd.
+        let nd (x: float, y: float) : Vec2<nd> =
+            { X = panel.X0 + Layout.ndX e (x * 1.0<px>)
+              Y = panel.Y0 + Layout.ndY e (y * 1.0<px>) }
+
+        let spine =
+            if not a.ShowSpine then
+                Scene.empty
+            else
+                let pts = Array.init 65 (fun i -> line.At(float i / 64.0))
+                let (x0, y0), (x1, y1) = pts.[0], pts.[64]
+                let length = sqrt ((x1 - x0) ** 2.0 + (y1 - y0) ** 2.0)
+
+                // A straight line, as a polar plot's ray is, is two points.
+                let straight =
+                    length > 0.0
+                    && pts |> Array.forall (fun (x, y) -> abs ((x - x0) * (y1 - y0) - (y - y0) * (x1 - x0)) / length < 1e-6)
+
+                let pts = if straight then [| pts.[0]; pts.[64] |] else pts
+
+                Path(
+                    [| yield MoveTo(nd pts.[0])
+                       for i in 1 .. pts.Length - 1 do
+                           yield LineTo(nd pts.[i])
+                       if line.Closed then
+                           yield ClosePath |],
+                    Some(Stroke.solid t.AxisColor t.AxisWidth),
+                    None,
+                    NonZero
+                )
+
+        let marks =
+            if not a.ShowTicks || kept.Length = 0 then
+                Scene.empty
+            else
+                let outward, inward =
+                    match a.Direction with
+                    | TickOut -> 1.0, 0.0
+                    | TickIn -> 0.0, 1.0
+                    | TickInOut -> 1.0, 1.0
+
+                let l = float t.TickLength
+
+                Path(
+                    [| for k in kept do
+                           let x, y = line.At(float k.Position)
+                           let nx, ny = line.Normal(float k.Position)
+                           yield MoveTo(nd (x - nx * l * inward, y - ny * l * inward))
+                           yield LineTo(nd (x + nx * l * outward, y + ny * l * outward)) |],
+                    Some { Stroke.solid t.AxisColor t.TickWidth with Cap = Butt },
+                    None,
+                    NonZero
+                )
+
+        let labels =
+            if not a.ShowLabels || kept.Length = 0 then
+                Scene.empty
+            else
+                Group
+                    [| for k, p, anchor, baseline in placed t line kept ->
+                           Text
+                               { Text = k.Label
+                                 Tex = k.LabelTex
+                                 At = nd p
+                                 Font = t.TickFont
+                                 Paint = Solid t.Foreground
+                                 Anchor = anchor
+                                 Baseline = baseline
+                                 Rotation = 0.0<rad> } |]
+
+        Annotated(
+            { Role = RoleAxis
+              Label = a.Spec.Title
+              Data =
+                [| "through", (if axis = 0 then "x" else "y")
+                   "unit", a.Spec.UnitText
+                   "prefix", a.Spec.Prefix.Name
+                   "ticks", string kept.Length
+                   "tick-rule", a.Plan.Rule |] },
+            Scene.prune (Group [| spine; marks; labels; titleOf a |])
         )
 
     // ---- Gridlines, panel frame, panel background -----------------------------------------

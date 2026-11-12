@@ -53,6 +53,7 @@
     <Compile Include="GpuTests.fs" />
     <Compile Include="WindowTests.fs" />
     <Compile Include="PlotTests.fs" />
+    <Compile Include="PolarTests.fs" />
     <Compile Include="ShotTests.fs" />
     <Compile Include="StoryboardTests.fs" />
     <!-- After StoryboardTests.fs and SkiaTests.fs: it renders a storyboard, and it reuses
