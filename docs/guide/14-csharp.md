@@ -63,6 +63,26 @@ var bode = Chart.Line(f, gain, xUnit: Units.Hertz, yUnit: Units.One)
 bode.Save(SvgRenderer.Render, "bode.svg", 720, 450);
 ```
 
+§16's pendulum, with `Marey.Uncertainty`. An input takes its unit last, as a chart's axis does:
+
+```csharp
+var length = Uncertainty.Resolution("Length", 0.800, 1e-3, Units.Metre);
+var tenSwings = Uncertainty.OfReadings("Ten periods", new[] { 17.951, 17.901, 17.971, 17.921, 17.911 }, Units.Second);
+var stopwatch = Uncertainty.Certificate("Stopwatch calibration", 0.0, 0.02, 2.0, Units.Second);
+
+var period = (tenSwings + stopwatch) / 10.0;
+var g = 4.0 * Math.PI * Math.PI * length / (period * period);
+
+Console.WriteLine(g.Report());                 // 9.823(18) m·s⁻²
+Console.WriteLine(g.Budget().Text());
+Console.WriteLine(g.Expanded(0.95).Report());  // (9.823 ± 0.041) m·s⁻² (k = 2.23, 95 %, ν = 10)
+```
+
+The arithmetic is `Uncertain`'s own operators, and `Uncertain.Sqrt` and the rest its own static
+methods. A sum of metres and seconds throws, where F# would not compile it. `Uncertainty` also
+holds the fits, the Monte Carlo check and the charts, and `UncertainConstants` the measured
+physical constants, named as in `PhysicalConstants`.
+
 A unit known only as text is `Units.Parse("V/m")`, or `Units.Div(Units.Volt, Units.Metre)`. The
 physical constants are `PhysicalConstants`, each a `Quantity` that carries its unit through
 arithmetic: `PhysicalConstants.Planck * PhysicalConstants.SpeedOfLight / new Quantity(500e-9,

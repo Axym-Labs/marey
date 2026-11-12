@@ -66,7 +66,12 @@
          the one gate that rasterises a typeset formula to check there is ink in it. -->
     <Compile Include="TypesetTests.fs" />
     <Compile Include="ChannelTests.fs" />
+    <Compile Include="ErrorChannelTests.fs" />
     <Compile Include="StatTests.fs" />
+    <Compile Include="../Shared/UncertaintyScenes.fs" Link="UncertaintyScenes.fs" />
+    <Compile Include="UncertaintyTests.fs" />
+    <Compile Include="UncertaintyFitTests.fs" />
+    <Compile Include="UncertaintyMonteCarloTests.fs" />
     <Compile Include="FacetTests.fs" />
     <Compile Include="CompositionTests.fs" />
     <Compile Include="GeomTests.fs" />
@@ -94,6 +99,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Marey.Core\Marey.Core.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Units\Marey.Units.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Uncertainty\Marey.Uncertainty.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Anim\Marey.Anim.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Fields\Marey.Fields.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Sim\Marey.Sim.fsproj" />

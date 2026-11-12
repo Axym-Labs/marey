@@ -95,6 +95,25 @@ public class Guide
             Assert.Contains("10⁴", svg);
         });
 
+    [Fact]
+    public void ThePendulum()
+    {
+        var length = Uncertainty.Resolution("Length", 0.800, 1e-3, Units.Metre);
+        var tenSwings = Uncertainty.OfReadings("Ten periods", new[] { 17.951, 17.901, 17.971, 17.921, 17.911 }, Units.Second);
+        var stopwatch = Uncertainty.Certificate("Stopwatch calibration", 0.0, 0.02, 2.0, Units.Second);
+
+        var period = (tenSwings + stopwatch) / 10.0;
+        var g = 4.0 * Math.PI * Math.PI * length / (period * period);
+
+        Console.WriteLine(g.Report());                 // 9.823(18) m·s⁻²
+        Console.WriteLine(g.Budget().Text());
+        Console.WriteLine(g.Expanded(0.95).Report());  // (9.823 ± 0.041) m·s⁻² (k = 2.23, 95 %, ν = 10)
+
+        Assert.Equal("9.823(18) m·s⁻²", g.Report());
+        Assert.Equal("(9.823 ± 0.041) m·s⁻² (k = 2.23, 95 %, ν = 10)", g.Expanded(0.95).Report());
+        Assert.StartsWith("Input", g.Budget().Text());
+    }
+
     /// Every line of every `csharp` block on the page, other than its `using`s, is a line of this
     /// file, in order.
     [Fact]
@@ -108,7 +127,7 @@ public class Guide
         var here = File.ReadAllLines(Path.Combine(root, "tests", "Marey.CSharp.Tests", "Guide.cs")).Select(l => l.Trim()).ToArray();
         var blocks = Regex.Matches(page, @"^```csharp\n(.*?)^```$", RegexOptions.Multiline | RegexOptions.Singleline);
 
-        Assert.Equal(2, blocks.Count);
+        Assert.Equal(3, blocks.Count);
 
         var at = 0;
 

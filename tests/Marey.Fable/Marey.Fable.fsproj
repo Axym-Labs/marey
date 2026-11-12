@@ -16,6 +16,8 @@
     <Compile Include="CanvasLog.fs" />
     <Compile Include="FontsGate.fs" />
     <Compile Include="WireGate.fs" />
+    <Compile Include="../Shared/UncertaintyScenes.fs" Link="UncertaintyScenes.fs" />
+    <Compile Include="UncertaintyGate.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 
@@ -34,6 +36,7 @@
     <ProjectReference Include="../../src/Marey.Fields/Marey.Fields.fsproj" />
     <ProjectReference Include="../../src/Marey.Backend.Web/Marey.Backend.Web.fsproj" />
     <ProjectReference Include="../../src/Marey.Sim/Marey.Sim.fsproj" />
+    <ProjectReference Include="../../src/Marey.Uncertainty/Marey.Uncertainty.fsproj" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(MAREY_FROM_PACKAGES)' != ''">
@@ -41,7 +44,7 @@
   </PropertyGroup>
 
   <!-- From the packages, through `Marey` alone, plus the canvas backend it leaves out. So Fable has
-       to follow a package with no code of its own to the sources of Svg, Plot, Fields and Sim,
+       to follow a package with no code of its own to the sources of Svg, Plot, Fields, Sim and Uncertainty,
        and pass over Tikz and Html, which it gathers too and which carry no sources for Fable. -->
   <ItemGroup Condition="'$(MAREY_FROM_PACKAGES)' != ''">
     <PackageReference Include="Marey" Version="$(MAREY_FROM_PACKAGES)" />

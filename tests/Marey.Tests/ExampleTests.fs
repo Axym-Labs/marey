@@ -62,7 +62,9 @@ let private assemblies =
       "Marey.Sim"
       // Joined at M5.6 phase 7, with `fluid.fsx` and `cylinder.fsx`, the first examples to ask
       // for a GPU. Each falls back to the CPU where none can be made, and says so.
-      "Marey.Backend.Gpu" ]
+      "Marey.Backend.Gpu"
+      // With `pendulum-uncertainty.fsx`.
+      "Marey.Uncertainty" ]
 
 let private exampleDir =
     lazy (Path.Combine(Golden.repoRoot.Force(), "examples"))

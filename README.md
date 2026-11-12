@@ -109,6 +109,7 @@ spring |> Chart.withTheme Theme.tikz |> Chart.toFile TikzBackend.render "spring.
 | `Marey.Core`, `Marey.Units` | Dimensions, unit witnesses, physical constants, scales, colour, and the scene every backend draws. |
 | `Marey.Plot` | `Chart`, the `plot` block, layout, themes, the storyboard. |
 | `Marey.Anim`, `Marey.Fields`, `Marey.Sim` | Animation, fields, simulation. |
+| `Marey.Uncertainty` | Measured values with their standard uncertainty, as the GUM evaluates it: budgets, error bars, weighted fits, a Monte Carlo check. |
 | `Marey.Interact`, `Marey.Html` | Live figures, and HTML for a notebook cell. |
 | `Marey.Backend.Svg`, `Marey.Backend.Tikz` | SVG, and `tikzpicture` source for LaTeX. |
 | `Marey.Backend.Skia` | PNG and vector PDF with text shaped by HarfBuzz. Brings SkiaSharp. |
@@ -121,7 +122,7 @@ spring |> Chart.withTheme Theme.tikz |> Chart.toFile TikzBackend.render "spring.
 ## Documentation
 
 - **[The site](https://axym-labs.github.io/marey/)**: the guide with its figures drawn in the page and the live one answering its slider, a gallery of every figure, and the API reference of every package.
-- **[The guide](docs/guide/README.md)**, a tour of everything in fifteen sections, every block of it run by the test suite.
+- **[The guide](docs/guide/README.md)**, a tour of everything in sixteen sections, every block of it run by the test suite.
 - **[Examples](examples/)**, standalone scripts and a notebook, also run by the test suite.
 - **[Why Marey is like this](docs/why.md)**: the case for a unit witness over a string label, what the other decisions cost, and when not to use the library.
 - **[Compatibility](docs/compatibility.md)** and **[Not in 1.0](docs/not-in-1.0.md)**.

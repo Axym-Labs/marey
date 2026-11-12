@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <!-- Compiles under Fable like Core, Units and Plot, on which it depends. -->
+    <MareyFable>true</MareyFable>
+    <AssemblyName>Marey.Uncertainty</AssemblyName>
+    <RootNamespace>Marey</RootNamespace>
+    <Description>Measurement uncertainty for Marey, as the GUM (JCGM 100) evaluates it: values that carry their standard uncertainty and its sources through arithmetic under F# units of measure, with correlations through shared inputs, effective degrees of freedom and expanded uncertainties.</Description>
+    <PackageTags>fsharp uncertainty gum metrology error-propagation units-of-measure physics scientific</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Coverage.fs" />
+    <!-- Before the type: its ToString is a report. -->
+    <Compile Include="Report.fs" />
+    <Compile Include="Uncertain.fs" />
+    <Compile Include="Fit.fs" />
+    <Compile Include="Sampling.fs" />
+    <Compile Include="MonteCarlo.fs" />
+    <!-- The charts: what the package takes from Plot. -->
+    <Compile Include="Charts.fs" />
+    <!-- The C# surface, `using Marey.CSharp`. -->
+    <Compile Include="CSharp.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Marey.Core\Marey.Core.fsproj" />
+    <ProjectReference Include="..\Marey.Units\Marey.Units.fsproj" />
+    <ProjectReference Include="..\Marey.Plot\Marey.Plot.fsproj" />
+  </ItemGroup>
+
+</Project>

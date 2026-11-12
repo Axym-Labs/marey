@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\Marey.Backend.Svg\Marey.Backend.Svg.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Backend.Tikz\Marey.Backend.Tikz.fsproj" />
     <ProjectReference Include="..\..\src\Marey.Backend.Skia\Marey.Backend.Skia.fsproj" />
+    <ProjectReference Include="..\..\src\Marey.Uncertainty\Marey.Uncertainty.fsproj" />
   </ItemGroup>
 
 </Project>

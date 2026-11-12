@@ -96,5 +96,33 @@ let private simFailures =
         printfn "  FAIL  the simulations, %s" (firstDifference expected actual)
         [ "sim-runs" ]
 
-if not (failures.IsEmpty && canvasFailures.IsEmpty && wireFailures.IsEmpty && fontFailures.IsEmpty && simFailures.IsEmpty) then
+// Uncertainty propagation gets .NET's numbers.
+let private uncertaintyFailures: string list =
+    let figures =
+        [ for name, render in UncertaintyScenes.svg do
+              let expected = normalise (readFileSync (dir + "/uncertainty/" + name + ".svg", "utf8"))
+              let actual = normalise (render ())
+
+              if actual <> expected then
+                  writeFileSync (dir + "/uncertainty/" + name + ".actual.svg", actual)
+                  yield sprintf "the figure %s, %s" name (firstDifference expected actual) ]
+
+    let found = UncertaintyGate.check () @ figures
+
+    for f in found do
+        printfn "  FAIL  uncertainty: %s" f
+
+    printfn "the uncertainty gate: %s" (if found.IsEmpty then "holds" else "fails")
+    found
+
+if
+    not (
+        failures.IsEmpty
+        && canvasFailures.IsEmpty
+        && wireFailures.IsEmpty
+        && fontFailures.IsEmpty
+        && simFailures.IsEmpty
+        && uncertaintyFailures.IsEmpty
+    )
+then
     setExitCode 1
