@@ -41,7 +41,9 @@ let private reports () : string list =
       yield! same "large" "1.234568(43) × 10⁸" (Uncertain.report (plain 123456789.0 4321.0))
       yield! same "exact" "6.02214076 × 10²³" (Uncertain.report (Uncertain.exact U.one 6.02214076e23))
       yield! same "siunitx" "\\qty{9.804(59)}{\\metre\\per\\second\\squared}" (Uncertain.reportWith { Uncertain.reportFormat with Style = Siunitx } g)
-      yield! same "budget" budget (Budget.text (Uncertain.budget g)) ]
+      yield! same "budget" budget (Budget.text (Uncertain.budget g))
+      yield! same "a constant" "9.1093837139(28) × 10⁻³¹ kg" (Uncertain.report Uncertain.Constants.me)
+      yield! same "constants correlated" "1836.152673422(37)" (Uncertain.report (Uncertain.Constants.mp / Uncertain.Constants.me)) ]
 
 /// GUM H.3's thermometer line, from the scatter of eleven exact points, as .NET fits it.
 let private fit () : string list =

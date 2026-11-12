@@ -804,6 +804,90 @@ module Uncertain =
         let c = Math.Cos v
         Uncertain<1>(Math.Tan v, Parts.one, a.Inputs, Parts.scale (1.0 / (c * c)) a.Parts)
 
+    /// **The measured physical constants with their standard uncertainties**, CODATA 2022: the
+    /// constants of `Constants` that are not exact, each an `Uncertain` with the value and the
+    /// standard uncertainty CODATA states.
+    ///
+    /// ```fsharp
+    /// // The specific charge of the electron, for an e/m experiment to be compared with:
+    /// let eOverM = Constants.Quantities.e / Uncertain.Constants.me   // 1.75882000838(54) × 10¹¹ C·kg⁻¹
+    /// ```
+    ///
+    /// They are correlated as the constants are. Most rest on a few measured quantities, tied to
+    /// them by the relations of the SI: m_e = 2R∞h/(cα²), m_u = m_e/A_r(e), m_p = A_r(p)·m_u,
+    /// μ₀ = 2αh/(e²c), a₀ = α/(4πR∞) and the rest. Those quantities (α, R∞, the relative atomic masses of
+    /// the electron, proton and neutron, and G) are the inputs here, taken as independent, and a
+    /// budget names them. So μ₀ and ε₀ are correlated by −1, and `mp / me` is known to
+    /// 2 × 10⁻¹¹ where either mass is known to 3 × 10⁻¹⁰, since α cancels. CODATA's own
+    /// adjustment correlates the inputs slightly and rounds every uncertainty to two digits, which
+    /// this cannot follow: `mp / me` comes out 1836.152673422(37), where CODATA states
+    /// 1836.152673426(32).
+    ///
+    /// The exact constants (`c`, `h`, `e`, `kB`, `NA` and those computed from them) carry no
+    /// uncertainty: an `Uncertain` multiplies `Constants.Quantities.h` directly.
+    module Constants =
+
+        let private input (name: string) (unit: U<'u>) (value: float<'u>) (u: float<'u>) : Uncertain<'u> =
+            standard (name + " (CODATA 2022)") unit value u
+
+        // A constant with CODATA's value and standard uncertainty, whose contributions point the
+        // way `relation` does: an expression in the inputs proportional to the constant, in any
+        // unit. Scaling a value's contributions as a whole keeps its correlation with every other
+        // value. Each relation reaches the inputs directly, not through another scaled constant,
+        // so that α cancels from a ratio as far as CODATA's rounded uncertainties let it.
+        let private stated (unit: U<'u>) (value: float<'u>) (u: float<'u>) (relation: Uncertain<'v>) : Uncertain<'u> =
+            let k = float u / float relation.Uncertainty
+            Uncertain(value, unit, relation.Inputs, Parts.scale k relation.Parts)
+
+        /// **Fine-structure constant**, α = 7.2973525643(11) × 10⁻³, dimensionless. See
+        /// `Constants.fineStructure`.
+        let fineStructure: Uncertain<1> = input "fine-structure constant" U.one Marey.Constants.fineStructure 0.0000000011e-3
+
+        /// **Rydberg constant**, R∞ = 10973731.568157(12) m⁻¹. See `Constants.rydberg`.
+        let rydberg: Uncertain<1 / m> = input "Rydberg constant" (U.recip U.metre) Marey.Constants.rydberg 0.000012</m>
+
+        /// **Newtonian constant of gravitation**, G = 6.67430(15) × 10⁻¹¹ m³·kg⁻¹·s⁻². See
+        /// `Constants.G`.
+        let G: Uncertain<m^3 / (kg s^2)> =
+            input "Newtonian constant of gravitation" (U.div U.cubicMetre (U.mul U.kilogram (U.square U.second))) Marey.Constants.G 0.00015e-11<m^3 / (kg s^2)>
+
+        let private electronRelative = input "electron relative atomic mass" U.one 5.485799090441e-4 0.000000000097e-4
+        let private protonRelative = input "proton relative atomic mass" U.one 1.0072764665789 0.0000000000083
+        let private neutronRelative = input "neutron relative atomic mass" U.one 1.00866491606 0.00000000040
+
+        // m_e is proportional to R∞/α², and m_u to that over A_r(e).
+        let private electron = rydberg / (fineStructure * fineStructure)
+        let private unified = electron / electronRelative
+
+        /// **Vacuum magnetic permeability**, μ₀ = 1.25663706127(20) × 10⁻⁶ N·A⁻², proportional to
+        /// α. See `Constants.mu0`.
+        let mu0: Uncertain<N / A^2> = stated (U.div U.henry U.metre) Marey.Constants.mu0 0.00000000020e-6<N / A^2> fineStructure
+
+        /// **Vacuum electric permittivity**, ε₀ = 8.8541878188(14) × 10⁻¹² F·m⁻¹, proportional to
+        /// 1/α. See `Constants.eps0`.
+        let eps0: Uncertain<F / m> = stated (U.div U.farad U.metre) Marey.Constants.eps0 0.0000000014e-12<F / m> (1.0 / fineStructure)
+
+        /// **Electron mass**, m_e = 9.1093837139(28) × 10⁻³¹ kg, proportional to R∞/α². See
+        /// `Constants.me`.
+        let me: Uncertain<kg> = stated U.kilogram Marey.Constants.me 0.0000000028e-31<kg> electron
+
+        /// **Atomic mass constant**, m_u = 1.66053906892(52) × 10⁻²⁷ kg, m_e/A_r(e). See
+        /// `Constants.atomicMass`.
+        let atomicMass: Uncertain<kg> = stated U.kilogram Marey.Constants.atomicMass 0.00000000052e-27<kg> unified
+
+        /// **Proton mass**, m_p = 1.67262192595(52) × 10⁻²⁷ kg, A_r(p)·m_u. See `Constants.mp`.
+        let mp: Uncertain<kg> = stated U.kilogram Marey.Constants.mp 0.00000000052e-27<kg> (protonRelative * unified)
+
+        /// **Neutron mass**, m_n = 1.67492750056(85) × 10⁻²⁷ kg, A_r(n)·m_u. See `Constants.mn`.
+        let mn: Uncertain<kg> = stated U.kilogram Marey.Constants.mn 0.00000000085e-27<kg> (neutronRelative * unified)
+
+        /// **Bohr radius**, a₀ = 5.29177210544(82) × 10⁻¹¹ m, α/(4πR∞). See `Constants.bohrRadius`.
+        let bohrRadius: Uncertain<m> = stated U.metre Marey.Constants.bohrRadius 0.00000000082e-11<m> (fineStructure / rydberg)
+
+        /// **Bohr magneton**, μ_B = eħ/2m_e = 9.2740100657(29) × 10⁻²⁴ J·T⁻¹, proportional to
+        /// 1/m_e. See `Constants.bohrMagneton`.
+        let bohrMagneton: Uncertain<J / T> = stated (U.div U.joule U.tesla) Marey.Constants.bohrMagneton 0.0000000029e-24<J / T> (1.0 / electron)
+
 /// `x +- u`: a value with its standard uncertainty, written where it is used.
 [<AutoOpen>]
 module UncertainOperators =

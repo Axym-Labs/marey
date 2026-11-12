@@ -677,6 +677,73 @@ let ``the block takes uncertain values and draws their bars`` () =
     Assert.Equal(1, (layersOf exact).Length)
 
 // ======================================================================================
+// The measured constants, CODATA 2022
+// ======================================================================================
+
+/// Each measured constant reports CODATA 2022's value and standard uncertainty, as NIST's table
+/// prints them, and its value is the `float` of the same name in `Constants`.
+[<Fact>]
+let ``the uncertain constants report CODATA's values and standard uncertainties`` () =
+    let check (expected: string) (exact: float<'u>) (x: Uncertain<'u>) =
+        Assert.Equal(expected, Uncertain.report x)
+        Assert.Equal(float exact, float x.Value)
+
+    check "0.0072973525643(11)" Constants.fineStructure Uncertain.Constants.fineStructure
+    check "1.0973731568157(12) × 10⁷ m⁻¹" Constants.rydberg Uncertain.Constants.rydberg
+    check "6.67430(15) × 10⁻¹¹ m³·kg⁻¹·s⁻²" Constants.G Uncertain.Constants.G
+    check "1.25663706127(20) × 10⁻⁶ H·m⁻¹" Constants.mu0 Uncertain.Constants.mu0
+    check "8.8541878188(14) × 10⁻¹² F·m⁻¹" Constants.eps0 Uncertain.Constants.eps0
+    check "9.1093837139(28) × 10⁻³¹ kg" Constants.me Uncertain.Constants.me
+    check "1.66053906892(52) × 10⁻²⁷ kg" Constants.atomicMass Uncertain.Constants.atomicMass
+    check "1.67262192595(52) × 10⁻²⁷ kg" Constants.mp Uncertain.Constants.mp
+    check "1.67492750056(85) × 10⁻²⁷ kg" Constants.mn Uncertain.Constants.mn
+    check "5.29177210544(82) × 10⁻¹¹ m" Constants.bohrRadius Uncertain.Constants.bohrRadius
+    check "9.2740100657(29) × 10⁻²⁴ J·T⁻¹" Constants.bohrMagneton Uncertain.Constants.bohrMagneton
+
+/// The constants are correlated through what they rest on: μ₀ ∝ α and ε₀ ∝ 1/α, m_e ∝ R∞/α²
+/// and μ_B ∝ 1/m_e, the masses through m_u. G rests on nothing the others do.
+[<Fact>]
+let ``the uncertain constants are correlated through the relations that tie them`` () =
+    let r a b = Uncertain.correlation a b
+    near 1e-9 -1.0 (r Uncertain.Constants.mu0 Uncertain.Constants.eps0)
+    near 1e-9 -1.0 (r Uncertain.Constants.me Uncertain.Constants.bohrMagneton)
+    near 1e-4 -1.0 (r Uncertain.Constants.me Uncertain.Constants.bohrRadius)
+    near 1e-2 1.0 (r Uncertain.Constants.me Uncertain.Constants.mp)
+    near 1e-2 1.0 (r Uncertain.Constants.mp Uncertain.Constants.atomicMass)
+    Assert.Equal(0.0, r Uncertain.Constants.me Uncertain.Constants.G)
+
+/// α cancels from the proton–electron mass ratio: its uncertainty is the relative atomic masses',
+/// 2 × 10⁻¹¹, not the masses' 3 × 10⁻¹⁰. CODATA states 1836.152673426(32); the inputs here are
+/// independent and CODATA's uncertainties rounded, so the last digits differ.
+[<Fact>]
+let ``alpha cancels from the proton-electron mass ratio`` () =
+    let ratio = Uncertain.Constants.mp / Uncertain.Constants.me
+    near 1e-8 1836.152673426 (float ratio.Value)
+    let relative = Uncertain.relative ratio
+    Assert.InRange(relative, 1.7e-11, 2.2e-11)
+    let inputs = Uncertain.budget ratio |> fun b -> b.Rows |> Array.map (fun row -> row.Input.Label)
+    Assert.Equal("electron relative atomic mass (CODATA 2022)", Array.head inputs)
+
+/// The product μ₀ε₀ is 1/c², exact by the SI: what is left of α is CODATA's rounding.
+[<Fact>]
+let ``mu0 times eps0 is 1 over c squared`` () =
+    let product = Uncertain.Constants.mu0 * Uncertain.Constants.eps0
+    near 1e-26 (1.0 / (float Constants.c * float Constants.c)) (float product.Value)
+    Assert.True(Uncertain.relative product < 2e-12, sprintf "%g" (Uncertain.relative product))
+
+/// The constants are one input each wherever they are used, so a constant over itself is exact.
+[<Fact>]
+let ``a constant over itself is exact`` () =
+    let one = Uncertain.Constants.G / Uncertain.Constants.G
+    Assert.Equal(0.0, float one.Uncertainty)
+
+/// e/m_e, the figure an e/m experiment is compared with.
+[<Fact>]
+let ``the electron's specific charge carries m_e's uncertainty`` () =
+    let eOverM = Constants.Quantities.e / Uncertain.Constants.me
+    Assert.Equal("1.75882000838(54) × 10¹¹ C·kg⁻¹", Uncertain.report eOverM)
+
+// ======================================================================================
 // Cost
 // ======================================================================================
 
