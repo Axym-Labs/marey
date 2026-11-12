@@ -223,6 +223,25 @@ and reported when missing; Marey does not require a version of them.
 
 ### Fixed
 
+- **A box zoom on a polar figure shows the box.** A drag on a live figure under `Coord.polar`
+  narrowed the domains to the box's corners read back as angle and radius, and drew them over the
+  whole turn: the selected wedge came back stretched round the full circle with its inner radius
+  at the centre, and a box across θ = 0 zoomed to the whole turn. A polar panel now zooms to the
+  annular sector that bounds the box and draws it as that sector, magnified to fill the plot, so
+  every angle is still the angle it was drawn at and what was in the box is drawn where it was,
+  scaled. The sector's radii are the box's nearest and farthest points from the pole, from its
+  edges where the box straddles an axis; a box across θ = 0 is the one sector through it, with both
+  ends of the turn's data in it; a box over the pole keeps every angle and runs from the pole out
+  to its farthest corner. A pan on the zoomed panel turns the data through the same sector, and a
+  double click returns to the view's own coord. `Coord.flipped Coord.polar` zooms the same way;
+  cartesian, flipped cartesian, log and equal-aspect zooms, and coords written outside Marey, zoom
+  by their domains as before. A domain stated on a polar panel (`withXDomain`, `withPanelDomains`,
+  a storyboard's `zoomToX`) still spans the coord's whole angle: it is how a polar figure's angles
+  are set.
+- **The pointer reads the lower half of a polar plot as the end of the turn.** `Coord.polar`'s
+  inverse read a point below the pole as an angle before the start, so a readout there was a
+  negative angle's data, off the domain; it is now the angle from the start of the turn, round to
+  2π. A wedge from `polarBetween` reads each point on the side of the wedge it is nearer.
 - **Row heights no longer narrow a figure.** `Chart.withRowHeights [| 3.0; 1.0 |]` over a lower
   panel with a `LegendBest` legend drew both plots at about 70 % of the figure's width, with an empty
   band on the right. The panels were first laid out with the weights applied to whole panels, which

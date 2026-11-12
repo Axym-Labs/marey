@@ -50,7 +50,11 @@ type LiveZoom =
           Inset: int option
           Axis: ZoomAxis
           Lo: float
-          Hi: float }
+          Hi: float
+          /// Where on the view's own coord the axis is drawn, as a part of its unit square, for
+          /// a coord that zooms by its own view (`Coord.zoomTo`): a polar panel's zoomed sector.
+          /// `None` for an axis drawn across the whole coord.
+          Span: (float * float) option }
 
 /// Where a live figure is.
 ///
@@ -556,37 +560,85 @@ module Live =
             let same (a: IScaleErased) (b: IScaleErased) =
                 a.Domain = b.Domain && a.Dim = b.Dim && a.ToSI = b.ToSI && a.OffsetSI = b.OffsetSI
 
-            zoom
+            // The panels and insets each entry reached, so that an axis drawn over part of its
+            // coord is drawn so on every panel it reached.
+            let reached = ResizeArray<(int * int) * int option * ZoomAxis * (float * float)>()
+
+            let zoomedFig =
+                zoom
+                |> Array.fold
+                    (fun fig z ->
+                        let reach k inset =
+                            match z.Span with
+                            | Some span -> reached.Add((k, inset, z.Axis, span))
+                            | None -> ()
+
+                        match axes |> Array.tryFind (fun (k, _) -> k = (z.Row, z.Col)) with
+                        | None -> fig
+                        // An inset's axes are its own, and join no other.
+                        | Some(k, _) when z.Inset.IsSome ->
+                            let d = Some(z.Lo, z.Hi)
+                            reach k z.Inset
+
+                            match z.Axis with
+                            | ZoomAxis.X -> Figure.withInsetDomains (z.Row, z.Col, z.Inset.Value) d None fig
+                            | ZoomAxis.Y -> Figure.withInsetDomains (z.Row, z.Col, z.Inset.Value) None d fig
+                            | ZoomAxis.Y2 -> fig
+                        // A second y axis is the panel's own, and joins no other.
+                        | Some _ when z.Axis = ZoomAxis.Y2 -> Figure.withPanelDomainY2 (z.Row, z.Col) (z.Lo, z.Hi) fig
+                        | Some(_, target) ->
+                            let t = axisOf z.Axis target
+                            let d = Some(z.Lo, z.Hi)
+
+                            axes
+                            |> Array.fold
+                                (fun fig (k, scales) ->
+                                    if same t (axisOf z.Axis scales) then
+                                        reach k None
+
+                                        match z.Axis with
+                                        | ZoomAxis.X -> Chart.withPanelDomains k d None fig
+                                        | ZoomAxis.Y -> Chart.withPanelDomains k None d fig
+                                        | ZoomAxis.Y2 -> fig
+                                    else
+                                        fig)
+                                fig)
+                    fig
+
+            // Each panel whose coord zooms by its own view is drawn with the part of the view's
+            // coord its axes reached, the later entry winning, as for the domains.
+            reached.ToArray()
+            |> Array.groupBy (fun (k, inset, _, _) -> k, inset)
             |> Array.fold
-                (fun fig z ->
-                    match axes |> Array.tryFind (fun (k, _) -> k = (z.Row, z.Col)) with
-                    | None -> fig
-                    // An inset's axes are its own, and join no other.
-                    | Some _ when z.Inset.IsSome ->
-                        let d = Some(z.Lo, z.Hi)
+                (fun out ((k, inset), entries) ->
+                    let spanOf axis =
+                        entries
+                        |> Array.choose (fun (_, _, a, span) -> if a = axis then Some span else None)
+                        |> Array.tryLast
+                        |> Option.defaultValue (0.0, 1.0)
 
-                        match z.Axis with
-                        | ZoomAxis.X -> Figure.withInsetDomains (z.Row, z.Col, z.Inset.Value) d None fig
-                        | ZoomAxis.Y -> Figure.withInsetDomains (z.Row, z.Col, z.Inset.Value) None d fig
-                        | ZoomAxis.Y2 -> fig
-                    // A second y axis is the panel's own, and joins no other.
-                    | Some _ when z.Axis = ZoomAxis.Y2 -> Figure.withPanelDomainY2 (z.Row, z.Col) (z.Lo, z.Hi) fig
-                    | Some(_, target) ->
-                        let t = axisOf z.Axis target
-                        let d = Some(z.Lo, z.Hi)
+                    let original =
+                        fig.Panels
+                        |> Array.tryFind (fun p -> (p.Row, p.Col) = k)
+                        |> Option.bind (fun p ->
+                            match inset with
+                            | None -> Some p.Coord
+                            | Some i when i >= 0 && i < p.Insets.Length -> Some p.Insets.[i].Panel.Coord
+                            | Some _ -> None)
 
-                        axes
-                        |> Array.fold
-                            (fun fig (k, scales) ->
-                                if same t (axisOf z.Axis scales) then
-                                    match z.Axis with
-                                    | ZoomAxis.X -> Chart.withPanelDomains k d None fig
-                                    | ZoomAxis.Y -> Chart.withPanelDomains k None d fig
-                                    | ZoomAxis.Y2 -> fig
-                                else
-                                    fig)
-                            fig)
-                fig
+                    match original with
+                    | None -> out
+                    | Some c ->
+                        let (x0, x1), (y0, y1) = spanOf ZoomAxis.X, spanOf ZoomAxis.Y
+
+                        let part: Rect<nd> =
+                            { X0 = x0 * 1.0<nd>
+                              Y0 = y0 * 1.0<nd>
+                              X1 = x1 * 1.0<nd>
+                              Y1 = y1 * 1.0<nd> }
+
+                        Figure.withPanelCoord k inset (Coord.zoomedTo c part) out)
+                zoomedFig
 
     /// The figure for a set of values under a zoom.
     let private figureIn (live: Live) (zoom: LiveZoom[]) (values: float[]) = zoomed zoom (figureOf live values)
@@ -742,7 +794,10 @@ module Live =
     /// entry for the axis. A categorical axis has no domain to state (`Scale.withDomain`), and a
     /// domain with no finite width, or narrower than nine significant digits can label, is not
     /// taken. `None` when no axis is left.
-    let private withEntries (zoom: LiveZoom[]) (v: PanelView) (entries: (ZoomAxis * (float * float)) list) =
+    ///
+    /// An entry may say where on the view's own coord its axis is drawn (`LiveZoom.Span`); one
+    /// that does not, a pan, keeps what the entry it replaces said.
+    let private withEntries (zoom: LiveZoom[]) (v: PanelView) (entries: (ZoomAxis * (float * float) * (float * float) option) list) =
         let usable (axis: ZoomAxis) (lo: float, hi: float) =
             let scale =
                 match axis, v.Y2 with
@@ -753,20 +808,26 @@ module Live =
             | ScaleKind.Ordinal _ -> false
             | _ -> finite lo && finite hi && hi - lo > 1e-9 * max (abs lo) (abs hi)
 
-        match entries |> List.filter (fun (axis, d) -> usable axis d) with
+        match entries |> List.filter (fun (axis, d, _) -> usable axis d) with
         | [] -> None
         | kept ->
             kept
             |> List.fold
-                (fun (z: LiveZoom[]) (axis, (lo, hi)) ->
+                (fun (z: LiveZoom[]) (axis, (lo, hi), span) ->
+                    let mine (e: LiveZoom) = e.Row = v.Row && e.Col = v.Col && e.Inset = v.Inset && e.Axis = axis
+
                     Array.append
-                        (z |> Array.filter (fun e -> not (e.Row = v.Row && e.Col = v.Col && e.Inset = v.Inset && e.Axis = axis)))
+                        (z |> Array.filter (mine >> not))
                         [| { Row = v.Row
                              Col = v.Col
                              Inset = v.Inset
                              Axis = axis
                              Lo = lo
-                             Hi = hi } |])
+                             Hi = hi
+                             Span =
+                               match span with
+                               | Some _ -> span
+                               | None -> z |> Array.tryFind mine |> Option.bind (fun e -> e.Span) } |])
                 zoom
             |> Some
 
@@ -813,32 +874,10 @@ module Live =
                 let x0, x1 = clamp v.Plot.X0 v.Plot.X1 (min r.X0 r.X1), clamp v.Plot.X0 v.Plot.X1 (max r.X0 r.X1)
                 let y0, y1 = clamp v.Plot.Y0 v.Plot.Y1 (min r.Y0 r.Y1), clamp v.Plot.Y0 v.Plot.Y1 (max r.Y0 r.Y1)
 
-                match PanelView.domainsOf { X0 = x0; Y0 = y0; X1 = x1; Y1 = y1 } v with
-                | None -> state
-                | Some(dx, dy) when v.EqualAspect ->
-                    // Both axes, widened to the plot's shape, so equal aspect holds and
-                    // re-arranging keeps the box.
-                    if x1 - x0 < MinDrag * 1.0<px> && y1 - y0 < MinDrag * 1.0<px> then
-                        state
-                    else
-                        let dx, dy = PanelView.fitEqual v (dx, dy)
+                let box: Rect<px> = { X0 = x0; Y0 = y0; X1 = x1; Y1 = y1 }
+                let click = x1 - x0 < MinDrag * 1.0<px> && y1 - y0 < MinDrag * 1.0<px>
 
-                        match withEntries state.Zoom v [ ZoomAxis.X, dx; ZoomAxis.Y, dy ] with
-                        | Some zoom ->
-                            { state with
-                                Zoom = zoom
-                                Shot = arrange live state.Size state.Grown zoom }
-                        | None -> state
-                | Some(dx, dy) ->
-                    let entries =
-                        [ if x1 - x0 >= MinDrag * 1.0<px> then ZoomAxis.X, dx
-                          if y1 - y0 >= MinDrag * 1.0<px> then
-                              ZoomAxis.Y, dy
-                              // The same rows of the plot, read on the right axis.
-                              match PanelView.y2DomainOf { X0 = x0; Y0 = y0; X1 = x1; Y1 = y1 } v with
-                              | Some d2 -> ZoomAxis.Y2, d2
-                              | None -> () ]
-
+                let zoomTo entries =
                     match withEntries state.Zoom v entries with
                     | Some zoom ->
                         // A zoom is a jump the reader asked for, and it can change an axis's
@@ -847,6 +886,47 @@ module Live =
                             Zoom = zoom
                             Shot = arrange live state.Size state.Grown zoom }
                     | None -> state
+
+                match PanelView.zoomOf box v with
+                | Some _ when click -> state
+                | Some part ->
+                    // A coord that zooms by its own view, as polar does: both axes, to the part
+                    // of the coord that bounds the box, each drawn over that part of where it
+                    // was drawn before, so the view shows the box at its own angles.
+                    let spanOf (axis: ZoomAxis) (p0: float<nd>) (p1: float<nd>) =
+                        let g0, g1 =
+                            state.Zoom
+                            |> Array.tryFind (fun e -> e.Row = v.Row && e.Col = v.Col && e.Inset = v.Inset && e.Axis = axis)
+                            |> Option.bind (fun e -> e.Span)
+                            |> Option.defaultValue (0.0, 1.0)
+
+                        Some(g0 + (g1 - g0) * float p0, g0 + (g1 - g0) * float p1)
+
+                    let domain (s: IScaleErased) (p0: float<nd>) (p1: float<nd>) =
+                        let a, b = s.Invert p0, s.Invert p1
+                        min a b, max a b
+
+                    zoomTo
+                        [ ZoomAxis.X, domain v.X part.X0 part.X1, spanOf ZoomAxis.X part.X0 part.X1
+                          ZoomAxis.Y, domain v.Y part.Y0 part.Y1, spanOf ZoomAxis.Y part.Y0 part.Y1 ]
+                | None ->
+                    match PanelView.domainsOf box v with
+                    | None -> state
+                    // Both axes, widened to the plot's shape, so equal aspect holds and
+                    // re-arranging keeps the box.
+                    | Some _ when v.EqualAspect && click -> state
+                    | Some(dx, dy) when v.EqualAspect ->
+                        let dx, dy = PanelView.fitEqual v (dx, dy)
+                        zoomTo [ ZoomAxis.X, dx, None; ZoomAxis.Y, dy, None ]
+                    | Some(dx, dy) ->
+                        zoomTo
+                            [ if x1 - x0 >= MinDrag * 1.0<px> then ZoomAxis.X, dx, None
+                              if y1 - y0 >= MinDrag * 1.0<px> then
+                                  ZoomAxis.Y, dy, None
+                                  // The same rows of the plot, read on the right axis.
+                                  match PanelView.y2DomainOf box v with
+                                  | Some d2 -> ZoomAxis.Y2, d2, None
+                                  | None -> () ]
         | Pan(at, by) ->
             match panels live state |> Array.tryFind (PanelView.contains at) with
             | None -> state
@@ -861,12 +941,12 @@ module Live =
                         min lo hi, max lo hi
 
                     let entries =
-                        [ if b.X <> a.X then ZoomAxis.X, slide v.X (b.X - a.X)
+                        [ if b.X <> a.X then ZoomAxis.X, slide v.X (b.X - a.X), None
                           if b.Y <> a.Y then
-                              ZoomAxis.Y, slide v.Y (b.Y - a.Y)
+                              ZoomAxis.Y, slide v.Y (b.Y - a.Y), None
 
                               match v.Y2 with
-                              | Some s2 -> ZoomAxis.Y2, slide s2 (b.Y - a.Y)
+                              | Some s2 -> ZoomAxis.Y2, slide s2 (b.Y - a.Y), None
                               | None -> () ]
 
                     match withEntries state.Zoom v entries with
