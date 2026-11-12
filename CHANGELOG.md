@@ -199,6 +199,13 @@ and reported when missing; Marey does not require a version of them.
 
 ### Fixed
 
+- **Row heights no longer narrow a figure.** `Chart.withRowHeights [| 3.0; 1.0 |]` over a lower
+  panel with a `LegendBest` legend drew both plots at about 70 % of the figure's width, with an empty
+  band on the right. The panels were first laid out with the weights applied to whole panels, which
+  left the lower plot so short that its legend found no free corner and took a column of its own;
+  lined up, that column narrowed every panel above it, and the legend was then drawn inside the
+  taller plot the panel finally got. A legend that finds a free corner over its final plot now gives
+  its column back, so the weights change only the rows' heights.
 - **`U.dalton` is CODATA 2022's atomic mass constant**, 1.66053906892 × 10⁻²⁷ kg; it was 2018's,
   1.66053906660 × 10⁻²⁷ kg, 1.4 × 10⁻⁹ smaller, so it now equals `Constants.atomicMass`.
 - **A bar chart shows its outer bars whole.** A bar is 0.7 of the spacing between bars wide, and

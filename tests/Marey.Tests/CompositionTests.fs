@@ -322,6 +322,76 @@ module ``D175 ratios`` =
         Assert.Equal<float[]>([| 1.5; 0.5; 1.0 |], fig.RowWeights)
 
     [<Fact>]
+    let ``row heights leave a single column's widths alone`` () =
+        let ts = Array.init 21 (fun i -> float i * 0.1<s>)
+        let line = Chart.lineIn U.second U.metre ts (ts |> Array.map (fun ti -> ti * 1.0<m/s>))
+        let pair = line |> Chart.above line
+        let extent = Chart.size 720.0 520.0
+        let plain = viewsOf extent pair
+
+        for weights in [ [| 1.0; 1.0 |]; [| 3.0; 1.0 |]; [| 1.0; 4.0 |] ] do
+            let views = viewsOf extent (pair |> Chart.withRowHeights weights)
+
+            for r in 0..1 do
+                let a, b = w (at plain r 0), w (at views r 0)
+                Assert.True(within a b, sprintf "%A: row %d plot %g wide, %g without weights" weights r b a)
+
+            let ratio = h (at views 0 0) / h (at views 1 0)
+            Assert.True(within (weights.[0] / weights.[1]) ratio, sprintf "%A: heights %g : 1" weights ratio)
+
+    // Five residuals with a legend that takes the corner the data leaves free: over the short
+    // plot the first pass gives the lower panel, every corner holds a point.
+    let private lengths = [| 0.4<m>; 0.6<m>; 0.8<m>; 1.0<m>; 1.2<m> |]
+    let private bars = Array.create 5 7e-3<s^2>
+
+    let private lab =
+        Chart.errorbarIn U.metre (U.square U.second) lengths (lengths |> Array.map (fun l -> 4.0<s^2/m> * l)) bars
+        |> Chart.withName "standard uncertainty"
+        |> Chart.withLegend LegendTopLeft
+        |> Chart.above (
+            Chart.errorbarIn U.metre (U.square U.second) lengths [| -3e-3<s^2>; 6e-3<s^2>; -4e-3<s^2>; 7.5e-3<s^2>; -7e-3<s^2> |] bars
+            |> Chart.withName "standard uncertainty"
+            |> Chart.addHLine (U.square U.second) 0.0<s^2>
+            |> Chart.withLegend LegendBest
+        )
+        |> Chart.shareX
+
+    let private sameWidths (extent: Extent<px>) (fig: Figure) (weighted: Figure) =
+        let plain = viewsOf extent fig
+        let views = viewsOf extent weighted
+
+        for v in views do
+            let a, b = w (at plain v.Row v.Col), w v
+            Assert.True(within a b, sprintf "(%d, %d): plot %g wide, %g without weights" v.Row v.Col b a)
+
+        views
+
+    [<Fact>]
+    let ``row heights leave the widths of a column whose short panel has a best legend`` () =
+        let extent = Chart.size 720.0 520.0
+        let views = sameWidths extent lab (lab |> Chart.withRowHeights [| 3.0; 1.0 |])
+        Assert.True(within 3.0 (h (at views 0 0) / h (at views 1 0)))
+
+    [<Fact>]
+    let ``row heights leave the widths of the paper figure`` () =
+        // Laid out as the guide's paper figure: a 3 : 1 pair beside a stack of two, lettered,
+        // under the publication theme.
+        let extent = Chart.size 980.0 520.0
+        let other = fit |> Chart.above fit |> Chart.shareX
+        let fig = lab |> Chart.beside other |> Chart.withPanelLetters LetterParen |> Chart.withTheme Theme.publication
+
+        let weighted =
+            (lab |> Chart.withRowHeights [| 3.0; 1.0 |])
+            |> Chart.beside other
+            |> Chart.withPanelLetters LetterParen
+            |> Chart.withTheme Theme.publication
+
+        let views = sameWidths extent fig weighted
+        Assert.True(within 3.0 (h (at views 0 0) / h (at views 1 0)))
+        Assert.True(within 3.0 (h (at views 0 1) / h (at views 1 1)))
+        assertAlignedIn weighted views
+
+    [<Fact>]
     let ``weights are refused unless there is one per row and each is positive (gate 2)`` () =
         let e = Assert.ThrowsAny<exn>(fun () -> fit |> Chart.above fit |> Chart.withRowHeights [| 1.0 |] |> ignore)
         Assert.Contains("1 rows weights for a figure of 2 rows", e.Message)

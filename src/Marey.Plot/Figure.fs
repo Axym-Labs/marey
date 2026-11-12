@@ -3042,8 +3042,12 @@ module Figure =
     ///
     /// `rescore` gives a `LegendBest` panel its corner scores again over the plot it now has
     ///: a panel that gave up width to line up with a neighbour's outside legend has a
-    /// different emptiest corner. The gutters are not re-measured, so whether the legend went
-    /// outside, which is a gutter, stays as pass 1 decided it.
+    /// different emptiest corner. The gutters are not re-measured, so a legend pass 1 kept
+    /// inside stays inside. One pass 1 put outside is brought back in when a corner of the plot
+    /// it now has is free, and the panels are lined up again without its gutter: pass 1 shares
+    /// out whole regions by the row and column weights, and pass 2 shares out plots, so a short
+    /// panel's plot can grow a long way between the two. Kept, that gutter would be taken by
+    /// every panel of the column and drawn empty, the legend being inside.
     let private placeAligned
         (m: ITextMeasurer)
         (extent: Extent<px>)
@@ -3053,9 +3057,9 @@ module Figure =
         (rescore: string -> Rect<px> -> PanelLayout -> float[])
         (layouts: (string * PanelLayout)[])
         : Arrangement * (string * PanelLayout)[] =
-        if not (isGrid fig) then
-            outer, layouts
-        else
+        // A gutter given up only widens a plot, which shrinks the legend's share of it in every
+        // corner: a legend brought in stays in, and each round brings in at least one.
+        let rec place (layouts: (string * PanelLayout)[]) (rounds: int) =
             let gutters, slackened = align fig layouts
             let outer2 = Layout.arrange m extent (alignedGrid head fig gutters) |> fun o -> placeProportionally fig o gutters
 
@@ -3073,7 +3077,25 @@ module Figure =
                         key, (if l2.LegendScores.Length = 4 then { l2 with LegendScores = rescore key r l2 } else l2)
                     | None -> key, l)
 
-            outer2, probed
+            let broughtIn =
+                probed
+                |> Array.choose (fun (key, l) ->
+                    if l.LegendScores.Length = 4 && l.LegendW > 0.0<px> && not (PanelLayout.crowded l.LegendScores) then
+                        Some key
+                    else
+                        None)
+
+            if broughtIn.Length = 0 || rounds = 0 then
+                outer2, probed
+            else
+                layouts
+                |> Array.map (fun (key, l) -> if Array.contains key broughtIn then key, { l with LegendW = 0.0<px>; LegendGap = 0.0<px> } else key, l)
+                |> fun inside -> place inside (rounds - 1)
+
+        if not (isGrid fig) then
+            outer, layouts
+        else
+            place layouts layouts.Length
 
     // ---- What a shot pins besides the gutters -------------------------------------------
     //
