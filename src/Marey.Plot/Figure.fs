@@ -573,6 +573,24 @@ module PanelView =
             let ys = corners |> Array.map (fun c -> snd c.Value)
             Some((Array.min xs, Array.max xs), (Array.min ys, Array.max ys))
 
+    /// **The part of the panel's unit square a box zoom shows**, for a coord that zooms by its
+    /// own view (`Coord.zoomTo`): under polar, the annular sector bounding the px rectangle.
+    /// `None` for a coord that zooms by its domains alone, whose zoom is `domainsOf`.
+    let internal zoomOf (r: Rect<px>) (v: PanelView) : Rect<nd> option =
+        let w = v.Plot.X1 - v.Plot.X0
+        let h = v.Plot.Y1 - v.Plot.Y0
+
+        if not (w > 0.0<px> && h > 0.0<px>) then
+            None
+        else
+            // The one flip again: px grows downward, the unit square upward.
+            Coord.zoomTo
+                v.Coord
+                { X0 = (r.X0 - v.Plot.X0) / w * 1.0<nd>
+                  Y0 = (v.Plot.Y1 - r.Y1) / h * 1.0<nd>
+                  X1 = (r.X1 - v.Plot.X0) / w * 1.0<nd>
+                  Y1 = (v.Plot.Y1 - r.Y0) / h * 1.0<nd> }
+
     /// **What a pointer reads**: one line per axis, x first, each the axis's name and the
     /// value under the point, written in the prefix and unit text the axis's ticks are written
     /// in. A categorical axis reads the level whose band the point is in.
@@ -3604,6 +3622,24 @@ module Figure =
         : Figure =
         // On a shared axis, the domain is the group's.
         withDomainsShared (fun p -> p.Row = row && p.Col = col) dx dy fig
+
+    /// One panel's coord, replaced: or one of its insets', for `inset`. What a box zoom on a
+    /// coord that zooms by its own view draws with.
+    let internal withPanelCoord (row: int, col: int) (inset: int option) (coord: Coord) (fig: Figure) : Figure =
+        { fig with
+            Panels =
+                fig.Panels
+                |> Array.map (fun p ->
+                    if p.Row <> row || p.Col <> col then
+                        p
+                    else
+                        match inset with
+                        | None -> { p with Coord = coord }
+                        | Some i ->
+                            { p with
+                                Insets =
+                                    p.Insets
+                                    |> Array.mapi (fun j ins -> if j = i then { ins with Panel = { ins.Panel with Coord = coord } } else ins) }) }
 
     /// **`Shot -> Figure -> Node`.** Draw this figure inside a layout that has already been
     /// decided — the frame renderer's entry point.

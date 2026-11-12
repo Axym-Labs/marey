@@ -458,6 +458,286 @@ module ``zoom and pan`` =
             List.iter2 (fun (a: LiveState, x: string) (b: LiveState, y: string) -> Assert.Equal<LiveState>(a, b); Assert.Equal(x, y)) runs.[0] other
 
 // ======================================================================================
+// A box zoom on a polar panel shows the sector that bounds the box
+// ======================================================================================
+
+module ``polar zoom`` =
+
+    let private still (fig: Figure) : Live = interact { return fig }
+
+    let private first (l: Live) (s: LiveState) = (Live.panels l s).[0]
+
+    let private turn = 2.0 * Math.PI
+
+    /// A curve all the way round, so every sector has data in it.
+    let private rose () =
+        let th = Array.init 721 (fun i -> float i / 720.0 * turn)
+        Chart.lineIn U.radian U.metre (th |> Array.map (fun t -> t * 1.0<rad>)) (th |> Array.map (fun t -> (1.0 + cos t * cos t) * 1.0<m>))
+        |> Chart.withCoord Coord.polar
+
+    /// The px of a point in the plot's unit square, given as its offset from the pole at the
+    /// square's centre.
+    let private pxAt (v: PanelView) (ox: float, oy: float) : Vec2<px> =
+        { X = v.Plot.X0 + (0.5 + ox) * (v.Plot.X1 - v.Plot.X0)
+          Y = v.Plot.Y1 - (0.5 + oy) * (v.Plot.Y1 - v.Plot.Y0) }
+
+    /// Drag over the box `ox0..ox1` by `oy0..oy1`, in offsets from the pole, top-left to
+    /// bottom-right on the screen.
+    let private dragBox (l: Live) (s: LiveState) ((ox0, ox1), (oy0, oy1)) =
+        let v = first l s
+        let a = pxAt v (ox0, oy1)
+        let b = pxAt v (ox1, oy0)
+        Live.step l s (Zoom { X0 = a.X; Y0 = a.Y; X1 = b.X; Y1 = b.Y })
+
+    /// The angle of an offset, in [0, 2π): where `Coord.polar` starts and runs round.
+    let private angleOf (ox: float, oy: float) =
+        let a = atan2 oy ox
+        if a < 0.0 then a + turn else a
+
+    /// The distance of an offset from the pole, as a fraction of the full radius.
+    let private radiusOf (ox: float, oy: float) = 2.0 * sqrt (ox * ox + oy * oy)
+
+    let private near (expected: float * float) (actual: float * float) =
+        let (lo, hi), (lo', hi') = expected, actual
+        let tol = 1e-9 * abs (hi - lo)
+        Assert.True(abs (lo - lo') <= tol && abs (hi - hi') <= tol, sprintf "expected %A, got %A" expected actual)
+
+    /// Under `Coord.polar` the x domain is the turn and y runs out from the pole: the data at an
+    /// angle and at a radius, read from the scales alone so that no inverse of the coord is
+    /// trusted here.
+    let private xAt (v: PanelView) (angle: float) = v.X.Invert(angle / turn * 1.0<nd>)
+    let private yAt (v: PanelView) (radius: float) = v.Y.Invert(radius * 1.0<nd>)
+
+    /// A box off the pole in the first quadrant: its angles run from its lower-right corner
+    /// to its upper-left, and its radii from its lower-left corner to its upper-right.
+    [<Fact>]
+    let ``a box off the pole zooms to the sector it spans`` () =
+        let l = still (rose ())
+        let s0 = Live.init l
+        let v0 = first l s0
+        let s1 = dragBox l s0 ((0.1, 0.3), (0.05, 0.25))
+        let v1 = first l s1
+        near (xAt v0 (angleOf (0.3, 0.05)), xAt v0 (angleOf (0.1, 0.25))) v1.X.Domain
+        near (yAt v0 (radiusOf (0.1, 0.05)), yAt v0 (radiusOf (0.3, 0.25))) v1.Y.Domain
+
+    /// A box over the pole holds every angle, and its radii run from the pole out to its
+    /// farthest corner.
+    [<Fact>]
+    let ``a box over the pole zooms to the whole turn out to its farthest corner`` () =
+        let l = still (rose ())
+        let s0 = Live.init l
+        let v0 = first l s0
+        let s1 = dragBox l s0 ((-0.1, 0.2), (-0.15, 0.1))
+        let v1 = first l s1
+        near v0.X.Domain v1.X.Domain
+        near (yAt v0 0.0, yAt v0 (radiusOf (0.2, -0.15))) v1.Y.Domain
+
+    /// A box across θ = 0 is one sector, from below the axis round through it, and not the
+    /// whole turn between its corners' readings. Its nearest point to the pole is the middle
+    /// of its left edge, not a corner.
+    [<Fact>]
+    let ``a box across the start of the turn zooms to the sector through it`` () =
+        let l = still (rose ())
+        let s0 = Live.init l
+        let v0 = first l s0
+        let s1 = dragBox l s0 ((0.15, 0.35), (-0.1, 0.1))
+        let v1 = first l s1
+        near (xAt v0 (angleOf (0.15, -0.1)), xAt v0 (turn + angleOf (0.15, 0.1))) v1.X.Domain
+        near (yAt v0 (radiusOf (0.15, 0.0)), yAt v0 (radiusOf (0.35, 0.1))) v1.Y.Domain
+
+    /// Whether a point is inside a closed polyline path, by the crossings of a ray from it.
+    let private inside (path: PathSeg[]) (p: Vec2<nd>) =
+        let pts =
+            path
+            |> Array.choose (function
+                | MoveTo q
+                | LineTo q -> Some q
+                | _ -> None)
+
+        let mutable crossings = 0
+
+        for i in 0 .. pts.Length - 1 do
+            let a = pts.[i]
+            let b = pts.[(i + 1) % pts.Length]
+
+            if (a.Y > p.Y) <> (b.Y > p.Y) then
+                let x = a.X + (p.Y - a.Y) / (b.Y - a.Y) * (b.X - a.X)
+                if x > p.X then crossings <- crossings + 1
+
+        crossings % 2 = 1
+
+    /// Where a panel draws a data point, in its unit square.
+    let private drawnAt (v: PanelView) (x: float, y: float) =
+        v.Coord.ToPanel { X = v.X.Project x; Y = v.Y.Project y }
+
+    /// The rose's data points.
+    let private points =
+        Array.init 721 (fun i ->
+            let t = float i / 720.0 * turn
+            t, 1.0 + cos t * cos t)
+
+    /// The points of `inBox` (in `v0`'s unit square) are drawn inside `v1`'s clip and on its
+    /// plot, and they move by one scale and one shift, so angles are still true angles. The
+    /// data points it covered.
+    let private drawnAlike (v0: PanelView) (v1: PanelView) (inBox: Vec2<nd> -> bool) =
+        let clip = v1.Coord.Clip
+
+        let moved =
+            points
+            |> Array.choose (fun d ->
+                let p0 = drawnAt v0 d
+
+                if inBox p0 then
+                    let p1 = drawnAt v1 d
+                    Assert.True(inside clip p1, sprintf "%A was in the box and is drawn outside the zoom, at %A" d p1)
+                    Assert.True(p1.X >= 0.0<nd> && p1.X <= 1.0<nd> && p1.Y >= 0.0<nd> && p1.Y <= 1.0<nd>, sprintf "%A is drawn off the plot, at %A" d p1)
+                    Some(d, p0, p1)
+                else
+                    None)
+
+        Assert.True(moved.Length >= 3, sprintf "only %d points in the box" moved.Length)
+
+        // One scale and one shift: every step between two points is the old step times k.
+        let (_, a0, a1), (_, b0, b1) = moved.[0], moved.[moved.Length - 1]
+        let k = float (Vec2.norm (b1 - a1)) / float (Vec2.norm (b0 - a0))
+        Assert.True(k > 1.0, sprintf "the zoom magnifies, by %g" k)
+
+        for _, p0, p1 in moved do
+            let d0, d1 = p0 - a0, p1 - a1
+            Assert.True(abs (float d1.X - k * float d0.X) < 1e-9 && abs (float d1.Y - k * float d0.Y) < 1e-9, sprintf "%A moved to %A, not by k = %g" p0 p1 k)
+
+        moved |> Array.map (fun (d, _, _) -> d)
+
+    /// **What was selected is what is drawn.** Every data point inside the dragged box is drawn
+    /// inside the zoomed panel, at its old place scaled and shifted; every one outside the sector
+    /// bounding the box is clipped away.
+    let private showsTheBox ((ox0, ox1), (oy0, oy1)) =
+        let l = still (rose ())
+        let s0 = Live.init l
+        let v0 = first l s0
+        let s1 = dragBox l s0 ((ox0, ox1), (oy0, oy1))
+        let v1 = first l s1
+
+        let offset (p: Vec2<nd>) = float p.X - 0.5, float p.Y - 0.5
+
+        let shown =
+            drawnAlike v0 v1 (fun p ->
+                let ox, oy = offset p
+                ox > ox0 && ox < ox1 && oy > oy0 && oy < oy1)
+
+        // The sector bounding the box, a hair wider than the box's own extremes.
+        let corners = [ ox0, oy0; ox1, oy0; ox1, oy1; ox0, oy1 ]
+        let holdsPole = ox0 <= 0.0 && ox1 >= 0.0 && oy0 <= 0.0 && oy1 >= 0.0
+        let rLo = radiusOf (max ox0 (min ox1 0.0), max oy0 (min oy1 0.0))
+        let rHi = corners |> List.map radiusOf |> List.max
+        let mid = atan2 ((oy0 + oy1) / 2.0) ((ox0 + ox1) / 2.0)
+        let wrap a = a - turn * Math.Round(a / turn)
+        let half = if holdsPole then Math.PI else corners |> List.map (fun c -> abs (wrap (atan2 (snd c) (fst c) - mid))) |> List.max
+
+        for d in points do
+            let ox, oy = offset (drawnAt v0 d)
+            let r = radiusOf (ox, oy)
+
+            if abs (wrap (atan2 oy ox - mid)) > half + 1e-3 || r < rLo - 1e-3 || r > rHi + 1e-3 then
+                let p1 = drawnAt v1 d
+                Assert.False(inside v1.Coord.Clip p1, sprintf "%A was outside the sector and is drawn, at %A" d p1)
+
+        shown
+
+    [<Fact>]
+    let ``the zoom draws what was in the box and nothing outside its sector`` () = showsTheBox ((0.1, 0.3), (0.05, 0.25)) |> ignore
+
+    /// Both ends of the curve are in a box across the start of the turn, and both are drawn.
+    [<Fact>]
+    let ``a zoom across the start of the turn draws both sides of it`` () =
+        let shown = showsTheBox ((0.25, 0.49), (-0.25, 0.25))
+        Assert.Contains(shown, fun (t, _) -> t < 1.0)
+        Assert.Contains(shown, fun (t, _) -> t > turn - 1.0)
+
+    [<Fact>]
+    let ``a zoom over the pole draws what was in the box`` () = showsTheBox ((-0.1, 0.2), (-0.15, 0.1)) |> ignore
+
+    /// A second box inside the first zooms further into the same geometry: what was in it in the
+    /// first zoom's view is drawn in the second's, scaled and shifted.
+    [<Fact>]
+    let ``a zoom inside a zoom stays true`` () =
+        let l = still (rose ())
+        let s0 = Live.init l
+        let s1 = dragBox l s0 ((0.1, 0.3), (0.05, 0.25))
+        let v1 = first l s1
+        let s2 = dragBox l s1 ((-0.2, 0.1), (-0.15, 0.15))
+        let v2 = first l s2
+        Assert.True(snd v2.X.Domain - fst v2.X.Domain < snd v1.X.Domain - fst v1.X.Domain)
+
+        drawnAlike v1 v2 (fun p ->
+            let ox, oy = float p.X - 0.5, float p.Y - 0.5
+            ox > -0.2 && ox < 0.1 && oy > -0.15 && oy < 0.15)
+        |> ignore
+
+    /// A double click puts the polar view back: the state before the zoom, and the coord the
+    /// view drew with.
+    [<Fact>]
+    let ``a reset returns a polar panel to its own view`` () =
+        let l = still (rose ())
+        let s0 = Live.init l
+        let s1 = dragBox l s0 ((0.1, 0.3), (0.05, 0.25))
+        Assert.NotEqual<LiveState>(s0, s1)
+        let s2 = Live.step l s1 Reset
+        Assert.Equal<LiveState>(s0, s2)
+        Assert.Same(Coord.polar, (first l s2).Coord)
+
+    /// A pan on a zoomed polar panel keeps the zoomed view and turns the data through it.
+    [<Fact>]
+    let ``a pan keeps a polar zoom's view`` () =
+        let l = still (rose ())
+        let s0 = Live.init l
+        let s1 = dragBox l s0 ((0.1, 0.3), (0.05, 0.25))
+        let v1 = first l s1
+        let c = { X = (v1.Plot.X0 + v1.Plot.X1) / 2.0; Y = (v1.Plot.Y0 + v1.Plot.Y1) / 2.0 }
+        let s2 = Live.step l s1 (Pan(c, { X = 10.0<px>; Y = 0.0<px> }))
+        let v2 = first l s2
+        Assert.NotEqual(v1.X.Domain, v2.X.Domain)
+        Assert.Equal<PathSeg[]>(v1.Coord.Clip, v2.Coord.Clip)
+
+    /// Under `flipped polar` x is the radius and y the angle, and the zoom follows them.
+    [<Fact>]
+    let ``a box on a flipped polar panel zooms to the sector it spans`` () =
+        let th = Array.init 721 (fun i -> float i / 720.0 * turn)
+
+        let fig =
+            Chart.lineIn U.metre U.radian (th |> Array.map (fun t -> (1.0 + cos t * cos t) * 1.0<m>)) (th |> Array.map (fun t -> t * 1.0<rad>))
+            |> Chart.withCoord (Coord.flipped Coord.polar)
+        let l = still fig
+        let s0 = Live.init l
+        let v0 = first l s0
+        let s1 = dragBox l s0 ((0.1, 0.3), (0.05, 0.25))
+        let v1 = first l s1
+        near (v0.X.Invert(radiusOf (0.1, 0.05) * 1.0<nd>), v0.X.Invert(radiusOf (0.3, 0.25) * 1.0<nd>)) v1.X.Domain
+        near (v0.Y.Invert(angleOf (0.3, 0.05) / turn * 1.0<nd>), v0.Y.Invert(angleOf (0.1, 0.25) / turn * 1.0<nd>)) v1.Y.Domain
+
+    /// Zooms and pans on a polar panel replay: the same log gives equal states and figures.
+    [<Fact>]
+    let ``polar zooms replay`` () =
+        let run () =
+            let l = still (rose ())
+            let s0 = Live.init l
+            let s1 = dragBox l s0 ((0.15, 0.35), (-0.1, 0.1))
+            let v1 = first l s1
+            let c = { X = (v1.Plot.X0 + v1.Plot.X1) / 2.0; Y = (v1.Plot.Y0 + v1.Plot.Y1) / 2.0 }
+            let s2 = Live.step l s1 (Pan(c, { X = 12.0<px>; Y = -7.0<px> }))
+            [ s0; s1; s2; Live.step l s2 Reset ] |> List.map (fun s -> s, Html.widgetFigure l s)
+
+        let a, b = run (), run ()
+        List.iter2 (fun (s: LiveState, x: string) (t: LiveState, y: string) -> Assert.Equal<LiveState>(s, t); Assert.Equal(x, y)) a b
+
+    /// The lower half of a polar plot reads as the second half of the turn, not as angles
+    /// before it.
+    [<Fact>]
+    let ``polar reads the lower half as the end of the turn`` () =
+        let u = Coord.polar.FromPanel { X = 0.5<nd>; Y = 0.25<nd> }
+        Assert.True(abs (float u.Value.X - 0.75) < 1e-12, sprintf "%A" u)
+
+// ======================================================================================
 // Gate 14 — the readout reads what is under the pointer
 // ======================================================================================
 
