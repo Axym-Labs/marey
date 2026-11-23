@@ -29,7 +29,8 @@ otherwise Marey's approximate widths with `Approximated` saying so. The canvas m
 refuses to measure while fonts are loading, so a figure cannot be laid out against a fallback face
 by accident.
 
-Pass the backend the measurer the figure was laid out with: text is anchored with its advances.
+Pass the backend the measurer the figure was laid out with, since text is anchored with its
+advances.
 
 ## What it draws
 

@@ -65,8 +65,8 @@ explorer
 In Verso, `explorer` as a cell's value is the live figure: drag the slider and the section is
 recomputed for that drive. On the figure, a drag zooms onto a box (on a polar panel, onto the
 sector around it, drawn at its own angles), shift-drag pans, a double-click returns to the view's
-own domains, and the pointer's position is read out in the axes' units. The
-page formats no number; every label and reading is written by the kernel.
+own domains, and the pointer's position is read out in the axes' units. The page formats no
+number; every label and reading is written by the kernel.
 
 ## A live figure is a value
 

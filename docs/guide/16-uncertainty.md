@@ -115,7 +115,7 @@ scatter about the line as their uncertainties say they should. g = `9.808(19) m�
 
 `Fit.line` weights each point by its uncertainty, and with uncertain lengths too by their effective
 variance. Its slope and intercept are `Uncertain` values whose contributions point back to every
-input of every point, so g's budget names them: the two end lengths' timings carry most of it, as
+input of every point, so g's budget names them. The two end lengths' timings carry most of it, as
 the ends of a line hold its slope, and the stopwatch is one row, not five. 4π²/slope composes its
 unit as s⁻²·m; `Uncertain.convert` restates it in the witness one would write.
 
@@ -166,7 +166,7 @@ printfn "%s" (MonteCarlo.report releaseCheck)
 
 The law of propagation gives h = 1.0(1.2) mm, and a 95 % interval from −1.26 to 3.26 mm, below
 the bob's lowest point. `MonteCarlo.check` draws every input from its distribution, evaluates the
-model for each draw and compares the two intervals as JCGM 101 does: here they differ by 1.26 mm
+model for each draw and compares the two intervals as JCGM 101 does. Here they differ by 1.26 mm
 against a tolerance of 0.05, and the check says to report the Monte Carlo interval, 0 to 3.79 mm.
 It runs in batches until the comparison is settled, 2 × 10⁴ trials here.
 

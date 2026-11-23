@@ -33,22 +33,22 @@ A 10⁵-point scatter is 2.1 MB rather than 6.4 MB of SVG and draws in tens of m
 step that moves one mark sends a few kilobytes. Under the canvas is the figure's SVG without its
 large batches, for a viewer that runs no script. `Html.renderMode` sets `Svg`, `Canvas` or `Auto`.
 
-A film is sampled into stills stacked in one SVG and cycled with SMIL `<animate>` — no `<style>`
-block, which a notebook cell cannot scope, and no external tool, so it plays wherever the notebook
-renders and looks the same for every reader.
+A film is sampled into stills stacked in one SVG and cycled with SMIL `<animate>`. That needs no
+`<style>` block, which a notebook cell cannot scope, and no external tool, so the film plays
+wherever the notebook renders and looks the same for every reader.
 
 ## A live figure's page
 
 `Html.widget live state isLive` writes a whole page for a host that draws output in a frame of its
 own: the controls at the state's values, the figure, and a script that posts the reader's changes,
-drags and pointer position, and swaps in what comes back. **The script formats no number**: every
+drags and pointer position, and swaps in what comes back. **The script formats no number.** Every
 label and every reading is written in F#, by the kernel. With `isLive = false` the same page has
 its controls disabled, for a host with nothing to talk back to and for a saved notebook.
 
 ## Host-neutral
 
-Every renderer here is `something -> string`: no formatter registration, no kernel reference and no
-dependency on a notebook host. The output carries no `<style>` block and no pinned colours, so it
+Every renderer here is `something -> string`, with no formatter registration, no kernel reference
+and no dependency on a notebook host. The output carries no `<style>` block and no pinned colours, so it
 inherits the notebook's theme rather than fighting it.
 
 ## To make a bare value display

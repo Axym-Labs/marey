@@ -23,14 +23,14 @@ figure |> Chart.toSvg SvgBackend.render "out.svg" (Chart.size 800.0 500.0)
 
 Two renders of one figure are **byte-identical**, and so are renders under different locales.
 Numbers are formatted culture-invariantly at a fixed precision, and nothing depends on hash
-ordering or on the clock, which is what allows the output to be pinned as a text golden master and
-reviewed as a diff.
+ordering or on the clock, so the output can be pinned as a text golden master and reviewed as a
+diff.
 
 ## Complete
 
 All ten cases of the scene IR: paths, text, batched markers, rasters, groups, transforms, clips,
-group opacity, keys and semantic annotations — with polylines, rectangles and gradients falling out
-of `Path` and `Paint`. Accessibility semantics are emitted alongside the geometry.
+group opacity, keys and semantic annotations. Polylines, rectangles and gradients fall out of `Path`
+and `Paint`. Accessibility semantics are emitted alongside the geometry.
 
 Because the output is a string starting with `<svg`, it renders in any notebook or viewer that
 knows what to do with one, without an extension installed.

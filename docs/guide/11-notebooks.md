@@ -34,10 +34,10 @@ samples 48 frames, about half a megabyte; `Html.filmAt n` takes another budget. 
 encoder, so it plays wherever the notebook renders.
 
 **A large figure is drawn on a canvas.** From 5000 drawn elements on, `Html.CanvasThreshold`, the
-cell holds a canvas and the scene goes to it as bytes rather than SVG: a scatter of 10⁵ points is
-2.1 MB rather than 6.4 MB and draws in tens of milliseconds. The bytes carry the kernel's text
-measurements, so the labels sit where they would in the SVG, and under the canvas is the figure's
-SVG without its large batches, so a viewer that runs no script still shows the axes, titles and
+cell holds a canvas and the scene goes to it as bytes rather than SVG. A scatter of 10⁵ points is
+then 2.1 MB rather than 6.4 MB and draws in tens of milliseconds. The bytes carry the kernel's text
+measurements, so the labels sit where they would in the SVG. Under the canvas is the figure's SVG
+without its large batches, so a viewer that runs no script still shows the axes, titles and
 legend. `Html.renderMode` chooses `RenderMode.Svg`, `Canvas` or `Auto`, the default.
 
 **A saved notebook** keeps each figure as it was drawn, a live one at the state the reader left it

@@ -51,7 +51,8 @@ others are separate references.
 | `Marey.Verso` | The Verso notebook extension, loaded by `#!extension Marey.Verso`. |
 | `Marey.Analyzers`, `Marey.Witnesses` | Fixes for a call missing the right unit witness: F# analyzers for Ionide and the CLI, and the same fixes over the compiler service. Not in `Marey`. |
 
-1.0.0: the compatibility page says what a version number promises from here on. MIT licensed.
+Marey is at 1.0.0, and the compatibility page says what a version number promises from here on.
+MIT licensed.
 
 - [The guide](https://axym-labs.github.io/marey/guide/)
 - [Gallery](https://axym-labs.github.io/marey/gallery.html)

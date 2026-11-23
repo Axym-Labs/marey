@@ -39,7 +39,7 @@ and `fadeIn` fades a named part in.
 **`points.[10]`** names the eleventh datum. A scatter of 100 000 points is one node, so naming one
 splits it into the marks before, the mark, and the marks after; nothing is split until something is
 named. When rows have names of their own, `key` in the `plot` block keys each mark by its row's
-name, so a morph between two tables pairs rows by name: the rows that stayed hold still, a removed
+name, so a morph between two tables pairs rows by name. The rows that stayed hold still, a removed
 row fades out where it was, and `points.["S6"]` names a row by its key.
 
 ## Filmed

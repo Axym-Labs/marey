@@ -1,8 +1,9 @@
 # Running the notebooks
 
-Marey targets [**Verso**](https://github.com/DataficationSDK/Verso) — MIT, open source, imports
-`.dib` and `.ipynb`, and runs in VS Code, the browser, the terminal and CI. It is the maintained
-successor to Polyglot Notebooks, which was retired in March 2026 along with .NET Interactive.
+Marey targets [**Verso**](https://github.com/DataficationSDK/Verso), which is open source under
+MIT, imports `.dib` and `.ipynb`, and runs in VS Code, the browser, the terminal and CI. It is the
+maintained successor to Polyglot Notebooks, which was retired in March 2026 along with .NET
+Interactive.
 
 [`marey-tour.dib`](marey-tour.dib) is the tour.
 
@@ -22,7 +23,7 @@ Chart.lineIn U.second U.metre t x
 |> Chart.render SvgBackend.render (Chart.size 720.0 450.0)
 ```
 
-**With the `Marey.Verso` extension**, the value itself displays — no pipe, no size, no ceremony:
+**With the `Marey.Verso` extension**, the value itself displays, with no pipe and no size:
 
 ```fsharp
 Chart.lineIn U.second U.metre t x
@@ -30,7 +31,7 @@ Chart.lineIn U.second U.metre t x
 ```
 
 Twelve types then display: `Figure`, `Film`, `Node`, `Color`, `Ramp`, `Color[]`, `PaletteReport`,
-`Dim`, `U<'u>`, `IScaleErased`, `Live` and `Recorder`. A `Film` **plays** — an animation built with
+`Dim`, `U<'u>`, `IScaleErased`, `Live` and `Recorder`. A `Film` **plays**. An animation built with
 the `scene { … }` block loops in the cell as a flipbook, with no encoder installed and no video file
 on disk. A `Live`, built with `interact { … }`, is a figure with controls that the kernel redraws as
 the reader moves them, in Verso 1.2.3 or newer; [`examples/interact.dib`](../../examples/interact.dib)
@@ -42,11 +43,11 @@ rendering. Verso has no `#r`-time extension hook.
 
 ## Installing the extension
 
-Install `Marey.Verso` from Verso's **Extensions** panel, then approve it once — extensions are
-executable code that runs inside the notebook host, so approval is requested per version.
+Install `Marey.Verso` from Verso's **Extensions** panel, then approve it once. Extensions are
+executable code that runs inside the notebook host, so Verso asks for approval per version.
 
-Or load it from the notebook's first cell, as the first line of that cell: Verso reads
-`#!extension` only at the top of a cell, and below a `#r` it is ignored without an error.
+Or load it from the first line of the notebook's first cell. Verso reads `#!extension` only at
+the top of a cell, and below a `#r` it ignores the line without an error.
 
 ```
 #!extension Marey.Verso
@@ -68,12 +69,12 @@ does nothing for .NET.
 ## If something does not display
 
 1. **A field table of the object's members.** The extension is not installed, not approved, or not
-   enabled for this notebook. Everything else is unaffected —
+   enabled for this notebook. Everything else is unaffected, and
    `Chart.render SvgBackend.render (Chart.size w h)` still draws, since that path needs no
    extension.
 2. **`Marey.Core` loads but `Chart` and the measures are undefined.** Only `Marey.Core` was
    referenced. `open Marey` succeeds because the namespace exists, but `s` and `m` live in
    `Marey.Units` and `Chart` in `Marey.Plot`. Reference `Marey.Html` and let the graph resolve.
-3. **A figure wider than the cell.** It scrolls; it does not shrink, deliberately, because scaling
+3. **A figure wider than the cell.** It scrolls and does not shrink, on purpose, because scaling
    the SVG would invalidate the text measurements it was laid out with. With the extension
-   installed this should not happen — the size comes from the cell.
+   installed this should not happen, since the size comes from the cell.

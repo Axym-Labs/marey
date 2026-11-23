@@ -15,7 +15,7 @@ let extent = Chart.size 640.0 400.0
 let t = Array.init 24 (fun i -> float i * 0.025<s>)
 let figure = Chart.lineIn U.second U.metre t (t |> Array.map (fun t -> 0.5 * 9.81<m/s^2> * t * t)) |> Chart.withTheme Theme.tikz
 
-// A scene whose runs carry TeX — which the axis compiler already fills for you when the
+// A scene whose runs carry TeX, which the axis compiler already fills in for you when the
 // unit style is `Siunitx`.
 let scene = figure |> Chart.toScene extent
 
@@ -26,9 +26,9 @@ let png = SkiaBackend.renderPng extent drawn       // Skia has never heard of Te
 ```
 
 `TextRun.Tex` carries TeX source, and nothing else in Marey sets it. This runs `latex` and
-`dvisvgm` over each such run and replaces it with the **filled outlines** TeX produced — so the
-SVG backend, the TikZ backend and the Skia backend all render `\frac{\partial \vec{E}}{\partial t}`
-with the code they already had, and no backend needs a typesetting story of its own.
+`dvisvgm` over each such run and replaces it with the **filled outlines** TeX produced. Every
+backend then renders `\frac{\partial \vec{E}}{\partial t}` with the code it already had, and no
+backend needs a way of typesetting of its own.
 
 ## Both tools are looked for and *reported*
 
@@ -42,17 +42,17 @@ printfn "%s" (Typeset.report ())
 // dvisvgm found at /usr/bin/dvisvgm — dvisvgm 3.6.1
 ```
 
-**A missing toolchain is not a failure.** `TextRun.Text` is always set — a run's plain-Unicode
-form is never optional — so a figure on a machine with no TeX renders exactly as it would have
-without this package, and `TypesetUnavailable` carries the sentence naming what to install. So
-does a single snippet TeX rejects: that run stays as text, is reported by name with TeX's own
+**A missing toolchain is not a failure.** `TextRun.Text`, a run's plain-Unicode form, is always
+set. A figure on a machine with no TeX therefore renders exactly as it would have without this
+package, and `TypesetUnavailable` carries the sentence naming what to install. The same holds for
+a single snippet TeX rejects. That run stays as text and is reported by name with TeX's own
 complaint, and every other formula on the figure still typesets.
 
 ## What it costs
 
 About 105 ms of `latex` and `dvisvgm` per distinct snippet, memoised on the source within one
-call. An ordinary figure carries two — the axis titles — so it is a fifth of a second on an export
-path you opt into. The memo does not outlive the call unless you hold one: pass a `TexCache` to
+call. An ordinary figure carries two, its axis titles, so typesetting adds a fifth of a second to an
+export path you opt into. The memo does not outlive the call unless you hold one: pass a `TexCache` to
 `Typeset.sceneCached` for every frame of a film, and only the first frame runs the engine. Five
 frames with two formulas cost 1082 ms uncached and 217 ms cached, nearly all of it the first frame.
 The cache is keyed on the source, the preamble, the class options, the base size and the tools,
@@ -60,26 +60,25 @@ so two callers with different preambles never share an outline. It is safe acros
 film renders on.
 
 The size is applied as a **scale**, not as a second engine run, so one formula at 9 pt and 18 pt
-costs one invocation. That is not what a TeX engine would do at 18 pt — real optical sizing picks
-a different design — and it is the same trade matplotlib's `usetex` makes.
+costs one invocation. A TeX engine would do otherwise at 18 pt, since real optical sizing picks a
+different design, and matplotlib's `usetex` makes the same trade.
 
 ## Installing the toolchain
 
-- **Debian/Ubuntu** — `apt install texlive-latex-base texlive-latex-recommended texlive-science dvisvgm`
-- **macOS** — `brew install --cask mactex` (or BasicTeX plus `tlmgr install dvisvgm`)
-- **Windows** — MiKTeX, which ships `dvisvgm`
+- **Debian/Ubuntu**: `apt install texlive-latex-base texlive-latex-recommended texlive-science dvisvgm`
+- **macOS**: `brew install --cask mactex` (or BasicTeX plus `tlmgr install dvisvgm`)
+- **Windows**: MiKTeX, which ships `dvisvgm`
 
 `dvisvgm` is its own package on Debian and Ubuntu and is not pulled in by any `texlive-*` entry.
 
 ## Why a subprocess, and why not MathJax
 
-Shelling out to TeX is *acceptable as a plugin, unacceptable as a dependency*, and that is the
-whole design brief: this package exists so that nothing in
-`Marey.Core`, `Marey.Plot` or any backend acquires a TeX installation as a requirement. It takes
-no third-party `PackageReference` of any kind.
+Shelling out to TeX is *acceptable as a plugin and unacceptable as a dependency*. This package
+exists so that nothing in `Marey.Core`, `Marey.Plot` or any backend needs a TeX installation, and it
+takes no third-party `PackageReference` of any kind.
 
-The alternative on the table was MathJax through a JavaScript engine, which the roadmap put on the
-web backend — a backend that does not exist yet, and which would have left the other three
-unable to set a fraction. Outlines reach all of them.
+The alternative was MathJax through a JavaScript engine, which the roadmap assigned to the web
+backend. That would have left the other backends unable to set a fraction, and outlines reach all
+of them.
 
 MIT licensed.

@@ -6,8 +6,8 @@ grid as the journal's box.
 
 **Panels.** `a |> Chart.above b` puts `a` over `b`, and `a |> Chart.beside b` puts `b` to the right
 of `a`. Both take figures of any shape, so a panel beside a stack of two runs the height of both.
-The panels are one grid: the room each needs for its ticks, titles, legend and colorbar is made the
-same along each grid line, so plots in a column share their left and right edges and plots in a
+The panels form one grid. The room each needs for its ticks, titles, legend and colorbar is made
+the same along each grid line, so plots in a column share their left and right edges and plots in a
 row their top and bottom. A layout that does not nest is drawn as a picture,
 `Chart.mosaic "AAB;DEB;DCC" [ 'A', …; 'B', … ]`, each character a cell and `.` an empty one.
 

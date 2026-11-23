@@ -34,8 +34,8 @@ printfn "%s" speed.Unit.Symbol
   `Inverse` checked as mutual inverses. **`Vec2`**, **`Affine`** and **`Coord`**: geometry and
   coordinate systems indexed by unit.
 - **`Scene`**, the ten kinds of node every backend draws, and **`Wire`**, which writes a
-  scene or a patch to bytes and back exactly, with the text metrics its layout used: what a kernel
-  sends a page to draw.
+  scene or a patch to bytes and back exactly, with the text metrics its layout used. A kernel
+  sends a page that to draw.
 
 Most projects reference [`Marey`](https://www.nuget.org/packages/Marey), which brings this with the
 plotting grammar, units table and outputs. On its own this package has no units table (that is
