@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
-# Marey in a released Verso, end to end: the automated half headless, then the browser host for
+# Marey in Verso, end to end: the automated half headless, then the browser host for
 # the half only a person can check (CHECKLIST.md).
 #
 #   tools/verso-e2e/verso-e2e.sh                  # packs this checkout, serves the notebook
 #   tools/verso-e2e/verso-e2e.sh --no-serve       # the headless checks only
 #   tools/verso-e2e/verso-e2e.sh --version 1.0.0  # the packages on nuget.org instead of a pack
+#   tools/verso-e2e/verso-e2e.sh --verso 1.3.0    # another Verso release than the default
+#   tools/verso-e2e/verso-e2e.sh --verso-from ../Verso
+#                                                 # Verso.Cli packed from a checkout of Verso
 #
 # A local pack gets the version 0.99.<MMDDHHmm>. It is a release version, because Verso's
 # Extensions panel lists no prerelease, and one that will never be published, so neither
 # ~/.nuget/packages nor ~/.verso/extensions ever holds a build under a real version's name.
-# Everything else lives in the work folder, which is printed at the start.
+# A Verso checkout is packed as its own version with a `-local.<MMDDHHmm>` suffix, into the work
+# folder only. Everything else lives in the work folder, which is printed at the start.
 set -euo pipefail
 
 verso_version=1.2.3
+verso_from=""
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 
@@ -24,10 +29,12 @@ work=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --version) version="$2"; shift 2 ;;
+    --verso) verso_version="$2"; shift 2 ;;
+    --verso-from) verso_from="$(cd "$2" && pwd)"; shift 2 ;;
     --no-serve) serve=0; shift ;;
     --port) port="$2"; shift 2 ;;
     --work) work="$2"; shift 2 ;;
-    -h|--help) sed -n 2,12p "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n 2,16p "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -36,9 +43,17 @@ for tool in dotnet jq curl; do
   command -v "$tool" >/dev/null || { echo "needs $tool on PATH" >&2; exit 2; }
 done
 
+stamp="$(date +%m%d%H%M)"
+if [ -n "$verso_from" ]; then
+  [ -f "$verso_from/src/Verso.Cli/Verso.Cli.csproj" ] \
+    || { echo "$verso_from is not a Verso checkout (no src/Verso.Cli/Verso.Cli.csproj)" >&2; exit 2; }
+  base="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$verso_from/Directory.Build.props" | head -1)"
+  verso_version="${base:-0.0.0}-local.$stamp"
+fi
+
 published=0
 [ -n "$version" ] && published=1
-[ -n "$version" ] || version="0.99.$(date +%m%d%H%M)"
+[ -n "$version" ] || version="0.99.$stamp"
 [ -n "$work" ] || work="${TMPDIR:-/tmp}/marey-verso-e2e-$version"
 mkdir -p "$work"
 work="$(cd "$work" && pwd)"
@@ -46,7 +61,7 @@ feed="$work/feed"
 results="$work/results"
 mkdir -p "$results"
 
-echo "Marey $version in Verso $verso_version"
+echo "Marey $version in Verso $verso_version${verso_from:+ (from $verso_from at $(git -C "$verso_from" rev-parse --short HEAD))}"
 echo "work folder: $work"
 echo
 
@@ -83,12 +98,33 @@ EOF
 fi
 
 
-# ---- Verso, from its release ----------------------------------------------------------------
+# ---- Verso, from its release or a checkout ----------------------------------------------------
 
-echo "== Verso.Cli $verso_version from nuget.org"
+verso_config="$work/nuget.config"
+if [ -n "$verso_from" ]; then
+  echo "== Verso.Cli packed from $verso_from as $verso_version"
+  # Built rather than packed: the CLI packs on build, so `dotnet pack` alone skips the build and
+  # finds no static web assets. Without the ASP.NET Core targeting pack installed, the SDK has no
+  # prune data for it and fetches the pack from nuget.org once the check is relaxed.
+  dotnet build "$verso_from/src/Verso.Cli/Verso.Cli.csproj" -c Release -p:PackageOutputPath="$work/verso-feed" \
+    -p:Version="$verso_version" -p:AllowMissingPrunePackageData=true -v quiet -nologo >"$work/verso-pack.log" 2>&1 \
+    || { tail -30 "$work/verso-pack.log"; echo "the Verso pack failed; $work/verso-pack.log has all of it" >&2; exit 1; }
+  verso_config="$work/verso-nuget.config"
+  cat >"$verso_config" <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="verso-local" value="$work/verso-feed" />
+  </packageSources>
+</configuration>
+EOF
+else
+  echo "== Verso.Cli $verso_version from nuget.org"
+fi
 if [ ! -x "$work/verso/verso" ]; then
   dotnet tool install Verso.Cli --version "$verso_version" --tool-path "$work/verso" \
-    --configfile "$work/nuget.config" >"$work/verso-install.log" 2>&1 \
+    --configfile "$verso_config" >"$work/verso-install.log" 2>&1 \
     || { cat "$work/verso-install.log"; exit 1; }
 fi
 verso="$work/verso/verso"
