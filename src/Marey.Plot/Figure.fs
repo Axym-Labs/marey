@@ -3878,7 +3878,7 @@ module Figure =
 
                     if insets.Length = 0 then draw () else Group(Array.append [| draw () |] insets))
 
-        // The panels' letters, in reading order, at the top left of each panel's region,
+        // The panels' letters, in reading order, at the left of each panel's region,
         // in the title row `compilePanel` keeps for them: above the axis title, clear of the data
         // and of a legend in the corner. Drawn here rather than by `compilePanel` because the
         // order is the figure's.
@@ -3897,6 +3897,16 @@ module Figure =
                     | LetterRightParen -> c + ")"
                     | LetterUpper -> c.ToUpperInvariant()
 
+                // Down by the room the grid added above the panel, so the letter stands at the top
+                // of its own title row: a neighbour's top axis or title widens that room, and the
+                // letter would otherwise float above it, away from the plot it names.
+                let slackTop (p: Panel) =
+                    let key = sprintf "panel-%d-%d" p.Row p.Col
+
+                    shot.Panels
+                    |> Array.tryPick (fun (k, l) -> if k = key then Some l.SlackTop else None)
+                    |> Option.defaultValue 0.0<px>
+
                 let letterAt (i: int) (p: Panel) (region: Rect<px>) =
                     Keyed(
                         Keys.letter (Keys.panel p.Row p.Col),
@@ -3907,7 +3917,7 @@ module Figure =
                             Text
                                 { Text = name i
                                   Tex = None
-                                  At = Layout.ndPoint extent { X = region.X0; Y = region.Y0 }
+                                  At = Layout.ndPoint extent { X = region.X0; Y = region.Y0 + slackTop p }
                                   Font = font
                                   Paint = Solid theme.Foreground
                                   Anchor = AnchorStart

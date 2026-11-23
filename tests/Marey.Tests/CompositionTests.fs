@@ -663,6 +663,26 @@ module ``D178 secondary axes`` =
         Assert.True(abs (y - expected) < 0.1, sprintf "30 °C drawn at %g px, 303.15 K is at %g px" y expected)
 
     [<Fact>]
+    let ``a letter beside a top axis stands above its own plot, not above the neighbour's axis`` () =
+        let wide = Chart.size 900.0 320.0
+
+        let lettered (right: Figure) =
+            Chart.lineIn U.metre U.one lam (lam |> Array.map (fun _ -> 1.0))
+            |> Chart.beside right
+            |> Chart.withPanelLetters LetterParen
+
+        // The gap from the letter's top down to its panel's plot.
+        let gap (fig: Figure) =
+            let scene = Chart.toSceneWith measurer wide fig
+            let _, at = textsWithAt scene |> List.find (fun (s, _) -> s = "(a)")
+            let v = (Chart.panelsIn measurer (Chart.arrangeFor measurer wide fig) fig) |> Array.find (fun v -> v.Col = 0)
+            float v.Plot.Y0 - (1.0 - float at.Y) * float wide.Height
+
+        let plain = gap (lettered spectrum)
+        let besideTop = gap (lettered (spectrum |> Chart.withTopAxisMapped U.electronvolt (fun (l: float<m>) -> hc / l) (fun (e: float<eV>) -> hc / e)))
+        Assert.True(abs (besideTop - plain) < 0.01, sprintf "(a) stands %g px above its plot beside a top axis, %g px beside none" besideTop plain)
+
+    [<Fact>]
     let ``a map that turns back is refused at the first point it does (gate 6)`` () =
         let xs = Array.init 21 (fun i -> float i / 10.0 - 1.0)
         let fig = Chart.lineIn U.one U.one xs xs |> Chart.withTopAxisMapped U.one (fun x -> x * x) sqrt
