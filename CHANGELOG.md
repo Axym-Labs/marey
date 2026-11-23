@@ -236,6 +236,11 @@ and reported when missing; Marey does not require a version of them.
 
 ### Fixed
 
+- **A panel's letter stands above its own plot.** A letter was drawn at the top of the panel's
+  cell, so when a neighbour's top axis or title, or an equal aspect, gave the panel room above it,
+  the letter floated over that room, well above the plot it names. It now stands in the panel's
+  own title row. Moved: the guide's `double-pendulum` figure (its equal-aspect panel's letter); no
+  golden.
 - **A box zoom on a polar figure shows the box.** A drag on a live figure under `Coord.polar`
   narrowed the domains to the box's corners read back as angle and radius, and drew them over the
   whole turn: the selected wedge came back stretched round the full circle with its inner radius
