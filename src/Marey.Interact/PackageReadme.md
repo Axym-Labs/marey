@@ -85,8 +85,8 @@ writes a log as JSON and reads it back exactly.
 
 `Html.widget live state isLive` writes the whole page: the controls at the state's values, the
 figure, and a script that posts each change and swaps in the reply, or only the elements that
-changed when that is at most half the figure. The script formats no number: every label is written
-by the kernel. With `isLive = false` the controls are disabled.
-That form suits a host with nothing to talk back to, and a saved notebook.
+changed when that is at most half the figure. The script formats no number, and every label is
+written by the kernel. With `isLive = false` the controls are disabled, which suits a host with
+nothing to talk back to, and a saved notebook.
 
 Depends on `Marey.Core`, `Marey.Units` and `Marey.Plot`. `netstandard2.1`, no other dependencies.

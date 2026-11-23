@@ -1,8 +1,8 @@
 # Marey.Sim
 
 Simulation for [Marey](https://axym-labs.github.io/marey/). **A simulation is a start and a step,
-and its trajectory is an animation**: it seeks, it films, and a seek to any time is exactly the
-state a straight run reaches.
+and its trajectory is an animation.** It seeks and films like one, and a seek to any time gives
+exactly the state a straight run reaches.
 
 ```fsharp
 #r "nuget: Marey.Sim"

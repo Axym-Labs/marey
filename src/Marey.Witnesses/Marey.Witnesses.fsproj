@@ -18,7 +18,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>Marey.Witnesses</AssemblyName>
     <RootNamespace>Marey.Witnesses</RootNamespace>
-    <Description>Code fixes for Marey's unit witnesses, over the F# compiler service: a call missing its witnesses, a witness for another unit than its data, measured arrays where a Q is taken. U.second for a float&lt;s&gt;, composed as the unit is written where Marey declares no witness for it.</Description>
+    <Description>Code fixes for Marey's unit witnesses, over the F# compiler service: a call missing its witnesses, a witness for another unit than its data, measured arrays where a Q is taken. A fix gives U.second for a float&lt;s&gt;, and composes the witness as the unit is written where Marey declares none for it.</Description>
     <PackageTags>fsharp units-of-measure compiler-service code-fix tooling</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>

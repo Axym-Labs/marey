@@ -41,7 +41,7 @@ and agree with the CPU's steps to a few parts in a million.
 same for a live figure, with its controls in a strip above it. Drag to zoom, shift-drag to pan,
 double-click to reset, hover to read, Tab and the arrows for the controls, Escape to close. The
 window's pointer and keys become the messages a notebook page sends for the same gestures, stepped
-by `Live.step`, so a session in a window reaches the states a notebook session would, and a
+by `Live.step`. A session in a window therefore reaches the states a notebook session would, and a
 recording made in one replays in the other.
 
 ```fsharp norun

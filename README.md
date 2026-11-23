@@ -136,10 +136,11 @@ dotnet test
 ```
 
 The suite holds property tests for the dimension algebra, the scales, ticks, interpolation, colour
-and the scene; golden baselines in SVG and `tikzpicture` source; a `pdflatex` compile; ink checks
-over the compiled TeX, the PNG and the PDF; the guide, the README and the examples run; and the
-same baselines drawn under Fable and Node. Gates that need an external program report it absent
-rather than fail, and `MAREY_REQUIRE_TOOLCHAIN=1`, which CI sets, makes an absent one a failure.
+and the scene, and golden baselines in SVG and `tikzpicture` source. It compiles the TeX with
+`pdflatex`, checks for ink in the compiled TeX, the PNG and the PDF, runs the guide, the README and
+the examples, and draws the same baselines under Fable and Node. A gate that needs an external
+program reports it absent rather than failing. CI sets `MAREY_REQUIRE_TOOLCHAIN=1`, which makes an
+absent program a failure.
 
 ## Status
 

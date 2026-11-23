@@ -24,9 +24,9 @@ match Video.mux MuxOptions.Default sequence "shot.mp4" with
 | other -> printfn "%A" other
 ```
 
-`Marey.Plot` renders an animation to a numbered directory on every core there is. This encodes
-that directory by running `ffmpeg`, which it looks for on `PATH` and *reports* — found, with its
-version, or absent with the sentence naming what to install.
+`Marey.Plot` renders an animation to a numbered directory on every core there is. This package
+encodes that directory by running `ffmpeg`. It looks for `ffmpeg` on `PATH` and *reports* what it
+found, either the program and its version or its absence and the sentence naming what to install.
 
 ## Why a subprocess and not a binding
 
@@ -41,23 +41,23 @@ is a dependency and its opinions about temporary files, and what they buy is not
 ## What is in it
 
 - **`Video.mux`**, and `Video.muxWith` for a stated ffmpeg rather than the one on `PATH`.
-  A missing encoder is `MuxUnavailable` — an outcome carrying what to install and the fact that
-  the frames are still on disk — not an exception. A numbered directory is something every
+  A missing encoder is not an exception but `MuxUnavailable`, an outcome carrying what to install
+  and the fact that the frames are still on disk. A numbered directory is something every
   editor imports.
 - **`Video.args`, a pure function**, so the exact command is a value you can print, diff or paste
-  into a shell. Two positions in it are load-bearing and silent when wrong: `-framerate` before
-  `-i` keeps every rendered frame, and the same number after `-i` resamples — 24 frames at 12 fps
-  is 24 frames written correctly and **13** with the flag moved.
+  into a shell. Two positions in it matter and fail silently when wrong. `-framerate` before
+  `-i` keeps every rendered frame, and the same number after `-i` resamples, so 24 frames at 12 fps
+  come out as 24 frames written correctly and as **13** with the flag moved.
 - **`Video.inspect`**, which decodes the result with `ffprobe` and says what is actually in it:
   codec, dimensions, frames counted rather than claimed, and the rate the container declares.
-  Exit status is a weak gate — an encoder that wrote 13 of 24 frames exits zero.
+  Exit status is a weak gate, since an encoder that wrote 13 of 24 frames exits zero.
 - **Reproducible containers.** `-fflags +bitexact` and its companions strip the `encoder=Lavf…`
   and `encoder=Lavc…` tags that would otherwise name the ffmpeg build that wrote the file.
   `VideoInfo.BuildTags` is how you check, and it is empty.
-- **`Video.check`**, which starts no process: leftover frames from a longer render
-  (which `ffmpeg -i frame-%05d.png` would silently append as a tail), and odd pixel dimensions
-  under a chroma-subsampled pixel format — read out of the first frame's own header, because a
-  raster backend rounds an extent up.
+- **`Video.check`**, which starts no process. It finds leftover frames from a longer render
+  (which `ffmpeg -i frame-%05d.png` would silently append as a tail) and odd pixel dimensions under
+  a chroma-subsampled pixel format. It reads the dimensions out of the first frame's own header,
+  because a raster backend rounds an extent up.
 
 Depends on [`Marey.Plot`](https://www.nuget.org/packages/Marey.Plot) and
 [`Marey.Toolchain`](https://www.nuget.org/packages/Marey.Toolchain), and on nothing outside this

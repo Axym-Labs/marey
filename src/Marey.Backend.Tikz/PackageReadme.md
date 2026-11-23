@@ -28,7 +28,8 @@ Chart.lineIn U.second U.metre t x
 An exported image is a foreign object in a paper: different fonts, different weights, and units set
 in whatever the plotting library took a minus sign to be. A `tikzpicture` is typeset by the same
 engine as the rest of the document, so **the figure inherits the document's fonts**, and the axis
-titles are typeset by `siunitx` from the unit witnesses — `\qty{}{\metre}`, not the string `"m"`.
+titles are typeset by `siunitx` from the unit witnesses, as `\qty{}{\metre}` and not as the string
+`"m"`.
 
 `TikzBackend.standalone` wraps a fragment in a document that compiles on its own.
 
@@ -37,7 +38,7 @@ titles are typeset by `siunitx` from the unit witnesses — `\qty{}{\metre}`, no
 Only `\usepackage{tikz}`, plus `siunitx` when the siunitx unit style is used. Coordinates are emitted
 in `bp` at 96 px/inch, so a 400×250 figure produces a page of exactly 300×187.5 pt.
 
-Unsupported constructs degrade visibly rather than silently: a gradient becomes its Oklab
+Unsupported constructs degrade visibly rather than silently. A gradient becomes its Oklab
 midpoint, and a raster becomes a comment naming what was skipped and at what size. Layout is
 measured against the theme's font metrics while TeX sets the text in the document's own face;
 `Theme.withFontFamily` is what reconciles the two.

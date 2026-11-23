@@ -31,7 +31,7 @@ function like `SkiaBackend.renderPng`, and `Frames.render FramePass.Concurrent g
 compiles a film's frames in parallel and draws them in turn.
 
 On a HiDPI screen, `gpu.RenderImageAt 2.0 extent scene` draws the scene as a window at a scaling
-of 2 shows it: twice the extent's pixels each way, with strokes, marks and text scaled with the
+of 2 shows it, with twice the extent's pixels each way and strokes, marks and text scaled with the
 geometry. `RenderPngAt` is the same for PNG bytes.
 
 Keep one renderer for many renders. Creating one opens a context and resolves fonts, which is the
@@ -39,13 +39,13 @@ cost a renderer exists to pay once.
 
 ## What it draws
 
-Everything the Skia backend draws, with the same code, on the GPU: text is shaped with HarfBuzz
-and placed with the advances it was measured with. The output is close to the CPU raster's and
+It draws everything the Skia backend draws, with the same code, on the GPU. Text is shaped with
+HarfBuzz and placed with the advances it was measured with. The output is close to the CPU raster's and
 not identical to the byte, because a GPU antialiases path edges a little differently.
 
 Marker batches are the exception, and the reason for the package. Skia draws a marker as a path,
 one at a time, so 10⁵ of them take about a fifth of a second on any surface. This renderer draws
-a batch as one instanced draw, each mark's shape computed in a shader to Skia's own outline: a
+a batch as one instanced draw, each mark's shape computed in a shader to Skia's own outline. A
 million marks take about 5 ms on a desktop GPU. A batch the shader cannot match (a gradient fill,
 a dashed or non-mitered outline, inside an opacity layer, under a clip that is not a rectangle)
 is left to Skia.
