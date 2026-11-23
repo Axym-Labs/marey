@@ -99,11 +99,13 @@ and private GradientRecord(geometry: string) =
 and private ImageRecord(w: int, h: int) =
     let data = Array.zeroCreate<byte> (w * h * 4)
 
+    // In 64 bits, where `sum * 31` cannot overflow: a 32-bit product wraps on .NET and, from Fable
+    // 5.28, under Fable too, but not before, so the logs were recorded with the exact sum.
     member _.Describe() =
-        let mutable sum = 0u
+        let mutable sum = 0UL
 
         for b in data do
-            sum <- (sum * 31u + uint32 b) % 1000000007u
+            sum <- (sum * 31UL + uint64 b) % 1000000007UL
 
         sprintf "%dx%d #%d" w h sum
 
