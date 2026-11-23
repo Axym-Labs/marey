@@ -6,14 +6,6 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Every package is versioned and released together, so a version number identifies the whole set
 rather than any one package. Each release's notes say which packages it adds.
 
-**Pre-1.0, and versioned accordingly.** The API is still free to move. Breaking changes are
-listed under `Changed` or `Removed` with the reason and the replacement, and until 1.0 they may
-land in a minor release.
-
-## [Unreleased]
-
-<!-- A draft. At 1.0.0 the statement below replaces the "Pre-1.0" paragraph above. -->
-
 **What a version number promises, from 1.0.0.** The public API is what `api/` lists, package by
 package. A patch release fixes defects and changes no public signature. A minor release adds, and
 removes, renames or retypes nothing a 1.x release published. Anything else waits for a major
@@ -21,9 +13,10 @@ release, with five exceptions, which a minor release may make:
 
 - **A new field in a public record.** `Figure`, `Panel`, `Layer`, `AxisConfig`, `Theme`,
   `PanelView`, `Shot`, `GeomStyle` and `Channel` are built from a published value with `with`
-  (`{ Theme.modern with … }`, `{ Chart.axis "t" with … }`), or only read. Code written that way keeps compiling when a field is
-  added. A record expression that names every field does not, and is not covered. `PlotSpec`,
-  `Handle`, `PanelLayout`, `LiveZoom`, `Story` and `Step` have no fields a user can name.
+  (`{ Theme.modern with … }`, `{ Chart.axis "t" with … }`), or only read. Code written that way
+  keeps compiling when a field is added. A record expression that names every field does not, and
+  is not covered. `PlotSpec`, `Handle`, `PanelLayout`, `LiveZoom`, `Story` and `Step` have no
+  fields a user can name.
 - **A new case of an open union.** These gain cases as the library grows: `Geom` and `FieldMark`,
   for marks; `ChannelMap`, for ways a channel maps data to appearance; `ScaleKind`, for kinds of
   scale; `TickSpec`, `MinorSpec` and `TickFormat`, for ways to place and write ticks;
@@ -55,6 +48,10 @@ SDK 10.0.100 band and on the newest SDK. The ten packages that carry their sourc
 built and tested with Fable 5.28. A live figure in a notebook needs Verso 1.2.3 or newer. The GPU
 window runs on Linux and Windows, not on macOS. `latex`, `dvisvgm` and `ffmpeg` are found on `PATH`
 and reported when missing; Marey does not require a version of them.
+
+## [Unreleased]
+
+## [1.0.0] — 2026-11-23
 
 ### Added
 
@@ -1652,7 +1649,8 @@ Superseded by `0.1.0` and not recommended for use. `Marey.Verso` in particular c
 installed from it: prerelease versions do not appear in Verso's Extensions panel at all, so an
 rc validates the package and the formatter but never the installation path.
 
-[Unreleased]: https://github.com/Axym-Labs/marey/compare/0.7.0...HEAD
+[Unreleased]: https://github.com/Axym-Labs/marey/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Axym-Labs/marey/compare/0.7.0...v1.0.0
 [0.7.0]: https://github.com/Axym-Labs/marey/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/Axym-Labs/marey/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/Axym-Labs/marey/compare/0.4.0...0.5.0

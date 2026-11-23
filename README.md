@@ -143,5 +143,5 @@ rather than fail, and `MAREY_REQUIRE_TOOLCHAIN=1`, which CI sets, makes an absen
 
 ## Status
 
-Pre-1.0. The next release is 1.0.0, and [Compatibility](docs/compatibility.md) says what it will
-promise. MIT licensed.
+1.0.0, released 2026-11-23. [Compatibility](docs/compatibility.md) says what a version number
+promises from here on. MIT licensed.

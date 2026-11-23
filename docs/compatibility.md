@@ -9,9 +9,10 @@ which a minor release may make:
 
 - **A new field in a public record.** `Figure`, `Panel`, `Layer`, `AxisConfig`, `Theme`,
   `PanelView`, `Shot`, `GeomStyle` and `Channel` are built from a published value with `with`
-  (`{ Theme.modern with … }`, `{ Chart.axis "t" with … }`), or only read. Code written that way keeps compiling when a field is
-  added. A record expression that names every field does not, and is not covered. `PlotSpec`,
-  `Handle`, `PanelLayout`, `LiveZoom`, `Story` and `Step` have no fields a user can name.
+  (`{ Theme.modern with … }`, `{ Chart.axis "t" with … }`), or only read. Code written that way
+  keeps compiling when a field is added. A record expression that names every field does not, and
+  is not covered. `PlotSpec`, `Handle`, `PanelLayout`, `LiveZoom`, `Story` and `Step` have no
+  fields a user can name.
 - **A new case of an open union.** These gain cases as the library grows: `Geom` and `FieldMark`,
   for marks; `ChannelMap`, for ways a channel maps data to appearance; `ScaleKind`, for kinds of
   scale; `TickSpec`, `MinorSpec` and `TickFormat`, for ways to place and write ticks;

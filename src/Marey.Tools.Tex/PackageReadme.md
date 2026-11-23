@@ -82,4 +82,4 @@ The alternative on the table was MathJax through a JavaScript engine, which the 
 web backend — a backend that does not exist yet, and which would have left the other three
 unable to set a fraction. Outlines reach all of them.
 
-MIT licensed. Pre-1.0: the API is still free to move.
+MIT licensed.
