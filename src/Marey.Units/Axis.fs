@@ -57,6 +57,9 @@ type AxisSpec =
 /// metres takes `50e-9`, not `50`). They are stated in the data's unit and never in the prefix the
 /// axis happens to pick, so a step cannot be right on one figure and a thousand times wrong on
 /// the next. The prefix and the unit in the title are still chosen as for any axis.
+///
+/// **An open union**: a minor release may add a case, for a new way to place ticks, so a `match`
+/// over it keeps a wildcard case.
 type TickSpec =
     /// The 1-2-5 ladder at the tick target: the default.
     | TicksAuto
@@ -70,6 +73,9 @@ type TickSpec =
 
 /// Where an axis's minor ticks go. They carry no labels and never take part in the
 /// collision ladder.
+///
+/// **An open union**: a minor release may add a case, for a new way to place minor ticks, so a
+/// `match` over it keeps a wildcard case.
 type MinorSpec =
     /// Each major interval in 5 when the major step's mantissa is 1 or 5, in 4 otherwise
     /// (matplotlib's `AutoMinorLocator`), and 2 … 9 in each decade of a log axis. None between
@@ -90,6 +96,9 @@ type TickFormatter(format: float -> string) =
     override _.ToString() = "custom"
 
 /// How tick numbers are written, after the prefix has rescaled them.
+///
+/// **An open union**: a minor release may add a case, for a new way to write ticks, so a `match`
+/// over it keeps a wildcard case.
 [<NoComparison>]
 type TickFormat =
     /// The decimals the step needs: the default. A linear axis that no prefix brings near 1, a

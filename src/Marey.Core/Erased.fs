@@ -26,6 +26,9 @@ type TickLabel =
 /// Everything above this interface is `float<'u>`; everything below it is `float` plus a `Dim`.
 /// There is exactly one implementation (`Erase.scale`), and that is the point: one boundary,
 /// crossed in one direction, in one place.
+///
+/// **Implemented by Marey alone**: a minor release may add a member, so code outside the library
+/// reads one and does not implement it.
 type IScaleErased =
     /// The unit's *declared* symbol. Presentation only: a display is canonicalised from `Dim`.
     abstract Symbol: string
@@ -94,6 +97,9 @@ type ISeriesConsumer<'r> =
     abstract Apply<[<Measure>] 'ux, [<Measure>] 'uy> : Series<'ux, 'uy> -> 'r
 
 /// The existential package. A `PackedSeries list` holds `(m, m/s)` next to `(s, J)`.
+///
+/// **Implemented by Marey alone**: a minor release may add a member, so code outside the library
+/// reads one and does not implement it.
 type PackedSeries =
     abstract Accept: ISeriesConsumer<'r> -> 'r
 
@@ -102,6 +108,9 @@ type IScaleConsumer<'r> =
     abstract Apply<[<Measure>] 'u> : Scale<'u> -> 'r
 
 /// A typed scale with its measure hidden, opened with an `IScaleConsumer`.
+///
+/// **Implemented by Marey alone**: a minor release may add a member, so code outside the library
+/// reads one and does not implement it.
 type PackedScale =
     abstract Accept: IScaleConsumer<'r> -> 'r
 

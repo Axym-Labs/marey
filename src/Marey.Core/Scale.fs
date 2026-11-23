@@ -8,6 +8,9 @@ namespace Marey
 /// the endpoints, and you cannot generate the right ticks without asking the closure.
 ///
 /// One extra tag field fixes all four. It is the cheapest thing in this file.
+///
+/// **An open union**: a minor release may add a case, for a new kind of scale, so a `match` over it
+/// keeps a wildcard case.
 [<RequireQualifiedAccess>]
 type ScaleKind =
     | Linear

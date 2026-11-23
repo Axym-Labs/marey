@@ -41,6 +41,9 @@ type GradientStop = { Offset: float; Color: Color }
 /// `Capabilities.Gradients` exists because TikZ's gradient support is genuinely weaker than
 /// SVG's, and the compiler layer queries capabilities and *degrades* rather than silently
 /// producing wrong output.
+///
+/// **An open union**: a minor release may add a case, for a new kind of fill, so a `match` over it
+/// keeps a wildcard case.
 [<NoComparison>]
 type Paint =
     | Solid of Color
@@ -165,8 +168,11 @@ type TextRun =
 /// emit one `Path` per point to vary it, which defeats batching, the single biggest
 /// performance decision in the IR, in the exact case that motivated batching.
 ///
-/// A closed enum on an existing node is the cheap way to have it: no new backend dispatch,
-/// just a shape table each backend fills once.
+/// A union on an existing node is the cheap way to have it: no new backend dispatch, just a
+/// shape table each backend fills once.
+///
+/// **An open union**: a minor release may add a case, for a new shape, so a `match` over it keeps a
+/// wildcard case.
 type MarkerShape =
     | MarkCircle
     | MarkSquare
@@ -251,8 +257,8 @@ type Semantics =
 
 /// The IR. Ten cases. Guard it obsessively.
 ///
-/// **An open union**: a minor release may add a case, for a new kind of drawing, so a `match`
-/// over it keeps a wildcard case.
+/// **An open union**: a minor release may add a case, for a new kind of drawing, so a `match` over
+/// it keeps a wildcard case.
 [<NoComparison>]
 type Node =
     | Path of segments: PathSeg[] * stroke: Stroke option * fill: Paint option * rule: FillRule

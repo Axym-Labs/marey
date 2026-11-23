@@ -672,10 +672,10 @@ type PlotBuilderBase<'r>(rows: 'r[]) =
 
     // ---- Non-positional channels ----------------------------------------------
     //
-    // Colour is the only channel spelled two ways, and the reason is `ChannelMap`'s four arms: a
-    // category can drive colour or shape, a quantity can drive colour or size, and nothing else
-    // is possible. There is no continuous shape — a shape does not interpolate — and no
-    // categorical size, because a size that is not ordered says nothing. So `shape` needs no
+    // Colour is the only channel spelled two ways, and the reason is `ChannelMap`'s pairings: a
+    // category can drive colour or shape, a quantity can drive colour or size. There is no
+    // continuous shape — a shape does not interpolate — and no categorical size, because a size
+    // that is not ordered says nothing. So `shape` needs no
     // continuous spelling and `size` needs no categorical one, and only colour has two halves
     // to name. They are two operations rather than one overloaded one deliberately: overload
     // resolution on a custom operation would have to run before the accessor's lambda is
