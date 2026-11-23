@@ -23,6 +23,9 @@ open System.Collections.Generic
 // ======================================================================================
 
 /// What a field layer draws.
+///
+/// **An open union**: a minor release may add a case, for a new field mark, so a `match` over it
+/// keeps a wildcard case.
 type FieldMark =
     /// The scalar as an image, one pixel per node, coloured by the layer's colour channel.
     /// `smooth` interpolates between nodes; otherwise each node is a flat cell.

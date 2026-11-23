@@ -33,7 +33,7 @@ printfn "%s" speed.Unit.Symbol
 - **`Scale`**: linear, log, symlog, power, reciprocal and categorical, each `Forward` and
   `Inverse` checked as mutual inverses. **`Vec2`**, **`Affine`** and **`Coord`**: geometry and
   coordinate systems indexed by unit.
-- **`Scene`**, the closed set of ten nodes every backend draws, and **`Wire`**, which writes a
+- **`Scene`**, the ten kinds of node every backend draws, and **`Wire`**, which writes a
   scene or a patch to bytes and back exactly, with the text metrics its layout used: what a kernel
   sends a page to draw.
 

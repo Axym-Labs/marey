@@ -2,10 +2,10 @@ namespace Marey
 
 /// **How one non-positional channel turns data into appearance.**
 ///
-/// Four cases, and the pairing is not an accident: a category can drive colour or shape, a
-/// quantity can drive colour or size, and nothing else is possible. There is no continuous
-/// shape (a shape does not interpolate) and no categorical size (a size that is not ordered
-/// says nothing), so the DU has exactly the four arms those two halves allow.
+/// Each case pairs a kind of data with an appearance, and the pairing is not an accident: a
+/// category can drive colour or shape, a quantity colour or size. There is no continuous shape
+/// (a shape does not interpolate) and no categorical size (a size that is not ordered says
+/// nothing).
 ///
 /// The **categorical** arms index by level number, exactly as `ScaleKind.Ordinal` does:
 /// `Levels` is what the key reached before the erasure boundary, and a channel's values are
@@ -13,6 +13,9 @@ namespace Marey
 /// rather than a domain pair, because the scale is what gives the colorbar its ticks, its
 /// prefix and its unit — a colour channel over `float<K>` labels its bar `T [K]` because the
 /// witness came this far.
+///
+/// **An open union**: a minor release may add a case, for a new way to map a channel, so a `match`
+/// over it keeps a wildcard case.
 [<NoComparison>]
 type ChannelMap =
     /// One colour per level. `levels` is index-aligned with `colors` and is what the legend

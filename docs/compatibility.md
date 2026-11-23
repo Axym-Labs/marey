@@ -4,18 +4,25 @@
 
 From 1.0.0, the public API is what [`api/`](../api) lists, package by package. A patch release fixes
 defects and changes no public signature. A minor release adds, and removes, renames or retypes
-nothing a 1.x release published. Anything else waits for a major release, with four exceptions,
+nothing a 1.x release published. Anything else waits for a major release, with five exceptions,
 which a minor release may make:
 
 - **A new field in a public record.** `Figure`, `Panel`, `Layer`, `AxisConfig`, `Theme`,
-  `PanelView` and `Shot` are built from a published value with `with` (`{ Theme.modern with … }`,
-  `{ Chart.axis "t" with … }`), or only read. Code written that way keeps compiling when a field is
+  `PanelView`, `Shot`, `GeomStyle` and `Channel` are built from a published value with `with`
+  (`{ Theme.modern with … }`, `{ Chart.axis "t" with … }`), or only read. Code written that way keeps compiling when a field is
   added. A record expression that names every field does not, and is not covered. `PlotSpec`,
   `Handle`, `PanelLayout`, `LiveZoom`, `Story` and `Step` have no fields a user can name.
-- **A new case of an open union.** `Geom`, `LegendPlacement`, `ZoomAxis` and the scene's `Node` gain
-  cases as the library gains marks, places for a legend, ways to zoom and kinds of drawing. A
-  `match` over one of them keeps a wildcard case; a `match` that names every case is not covered.
-  A new case in any other public union waits for a major release.
+- **A new case of an open union.** These gain cases as the library grows: `Geom` and `FieldMark`,
+  for marks; `ChannelMap`, for ways a channel maps data to appearance; `ScaleKind`, for kinds of
+  scale; `TickSpec`, `MinorSpec` and `TickFormat`, for ways to place and write ticks;
+  `LegendPlacement`, for places to put a legend; `ZoomAxis`, for ways to zoom; and the scene's
+  `Node`, `MarkerShape` and `Paint`, for kinds of drawing, marker and fill. A union a later release
+  adds is open when its doc comment says so. A `match` over an open union keeps a wildcard case; a
+  `match` that names every case is not covered. A new case in any other public union waits for a
+  major release.
+- **A new member of an interface only Marey implements.** `IScaleErased`, `PackedSeries` and
+  `PackedScale` are made by the library and handed to code that reads them. An implementation of
+  one outside Marey is not covered.
 - **What a figure looks like.** Drawing is not part of the API. A minor release may move a mark, a
   tick or a gutter, and lists it under `Changed` with the baselines that moved. A patch release
   moves a drawing only to fix a defect.
